@@ -37,6 +37,37 @@ async def healthz():
     return {"status": "ok"}
 
 
+@app.on_event("startup")
+async def _warm():
+    # Warm both engines to shave first-turn TTFT
+    from vllm.sampling_params import SamplingParams
+    params = SamplingParams(temperature=0.0, max_tokens=1, stop=["\n", "</s>"])
+
+    # Warm tool engine
+    rid_t = f"warm-tool-{uuid.uuid4()}"
+    stream_t = get_tool_engine().generate(
+        prompt="warmup",
+        sampling_params=params,
+        request_id=rid_t,
+        priority=0.9,
+        use_prefix_cache=True,
+    )
+    async for _ in stream_t:
+        break
+
+    # Warm chat engine (minimal persona-only prompt)
+    rid_c = f"warm-chat-{uuid.uuid4()}"
+    stream_c = get_chat_engine().generate(
+        prompt="<|persona|>\nWARM\n<|assistant|>\n",
+        sampling_params=params,
+        request_id=rid_c,
+        priority=0.9,
+        use_prefix_cache=True,
+    )
+    async for _ in stream_c:
+        break
+
+
 # Track active session tasks/requests
 session_tasks: Dict[str, asyncio.Task] = {}
 session_active_req: Dict[str, str] = {}
@@ -207,6 +238,11 @@ async def ws_handler(ws: WebSocket):
                             extra = punct_fixed[len(final_text):]
                             if extra:
                                 await ws.send_text(json.dumps({"type": "token", "text": extra}))
+                    # Emit normalized final text so clients can append exact bytes
+                    await ws.send_text(json.dumps({
+                        "type": "final",
+                        "normalized_text": punct_fixed if TEXTPROC_ENABLE else final_text
+                    }))
                     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
 
                 task = asyncio.create_task(_run())
@@ -218,6 +254,17 @@ async def ws_handler(ws: WebSocket):
                     t = session_tasks.get(session_id)
                     if t:
                         t.cancel()
+                    rid = session_active_req.get(session_id, "")
+                    try:
+                        if rid:
+                            await get_chat_engine().abort_request(rid)
+                    except Exception:
+                        pass
+                    try:
+                        if rid:
+                            await get_tool_engine().abort_request(rid)
+                    except Exception:
+                        pass
                 await ws.send_text(json.dumps({"type": "done", "cancelled": True}))
 
             elif msg["type"] == "warm_persona":
@@ -269,9 +316,22 @@ async def ws_handler(ws: WebSocket):
                 await ws.send_text(json.dumps({"type": "error", "message": "unknown msg type"}))
 
     except WebSocketDisconnect:
-        if session_id and session_id in session_tasks:
+        if session_id:
+            rid = session_active_req.get(session_id, "")
             session_active_req[session_id] = "CANCELLED"
-            session_tasks[session_id].cancel()
+            t = session_tasks.get(session_id)
+            if t:
+                t.cancel()
+            try:
+                if rid:
+                    await get_chat_engine().abort_request(rid)
+            except Exception:
+                pass
+            try:
+                if rid:
+                    await get_tool_engine().abort_request(rid)
+            except Exception:
+                pass
     except Exception as e:
         await ws.send_text(json.dumps({"type": "error", "message": str(e)}))
 
