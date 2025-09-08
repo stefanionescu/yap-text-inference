@@ -58,15 +58,15 @@ def make_kv_transfer_config() -> Optional[KVTransferConfig]:
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
-    speculative_config = None
+    speculative = None
     if is_chat and ENABLE_SPECULATIVE:
-        speculative_config = json.dumps(
-            {
-                "draft_model": DRAFT_MODEL,
-                "num_speculative_tokens": NUM_SPECULATIVE_TOKENS,
-                "disable_by_batch_size": 128,
-            }
-        )
+        # vLLM Python API expects a dict here; JSON string is for CLI only
+        speculative = {
+            "model": DRAFT_MODEL,
+            "num_speculative_tokens": NUM_SPECULATIVE_TOKENS,
+            "disable_by_batch_size": 128,
+            # "method": "draft",  # default
+        }
 
     return AsyncEngineArgs(
         model=model,
@@ -77,7 +77,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         kv_cache_dtype=KV_DTYPE,
         enforce_eager=True,
         enable_chunked_prefill=True,
-        speculative_config=speculative_config,
+        speculative_config=speculative,
         kv_transfer_config=make_kv_transfer_config(),
     )
 
