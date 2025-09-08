@@ -180,8 +180,3 @@ Enabled by default (`TEXTPROC_ENABLE=1`):
 
 - Send a new `start` with updated `persona_text` or new `persona_style`/`assistant_gender`/`user_identity`.
 - Optionally warm the new persona via `warm_persona` to avoid first-turn spike.
-
-## License and credits
-
-- Uses vLLM and LMCache. Please consult their licenses and documentation.
-- Prompts for personalities are defined in `prompts.py`.
