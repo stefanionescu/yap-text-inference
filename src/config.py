@@ -60,9 +60,10 @@ def make_kv_transfer_config() -> Optional[KVTransferConfig]:
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
     speculative = None
     if is_chat and ENABLE_SPECULATIVE:
-        # vLLM 0.10.x: use in-engine n-gram speculation (no separate draft model)
+        # vLLM 0.10.1.x expects a speculator name under "model" for built-in methods
         speculative = {
-            "speculative_mode": "ngram",
+            "model": "ngram",
+            "method": "ngram",  # optional but harmless for newer validators
             "num_speculative_tokens": NUM_SPECULATIVE_TOKENS,
         }
 

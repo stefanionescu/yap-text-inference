@@ -41,10 +41,10 @@ do
   fi
 done
 
-# 4) Clear LMCache local store (disk)
-if [ -d "/workspace/lmcache_store" ]; then
-  log_info "Clearing LMCache disk store at /workspace/lmcache_store"
-  rm -rf /workspace/lmcache_store/* || true
+# 4) Clear LMCache local store (disk) — repo-local
+if [ -d "${ROOT_DIR}/.lmcache_store" ]; then
+  log_info "Clearing LMCache disk store at ${ROOT_DIR}/.lmcache_store"
+  rm -rf "${ROOT_DIR}/.lmcache_store"/* || true
 fi
 
 # 5) Clear HuggingFace model caches (models will re-download next run)
@@ -85,6 +85,16 @@ done
 log_info "Removing __pycache__ and .pytest_cache in repo"
 find "${ROOT_DIR}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
+
+# 10) Legacy cleanup for old /workspace LMCache paths
+if [ -f "/workspace/lmcache.yaml" ]; then
+  log_info "Removing legacy /workspace/lmcache.yaml"
+  rm -f /workspace/lmcache.yaml || true
+fi
+if [ -d "/workspace/lmcache_store" ]; then
+  log_info "Removing legacy /workspace/lmcache_store"
+  rm -rf /workspace/lmcache_store || true
+fi
 
 log_info "Done. Repo preserved. Jupyter/console/container remain running."
 
