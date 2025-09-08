@@ -43,19 +43,7 @@ async def _warm():
     from vllm.sampling_params import SamplingParams
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["\n", "</s>"])
 
-    # Warm tool engine
-    rid_t = f"warm-tool-{uuid.uuid4()}"
-    stream_t = get_tool_engine().generate(
-        prompt="warmup",
-        sampling_params=params,
-        request_id=rid_t,
-        priority=0.9,
-        use_prefix_cache=True,
-    )
-    async for _ in stream_t:
-        break
-
-    # Warm chat engine (minimal persona-only prompt)
+    # Warm chat engine (minimal persona-only prompt) first
     rid_c = f"warm-chat-{uuid.uuid4()}"
     stream_c = get_chat_engine().generate(
         prompt="<|persona|>\nWARM\n<|assistant|>\n",
@@ -65,6 +53,18 @@ async def _warm():
         use_prefix_cache=True,
     )
     async for _ in stream_c:
+        break
+
+    # Then warm tool engine
+    rid_t = f"warm-tool-{uuid.uuid4()}"
+    stream_t = get_tool_engine().generate(
+        prompt="warmup",
+        sampling_params=params,
+        request_id=rid_t,
+        priority=0.9,
+        use_prefix_cache=True,
+    )
+    async for _ in stream_t:
         break
 
 
