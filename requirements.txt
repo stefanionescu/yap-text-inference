@@ -1,7 +1,7 @@
---extra-index-url https://download.pytorch.org/whl/cu124
+--extra-index-url https://download.pytorch.org/whl/cu126
 
 vllm==0.10.1.1
-torch==2.5.1+cu124 ; sys_platform == 'linux'
+torch==2.7.1+cu126 ; sys_platform == 'linux'
 
 fastapi>=0.112
 uvicorn[standard]>=0.30
@@ -12,4 +12,3 @@ httpx>=0.27
 uvloop>=0.19
 lmcache>=0.3.5
 transformers>=4.42
-
