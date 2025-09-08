@@ -73,7 +73,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         tensor_parallel_size=1,
         max_model_len=max_len,
         gpu_memory_utilization=gpu_frac,
-        kv_cache_dtype=KV_DTYPE,
         enforce_eager=True,
         enable_chunked_prefill=True,
         speculative_config=speculative,
