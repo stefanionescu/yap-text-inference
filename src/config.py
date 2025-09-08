@@ -25,7 +25,7 @@ STREAM_RATE_TOKS_PER_S = float(os.getenv("STREAM_RATE_TOKS_PER_S", "10"))
 USE_LMCACHE = os.getenv("USE_LMCACHE", "1") == "1"
 LMCACHE_REDIS_URI = os.getenv("LMCACHE_REDIS_URI", "").strip()
 
-ENABLE_SPECULATIVE = os.getenv("ENABLE_SPECULATIVE", "1") == "1"
+ENABLE_SPECULATIVE = os.getenv("ENABLE_SPECULATIVE", "0") == "1"
 NUM_SPECULATIVE_TOKENS = int(os.getenv("NUM_SPECULATIVE_TOKENS", "5"))
 
 # Text processing toggles
