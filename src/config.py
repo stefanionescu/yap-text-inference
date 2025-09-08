@@ -49,11 +49,10 @@ def make_kv_transfer_config() -> Optional[KVTransferConfig]:
         kv_cfg["redis_uri"] = LMCACHE_REDIS_URI
 
     return KVTransferConfig(
-        kv_connector="LMCacheConnectorV1Dynamic",
+        kv_connector="LMCacheConnectorV1",
+        kv_connector_module_path="lmcache.integration.vllm.lmcache_connector_v1",
         kv_role="kv_both",
         kv_config=kv_cfg or None,
-        # If your vLLM build requires module path, uncomment below:
-        # kv_connector_module_path="lmcache.integration.vllm.lmcache_connector_v1",
     )
 
 
@@ -78,5 +77,4 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         speculative_config=speculative,
         kv_transfer_config=make_kv_transfer_config(),
     )
-
 
