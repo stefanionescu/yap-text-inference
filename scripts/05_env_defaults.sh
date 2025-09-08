@@ -30,11 +30,4 @@ export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-500}
 export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
 
-# Large volume defaults (override on RunPod)
-export BIG=${BIG:-/runpod-volume}
-export HF_HOME=${HF_HOME:-${BIG}/hf}
-export HF_HUB_CACHE=${HF_HUB_CACHE:-${BIG}/hf/hub}
-export TRANSFORMERS_CACHE=${TRANSFORMERS_CACHE:-${BIG}/hf/transformers}
-export XDG_CACHE_HOME=${XDG_CACHE_HOME:-${BIG}/.cache}
-export VLLM_DOWNLOAD_DIR=${VLLM_DOWNLOAD_DIR:-${BIG}/models}
 
