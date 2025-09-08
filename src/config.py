@@ -76,5 +76,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enable_chunked_prefill=True,
         speculative_config=speculative,
         kv_transfer_config=make_kv_transfer_config(),
+        download_dir=os.getenv("VLLM_DOWNLOAD_DIR") or None,
     )
 
