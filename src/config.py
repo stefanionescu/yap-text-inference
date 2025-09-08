@@ -60,12 +60,10 @@ def make_kv_transfer_config() -> Optional[KVTransferConfig]:
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
     speculative = None
     if is_chat and ENABLE_SPECULATIVE:
-        # vLLM Python API expects a dict here; JSON string is for CLI only
+        # vLLM 0.10.x: use in-engine n-gram speculation (no separate draft model)
         speculative = {
-            "model": DRAFT_MODEL,
+            "speculative_mode": "ngram",
             "num_speculative_tokens": NUM_SPECULATIVE_TOKENS,
-            "disable_by_batch_size": 128,
-            # "method": "draft",  # default
         }
 
     return AsyncEngineArgs(
