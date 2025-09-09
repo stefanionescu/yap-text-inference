@@ -13,6 +13,8 @@ export KV_DTYPE=${KV_DTYPE:-fp8}
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-4096}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
+# Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
+export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2048}
 # Prefer fixed GiB reservations; code converts GiB→fraction
 export CHAT_GPU_GIB=${CHAT_GPU_GIB:-33.0}
 export TOOL_GPU_GIB=${TOOL_GPU_GIB:-7.0}
