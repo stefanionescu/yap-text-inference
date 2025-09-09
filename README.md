@@ -169,6 +169,25 @@ Enabled by default (`TEXTPROC_ENABLE=1`):
   - Steady 10 tok/s pacing for TTS friendliness
   - Interrupts via `abort_request`
 
+## GPU reservations (GiB caps)
+
+We reserve GPU memory per-engine via fractions, but this repo also supports GiB caps:
+
+- Set `CHAT_GPU_GIB` and/or `TOOL_GPU_GIB` to fixed GiB. Code converts GiB → fraction safely.
+- Fractions (`CHAT_GPU_FRAC`/`TOOL_GPU_FRAC`) act as fallback if GiB are unset.
+- Defaults in `scripts/05_env_defaults.sh` are tuned for a 44.5 GiB card:
+  - `CHAT_GPU_GIB=33.0`, `TOOL_GPU_GIB=7.0` (sum < total, leaves headroom)
+  - `CHAT_MAX_LEN=4096` to reduce KV load; tool max len set to 1024 internally.
+
+Example overrides:
+
+```bash
+export TOOL_GPU_GIB=7.0
+export CHAT_GPU_GIB=33.0
+unset TOOL_GPU_FRAC CHAT_GPU_FRAC
+bash scripts/stop.sh && bash scripts/main.sh
+```
+
 ## Limits and tradeoffs
 
 - Chat outputs are capped at 200 tokens per response.

@@ -23,12 +23,12 @@ def _frac_from_gib(gib_str: str | None, fallback_frac: float) -> float:
     except Exception:
         return fallback_frac
 
-CHAT_GPU_FRAC = _frac_from_gib(os.getenv("CHAT_GPU_GIB"), float(os.getenv("CHAT_GPU_FRAC", "0.78")))
-TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.20")))
+CHAT_GPU_FRAC = _frac_from_gib(os.getenv("CHAT_GPU_GIB"), float(os.getenv("CHAT_GPU_FRAC", "0.75")))
+TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.18")))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "7168"))
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "4096"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 
