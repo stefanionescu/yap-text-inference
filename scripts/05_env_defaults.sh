@@ -10,10 +10,14 @@ export CHAT_MODEL=${CHAT_MODEL:-recoilme/recoilme-gemma-2-9B-v0.5}
 export DRAFT_MODEL=${DRAFT_MODEL:-MadeAgents/Hammer2.1-3b}
 
 export KV_DTYPE=${KV_DTYPE:-fp8}
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-7168}
-export CHAT_MAX_OUT=${CHAT_MAX_OUT:-140}
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-4096}
+export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
-export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.76}
+# Prefer fixed GiB reservations; code converts GiB→fraction
+export CHAT_GPU_GIB=${CHAT_GPU_GIB:-33.0}
+export TOOL_GPU_GIB=${TOOL_GPU_GIB:-7.0}
+# Fractions remain as fallback if GiB not set
+export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.18}
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-10}
 export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
