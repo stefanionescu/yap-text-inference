@@ -6,7 +6,11 @@ source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Configuring LMCache local backend"
 
-export USE_LMCACHE=${USE_LMCACHE:-1}
+export USE_LMCACHE=${USE_LMCACHE:-0}
+if [ "${USE_LMCACHE}" != "1" ]; then
+  log_info "LMCache disabled; skipping preparation"
+  exit 0
+fi
 export LMCACHE_USE_EXPERIMENTAL=${LMCACHE_USE_EXPERIMENTAL:-True}
 export LMCACHE_CONFIG_FILE=${LMCACHE_CONFIG_FILE:-${ROOT_DIR}/lmcache.yaml}
 
