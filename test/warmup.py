@@ -27,12 +27,20 @@ import asyncio
 import json
 import os
 import random
+import re
 import sys
 import uuid
 from typing import Any, Dict, List
 
 import time
 import websockets
+
+# Heuristic: detect presence of a complete sentence terminator in the stream
+_SENTENCE_END_RE = re.compile(r"[.!?](?:[\"”')\]]+)?(?:\s|$)")
+
+
+def _contains_complete_sentence(text: str) -> bool:
+    return _SENTENCE_END_RE.search(text) is not None
 
 
 # Random fallback messages (uncomment any to use). If empty, we use a safe fallback.
@@ -180,6 +188,8 @@ async def _run_once(args: argparse.Namespace) -> None:
         ack_seen = False
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", "60"))
         first_token_ts: float | None = None
+        first_sentence_ts: float | None = None
+        toolcall_ttfb_ms: float | None = None
         sent_ts: float = time.perf_counter()
         chunks = 0
         while True:
@@ -216,14 +226,22 @@ async def _run_once(args: argparse.Namespace) -> None:
                 continue
 
             if t == "toolcall":
+                toolcall_ttfb_ms = (time.perf_counter() - sent_ts) * 1000.0
                 print(f"TOOLCALL status={msg.get('status')} raw={msg.get('raw')}")
+                print(f"TOOLCALL ttfb_ms={round(toolcall_ttfb_ms, 2)}")
                 continue
 
             if t == "token":
                 if first_token_ts is None:
                     first_token_ts = time.perf_counter()
+                    chat_ttfb_ms = (first_token_ts - sent_ts) * 1000.0
+                    print(f"CHAT ttfb_ms={round(chat_ttfb_ms, 2)}")
                 chunk = msg.get("text", "")
                 final_text += chunk
+                if first_sentence_ts is None and _contains_complete_sentence(final_text):
+                    first_sentence_ts = time.perf_counter()
+                    ttfs_ms = (first_sentence_ts - sent_ts) * 1000.0
+                    print(f"CHAT time_to_first_complete_sentence_ms={round(ttfs_ms, 2)}")
                 chunks += 1
                 continue
 
@@ -246,8 +264,11 @@ async def _run_once(args: argparse.Namespace) -> None:
                     "type": "metrics",
                     "ok": not cancelled,
                     "ttfb_ms": round(ttfb_ms, 2) if ttfb_ms is not None else None,
+                    "ttfb_chat_ms": round(ttfb_ms, 2) if ttfb_ms is not None else None,
+                    "ttfb_toolcall_ms": round(toolcall_ttfb_ms, 2) if toolcall_ttfb_ms is not None else None,
                     "total_ms": round(total_ms, 2),
                     "stream_ms": round(stream_ms, 2) if stream_ms is not None else None,
+                    "time_to_first_complete_sentence_ms": round((first_sentence_ts - sent_ts) * 1000.0, 2) if first_sentence_ts is not None else None,
                     "chunks": chunks,
                     "chars": len(final_text),
                 }))

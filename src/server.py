@@ -322,12 +322,31 @@ async def ws_handler(ws: WebSocket):
                     await ws.send_text(json.dumps({"type": "done", "cancelled": True}))
                     continue
 
-                raw = tc["text"].strip()
+                raw_text = tc["text"]
+                raw_stripped = raw_text.strip()
+                raw_field = None
                 is_tool = False
-                if raw.startswith("["):
-                    is_tool = raw != "[]"
+                if raw_stripped:
+                    if raw_stripped.startswith("["):
+                        try:
+                            parsed = json.loads(raw_stripped)
+                            if isinstance(parsed, list):
+                                raw_field = parsed
+                                is_tool = len(parsed) > 0
+                            else:
+                                raw_field = raw_stripped
+                        except Exception:
+                            raw_field = raw_stripped
+                            is_tool = raw_stripped != "[]"
+                    else:
+                        raw_field = raw_stripped
+                        is_tool = False
 
-                await ws.send_text(json.dumps({"type": "toolcall", "status": "yes" if is_tool else "no", "raw": raw}))
+                await ws.send_text(json.dumps({
+                    "type": "toolcall",
+                    "status": "yes" if is_tool else "no",
+                    "raw": raw_field,
+                }))
                 if is_tool:
                     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
                     continue
