@@ -11,8 +11,8 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 CHAT_MODEL = os.getenv("CHAT_MODEL", "recoilme/recoilme-gemma-2-9B-v0.5")
 DRAFT_MODEL = os.getenv("DRAFT_MODEL", "MadeAgents/Hammer2.1-3b")
 
-CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.82"))
-TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.14"))
+CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.78"))
+TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
 
@@ -47,6 +47,9 @@ def make_kv_transfer_config() -> Optional[KVTransferConfig]:
     kv_cfg = {}
     if LMCACHE_REDIS_URI:
         kv_cfg["redis_uri"] = LMCACHE_REDIS_URI
+    cfg_file = os.getenv("LMCACHE_CONFIG_FILE", "").strip()
+    if cfg_file:
+        kv_cfg["config_file"] = cfg_file
 
     return KVTransferConfig(
         kv_connector="LMCacheConnectorV1",
