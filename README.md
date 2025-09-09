@@ -48,6 +48,57 @@ Stop script behavior:
 - Clears LMCache store, HF caches, pip/torch caches, NVIDIA PTX JIT cache
 - Preserves the repository, the container, and services like Jupyter/web console
 
+## Warmup test client
+
+Use the local warmup client to open a WebSocket to the server, send a single start message, stream the full response, and print timing metrics.
+
+First, activate the virtualenv created by the setup scripts:
+
+```bash
+source .venv/bin/activate
+```
+
+### Basic usage
+
+```bash
+python3 test/warmup.py
+```
+
+### With a custom message
+
+```bash
+python3 test/warmup.py "who was Columbus?"
+```
+
+### With gender/style flags
+
+```bash
+python3 test/warmup.py --gender male --style flirty "hello there"
+```
+
+### Environment overrides
+
+- `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
+- `ASSISTANT_GENDER` (default `female`) — aliases accepted: `woman|man`
+- `PERSONA_STYLE` (default `wholesome`)
+- `RECV_TIMEOUT_SEC` (default `60`)
+
+Examples:
+
+```bash
+SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 test/warmup.py
+RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style nerdy "hey there"
+```
+
+### What it prints
+
+- An ACK line confirming session seed/time and effective `assistant_gender`/`persona_style`.
+- Two JSON lines when streaming completes:
+  - Metrics: `{ "type": "metrics", "ttfb_ms": ..., "total_ms": ..., "stream_ms": ..., "chunks": ..., "chars": ... }`
+  - Final text: `{ "type": "final_text", "text": "..." }`
+
+The client matches the server protocol (ack → toolcall → token/final → done) and measures TTFB from the first streamed token.
+
 ## Environment variables (common)
 
 Models and GPU split
