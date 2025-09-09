@@ -50,7 +50,6 @@ async def _warm():
         sampling_params=params,
         request_id=rid_c,
         priority=0.9,
-        use_prefix_cache=True,
     )
     async for _ in stream_c:
         break
@@ -62,7 +61,6 @@ async def _warm():
         sampling_params=params,
         request_id=rid_t,
         priority=0.9,
-        use_prefix_cache=True,
     )
     async for _ in stream_t:
         break
