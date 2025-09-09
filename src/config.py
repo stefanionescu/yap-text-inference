@@ -31,6 +31,7 @@ KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "4096"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
+TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "2048"))
 
 STREAM_RATE_TOKS_PER_S = float(os.getenv("STREAM_RATE_TOKS_PER_S", "10"))
 
