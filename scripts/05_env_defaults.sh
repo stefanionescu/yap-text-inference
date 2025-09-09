@@ -39,4 +39,13 @@ export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
 # Ensure LMCache YAML path is set for V1 connector
 export LMCACHE_CONFIG_FILE=${LMCACHE_CONFIG_FILE:-${ROOT_DIR}/lmcache.yaml}
 
+# Centralize heavy caches under the repo so wipe scripts can fully clean them
+export HF_HOME="${ROOT_DIR}/.hf"
+export TRANSFORMERS_CACHE="${HF_HOME}"
+export HUGGINGFACE_HUB_CACHE="${HF_HOME}/hub"
+export VLLM_CACHE_DIR="${ROOT_DIR}/.vllm_cache"
+export TORCHINDUCTOR_CACHE_DIR="${ROOT_DIR}/.torch_inductor"
+export TRITON_CACHE_DIR="${ROOT_DIR}/.triton"
+export FLASHINFER_CACHE_DIR="${ROOT_DIR}/.flashinfer"
+export XFORMERS_CACHE_DIR="${ROOT_DIR}/.xformers"
 
