@@ -99,6 +99,34 @@ RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style nerdy "hey t
 
 The client matches the server protocol (ack → toolcall → token/final → done) and measures TTFB from the first streamed token.
 
+## Benchmark client
+
+Run concurrent sessions and report p50/p95 latencies:
+
+```bash
+python3 test/bench.py -n 32 -c 8
+```
+
+With a custom message and persona:
+
+```bash
+python3 test/bench.py --gender female --style flirty "who was Columbus?"
+```
+
+Override URL and timeout:
+
+```bash
+python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+```
+
+Environment alternatives:
+
+- `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
+- `ASSISTANT_GENDER` (default `female`)
+- `PERSONA_STYLE` (default `flirty`)
+
+Outputs: totals and p50/p95 for `toolcall_ttfb_ms`, `chat_ttfb_ms`, and `first_sentence_ms`.
+
 ## Environment variables (common)
 
 Models and GPU split
@@ -113,7 +141,8 @@ LMCache (local, no Redis)
 - Optional Redis later: set `LMCACHE_REDIS_URI=redis://host:6379/0` (no code changes required)
 
 Streaming/text processing
-- `STREAM_RATE_TOKS_PER_S` (default `10`)
+- `STREAM_RATE_TOKS_PER_S` (default `0` → realtime; set >0 for fake typing)
+- `STREAM_FLUSH_MS` (default `0`; optional micro-coalescer in ms to reduce packet count)
 - `TEXTPROC_ENABLE=1` (enable cleaning)
 - `TEXTPROC_REMOVE_EMOJIS=1`
 - `TEXTPROC_CONVERT_NUMBERS=1` (time/math words)
@@ -217,7 +246,7 @@ Enabled by default (`TEXTPROC_ENABLE=1`):
   - Segment-level reuse for persona/history; offload + reuse via connector
 - Server
   - Toolcall-first routing (Hammer), then chat streaming
-  - Steady 10 tok/s pacing for TTS friendliness
+  - Realtime token streaming by default (no artificial pacing)
   - Interrupts via `abort_request`
 
 ## GPU reservations (GiB caps)

@@ -29,6 +29,7 @@ from .persona import build_chat_prompt, build_hammer_prompt, compose_persona
 from .textproc import StreamCleaner, ensure_proper_ending_punctuation
 from .tokens import approx_token_count, trim_text_to_token_limit
 from .config import EXACT_TOKEN_TRIM
+from .config import STREAM_FLUSH_MS
 if EXACT_TOKEN_TRIM:
     from .tokenizer_utils import exact_token_count as token_count_exact
     from .tokenizer_utils import trim_text_to_token_limit_exact as trim_text_exact
@@ -191,9 +192,11 @@ async def run_chat_stream(
         priority=0,
     )
 
-    min_interval = 1.0 / max(1e-6, stream_rate)
-    last_emit = time.perf_counter()
+    # realtime mode: emit ASAP. optional micro-coalescer if STREAM_FLUSH_MS>0
     last_text = ""
+    flush_ms = float(os.getenv("STREAM_FLUSH_MS", str(STREAM_FLUSH_MS)))
+    buf = []
+    last_flush = time.perf_counter()
 
     cleaner = StreamCleaner() if TEXTPROC_ENABLE else None
 
@@ -212,14 +215,22 @@ async def run_chat_stream(
         if not delta:
             continue
 
-        now = time.perf_counter()
-        sleep_for = min_interval - (now - last_emit)
-        if sleep_for > 0:
-            await asyncio.sleep(sleep_for)
-        last_emit = time.perf_counter()
         last_text = full_text
 
-        yield delta
+        if flush_ms <= 0:
+            # pure realtime: send immediately
+            yield delta
+        else:
+            buf.append(delta)
+            now = time.perf_counter()
+            if (now - last_flush) * 1000.0 >= flush_ms:
+                yield "".join(buf)
+                buf.clear()
+                last_flush = now
+
+    # flush any tail if coalescer was on
+    if flush_ms > 0 and buf:
+        yield "".join(buf)
 
 
 @app.websocket("/ws")
