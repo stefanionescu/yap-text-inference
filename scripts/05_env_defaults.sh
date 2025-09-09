@@ -21,7 +21,10 @@ export TOOL_GPU_GIB=${TOOL_GPU_GIB:-7.0}
 # Fractions remain as fallback if GiB not set
 export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.18}
-export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-10}
+# Realtime by default: 0 = no throttle; set >0 to enable fake typing
+export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
+# Optional tiny packet coalescer window (ms); 0 = off
+export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
 export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
 
 # Text processing toggles
