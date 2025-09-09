@@ -49,7 +49,7 @@ async def _warm():
         prompt="<|persona|>\nWARM\n<|assistant|>\n",
         sampling_params=params,
         request_id=rid_c,
-        priority=0.9,
+        priority=1,
     )
     async for _ in stream_c:
         break
@@ -60,7 +60,7 @@ async def _warm():
         prompt="warmup",
         sampling_params=params,
         request_id=rid_t,
-        priority=0.9,
+        priority=1,
     )
     async for _ in stream_t:
         break
@@ -279,7 +279,7 @@ async def ws_handler(ws: WebSocket):
                     prompt=warm_prompt,
                     sampling_params=params,
                     request_id=req_id,
-                    priority=0.6,
+                    priority=1,
                 )
                 async for _ in stream:
                     break
@@ -300,7 +300,7 @@ async def ws_handler(ws: WebSocket):
                     prompt=warm_prompt,
                     sampling_params=params,
                     request_id=req_id,
-                    priority=0.6,
+                    priority=1,
                 )
                 async for _ in stream:
                     break
