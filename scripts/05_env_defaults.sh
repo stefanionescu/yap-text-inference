@@ -43,6 +43,7 @@ export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
 
 # Ensure LMCache YAML path is set for V1 connector
 export LMCACHE_CONFIG_FILE=${LMCACHE_CONFIG_FILE:-${ROOT_DIR}/lmcache.yaml}
+export USE_LMCACHE=${USE_LMCACHE:-0}
 
 # Centralize heavy caches under the repo so wipe scripts can fully clean them
 export HF_HOME="${ROOT_DIR}/.hf"

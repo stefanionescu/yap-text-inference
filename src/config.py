@@ -38,7 +38,7 @@ STREAM_RATE_TOKS_PER_S = float(os.getenv("STREAM_RATE_TOKS_PER_S", "0"))
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
-USE_LMCACHE = os.getenv("USE_LMCACHE", "1") == "1"
+USE_LMCACHE = os.getenv("USE_LMCACHE", "0") == "1"
 LMCACHE_REDIS_URI = os.getenv("LMCACHE_REDIS_URI", "").strip()
 
 ENABLE_SPECULATIVE = os.getenv("ENABLE_SPECULATIVE", "0") == "1"
@@ -99,7 +99,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         quantization="fp8",
     )
     if os.getenv("VLLM_USE_V1", "1") == "1":
-        kwargs["kv_transfer_config"] = make_kv_transfer_config()
+        _kv_transfer = make_kv_transfer_config()
+        if _kv_transfer is not None:
+            kwargs["kv_transfer_config"] = _kv_transfer
 
     return AsyncEngineArgs(**kwargs)
 
