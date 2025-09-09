@@ -85,16 +85,21 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
             "num_speculative_tokens": NUM_SPECULATIVE_TOKENS,
         }
 
-    return AsyncEngineArgs(
+    # Build kwargs for V1 engine. Do NOT pass kv_cache_dtype here—doing so forces V0.
+    kwargs = dict(
         model=model,
         trust_remote_code=True,
         tensor_parallel_size=1,
         max_model_len=max_len,
         gpu_memory_utilization=gpu_frac,
-        enforce_eager=False,
+        enforce_eager=True,
         enable_chunked_prefill=True,
         speculative_config=speculative,
-        kv_transfer_config=make_kv_transfer_config(),
-        kv_cache_dtype=KV_DTYPE,
+        # FP8 here is weight-only quantization (W8). KV cache remains default per V1.
+        quantization="fp8",
     )
+    if os.getenv("VLLM_USE_V1", "1") == "1":
+        kwargs["kv_transfer_config"] = make_kv_transfer_config()
+
+    return AsyncEngineArgs(**kwargs)
 
