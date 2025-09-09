@@ -90,7 +90,6 @@ async def run_toolcall(session_id: str, user_utt: str, request_id: Optional[str]
         sampling_params=params,
         request_id=req_id,
         priority=1.0,
-        use_prefix_cache=True,
     )
 
     pieces = []
@@ -130,7 +129,6 @@ async def run_chat_stream(
         sampling_params=params,
         request_id=req_id,
         priority=0.5,
-        use_prefix_cache=True,
     )
 
     min_interval = 1.0 / max(1e-6, stream_rate)
@@ -283,7 +281,6 @@ async def ws_handler(ws: WebSocket):
                     prompt=warm_prompt,
                     sampling_params=params,
                     request_id=req_id,
-                    use_prefix_cache=True,
                     priority=0.6,
                 )
                 async for _ in stream:
@@ -305,7 +302,6 @@ async def ws_handler(ws: WebSocket):
                     prompt=warm_prompt,
                     sampling_params=params,
                     request_id=req_id,
-                    use_prefix_cache=True,
                     priority=0.6,
                 )
                 async for _ in stream:
