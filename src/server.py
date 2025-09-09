@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import json
 import time
 import uuid
-from typing import Dict, Optional
+from datetime import datetime
+from typing import Dict, Optional, Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import ORJSONResponse
@@ -27,6 +29,50 @@ from .config import EXACT_TOKEN_TRIM
 if EXACT_TOKEN_TRIM:
     from .tokenizer_utils import exact_token_count as token_count_exact
     from .tokenizer_utils import trim_text_to_token_limit_exact as trim_text_exact
+
+# --- Chat sampling defaults (as requested) ---
+CHAT_TEMPERATURE = 0.55
+CHAT_TOP_P = 0.90
+CHAT_TOP_K = 60
+CHAT_MIN_P = 0.05
+CHAT_REPEAT_PENALTY = 1.10
+
+# --- Extra STOP sequences for chat model ---
+STOP = [" |", "  |", "<|im_end|>", "|im_end|>", " ‍♀️", " ‍♂️"]
+
+# Per-session metadata: fixed seed + timestamp string
+session_meta: Dict[str, Dict[str, Any]] = {}
+
+# --- Gender normalization & validation ---
+def _norm_gender(val: Optional[str]) -> Optional[str]:
+    if not val:
+        return None
+    v = val.strip().lower()
+    if v in ("woman", "female", "f", "w"):
+        return "woman"
+    if v in ("man", "male", "m"):
+        return "man"
+    return None
+
+# Time classification util
+def get_time_classification(hour: int) -> str:
+    if hour == 0:
+        return "Midnight"
+    elif 1 <= hour <= 3:
+        return "Night"
+    elif 4 <= hour <= 6:
+        return "Early Morning"
+    elif 7 <= hour <= 11:
+        return "Morning"
+    elif hour == 12:
+        return "Noon"
+    elif 13 <= hour <= 16:
+        return "Afternoon"
+    elif 17 <= hour <= 20:
+        return "Early Evening"
+    elif 21 <= hour <= 23:
+        return "Evening"
+    return "Unknown"
 
 
 app = FastAPI(default_response_class=ORJSONResponse)
@@ -80,7 +126,8 @@ async def run_toolcall(session_id: str, user_utt: str, request_id: Optional[str]
         top_p=0.0,
         top_k=1,
         max_tokens=TOOL_MAX_OUT,
-        stop=["\n", "</s>"]
+        stop=["\n", "</s>"],
+        seed=session_meta.get(session_id, {}).get("seed", 0),
     )
 
     stream = get_tool_engine().generate(
@@ -114,11 +161,14 @@ async def run_chat_stream(
     session_active_req[session_id] = req_id
 
     params = SamplingParams(
-        temperature=0.7,
-        top_p=0.9,
-        top_k=-1,
+        temperature=CHAT_TEMPERATURE,
+        top_p=CHAT_TOP_P,
+        top_k=CHAT_TOP_K,
+        min_p=CHAT_MIN_P,
+        repetition_penalty=CHAT_REPEAT_PENALTY,
         max_tokens=CHAT_MAX_OUT,
-        stop=["<|end|>", "</s>"]
+        stop=STOP + ["<|end|>", "</s>"],
+        seed=session_meta.get(session_id, {}).get("seed", 0),
     )
 
     prompt = build_chat_prompt(persona_text, history_text, user_utt)
@@ -177,13 +227,49 @@ async def ws_handler(ws: WebSocket):
 
                 session_id = msg["session_id"]
 
+                # Initialize per-session metadata (seed + timestamp) once
+                if session_id not in session_meta:
+                    SESSION_SEED = random.randint(1, 1_000_000)
+                    now = datetime.now()
+                    time_classification = get_time_classification(now.hour)
+                    now_str = now.strftime(f"%d/%m/%Y %A %I:%M %p ({time_classification})")
+                    session_meta[session_id] = {
+                        "seed": SESSION_SEED,
+                        "now_str": now_str,
+                        # defaults that can be overridden on start
+                        "assistant_gender": None,
+                        "persona_style": "wholesome",
+                        "persona_text_override": None,
+                    }
+
+                # Pull fixed values for this session
+                sess_seed = session_meta[session_id]["seed"]
+                sess_now_str = session_meta[session_id]["now_str"]
+
+                # --- REQUIRE assistant_gender on start; allow style/override persona ---
+                incoming_gender = _norm_gender(msg.get("assistant_gender"))
+                if incoming_gender is None and session_meta[session_id].get("assistant_gender") is None:
+                    await ws.send_text(json.dumps({
+                        "type": "error",
+                        "message": "assistant_gender is required on start: use 'female'/'male' (or 'woman'/'man')."
+                    }))
+                    continue
+                if incoming_gender is not None:
+                    session_meta[session_id]["assistant_gender"] = incoming_gender
+                if "persona_style" in msg and msg["persona_style"]:
+                    session_meta[session_id]["persona_style"] = msg["persona_style"]
+                # Optional raw persona override for this session
+                session_meta[session_id]["persona_text_override"] = msg.get("persona_text") or None
+
                 # Persona resolution: raw persona_text or composed from style/gender
-                persona_text = msg.get("persona_text")
-                if not persona_text:
+                if session_meta[session_id]["persona_text_override"]:
+                    persona_text = session_meta[session_id]["persona_text_override"]
+                else:
                     persona_text = compose_persona(
-                        style=msg.get("persona_style", "wholesome"),
-                        assistant_gender=msg.get("assistant_gender", "woman"),
+                        style=session_meta[session_id]["persona_style"],
+                        assistant_gender=session_meta[session_id]["assistant_gender"] or "woman",
                         user_identity=msg.get("user_identity", "non-binary"),
+                        now_str=sess_now_str,
                     )
 
                 history_text = msg.get("history_text", "")
@@ -305,6 +391,42 @@ async def ws_handler(ws: WebSocket):
                 async for _ in stream:
                     break
                 await ws.send_text(json.dumps({"type": "warmed", "segment": "history", "bytes": len(history_text)}))
+
+            elif msg["type"] == "set_persona":
+                # Runtime switch for assistant gender / style / raw persona
+                if not session_id:
+                    await ws.send_text(json.dumps({"type": "error", "message": "no active session"}))
+                    continue
+                changed: Dict[str, Any] = {}
+                g = _norm_gender(msg.get("assistant_gender"))
+                if g is not None:
+                    session_meta[session_id]["assistant_gender"] = g
+                    changed["assistant_gender"] = g
+                if "persona_style" in msg and msg["persona_style"]:
+                    session_meta[session_id]["persona_style"] = msg["persona_style"]
+                    changed["persona_style"] = msg["persona_style"]
+                if "persona_text" in msg:
+                    # explicit None/empty clears the override
+                    ov = msg.get("persona_text") or None
+                    session_meta[session_id]["persona_text_override"] = ov
+                    changed["persona_text_override"] = bool(ov)
+
+                # Recompute current persona preview (not streaming; just confirm)
+                if session_meta[session_id]["persona_text_override"]:
+                    persona_preview = session_meta[session_id]["persona_text_override"]
+                else:
+                    persona_preview = compose_persona(
+                        style=session_meta[session_id]["persona_style"],
+                        assistant_gender=session_meta[session_id]["assistant_gender"] or "woman",
+                        user_identity=msg.get("user_identity", "non-binary"),
+                        now_str=session_meta[session_id]["now_str"],
+                    )
+                await ws.send_text(json.dumps({
+                    "type": "persona_set",
+                    "changed": changed,
+                    "assistant_gender": session_meta[session_id]["assistant_gender"],
+                    "persona_style": session_meta[session_id]["persona_style"],
+                }))
 
             else:
                 await ws.send_text(json.dumps({"type": "error", "message": "unknown msg type"}))
