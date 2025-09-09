@@ -27,12 +27,12 @@ This will:
 - Install Python deps from `requirements.txt`
 - Prepare LMCache local config (`/workspace/lmcache.yaml`) and store dir (`/workspace/lmcache_store`)
 - Export environment defaults
-- Launch `uvicorn src.server:app --port 8080`
+- Launch `uvicorn src.server:app --port 8000`
 
 2) Health check
 
 ```bash
-curl -s http://127.0.0.1:8080/healthz
+curl -s http://127.0.0.1:8000/healthz
 ```
 
 3) Stop (wipe runtime state but keep the repo and container services)
