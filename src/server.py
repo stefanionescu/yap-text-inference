@@ -87,7 +87,7 @@ async def run_toolcall(session_id: str, user_utt: str, request_id: Optional[str]
         prompt=build_hammer_prompt(user_utt),
         sampling_params=params,
         request_id=req_id,
-        priority=1.0,
+        priority=1,
     )
 
     pieces = []
@@ -126,7 +126,7 @@ async def run_chat_stream(
         prompt=prompt,
         sampling_params=params,
         request_id=req_id,
-        priority=0.5,
+        priority=0,
     )
 
     min_interval = 1.0 / max(1e-6, stream_rate)
