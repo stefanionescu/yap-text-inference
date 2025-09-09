@@ -12,6 +12,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import ORJSONResponse
 
 from vllm.sampling_params import SamplingParams
+from prompts import PERSONALITIES
 
 from .config import (
     CHAT_MODEL,
@@ -50,6 +51,9 @@ TOOL_STOP = ["\n", "</s>"]
 
 # Per-session metadata: fixed seed + timestamp string
 session_meta: Dict[str, Dict[str, Any]] = {}
+
+# Allowed personalities/styles (from prompts.py)
+ALLOWED_PERSONALITIES = set(PERSONALITIES.keys())
 
 # --- Gender normalization & validation ---
 def _norm_gender(val: Optional[str]) -> Optional[str]:
@@ -257,7 +261,7 @@ async def ws_handler(ws: WebSocket):
                 sess_seed = session_meta[session_id]["seed"]
                 sess_now_str = session_meta[session_id]["now_str"]
 
-                # --- REQUIRE assistant_gender on start; allow style/override persona ---
+                # --- REQUIRE assistant_gender & persona_style on start; allow override persona ---
                 incoming_gender = _norm_gender(msg.get("assistant_gender"))
                 if incoming_gender is None and session_meta[session_id].get("assistant_gender") is None:
                     await ws.send_text(json.dumps({
@@ -267,8 +271,23 @@ async def ws_handler(ws: WebSocket):
                     continue
                 if incoming_gender is not None:
                     session_meta[session_id]["assistant_gender"] = incoming_gender
-                if "persona_style" in msg and msg["persona_style"]:
-                    session_meta[session_id]["persona_style"] = msg["persona_style"]
+                # Validate persona_style: required at start and must be allowed
+                incoming_style = (msg.get("persona_style") or "").strip()
+                if not session_meta[session_id].get("persona_text_override"):
+                    if not incoming_style and session_meta[session_id].get("persona_style") is None:
+                        await ws.send_text(json.dumps({
+                            "type": "error",
+                            "message": f"persona_style is required on start; allowed: {sorted(ALLOWED_PERSONALITIES)}"
+                        }))
+                        continue
+                    if incoming_style:
+                        if incoming_style not in ALLOWED_PERSONALITIES:
+                            await ws.send_text(json.dumps({
+                                "type": "error",
+                                "message": f"invalid persona_style '{incoming_style}'; allowed: {sorted(ALLOWED_PERSONALITIES)}"
+                            }))
+                            continue
+                        session_meta[session_id]["persona_style"] = incoming_style
                 # Optional raw persona override for this session
                 session_meta[session_id]["persona_text_override"] = msg.get("persona_text") or None
 
@@ -448,8 +467,15 @@ async def ws_handler(ws: WebSocket):
                     session_meta[session_id]["assistant_gender"] = g
                     changed["assistant_gender"] = g
                 if "persona_style" in msg and msg["persona_style"]:
-                    session_meta[session_id]["persona_style"] = msg["persona_style"]
-                    changed["persona_style"] = msg["persona_style"]
+                    style = msg["persona_style"].strip()
+                    if style not in ALLOWED_PERSONALITIES:
+                        await ws.send_text(json.dumps({
+                            "type": "error",
+                            "message": f"invalid persona_style '{style}'; allowed: {sorted(ALLOWED_PERSONALITIES)}"
+                        }))
+                        continue
+                    session_meta[session_id]["persona_style"] = style
+                    changed["persona_style"] = style
                 if "persona_text" in msg:
                     # explicit None/empty clears the override
                     ov = msg.get("persona_text") or None
