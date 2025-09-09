@@ -14,6 +14,8 @@ from fastapi.responses import ORJSONResponse
 from vllm.sampling_params import SamplingParams
 
 from .config import (
+    CHAT_MODEL,
+    TOOL_MODEL,
     CHAT_MAX_OUT,
     HISTORY_MAX_TOKENS,
     USER_UTT_MAX_TOKENS,
@@ -240,6 +242,9 @@ async def ws_handler(ws: WebSocket):
                         "assistant_gender": None,
                         "persona_style": "wholesome",
                         "persona_text_override": None,
+                        # expose models (handy for client logs)
+                        "chat_model": CHAT_MODEL,
+                        "tool_model": TOOL_MODEL,
                     }
 
                 # Pull fixed values for this session
@@ -271,6 +276,21 @@ async def ws_handler(ws: WebSocket):
                         user_identity=msg.get("user_identity", "non-binary"),
                         now_str=sess_now_str,
                     )
+
+                # -------- ACK: session start / (re)config pinned --------
+                await ws.send_text(json.dumps({
+                    "type": "ack",
+                    "for": "start",
+                    "ok": True,
+                    "session_id": session_id,
+                    "seed": sess_seed,
+                    "now": sess_now_str,
+                    "assistant_gender": session_meta[session_id]["assistant_gender"],
+                    "persona_style": session_meta[session_id]["persona_style"],
+                    "persona_text_override": bool(session_meta[session_id]["persona_text_override"]),
+                    "models": {"chat": session_meta[session_id]["chat_model"],
+                               "tool": session_meta[session_id]["tool_model"]}
+                }))
 
                 history_text = msg.get("history_text", "")
                 user_utt = msg["user_utterance"]
@@ -411,21 +431,16 @@ async def ws_handler(ws: WebSocket):
                     session_meta[session_id]["persona_text_override"] = ov
                     changed["persona_text_override"] = bool(ov)
 
-                # Recompute current persona preview (not streaming; just confirm)
-                if session_meta[session_id]["persona_text_override"]:
-                    persona_preview = session_meta[session_id]["persona_text_override"]
-                else:
-                    persona_preview = compose_persona(
-                        style=session_meta[session_id]["persona_style"],
-                        assistant_gender=session_meta[session_id]["assistant_gender"] or "woman",
-                        user_identity=msg.get("user_identity", "non-binary"),
-                        now_str=session_meta[session_id]["now_str"],
-                    )
+                # -------- ACK: persona/gender switch applied --------
                 await ws.send_text(json.dumps({
-                    "type": "persona_set",
+                    "type": "ack",
+                    "for": "set_persona",
+                    "ok": True,
+                    "session_id": session_id,
                     "changed": changed,
                     "assistant_gender": session_meta[session_id]["assistant_gender"],
                     "persona_style": session_meta[session_id]["persona_style"],
+                    "persona_text_override": bool(session_meta[session_id]["persona_text_override"]),
                 }))
 
             else:

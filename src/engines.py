@@ -8,7 +8,7 @@ from .config import (
     CHAT_GPU_FRAC,
     CHAT_MAX_LEN,
     CHAT_MODEL,
-    DRAFT_MODEL,
+    TOOL_MODEL,
     TOOL_GPU_FRAC,
     make_engine_args,
 )
@@ -20,7 +20,7 @@ _tool_engine: AsyncLLMEngine | None = None
 
 def _build_engines() -> Tuple[AsyncLLMEngine, AsyncLLMEngine]:
     tool = AsyncLLMEngine.from_engine_args(
-        make_engine_args(DRAFT_MODEL, TOOL_GPU_FRAC, 1024, is_chat=False)
+        make_engine_args(TOOL_MODEL, TOOL_GPU_FRAC, 1024, is_chat=False)
     )
     chat = AsyncLLMEngine.from_engine_args(
         make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN, is_chat=True)
