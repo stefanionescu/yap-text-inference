@@ -9,7 +9,7 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 # ----------------- Environment / Defaults -----------------
 
 CHAT_MODEL = os.getenv("CHAT_MODEL", "recoilme/recoilme-gemma-2-9B-v0.5")
-DRAFT_MODEL = os.getenv("DRAFT_MODEL", "MadeAgents/Hammer2.1-3b")
+TOOL_MODEL = os.getenv("TOOL_MODEL", "MadeAgents/Hammer2.1-3b")
 
 def _frac_from_gib(gib_str: str | None, fallback_frac: float) -> float:
     if not gib_str:

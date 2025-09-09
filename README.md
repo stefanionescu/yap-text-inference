@@ -2,7 +2,7 @@
 
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It runs:
 - vLLM chat engine (e.g., Gemma-2-9B)
-- Hammer draft/tool engine (e.g., Hammer-3B) for speculative decoding and tool-call detection
+- Hammer tool engine (e.g., Hammer-3B) for speculative decoding and tool-call detection
 - LMCache local backend (CPU RAM + disk) for segment-level KV reuse (no Redis required)
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
@@ -52,7 +52,7 @@ Stop script behavior:
 
 Models and GPU split
 - `CHAT_MODEL` (default `recoilme/recoilme-gemma-2-9B-v0.5`)
-- `DRAFT_MODEL` (default `MadeAgents/Hammer2.1-3b`)
+- `TOOL_MODEL` (default `MadeAgents/Hammer2.1-3b`)
 - `CHAT_GPU_FRAC` (default `0.82`), `TOOL_GPU_FRAC` (default `0.14`)
 - `KV_DTYPE` = `fp8` or `int8` (default `fp8`)
 
@@ -160,8 +160,8 @@ Enabled by default (`TEXTPROC_ENABLE=1`):
   - Continuous batching + PagedAttention
   - `enforce_eager` + `enable_chunked_prefill` for low TTFT
   - FP8/INT8 KV cache (`KV_DTYPE`) for speed/VRAM
-  - Speculative decoding: Hammer draft for Gemma (configurable tokens)
-- LMCache
+  - Speculative decoding
+  - LMCache
   - Local CPU+disk backend, no Redis required
   - Segment-level reuse for persona/history; offload + reuse via connector
 - Server
