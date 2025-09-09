@@ -91,9 +91,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         tensor_parallel_size=1,
         max_model_len=max_len,
         gpu_memory_utilization=gpu_frac,
-        enforce_eager=True,
+        enforce_eager=False,
         enable_chunked_prefill=True,
         speculative_config=speculative,
         kv_transfer_config=make_kv_transfer_config(),
+        kv_cache_dtype=KV_DTYPE,
     )
 
