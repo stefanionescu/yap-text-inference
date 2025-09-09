@@ -42,6 +42,12 @@ CHAT_REPEAT_PENALTY = 1.10
 # --- Extra STOP sequences for chat model ---
 STOP = [" |", "  |", "<|im_end|>", "|im_end|>", " ‍♀️", " ‍♂️"]
 
+# --- Toolcall sampling defaults ---
+TOOL_TEMPERATURE = 0.05
+TOOL_TOP_P = 1.0
+TOOL_TOP_K = 1
+TOOL_STOP = ["\n", "</s>"]
+
 # Per-session metadata: fixed seed + timestamp string
 session_meta: Dict[str, Dict[str, Any]] = {}
 
@@ -124,11 +130,11 @@ async def run_toolcall(session_id: str, user_utt: str, request_id: Optional[str]
     session_active_req[session_id] = req_id
 
     params = SamplingParams(
-        temperature=0.0,
-        top_p=0.0,
-        top_k=1,
+        temperature=TOOL_TEMPERATURE,
+        top_p=TOOL_TOP_P,
+        top_k=TOOL_TOP_K,
         max_tokens=TOOL_MAX_OUT,
-        stop=["\n", "</s>"],
+        stop=TOOL_STOP,
         seed=session_meta.get(session_id, {}).get("seed", 0),
     )
 
