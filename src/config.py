@@ -11,8 +11,20 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 CHAT_MODEL = os.getenv("CHAT_MODEL", "recoilme/recoilme-gemma-2-9B-v0.5")
 DRAFT_MODEL = os.getenv("DRAFT_MODEL", "MadeAgents/Hammer2.1-3b")
 
-CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.78"))
-TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
+def _frac_from_gib(gib_str: str | None, fallback_frac: float) -> float:
+    if not gib_str:
+        return fallback_frac
+    try:
+        want_gib = float(gib_str)
+        import torch
+        total_gib = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        frac = want_gib / max(1e-6, total_gib)
+        return max(0.05, min(0.95, frac))
+    except Exception:
+        return fallback_frac
+
+CHAT_GPU_FRAC = _frac_from_gib(os.getenv("CHAT_GPU_GIB"), float(os.getenv("CHAT_GPU_FRAC", "0.78")))
+TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.20")))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
 
