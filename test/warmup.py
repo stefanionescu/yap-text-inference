@@ -15,7 +15,7 @@ Usage:
   python3 test/warmup.py "your custom message"
   python3 test/warmup.py --gender male --style playful "hello there"
 Env:
-  SERVER_WS_URL=ws://127.0.0.1:8080/ws
+  SERVER_WS_URL=ws://127.0.0.1:8000/ws
   ASSISTANT_GENDER=female|male
   PERSONA_STYLE=wholesome
 """
@@ -156,7 +156,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 async def _run_once(args: argparse.Namespace) -> None:
-    server_ws_url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8080/ws")
+    server_ws_url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
     assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", "female")
     persona_style = args.persona_style or os.getenv("PERSONA_STYLE", "wholesome")
 
