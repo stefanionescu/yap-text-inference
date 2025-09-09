@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Setting environment defaults"
@@ -12,8 +13,8 @@ export KV_DTYPE=${KV_DTYPE:-fp8}
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-7168}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-140}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
-export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.82}
-export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.14}
+export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.76}
+export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-10}
 export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
 
@@ -29,5 +30,9 @@ export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-500}
 # vLLM engine selection and attention backend
 export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
+
+# Ensure LMCache YAML path is set for V1 connector
+export LMCACHE_CONFIG_FILE=${LMCACHE_CONFIG_FILE:-${ROOT_DIR}/lmcache.yaml}
 
 
