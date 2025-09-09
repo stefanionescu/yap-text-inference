@@ -1,4 +1,41 @@
-# Random fallback messages
+#!/usr/bin/env python3
+"""
+Warmup client: connects to the local FastAPI websocket, sends a start message
+with a random prompt, prints ACK, collects full response, and reports metrics.
+
+Metrics reported:
+- ttfb_ms: time from request send to first token
+- total_ms: time from request send to done
+- stream_ms: time from first token to done
+- chunks: number of token messages received
+- chars: size of final response (characters)
+
+Usage:
+  python3 test/warmup.py
+  python3 test/warmup.py "your custom message"
+  python3 test/warmup.py --gender male --style playful "hello there"
+Env:
+  SERVER_WS_URL=ws://127.0.0.1:8080/ws
+  ASSISTANT_GENDER=female|male
+  PERSONA_STYLE=wholesome
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import os
+import random
+import sys
+import uuid
+from typing import Any, Dict, List
+
+import time
+import websockets
+
+
+# Random fallback messages (uncomment any to use). If empty, we use a safe fallback.
 _DEFAULT_MESSAGES = [
     # "be more delulu",
     # "ce naiba vrei de la viata?",
@@ -40,7 +77,7 @@ _DEFAULT_MESSAGES = [
     # "man this is crazy",
     # "gotta check this entire profile",
     # "would you like to...see my dick?"
-    # "who was Columbus?",
+    "who was Columbus?",
     # "THIS DAY IS AWESOOOOOOOME!",
     # "compliment me in a hot way",
     # "who was Alexander Hamilton?",
@@ -97,3 +134,146 @@ _DEFAULT_MESSAGES = [
     # "what's up with all the people bitching about poverty? the world is so rich and better off vs 100 years ago",
     # "what's up with all the people bitching about poverty? the world is so rich and better off vs one hundred years ago. anyway check this out"
 ]
+
+
+def _choose_message(words: List[str]) -> str:
+    if words:
+        return " ".join(words).strip()
+    if _DEFAULT_MESSAGES:
+        return random.choice(_DEFAULT_MESSAGES)
+    return "hey there! how are you today?"
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(add_help=True)
+    parser.add_argument("message", nargs="*", help="optional user message")
+    parser.add_argument("--assistant-gender", "--gender", "-g", dest="assistant_gender",
+                        choices=["female", "male", "woman", "man"],
+                        help="assistant gender (normalized by server)")
+    parser.add_argument("--persona-style", "--style", "-s", dest="persona_style",
+                        help="persona style (e.g., wholesome, nerdy, playful)")
+    return parser.parse_args()
+
+
+async def _run_once(args: argparse.Namespace) -> None:
+    server_ws_url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8080/ws")
+    assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", "female")
+    persona_style = args.persona_style or os.getenv("PERSONA_STYLE", "wholesome")
+
+    session_id = str(uuid.uuid4())
+    user_msg = _choose_message(args.message)
+
+    start_payload: Dict[str, Any] = {
+        "type": "start",
+        "session_id": session_id,
+        "assistant_gender": assistant_gender,
+        "persona_style": persona_style,
+        "history_text": "",
+        "user_utterance": user_msg,
+    }
+
+    print(f"Connecting to {server_ws_url} …")
+    async with websockets.connect(server_ws_url, max_queue=None) as ws:
+        await ws.send(json.dumps(start_payload))
+
+        final_text = ""
+        ack_seen = False
+        recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", "60"))
+        first_token_ts: float | None = None
+        sent_ts: float = time.perf_counter()
+        chunks = 0
+        while True:
+            try:
+                raw = await asyncio.wait_for(ws.recv(), timeout=recv_timeout)
+            except websockets.ConnectionClosedOK:
+                break
+            except websockets.ConnectionClosedError:
+                break
+            except asyncio.TimeoutError:
+                print("[ERROR] recv timeout")
+                break
+
+            try:
+                msg = json.loads(raw)
+            except Exception:
+                print(raw)
+                continue
+
+            t = msg.get("type")
+            if t == "ack" and msg.get("for") == "start":
+                ack_seen = True
+                seed = msg.get("seed")
+                now = msg.get("now")
+                gender = msg.get("assistant_gender")
+                style = msg.get("persona_style")
+                models = msg.get("models", {})
+                print(f"ACK start → seed={seed} now='{now}' gender={gender} style={style} models={models}")
+                continue
+
+            # Optional: acknowledge runtime persona/gender switches if you send them
+            if t == "ack" and msg.get("for") == "set_persona":
+                print(f"ACK set_persona → {json.dumps(msg, ensure_ascii=False)}")
+                continue
+
+            if t == "toolcall":
+                print(f"TOOLCALL status={msg.get('status')} raw={msg.get('raw')}")
+                continue
+
+            if t == "token":
+                if first_token_ts is None:
+                    first_token_ts = time.perf_counter()
+                chunk = msg.get("text", "")
+                final_text += chunk
+                chunks += 1
+                continue
+
+            if t == "final":
+                if first_token_ts is None:
+                    first_token_ts = time.perf_counter()
+                normalized = msg.get("normalized_text", final_text)
+                if normalized:
+                    final_text = normalized
+                continue
+
+            if t == "done":
+                done_ts = time.perf_counter()
+                cancelled = bool(msg.get("cancelled"))
+                # Metrics
+                ttfb_ms = None if first_token_ts is None else (first_token_ts - sent_ts) * 1000.0
+                total_ms = (done_ts - sent_ts) * 1000.0
+                stream_ms = None if first_token_ts is None else (done_ts - first_token_ts) * 1000.0
+                print(json.dumps({
+                    "type": "metrics",
+                    "ok": not cancelled,
+                    "ttfb_ms": round(ttfb_ms, 2) if ttfb_ms is not None else None,
+                    "total_ms": round(total_ms, 2),
+                    "stream_ms": round(stream_ms, 2) if stream_ms is not None else None,
+                    "chunks": chunks,
+                    "chars": len(final_text),
+                }))
+                # Full response last
+                print(json.dumps({
+                    "type": "final_text",
+                    "text": final_text,
+                }))
+                break
+
+            if t == "error":
+                print(f"[ERROR] {msg.get('message')}")
+                break
+
+        # If server didn't send an ACK, note it
+        if not ack_seen:
+            print("[WARN] no ACK(start) received from server")
+
+
+def main() -> None:
+    args = _parse_args()
+    try:
+        asyncio.run(_run_once(args))
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()
