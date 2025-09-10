@@ -26,7 +26,12 @@ from .config import (
     TEXTPROC_ENABLE,
 )
 from .engines import get_chat_engine, get_tool_engine
-from .persona import build_chat_prompt, build_hammer_prompt, compose_persona
+from .persona import (
+    build_hammer_prompt,
+    compose_persona_runtime,
+    get_static_prefix,
+    build_chat_prompt_with_prefix,
+)
 from .textproc import StreamCleaner, ensure_proper_ending_punctuation
 from .tokens import approx_token_count, trim_text_to_token_limit
 from .config import EXACT_TOKEN_TRIM
@@ -187,7 +192,8 @@ async def run_toolcall(
 
 async def run_chat_stream(
     session_id: str,
-    persona_text: str,
+    static_prefix: str,
+    runtime_text: str,
     history_text: str,
     user_utt: str,
     stream_rate: float,
@@ -207,7 +213,7 @@ async def run_chat_stream(
         seed=session_meta.get(session_id, {}).get("seed", 0),
     )
 
-    prompt = build_chat_prompt(persona_text, history_text, user_utt)
+    prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     stream = get_chat_engine().generate(
         prompt=prompt,
         sampling_params=params,
@@ -344,13 +350,16 @@ async def ws_handler(ws: WebSocket):
                 # Optional raw persona override for this session
                 session_meta[session_id]["persona_text_override"] = msg.get("persona_text") or None
 
-                # Persona resolution: raw persona_text or composed from style/gender
+                # Persona resolution for prefix-sharing: static prefix + small runtime
                 if session_meta[session_id]["persona_text_override"]:
-                    persona_text = session_meta[session_id]["persona_text_override"]
+                    static_prefix = session_meta[session_id]["persona_text_override"]
+                    runtime_text = ""
                 else:
-                    persona_text = compose_persona(
+                    static_prefix = get_static_prefix(
                         style=session_meta[session_id]["persona_style"],
-                        assistant_gender=session_meta[session_id]["assistant_gender"] or "woman",
+                        gender=session_meta[session_id]["assistant_gender"] or "woman",
+                    )
+                    runtime_text = compose_persona_runtime(
                         user_identity=msg.get("user_identity", "non-binary"),
                         now_str=sess_now_str,
                     )
@@ -404,7 +413,13 @@ async def ws_handler(ws: WebSocket):
                     chat_req_id = f"chat-{uuid.uuid4()}"
                     session_active_req[session_id] = chat_req_id
                     chat_stream = run_chat_stream(
-                        session_id, persona_text, history_text, user_utt, rate, request_id=chat_req_id
+                        session_id,
+                        static_prefix,
+                        runtime_text,
+                        history_text,
+                        user_utt,
+                        rate,
+                        request_id=chat_req_id,
                     )
 
                     buffer = []
@@ -551,15 +566,16 @@ async def ws_handler(ws: WebSocket):
                 await ws.send_text(json.dumps({"type": "done", "cancelled": True}))
 
             elif msg["type"] == "warm_persona":
-                # Accept explicit persona_text or compose
-                persona_text = msg.get("persona_text")
-                if not persona_text:
-                    persona_text = compose_persona(
+                # Warm the STATIC PREFIX only for a given style/gender (prefix sharing)
+                persona_override = msg.get("persona_text")
+                if persona_override:
+                    static_prefix = persona_override
+                else:
+                    static_prefix = get_static_prefix(
                         style=msg.get("persona_style", "wholesome"),
-                        assistant_gender=msg.get("assistant_gender", "woman"),
-                        user_identity=msg.get("user_identity", "non-binary"),
+                        gender=(msg.get("assistant_gender") and _norm_gender(msg.get("assistant_gender"))) or "woman",
                     )
-                warm_prompt = f"<|persona|>\n{persona_text.strip()}\n<|assistant|>\n"
+                warm_prompt = f"<|persona|>\n{static_prefix.strip()}\n<|assistant|>\n"
                 params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
                 req_id = f"warm-p-{uuid.uuid4()}"
                 stream = get_chat_engine().generate(
@@ -570,7 +586,7 @@ async def ws_handler(ws: WebSocket):
                 )
                 async for _ in stream:
                     break
-                await ws.send_text(json.dumps({"type": "warmed", "segment": "persona", "bytes": len(persona_text)}))
+                await ws.send_text(json.dumps({"type": "warmed", "segment": "persona_static", "bytes": len(static_prefix)}))
 
             elif msg["type"] == "warm_history":
                 history_text = msg.get("history_text", "")
