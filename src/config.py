@@ -88,7 +88,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv(
         "MAX_NUM_BATCHED_TOKENS_CHAT" if is_chat else "MAX_NUM_BATCHED_TOKENS_TOOL",
-        "1024" if is_chat else "512",
+        "512" if is_chat else "256",
     ))
 
     # Build kwargs for V1 engine.
@@ -105,8 +105,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         speculative_config=speculative,
         # FP8 here is weight-only quantization (W8). KV cache remains default per V1.
         quantization="fp8",
-        # v0.10.1.1 supports top-level kv_cache_dtype on V1
-        kv_cache_dtype=KV_DTYPE,
     )
     if os.getenv("VLLM_USE_V1", "1") == "1":
         _kv_transfer = make_kv_transfer_config()
