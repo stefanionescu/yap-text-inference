@@ -2,14 +2,8 @@ import json
 import os
 from typing import Optional
 
-from vllm.config import KVTransferConfig, CacheConfig
+from vllm.config import KVTransferConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
-
-try:
-    # Optional, safe if available in your vLLM build
-    from vllm.compilation import CompilationConfig  # type: ignore
-except Exception:  # pragma: no cover - optional dependency across versions
-    CompilationConfig = None  # type: ignore
 
 
 # ----------------- Environment / Defaults -----------------
@@ -97,20 +91,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         "1024" if is_chat else "512",
     ))
 
-    # KV cache dtype via CacheConfig to keep V1 (don't pass top-level kv_cache_dtype)
-    cache_cfg = CacheConfig(kv_cache_dtype=KV_DTYPE)
-
-    # Optional CUDA graphs/inductor compilation config
-    comp_cfg = None
-    if CompilationConfig is not None:
-        comp_cfg = CompilationConfig(
-            use_cudagraph=True,
-            cudagraph_num_of_warmups=4,
-            full_cuda_graph=False,
-            use_inductor=True,
-        )
-
-    # Build kwargs for V1 engine. Do NOT pass kv_cache_dtype top-level—doing so forces V0.
+    # Build kwargs for V1 engine.
     kwargs = dict(
         model=model,
         trust_remote_code=True,
@@ -120,13 +101,13 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enforce_eager=False,
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
+        enable_prefix_caching=True,
         speculative_config=speculative,
         # FP8 here is weight-only quantization (W8). KV cache remains default per V1.
         quantization="fp8",
-        cache_config=cache_cfg,
+        # v0.10.1.1 supports top-level kv_cache_dtype on V1
+        kv_cache_dtype=KV_DTYPE,
     )
-    if comp_cfg is not None:
-        kwargs["compilation_config"] = comp_cfg
     if os.getenv("VLLM_USE_V1", "1") == "1":
         _kv_transfer = make_kv_transfer_config()
         if _kv_transfer is not None:
