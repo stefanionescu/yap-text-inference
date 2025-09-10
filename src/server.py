@@ -456,17 +456,9 @@ async def ws_handler(ws: WebSocket):
                             pass
                         tool_res = {"cancelled": True}
 
-                    def tool_says_yes(res: dict) -> bool:
-                        if not res or res.get("cancelled"):
-                            return False
-                        txt = (res.get("text") or "").strip()
-                        if not txt:
-                            return False
-                        return txt != "[]"
-
-                    # Interpret tool decision into raw field (for parity with previous behavior)
+                    # Interpret tool decision into raw field and boolean, matching prior logic
                     raw_field = None
-                    is_tool = tool_says_yes(tool_res)
+                    is_tool = False
                     raw_txt = (tool_res or {}).get("text") if tool_res else None
                     if isinstance(raw_txt, str):
                         raw_stripped = raw_txt.strip()
@@ -476,12 +468,15 @@ async def ws_handler(ws: WebSocket):
                                     parsed = json.loads(raw_stripped)
                                     if isinstance(parsed, list):
                                         raw_field = parsed
+                                        is_tool = len(parsed) > 0
                                     else:
                                         raw_field = raw_stripped
                                 except Exception:
                                     raw_field = raw_stripped
+                                    is_tool = raw_stripped != "[]"
                             else:
                                 raw_field = raw_stripped
+                                is_tool = False
 
                     if is_tool:
                         # Abort chat and do NOT emit buffered text
