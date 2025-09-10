@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional
+from functools import lru_cache
 
 from prompts import (
     ANSWER_TYPES,
@@ -82,4 +83,59 @@ def build_hammer_prompt(user_utt: str) -> str:
         f"User message:\n{user_utt.strip()}\n"
     )
 
+
+
+# ----------------- Prefix sharing helpers (static vs runtime) -----------------
+
+def compose_persona_static(style: str, assistant_gender: str) -> str:
+    s = style if style in PERSONALITIES else "wholesome"
+    gender = assistant_gender if assistant_gender in {"man", "woman"} else "woman"
+
+    if gender == "man":
+        gender_info = MAN_GENDER_INFO.get(s, MAN_GENDER_INFO.get("wholesome", ""))
+    else:
+        gender_info = WOMAN_GENDER_INFO.get(s, WOMAN_GENDER_INFO.get("wholesome", ""))
+
+    persona_section = PERSONALITIES[s].format(gender_info=gender_info)
+    how_to_chat = HOW_TO_CHATS[s]
+    avoid_section = AVOID_BASE_PERSONALITY[s]
+    unique_section = UNIQUE_FEATURES.get(s, "")
+    language_section = LANGUAGE
+    features_section = FEATURES.format(answer_type=ANSWER_TYPES[s])
+
+    parts = [
+        MODEL_SPECIFIC_FIXES,
+        persona_section,
+        how_to_chat,
+        avoid_section,
+        unique_section,
+        language_section,
+        features_section,
+    ]
+    # IMPORTANT: no time / user info / external context here
+    return "\n\n".join(p.strip() for p in parts if p).strip()
+
+
+def compose_persona_runtime(user_identity: str, now_str: str) -> str:
+    user_id = user_identity if user_identity in {"man", "woman", "non-binary"} else "non-binary"
+    user_personal_info = USER_PERSONAL_INFO.get(user_id, "")
+    user_info_section = USER_INFO.format(user_personal_info=user_personal_info)
+    external_context = EXTERNAL_CONTEXT.format(date_time=now_str)
+    return "\n\n".join([user_info_section.strip(), external_context.strip()])
+
+
+@lru_cache(maxsize=64)
+def get_static_prefix(style: str, gender: str) -> str:
+    s = style if style in PERSONALITIES else "wholesome"
+    g = gender if gender in {"man", "woman"} else "woman"
+    return compose_persona_static(s, g)
+
+
+def build_chat_prompt_with_prefix(static_prefix: str, runtime_text: str, history_text: str, user_utt: str) -> str:
+    return (
+        f"<|persona|>\n{static_prefix.strip()}\n"
+        f"<|runtime|>\n{runtime_text.strip()}\n"
+        f"<|history|>\n{history_text.strip()}\n"
+        f"<|user|>\n{user_utt.strip()}\n<|assistant|>\n"
+    )
 
