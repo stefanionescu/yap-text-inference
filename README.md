@@ -268,7 +268,7 @@ unset TOOL_GPU_FRAC CHAT_GPU_FRAC
 bash scripts/stop.sh && bash scripts/main.sh
 ```
 
-## Limits and tradeoffs
+## Limits and tradeoffsf
 
 - Chat outputs are capped at 200 tokens per response.
 - Rolling history capped at ~3000 tokens (not counting persona). Long personas reduce remaining context.
