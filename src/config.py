@@ -25,7 +25,9 @@ def _frac_from_gib(gib_str: str | None, fallback_frac: float) -> float:
 CHAT_GPU_FRAC = _frac_from_gib(os.getenv("CHAT_GPU_GIB"), float(os.getenv("CHAT_GPU_FRAC", "0.75")))
 TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.20")))
 
-KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
+# Prefer INT8 KV on pre-Hopper (A100/SM80). 'fp8' KV requires SM90.
+KV_DTYPE = os.getenv("KV_DTYPE", "int8")  # 'fp8' or 'int8'
+WEIGHT_QUANTIZATION = os.getenv("WEIGHT_QUANTIZATION", "none").strip().lower()
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "8192"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
@@ -61,6 +63,15 @@ def make_kv_transfer_config():
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
+    # Detect device capability once per engine args build
+    def _is_sm90_or_newer() -> bool:
+        try:
+            import torch  # noqa: WPS433 (allow local import)
+            major, _ = torch.cuda.get_device_capability(0)
+            return major >= 9
+        except Exception:
+            return False
+
     speculative = None
     if is_chat and ENABLE_SPECULATIVE:
         # vLLM 0.10.1.x expects a speculator name under "model" for built-in methods
@@ -88,14 +99,25 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,
         speculative_config=speculative,
-        # FP8 here is weight-only quantization (W8). KV cache remains default per V1.
-        quantization="fp8",
     )
     # Forward attention backend and KV cache dtype for A100 tuning
     attn_backend = os.getenv("VLLM_ATTENTION_BACKEND")
     if attn_backend:
         kwargs["attention_backend"] = attn_backend
-    kwargs["kv_cache_dtype"] = KV_DTYPE
+    # Resolve KV cache dtype: downgrade fp8 to int8 on pre-SM90
+    resolved_kv = KV_DTYPE
+    if KV_DTYPE.lower() == "fp8" and not _is_sm90_or_newer():
+        resolved_kv = "int8"
+    kwargs["kv_cache_dtype"] = resolved_kv
+
+    # Optional weight-only quantization; enable fp8 only on SM90+
+    if WEIGHT_QUANTIZATION and WEIGHT_QUANTIZATION != "none":
+        if WEIGHT_QUANTIZATION == "fp8":
+            if _is_sm90_or_newer():
+                kwargs["quantization"] = "fp8"
+        else:
+            # Pass through other supported quantization schemes if provided
+            kwargs["quantization"] = WEIGHT_QUANTIZATION
     if os.getenv("VLLM_USE_V1", "1") == "1":
         _kv_transfer = make_kv_transfer_config()
         if _kv_transfer is not None:
