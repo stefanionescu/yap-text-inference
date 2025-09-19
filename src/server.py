@@ -114,7 +114,6 @@ async def _warm():
         prompt="<|persona|>\nWARM\n<|assistant|>\n",
         sampling_params=params,
         request_id=rid_c,
-        priority=1,
     )
     async for _ in stream_c:
         break
@@ -125,7 +124,6 @@ async def _warm():
         prompt="warmup",
         sampling_params=params,
         request_id=rid_t,
-        priority=1,
     )
     async for _ in stream_t:
         break
@@ -161,7 +159,6 @@ async def run_toolcall(
         prompt=build_hammer_prompt(user_utt),
         sampling_params=params,
         request_id=req_id,
-        priority=1,
     )
 
     pieces = []
@@ -218,7 +215,6 @@ async def run_chat_stream(
         prompt=prompt,
         sampling_params=params,
         request_id=req_id,
-        priority=0,
     )
 
     # realtime mode: emit ASAP. optional micro-coalescer if STREAM_FLUSH_MS>0
@@ -582,7 +578,6 @@ async def ws_handler(ws: WebSocket):
                     prompt=warm_prompt,
                     sampling_params=params,
                     request_id=req_id,
-                    priority=1,
                 )
                 async for _ in stream:
                     break
@@ -603,7 +598,6 @@ async def ws_handler(ws: WebSocket):
                     prompt=warm_prompt,
                     sampling_params=params,
                     request_id=req_id,
-                    priority=1,
                 )
                 async for _ in stream:
                     break
