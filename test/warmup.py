@@ -9,6 +9,7 @@ Metrics reported:
 - stream_ms: time from first token to done
 - chunks: number of token messages received
 - chars: size of final response (characters)
+- first_3_words_ms: time from request send to first three words
 
 Usage:
   python3 test/warmup.py
@@ -41,6 +42,10 @@ _SENTENCE_END_RE = re.compile(r"[.!?](?:[\"”')\]]+)?(?:\s|$)")
 
 def _contains_complete_sentence(text: str) -> bool:
     return _SENTENCE_END_RE.search(text) is not None
+
+
+def _has_at_least_n_words(text: str, n: int) -> bool:
+    return len(text.strip().split()) >= n
 
 
 # Random fallback messages (uncomment any to use). If empty, we use a safe fallback.
@@ -189,6 +194,7 @@ async def _run_once(args: argparse.Namespace) -> None:
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", "60"))
         first_token_ts: float | None = None
         first_sentence_ts: float | None = None
+        first_3_words_ts: float | None = None
         toolcall_ttfb_ms: float | None = None
         sent_ts: float = time.perf_counter()
         chunks = 0
@@ -238,6 +244,10 @@ async def _run_once(args: argparse.Namespace) -> None:
                     print(f"CHAT ttfb_ms={round(chat_ttfb_ms, 2)}")
                 chunk = msg.get("text", "")
                 final_text += chunk
+                if first_3_words_ts is None and _has_at_least_n_words(final_text, 3):
+                    first_3_words_ts = time.perf_counter()
+                    first_3_words_ms = (first_3_words_ts - sent_ts) * 1000.0
+                    print(f"CHAT time_to_first_3_words_ms={round(first_3_words_ms, 2)}")
                 if first_sentence_ts is None and _contains_complete_sentence(final_text):
                     first_sentence_ts = time.perf_counter()
                     ttfs_ms = (first_sentence_ts - sent_ts) * 1000.0
@@ -269,6 +279,7 @@ async def _run_once(args: argparse.Namespace) -> None:
                     "total_ms": round(total_ms, 2),
                     "stream_ms": round(stream_ms, 2) if stream_ms is not None else None,
                     "time_to_first_complete_sentence_ms": round((first_sentence_ts - sent_ts) * 1000.0, 2) if first_sentence_ts is not None else None,
+                    "time_to_first_3_words_ms": round((first_3_words_ts - sent_ts) * 1000.0, 2) if first_3_words_ts is not None else None,
                     "chunks": chunks,
                     "chars": len(final_text),
                 }))

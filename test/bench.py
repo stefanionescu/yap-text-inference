@@ -7,6 +7,7 @@ records:
 - ttfb_toolcall_ms: time to receive toolcall decision
 - ttfb_chat_ms: time to first chat token (if chat happens)
 - first_sentence_ms: time to first complete sentence (if chat happens)
+- first_3_words_ms: time to first three words (if chat happens)
 
 Prints p50/p95 for each metric across completed requests. No intermediate logs.
 """
@@ -31,6 +32,11 @@ _SENTENCE_END_RE = re.compile(r"[.!?](?:[\"”')\]]+)?(?:\s|$)")
 
 def _contains_complete_sentence(text: str) -> bool:
     return _SENTENCE_END_RE.search(text) is not None
+
+
+def _has_at_least_n_words(text: str, n: int) -> bool:
+    # Whitespace-delimited token count; counts punctuation-attached tokens as words
+    return len(text.strip().split()) >= n
 
 
 def _parse_args() -> argparse.Namespace:
@@ -86,6 +92,7 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
         ttfb_toolcall_ms: Optional[float] = None
         ttfb_chat_ms: Optional[float] = None
         first_sentence_ms: Optional[float] = None
+        first_3_words_ms: Optional[float] = None
         final_text = ""
 
         async with websockets.connect(url, max_queue=None) as ws:
@@ -109,6 +116,8 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
                         ttfb_chat_ms = (time.perf_counter() - t_sent) * 1000.0
                     chunk = msg.get("text", "")
                     final_text += chunk
+                    if first_3_words_ms is None and _has_at_least_n_words(final_text, 3):
+                        first_3_words_ms = (time.perf_counter() - t_sent) * 1000.0
                     if first_sentence_ms is None and _contains_complete_sentence(final_text):
                         first_sentence_ms = (time.perf_counter() - t_sent) * 1000.0
                     continue
@@ -126,6 +135,7 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
                         "ttfb_toolcall_ms": ttfb_toolcall_ms,
                         "ttfb_chat_ms": ttfb_chat_ms,
                         "first_sentence_ms": first_sentence_ms,
+                        "first_3_words_ms": first_3_words_ms,
                     }
 
                 if t == "error":
@@ -181,6 +191,7 @@ async def _main_async(args: argparse.Namespace) -> None:
     tool_ttfb = [r["ttfb_toolcall_ms"] for r in ok if r.get("ttfb_toolcall_ms") is not None]
     chat_ttfb = [r["ttfb_chat_ms"] for r in ok if r.get("ttfb_chat_ms") is not None]
     first_sentence = [r["first_sentence_ms"] for r in ok if r.get("first_sentence_ms") is not None]
+    first_3_words = [r["first_3_words_ms"] for r in ok if r.get("first_3_words_ms") is not None]
 
     print(
         f"url={url} total={requests} conc={concurrency} ok={len(ok)} err={len(errs)}"
@@ -197,6 +208,10 @@ async def _main_async(args: argparse.Namespace) -> None:
         p50 = _pct(first_sentence, 0.5)
         p95 = _pct(first_sentence, 0.95, minus_one=True)
         print(f"first_sentence_ms p50={p50:.1f} p95={p95:.1f}")
+    if first_3_words:
+        p50 = _pct(first_3_words, 0.5)
+        p95 = _pct(first_3_words, 0.95, minus_one=True)
+        print(f"first_3_words_ms p50={p50:.1f} p95={p95:.1f}")
 
     # Optional: show one error example for debugging
     if errs:
