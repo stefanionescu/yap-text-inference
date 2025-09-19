@@ -75,12 +75,6 @@ for VENV_DIR in "${ROOT_DIR}/.venv" "${ROOT_DIR}/venv" "${ROOT_DIR}/env" "${ROOT
   [ -d "$VENV_DIR" ] && { log_info "Removing venv $VENV_DIR"; rm -rf "$VENV_DIR"; }
 done
 
-# 4) Clear LMCache disk store (repo-local)
-if [ -d "${ROOT_DIR}/.lmcache_store" ]; then
-  log_info "Clearing LMCache disk store ${ROOT_DIR}/.lmcache_store"
-  rm -rf "${ROOT_DIR}/.lmcache_store"/* || true
-fi
-
 # 5) Clear Hugging Face caches (all common locations)
 HF_DIRS=(
   "${HF_HOME:-}"
@@ -126,7 +120,7 @@ log_info "Removing __pycache__ and .pytest_cache in repo"
 find "${ROOT_DIR}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
 
-# 10) Legacy LMCache paths
+# 10) Legacy LMCache paths (still clean up if present)
 [ -f "/workspace/lmcache.yaml" ] && { log_info "Removing legacy /workspace/lmcache.yaml"; rm -f /workspace/lmcache.yaml || true; }
 [ -d "/workspace/lmcache_store" ] && { log_info "Removing legacy /workspace/lmcache_store"; rm -rf /workspace/lmcache_store || true; }
 

@@ -2,7 +2,6 @@ import json
 import os
 from typing import Optional
 
-from vllm.config import KVTransferConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 
@@ -24,11 +23,11 @@ def _frac_from_gib(gib_str: str | None, fallback_frac: float) -> float:
         return fallback_frac
 
 CHAT_GPU_FRAC = _frac_from_gib(os.getenv("CHAT_GPU_GIB"), float(os.getenv("CHAT_GPU_FRAC", "0.75")))
-TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.18")))
+TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.20")))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "4096"))
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "8192"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "2048"))
@@ -38,8 +37,8 @@ STREAM_RATE_TOKS_PER_S = float(os.getenv("STREAM_RATE_TOKS_PER_S", "0"))
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
-USE_LMCACHE = os.getenv("USE_LMCACHE", "0") == "1"
-LMCACHE_REDIS_URI = os.getenv("LMCACHE_REDIS_URI", "").strip()
+USE_LMCACHE = False  # removed
+LMCACHE_REDIS_URI = ""
 
 ENABLE_SPECULATIVE = os.getenv("ENABLE_SPECULATIVE", "0") == "1"
 NUM_SPECULATIVE_TOKENS = int(os.getenv("NUM_SPECULATIVE_TOKENS", "5"))
@@ -57,22 +56,8 @@ EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
 
 # ----------------- Helpers -----------------
 
-def make_kv_transfer_config() -> Optional[KVTransferConfig]:
-    if not USE_LMCACHE:
-        return None
-    kv_cfg = {}
-    if LMCACHE_REDIS_URI:
-        kv_cfg["redis_uri"] = LMCACHE_REDIS_URI
-    cfg_file = os.getenv("LMCACHE_CONFIG_FILE", "").strip()
-    if cfg_file:
-        kv_cfg["config_file"] = cfg_file
-
-    return KVTransferConfig(
-        kv_connector="LMCacheConnectorV1",
-        kv_connector_module_path="lmcache.integration.vllm.lmcache_connector_v1",
-        kv_role="kv_both",
-        kv_config=kv_cfg or None,
-    )
+def make_kv_transfer_config():
+    return None
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
