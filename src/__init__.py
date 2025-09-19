@@ -1,3 +1,3 @@
-"""Server package for vLLM + LMCache + speculative decoding stack."""
+"""Server package for vLLM-based inference stack."""
 
 

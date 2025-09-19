@@ -3,7 +3,6 @@
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It runs:
 - vLLM chat engine (e.g., Gemma-2-9B)
 - Hammer tool engine (e.g., Hammer-3B) for speculative decoding and tool-call detection
-- LMCache local backend (CPU RAM + disk) for segment-level KV reuse (no Redis required)
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
@@ -25,7 +24,6 @@ bash scripts/main.sh
 This will:
 - Check GPU availability
 - Install Python deps from `requirements.txt`
-- Prepare LMCache local config (`/workspace/lmcache.yaml`) and store dir (`/workspace/lmcache_store`)
 - Export environment defaults
 - Launch `uvicorn src.server:app --port 8000`
 
@@ -43,9 +41,9 @@ bash scripts/stop.sh
 
 Stop script behavior:
 - Terminates only `uvicorn src.server:app`
-- Uninstalls pip deps from `requirements.txt`
+- Uninstalls compiled deps and purges pip cache from the repo venv
 - Removes common virtualenv dirs (`.venv`, `venv`, `env`, `.env`)
-- Clears LMCache store, HF caches, pip/torch caches, NVIDIA PTX JIT cache
+- Clears HF caches, pip/torch caches, NVIDIA PTX JIT cache
 - Preserves the repository, the container, and services like Jupyter/web console
 
 ## Warmup test client
@@ -135,10 +133,7 @@ Models and GPU split
 - `CHAT_GPU_FRAC` (default `0.82`), `TOOL_GPU_FRAC` (default `0.14`)
 - `KV_DTYPE` = `fp8` or `int8` (default `fp8`)
 
-LMCache (local, no Redis)
-- `USE_LMCACHE=1` (on)
-- `LMCACHE_CONFIG_FILE=/workspace/lmcache.yaml` (provided)
-- Optional Redis later: set `LMCACHE_REDIS_URI=redis://host:6379/0` (no code changes required)
+LMCache: removed.
 
 Streaming/text processing
 - `STREAM_RATE_TOKS_PER_S` (default `0` → realtime; set >0 for fake typing)
@@ -155,13 +150,8 @@ Token limits
 
 All of the above have sensible defaults in `scripts/05_env_defaults.sh`.
 
-## LMCache local config
-
-`lmcache.yaml` (already in repo) enables local CPU RAM and disk store:
-- Reuses KV for any repeated spans (not just prefixes)
-- Persona/history are segmented so you can swap persona and keep history hot
-
-To change sizes, edit `/workspace/lmcache.yaml` or the repo copy and rerun `scripts/main.sh`.
+## KV caching
+Using vLLM’s internal prefix caching with chunked prefill.
 
 ## API — WebSocket `/ws`
 
@@ -222,7 +212,7 @@ Barge-in: send `cancel` or a new `start` with the same `session_id`.
 
 - The chat prompt is structured as two explicit segments:
   - `<|persona|> ...` and `<|history|> ...`
-- LMCache reuses any repeated spans. If you swap persona but keep the history bytes identical, the history KV stays hot.
+Prefix caching reuses any repeated spans within the process. If you swap persona but keep the history bytes identical, history KV stays hot.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
 
 ## Streaming text cleaning
@@ -241,9 +231,6 @@ Enabled by default (`TEXTPROC_ENABLE=1`):
   - `enforce_eager` + `enable_chunked_prefill` for low TTFT
   - FP8/INT8 KV cache (`KV_DTYPE`) for speed/VRAM
   - Speculative decoding
-  - LMCache
-  - Local CPU+disk backend, no Redis required
-  - Segment-level reuse for persona/history; offload + reuse via connector
 - Server
   - Toolcall-first routing (Hammer), then chat streaming
   - Realtime token streaming by default (no artificial pacing)
@@ -257,7 +244,7 @@ We reserve GPU memory per-engine via fractions, but this repo also supports GiB 
 - Fractions (`CHAT_GPU_FRAC`/`TOOL_GPU_FRAC`) act as fallback if GiB are unset.
 - Defaults in `scripts/05_env_defaults.sh` are tuned for a 44.5 GiB card:
   - `CHAT_GPU_GIB=33.0`, `TOOL_GPU_GIB=7.0` (sum < total, leaves headroom)
-  - `CHAT_MAX_LEN=4096` to reduce KV load; tool max len set to 1024 internally.
+  - `CHAT_MAX_LEN=8192` to reduce KV load; tool max len set to 1024 internally.
 
 Example overrides:
 
@@ -273,7 +260,7 @@ bash scripts/stop.sh && bash scripts/main.sh
 - Chat outputs are capped at 200 tokens per response.
 - Rolling history capped at ~3000 tokens (not counting persona). Long personas reduce remaining context.
 - User utterances trimmed to first 500 tokens.
-- Single-process, single-GPU by default. Under very high concurrency or very long contexts, you’ll be KV-bound. Scale by running another process or GPU; LMCache can be pointed at Redis for shared KV.
+- Single-process, single-GPU by default. Under very high concurrency or very long contexts, you’ll be KV-bound. Scale by running another process or GPU.
 
 ## Personality switching
 
