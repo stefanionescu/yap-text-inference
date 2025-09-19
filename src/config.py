@@ -91,6 +91,11 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         # FP8 here is weight-only quantization (W8). KV cache remains default per V1.
         quantization="fp8",
     )
+    # Forward attention backend and KV cache dtype for A100 tuning
+    attn_backend = os.getenv("VLLM_ATTENTION_BACKEND")
+    if attn_backend:
+        kwargs["attention_backend"] = attn_backend
+    kwargs["kv_cache_dtype"] = KV_DTYPE
     if os.getenv("VLLM_USE_V1", "1") == "1":
         _kv_transfer = make_kv_transfer_config()
         if _kv_transfer is not None:

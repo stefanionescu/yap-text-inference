@@ -25,7 +25,12 @@ export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
 # Optional tiny packet coalescer window (ms); 0 = off
 export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
-export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
+export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-1}
+export NUM_SPECULATIVE_TOKENS=${NUM_SPECULATIVE_TOKENS:-6}
+
+# Prefill chunk sizing (A100-friendly throughput defaults)
+export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-1024}
+export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-512}
 
 # Buffer-then-flush knobs for parallel tool router
 export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
@@ -43,7 +48,7 @@ export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-500}
 # vLLM engine selection and attention backend
 export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
-export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
+export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
 # Centralize heavy caches under the repo so wipe scripts can fully clean them
 export HF_HOME="${ROOT_DIR}/.hf"
