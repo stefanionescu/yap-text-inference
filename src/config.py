@@ -26,7 +26,7 @@ CHAT_GPU_FRAC = _frac_from_gib(os.getenv("CHAT_GPU_GIB"), float(os.getenv("CHAT_
 TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.20")))
 
 # Prefer INT8 KV on pre-Hopper (A100/SM80). 'fp8' KV requires SM90.
-KV_DTYPE = os.getenv("KV_DTYPE", "int8")  # 'fp8' or 'int8'
+KV_DTYPE = os.getenv("KV_DTYPE", "fp8_e5m2")  # prefer fp8_e5m2 on A100; 'auto' to defer
 WEIGHT_QUANTIZATION = os.getenv("WEIGHT_QUANTIZATION", "none").strip().lower()
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "8192"))
@@ -71,6 +71,22 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
             return major >= 9
         except Exception:
             return False
+    def _is_sm80() -> bool:
+        try:
+            import torch
+            major, _ = torch.cuda.get_device_capability(0)
+            return major == 8
+        except Exception:
+            return False
+
+    def _engine_fields() -> set:
+        try:
+            fields = getattr(AsyncEngineArgs, "model_fields", None) or getattr(AsyncEngineArgs, "__fields__", None)
+            if isinstance(fields, dict):
+                return set(fields.keys())
+        except Exception:
+            pass
+        return set()
 
     speculative = None
     if is_chat and ENABLE_SPECULATIVE:
@@ -87,8 +103,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         "512" if is_chat else "256",
     ))
 
-    # Build kwargs for V1 engine.
-    kwargs = dict(
+    fields = _engine_fields()
+    # Start with a superset of commonly available args
+    raw_kwargs = dict(
         model=model,
         trust_remote_code=True,
         tensor_parallel_size=1,
@@ -98,27 +115,44 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,
-        speculative_config=speculative,
     )
-    # Forward attention backend and KV cache dtype for A100 tuning
+    # Conditionally include speculative only if supported
+    if speculative is not None and "speculative_config" in fields:
+        raw_kwargs["speculative_config"] = speculative
+    # Conditionally include attention backend only if supported
     attn_backend = os.getenv("VLLM_ATTENTION_BACKEND")
-    if attn_backend:
-        kwargs["attention_backend"] = attn_backend
-    # Resolve KV cache dtype: downgrade fp8 to int8 on pre-SM90
-    resolved_kv = KV_DTYPE
-    if KV_DTYPE.lower() == "fp8" and not _is_sm90_or_newer():
-        resolved_kv = "int8"
-    kwargs["kv_cache_dtype"] = resolved_kv
+    if attn_backend and "attention_backend" in fields:
+        raw_kwargs["attention_backend"] = attn_backend
+    # Resolve KV cache dtype: prefer fp8_e5m2 on A100; avoid passing unsupported values
+    kv = (KV_DTYPE or "").strip().lower()
+    resolved_kv: Optional[str] = None
+    if kv and kv != "auto":
+        if kv == "fp8":
+            resolved_kv = "fp8_e5m2" if _is_sm80() else ("fp8_e4m3" if _is_sm90_or_newer() else None)
+        elif kv.startswith("fp8_"):
+            resolved_kv = kv
+        elif kv == "int8":
+            # Many vLLM 0.8.x builds do not recognize int8 kv. Skip to avoid validation error.
+            resolved_kv = None
+    else:
+        # Auto: choose fp8_e5m2 on A100 for KV quant; else leave to engine default
+        if _is_sm80():
+            resolved_kv = "fp8_e5m2"
+    if resolved_kv and "kv_cache_dtype" in fields:
+        raw_kwargs["kv_cache_dtype"] = resolved_kv
 
-    # Optional weight-only quantization; enable fp8 only on SM90+
-    if WEIGHT_QUANTIZATION and WEIGHT_QUANTIZATION != "none":
+    # Optional weight-only quantization if supported and requested
+    if WEIGHT_QUANTIZATION and WEIGHT_QUANTIZATION != "none" and "quantization" in fields:
         if WEIGHT_QUANTIZATION == "fp8":
             if _is_sm90_or_newer():
-                kwargs["quantization"] = "fp8"
+                raw_kwargs["quantization"] = "fp8"
         else:
-            # Pass through other supported quantization schemes if provided
-            kwargs["quantization"] = WEIGHT_QUANTIZATION
-    if os.getenv("VLLM_USE_V1", "1") == "1":
+            raw_kwargs["quantization"] = WEIGHT_QUANTIZATION
+
+    # Filter by engine fields to avoid passing unsupported args across versions
+    kwargs = {k: v for k, v in raw_kwargs.items() if (v is not None) and (not fields or k in fields)}
+    # kv_transfer is a V1 feature; include only if supported
+    if "kv_transfer_config" in fields:
         _kv_transfer = make_kv_transfer_config()
         if _kv_transfer is not None:
             kwargs["kv_transfer_config"] = _kv_transfer

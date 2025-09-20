@@ -9,7 +9,7 @@ log_info "Setting environment defaults"
 export CHAT_MODEL=${CHAT_MODEL:-recoilme/recoilme-gemma-2-9B-v0.5}
 export TOOL_MODEL=${TOOL_MODEL:-MadeAgents/Hammer2.1-3b}
 
-export KV_DTYPE=${KV_DTYPE:-int8}
+export KV_DTYPE=${KV_DTYPE:-fp8_e5m2}
 export WEIGHT_QUANTIZATION=${WEIGHT_QUANTIZATION:-none}
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-8192}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
@@ -26,7 +26,7 @@ export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
 # Optional tiny packet coalescer window (ms); 0 = off
 export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
-export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-1}
+export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
 export NUM_SPECULATIVE_TOKENS=${NUM_SPECULATIVE_TOKENS:-6}
 
 # Prefill chunk sizing (A100-friendly throughput defaults)
