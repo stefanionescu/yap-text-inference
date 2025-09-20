@@ -16,12 +16,85 @@ export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 # Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
 export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2048}
-# Prefer fixed GiB reservations; code converts GiB→fraction
-export CHAT_GPU_GIB=${CHAT_GPU_GIB:-33.0}
-export TOOL_GPU_GIB=${TOOL_GPU_GIB:-7.0}
+
+#############################################
+# Detect total GPU memory (robust, prefers venv Python, falls back to nvidia-smi)
+#############################################
+TOTAL_GIB=0
+
+# Prefer venv Python torch if available
+PY_BIN=""
+if [ -x "${ROOT_DIR}/.venv/bin/python" ]; then
+  PY_BIN="${ROOT_DIR}/.venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PY_BIN="$(command -v python3)"
+elif command -v python >/dev/null 2>&1; then
+  PY_BIN="$(command -v python)"
+fi
+
+if [ -n "${PY_BIN}" ]; then
+  set +e
+  TOTAL_GIB="$(${PY_BIN} - <<'PY'
+try:
+  import torch
+  print(int(torch.cuda.get_device_properties(0).total_memory/(1024**3)))
+except Exception:
+  print(0)
+PY
+  )"
+  set -e
+fi
+
+# Fallback to nvidia-smi total memory (handles non-venv python or torch missing)
+if [ "${TOTAL_GIB}" = "0" ] || [ -z "${TOTAL_GIB}" ]; then
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    set +e
+    TOTAL_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ' \t')
+    set -e
+    if [ -n "${TOTAL_MIB}" ]; then
+      TOTAL_GIB=$(( TOTAL_MIB / 1024 ))
+    fi
+  fi
+fi
+
+# MIG-aware fallback: infer from MIG slice name (e.g., 1g.10gb)
+if [ "${TOTAL_GIB}" = "0" ] || [ -z "${TOTAL_GIB}" ]; then
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    set +e
+    MIG_GB=$(nvidia-smi -L 2>/dev/null | grep -i 'MIG' | head -n1 | grep -oE '[0-9]+gb' | tr -dc '0-9')
+    set -e
+    if [ -n "${MIG_GB}" ]; then
+      TOTAL_GIB="${MIG_GB}"
+    fi
+  fi
+fi
+
+# Defaults for 40G/80G/MIG; leave headroom for fragmentation
+if [ -z "${TOTAL_GIB}" ] || [ "${TOTAL_GIB}" = "0" ]; then
+  # Unknown GPU; fall back to conservative splits
+  export CHAT_GPU_GIB=${CHAT_GPU_GIB:-24.0}
+  export TOOL_GPU_GIB=${TOOL_GPU_GIB:-6.0}
+elif [ "${TOTAL_GIB}" -ge 70 ]; then
+  export CHAT_GPU_GIB=${CHAT_GPU_GIB:-64.0}
+  export TOOL_GPU_GIB=${TOOL_GPU_GIB:-12.0}
+elif [ "${TOTAL_GIB}" -ge 35 ]; then
+  export CHAT_GPU_GIB=${CHAT_GPU_GIB:-32.0}
+  export TOOL_GPU_GIB=${TOOL_GPU_GIB:-8.0}
+else
+  # Small MIG slice (e.g., 10–20 GiB)
+  # Reserve ~80% for chat, ~15–20% for tool
+  CHAT_DEF=$(( TOTAL_GIB * 80 / 100 ))
+  TOOL_DEF=$(( TOTAL_GIB * 18 / 100 ))
+  # Ensure minimums
+  if [ "${CHAT_DEF}" -lt 8 ]; then CHAT_DEF=8; fi
+  if [ "${TOOL_DEF}" -lt 2 ]; then TOOL_DEF=2; fi
+  export CHAT_GPU_GIB=${CHAT_GPU_GIB:-${CHAT_DEF}.0}
+  export TOOL_GPU_GIB=${TOOL_GPU_GIB:-${TOOL_DEF}.0}
+fi
 # Fractions remain as fallback if GiB not set
-export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
+export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
+
 # Realtime by default: 0 = no throttle; set >0 to enable fake typing
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
 # Optional tiny packet coalescer window (ms); 0 = off

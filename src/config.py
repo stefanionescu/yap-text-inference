@@ -138,7 +138,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         # Auto: choose fp8_e5m2 on A100 for KV quant; else leave to engine default
         if _is_sm80():
             resolved_kv = "fp8_e5m2"
-    if resolved_kv and "kv_cache_dtype" in fields:
+    if resolved_kv:
+        # Always pass for V0; safe for most versions. V1 ignores or validates.
         raw_kwargs["kv_cache_dtype"] = resolved_kv
 
     # Optional weight-only quantization if supported and requested
