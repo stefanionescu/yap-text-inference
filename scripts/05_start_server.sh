@@ -6,6 +6,10 @@ source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Starting server on :8000 in background"
 cd "${ROOT_DIR}"
+# Ensure env defaults are loaded into this shell before launching
+if [ -f "${SCRIPT_DIR}/04_env_defaults.sh" ]; then
+  source "${SCRIPT_DIR}/04_env_defaults.sh"
+fi
 if [ -d "${ROOT_DIR}/.venv" ]; then
   source "${ROOT_DIR}/.venv/bin/activate"
 fi
