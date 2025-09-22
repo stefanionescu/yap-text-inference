@@ -48,7 +48,7 @@ TEXTPROC_ENABLE = os.getenv("TEXTPROC_ENABLE", "1") == "1"
 
 # History and user limits (approximate tokens)
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
-USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "500"))
+USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
 
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
 EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
@@ -88,7 +88,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         tensor_parallel_size=1,
         max_model_len=max_len,
         gpu_memory_utilization=gpu_frac,
-        enforce_eager=False,
+        enforce_eager=(os.getenv("ENFORCE_EAGER", "0") == "1"),
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,
@@ -97,6 +97,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         quantization="fp8",
         # Also quantize KV cache per env
         kv_cache_dtype=kv_dtype,
+        # Attention backend preference (e.g., FLASHINFER, XFORMERS, FLASH_ATTENTION)
+        attention_backend=os.getenv("VLLM_ATTENTION_BACKEND", "FLASHINFER"),
+        # Enable per-request priorities used by generate(..., priority=...)
+        scheduling_policy="priority",
     )
     if os.getenv("VLLM_USE_V1", "1") == "1":
         _kv_transfer = make_kv_transfer_config()

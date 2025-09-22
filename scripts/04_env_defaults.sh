@@ -38,13 +38,13 @@ export TEXTPROC_CONVERT_NUMBERS=${TEXTPROC_CONVERT_NUMBERS:-1}
 
 # Token limits (approx)
 export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
-export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-500}
+export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 
 # vLLM engine selection and attention backend
 export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
-export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
-
+export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
 # Centralize heavy caches under the repo so wipe scripts can fully clean them
 export HF_HOME="${ROOT_DIR}/.hf"
 export TRANSFORMERS_CACHE="${HF_HOME}"
