@@ -97,8 +97,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         quantization="fp8",
         # Also quantize KV cache per env
         kv_cache_dtype=kv_dtype,
-        # Attention backend preference (e.g., FLASHINFER, XFORMERS, FLASH_ATTENTION)
-        attention_backend=os.getenv("VLLM_ATTENTION_BACKEND", "FLASHINFER"),
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
     )
