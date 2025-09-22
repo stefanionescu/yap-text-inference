@@ -145,7 +145,7 @@ Streaming/text processing
 Token limits
 - `CHAT_MAX_OUT=200` (max assistant tokens per response)
 - `HISTORY_MAX_TOKENS=3000` (rolling history cap; keeps most recent)
-- `USER_UTT_MAX_TOKENS=500` (keeps beginning of user utterance)
+- `USER_UTT_MAX_TOKENS=350` (keeps beginning of user utterance)
 - `EXACT_TOKEN_TRIM=1` (fast HF tokenizer for exact trimming; set `0` to disable)
 
 All of the above have sensible defaults in `scripts/05_env_defaults.sh`.
@@ -174,7 +174,7 @@ Messages you send
 
 Notes
 - If `persona_text` is omitted, it is composed from `persona_style`, `assistant_gender`, and `user_identity` using `prompts.py`.
-- Incoming `user_utterance` is trimmed to the first 500 tokens.
+- Incoming `user_utterance` is trimmed to the first 350 tokens.
 - `history_text` is trimmed to keep the most recent ~3000 tokens.
 
 - Cancel a turn
@@ -259,7 +259,7 @@ bash scripts/stop.sh && bash scripts/main.sh
 
 - Chat outputs are capped at 200 tokens per response.
 - Rolling history capped at ~3000 tokens (not counting persona). Long personas reduce remaining context.
-- User utterances trimmed to first 500 tokens.
+- User utterances trimmed to first 350 tokens.
 - Single-process, single-GPU by default. Under very high concurrency or very long contexts, you’ll be KV-bound. Scale by running another process or GPU.
 
 ## Personality switching
