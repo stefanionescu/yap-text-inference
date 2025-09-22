@@ -45,6 +45,9 @@ export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+
+# Speed up subsequent installs: persist pip cache under repo (stop.sh keeps it by default)
+export PIP_CACHE_DIR="${ROOT_DIR}/.pip_cache"
 # Centralize heavy caches under the repo so wipe scripts can fully clean them
 export HF_HOME="${ROOT_DIR}/.hf"
 export TRANSFORMERS_CACHE="${HF_HOME}"

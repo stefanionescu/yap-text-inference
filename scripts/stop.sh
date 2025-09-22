@@ -62,18 +62,24 @@ else
   log_warn "nvidia-smi not found; skipping GPU process check"
 fi
 
-# 2) Uninstall Python deps we installed
-if [ -f "${ROOT_DIR}/requirements.txt" ]; then
-  log_info "Uninstalling pip packages from requirements.txt"
-  python -m pip uninstall -y -r "${ROOT_DIR}/requirements.txt" || true
-else
-  log_warn "requirements.txt not found; skipping pip uninstall step"
+# 2) Optionally uninstall Python deps and remove venv (opt-in)
+if [ "${NUKE_VENV:-0}" = "1" ]; then
+  if [ -f "${ROOT_DIR}/requirements.txt" ]; then
+    log_info "Uninstalling pip packages from requirements.txt (NUKE_VENV=1)"
+    python -m pip uninstall -y -r "${ROOT_DIR}/requirements.txt" || true
+  else
+    log_warn "requirements.txt not found; skipping pip uninstall step"
+  fi
 fi
 
-# 3) Remove virtual envs
-for VENV_DIR in "${ROOT_DIR}/.venv" "${ROOT_DIR}/venv" "${ROOT_DIR}/env" "${ROOT_DIR}/.env"; do
-  [ -d "$VENV_DIR" ] && { log_info "Removing venv $VENV_DIR"; rm -rf "$VENV_DIR"; }
-done
+# 3) Remove virtual envs only when requested
+if [ "${NUKE_VENV:-0}" = "1" ]; then
+  for VENV_DIR in "${ROOT_DIR}/.venv" "${ROOT_DIR}/venv" "${ROOT_DIR}/env" "${ROOT_DIR}/.env"; do
+    [ -d "$VENV_DIR" ] && { log_info "Removing venv $VENV_DIR (NUKE_VENV=1)"; rm -rf "$VENV_DIR"; }
+  done
+else
+  log_info "Keeping virtualenv (set NUKE_VENV=1 to remove)"
+fi
 
 # 5) Clear Hugging Face caches (all common locations)
 HF_DIRS=(
@@ -99,12 +105,16 @@ for d in "${CACHE_DIRS[@]}"; do
   [ -d "$d" ] && { log_info "Removing cache at $d"; rm -rf "$d" || true; }
 done
 
-# 7) Torch + pip caches
-log_info "Purging pip cache"
-python -m pip cache purge || true
-for PIP_CACHE in "$HOME/.cache/pip" "/root/.cache/pip"; do
-  [ -d "$PIP_CACHE" ] && rm -rf "$PIP_CACHE" || true
-done
+# 7) Torch + pip caches (opt-in purge)
+if [ "${NUKE_PIP_CACHE:-0}" = "1" ]; then
+  log_info "Purging pip cache (NUKE_PIP_CACHE=1)"
+  python -m pip cache purge || true
+  for PIP_CACHE in "$HOME/.cache/pip" "/root/.cache/pip"; do
+    [ -d "$PIP_CACHE" ] && rm -rf "$PIP_CACHE" || true
+  done
+else
+  log_info "Keeping pip cache (set NUKE_PIP_CACHE=1 to purge)"
+fi
 
 for TORCH_CACHE in "$HOME/.cache/torch" "/root/.cache/torch"; do
   [ -d "$TORCH_CACHE" ] && { log_info "Removing torch cache at $TORCH_CACHE"; rm -rf "$TORCH_CACHE" || true; }
