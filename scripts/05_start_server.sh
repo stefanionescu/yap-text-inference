@@ -10,6 +10,27 @@ if [ -d "${ROOT_DIR}/.venv" ]; then
   source "${ROOT_DIR}/.venv/bin/activate"
 fi
 
+# Ensure preferred backend is set for FP8 KV cache
+export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+
+# If FP8 KV cache is requested but FlashInfer is unavailable, force safe fallback to INT8
+if [ "${KV_DTYPE:-fp8}" = "fp8" ]; then
+  if ! python - <<'PY'
+import sys, torch
+try:
+    import flashinfer  # noqa: F401
+    # Also validate CUDA is available and arch is visible
+    _ = torch.cuda.is_available()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY
+  then
+    log_warn "flashinfer not importable; forcing KV_DTYPE=int8 to avoid FP8+xFormers crash"
+    export KV_DTYPE=int8
+  fi
+fi
+
 # Log key env knobs for backend selection
 log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-} TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} KV_DTYPE=${KV_DTYPE:-} VLLM_USE_V1=${VLLM_USE_V1:-}"
 
