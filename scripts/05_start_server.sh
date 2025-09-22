@@ -10,6 +10,9 @@ if [ -d "${ROOT_DIR}/.venv" ]; then
   source "${ROOT_DIR}/.venv/bin/activate"
 fi
 
+# Log key env knobs for backend selection
+log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-} TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} KV_DTYPE=${KV_DTYPE:-} VLLM_USE_V1=${VLLM_USE_V1:-}"
+
 # Start as a new session so Ctrl+C in the calling shell won't touch it.
 # Write the session leader PID so we can kill the whole tree later.
 setsid uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1 > "${ROOT_DIR}/server.log" 2>&1 &
