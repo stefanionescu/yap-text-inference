@@ -40,11 +40,12 @@ export TEXTPROC_CONVERT_NUMBERS=${TEXTPROC_CONVERT_NUMBERS:-1}
 export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
 export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 
-# vLLM engine selection and attention backend
-export VLLM_USE_V1=${VLLM_USE_V1:-1}
-export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+# vLLM engine selection and attention backend (stable defaults)
+export VLLM_USE_V1=${VLLM_USE_V1:-0}
+export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+export VLLM_ALLOW_LONG_MAX_MODEL_LEN=${VLLM_ALLOW_LONG_MAX_MODEL_LEN:-1}
 
 # Speed up subsequent installs: persist pip cache under repo (stop.sh keeps it by default)
 export PIP_CACHE_DIR="${ROOT_DIR}/.pip_cache"

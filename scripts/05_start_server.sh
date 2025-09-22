@@ -10,8 +10,8 @@ if [ -d "${ROOT_DIR}/.venv" ]; then
   source "${ROOT_DIR}/.venv/bin/activate"
 fi
 
-# Ensure preferred backend is set for FP8 KV cache
-export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+# Stable backend by default; force XFormers across the board unless overridden explicitly
+export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
 
 # If FP8 KV cache is requested but FlashInfer is unavailable, force safe fallback to INT8
 if [ "${KV_DTYPE:-fp8}" = "fp8" ]; then
