@@ -76,6 +76,11 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         "512" if is_chat else "256",
     ))
 
+    # Normalize/validate KV cache dtype
+    kv_dtype = (KV_DTYPE or "").strip().lower()
+    if kv_dtype not in ("fp8", "int8"):
+        kv_dtype = "fp8"
+
     # Build kwargs for V1 engine.
     kwargs = dict(
         model=model,
@@ -90,6 +95,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         speculative_config=speculative,
         # FP8 here is weight-only quantization (W8). KV cache remains default per V1.
         quantization="fp8",
+        # Also quantize KV cache per env
+        kv_cache_dtype=kv_dtype,
     )
     if os.getenv("VLLM_USE_V1", "1") == "1":
         _kv_transfer = make_kv_transfer_config()
