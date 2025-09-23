@@ -38,6 +38,24 @@ pkill -f "python.*vllm" || true
 
 sleep 1
 
+# 4) Remove repo-local caches (models and compiled artifacts under the repo)
+REPO_CACHE_DIRS=(
+  "${ROOT_DIR}/.hf"
+  "${ROOT_DIR}/.vllm_cache"
+  "${ROOT_DIR}/.torch_inductor"
+  "${ROOT_DIR}/.triton"
+  "${ROOT_DIR}/.flashinfer"
+  "${ROOT_DIR}/.xformers"
+)
+for d in "${REPO_CACHE_DIRS[@]}"; do
+  [ -d "$d" ] && { log_info "Removing repo cache at $d"; rm -rf "$d" || true; }
+done
+if [ "${NUKE_PIP_CACHE:-0}" = "1" ]; then
+  [ -d "${ROOT_DIR}/.pip_cache" ] && { log_info "Removing repo pip cache at ${ROOT_DIR}/.pip_cache"; rm -rf "${ROOT_DIR}/.pip_cache" || true; }
+else
+  [ -d "${ROOT_DIR}/.pip_cache" ] && log_info "Keeping repo pip cache at ${ROOT_DIR}/.pip_cache (set NUKE_PIP_CACHE=1 to purge)"
+fi
+
 # 1) Verify VRAM is free; if not, kill leftover GPU PIDs
 if command -v nvidia-smi >/dev/null 2>&1; then
   log_info "Checking for leftover GPU processes"
@@ -129,6 +147,9 @@ done
 log_info "Removing __pycache__ and .pytest_cache in repo"
 find "${ROOT_DIR}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
+
+# 10) Temp directories
+rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* 2>/dev/null || true
 
 # 10) Legacy LMCache paths (still clean up if present)
 [ -f "/workspace/lmcache.yaml" ] && { log_info "Removing legacy /workspace/lmcache.yaml"; rm -f /workspace/lmcache.yaml || true; }
