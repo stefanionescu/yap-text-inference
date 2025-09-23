@@ -25,7 +25,7 @@ fi
 bash "${SCRIPT_DIR}/01_check_gpu.sh"
 bash "${SCRIPT_DIR}/02_python_env.sh"
 bash "${SCRIPT_DIR}/03_install_deps.sh"
-bash "${SCRIPT_DIR}/04_env_defaults.sh"
+source "${SCRIPT_DIR}/04_env_defaults.sh"
 bash "${SCRIPT_DIR}/05_start_server.sh"
 bash "${SCRIPT_DIR}/06_follow_logs.sh"
 
