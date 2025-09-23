@@ -1,13 +1,11 @@
-import json
 import os
-from typing import Optional
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 
 # ----------------- Environment / Defaults -----------------
 
-CHAT_MODEL = os.getenv("CHAT_MODEL", "recoilme/recoilme-gemma-2-9B-v0.5")
+CHAT_MODEL = os.getenv("CHAT_MODEL", "SicariusSicariiStuff/Impish_Nemo_12B")
 TOOL_MODEL = os.getenv("TOOL_MODEL", "MadeAgents/Hammer2.1-3b")
 
 def _frac_from_gib(gib_str: str | None, fallback_frac: float) -> float:
@@ -26,8 +24,9 @@ CHAT_GPU_FRAC = _frac_from_gib(os.getenv("CHAT_GPU_GIB"), float(os.getenv("CHAT_
 TOOL_GPU_FRAC = _frac_from_gib(os.getenv("TOOL_GPU_GIB"), float(os.getenv("TOOL_GPU_FRAC", "0.20")))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
+QUANTIZATION_DEFAULT = os.getenv("QUANTIZATION", "fp8")  # 'fp8' | 'none' | 'gptq'
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "8192"))
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "6194"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "2048"))
@@ -81,6 +80,15 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     if kv_dtype not in ("fp8", "int8"):
         kv_dtype = "fp8"
 
+    # Determine weight quantization for chat engine only
+    q_env = (os.getenv("QUANTIZATION", QUANTIZATION_DEFAULT) or "").strip().lower()
+    quant_value: str | None
+    if q_env in ("", "none", "off", "no"):
+        quant_value = None
+    else:
+        # Allow 'fp8' or 'gptq'
+        quant_value = "gptq" if q_env == "gptq" else "fp8"
+
     # Build kwargs for V1 engine.
     kwargs = dict(
         model=model,
@@ -93,9 +101,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,
         speculative_config=speculative,
-        # FP8 here is weight-only quantization (W8). KV cache remains default per V1.
-        quantization="fp8",
-        # Also quantize KV cache per env
+        # Weight quantization for chat; tools remain unquantized for stability
+        quantization=(quant_value if is_chat else None),
+        dtype="auto",
+        # Quantize KV cache per env
         kv_cache_dtype=kv_dtype,
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",

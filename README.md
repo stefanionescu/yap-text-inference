@@ -244,7 +244,7 @@ We reserve GPU memory per-engine via fractions, but this repo also supports GiB 
 - Fractions (`CHAT_GPU_FRAC`/`TOOL_GPU_FRAC`) act as fallback if GiB are unset.
 - Defaults in `scripts/05_env_defaults.sh` are tuned for a 44.5 GiB card:
   - `CHAT_GPU_GIB=33.0`, `TOOL_GPU_GIB=7.0` (sum < total, leaves headroom)
-  - `CHAT_MAX_LEN=8192` to reduce KV load; tool max len set to 1024 internally.
+  - `CHAT_MAX_LEN=6194` to reduce KV load; tool max len set to 1024 internally.
 
 Example overrides:
 
