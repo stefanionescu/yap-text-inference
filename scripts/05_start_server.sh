@@ -10,8 +10,24 @@ if [ -d "${ROOT_DIR}/.venv" ]; then
   source "${ROOT_DIR}/.venv/bin/activate"
 fi
 
-# Stable backend by default; force XFormers across the board unless overridden explicitly
-export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
+# VLLM_ATTENTION_BACKEND should already be set by env defaults; if still unset, prefer FLASHINFER
+if [ -z "${VLLM_ATTENTION_BACKEND:-}" ]; then
+  if python - <<'PY'
+import sys
+try:
+    import torch
+    ok = torch.cuda.is_available()
+    import flashinfer  # noqa: F401
+    sys.exit(0 if ok else 1)
+except Exception:
+    sys.exit(1)
+PY
+  then
+    export VLLM_ATTENTION_BACKEND=FLASHINFER
+  else
+    export VLLM_ATTENTION_BACKEND=XFORMERS
+  fi
+fi
 
 # If FP8 KV cache is requested but FlashInfer is unavailable, force safe fallback to INT8
 if [ "${KV_DTYPE:-fp8}" = "fp8" ]; then

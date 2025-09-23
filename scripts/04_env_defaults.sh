@@ -45,9 +45,8 @@ export TEXTPROC_CONVERT_NUMBERS=${TEXTPROC_CONVERT_NUMBERS:-1}
 export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
 export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 
-# vLLM engine selection and attention backend (stable defaults)
+# vLLM engine selection; attention backend chosen below (FLASHINFER preferred)
 export VLLM_USE_V1=${VLLM_USE_V1:-0}
-export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-}
 export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
 export VLLM_ALLOW_LONG_MAX_MODEL_LEN=${VLLM_ALLOW_LONG_MAX_MODEL_LEN:-1}
@@ -63,6 +62,27 @@ export TORCHINDUCTOR_CACHE_DIR="${ROOT_DIR}/.torch_inductor"
 export TRITON_CACHE_DIR="${ROOT_DIR}/.triton"
 export FLASHINFER_CACHE_DIR="${ROOT_DIR}/.flashinfer"
 export XFORMERS_CACHE_DIR="${ROOT_DIR}/.xformers"
+
+# --- Attention backend selection (prefer FLASHINFER when available) ---
+# Respect user-provided VLLM_ATTENTION_BACKEND. Otherwise, pick based on availability.
+if [ "${VLLM_ATTENTION_BACKEND+x}" != "x" ]; then
+  # Not set by user: try FLASHINFER → fallback to XFORMERS
+  if python - <<'PY'
+import sys
+try:
+    import torch
+    ok = torch.cuda.is_available()
+    import flashinfer  # noqa: F401
+    sys.exit(0 if ok else 1)
+except Exception:
+    sys.exit(1)
+PY
+  then
+    export VLLM_ATTENTION_BACKEND=FLASHINFER
+  else
+    export VLLM_ATTENTION_BACKEND=XFORMERS
+  fi
+fi
 
 # --- GPU auto-detection for quantization defaults ---
 GPU_NAME=""
