@@ -32,7 +32,8 @@ PY
 fi
 
 # Log key env knobs for backend selection
-log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-} TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} KV_DTYPE=${KV_DTYPE:-} VLLM_USE_V1=${VLLM_USE_V1:-}"
+log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${CHAT_MODEL:-} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
+log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-} TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_V1:-}"
 
 # Start as a new session so Ctrl+C in the calling shell won't touch it.
 # Write the session leader PID so we can kill the whole tree later.
