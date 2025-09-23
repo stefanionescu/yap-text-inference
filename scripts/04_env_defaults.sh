@@ -20,10 +20,7 @@ export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 # Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
 export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2048}
-# Prefer fixed GiB reservations; code converts GiB→fraction
-export CHAT_GPU_GIB=${CHAT_GPU_GIB:-33.0}
-export TOOL_GPU_GIB=${TOOL_GPU_GIB:-7.0}
-# Fractions remain as fallback if GiB not set
+# GPU memory fractions (weights + KV). Use fractions only.
 export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 # Realtime by default: 0 = no throttle; set >0 to enable fake typing
