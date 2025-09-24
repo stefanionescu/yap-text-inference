@@ -156,8 +156,8 @@ Models and GPU split
 - `CHAT_MODEL` (default `SicariusSicariiStuff/Impish_Nemo_12B`)
 - `TOOL_MODEL` (default `MadeAgents/Hammer2.1-3b`)
 - `CHAT_GPU_FRAC` (default `0.75`), `TOOL_GPU_FRAC` (default `0.20`)
-- `QUANTIZATION` = `none|fp8|gptq` (auto-detected; A100→`none`, L40/L40S/H100→`fp8`, 4‑bit mode→`gptq`)
-- `KV_DTYPE` = `fp8|int8` (auto; A100→`int8`, L40/L40S/H100→`fp8`)
+- `QUANTIZATION` = `none|fp8|gptq` (auto-detected; A100→`fp8` (W8A16), L40/L40S/H100→`fp8` (W8A8), 4‑bit mode→`gptq`)
+- `KV_DTYPE` = `fp8_e5m2|auto` (auto; A100→`auto` (fp16), H100/L40S→`fp8_e5m2`)
 - `VLLM_ATTENTION_BACKEND` (auto; prefers `FLASHINFER` if available, else `XFORMERS`)
 - `dtype` is set to `auto` internally; no need to configure
 
@@ -244,7 +244,7 @@ Run with 4‑bit weights using GPTQ quantization and the 4‑bit model:
 bash scripts/main.sh 4-bit
 ```
 
-Internally this selects `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`, sets `QUANTIZATION=gptq`, `dtype=auto`, and `KV_DTYPE=int8` by default.
+Internally this selects `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`, sets `QUANTIZATION=gptq`, `dtype=auto`, and `KV_DTYPE=auto` (fp16) by default.
 
 ## Persona and history behavior
 
@@ -288,7 +288,7 @@ export TOOL_GPU_FRAC=0.15
 bash scripts/stop.sh && bash scripts/main.sh
 ```
 
-Note: `CHAT_MAX_LEN` defaults to `8192`; adjust to trade off KV usage vs context.
+Note: `CHAT_MAX_LEN` defaults to `6144`; adjust to trade off KV usage vs context.
 
 ## Limits and tradeoffsf
 

@@ -36,8 +36,8 @@ except Exception:
     sys.exit(1)
 PY
   then
-    log_warn "flashinfer not importable; forcing KV_DTYPE=int8 to avoid FP8+xFormers crash"
-    export KV_DTYPE=int8
+    log_warn "flashinfer not importable; forcing KV_DTYPE=auto (fp16) to avoid FP8+xFormers crash"
+    export KV_DTYPE=auto
   fi
 fi
 
