@@ -17,7 +17,7 @@ TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
 QUANTIZATION_DEFAULT = os.getenv("QUANTIZATION", "fp8")  # 'fp8' | 'none' | 'gptq'
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "6194"))
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "6144"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "2048"))
@@ -68,8 +68,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
     # Normalize/validate KV cache dtype
     kv_dtype = (KV_DTYPE or "").strip().lower()
-    if kv_dtype not in ("fp8", "int8"):
-        kv_dtype = "fp8"
+    if kv_dtype not in ("fp8", "fp8_e5m2", "fp8_e4m3", "int8", "auto"):
+        kv_dtype = "auto"  # fp16 safe fallback
 
     # Determine weight quantization for chat engine only
     q_env = (os.getenv("QUANTIZATION", QUANTIZATION_DEFAULT) or "").strip().lower()
@@ -91,7 +91,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enforce_eager=True,
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
-        enable_prefix_caching=True,
+        enable_prefix_caching=(
+            False if (kv_dtype.startswith("fp8") and os.getenv("DISABLE_PREFIX_CACHE_FOR_KV_FP8", "1") == "1")
+            else True
+        ),
         speculative_config=speculative,
         # Weight quantization for chat; tools remain unquantized for stability
         quantization=(quant_value if is_chat else None),
@@ -101,6 +104,11 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
     )
+    # Add KV scale calculation for FP8 KV cache
+    if kv_dtype.startswith("fp8"):
+        # Enable dynamic k/v scale calculation for FP8 KV cache
+        kwargs["calculate_kv_scales"] = True
+
     if os.getenv("VLLM_USE_V1", "1") == "1":
         _kv_transfer = make_kv_transfer_config()
         if _kv_transfer is not None:
