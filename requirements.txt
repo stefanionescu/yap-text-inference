@@ -2,7 +2,7 @@
 
 vllm==0.10.1.1
 torch==2.7.1+cu128 ; sys_platform == 'linux'
-flashinfer-python==0.2.6.post1+cu128torch2.7
+flashinfer-python==0.3.1
 
 fastapi>=0.112
 uvicorn[standard]>=0.30

@@ -15,7 +15,8 @@ export CHAT_MODEL=${CHAT_MODEL:-SicariusSicariiStuff/Impish_Nemo_12B}
 export TOOL_MODEL=${TOOL_MODEL:-MadeAgents/Hammer2.1-3b}
 
 # QUANTIZATION/KV_DTYPE will be set after GPU detection; defaults to L40-class (fp8/fp8)
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-6144}
+# Cap context to match the model until RoPE/YaRN is fixed  
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-2048}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 # Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
@@ -91,7 +92,14 @@ export DETECTED_GPU_NAME="${GPU_NAME}"
 case "${GPU_NAME}" in
   *H100*|*L40S*|*L40*)
     if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi
-    if [ "${USER_SET_KV}" -eq 0 ]; then export KV_DTYPE=fp8_e5m2; fi
+    # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
+    if [ "${USER_SET_KV}" -eq 0 ]; then
+      if [ "${VLLM_USE_V1:-1}" = "1" ]; then
+        export KV_DTYPE=
+      else
+        export KV_DTYPE=fp8_e5m2
+      fi
+    fi
     if [ "${USER_SET_ARCH}" -eq 0 ]; then 
       if [[ "${GPU_NAME}" == *H100* ]]; then
         export TORCH_CUDA_ARCH_LIST=9.0
@@ -108,7 +116,7 @@ case "${GPU_NAME}" in
       export ENFORCE_EAGER=${ENFORCE_EAGER:-1}
       export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
       export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
-      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
+      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
       export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
       # Stream prebuffer and hard timeouts suitable for L40S
       export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
@@ -119,7 +127,14 @@ case "${GPU_NAME}" in
     ;;
   *A100*)
     if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi  # W8A16 on Ampere
-    if [ "${USER_SET_KV}" -eq 0 ]; then export KV_DTYPE=auto; fi   # fp16 by default
+    # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
+    if [ "${USER_SET_KV}" -eq 0 ]; then
+      if [ "${VLLM_USE_V1:-1}" = "1" ]; then
+        export KV_DTYPE=
+      else
+        export KV_DTYPE=auto
+      fi
+    fi
     if [ "${USER_SET_ARCH}" -eq 0 ]; then export TORCH_CUDA_ARCH_LIST=8.0; fi
     export DISABLE_PREFIX_CACHE_FOR_KV_FP8=${DISABLE_PREFIX_CACHE_FOR_KV_FP8:-1}
     if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
@@ -129,7 +144,14 @@ case "${GPU_NAME}" in
   *)
     # Unknown GPU: conservative defaults
     if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi
-    if [ "${USER_SET_KV}" -eq 0 ]; then export KV_DTYPE=auto; fi
+    # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
+    if [ "${USER_SET_KV}" -eq 0 ]; then
+      if [ "${VLLM_USE_V1:-1}" = "1" ]; then
+        export KV_DTYPE=
+      else
+        export KV_DTYPE=auto
+      fi
+    fi
     export DISABLE_PREFIX_CACHE_FOR_KV_FP8=${DISABLE_PREFIX_CACHE_FOR_KV_FP8:-1}
     ;;
 esac
