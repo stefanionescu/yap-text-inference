@@ -10,33 +10,27 @@ if [ -d "${ROOT_DIR}/.venv" ]; then
   source "${ROOT_DIR}/.venv/bin/activate"
 fi
 
-# VLLM_ATTENTION_BACKEND should already be set by env defaults; if still unset, prefer FLASHINFER
-if [ -z "${VLLM_ATTENTION_BACKEND:-}" ]; then
-  if python - <<'PY'
+# Force backend selection here too; ignore any pre-set value
+if python - <<'PY'
 import sys
 try:
-    import torch
-    ok = torch.cuda.is_available()
     import flashinfer  # noqa: F401
-    sys.exit(0 if ok else 1)
+    sys.exit(0)
 except Exception:
     sys.exit(1)
 PY
-  then
-    export VLLM_ATTENTION_BACKEND=FLASHINFER
-  else
-    export VLLM_ATTENTION_BACKEND=XFORMERS
-  fi
+then
+  export VLLM_ATTENTION_BACKEND=FLASHINFER
+else
+  export VLLM_ATTENTION_BACKEND=XFORMERS
 fi
 
 # If FP8 KV cache is requested but FlashInfer is unavailable, force safe fallback to INT8
 if [ "${KV_DTYPE:-fp8}" = "fp8" ]; then
   if ! python - <<'PY'
-import sys, torch
+import sys
 try:
     import flashinfer  # noqa: F401
-    # Also validate CUDA is available and arch is visible
-    _ = torch.cuda.is_available()
     sys.exit(0)
 except Exception:
     sys.exit(1)
