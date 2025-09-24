@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import os
+import asyncio
 from typing import Tuple
+
+# Ensure V1 engine path before importing vLLM
+os.environ.setdefault("VLLM_USE_V1", "1")
 
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
@@ -17,6 +22,9 @@ from .config import (
 
 _chat_engine: AsyncLLMEngine | None = None
 _tool_engine: AsyncLLMEngine | None = None
+
+# Global lock to serialize vLLM engine forward passes across instances
+GLOBAL_VLLM_LOCK = asyncio.Lock()
 
 
 def _build_engines() -> Tuple[AsyncLLMEngine, AsyncLLMEngine]:

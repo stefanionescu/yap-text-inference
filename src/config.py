@@ -1,5 +1,8 @@
 import os
 
+# Ensure V1 engine is selected before importing any vLLM modules
+os.environ.setdefault("VLLM_USE_V1", "1")
+
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 
@@ -84,7 +87,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         tensor_parallel_size=1,
         max_model_len=max_len,
         gpu_memory_utilization=gpu_frac,
-        enforce_eager=(os.getenv("ENFORCE_EAGER", "0") == "1"),
+        # Force eager to avoid CUDA graph capture while stabilizing multi-engine concurrency
+        enforce_eager=True,
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,

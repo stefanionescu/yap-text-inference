@@ -27,6 +27,24 @@ This will:
 - Export environment defaults
 - Launch `uvicorn src.server:app --port 8000`
 
+### Viewing server logs
+
+`05_start_server.sh` launches the server and writes logs to `server.log` at the repo root.
+
+- Print the last 100 lines:
+
+```bash
+tail -n 100 server.log
+```
+
+- Follow logs live (Ctrl+C to stop following; server keeps running):
+
+```bash
+bash scripts/06_follow_logs.sh
+# or
+tail -F server.log
+```
+
 2) Health check
 
 ```bash
