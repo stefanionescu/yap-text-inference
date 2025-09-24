@@ -60,25 +60,20 @@ export TRITON_CACHE_DIR="${ROOT_DIR}/.triton"
 export FLASHINFER_CACHE_DIR="${ROOT_DIR}/.flashinfer"
 export XFORMERS_CACHE_DIR="${ROOT_DIR}/.xformers"
 
-# --- Attention backend selection (prefer FLASHINFER when available) ---
-# Respect user-provided VLLM_ATTENTION_BACKEND. Otherwise, pick based on availability.
-if [ "${VLLM_ATTENTION_BACKEND+x}" != "x" ]; then
-  # Not set by user: try FLASHINFER → fallback to XFORMERS
-  if python - <<'PY'
+# --- Attention backend selection (prefer FLASHINFER when installed) ---
+# User cannot override: always auto-select based on availability of flashinfer.
+if python - <<'PY'
 import sys
 try:
-    import torch
-    ok = torch.cuda.is_available()
     import flashinfer  # noqa: F401
-    sys.exit(0 if ok else 1)
+    sys.exit(0)
 except Exception:
     sys.exit(1)
 PY
-  then
-    export VLLM_ATTENTION_BACKEND=FLASHINFER
-  else
-    export VLLM_ATTENTION_BACKEND=XFORMERS
-  fi
+then
+  export VLLM_ATTENTION_BACKEND=FLASHINFER
+else
+  export VLLM_ATTENTION_BACKEND=XFORMERS
 fi
 
 # --- GPU auto-detection for quantization defaults ---
