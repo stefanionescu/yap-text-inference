@@ -27,7 +27,6 @@ from .config import (
     USER_UTT_MAX_TOKENS,
     STREAM_RATE_TOKS_PER_S,
     TOOL_MAX_OUT,
-    TEXTPROC_ENABLE,
 )
 from .engines import get_chat_engine, get_tool_engine
 from .persona import (
@@ -36,7 +35,6 @@ from .persona import (
     get_static_prefix,
     build_chat_prompt_with_prefix,
 )
-from .textproc import StreamCleaner, ensure_proper_ending_punctuation
 from .tokens import approx_token_count, trim_text_to_token_limit
 from .config import EXACT_TOKEN_TRIM
 from .config import STREAM_FLUSH_MS
@@ -228,7 +226,7 @@ async def run_chat_stream(
     buf = []
     last_flush = time.perf_counter()
 
-    cleaner = StreamCleaner() if TEXTPROC_ENABLE else None
+    # Text processing removed - no longer needed
 
     GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "30"))
 
@@ -253,8 +251,6 @@ async def run_chat_stream(
                     continue
 
                 full_text = out.outputs[0].text
-                if cleaner is not None:
-                    full_text = cleaner.clean_increment(full_text)
                 delta = full_text[len(last_text) :]
                 if not delta:
                     continue
@@ -475,14 +471,8 @@ async def ws_handler(ws: WebSocket):
                         await ws.send_text(json.dumps({"type": "token", "text": chunk}))
                         final_text += chunk
 
-                    # finalize with optional punctuation fixing
-                    if TEXTPROC_ENABLE:
-                        punct_fixed = ensure_proper_ending_punctuation(final_text)
-                        if len(punct_fixed) > len(final_text):
-                            await ws.send_text(json.dumps({"type": "token", "text": punct_fixed[len(final_text):]}))
-                        await ws.send_text(json.dumps({"type": "final", "normalized_text": punct_fixed}))
-                    else:
-                        await ws.send_text(json.dumps({"type": "final", "normalized_text": final_text}))
+                    # Text processing removed - send final text as-is
+                    await ws.send_text(json.dumps({"type": "final", "normalized_text": final_text}))
 
                     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
 

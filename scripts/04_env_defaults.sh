@@ -22,7 +22,7 @@ export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 # Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
 export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2048}
 # GPU memory fractions (weights + KV). Use fractions only.
-export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
+export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 # Realtime by default: 0 = no throttle; set >0 to enable fake typing
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
@@ -33,11 +33,6 @@ export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
 # Buffer-then-flush knobs for parallel tool router
 export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-400}
 export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
-
-# Text processing toggles (disabled by default for optimal benchmarking)
-export TEXTPROC_ENABLE=${TEXTPROC_ENABLE:-0}
-export TEXTPROC_REMOVE_EMOJIS=${TEXTPROC_REMOVE_EMOJIS:-1}
-export TEXTPROC_CONVERT_NUMBERS=${TEXTPROC_CONVERT_NUMBERS:-1}
 
 # Token limits (approx)
 export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
@@ -86,7 +81,7 @@ export DETECTED_GPU_NAME="${GPU_NAME}"
 
 #
 # KV cache policy:
-#  - On Hopper/Ada (H100/L40S): allow FP8 KV (e5m2) but DISABLE prefix caching.
+#  - On Hopper/Ada (H100/L40S): allow FP8 KV (e5m2) with prefix caching enabled.
 #  - On Ampere (A100): prefer fp16 KV (auto). FP8 KV can be unstable; avoid by default.
 #
 case "${GPU_NAME}" in
@@ -95,7 +90,7 @@ case "${GPU_NAME}" in
     # On V1, --kv-cache-dtype is not supported, but we set KV_DTYPE=fp8 for our own prefix cache logic
     if [ "${USER_SET_KV}" -eq 0 ]; then
       if [ "${VLLM_USE_V1:-1}" = "1" ]; then
-        export KV_DTYPE=fp8  # Set to fp8 so our prefix cache disable logic triggers
+        export KV_DTYPE=fp8  # Set to fp8 for memory efficiency
       else
         export KV_DTYPE=fp8_e5m2
       fi
@@ -107,7 +102,6 @@ case "${GPU_NAME}" in
         export TORCH_CUDA_ARCH_LIST=8.9  # L40S/L40
       fi
     fi
-    export DISABLE_PREFIX_CACHE_FOR_KV_FP8=${DISABLE_PREFIX_CACHE_FOR_KV_FP8:-1}
     if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
       export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B"
     fi
@@ -138,7 +132,6 @@ case "${GPU_NAME}" in
       fi
     fi
     if [ "${USER_SET_ARCH}" -eq 0 ]; then export TORCH_CUDA_ARCH_LIST=8.0; fi
-    export DISABLE_PREFIX_CACHE_FOR_KV_FP8=${DISABLE_PREFIX_CACHE_FOR_KV_FP8:-1}
     if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
       export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B"
     fi
@@ -154,7 +147,6 @@ case "${GPU_NAME}" in
         export KV_DTYPE=auto
       fi
     fi
-    export DISABLE_PREFIX_CACHE_FOR_KV_FP8=${DISABLE_PREFIX_CACHE_FOR_KV_FP8:-1}
     ;;
 esac
 
@@ -169,7 +161,7 @@ fi
 
 # Ensure defaults if still unset (conservative behavior)
 export QUANTIZATION=${QUANTIZATION:-fp8}
-export KV_DTYPE=${KV_DTYPE:-fp8}  # Use fp8 as default to enable prefix cache disabling logic
+export KV_DTYPE=${KV_DTYPE:-fp8}  # Use fp8 as default for memory efficiency with prefix caching enabled
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
 if [ -n "${DETECTED_GPU_NAME}" ]; then
