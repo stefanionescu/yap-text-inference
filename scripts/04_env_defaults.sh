@@ -92,10 +92,10 @@ export DETECTED_GPU_NAME="${GPU_NAME}"
 case "${GPU_NAME}" in
   *H100*|*L40S*|*L40*)
     if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi
-    # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
+    # On V1, --kv-cache-dtype is not supported, but we set KV_DTYPE=fp8 for our own prefix cache logic
     if [ "${USER_SET_KV}" -eq 0 ]; then
       if [ "${VLLM_USE_V1:-1}" = "1" ]; then
-        export KV_DTYPE=
+        export KV_DTYPE=fp8  # Set to fp8 so our prefix cache disable logic triggers
       else
         export KV_DTYPE=fp8_e5m2
       fi
@@ -115,9 +115,11 @@ case "${GPU_NAME}" in
     if [[ "${GPU_NAME}" == *L40S* ]] || [[ "${GPU_NAME}" == *L40* ]]; then
       export ENFORCE_EAGER=${ENFORCE_EAGER:-0}  # Enable CUDA graphs for better performance
       export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
-      export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
-      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-768}  # Increased from 512
+      export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.15}  # Reduced from 0.20 to free ~1-2GB
+      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}  # Reduced from 768 to lower FlashInfer workspace needs
       export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+      # Memory allocator: expandable segments for resilience to large workspace allocations
+      export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
       # Stream prebuffer and hard timeouts suitable for L40S
       export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
       export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
@@ -167,7 +169,7 @@ fi
 
 # Ensure defaults if still unset (conservative behavior)
 export QUANTIZATION=${QUANTIZATION:-fp8}
-export KV_DTYPE=${KV_DTYPE:-auto}  # fp16 as safe fallback, not int8
+export KV_DTYPE=${KV_DTYPE:-fp8}  # Use fp8 as default to enable prefix cache disabling logic
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
 if [ -n "${DETECTED_GPU_NAME}" ]; then
