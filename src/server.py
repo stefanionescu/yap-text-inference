@@ -6,6 +6,10 @@ import json
 import time
 import uuid
 import os
+
+# Ensure V1 engine flag is set before importing any vLLM modules in this process
+os.environ.setdefault("VLLM_USE_V1", "1")
+os.environ.setdefault("ENFORCE_EAGER", "1")
 from datetime import datetime
 from typing import Dict, Optional, Any
 
@@ -25,7 +29,7 @@ from .config import (
     TOOL_MAX_OUT,
     TEXTPROC_ENABLE,
 )
-from .engines import get_chat_engine, get_tool_engine
+from .engines import get_chat_engine, get_tool_engine, GLOBAL_VLLM_LOCK
 from .persona import (
     build_hammer_prompt,
     compose_persona_runtime,
@@ -110,25 +114,27 @@ async def _warm():
 
     # Warm chat engine (minimal persona-only prompt) first
     rid_c = f"warm-chat-{uuid.uuid4()}"
-    stream_c = get_chat_engine().generate(
-        prompt="<|persona|>\nWARM\n<|assistant|>\n",
-        sampling_params=params,
-        request_id=rid_c,
-        priority=1,
-    )
-    async for _ in stream_c:
-        break
+    async with GLOBAL_VLLM_LOCK:
+        stream_c = get_chat_engine().generate(
+            prompt="<|persona|>\nWARM\n<|assistant|>\n",
+            sampling_params=params,
+            request_id=rid_c,
+            priority=1,
+        )
+        async for _ in stream_c:
+            break
 
     # Then warm tool engine
     rid_t = f"warm-tool-{uuid.uuid4()}"
-    stream_t = get_tool_engine().generate(
-        prompt="warmup",
-        sampling_params=params,
-        request_id=rid_t,
-        priority=1,
-    )
-    async for _ in stream_t:
-        break
+    async with GLOBAL_VLLM_LOCK:
+        stream_t = get_tool_engine().generate(
+            prompt="warmup",
+            sampling_params=params,
+            request_id=rid_t,
+            priority=1,
+        )
+        async for _ in stream_t:
+            break
 
 
 # Track active session tasks/requests
@@ -157,19 +163,19 @@ async def run_toolcall(
         seed=session_meta.get(session_id, {}).get("seed", 0),
     )
 
-    stream = get_tool_engine().generate(
-        prompt=build_hammer_prompt(user_utt),
-        sampling_params=params,
-        request_id=req_id,
-        priority=1,
-    )
-
     pieces = []
     TOOL_TIMEOUT_S = float(os.getenv("TOOL_TIMEOUT_S", "10"))
 
     async def _iter_tool():
-        async for out in stream:
-            yield out
+        async with GLOBAL_VLLM_LOCK:
+            stream = get_tool_engine().generate(
+                prompt=build_hammer_prompt(user_utt),
+                sampling_params=params,
+                request_id=req_id,
+                priority=1,
+            )
+            async for out in stream:
+                yield out
 
     try:
         async with asyncio.timeout(TOOL_TIMEOUT_S):
@@ -214,13 +220,6 @@ async def run_chat_stream(
     )
 
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
-    stream = get_chat_engine().generate(
-        prompt=prompt,
-        sampling_params=params,
-        request_id=req_id,
-        priority=0,
-    )
-
     # realtime mode: emit ASAP. optional micro-coalescer if STREAM_FLUSH_MS>0
     last_text = ""
     # robust env parsing; treat blank/None as 0
@@ -237,8 +236,15 @@ async def run_chat_stream(
     GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "30"))
 
     async def _iter_stream():
-        async for out in stream:
-            yield out
+        async with GLOBAL_VLLM_LOCK:
+            stream = get_chat_engine().generate(
+                prompt=prompt,
+                sampling_params=params,
+                request_id=req_id,
+                priority=0,
+            )
+            async for out in stream:
+                yield out
 
     try:
         async with asyncio.timeout(GEN_TIMEOUT_S):
@@ -397,72 +403,22 @@ async def ws_handler(ws: WebSocket):
                         history_text = trim_text_to_token_limit(history_text, max_tokens=HISTORY_MAX_TOKENS, keep="end")
                 rate = float(msg.get("stream_rate_toks_per_s", STREAM_RATE_TOKS_PER_S))
 
-                # 1) Start tool router and chat in parallel with buffer-then-flush
+                # 1) Tool-first sequential: decide quickly, then stream chat if no tool
                 async def _run_start():
                     TOOL_HARD_TIMEOUT_MS = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
-                    PREBUFFER_MAX_CHARS = int(os.getenv("PREBUFFER_MAX_CHARS", "8000"))
 
-                    # Kick off tool router (do not mark active to avoid clobbering chat req id)
+                    # Run tool router (do not mark active to avoid clobbering chat req id)
                     tool_req_id = f"tool-{uuid.uuid4()}"
                     session_tool_req[session_id] = tool_req_id
-                    tool_task = asyncio.create_task(
-                        run_toolcall(session_id, user_utt, request_id=tool_req_id, mark_active=False)
-                    )
+                    tool_coro = run_toolcall(session_id, user_utt, request_id=tool_req_id, mark_active=False)
 
-                    # Start chat stream immediately, but buffer locally until router decision
-                    chat_req_id = f"chat-{uuid.uuid4()}"
-                    session_active_req[session_id] = chat_req_id
-                    chat_stream = run_chat_stream(
-                        session_id,
-                        static_prefix,
-                        runtime_text,
-                        history_text,
-                        user_utt,
-                        rate,
-                        request_id=chat_req_id,
-                    )
-
-                    buffer = []
-                    buffer_chars = 0
-                    flushing = False
-                    final_text = ""
-
-                    async def chat_producer():
-                        nonlocal flushing, final_text, buffer_chars
-                        try:
-                            async for chunk in chat_stream:
-                                if session_active_req.get(session_id) != chat_req_id:
-                                    break
-                                if not flushing:
-                                    buffer.append(chunk)
-                                    buffer_chars += len(chunk)
-                                    if PREBUFFER_MAX_CHARS > 0 and buffer_chars >= PREBUFFER_MAX_CHARS:
-                                        flushing = True
-                                        joined = "".join(buffer)
-                                        if joined:
-                                            await ws.send_text(json.dumps({"type": "token", "text": joined}))
-                                            final_text += joined
-                                            buffer.clear()
-                                    continue
-                                await ws.send_text(json.dumps({"type": "token", "text": chunk}))
-                                final_text += chunk
-                        except asyncio.CancelledError:
-                            pass
-
-                    producer_task = asyncio.create_task(chat_producer())
-
-                    # Wait for tool router (capped by hard timeout unless set to -1)
                     tool_res = None
                     try:
                         if TOOL_HARD_TIMEOUT_MS < 0:
-                            tool_res = await tool_task
+                            tool_res = await tool_coro
                         else:
-                            tool_res = await asyncio.wait_for(tool_task, timeout=TOOL_HARD_TIMEOUT_MS / 1000.0)
+                            tool_res = await asyncio.wait_for(tool_coro, timeout=TOOL_HARD_TIMEOUT_MS / 1000.0)
                     except asyncio.TimeoutError:
-                        try:
-                            tool_task.cancel()
-                        except Exception:
-                            pass
                         # best-effort abort underlying tool request
                         try:
                             if session_tool_req.get(session_id):
@@ -493,42 +449,35 @@ async def ws_handler(ws: WebSocket):
                                 raw_field = raw_stripped
                                 is_tool = False
 
+                    # cleanup tool req id tracking (no longer in-flight)
+                    try:
+                        session_tool_req.pop(session_id, None)
+                    except Exception:
+                        pass
+
                     if is_tool:
-                        # Abort chat and do NOT emit buffered text
-                        session_active_req[session_id] = "CANCELLED"
-                        try:
-                            await get_chat_engine().abort_request(chat_req_id)
-                        except Exception:
-                            pass
-                        try:
-                            producer_task.cancel()
-                        except Exception:
-                            pass
-                        # cleanup tool req id tracking
-                        try:
-                            session_tool_req.pop(session_id, None)
-                        except Exception:
-                            pass
                         await ws.send_text(json.dumps({"type": "toolcall", "status": "yes", "raw": raw_field}))
                         await ws.send_text(json.dumps({"type": "done", "usage": {}}))
                         return
-                    else:
-                        # Tool says NO (or timed out): flush buffer once, then continue streaming
-                        flushing = True
-                        await ws.send_text(json.dumps({"type": "toolcall", "status": "no", "raw": raw_field}))
-                        if buffer:
-                            joined = "".join(buffer)
-                            await ws.send_text(json.dumps({"type": "token", "text": joined}))
-                            final_text += joined
-                            buffer.clear()
-                        # cleanup tool req id tracking
-                        try:
-                            session_tool_req.pop(session_id, None)
-                        except Exception:
-                            pass
 
-                    # Continue until producer finishes the stream
-                    await producer_task
+                    # Tool says NO (or timed out): notify and stream chat
+                    await ws.send_text(json.dumps({"type": "toolcall", "status": "no", "raw": raw_field}))
+
+                    # Start chat stream now
+                    chat_req_id = f"chat-{uuid.uuid4()}"
+                    session_active_req[session_id] = chat_req_id
+                    final_text = ""
+                    async for chunk in run_chat_stream(
+                        session_id,
+                        static_prefix,
+                        runtime_text,
+                        history_text,
+                        user_utt,
+                        rate,
+                        request_id=chat_req_id,
+                    ):
+                        await ws.send_text(json.dumps({"type": "token", "text": chunk}))
+                        final_text += chunk
 
                     # finalize with optional punctuation fixing
                     if TEXTPROC_ENABLE:
@@ -578,14 +527,15 @@ async def ws_handler(ws: WebSocket):
                 warm_prompt = f"<|persona|>\n{static_prefix.strip()}\n<|assistant|>\n"
                 params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
                 req_id = f"warm-p-{uuid.uuid4()}"
-                stream = get_chat_engine().generate(
-                    prompt=warm_prompt,
-                    sampling_params=params,
-                    request_id=req_id,
-                    priority=1,
-                )
-                async for _ in stream:
-                    break
+                async with GLOBAL_VLLM_LOCK:
+                    stream = get_chat_engine().generate(
+                        prompt=warm_prompt,
+                        sampling_params=params,
+                        request_id=req_id,
+                        priority=1,
+                    )
+                    async for _ in stream:
+                        break
                 await ws.send_text(json.dumps({"type": "warmed", "segment": "persona_static", "bytes": len(static_prefix)}))
 
             elif msg["type"] == "warm_history":
@@ -599,14 +549,15 @@ async def ws_handler(ws: WebSocket):
                 warm_prompt = f"<|history|>\n{history_text.strip()}\n<|assistant|>\n"
                 params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
                 req_id = f"warm-h-{uuid.uuid4()}"
-                stream = get_chat_engine().generate(
-                    prompt=warm_prompt,
-                    sampling_params=params,
-                    request_id=req_id,
-                    priority=1,
-                )
-                async for _ in stream:
-                    break
+                async with GLOBAL_VLLM_LOCK:
+                    stream = get_chat_engine().generate(
+                        prompt=warm_prompt,
+                        sampling_params=params,
+                        request_id=req_id,
+                        priority=1,
+                    )
+                    async for _ in stream:
+                        break
                 await ws.send_text(json.dumps({"type": "warmed", "segment": "history", "bytes": len(history_text)}))
 
             elif msg["type"] == "set_persona":

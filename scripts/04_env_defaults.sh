@@ -43,9 +43,9 @@ export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
 export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 
 # vLLM engine selection; attention backend chosen below (FLASHINFER preferred)
-export VLLM_USE_V1=${VLLM_USE_V1:-0}
+export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-}
-export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+export ENFORCE_EAGER=${ENFORCE_EAGER:-1}
 export VLLM_ALLOW_LONG_MAX_MODEL_LEN=${VLLM_ALLOW_LONG_MAX_MODEL_LEN:-1}
 
 # Speed up subsequent installs: persist pip cache under repo (stop.sh keeps it by default)
