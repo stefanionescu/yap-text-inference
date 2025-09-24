@@ -15,7 +15,7 @@ export CHAT_MODEL=${CHAT_MODEL:-SicariusSicariiStuff/Impish_Nemo_12B}
 export TOOL_MODEL=${TOOL_MODEL:-MadeAgents/Hammer2.1-3b}
 
 # QUANTIZATION/KV_DTYPE will be set after GPU detection; defaults to L40-class (fp8/fp8)
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-6194}
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-6144}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 # Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
@@ -100,6 +100,17 @@ case "${GPU_NAME}" in
     if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
       export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B"
     fi
+    # L40S tuning: prefer eager and slightly smaller prefill for better TTFB
+    export ENFORCE_EAGER=${ENFORCE_EAGER:-1}
+    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
+    export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
+    export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+    # Stream prebuffer and hard timeouts suitable for L40S
+    export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
+    export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
+    export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
+    export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-20}
     ;;
   *H100*)
     if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi

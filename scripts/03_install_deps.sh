@@ -10,6 +10,8 @@ export PIP_ROOT_USER_ACTION=${PIP_ROOT_USER_ACTION:-ignore}
 export PIP_DISABLE_PIP_VERSION_CHECK=${PIP_DISABLE_PIP_VERSION_CHECK:-1}
 export PIP_NO_INPUT=${PIP_NO_INPUT:-1}
 export PIP_PREFER_BINARY=${PIP_PREFER_BINARY:-1}
+# Prefer AOT kernels for FlashInfer to avoid long first-run JIT compiles
+export FLASHINFER_ENABLE_AOT=${FLASHINFER_ENABLE_AOT:-1}
 
 # Ensure correct CUDA arch is visible during build steps (FlashInfer, etc.)
 if [ -z "${TORCH_CUDA_ARCH_LIST:-}" ]; then
