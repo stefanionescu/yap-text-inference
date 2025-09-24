@@ -28,14 +28,15 @@ export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
 # Optional tiny packet coalescer window (ms); 0 = off
 export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
-export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
+export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-1}
+export NUM_SPECULATIVE_TOKENS=${NUM_SPECULATIVE_TOKENS:-6}
 
 # Buffer-then-flush knobs for parallel tool router
 export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-400}
 export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
 
-# Text processing toggles
-export TEXTPROC_ENABLE=${TEXTPROC_ENABLE:-1}
+# Text processing toggles (disabled by default for optimal benchmarking)
+export TEXTPROC_ENABLE=${TEXTPROC_ENABLE:-0}
 export TEXTPROC_REMOVE_EMOJIS=${TEXTPROC_REMOVE_EMOJIS:-1}
 export TEXTPROC_CONVERT_NUMBERS=${TEXTPROC_CONVERT_NUMBERS:-1}
 
@@ -46,7 +47,7 @@ export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 # vLLM engine selection; attention backend chosen below (FLASHINFER preferred)
 export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-}
-export ENFORCE_EAGER=${ENFORCE_EAGER:-1}
+export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
 export VLLM_ALLOW_LONG_MAX_MODEL_LEN=${VLLM_ALLOW_LONG_MAX_MODEL_LEN:-1}
 
 # Speed up subsequent installs: persist pip cache under repo (stop.sh keeps it by default)
@@ -111,12 +112,12 @@ case "${GPU_NAME}" in
     if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
       export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B"
     fi
-    # L40S specific tuning
+    # L40S specific tuning - optimized for concurrency and performance
     if [[ "${GPU_NAME}" == *L40S* ]] || [[ "${GPU_NAME}" == *L40* ]]; then
-      export ENFORCE_EAGER=${ENFORCE_EAGER:-1}
+      export ENFORCE_EAGER=${ENFORCE_EAGER:-0}  # Enable CUDA graphs for better performance
       export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
       export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
-      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
+      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-768}  # Increased from 512
       export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
       # Stream prebuffer and hard timeouts suitable for L40S
       export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
