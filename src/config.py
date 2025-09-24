@@ -63,7 +63,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv(
         "MAX_NUM_BATCHED_TOKENS_CHAT" if is_chat else "MAX_NUM_BATCHED_TOKENS_TOOL",
-        "512" if is_chat else "256",
+        "768" if is_chat else "256",
     ))
 
     # Normalize/validate KV cache dtype  
@@ -85,8 +85,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         tensor_parallel_size=1,
         max_model_len=max_len,
         gpu_memory_utilization=gpu_frac,
-        # Force eager to avoid CUDA graph capture while stabilizing multi-engine concurrency
-        enforce_eager=True,
+        # Allow CUDA graphs for better performance
+        enforce_eager=False,
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=(

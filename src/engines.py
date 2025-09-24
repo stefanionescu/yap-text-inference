@@ -23,8 +23,8 @@ from .config import (
 _chat_engine: AsyncLLMEngine | None = None
 _tool_engine: AsyncLLMEngine | None = None
 
-# Global lock to serialize vLLM engine forward passes across instances
-GLOBAL_VLLM_LOCK = asyncio.Lock()
+# Lock to prevent concurrent engine construction (but not generation)
+_ENGINE_CONSTRUCTION_LOCK = asyncio.Lock()
 
 
 def _build_engines() -> Tuple[AsyncLLMEngine, AsyncLLMEngine]:
@@ -37,19 +37,25 @@ def _build_engines() -> Tuple[AsyncLLMEngine, AsyncLLMEngine]:
     return chat, tool
 
 
-def get_chat_engine() -> AsyncLLMEngine:
+async def get_chat_engine() -> AsyncLLMEngine:
     global _chat_engine, _tool_engine
     if _chat_engine is None or _tool_engine is None:
-        _chat, _tool = _build_engines()
-        _chat_engine, _tool_engine = _chat, _tool
+        async with _ENGINE_CONSTRUCTION_LOCK:
+            # Double-check pattern to avoid building engines twice
+            if _chat_engine is None or _tool_engine is None:
+                _chat, _tool = _build_engines()
+                _chat_engine, _tool_engine = _chat, _tool
     return _chat_engine  # type: ignore[return-value]
 
 
-def get_tool_engine() -> AsyncLLMEngine:
+async def get_tool_engine() -> AsyncLLMEngine:
     global _chat_engine, _tool_engine
     if _chat_engine is None or _tool_engine is None:
-        _chat, _tool = _build_engines()
-        _chat_engine, _tool_engine = _chat, _tool
+        async with _ENGINE_CONSTRUCTION_LOCK:
+            # Double-check pattern to avoid building engines twice
+            if _chat_engine is None or _tool_engine is None:
+                _chat, _tool = _build_engines()
+                _chat_engine, _tool_engine = _chat, _tool
     return _tool_engine  # type: ignore[return-value]
 
 
