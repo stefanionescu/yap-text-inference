@@ -16,7 +16,7 @@ export TOOL_MODEL=${TOOL_MODEL:-MadeAgents/Hammer2.1-3b}
 
 # QUANTIZATION/KV_DTYPE will be set after GPU detection; defaults to L40-class (fp8/fp8)
 # Cap context to match the model until RoPE/YaRN is fixed  
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-2048}
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-6144}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 # Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
