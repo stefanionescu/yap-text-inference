@@ -8,6 +8,16 @@ source "${SCRIPT_DIR}/utils.sh"
 HARD_RESET="${HARD_RESET:-0}"   # set HARD_RESET=1 to attempt nvidia-smi --gpu-reset
 PID_FILE="${ROOT_DIR}/server.pid"
 
+# Default to deepest cleanup unless explicitly opted out
+NUKE_ALL="${NUKE_ALL:-1}"
+
+# NUKE_ALL=1 implies deepest cleanup: venv + pip caches + home caches
+if [ "${NUKE_ALL:-0}" = "1" ]; then
+  export NUKE_VENV=1
+  export NUKE_PIP_CACHE=1
+  export NUKE_HOME_CACHE=1
+fi
+
 log_info "Wiping runtime deps and caches; keeping repo and container services alive"
 
 # 0) Stop server + ALL its children (vLLM workers) = free VRAM
@@ -151,11 +161,18 @@ find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev
 # 10) Temp directories
 rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* 2>/dev/null || true
 
+# 11) Optionally nuke entire home caches (heavy-handed)
+if [ "${NUKE_HOME_CACHE:-0}" = "1" ]; then
+  for C in "$HOME/.cache" "/root/.cache"; do
+    [ -d "$C" ] && { log_warn "NUKE_HOME_CACHE=1 removing $C"; rm -rf "$C" || true; }
+  done
+fi
+
 # 10) Legacy LMCache paths (still clean up if present)
 [ -f "/workspace/lmcache.yaml" ] && { log_info "Removing legacy /workspace/lmcache.yaml"; rm -f /workspace/lmcache.yaml || true; }
 [ -d "/workspace/lmcache_store" ] && { log_info "Removing legacy /workspace/lmcache_store"; rm -rf /workspace/lmcache_store || true; }
 
-# 11) Clean server artifacts
+# 12) Clean server artifacts
 rm -f "${ROOT_DIR}/server.log" "${ROOT_DIR}/server.pid" || true
 
 log_info "Done. Repo preserved. Jupyter/console/container remain running."
