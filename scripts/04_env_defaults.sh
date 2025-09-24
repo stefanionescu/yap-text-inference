@@ -28,8 +28,7 @@ export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
 # Optional tiny packet coalescer window (ms); 0 = off
 export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
-export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-1}
-export NUM_SPECULATIVE_TOKENS=${NUM_SPECULATIVE_TOKENS:-6}
+export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
 
 # Buffer-then-flush knobs for parallel tool router
 export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-400}
