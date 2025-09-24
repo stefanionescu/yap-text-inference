@@ -33,9 +33,6 @@ LMCACHE_REDIS_URI = ""
 ENABLE_SPECULATIVE = os.getenv("ENABLE_SPECULATIVE", "0") == "1"
 NUM_SPECULATIVE_TOKENS = int(os.getenv("NUM_SPECULATIVE_TOKENS", "5"))
 
-# Text processing toggles
-TEXTPROC_ENABLE = os.getenv("TEXTPROC_ENABLE", "1") == "1"
-
 # History and user limits (approximate tokens)
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
@@ -89,10 +86,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enforce_eager=False,
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
-        enable_prefix_caching=(
-            False if (kv_dtype.startswith("fp8") and os.getenv("DISABLE_PREFIX_CACHE_FOR_KV_FP8", "1") == "1")
-            else True
-        ),
+        enable_prefix_caching=True,  # Always enable prefix caching for performance
         speculative_config=speculative,
         # Weight quantization for chat; tools remain unquantized for stability
         quantization=(quant_value if is_chat else None),

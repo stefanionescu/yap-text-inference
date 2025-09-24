@@ -163,12 +163,9 @@ Models and GPU split
 
 LMCache: removed.
 
-Streaming/text processing
+Streaming
 - `STREAM_RATE_TOKS_PER_S` (default `0` → realtime; set >0 for fake typing)
 - `STREAM_FLUSH_MS` (default `0`; optional micro-coalescer in ms to reduce packet count)
-- `TEXTPROC_ENABLE=1` (enable cleaning)
-- `TEXTPROC_REMOVE_EMOJIS=1`
-- `TEXTPROC_CONVERT_NUMBERS=1` (time/math words)
 
 Token limits
 - `CHAT_MAX_OUT=200` (max assistant tokens per response)
@@ -252,15 +249,6 @@ Internally this selects `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`, s
   - `<|persona|> ...` and `<|history|> ...`
 Prefix caching reuses any repeated spans within the process. If you swap persona but keep the history bytes identical, history KV stays hot.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
-
-## Streaming text cleaning
-
-Enabled by default (`TEXTPROC_ENABLE=1`):
-- Normalizes quotes, converts tabs to spaces, `%` → ` percent`, removes ` ;)` and "wink wink"
-- Fixes two-space boundary to sentence period: `word  Word` → `word. Word`
-- Removes emojis and collapses newlines/whitespace
-- Adds final punctuation if missing (applied once at completion)
-- Optional: time/math conversions to words (`TEXTPROC_CONVERT_NUMBERS=1`)
 
 ## Optimizations in this stack
 
