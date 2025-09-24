@@ -1,14 +1,14 @@
 # Yap Text Inference Server
 
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It runs:
-- vLLM chat engine (e.g., Gemma-2-9B)
+- vLLM chat engine (Impish Nemo 12B family)
 - Hammer tool engine (e.g., Hammer-3B) for speculative decoding and tool-call detection
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
 - Tool-call-first flow (Hammer). If toolcall is detected, we return immediately; else we stream chat tokens.
 - Persona/history segmented prompts with LMCache KV reuse beyond prefixes.
-- Speculative decoding (Hammer → Gemma) to increase tok/s and reduce latency.
+- Speculative decoding (Hammer → chat model) to increase tok/s and reduce latency.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Streaming text cleaner (emoji filtering, punctuation fixes, optional numeric conversions).
 - Interrupts/barge-in via cancel or a new start.
@@ -33,18 +33,25 @@ This will:
 curl -s http://127.0.0.1:8000/healthz
 ```
 
-3) Stop (wipe runtime state but keep the repo and container services)
+3) Stop (deep clean by default; keeps the repo and container services)
 
 ```bash
 bash scripts/stop.sh
 ```
 
-Stop script behavior:
+Stop script behavior (defaults to deep clean):
 - Terminates only `uvicorn src.server:app`
-- Uninstalls compiled deps and purges pip cache from the repo venv
-- Removes common virtualenv dirs (`.venv`, `venv`, `env`, `.env`)
-- Clears HF caches, pip/torch caches, NVIDIA PTX JIT cache
+- Removes venv and purges pip caches
+- Clears repo-local caches (`.hf`, `.vllm_cache`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
+- Clears HF caches, torch caches, NVIDIA PTX JIT cache, and (by default) `$HOME/.cache`
 - Preserves the repository, the container, and services like Jupyter/web console
+
+Opt-out examples:
+
+```bash
+# Light clean (keep venv/home caches)
+NUKE_ALL=0 bash scripts/stop.sh
+```
 
 ## Warmup test client
 
@@ -128,10 +135,13 @@ Outputs: totals and p50/p95 for `toolcall_ttfb_ms`, `chat_ttfb_ms`, and `first_s
 ## Environment variables (common)
 
 Models and GPU split
-- `CHAT_MODEL` (default `recoilme/recoilme-gemma-2-9B-v0.5`)
+- `CHAT_MODEL` (default `SicariusSicariiStuff/Impish_Nemo_12B`)
 - `TOOL_MODEL` (default `MadeAgents/Hammer2.1-3b`)
-- `CHAT_GPU_FRAC` (default `0.82`), `TOOL_GPU_FRAC` (default `0.14`)
-- `KV_DTYPE` = `fp8` or `int8` (default `fp8`)
+- `CHAT_GPU_FRAC` (default `0.75`), `TOOL_GPU_FRAC` (default `0.20`)
+- `QUANTIZATION` = `none|fp8|gptq` (auto-detected; A100→`none`, L40/L40S/H100→`fp8`, 4‑bit mode→`gptq`)
+- `KV_DTYPE` = `fp8|int8` (auto; A100→`int8`, L40/L40S/H100→`fp8`)
+- `VLLM_ATTENTION_BACKEND` (auto; prefers `FLASHINFER` if available, else `XFORMERS`)
+- `dtype` is set to `auto` internally; no need to configure
 
 LMCache: removed.
 
@@ -148,7 +158,7 @@ Token limits
 - `USER_UTT_MAX_TOKENS=350` (keeps beginning of user utterance)
 - `EXACT_TOKEN_TRIM=1` (fast HF tokenizer for exact trimming; set `0` to disable)
 
-All of the above have sensible defaults in `scripts/05_env_defaults.sh`.
+All of the above have sensible defaults in `scripts/04_env_defaults.sh`.
 
 ## KV caching
 Using vLLM’s internal prefix caching with chunked prefill.
@@ -208,6 +218,16 @@ What you receive
 
 Barge-in: send `cancel` or a new `start` with the same `session_id`.
 
+## 4‑bit mode (GPTQ)
+
+Run with 4‑bit weights using GPTQ quantization and the 4‑bit model:
+
+```bash
+bash scripts/main.sh 4-bit
+```
+
+Internally this selects `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`, sets `QUANTIZATION=gptq`, `dtype=auto`, and `KV_DTYPE=int8` by default.
+
 ## Persona and history behavior
 
 - The chat prompt is structured as two explicit segments:
@@ -230,30 +250,27 @@ Enabled by default (`TEXTPROC_ENABLE=1`):
   - Continuous batching + PagedAttention
   - `enforce_eager` + `enable_chunked_prefill` for low TTFT
   - FP8/INT8 KV cache (`KV_DTYPE`) for speed/VRAM
+  - Attention backend auto-select: FLASHINFER preferred (falls back to XFORMERS)
   - Speculative decoding
 - Server
   - Toolcall-first routing (Hammer), then chat streaming
   - Realtime token streaming by default (no artificial pacing)
   - Interrupts via `abort_request`
 
-## GPU reservations (GiB caps)
+## GPU memory fractions
 
-We reserve GPU memory per-engine via fractions, but this repo also supports GiB caps:
+We reserve GPU memory per-engine via fractions only:
 
-- Set `CHAT_GPU_GIB` and/or `TOOL_GPU_GIB` to fixed GiB. Code converts GiB → fraction safely.
-- Fractions (`CHAT_GPU_FRAC`/`TOOL_GPU_FRAC`) act as fallback if GiB are unset.
-- Defaults in `scripts/05_env_defaults.sh` are tuned for a 44.5 GiB card:
-  - `CHAT_GPU_GIB=33.0`, `TOOL_GPU_GIB=7.0` (sum < total, leaves headroom)
-  - `CHAT_MAX_LEN=6194` to reduce KV load; tool max len set to 1024 internally.
-
-Example overrides:
+- Defaults: `CHAT_GPU_FRAC=0.75`, `TOOL_GPU_FRAC=0.20`.
+- Override as needed:
 
 ```bash
-export TOOL_GPU_GIB=7.0
-export CHAT_GPU_GIB=33.0
-unset TOOL_GPU_FRAC CHAT_GPU_FRAC
+export CHAT_GPU_FRAC=0.80
+export TOOL_GPU_FRAC=0.15
 bash scripts/stop.sh && bash scripts/main.sh
 ```
+
+Note: `CHAT_MAX_LEN` defaults to `8192`; adjust to trade off KV usage vs context.
 
 ## Limits and tradeoffsf
 
