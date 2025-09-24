@@ -66,10 +66,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         "512" if is_chat else "256",
     ))
 
-    # Normalize/validate KV cache dtype
-    kv_dtype = (KV_DTYPE or "").strip().lower()
-    if kv_dtype not in ("fp8", "fp8_e5m2", "fp8_e4m3", "int8", "auto"):
-        kv_dtype = "auto"  # fp16 safe fallback
+    # Normalize/validate KV cache dtype  
+    kv_dtype = (KV_DTYPE or "").strip().lower()  # empty => let vLLM decide
 
     # Determine weight quantization for chat engine only
     q_env = (os.getenv("QUANTIZATION", QUANTIZATION_DEFAULT) or "").strip().lower()
@@ -99,17 +97,21 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         # Weight quantization for chat; tools remain unquantized for stability
         quantization=(quant_value if is_chat else None),
         dtype="auto",
-        # Quantize KV cache per env
-        kv_cache_dtype=kv_dtype,
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
     )
-    # Add KV scale calculation for FP8 KV cache
-    if kv_dtype.startswith("fp8"):
-        # Enable dynamic k/v scale calculation for FP8 KV cache
-        kwargs["calculate_kv_scales"] = True
+    
+    # Only pass kv_cache_dtype if explicitly set AND V1 is off
+    # (V1 rejects --kv-cache-dtype and will throw NotImplementedError)
+    use_v1 = (os.getenv("VLLM_USE_V1", "1") == "1")
+    if (not use_v1) and kv_dtype:
+        kwargs["kv_cache_dtype"] = kv_dtype
+        # Add KV scale calculation for FP8 KV cache
+        if kv_dtype.startswith("fp8"):
+            # Enable dynamic k/v scale calculation for FP8 KV cache
+            kwargs["calculate_kv_scales"] = True
 
-    if os.getenv("VLLM_USE_V1", "1") == "1":
+    if use_v1:
         _kv_transfer = make_kv_transfer_config()
         if _kv_transfer is not None:
             kwargs["kv_transfer_config"] = _kv_transfer
