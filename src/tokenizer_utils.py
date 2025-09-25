@@ -1,3 +1,5 @@
+"""Fast tokenization utilities using HuggingFace tokenizers."""
+
 from __future__ import annotations
 
 from threading import Lock

@@ -1,3 +1,5 @@
+"""Engine management for vLLM chat and tool models."""
+
 from __future__ import annotations
 
 import os
