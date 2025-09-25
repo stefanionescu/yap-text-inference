@@ -10,6 +10,15 @@ records:
 - first_3_words_ms: time to first three words (if chat happens)
 
 Prints p50/p95 for each metric across completed requests. No intermediate logs.
+
+Environment Variables:
+- SERVER_WS_URL: WebSocket URL (default: ws://127.0.0.1:8000/ws)
+- YAP_API_KEY: API key for authentication (default: yap_token)
+- ASSISTANT_GENDER: female|male (default: female)
+- PERSONA_STYLE: persona style (default: flirty)
+
+Note: API key authentication is required. The client will automatically
+append the API key as a query parameter to all WebSocket connections.
 """
 
 from __future__ import annotations
@@ -78,6 +87,13 @@ def _choose_message(words: List[str]) -> str:
 
 async def _one_request(url: str, gender: str, style: str, message: str, timeout_s: float) -> Dict[str, Any]:
     async def _session() -> Dict[str, Any]:
+        # Add API key authentication to the URL
+        api_key = os.getenv("YAP_API_KEY", "yap_token")
+        if "?" in url:
+            auth_url = f"{url}&api_key={api_key}"
+        else:
+            auth_url = f"{url}?api_key={api_key}"
+        
         session_id = str(uuid.uuid4())
         start_payload: Dict[str, Any] = {
             "type": "start",
@@ -95,7 +111,7 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
         first_3_words_ms: Optional[float] = None
         final_text = ""
 
-        async with websockets.connect(url, max_queue=None) as ws:
+        async with websockets.connect(auth_url, max_queue=None) as ws:
             await ws.send(json.dumps(start_payload))
 
             while True:
@@ -139,7 +155,10 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
                     }
 
                 if t == "error":
-                    return {"ok": False, "error": msg.get("message")}
+                    error_code = msg.get("error_code", "")
+                    error_message = msg.get("message", "unknown error")
+                    # Include error code for better debugging
+                    return {"ok": False, "error": f"{error_code}: {error_message}" if error_code else error_message}
 
     try:
         return await asyncio.wait_for(_session(), timeout=timeout_s)
@@ -218,6 +237,13 @@ async def _main_async(args: argparse.Namespace) -> None:
         e = errs[0]
         emsg = e.get("error", "unknown error")
         print(f"example_error={emsg}")
+        
+        # Special hints for common authentication issues
+        if "authentication_failed" in emsg:
+            api_key = os.getenv("YAP_API_KEY", "yap_token")
+            print(f"hint: Check YAP_API_KEY environment variable (currently: '{api_key}')")
+        elif "server_at_capacity" in emsg:
+            print("hint: Server at capacity. Reduce concurrency (-c) or try again later.")
 
 
 def main() -> None:
