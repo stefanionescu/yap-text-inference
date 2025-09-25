@@ -10,6 +10,7 @@ import os
 # Ensure V1 engine flag is set before importing any vLLM modules in this process
 os.environ.setdefault("VLLM_USE_V1", "1")
 os.environ.setdefault("ENFORCE_EAGER", "0")
+
 from datetime import datetime
 from typing import Dict, Optional, Any
 
@@ -226,9 +227,7 @@ async def run_chat_stream(
     buf = []
     last_flush = time.perf_counter()
 
-    # Text processing removed - no longer needed
-
-    GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "30"))
+    GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "60"))
 
     async def _iter_stream():
         stream = (await get_chat_engine()).generate(

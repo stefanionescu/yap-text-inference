@@ -16,13 +16,13 @@ export TOOL_MODEL=${TOOL_MODEL:-MadeAgents/Hammer2.1-3b}
 
 # QUANTIZATION/KV_DTYPE will be set after GPU detection; defaults to L40-class (fp8/fp8)
 # Cap context to match the model until RoPE/YaRN is fixed  
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-6144}
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5760}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
-# Tool model max context length (Hammer). 2048 fits ~1.4k-token instructions comfortably.
-export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2048}
+# Tool model max context length (Hammer). 1536 fits ~1.1k-token instructions comfortably.
+export TOOL_MAX_LEN=${TOOL_MAX_LEN:-1536}
 # GPU memory fractions (weights + KV). Use fractions only.
-export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
+export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 # Realtime by default: 0 = no throttle; set >0 to enable fake typing
 export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
@@ -31,7 +31,7 @@ export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
 export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
 
 # Buffer-then-flush knobs for parallel tool router
-export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-400}
+export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
 export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
 
 # Token limits (approx)
@@ -108,8 +108,8 @@ case "${GPU_NAME}" in
     # L40S specific tuning - optimized for concurrency and performance
     if [[ "${GPU_NAME}" == *L40S* ]] || [[ "${GPU_NAME}" == *L40* ]]; then
       export ENFORCE_EAGER=${ENFORCE_EAGER:-0}  # Enable CUDA graphs for better performance
-      export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
-      export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.15}  # Reduced from 0.20 to free ~1-2GB
+      export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
+      export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
       export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}  # Reduced from 768 to lower FlashInfer workspace needs
       export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
       # Memory allocator: expandable segments for resilience to large workspace allocations
@@ -118,11 +118,11 @@ case "${GPU_NAME}" in
       export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
       export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
       export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
-      export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-20}
+      export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
     fi
     ;;
   *A100*)
-    if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi  # W8A16 on Ampere
+    if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=none; fi  # Use FP16/BF16 weights on A100
     # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
     if [ "${USER_SET_KV}" -eq 0 ]; then
       if [ "${VLLM_USE_V1:-1}" = "1" ]; then
@@ -135,10 +135,23 @@ case "${GPU_NAME}" in
     if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
       export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B"
     fi
+    # A100 specific tuning - optimized for performance and stability
+    export ENFORCE_EAGER=${ENFORCE_EAGER:-0}  # Enable CUDA graphs for better performance
+    export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}  # Optimal prefill chunk size for A100
+    export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+    # Memory allocator: expandable segments for resilience to large workspace allocations
+    export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    # Kernel scheduling predictability
+    export CUDA_DEVICE_MAX_CONNECTIONS=1
+    # Tool hard timeout optimized for A100 performance 
+    export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
+    export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
+    export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
+    export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
     ;;
   *)
     # Unknown GPU: conservative defaults
-    if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi
+    if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=none; fi
     # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
     if [ "${USER_SET_KV}" -eq 0 ]; then
       if [ "${VLLM_USE_V1:-1}" = "1" ]; then
@@ -154,14 +167,14 @@ esac
 if [ "${FORCE_4BIT:-0}" = "1" ]; then
   export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
   export QUANTIZATION=gptq
-  # KV cache quantization still applies to runtime KV; keep fp16 (auto) to be safe when mixing with GPTQ
+  # KV cache quantization still applies to runtime KV
   export KV_DTYPE=${KV_DTYPE:-auto}
   log_info "Overriding to 4-bit model (GPTQ): ${CHAT_MODEL} QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE}"
 fi
 
 # Ensure defaults if still unset (conservative behavior)
-export QUANTIZATION=${QUANTIZATION:-fp8}
-export KV_DTYPE=${KV_DTYPE:-fp8}  # Use fp8 as default for memory efficiency with prefix caching enabled
+export QUANTIZATION=${QUANTIZATION:-none}
+export KV_DTYPE=${KV_DTYPE:-auto}  # Use auto (fp16) as default for compatibility
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
 if [ -n "${DETECTED_GPU_NAME}" ]; then
