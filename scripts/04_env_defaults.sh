@@ -6,16 +6,20 @@ source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Setting environment defaults"
 
-USER_SET_CHAT_MODEL=0; if [ "${CHAT_MODEL+x}" = "x" ]; then USER_SET_CHAT_MODEL=1; fi
-USER_SET_QUANT=0; if [ "${QUANTIZATION+x}" = "x" ]; then USER_SET_QUANT=1; fi
-USER_SET_KV=0; if [ "${KV_DTYPE+x}" = "x" ]; then USER_SET_KV=1; fi
-USER_SET_ARCH=0; if [ "${TORCH_CUDA_ARCH_LIST+x}" = "x" ]; then USER_SET_ARCH=1; fi
+# Validate required environment variables are set by main.sh
+if [ -z "${CHAT_MODEL:-}" ]; then
+  log_warn "Error: CHAT_MODEL environment variable must be set by main.sh"
+  exit 1
+fi
 
-export CHAT_MODEL=${CHAT_MODEL:-SicariusSicariiStuff/Impish_Nemo_12B}
+if [ -z "${QUANTIZATION:-}" ]; then
+  log_warn "Error: QUANTIZATION environment variable must be set by main.sh"
+  exit 1
+fi
+
 export TOOL_MODEL=${TOOL_MODEL:-MadeAgents/Hammer2.1-3b}
 
-# QUANTIZATION/KV_DTYPE will be set after GPU detection; defaults to L40-class (fp8/fp8)
-# Cap context to match the model until RoPE/YaRN is fixed  
+# Context and output limits
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5760}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
@@ -72,138 +76,91 @@ else
   export VLLM_ATTENTION_BACKEND=XFORMERS
 fi
 
-# --- GPU auto-detection for quantization defaults ---
+# --- GPU detection and optimization ---
 GPU_NAME=""
 if command -v nvidia-smi >/dev/null 2>&1; then
   GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1 || true)
 fi
 export DETECTED_GPU_NAME="${GPU_NAME}"
 
-#
-# KV cache policy:
-#  - On Hopper/Ada (H100/L40S): allow FP8 KV (e5m2) with prefix caching enabled.
-#  - On Ampere (A100): prefer fp16 KV (auto). FP8 KV can be unstable; avoid by default.
-#
-case "${GPU_NAME}" in
-  *H100*|*L40S*|*L40*)
-    if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=fp8; fi
-    # On V1, --kv-cache-dtype is not supported, but we set KV_DTYPE=fp8 for our own prefix cache logic
-    if [ "${USER_SET_KV}" -eq 0 ]; then
-      if [ "${VLLM_USE_V1:-1}" = "1" ]; then
-        export KV_DTYPE=fp8  # Set to fp8 for memory efficiency
-      else
-        export KV_DTYPE=fp8_e5m2
-      fi
-    fi
-    if [ "${USER_SET_ARCH}" -eq 0 ]; then 
-      if [[ "${GPU_NAME}" == *H100* ]]; then
-        export TORCH_CUDA_ARCH_LIST=9.0
-      else
-        export TORCH_CUDA_ARCH_LIST=8.9  # L40S/L40
-      fi
-    fi
-    if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
-      export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B"
-    fi
-    # L40S specific tuning - optimized for concurrency and performance
-    if [[ "${GPU_NAME}" == *L40S* ]] || [[ "${GPU_NAME}" == *L40* ]]; then
-      export ENFORCE_EAGER=${ENFORCE_EAGER:-0}  # Enable CUDA graphs for better performance
-      export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
-      export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
-      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}  # Reduced from 768 to lower FlashInfer workspace needs
-      export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
-      # Memory allocator: expandable segments for resilience to large workspace allocations
-      export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-      # Stream prebuffer and hard timeouts suitable for L40S
-      export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
-      export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
-      export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
-      export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
-    fi
+# Set GPU-specific defaults based on quantization mode and GPU type
+case "${QUANTIZATION}" in
+  fp8)
+    # 8-bit mode optimizations
+    case "${GPU_NAME}" in
+      *H100*|*L40S*|*L40*)
+        export KV_DTYPE=${KV_DTYPE:-fp8}
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
+        if [[ "${GPU_NAME}" == *H100* ]]; then
+          export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
+        fi
+        # Hopper/Ada optimizations for fp8
+        export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+        export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
+        export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+        export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+        export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
+        export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
+        export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
+        export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
+        ;;
+      *A100*)
+        export KV_DTYPE=${KV_DTYPE:-auto}  # fp16 for A100 stability
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+        export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+        export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
+        export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+        export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+        export CUDA_DEVICE_MAX_CONNECTIONS=1
+        export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
+        export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
+        export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
+        export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
+        ;;
+      *)
+        # Unknown GPU: conservative fp8 defaults
+        export KV_DTYPE=${KV_DTYPE:-auto}
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+        ;;
+    esac
     ;;
-  *A100*)
-    if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=none; fi  # Use FP16/BF16 weights on A100
-    # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
-    if [ "${USER_SET_KV}" -eq 0 ]; then
-      if [ "${VLLM_USE_V1:-1}" = "1" ]; then
-        export KV_DTYPE=
-      else
-        export KV_DTYPE=auto
-      fi
-    fi
-    if [ "${USER_SET_ARCH}" -eq 0 ]; then export TORCH_CUDA_ARCH_LIST=8.0; fi
-    if [ "${USER_SET_CHAT_MODEL}" -eq 0 ] && [ "${CHAT_MODEL:-}" = "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
-      export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B"
-    fi
-    # A100 specific tuning - optimized for performance and stability
-    export ENFORCE_EAGER=${ENFORCE_EAGER:-0}  # Enable CUDA graphs for better performance
-    export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}  # Optimal prefill chunk size for A100
-    export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
-    # Memory allocator: expandable segments for resilience to large workspace allocations
-    export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-    # Kernel scheduling predictability
-    export CUDA_DEVICE_MAX_CONNECTIONS=1
-    # Tool hard timeout optimized for A100 performance 
-    export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
-    export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
-    export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
-    export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
-    ;;
-  *)
-    # Unknown GPU: conservative defaults
-    if [ "${USER_SET_QUANT}" -eq 0 ]; then export QUANTIZATION=none; fi
-    # On V1, --kv-cache-dtype is not supported. Use default (fp16/auto).
-    if [ "${USER_SET_KV}" -eq 0 ]; then
-      if [ "${VLLM_USE_V1:-1}" = "1" ]; then
-        export KV_DTYPE=
-      else
-        export KV_DTYPE=auto
-      fi
-    fi
+  gptq_marlin)
+    # 4-bit mode optimizations
+    case "${GPU_NAME}" in
+      *A100*)
+        # A100: Use V0 engine + INT8 KV for maximum long-context slots
+        export VLLM_USE_V1=0
+        export KV_DTYPE=${KV_DTYPE:-int8}
+        export VLLM_ATTENTION_BACKEND=XFORMERS
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+        log_info "A100 4-bit mode: V0 engine + INT8 KV for maximum context slots"
+        ;;
+      *H100*|*L40S*|*L40*)
+        # Hopper/Ada: Keep V1 engine + auto FP8 KV + FlashInfer
+        export VLLM_USE_V1=1
+        export KV_DTYPE=${KV_DTYPE:-fp8}
+        # VLLM_ATTENTION_BACKEND already set to FLASHINFER globally
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
+        if [[ "${GPU_NAME}" == *H100* ]]; then
+          export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
+        fi
+        log_info "Hopper/Ada 4-bit mode: V1 engine + auto FP8 KV with FlashInfer"
+        ;;
+      *)
+        # Unknown GPU: conservative approach (V0 + auto KV)
+        export VLLM_USE_V1=0
+        export KV_DTYPE=${KV_DTYPE:-auto}
+        export VLLM_ATTENTION_BACKEND=XFORMERS
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+        log_warn "Unknown GPU 4-bit mode: using conservative V0 + fp16 KV"
+        ;;
+    esac
     ;;
 esac
 
-# Force GPTQ 4-bit path when requested - GPU-specific optimizations
-if [ "${FORCE_4BIT:-0}" = "1" ]; then
-  export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
-  export QUANTIZATION=gptq_marlin
-  
-  # GPU-specific 4-bit optimizations for maximum memory efficiency
-  case "${GPU_NAME}" in
-    *A100*)
-      # A100: Use V0 engine + INT8 KV for maximum long-context slots
-      export VLLM_USE_V1=0  # V0 engine honors kv_cache_dtype
-      export KV_DTYPE=int8  # Halves KV memory vs fp16
-      export VLLM_ATTENTION_BACKEND=XFORMERS  # Safest for INT8 KV on A100
-      log_info "A100 4-bit mode: V0 engine + INT8 KV for maximum context slots"
-      ;;
-    *H100*|*L40S*|*L40*)
-      # Hopper/Ada: Keep V1 engine + auto FP8 KV + FlashInfer
-      export VLLM_USE_V1=1  # V1 auto-uses FP8 KV with FlashInfer
-      export KV_DTYPE=fp8   # Set for consistency, V1 will use FP8 automatically
-      # VLLM_ATTENTION_BACKEND already set to FLASHINFER globally
-      log_info "Hopper/Ada 4-bit mode: V1 engine + auto FP8 KV with FlashInfer"
-      ;;
-    *)
-      # Unknown GPU: conservative approach (V0 + auto KV)
-      export VLLM_USE_V1=0
-      export KV_DTYPE=auto  # fp16 fallback
-      export VLLM_ATTENTION_BACKEND=XFORMERS
-      log_warn "Unknown GPU 4-bit mode: using conservative V0 + fp16 KV"
-      ;;
-  esac
-  
-  log_info "Overriding to 4-bit model (GPTQ): ${CHAT_MODEL} QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE} ENGINE=V${VLLM_USE_V1:-1}"
-fi
-
-# Ensure defaults if still unset (conservative behavior)
-export QUANTIZATION=${QUANTIZATION:-none}
-export KV_DTYPE=${KV_DTYPE:-auto}  # Use auto (fp16) as default for compatibility
+# Final defaults if still unset
+export KV_DTYPE=${KV_DTYPE:-auto}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
-if [ -n "${DETECTED_GPU_NAME}" ]; then
-  log_info "Detected GPU: ${DETECTED_GPU_NAME} → QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE} TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
-else
-  log_warn "GPU not detected; using conservative defaults: QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE}"
-fi
+log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${CHAT_MODEL} QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE}"
 

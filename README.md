@@ -17,7 +17,17 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 1) Install deps and start the server
 
 ```bash
-bash scripts/main.sh
+bash scripts/main.sh <quantization> <model_name>
+```
+
+Examples:
+```bash
+# 8-bit quantization
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B
+
+# 4-bit quantization
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128
 ```
 
 This will:
@@ -231,15 +241,21 @@ What you receive
 
 Barge-in: send `cancel` or a new `start` with the same `session_id`.
 
-## 4‑bit mode (GPTQ)
+## Quantization modes
 
-Run with 4‑bit weights using GPTQ quantization and the 4‑bit model:
+The server supports two quantization modes that must be explicitly specified:
 
+**8-bit mode (FP8):**
 ```bash
-bash scripts/main.sh 4-bit
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B
 ```
 
-Internally this selects `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`, sets `QUANTIZATION=gptq`, `dtype=auto`, and `KV_DTYPE=auto` (fp16) by default.
+**4-bit mode (GPTQ):**
+```bash
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
+# or
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128
+```
 
 ## Persona and history behavior
 
