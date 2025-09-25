@@ -15,12 +15,12 @@ from prompts import (
     HAMMER_TASK_INSTRUCTION,
     HOW_TO_CHATS,
     LANGUAGE,
-    MAN_GENDER_INFO,
+    MAN_GENDER,
     PERSONALITIES,
     UNIQUE_FEATURES,
     USER_INFO,
     USER_PERSONAL_INFO,
-    WOMAN_GENDER_INFO,
+    WOMAN_GENDER,
 )
 
 
@@ -37,9 +37,9 @@ def compose_persona(
     )
 
     if gender == "man":
-        gender_info = MAN_GENDER_INFO.get(s, MAN_GENDER_INFO.get("wholesome", ""))
+        gender_info = MAN_GENDER
     else:
-        gender_info = WOMAN_GENDER_INFO.get(s, WOMAN_GENDER_INFO.get("wholesome", ""))
+        gender_info = WOMAN_GENDER
 
     persona_section = PERSONALITIES[s].format(gender_info=gender_info)
     how_to_chat = HOW_TO_CHATS[s]
@@ -92,9 +92,9 @@ def compose_persona_static(style: str, assistant_gender: str) -> str:
     gender = assistant_gender if assistant_gender in {"man", "woman"} else "woman"
 
     if gender == "man":
-        gender_info = MAN_GENDER_INFO.get(s, MAN_GENDER_INFO.get("wholesome", ""))
+        gender_info = MAN_GENDER
     else:
-        gender_info = WOMAN_GENDER_INFO.get(s, WOMAN_GENDER_INFO.get("wholesome", ""))
+        gender_info = WOMAN_GENDER
 
     persona_section = PERSONALITIES[s].format(gender_info=gender_info)
     how_to_chat = HOW_TO_CHATS[s]
