@@ -26,7 +26,6 @@ from .config import (
     CHAT_MAX_OUT,
     HISTORY_MAX_TOKENS,
     USER_UTT_MAX_TOKENS,
-    STREAM_RATE_TOKS_PER_S,
     TOOL_MAX_OUT,
 )
 from .engines import get_chat_engine, get_tool_engine
@@ -198,7 +197,6 @@ async def run_chat_stream(
     runtime_text: str,
     history_text: str,
     user_utt: str,
-    stream_rate: float,
     request_id: Optional[str] = None,
 ):
     req_id = request_id or f"chat-{uuid.uuid4()}"
@@ -392,7 +390,6 @@ async def ws_handler(ws: WebSocket):
                 else:
                     if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
                         history_text = trim_text_to_token_limit(history_text, max_tokens=HISTORY_MAX_TOKENS, keep="end")
-                rate = float(msg.get("stream_rate_toks_per_s", STREAM_RATE_TOKS_PER_S))
 
                 # 1) Tool-first sequential: decide quickly, then stream chat if no tool
                 async def _run_start():
@@ -464,7 +461,6 @@ async def ws_handler(ws: WebSocket):
                         runtime_text,
                         history_text,
                         user_utt,
-                        rate,
                         request_id=chat_req_id,
                     ):
                         await ws.send_text(json.dumps({"type": "token", "text": chunk}))

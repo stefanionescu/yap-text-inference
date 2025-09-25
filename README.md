@@ -164,7 +164,6 @@ Models and GPU split
 LMCache: removed.
 
 Streaming
-- `STREAM_RATE_TOKS_PER_S` (default `0` → realtime; set >0 for fake typing)
 - `STREAM_FLUSH_MS` (default `0`; optional micro-coalescer in ms to reduce packet count)
 
 Token limits
@@ -193,7 +192,6 @@ Messages you send
   "user_identity": "woman|man|non-binary",
   "history_text": "...prior transcript...",
   "user_utterance": "hey—open spotify and queue my mix",
-  "stream_rate_toks_per_s": 10
 }
 ```
 
