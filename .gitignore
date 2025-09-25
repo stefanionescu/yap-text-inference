@@ -18,18 +18,10 @@ logs/
 # OS specific files
 .DS_Store
 .DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
 
 # IDE files
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# Test files
-*.wav
-audio/
+.cursor/
