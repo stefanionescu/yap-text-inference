@@ -17,17 +17,19 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 1) Install deps and start the server
 
 ```bash
-bash scripts/main.sh <quantization> <model_name>
+bash scripts/main.sh <quantization> <chat_model> <tool_model>
 ```
 
 Examples:
 ```bash
-# 8-bit quantization
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B
+# 8-bit quantization with 1.5B tool model
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# 4-bit quantization
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128
+# 8-bit quantization with 3B tool model
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+
+# 4-bit quantization with 3B tool model
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
 ```
 
 This will:
@@ -162,11 +164,11 @@ Outputs: totals and p50/p95 for `toolcall_ttfb_ms`, `chat_ttfb_ms`, and `first_s
 ## Environment variables (common)
 
 Models and GPU split
-- `CHAT_MODEL` (default `SicariusSicariiStuff/Impish_Nemo_12B`)
-- `TOOL_MODEL` (default `MadeAgents/Hammer2.1-3b`)
-- `CHAT_GPU_FRAC` (default `0.75`), `TOOL_GPU_FRAC` (default `0.20`)
-- `QUANTIZATION` = `none|fp8|gptq` (auto-detected; A100→`fp8` (W8A16), L40/L40S/H100→`fp8` (W8A8), 4‑bit mode→`gptq`)
-- `KV_DTYPE` = `fp8_e5m2|auto` (auto; A100→`auto` (fp16), H100/L40S→`fp8_e5m2`)
+- `CHAT_MODEL` (required: `SicariusSicariiStuff/Impish_Nemo_12B` for 8bit or GPTQ variants for 4bit)
+- `TOOL_MODEL` (required: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
+- `CHAT_GPU_FRAC` (default `0.70`), `TOOL_GPU_FRAC` (default `0.20`)
+- `QUANTIZATION` (required: `fp8` for 8bit mode, `gptq_marlin` for 4bit mode)
+- `KV_DTYPE` = `fp8|auto|int8` (auto-selected based on GPU and quantization mode)
 - `VLLM_ATTENTION_BACKEND` (auto; prefers `FLASHINFER` if available, else `XFORMERS`)
 - `dtype` is set to `auto` internally; no need to configure
 
@@ -247,15 +249,23 @@ The server supports two quantization modes that must be explicitly specified:
 
 **8-bit mode (FP8):**
 ```bash
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B
+# With 1.5B tool model (lower VRAM usage)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
+
+# With 3B tool model (better tool calling performance) 
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 ```
 
 **4-bit mode (GPTQ):**
 ```bash
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-1.5b
 # or
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
 ```
+
+The [Hammer2.1 tool models](https://huggingface.co/MadeAgents/Hammer2.1-1.5b) provide strong function calling capability:
+- **1.5B model**: Lower VRAM usage, good for resource-constrained environments
+- **3B model**: Better function calling performance, recommended for production
 
 ## Persona and history behavior
 

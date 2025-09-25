@@ -10,46 +10,51 @@ log_info "Starting Yap Text Inference Server"
 
 # Usage function
 usage() {
-  echo "Usage: $0 <quantization> <model_name>"
+  echo "Usage: $0 <quantization> <chat_model> <tool_model>"
   echo ""
   echo "Quantization options:"
   echo "  8bit  - Use 8-bit quantization (fp8)"
   echo "  4bit  - Use 4-bit quantization (GPTQ)"
   echo ""
-  echo "Model options:"
+  echo "Chat model options:"
   echo "  For 8bit: SicariusSicariiStuff/Impish_Nemo_12B"
   echo "  For 4bit: SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
   echo "           SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
   echo ""
+  echo "Tool model options:"
+  echo "  MadeAgents/Hammer2.1-1.5b"
+  echo "  MadeAgents/Hammer2.1-3b"
+  echo ""
   echo "Examples:"
-  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B"
-  echo "  $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
-  echo "  $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
+  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b"
+  echo "  $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b"
   exit 1
 }
 
-# Check if we have exactly 2 arguments
-if [ $# -ne 2 ]; then
-  log_warn "Error: Must specify quantization and model name"
+# Check if we have exactly 3 arguments
+if [ $# -ne 3 ]; then
+  log_warn "Error: Must specify quantization, chat model, and tool model"
   usage
 fi
 
 QUANT_TYPE="$1"
-MODEL_NAME="$2"
+CHAT_MODEL_NAME="$2"
+TOOL_MODEL_NAME="$3"
 
-# Validate quantization type
+# Validate quantization type and chat model
 case "${QUANT_TYPE}" in
   8bit)
     export QUANTIZATION=fp8
-    if [ "${MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
+    if [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
       log_warn "Error: For 8bit quantization, must use: SicariusSicariiStuff/Impish_Nemo_12B"
       usage
     fi
     ;;
   4bit)
     export QUANTIZATION=gptq_marlin
-    if [ "${MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64" ] && 
-       [ "${MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128" ]; then
+    if [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64" ] && 
+       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128" ]; then
       log_warn "Error: For 4bit quantization, must use one of:"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
@@ -62,8 +67,24 @@ case "${QUANT_TYPE}" in
     ;;
 esac
 
-export CHAT_MODEL="${MODEL_NAME}"
-log_info "Configuration: ${QUANT_TYPE} quantization with model ${MODEL_NAME}"
+# Validate tool model
+case "${TOOL_MODEL_NAME}" in
+  MadeAgents/Hammer2.1-1.5b|MadeAgents/Hammer2.1-3b)
+    # Valid tool model
+    ;;
+  *)
+    log_warn "Error: Invalid tool model '${TOOL_MODEL_NAME}'. Must be one of:"
+    log_warn "  MadeAgents/Hammer2.1-1.5b"
+    log_warn "  MadeAgents/Hammer2.1-3b"
+    usage
+    ;;
+esac
+
+export CHAT_MODEL="${CHAT_MODEL_NAME}"
+export TOOL_MODEL="${TOOL_MODEL_NAME}"
+log_info "Configuration: ${QUANT_TYPE} quantization"
+log_info "  Chat model: ${CHAT_MODEL_NAME}"
+log_info "  Tool model: ${TOOL_MODEL_NAME}"
 
 bash "${SCRIPT_DIR}/01_check_gpu.sh"
 bash "${SCRIPT_DIR}/02_python_env.sh"

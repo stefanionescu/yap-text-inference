@@ -12,12 +12,15 @@ if [ -z "${CHAT_MODEL:-}" ]; then
   exit 1
 fi
 
+if [ -z "${TOOL_MODEL:-}" ]; then
+  log_warn "Error: TOOL_MODEL environment variable must be set by main.sh"
+  exit 1
+fi
+
 if [ -z "${QUANTIZATION:-}" ]; then
   log_warn "Error: QUANTIZATION environment variable must be set by main.sh"
   exit 1
 fi
-
-export TOOL_MODEL=${TOOL_MODEL:-MadeAgents/Hammer2.1-3b}
 
 # Context and output limits
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5760}
@@ -162,5 +165,9 @@ esac
 export KV_DTYPE=${KV_DTYPE:-auto}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
-log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${CHAT_MODEL} QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE}"
+log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
+log_info "  Chat model: ${CHAT_MODEL}"
+log_info "  Tool model: ${TOOL_MODEL}"
+log_info "  Quantization: ${QUANTIZATION}"
+log_info "  KV dtype: ${KV_DTYPE}"
 

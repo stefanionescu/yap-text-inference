@@ -9,7 +9,7 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 # ----------------- Environment / Defaults -----------------
 
 CHAT_MODEL = os.getenv("CHAT_MODEL")
-TOOL_MODEL = os.getenv("TOOL_MODEL", "MadeAgents/Hammer2.1-3b")
+TOOL_MODEL = os.getenv("TOOL_MODEL")
 
 CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
 TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
@@ -20,10 +20,28 @@ QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gpt
 # Validate required configuration
 if not CHAT_MODEL:
     raise ValueError("CHAT_MODEL environment variable is required")
+if not TOOL_MODEL:
+    raise ValueError("TOOL_MODEL environment variable is required")
 if not QUANTIZATION:
     raise ValueError("QUANTIZATION environment variable is required")
 if QUANTIZATION not in ["fp8", "gptq_marlin"]:
     raise ValueError(f"QUANTIZATION must be 'fp8' or 'gptq_marlin', got: {QUANTIZATION}")
+
+# Validate allowed models
+ALLOWED_CHAT_MODELS = [
+    "SicariusSicariiStuff/Impish_Nemo_12B",
+    "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64", 
+    "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
+]
+ALLOWED_TOOL_MODELS = [
+    "MadeAgents/Hammer2.1-1.5b",
+    "MadeAgents/Hammer2.1-3b"
+]
+
+if CHAT_MODEL not in ALLOWED_CHAT_MODELS:
+    raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
+if TOOL_MODEL not in ALLOWED_TOOL_MODELS:
+    raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5760"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
