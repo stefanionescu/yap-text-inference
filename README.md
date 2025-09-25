@@ -22,10 +22,13 @@ bash scripts/main.sh <quantization> <chat_model> <tool_model>
 
 Examples:
 ```bash
-# 8-bit quantization with 1.5B tool model (sequential mode - default)
+# 8-bit quantization with 12B general model (sequential mode - default)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# 8-bit quantization with 3B tool model (concurrent mode for faster response)
+# 8-bit quantization with 8B roleplay model (good for creative/RP tasks)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
+
+# Concurrent mode for faster response
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
 # 4-bit quantization with 3B tool model (concurrent mode)
@@ -62,7 +65,15 @@ tail -F server.log
 curl -s http://127.0.0.1:8000/healthz
 ```
 
-3) Stop (deep clean by default; keeps the repo and container services)
+3) Monitor active sessions (useful for Pipecat deployments)
+
+```bash
+curl -s http://127.0.0.1:8000/sessions
+```
+
+Returns information about all active user sessions, including which users have ongoing requests.
+
+4) Stop (deep clean by default; keeps the repo and container services)
 
 ```bash
 bash scripts/stop.sh
@@ -124,6 +135,13 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Ne
 
 # Terminal 2: Test the same query
 python3 test/warmup.py "write a simple hello world function"
+
+# Test the roleplay-optimized model
+# Terminal 1: Start server with Wingless_Imp_8B
+bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
+
+# Terminal 2: Test creative/roleplay query
+python3 test/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
 ```
 
 The concurrent mode should show lower `ttfb_ms` (time to first byte) for chat responses that don't involve tool calls.
@@ -192,6 +210,18 @@ For chat-heavy workloads, concurrent mode typically shows:
 - ⚠️ Slightly higher resource usage
 - ⚠️ May show higher `toolcall_ttfb_ms` when tools are actually needed
 
+## Pipecat Integration
+
+The server is designed for seamless [Pipecat](https://github.com/pipecat-ai/pipecat) integration with persistent connections and real-time interruption:
+
+**Key features for Pipecat:**
+- ✅ **Long-term WebSocket connections** - One connection per user, stays open indefinitely
+- ✅ **Session-based user assignment** - Each user gets a unique `session_id` 
+- ✅ **Automatic barge-in** - New messages cancel ongoing generation (perfect for voice interruption)
+- ✅ **Persistent session state** - Persona, settings maintained across requests
+- ✅ **Real-time streaming** - Tokens stream immediately with minimal buffering
+- ✅ **Concurrent model support** - Optional concurrent mode for lowest latency
+
 Environment alternatives:
 
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
@@ -203,7 +233,9 @@ Outputs: totals and p50/p95 for `toolcall_ttfb_ms`, `chat_ttfb_ms`, and `first_s
 ## Environment variables (common)
 
 Models and GPU split
-- `CHAT_MODEL` (required: `SicariusSicariiStuff/Impish_Nemo_12B` for 8bit or GPTQ variants for 4bit)
+- `CHAT_MODEL` (required):
+  - For 8bit: `SicariusSicariiStuff/Impish_Nemo_12B` or `SicariusSicariiStuff/Wingless_Imp_8B`
+  - For 4bit: `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64` or `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`
 - `TOOL_MODEL` (required: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
 - `CHAT_GPU_FRAC` (default `0.70`), `TOOL_GPU_FRAC` (default `0.20`)
 - `QUANTIZATION` (required: `fp8` for 8bit mode, `gptq_marlin` for 4bit mode)
@@ -231,6 +263,15 @@ All of the above have sensible defaults in `scripts/04_env_defaults.sh`.
 Using vLLM’s internal prefix caching with chunked prefill.
 
 ## API — WebSocket `/ws`
+
+The server maintains persistent WebSocket connections with session-based user assignment. Each client provides a `session_id` for user identification, and the connection can handle multiple requests over time with automatic interruption support.
+
+**Connection lifecycle:**
+1. Client connects to `ws://server:8000/ws`
+2. Client sends `start` message with `session_id` to assign/identify user  
+3. Connection stays open for multiple requests
+4. Session state (persona, settings) persists across requests
+5. New `start` messages automatically cancel previous requests (barge-in)
 
 Messages you send
 - Start a turn
@@ -282,7 +323,27 @@ What you receive
 { "type": "done", "usage": {} }
 ```
 
-Barge-in: send `cancel` or a new `start` with the same `session_id`.
+### Barge-in and cancellation
+
+The server supports real-time interruption for natural conversation flow:
+
+**Explicit cancellation:**
+```json
+{"type": "cancel"}
+```
+
+**Automatic barge-in (recommended for Pipecat):**
+```json
+{"type": "start", "session_id": "user123", "user_utterance": "new message"}
+```
+- New `start` messages automatically cancel any ongoing generation for that session
+- Perfect for real-time conversation interruption when users start speaking
+- Both chat and tool models are immediately aborted
+- New response begins streaming right away
+
+**Response handling:**
+- Cancelled requests return: `{"type": "done", "cancelled": true}`
+- New requests stream normally with `token` messages
 
 ## Quantization modes
 
@@ -290,8 +351,11 @@ The server supports two quantization modes that must be explicitly specified:
 
 **8-bit mode (FP8):**
 ```bash
-# Sequential mode (default)
+# 12B model
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
+
+# 8B model
+bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
 
 # Concurrent mode for lower latency
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
@@ -305,6 +369,15 @@ bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 Mad
 # Concurrent mode  
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
 ```
+
+**Available chat models:**
+- **[Impish_Nemo_12B](https://huggingface.co/SicariusSicariiStuff/Impish_Nemo_12B)**: 12B parameters, general-purpose chat model
+- **[Wingless_Imp_8B](https://huggingface.co/SicariusSicariiStuff/Wingless_Imp_8B)**: 8B parameters, optimized for roleplay and creative writing
+  - ✅ Highest rated 8B model in external benchmarks  
+  - ✅ High IFeval score (74.30) with medium-low censorship
+  - ✅ Excellent for roleplay with internet RP format (`*action* speech *narration*`)
+  - ✅ Strong creative writing capabilities with coherent long-context performance
+  - ✅ Lower VRAM usage than 12B models
 
 The [Hammer2.1 tool models](https://huggingface.co/MadeAgents/Hammer2.1-1.5b) provide strong function calling capability:
 - **1.5B model**: Lower VRAM usage, good for resource-constrained environments
@@ -321,8 +394,11 @@ The server supports two model calling modes:
 - Good for most use cases
 
 ```bash
-# Sequential mode (default)
+# Sequential mode (default - general purpose)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+
+# Sequential mode (roleplay/creative optimized)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-3b
 ```
 
 **Concurrent mode:**
