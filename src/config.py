@@ -8,14 +8,22 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 
 # ----------------- Environment / Defaults -----------------
 
-CHAT_MODEL = os.getenv("CHAT_MODEL", "SicariusSicariiStuff/Impish_Nemo_12B")
+CHAT_MODEL = os.getenv("CHAT_MODEL")
 TOOL_MODEL = os.getenv("TOOL_MODEL", "MadeAgents/Hammer2.1-3b")
 
-CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.75"))
+CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
 TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
-QUANTIZATION_DEFAULT = os.getenv("QUANTIZATION", "none")  # 'none' | 'fp8' | 'gptq_marlin'
+QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq_marlin'
+
+# Validate required configuration
+if not CHAT_MODEL:
+    raise ValueError("CHAT_MODEL environment variable is required")
+if not QUANTIZATION:
+    raise ValueError("QUANTIZATION environment variable is required")
+if QUANTIZATION not in ["fp8", "gptq_marlin"]:
+    raise ValueError(f"QUANTIZATION must be 'fp8' or 'gptq_marlin', got: {QUANTIZATION}")
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5760"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
@@ -56,17 +64,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     # Normalize/validate KV cache dtype  
     kv_dtype = (KV_DTYPE or "").strip().lower()  # empty => let vLLM decide
 
-    # Determine weight quantization for chat engine only
-    q_env = (os.getenv("QUANTIZATION", QUANTIZATION_DEFAULT) or "").strip().lower()
-    quant_value: str | None
-    if q_env in ("", "none", "off", "no"):
-        quant_value = None
-    else:
-        # Allow 'fp8', 'gptq', or 'gptq_marlin'
-        if q_env in ("gptq", "gptq_marlin"):
-            quant_value = q_env
-        else:
-            quant_value = "fp8"
+    # Use the validated quantization setting
+    quant_value = QUANTIZATION if is_chat else None
 
     # Build kwargs for V1 engine.
     kwargs = dict(
