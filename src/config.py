@@ -14,13 +14,13 @@ TOOL_MODEL = os.getenv("TOOL_MODEL", "MadeAgents/Hammer2.1-3b")
 CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.75"))
 TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 
-KV_DTYPE = os.getenv("KV_DTYPE", "fp8")  # 'fp8' or 'int8'
-QUANTIZATION_DEFAULT = os.getenv("QUANTIZATION", "fp8")  # 'fp8' | 'none' | 'gptq'
+KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
+QUANTIZATION_DEFAULT = os.getenv("QUANTIZATION", "none")  # 'none' | 'fp8' | 'gptq'
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "6144"))
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5760"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
-TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "2048"))
+TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "1536"))
 
 # 0 = no throttling (realtime). Only set >0 if you want fake typing.
 STREAM_RATE_TOKS_PER_S = float(os.getenv("STREAM_RATE_TOKS_PER_S", "0"))

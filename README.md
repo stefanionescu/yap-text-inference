@@ -276,7 +276,7 @@ export TOOL_GPU_FRAC=0.15
 bash scripts/stop.sh && bash scripts/main.sh
 ```
 
-Note: `CHAT_MAX_LEN` defaults to `6144`; adjust to trade off KV usage vs context.
+Note: `CHAT_MAX_LEN` defaults to `5760`; adjust to trade off KV usage vs context.
 
 ## Limits and tradeoffsf
 
