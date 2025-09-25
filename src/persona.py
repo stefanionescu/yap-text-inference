@@ -14,7 +14,6 @@ from prompts import (
     HOW_TO_CHATS,
     LANGUAGE,
     MAN_GENDER_INFO,
-    MODEL_SPECIFIC_FIXES,
     PERSONALITIES,
     UNIQUE_FEATURES,
     USER_INFO,
@@ -55,7 +54,6 @@ def compose_persona(
     external_context = EXTERNAL_CONTEXT.format(date_time=now_str)
 
     parts = [
-        MODEL_SPECIFIC_FIXES,
         persona_section,
         how_to_chat,
         avoid_section,
@@ -104,7 +102,6 @@ def compose_persona_static(style: str, assistant_gender: str) -> str:
     features_section = FEATURES.format(answer_type=ANSWER_TYPES[s])
 
     parts = [
-        MODEL_SPECIFIC_FIXES,
         persona_section,
         how_to_chat,
         avoid_section,
