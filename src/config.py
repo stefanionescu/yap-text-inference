@@ -34,6 +34,7 @@ ALLOWED_CHAT_MODELS = [
     "SicariusSicariiStuff/Impish_Nemo_12B",
     "SicariusSicariiStuff/Wingless_Imp_8B",
     "SicariusSicariiStuff/Impish_Mind_8B",
+    "SicariusSicariiStuff/Impish_LLAMA_4B",
     "kyx0r/Neona-12B",
     "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64", 
