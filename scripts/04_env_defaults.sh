@@ -165,9 +165,15 @@ esac
 export KV_DTYPE=${KV_DTYPE:-auto}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
+CONCURRENT_STATUS="sequential"
+if [ "${CONCURRENT_MODEL_CALL:-0}" = "1" ]; then
+  CONCURRENT_STATUS="concurrent"
+fi
+
 log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 log_info "  Chat model: ${CHAT_MODEL}"
 log_info "  Tool model: ${TOOL_MODEL}"
 log_info "  Quantization: ${QUANTIZATION}"
 log_info "  KV dtype: ${KV_DTYPE}"
+log_info "  Model calls: ${CONCURRENT_STATUS}"
 
