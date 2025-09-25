@@ -26,11 +26,13 @@ export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 # Optional tiny packet coalescer window (ms); 0 = off
 export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
-export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
 
 # Buffer-then-flush knobs for parallel tool router
 export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
 export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
+
+# Concurrent model calling mode: 0=sequential (default), 1=concurrent
+export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-0}
 
 # Token limits (approx)
 export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
