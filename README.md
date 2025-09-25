@@ -445,8 +445,17 @@ bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer
 # 8B highest rated uncensored model  
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-1.5b
 
+# 5B exceptional roleplay model (2nd highest rated in 3-6B category)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Eximius_Persona_5B MadeAgents/Hammer2.1-1.5b
+
 # 4B compact roleplay model (great for resource-constrained environments)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-1.5b
+
+# 3B fiendish roleplay model (specialized for creative writing)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hammer2.1-1.5b
+
+# 24B flagship model (ultimate performance)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Magic_24B MadeAgents/Hammer2.1-3b
 
 # Concurrent mode for lower latency
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
@@ -454,8 +463,14 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Ne
 
 **4-bit mode (GPTQ):**
 ```bash
-# Sequential mode
+# Sequential mode - 12B model
 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-1.5b
+
+# Sequential mode - 24B flagship model (4-bit)
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Magic_24B_GPTQ_4-bit-32 MadeAgents/Hammer2.1-3b
+
+# Sequential mode - 3B fiendish roleplay (4-bit)
+bash scripts/main.sh 4bit SicariusSicariiStuff/Fiendish_LLAMA_3B_GPTQ-4-bit-128 MadeAgents/Hammer2.1-1.5b
 
 # Concurrent mode  
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
@@ -481,8 +496,17 @@ bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer
 # Sequential mode (highest rated uncensored)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-3b
 
+# Sequential mode (flagship 24B model)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Magic_24B MadeAgents/Hammer2.1-3b
+
+# Sequential mode (exceptional 5B roleplay)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Eximius_Persona_5B MadeAgents/Hammer2.1-3b
+
 # Sequential mode (compact 4B roleplay)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-3b
+
+# Sequential mode (creative 3B roleplay)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hammer2.1-3b
 ```
 
 **Concurrent mode:**

@@ -32,13 +32,18 @@ if QUANTIZATION not in ["fp8", "gptq_marlin"]:
 # Validate allowed models
 ALLOWED_CHAT_MODELS = [
     "SicariusSicariiStuff/Impish_Nemo_12B",
+    "SicariusSicariiStuff/Impish_Magic_24B",
     "SicariusSicariiStuff/Wingless_Imp_8B",
     "SicariusSicariiStuff/Impish_Mind_8B",
+    "SicariusSicariiStuff/Eximius_Persona_5B",
     "SicariusSicariiStuff/Impish_LLAMA_4B",
+    "SicariusSicariiStuff/Fiendish_LLAMA_3B",
     "kyx0r/Neona-12B",
     "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64", 
-    "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
+    "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
+    "SicariusSicariiStuff/Impish_Magic_24B_GPTQ_4-bit-32",
+    "SicariusSicariiStuff/Fiendish_LLAMA_3B_GPTQ-4-bit-128"
 ]
 ALLOWED_TOOL_MODELS = [
     "MadeAgents/Hammer2.1-1.5b",
@@ -89,7 +94,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv(
         "MAX_NUM_BATCHED_TOKENS_CHAT" if is_chat else "MAX_NUM_BATCHED_TOKENS_TOOL",
-        "768" if is_chat else "256",
+        "512" if is_chat else "256",
     ))
 
     # Normalize/validate KV cache dtype  
