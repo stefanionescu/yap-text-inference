@@ -70,8 +70,11 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     if q_env in ("", "none", "off", "no"):
         quant_value = None
     else:
-        # Allow 'fp8' or 'gptq'
-        quant_value = "gptq_marlin" if q_env == "gptq" else "fp8"
+        # Allow 'fp8', 'gptq', or 'gptq_marlin'
+        if q_env in ("gptq", "gptq_marlin"):
+            quant_value = q_env
+        else:
+            quant_value = "fp8"
 
     # Build kwargs for V1 engine.
     kwargs = dict(
