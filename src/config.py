@@ -15,7 +15,7 @@ CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.75"))
 TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
-QUANTIZATION_DEFAULT = os.getenv("QUANTIZATION", "none")  # 'none' | 'fp8' | 'gptq'
+QUANTIZATION_DEFAULT = os.getenv("QUANTIZATION", "none")  # 'none' | 'fp8' | 'gptq_marlin'
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5760"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
@@ -71,7 +71,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         quant_value = None
     else:
         # Allow 'fp8' or 'gptq'
-        quant_value = "gptq" if q_env == "gptq" else "fp8"
+        quant_value = "gptq_marlin" if q_env == "gptq" else "fp8"
 
     # Build kwargs for V1 engine.
     kwargs = dict(
