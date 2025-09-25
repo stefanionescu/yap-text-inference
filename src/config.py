@@ -30,6 +30,7 @@ if QUANTIZATION not in ["fp8", "gptq_marlin"]:
 # Validate allowed models
 ALLOWED_CHAT_MODELS = [
     "SicariusSicariiStuff/Impish_Nemo_12B",
+    "SicariusSicariiStuff/Wingless_Imp_8B",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64", 
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
 ]

@@ -17,7 +17,8 @@ usage() {
   echo "  4bit  - Use 4-bit quantization (GPTQ)"
   echo ""
   echo "Chat model options:"
-  echo "  For 8bit: SicariusSicariiStuff/Impish_Nemo_12B"
+  echo "  For 8bit: SicariusSicariiStuff/Impish_Nemo_12B (12B, general purpose)"
+  echo "           SicariusSicariiStuff/Wingless_Imp_8B (8B, roleplay/creative)"
   echo "  For 4bit: SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
   echo "           SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
   echo ""
@@ -31,6 +32,9 @@ usage() {
   echo "Examples:"
   echo "  # Sequential mode (default)"
   echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo ""
+  echo "  # 8B roleplay model"
+  echo "  $0 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b"
   echo ""
   echo "  # Concurrent mode for lower latency"
   echo "  CONCURRENT_MODEL_CALL=1 $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b"
@@ -54,8 +58,11 @@ TOOL_MODEL_NAME="$3"
 case "${QUANT_TYPE}" in
   8bit)
     export QUANTIZATION=fp8
-    if [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B" ]; then
-      log_warn "Error: For 8bit quantization, must use: SicariusSicariiStuff/Impish_Nemo_12B"
+    if [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B" ] && 
+       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Wingless_Imp_8B" ]; then
+      log_warn "Error: For 8bit quantization, must use one of:"
+      log_warn "  SicariusSicariiStuff/Impish_Nemo_12B (12B, general purpose)"
+      log_warn "  SicariusSicariiStuff/Wingless_Imp_8B (8B, roleplay/creative)"
       usage
     fi
     ;;
