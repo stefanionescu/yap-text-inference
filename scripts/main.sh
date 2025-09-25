@@ -19,6 +19,9 @@ usage() {
   echo "Chat model options:"
   echo "  For 8bit: SicariusSicariiStuff/Impish_Nemo_12B (12B, general purpose)"
   echo "           SicariusSicariiStuff/Wingless_Imp_8B (8B, roleplay/creative)"
+  echo "           SicariusSicariiStuff/Impish_Mind_8B (8B, highest rated, uncensored)"
+  echo "           kyx0r/Neona-12B (12B)"
+  echo "           w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored (10.7B, uncensored)"
   echo "  For 4bit: SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
   echo "           SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
   echo ""
@@ -35,6 +38,9 @@ usage() {
   echo ""
   echo "  # 8B roleplay model"
   echo "  $0 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b"
+  echo ""
+  echo "  # 8B highest rated uncensored model"
+  echo "  $0 8bit SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-1.5b"
   echo ""
   echo "  # Concurrent mode for lower latency"
   echo "  CONCURRENT_MODEL_CALL=1 $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b"
@@ -59,10 +65,16 @@ case "${QUANT_TYPE}" in
   8bit)
     export QUANTIZATION=fp8
     if [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B" ] && 
-       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Wingless_Imp_8B" ]; then
+       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Wingless_Imp_8B" ] &&
+       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Mind_8B" ] &&
+       [ "${CHAT_MODEL_NAME}" != "kyx0r/Neona-12B" ] &&
+       [ "${CHAT_MODEL_NAME}" != "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored" ]; then
       log_warn "Error: For 8bit quantization, must use one of:"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B (12B, general purpose)"
       log_warn "  SicariusSicariiStuff/Wingless_Imp_8B (8B, roleplay/creative)"
+      log_warn "  SicariusSicariiStuff/Impish_Mind_8B (8B, highest rated, uncensored)"
+      log_warn "  kyx0r/Neona-12B (12B)"
+      log_warn "  w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored (10.7B, uncensored)"
       usage
     fi
     ;;
