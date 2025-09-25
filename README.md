@@ -2,13 +2,12 @@
 
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It runs:
 - vLLM chat engine (Impish Nemo 12B family)
-- Hammer tool engine (e.g., Hammer-3B) for speculative decoding and tool-call detection
+- Hammer tool engine (e.g., Hammer-3B) for tool-call detection
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
 - Tool-call-first flow (Hammer). If toolcall is detected, we return immediately; else we stream chat tokens.
-- Persona/history segmented prompts with LMCache KV reuse beyond prefixes.
-- Speculative decoding (Hammer → chat model) to increase tok/s and reduce latency.
+- Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Streaming text cleaner (emoji filtering, punctuation fixes, optional numeric conversions).
 - Interrupts/barge-in via cancel or a new start.
@@ -163,8 +162,9 @@ Models and GPU split
 
 LMCache: removed.
 
-Streaming
+Streaming and concurrency
 - `STREAM_FLUSH_MS` (default `0`; optional micro-coalescer in ms to reduce packet count)
+- `CONCURRENT_MODEL_CALL` (default `0`; set to `1` to run chat and tool models concurrently instead of sequentially)
 
 Token limits
 - `CHAT_MAX_OUT=200` (max assistant tokens per response)
@@ -255,7 +255,6 @@ Prefix caching reuses any repeated spans within the process. If you swap persona
   - `enforce_eager` + `enable_chunked_prefill` for low TTFT
   - FP8/INT8 KV cache (`KV_DTYPE`) for speed/VRAM
   - Attention backend auto-select: FLASHINFER preferred (falls back to XFORMERS)
-  - Speculative decoding
 - Server
   - Toolcall-first routing (Hammer), then chat streaming
   - Realtime token streaming by default (no artificial pacing)

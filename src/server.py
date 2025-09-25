@@ -27,6 +27,7 @@ from .config import (
     HISTORY_MAX_TOKENS,
     USER_UTT_MAX_TOKENS,
     TOOL_MAX_OUT,
+    CONCURRENT_MODEL_CALL,
 )
 from .engines import get_chat_engine, get_tool_engine
 from .persona import (
@@ -391,8 +392,15 @@ async def ws_handler(ws: WebSocket):
                     if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
                         history_text = trim_text_to_token_limit(history_text, max_tokens=HISTORY_MAX_TOKENS, keep="end")
 
-                # 1) Tool-first sequential: decide quickly, then stream chat if no tool
+                # Choose execution mode based on CONCURRENT_MODEL_CALL flag
                 async def _run_start():
+                    if CONCURRENT_MODEL_CALL:
+                        await _run_concurrent(session_id, static_prefix, runtime_text, history_text, user_utt)
+                    else:
+                        await _run_sequential(session_id, static_prefix, runtime_text, history_text, user_utt)
+
+                async def _run_sequential(session_id, static_prefix, runtime_text, history_text, user_utt):
+                    # Original sequential logic: tool-first, then stream chat if no tool
                     TOOL_HARD_TIMEOUT_MS = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
 
                     # Run tool router (do not mark active to avoid clobbering chat req id)
@@ -470,6 +478,143 @@ async def ws_handler(ws: WebSocket):
                     await ws.send_text(json.dumps({"type": "final", "normalized_text": final_text}))
 
                     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+
+                async def _run_concurrent(session_id, static_prefix, runtime_text, history_text, user_utt):
+                    # Concurrent logic: start both models, buffer chat tokens, handle cancellation/flushing
+                    TOOL_HARD_TIMEOUT_MS = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
+                    PREBUFFER_MAX_CHARS = int(os.getenv("PREBUFFER_MAX_CHARS", "1000"))
+                    
+                    # Start both tool and chat coroutines concurrently
+                    tool_req_id = f"tool-{uuid.uuid4()}"
+                    chat_req_id = f"chat-{uuid.uuid4()}"
+                    
+                    session_tool_req[session_id] = tool_req_id
+                    session_active_req[session_id] = chat_req_id  # chat gets active req id for cancellation
+                    
+                    # Start tool model
+                    tool_coro = run_toolcall(session_id, user_utt, request_id=tool_req_id, mark_active=False)
+                    
+                    # Start chat model  
+                    chat_stream = run_chat_stream(
+                        session_id,
+                        static_prefix,
+                        runtime_text,
+                        history_text,
+                        user_utt,
+                        request_id=chat_req_id,
+                    )
+                    
+                    # Buffer to accumulate chat tokens while waiting for tool decision
+                    chat_buffer = ""
+                    tool_decision_ready = False
+                    tool_result = None
+                    
+                    # Create tasks for both operations
+                    async def collect_tool_result():
+                        nonlocal tool_result, tool_decision_ready
+                        try:
+                            if TOOL_HARD_TIMEOUT_MS < 0:
+                                tool_result = await tool_coro
+                            else:
+                                tool_result = await asyncio.wait_for(tool_coro, timeout=TOOL_HARD_TIMEOUT_MS / 1000.0)
+                        except asyncio.TimeoutError:
+                            try:
+                                if session_tool_req.get(session_id):
+                                    await (await get_tool_engine()).abort_request(session_tool_req.get(session_id, ""))
+                            except Exception:
+                                pass
+                            tool_result = {"cancelled": True}
+                        finally:
+                            tool_decision_ready = True
+                    
+                    # Start tool collection task
+                    tool_task = asyncio.create_task(collect_tool_result())
+                    
+                    try:
+                        # Stream chat tokens and buffer them until tool decision is ready
+                        async for chunk in chat_stream:
+                            if tool_decision_ready:
+                                # Tool decision is ready, check what it says
+                                break
+                            
+                            chat_buffer += chunk
+                            
+                            # If buffer exceeds max size, flush it to prevent excessive memory usage
+                            if len(chat_buffer) >= PREBUFFER_MAX_CHARS:
+                                await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
+                                chat_buffer = ""
+                        
+                        # Ensure tool task completes
+                        if not tool_decision_ready:
+                            await tool_task
+                        
+                        # Interpret tool decision
+                        raw_field = None
+                        is_tool = False
+                        raw_txt = (tool_result or {}).get("text") if tool_result else None
+                        if isinstance(raw_txt, str):
+                            raw_stripped = raw_txt.strip()
+                            if raw_stripped:
+                                if raw_stripped.startswith("["):
+                                    try:
+                                        parsed = json.loads(raw_stripped)
+                                        if isinstance(parsed, list):
+                                            raw_field = parsed
+                                            is_tool = len(parsed) > 0
+                                        else:
+                                            raw_field = raw_stripped
+                                    except Exception:
+                                        raw_field = raw_stripped
+                                        is_tool = raw_stripped != "[]"
+                                else:
+                                    raw_field = raw_stripped
+                                    is_tool = False
+                        
+                        # cleanup tool req id tracking (no longer in-flight)
+                        try:
+                            session_tool_req.pop(session_id, None)
+                        except Exception:
+                            pass
+                        
+                        if is_tool:
+                            # Tool detected: cancel chat stream and send toolcall response
+                            try:
+                                await (await get_chat_engine()).abort_request(chat_req_id)
+                            except Exception:
+                                pass
+                            await ws.send_text(json.dumps({"type": "toolcall", "status": "yes", "raw": raw_field}))
+                            await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+                            return
+                        
+                        # Tool says NO: flush buffered chat text and continue streaming
+                        await ws.send_text(json.dumps({"type": "toolcall", "status": "no", "raw": raw_field}))
+                        
+                        # Flush any buffered chat text
+                        if chat_buffer:
+                            await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
+                        
+                        # Continue streaming the rest of chat output
+                        final_text = chat_buffer
+                        async for chunk in chat_stream:
+                            await ws.send_text(json.dumps({"type": "token", "text": chunk}))
+                            final_text += chunk
+                        
+                        # Send final text
+                        await ws.send_text(json.dumps({"type": "final", "normalized_text": final_text}))
+                        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+                    
+                    except Exception as e:
+                        # Clean up on any error
+                        try:
+                            await (await get_chat_engine()).abort_request(chat_req_id)
+                        except Exception:
+                            pass
+                        try:
+                            if session_tool_req.get(session_id):
+                                await (await get_tool_engine()).abort_request(session_tool_req.get(session_id, ""))
+                        except Exception:
+                            pass
+                        raise e
 
                 task = asyncio.create_task(_run_start())
                 session_tasks[session_id] = task

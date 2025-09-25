@@ -28,15 +28,15 @@ STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 USE_LMCACHE = False  # removed
 LMCACHE_REDIS_URI = ""
 
-ENABLE_SPECULATIVE = os.getenv("ENABLE_SPECULATIVE", "0") == "1"
-NUM_SPECULATIVE_TOKENS = int(os.getenv("NUM_SPECULATIVE_TOKENS", "5"))
-
 # History and user limits (approximate tokens)
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
 
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
 EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
+
+# Concurrent toolcall mode: if True, run chat and tool models concurrently (default: False)
+CONCURRENT_MODEL_CALL = os.getenv("CONCURRENT_MODEL_CALL", "0") == "1"
 
 
 # ----------------- Helpers -----------------
@@ -46,14 +46,6 @@ def make_kv_transfer_config():
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
-    speculative = None
-    if is_chat and ENABLE_SPECULATIVE:
-        # vLLM 0.10.1.x expects a speculator name under "model" for built-in methods
-        speculative = {
-            "model": "ngram",
-            "method": "ngram",  # optional but harmless for newer validators
-            "num_speculative_tokens": NUM_SPECULATIVE_TOKENS,
-        }
 
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv(
@@ -88,7 +80,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,  # Always enable prefix caching for performance
-        speculative_config=speculative,
         # Weight quantization for chat; tools remain unquantized for stability
         quantization=(quant_value if is_chat else None),
         dtype="auto",
