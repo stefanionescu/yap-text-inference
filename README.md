@@ -1,7 +1,7 @@
 # Yap Text Inference Server
 
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It runs:
-- vLLM chat engine (Impish Nemo 12B family)
+- vLLM chat engine with chat models ranging from 3B-24B
 - Hammer tool engine (e.g., Hammer 2.1 3B or 1.5B) for tool-call detection
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
