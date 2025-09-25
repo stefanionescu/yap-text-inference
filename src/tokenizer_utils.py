@@ -1,49 +1,59 @@
 from __future__ import annotations
 
-import threading
+from threading import Lock
 from typing import Optional
 
-from transformers import AutoTokenizer
+from tokenizers import Tokenizer
 
 from .config import CHAT_MODEL
 
 
-_tokenizer_lock = threading.Lock()
-_tokenizer = None
+class FastTokenizer:
+    def __init__(self, path_or_repo: str):
+        # Loads tokenizer.json from local dir or HF repo name (honors HF cache)
+        self.tok = Tokenizer.from_pretrained(path_or_repo)
+        self._lock = Lock()
+
+    def count(self, text: str) -> int:
+        if not text:
+            return 0
+        with self._lock:
+            return self.tok.encode(text).num_tokens
+
+    def trim(self, text: str, max_tokens: int, keep: str = "end") -> str:
+        if max_tokens <= 0 or not text:
+            return ""
+        with self._lock:
+            enc = self.tok.encode(text)
+            ids = enc.ids
+            if len(ids) <= max_tokens:
+                return text
+            if keep == "start":
+                kept = ids[:max_tokens]
+            else:
+                kept = ids[-max_tokens:]
+            return self.tok.decode(kept)
 
 
-def get_tokenizer():
-    global _tokenizer
-    if _tokenizer is not None:
-        return _tokenizer
-    with _tokenizer_lock:
-        if _tokenizer is None:
-            _tokenizer = AutoTokenizer.from_pretrained(
-                CHAT_MODEL,
-                use_fast=True,
-                trust_remote_code=True,
-            )
-    return _tokenizer
+_fast_tok: Optional[FastTokenizer] = None
+_fast_tok_lock = Lock()
+
+
+def get_tokenizer() -> FastTokenizer:
+    global _fast_tok
+    if _fast_tok is not None:
+        return _fast_tok
+    with _fast_tok_lock:
+        if _fast_tok is None:
+            _fast_tok = FastTokenizer(CHAT_MODEL)
+    return _fast_tok
 
 
 def exact_token_count(text: str) -> int:
-    if not text:
-        return 0
-    tok = get_tokenizer()
-    return len(tok.encode(text, add_special_tokens=False))
+    return get_tokenizer().count(text)
 
 
 def trim_text_to_token_limit_exact(text: str, max_tokens: int, keep: str = "end") -> str:
-    if max_tokens <= 0 or not text:
-        return ""
-    tok = get_tokenizer()
-    input_ids = tok.encode(text, add_special_tokens=False)
-    if len(input_ids) <= max_tokens:
-        return text
-    if keep == "start":
-        kept = input_ids[:max_tokens]
-    else:
-        kept = input_ids[-max_tokens:]
-    return tok.decode(kept, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    return get_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
 
 
