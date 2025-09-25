@@ -1,3 +1,5 @@
+"""Configuration management for vLLM inference stack."""
+
 import os
 
 # Ensure V1 engine is selected before importing any vLLM modules
