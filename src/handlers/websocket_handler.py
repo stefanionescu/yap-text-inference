@@ -1,11 +1,14 @@
 """Main WebSocket connection handler."""
 
 import json
+import logging
 from typing import Optional
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..engines import get_chat_engine, get_tool_engine
 from ..handlers.session_manager import session_manager
+from ..handlers.connection_manager import connection_manager
+from ..auth import authenticate_websocket
 from ..handlers.message_handlers import (
     handle_start_message,
     handle_cancel_message,
@@ -14,6 +17,8 @@ from ..handlers.message_handlers import (
     handle_set_persona_message,
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def handle_websocket_connection(ws: WebSocket) -> None:
     """Handle WebSocket connection and route messages to appropriate handlers.
@@ -21,8 +26,41 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     Args:
         ws: WebSocket connection
     """
+    # Check API key authentication first
+    is_authenticated = await authenticate_websocket(ws)
+    
+    if not is_authenticated:
+        # Authentication failed - send error and close
+        await ws.accept()  # Need to accept to send error message
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "authentication_failed",
+            "message": "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header.",
+        }))
+        await ws.close(code=1008)  # 1008 = Policy Violation
+        return
+    
+    # Check connection limit after authentication
+    can_connect = await connection_manager.connect(ws)
+    
+    if not can_connect:
+        # Server at capacity - send error and close connection
+        capacity_info = connection_manager.get_capacity_info()
+        await ws.accept()  # Need to accept to send error message
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "server_at_capacity", 
+            "message": f"Server is at capacity. Active connections: {capacity_info['active']}/{capacity_info['max']}. Please try again later.",
+            "capacity": capacity_info
+        }))
+        await ws.close(code=1013)  # 1013 = Try Again Later
+        return
+    
+    # Connection accepted - proceed normally
     await ws.accept()
     session_id: Optional[str] = None
+    
+    logger.info(f"WebSocket connection accepted. Active: {connection_manager.get_connection_count()}")
 
     try:
         while True:
@@ -57,10 +95,19 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         await _cleanup_session(session_id)
     except Exception as e:
-        await ws.send_text(json.dumps({
-            "type": "error", 
-            "message": str(e)
-        }))
+        logger.error(f"WebSocket error: {e}")
+        try:
+            await ws.send_text(json.dumps({
+                "type": "error", 
+                "message": str(e)
+            }))
+        except Exception:
+            # Connection might already be closed
+            pass
+    finally:
+        # Always remove connection from manager when done
+        await connection_manager.disconnect(ws)
+        logger.info(f"WebSocket connection closed. Active: {connection_manager.get_connection_count()}")
 
 
 async def _cleanup_session(session_id: Optional[str]) -> None:

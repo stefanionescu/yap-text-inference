@@ -9,12 +9,14 @@ import uuid
 os.environ.setdefault("VLLM_USE_V1", "1")
 os.environ.setdefault("ENFORCE_EAGER", "0")
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Depends
 from fastapi.responses import ORJSONResponse
 from vllm.sampling_params import SamplingParams
 
 from .engines import get_chat_engine, get_tool_engine
 from .handlers.websocket_handler import handle_websocket_connection
+from .handlers.connection_manager import connection_manager
+from .auth import get_api_key
 
 
 app = FastAPI(default_response_class=ORJSONResponse)
@@ -22,8 +24,19 @@ app = FastAPI(default_response_class=ORJSONResponse)
 
 @app.get("/healthz")
 async def healthz():
-    """Health check endpoint."""
+    """Health check endpoint (no authentication required)."""
     return {"status": "ok"}
+
+
+@app.get("/status")
+async def status(api_key: str = Depends(get_api_key)):
+    """Server status and capacity information (requires authentication)."""
+    capacity = connection_manager.get_capacity_info()
+    return {
+        "status": "running",
+        "connections": capacity,
+        "healthy": not capacity["at_capacity"]
+    }
 
 
 @app.on_event("startup")

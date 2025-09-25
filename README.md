@@ -2,7 +2,7 @@
 
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It runs:
 - vLLM chat engine (Impish Nemo 12B family)
-- Hammer tool engine (e.g., Hammer-3B) for tool-call detection
+- Hammer tool engine (e.g., Hammer 2.1 3B or 1.5B) for tool-call detection
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
@@ -11,6 +11,8 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Streaming text cleaner (emoji filtering, punctuation fixes, optional numeric conversions).
 - Interrupts/barge-in via cancel or a new start.
+- Concurrent connection limiting to protect GPU resources (configurable, default: 24)
+- API key authentication for secure access (configurable, default: "yap_token")
 
 ## Quickstart (RunPod or any CUDA Linux image)
 
@@ -59,19 +61,26 @@ bash scripts/06_follow_logs.sh
 tail -F server.log
 ```
 
-2) Health check
+2) Health check (no authentication required)
 
 ```bash
 curl -s http://127.0.0.1:8000/healthz
 ```
 
-3) Monitor active sessions (useful for Pipecat deployments)
+3) Monitor server status and capacity (requires API key)
 
 ```bash
-curl -s http://127.0.0.1:8000/sessions
+# With default API key
+curl -H "X-API-Key: yap_token" http://127.0.0.1:8000/status
+
+# With custom API key
+curl -H "X-API-Key: your_custom_key" http://127.0.0.1:8000/status
+
+# Via query parameter
+curl "http://127.0.0.1:8000/status?api_key=yap_token"
 ```
 
-Returns information about all active user sessions, including which users have ongoing requests.
+Returns server status and connection capacity information, including current active connections and limits.
 
 4) Stop (deep clean by default; keeps the repo and container services)
 
@@ -92,6 +101,30 @@ Opt-out examples:
 # Light clean (keep venv/home caches)
 NUKE_ALL=0 bash scripts/stop.sh
 ```
+
+## Security Configuration
+
+**API Key Setup:**
+```bash
+# Use default API key (yap_token)
+python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
+
+# Set custom API key before starting server
+export YAP_API_KEY="my_super_secret_key_2024"
+python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
+```
+
+**Connection Limiting:**
+```bash
+# Set custom connection limit (default: 24)
+export MAX_CONCURRENT_CONNECTIONS=50
+python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
+```
+
+**Authentication Coverage:**
+- ✅ **`/healthz`** - No authentication required (for load balancers/monitoring)
+- 🔐 **`/status`** - Requires API key  
+- 🔐 **`/ws`** - Requires API key
 
 ## Warmup test client
 
@@ -227,10 +260,17 @@ Environment alternatives:
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
 - `ASSISTANT_GENDER` (default `female`)
 - `PERSONA_STYLE` (default `flirty`)
+- `YAP_API_KEY` (default `yap_token`) - API key for authentication
+
+**Note**: All test clients now require API key authentication. Ensure `YAP_API_KEY` matches your server configuration.
 
 Outputs: totals and p50/p95 for `toolcall_ttfb_ms`, `chat_ttfb_ms`, and `first_sentence_ms`.
 
 ## Environment variables (common)
+
+Server configuration
+- `YAP_API_KEY` (default `yap_token`) - API key for authentication (all endpoints except `/healthz`)
+- `MAX_CONCURRENT_CONNECTIONS` (default `24`) - Maximum concurrent WebSocket connections to protect GPU resources
 
 Models and GPU split
 - `CHAT_MODEL` (required):
@@ -266,12 +306,30 @@ Using vLLM’s internal prefix caching with chunked prefill.
 
 The server maintains persistent WebSocket connections with session-based user assignment. Each client provides a `session_id` for user identification, and the connection can handle multiple requests over time with automatic interruption support.
 
+**🔐 Authentication Required**: All WebSocket connections require API key authentication via query parameter or header.
+
 **Connection lifecycle:**
-1. Client connects to `ws://server:8000/ws`
+1. Client connects to `ws://server:8000/ws?api_key=your_key` (with authentication)
 2. Client sends `start` message with `session_id` to assign/identify user  
-3. Connection stays open for multiple requests
+3. Connection stays open for multiple requests (up to server connection limit)
 4. Session state (persona, settings) persists across requests
 5. New `start` messages automatically cancel previous requests (barge-in)
+6. Connections are limited to protect GPU resources (default: 24 concurrent)
+
+**Authentication methods:**
+```javascript
+// Via query parameter (recommended for WebSocket)
+const ws = new WebSocket('ws://server:8000/ws?api_key=yap_token');
+
+// Via header (if supported by client)
+const ws = new WebSocket('ws://server:8000/ws', [], {
+  headers: { 'X-API-Key': 'yap_token' }
+});
+```
+
+**Connection limit handling:**
+- If server is at capacity, connection will be rejected with error code `server_at_capacity`
+- Clients should implement retry logic with exponential backoff
 
 Messages you send
 - Start a turn
@@ -308,6 +366,27 @@ Notes
 ```
 
 What you receive
+- **Authentication errors** (if API key is missing or invalid)
+
+```json
+{
+  "type": "error",
+  "error_code": "authentication_failed",
+  "message": "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header."
+}
+```
+
+- **Capacity errors** (if server is at maximum connections)
+
+```json
+{
+  "type": "error",
+  "error_code": "server_at_capacity",
+  "message": "Server is at capacity. Active connections: 24/24. Please try again later.",
+  "capacity": {"active": 24, "max": 24, "available": 0, "at_capacity": true}
+}
+```
+
 - Tool-call decision (Hammer)
 
 ```json
@@ -460,9 +539,13 @@ Prefix caching reuses any repeated spans within the process. If you swap persona
   - FP8/INT8 KV cache (`KV_DTYPE`) for speed/VRAM
   - Attention backend auto-select: FLASHINFER preferred (falls back to XFORMERS)
 - Server
+  - **Modular architecture** - Clean separation of concerns (handlers/, execution/, utils/)
+  - **Connection limiting** - Protects GPU resources from overload
+  - **API key authentication** - Secure access with configurable keys
   - Toolcall-first routing (Hammer), then chat streaming
   - Realtime token streaming by default (no artificial pacing)
   - Interrupts via `abort_request`
+  - Thread-safe session and connection management
 
 ## GPU memory fractions
 
@@ -479,12 +562,14 @@ bash scripts/stop.sh && bash scripts/main.sh
 
 Note: `CHAT_MAX_LEN` defaults to `5760`; adjust to trade off KV usage vs context.
 
-## Limits and tradeoffsf
+## Limits and tradeoffs
 
 - Chat outputs are capped at 200 tokens per response.
 - Rolling history capped at ~3000 tokens (not counting persona). Long personas reduce remaining context.
 - User utterances trimmed to first 350 tokens.
-- Single-process, single-GPU by default. Under very high concurrency or very long contexts, you’ll be KV-bound. Scale by running another process or GPU.
+- **Concurrent connections limited** (default: 24) to protect GPU resources from overload.
+- Single-process, single-GPU by default. Under very high concurrency or very long contexts, you'll be KV-bound. Scale by running another process or GPU.
+- **Authentication required** for all API access except health checks.
 
 ## Personality switching
 

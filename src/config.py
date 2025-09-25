@@ -70,6 +70,12 @@ EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
 # Concurrent toolcall mode: if True, run chat and tool models concurrently (default: False)
 CONCURRENT_MODEL_CALL = os.getenv("CONCURRENT_MODEL_CALL", "0") == "1"
 
+# Maximum concurrent WebSocket connections (to protect GPU resources)
+MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "24"))
+
+# API Key for authentication (all endpoints except /healthz)
+API_KEY = os.getenv("YAP_API_KEY", "yap_token")
+
 
 # ----------------- Helpers -----------------
 
