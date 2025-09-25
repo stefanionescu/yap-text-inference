@@ -22,14 +22,14 @@ bash scripts/main.sh <quantization> <chat_model> <tool_model>
 
 Examples:
 ```bash
-# 8-bit quantization with 1.5B tool model
+# 8-bit quantization with 1.5B tool model (sequential mode - default)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# 8-bit quantization with 3B tool model
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# 8-bit quantization with 3B tool model (concurrent mode for faster response)
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
-# 4-bit quantization with 3B tool model
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
+# 4-bit quantization with 3B tool model (concurrent mode)
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
 ```
 
 This will:
@@ -110,6 +110,24 @@ python3 test/warmup.py "who was Columbus?"
 python3 test/warmup.py --gender male --style flirty "hello there"
 ```
 
+### Testing concurrent vs sequential modes
+
+Compare performance between sequential and concurrent model calling:
+
+```bash
+# Test sequential mode (default)
+python3 test/warmup.py "write a simple hello world function"
+
+# Test concurrent mode (restart server first)
+# Terminal 1: Start server with concurrent mode
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+
+# Terminal 2: Test the same query
+python3 test/warmup.py "write a simple hello world function"
+```
+
+The concurrent mode should show lower `ttfb_ms` (time to first byte) for chat responses that don't involve tool calls.
+
 ### Environment overrides
 
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
@@ -153,6 +171,27 @@ Override URL and timeout:
 python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
+### Benchmarking concurrent vs sequential modes
+
+Compare performance characteristics between modes:
+
+```bash
+# Benchmark sequential mode (default server)
+python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
+
+# Stop server and restart with concurrent mode
+bash scripts/stop.sh
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+
+# Benchmark concurrent mode
+python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
+```
+
+For chat-heavy workloads, concurrent mode typically shows:
+- ✅ Lower `chat_ttfb_ms` (faster first token)
+- ⚠️ Slightly higher resource usage
+- ⚠️ May show higher `toolcall_ttfb_ms` when tools are actually needed
+
 Environment alternatives:
 
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
@@ -177,6 +216,8 @@ LMCache: removed.
 Streaming and concurrency
 - `STREAM_FLUSH_MS` (default `0`; optional micro-coalescer in ms to reduce packet count)
 - `CONCURRENT_MODEL_CALL` (default `0`; set to `1` to run chat and tool models concurrently instead of sequentially)
+  - Sequential mode: Tool model runs first, chat only if no tool detected (safer, lower resource usage)
+  - Concurrent mode: Both models start together, chat buffered until tool decision (faster response, higher resource usage)
 
 Token limits
 - `CHAT_MAX_OUT=200` (max assistant tokens per response)
@@ -249,23 +290,60 @@ The server supports two quantization modes that must be explicitly specified:
 
 **8-bit mode (FP8):**
 ```bash
-# With 1.5B tool model (lower VRAM usage)
+# Sequential mode (default)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# With 3B tool model (better tool calling performance) 
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# Concurrent mode for lower latency
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 ```
 
 **4-bit mode (GPTQ):**
 ```bash
+# Sequential mode
 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-1.5b
-# or
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
+
+# Concurrent mode  
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
 ```
 
 The [Hammer2.1 tool models](https://huggingface.co/MadeAgents/Hammer2.1-1.5b) provide strong function calling capability:
 - **1.5B model**: Lower VRAM usage, good for resource-constrained environments
 - **3B model**: Better function calling performance, recommended for production
+
+## Model calling modes
+
+The server supports two model calling modes:
+
+**Sequential mode (default):**
+- Tool model runs first to detect function calls
+- Chat model only runs if no tool call is detected  
+- Lower resource usage, predictable behavior
+- Good for most use cases
+
+```bash
+# Sequential mode (default)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+```
+
+**Concurrent mode:**
+- Both chat and tool models start simultaneously
+- Chat tokens are buffered while waiting for tool decision
+- If tool call detected: chat stream is cancelled, tool response sent
+- If no tool call: buffered chat text is flushed immediately, streaming continues
+- Faster perceived response time for chat interactions
+- Higher resource usage (both models running)
+
+```bash
+# Enable concurrent mode
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+```
+
+**When to use concurrent mode:**
+- ✅ High-performance scenarios where latency matters most
+- ✅ Workloads with mostly chat interactions (few tool calls)  
+- ✅ Systems with sufficient GPU memory and compute
+- ❌ Resource-constrained environments
+- ❌ Workloads with frequent tool calls (wasted compute)
 
 ## Persona and history behavior
 

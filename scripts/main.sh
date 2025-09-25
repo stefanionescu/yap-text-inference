@@ -25,10 +25,18 @@ usage() {
   echo "  MadeAgents/Hammer2.1-1.5b"
   echo "  MadeAgents/Hammer2.1-3b"
   echo ""
+  echo "Environment options:"
+  echo "  CONCURRENT_MODEL_CALL=1  - Enable concurrent model calls (default: 0=sequential)"
+  echo ""
   echo "Examples:"
+  echo "  # Sequential mode (default)"
   echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
-  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b"
-  echo "  $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b"
+  echo ""
+  echo "  # Concurrent mode for lower latency"
+  echo "  CONCURRENT_MODEL_CALL=1 $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b"
+  echo ""
+  echo "  # 4-bit with concurrent mode"
+  echo "  CONCURRENT_MODEL_CALL=1 $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b"
   exit 1
 }
 
@@ -82,9 +90,17 @@ esac
 
 export CHAT_MODEL="${CHAT_MODEL_NAME}"
 export TOOL_MODEL="${TOOL_MODEL_NAME}"
+
+# Display configuration
+CONCURRENT_STATUS="sequential (default)"
+if [ "${CONCURRENT_MODEL_CALL:-0}" = "1" ]; then
+  CONCURRENT_STATUS="concurrent (faster response)"
+fi
+
 log_info "Configuration: ${QUANT_TYPE} quantization"
 log_info "  Chat model: ${CHAT_MODEL_NAME}"
 log_info "  Tool model: ${TOOL_MODEL_NAME}"
+log_info "  Model calls: ${CONCURRENT_STATUS}"
 
 bash "${SCRIPT_DIR}/01_check_gpu.sh"
 bash "${SCRIPT_DIR}/02_python_env.sh"
