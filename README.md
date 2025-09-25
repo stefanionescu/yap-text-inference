@@ -445,6 +445,9 @@ bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer
 # 8B highest rated uncensored model  
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-1.5b
 
+# 4B compact roleplay model (great for resource-constrained environments)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-1.5b
+
 # Concurrent mode for lower latency
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 ```
@@ -457,31 +460,6 @@ bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 Mad
 # Concurrent mode  
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
 ```
-
-**Available chat models:**
-
-**12B Models:**
-- **[Impish_Nemo_12B](https://huggingface.co/SicariusSicariiStuff/Impish_Nemo_12B)**: General-purpose chat model
-- **[Neona-12B](https://huggingface.co/kyx0r/Neona-12B)**: 12B parameter model
-
-**8-10B Models:**
-- **[Wingless_Imp_8B](https://huggingface.co/SicariusSicariiStuff/Wingless_Imp_8B)**: 8B, roleplay and creative writing optimized
-  - ✅ High IFeval score (74.30) with medium-low censorship  
-  - ✅ Excellent for roleplay with internet RP format (`*action* speech *narration*`)
-  - ✅ Strong creative writing capabilities with coherent long-context performance
-
-- **[Impish_Mind_8B](https://huggingface.co/SicariusSicariiStuff/Impish_Mind_8B)**: 8B, highest rated uncensored model
-  - ✅ **Highest rated 8B model in the world** (as of Jan 2025)
-  - ✅ **Extremely low censorship** (9/10 uncensored rating)
-  - ✅ Enhanced personality analysis, strong markdown understanding
-  - ✅ Excellent for creative writing with unique RP flavor
-  - ✅ Edgy, paranoid persona with "4chan schizo energy"
-
-- **[SOLAR-10.7B-Instruct-v1.0-uncensored](https://huggingface.co/w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored)**: 10.7B, uncensored version
-
-The [Hammer2.1 tool models](https://huggingface.co/MadeAgents/Hammer2.1-1.5b) provide strong function calling capability:
-- **1.5B model**: Lower VRAM usage, good for resource-constrained environments
-- **3B model**: Better function calling performance, recommended for production
 
 ## Model calling modes
 
@@ -502,6 +480,9 @@ bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer
 
 # Sequential mode (highest rated uncensored)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-3b
+
+# Sequential mode (compact 4B roleplay)
+bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-3b
 ```
 
 **Concurrent mode:**
