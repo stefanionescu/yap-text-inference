@@ -9,7 +9,6 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - Tool-call-first flow (Hammer). If toolcall is detected, we return immediately; else we stream chat tokens.
 - Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
-- Streaming text cleaner (emoji filtering, punctuation fixes, optional numeric conversions).
 - Interrupts/barge-in via cancel or a new start.
 - Concurrent connection limiting to protect GPU resources (configurable, default: 24)
 - API key authentication for secure access (configurable, default: "yap_token")
