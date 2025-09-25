@@ -164,7 +164,7 @@ esac
 # Force GPTQ 4-bit path when requested - GPU-specific optimizations
 if [ "${FORCE_4BIT:-0}" = "1" ]; then
   export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
-  export QUANTIZATION=gptq
+  export QUANTIZATION=gptq_marlin
   
   # GPU-specific 4-bit optimizations for maximum memory efficiency
   case "${GPU_NAME}" in
