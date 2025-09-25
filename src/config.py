@@ -22,8 +22,6 @@ CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "1536"))
 
-# 0 = no throttling (realtime). Only set >0 if you want fake typing.
-STREAM_RATE_TOKS_PER_S = float(os.getenv("STREAM_RATE_TOKS_PER_S", "0"))
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 

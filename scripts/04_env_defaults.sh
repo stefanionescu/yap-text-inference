@@ -22,10 +22,8 @@ export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 # Tool model max context length (Hammer). 1536 fits ~1.1k-token instructions comfortably.
 export TOOL_MAX_LEN=${TOOL_MAX_LEN:-1536}
 # GPU memory fractions (weights + KV). Use fractions only.
-export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
+export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
 export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
-# Realtime by default: 0 = no throttle; set >0 to enable fake typing
-export STREAM_RATE_TOKS_PER_S=${STREAM_RATE_TOKS_PER_S:-0}
 # Optional tiny packet coalescer window (ms); 0 = off
 export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
 export ENABLE_SPECULATIVE=${ENABLE_SPECULATIVE:-0}
@@ -108,7 +106,7 @@ case "${GPU_NAME}" in
     # L40S specific tuning - optimized for concurrency and performance
     if [[ "${GPU_NAME}" == *L40S* ]] || [[ "${GPU_NAME}" == *L40* ]]; then
       export ENFORCE_EAGER=${ENFORCE_EAGER:-0}  # Enable CUDA graphs for better performance
-      export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.75}
+      export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
       export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
       export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}  # Reduced from 768 to lower FlashInfer workspace needs
       export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
@@ -163,13 +161,37 @@ case "${GPU_NAME}" in
     ;;
 esac
 
-# Force GPTQ 4-bit path when requested
+# Force GPTQ 4-bit path when requested - GPU-specific optimizations
 if [ "${FORCE_4BIT:-0}" = "1" ]; then
-  export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
+  export CHAT_MODEL="SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
   export QUANTIZATION=gptq
-  # KV cache quantization still applies to runtime KV
-  export KV_DTYPE=${KV_DTYPE:-auto}
-  log_info "Overriding to 4-bit model (GPTQ): ${CHAT_MODEL} QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE}"
+  
+  # GPU-specific 4-bit optimizations for maximum memory efficiency
+  case "${GPU_NAME}" in
+    *A100*)
+      # A100: Use V0 engine + INT8 KV for maximum long-context slots
+      export VLLM_USE_V1=0  # V0 engine honors kv_cache_dtype
+      export KV_DTYPE=int8  # Halves KV memory vs fp16
+      export VLLM_ATTENTION_BACKEND=XFORMERS  # Safest for INT8 KV on A100
+      log_info "A100 4-bit mode: V0 engine + INT8 KV for maximum context slots"
+      ;;
+    *H100*|*L40S*|*L40*)
+      # Hopper/Ada: Keep V1 engine + auto FP8 KV + FlashInfer
+      export VLLM_USE_V1=1  # V1 auto-uses FP8 KV with FlashInfer
+      export KV_DTYPE=fp8   # Set for consistency, V1 will use FP8 automatically
+      # VLLM_ATTENTION_BACKEND already set to FLASHINFER globally
+      log_info "Hopper/Ada 4-bit mode: V1 engine + auto FP8 KV with FlashInfer"
+      ;;
+    *)
+      # Unknown GPU: conservative approach (V0 + auto KV)
+      export VLLM_USE_V1=0
+      export KV_DTYPE=auto  # fp16 fallback
+      export VLLM_ATTENTION_BACKEND=XFORMERS
+      log_warn "Unknown GPU 4-bit mode: using conservative V0 + fp16 KV"
+      ;;
+  esac
+  
+  log_info "Overriding to 4-bit model (GPTQ): ${CHAT_MODEL} QUANTIZATION=${QUANTIZATION} KV_DTYPE=${KV_DTYPE} ENGINE=V${VLLM_USE_V1:-1}"
 fi
 
 # Ensure defaults if still unset (conservative behavior)
