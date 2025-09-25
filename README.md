@@ -6,7 +6,7 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
-- Tool-call-first flow (Hammer). If toolcall is detected, we return immediately; else we stream chat tokens.
+- Tool-call-first detection (Hammer). Toolcall signal is sent when detected, then chat tokens always stream regardless.
 - Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Interrupts/barge-in via cancel or a new start.
@@ -287,8 +287,8 @@ LMCache: removed.
 Streaming and concurrency
 - `STREAM_FLUSH_MS` (default `0`; optional micro-coalescer in ms to reduce packet count)
 - `CONCURRENT_MODEL_CALL` (default `0`; set to `1` to run chat and tool models concurrently instead of sequentially)
-  - Sequential mode: Tool model runs first, chat only if no tool detected (safer, lower resource usage)
-  - Concurrent mode: Both models start together, chat buffered until tool decision (faster response, higher resource usage)
+  - Sequential mode: Tool model runs first, then chat model always runs (safer, lower resource usage)
+  - Concurrent mode: Both models start together, chat buffered until tool decision, then chat always continues (faster response, higher resource usage)
 
 Token limits
 - `CHAT_MAX_OUT=200` (max assistant tokens per response)
@@ -481,8 +481,8 @@ The server supports two model calling modes:
 
 **Sequential mode (default):**
 - Tool model runs first to detect function calls
-- Chat model only runs if no tool call is detected  
-- Lower resource usage, predictable behavior
+- Chat model always runs after tool decision (regardless of tool detection)
+- Lower resource usage, predictable behavior  
 - Good for most use cases
 
 ```bash
@@ -511,7 +511,7 @@ bash scripts/main.sh 8bit SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hamm
 **Concurrent mode:**
 - Both chat and tool models start simultaneously
 - Chat tokens are buffered while waiting for tool decision
-- If tool call detected: chat stream is cancelled, tool response sent
+- If tool call detected: chat stream is cancelled, tool response sent, then new chat stream starts
 - If no tool call: buffered chat text is flushed immediately, streaming continues
 - Faster perceived response time for chat interactions
 - Higher resource usage (both models running)
@@ -546,7 +546,7 @@ Prefix caching reuses any repeated spans within the process. If you swap persona
   - **Modular architecture** - Clean separation of concerns (handlers/, execution/, utils/)
   - **Connection limiting** - Protects GPU resources from overload
   - **API key authentication** - Secure access with configurable keys
-  - Toolcall-first routing (Hammer), then chat streaming
+  - Toolcall detection (Hammer), then chat streaming always continues
   - Realtime token streaming by default (no artificial pacing)
   - Interrupts via `abort_request`
   - Thread-safe session and connection management

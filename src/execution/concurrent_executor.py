@@ -111,15 +111,42 @@ async def run_concurrent_execution(
             pass
         
         if is_tool:
-            # Tool detected: cancel chat stream and send toolcall response
+            # Tool detected: cancel first chat stream, ignore buffered tokens, start new chat stream
             try:
                 await (await get_chat_engine()).abort_request(chat_req_id)
             except Exception:
                 pass
+            
+            # Send toolcall response
             await ws.send_text(json.dumps({
                 "type": "toolcall", 
                 "status": "yes", 
                 "raw": raw_field
+            }))
+            
+            # Start new chat stream (ignoring buffered tokens from first stream)
+            new_chat_req_id = f"chat-{uuid.uuid4()}"
+            session_manager.set_active_request(session_id, new_chat_req_id)
+            
+            new_chat_stream = run_chat_stream(
+                session_id,
+                static_prefix,
+                runtime_text,
+                history_text,
+                user_utt,
+                request_id=new_chat_req_id,
+            )
+            
+            # Stream from the new chat stream
+            final_text = ""
+            async for chunk in new_chat_stream:
+                await ws.send_text(json.dumps({"type": "token", "text": chunk}))
+                final_text += chunk
+            
+            # Send final text
+            await ws.send_text(json.dumps({
+                "type": "final", 
+                "normalized_text": final_text
             }))
             await ws.send_text(json.dumps({"type": "done", "usage": {}}))
             return

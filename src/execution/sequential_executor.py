@@ -66,23 +66,21 @@ async def run_sequential_execution(
         pass
 
     if is_tool:
-        # Tool detected: send toolcall response and exit
+        # Tool detected: send toolcall response but continue with chat
         await ws.send_text(json.dumps({
             "type": "toolcall", 
             "status": "yes", 
             "raw": raw_field
         }))
-        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
-        return
+    else:
+        # Tool says NO (or timed out): notify client
+        await ws.send_text(json.dumps({
+            "type": "toolcall", 
+            "status": "no", 
+            "raw": raw_field
+        }))
 
-    # Tool says NO (or timed out): notify and stream chat
-    await ws.send_text(json.dumps({
-        "type": "toolcall", 
-        "status": "no", 
-        "raw": raw_field
-    }))
-
-    # Start chat stream
+    # Start chat stream (always runs regardless of tool decision)
     chat_req_id = f"chat-{uuid.uuid4()}"
     session_manager.set_active_request(session_id, chat_req_id)
     final_text = ""
