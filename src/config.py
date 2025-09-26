@@ -200,6 +200,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         _kv_transfer = make_kv_transfer_config()
         if _kv_transfer is not None:
             kwargs["kv_transfer_config"] = _kv_transfer
+            # vLLM v1 requires a role when kv transfer connector is used
+            kwargs["kv_disagg_role"] = "kv_producer" if is_chat else "kv_consumer"
 
     return AsyncEngineArgs(**kwargs)
 
