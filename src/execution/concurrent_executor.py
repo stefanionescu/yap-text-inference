@@ -87,7 +87,8 @@ async def run_concurrent_execution(
         # Stream chat tokens and buffer them until tool decision is ready
         async for chunk in chat_stream:
             if tool_decision_ready:
-                # Tool decision is ready, check what it says
+                # Flush the current chunk before breaking to avoid dropping first token(s)
+                chat_buffer += chunk
                 break
             
             chat_buffer += chunk
