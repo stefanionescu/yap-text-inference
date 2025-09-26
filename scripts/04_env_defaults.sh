@@ -38,8 +38,8 @@ export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
 export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
 export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
 
-# Concurrent model calling mode: 0=sequential (default), 1=concurrent
-export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-0}
+# Concurrent model calling mode: 0=sequential, 1=concurrent (default)
+export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-1}
 
 # Token limits (approx)
 export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-2400}

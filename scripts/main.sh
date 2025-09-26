@@ -101,9 +101,9 @@ export CHAT_MODEL="${CHAT_MODEL_NAME}"
 export TOOL_MODEL="${TOOL_MODEL_NAME}"
 
 # Display configuration
-CONCURRENT_STATUS="sequential (default)"
-if [ "${CONCURRENT_MODEL_CALL:-0}" = "1" ]; then
-  CONCURRENT_STATUS="concurrent (faster response)"
+CONCURRENT_STATUS="concurrent (default)"
+if [ "${CONCURRENT_MODEL_CALL:-1}" = "0" ]; then
+  CONCURRENT_STATUS="sequential (override)"
 fi
 
 log_info "Configuration: ${QUANT_TYPE} quantization"

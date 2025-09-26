@@ -95,8 +95,8 @@ TOOL_SYSTEM_TOKENS = int(os.getenv("TOOL_SYSTEM_TOKENS", "1450"))  # System prom
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
 EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
 
-# Concurrent toolcall mode: if True, run chat and tool models concurrently (default: False)
-CONCURRENT_MODEL_CALL = os.getenv("CONCURRENT_MODEL_CALL", "0") == "1"
+# Concurrent toolcall mode: if True, run chat and tool models concurrently (default: True)
+CONCURRENT_MODEL_CALL = os.getenv("CONCURRENT_MODEL_CALL", "1") == "1"
 
 # Maximum concurrent WebSocket connections (to protect GPU resources)
 MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "24"))
