@@ -10,7 +10,11 @@ log_info "Starting Yap Text Inference Server"
 
 # Usage function
 usage() {
-  echo "Usage: $0 <quantization> <chat_model> <tool_model> [deploy_mode]"
+  echo "Usage:"
+  echo "  $0 <quantization> <chat_model> <tool_model> [deploy_mode]"
+  echo "  $0 <quantization> chat <chat_model>"
+  echo "  $0 <quantization> tool <tool_model>"
+  echo "  $0 <quantization> both <chat_model> <tool_model>"
   echo ""
   echo "Quantization options:"
   echo "  8bit  - Use 8-bit quantization (fp8)"
@@ -30,7 +34,7 @@ usage() {
   echo "  MadeAgents/Hammer2.1-3b"
   echo ""
   echo "Environment options:"
-  echo "  CONCURRENT_MODEL_CALL=1  - Enable concurrent model calls (default: 0=sequential)"
+  echo "  CONCURRENT_MODEL_CALL=1       - Enable concurrent model calls (default: 0=sequential)"
   echo "  DEPLOY_MODELS=both|chat|tool  - Which models to deploy (default: both)"
   echo ""
   echo "Examples:"
@@ -49,33 +53,75 @@ usage() {
   echo "  # 4-bit with concurrent mode"
   echo "  CONCURRENT_MODEL_CALL=1 $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b"
   echo ""
-  echo "  # Chat-only deployment (DEPLOY_MODELS can be 4th arg or env)"
-  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b chat"
+  echo "  # Chat-only deployment"
+  echo "  $0 8bit chat SicariusSicariiStuff/Impish_Nemo_12B"
   echo "  DEPLOY_MODELS=chat $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
   echo "  # Tool-only deployment"
-  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b tool"
+  echo "  $0 8bit tool MadeAgents/Hammer2.1-1.5b"
+  echo "  DEPLOY_MODELS=tool $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   exit 1
 }
 
-# Check argument count (3 required, 4th optional deploy mode)
-if [ $# -lt 3 ] || [ $# -gt 4 ]; then
-  log_warn "Error: Must specify quantization, chat model, tool model, and optional deploy_mode"
+# Parse and normalize arguments
+if [ $# -lt 2 ]; then
+  log_warn "Error: Not enough arguments"
   usage
 fi
 
-QUANT_TYPE="$1"
-CHAT_MODEL_NAME="$2"
-TOOL_MODEL_NAME="$3"
-DEPLOY_MODE_ARG="${4:-${DEPLOY_MODELS:-both}}"
+QUANT_TYPE="$1"; shift
 
-# Normalize and validate deploy mode
-case "${DEPLOY_MODE_ARG}" in
-  both|chat|tool)
-    export DEPLOY_MODELS="${DEPLOY_MODE_ARG}"
+# Defaults that we may fill from args
+CHAT_MODEL_NAME=""
+TOOL_MODEL_NAME=""
+DEPLOY_MODE_SELECTED="${DEPLOY_MODELS:-}"
+
+case "${1:-}" in
+  chat)
+    DEPLOY_MODE_SELECTED="chat"
+    shift
+    if [ $# -lt 1 ]; then
+      log_warn "Error: chat-only mode requires <chat_model>"
+      usage
+    fi
+    CHAT_MODEL_NAME="$1"; shift
+    ;;
+  tool)
+    DEPLOY_MODE_SELECTED="tool"
+    shift
+    if [ $# -lt 1 ]; then
+      log_warn "Error: tool-only mode requires <tool_model>"
+      usage
+    fi
+    TOOL_MODEL_NAME="$1"; shift
+    ;;
+  both)
+    DEPLOY_MODE_SELECTED="both"
+    shift
+    if [ $# -lt 2 ]; then
+      log_warn "Error: both mode requires <chat_model> <tool_model>"
+      usage
+    fi
+    CHAT_MODEL_NAME="$1"; TOOL_MODEL_NAME="$2"; shift 2
     ;;
   *)
-    log_warn "Invalid deploy_mode '${DEPLOY_MODE_ARG}', defaulting to 'both'"
+    # Backward-compatible form: <chat_model> <tool_model> [deploy_mode]
+    if [ $# -lt 2 ]; then
+      log_warn "Error: Must specify <chat_model> <tool_model> or use 'chat|tool' form"
+      usage
+    fi
+    CHAT_MODEL_NAME="$1"; TOOL_MODEL_NAME="$2"; shift 2
+    DEPLOY_MODE_SELECTED="${1:-${DEPLOY_MODE_SELECTED:-both}}"
+    ;;
+esac
+
+# Normalize and validate deploy mode selection
+case "${DEPLOY_MODE_SELECTED:-both}" in
+  both|chat|tool)
+    export DEPLOY_MODELS="${DEPLOY_MODE_SELECTED:-both}"
+    ;;
+  *)
+    log_warn "Invalid deploy_mode '${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
     export DEPLOY_MODELS=both
     ;;
 esac
@@ -117,8 +163,13 @@ esac
 # Note: Model & quantization validation is centralized in Python (src/config.py).
 # main.sh only passes through the selected values.
 
-export CHAT_MODEL="${CHAT_MODEL_NAME}"
-export TOOL_MODEL="${TOOL_MODEL_NAME}"
+# Export only what is needed for selected deployment
+if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
+  export CHAT_MODEL="${CHAT_MODEL_NAME}"
+fi
+if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
+  export TOOL_MODEL="${TOOL_MODEL_NAME}"
+fi
 
 # Display configuration
 CONCURRENT_STATUS="concurrent (default)"
@@ -127,9 +178,9 @@ if [ "${CONCURRENT_MODEL_CALL:-1}" = "0" ]; then
 fi
 
 log_info "Configuration: ${QUANT_TYPE} quantization"
+log_info "  Deploy mode: ${DEPLOY_MODELS}"
 log_info "  Chat model: ${CHAT_MODEL_NAME}"
 log_info "  Tool model: ${TOOL_MODEL_NAME}"
-log_info "  Deploy mode: ${DEPLOY_MODELS}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"
 
 bash "${SCRIPT_DIR}/01_check_gpu.sh"

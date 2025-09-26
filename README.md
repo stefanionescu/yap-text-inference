@@ -6,7 +6,7 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
-- Tool-call-first detection (Hammer). Toolcall signal is sent when detected, then chat tokens always stream regardless.
+- Tool-call-first detection (Hammer). Toolcall signal is sent when detected, then (when chat is deployed) chat tokens always stream regardless.
 - Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Interrupts/barge-in via cancel or a new start.
@@ -18,7 +18,12 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 1) Install deps and start the server
 
 ```bash
-bash scripts/main.sh <quantization> <chat_model> <tool_model>
+# Both models (default)
+bash scripts/main.sh <quantization> <chat_model> <tool_model> [deploy_mode]
+
+# Single-model forms
+bash scripts/main.sh <quantization> chat <chat_model>
+bash scripts/main.sh <quantization> tool <tool_model>
 ```
 
 Examples:
@@ -34,6 +39,12 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Ne
 
 # 4-bit quantization with 3B tool model (concurrent mode)
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
+
+# Chat-only deployment
+bash scripts/main.sh 8bit chat SicariusSicariiStuff/Impish_Nemo_12B
+
+# Tool-only deployment
+bash scripts/main.sh 8bit tool MadeAgents/Hammer2.1-1.5b
 ```
 
 This will:
