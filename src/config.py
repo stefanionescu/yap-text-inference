@@ -11,17 +11,27 @@ def _select_attention_backend() -> None:
     - Prefer FLASHINFER when importable.
     - If FP8 KV is requested but flashinfer is unavailable, force KV_DTYPE=auto.
     """
-    global KV_DTYPE
-    # If user explicitly set a backend, respect it. Otherwise pick one.
+    has_flashinfer = False
+    # Select backend if not set; otherwise detect availability for KV fallback
     if not os.getenv("VLLM_ATTENTION_BACKEND"):
         try:
             import flashinfer  # noqa: F401
             os.environ.setdefault("VLLM_ATTENTION_BACKEND", "FLASHINFER")
+            has_flashinfer = True
         except Exception:
             os.environ.setdefault("VLLM_ATTENTION_BACKEND", "XFORMERS")
-        if (KV_DTYPE or "auto").lower() == "fp8":
-            # Safe fallback to fp16 KV
-            KV_DTYPE = "auto"
+            has_flashinfer = False
+    else:
+        try:
+            import flashinfer  # noqa: F401
+            has_flashinfer = True
+        except Exception:
+            has_flashinfer = False
+
+    # If FP8 KV requested without flashinfer, force auto (fp16)
+    if not has_flashinfer:
+        if (os.getenv("KV_DTYPE") or "auto").lower() == "fp8":
+            os.environ["KV_DTYPE"] = "auto"
 
 _select_attention_backend()
 
