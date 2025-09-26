@@ -6,14 +6,37 @@ source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Setting environment defaults"
 
-# Validate required environment variables are set by main.sh
-if [ -z "${CHAT_MODEL:-}" ]; then
-  log_warn "Error: CHAT_MODEL environment variable must be set by main.sh"
+# Deploy mode: both | chat | tool (default: both)
+export DEPLOY_MODELS=${DEPLOY_MODELS:-both}
+case "${DEPLOY_MODELS}" in
+  both|chat|tool)
+    ;;
+  *)
+    log_warn "Invalid DEPLOY_MODELS='${DEPLOY_MODELS}', defaulting to 'both'"
+    export DEPLOY_MODELS=both
+    ;;
+esac
+
+# Convenience booleans for shell usage
+DEPLOY_CHAT=0
+DEPLOY_TOOL=0
+if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
+  DEPLOY_CHAT=1
+fi
+if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
+  DEPLOY_TOOL=1
+fi
+export DEPLOY_CHAT
+export DEPLOY_TOOL
+
+# Validate required environment variables are set by main.sh (conditional on deploy mode)
+if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
+  log_warn "Error: CHAT_MODEL must be set when DEPLOY_MODELS='both' or 'chat'"
   exit 1
 fi
 
-if [ -z "${TOOL_MODEL:-}" ]; then
-  log_warn "Error: TOOL_MODEL environment variable must be set by main.sh"
+if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
+  log_warn "Error: TOOL_MODEL must be set when DEPLOY_MODELS='both' or 'tool'"
   exit 1
 fi
 
@@ -166,6 +189,7 @@ if [ "${CONCURRENT_MODEL_CALL:-0}" = "1" ]; then
 fi
 
 log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
+log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
 log_info "  Chat model: ${CHAT_MODEL}"
 log_info "  Tool model: ${TOOL_MODEL}"
 log_info "  Quantization: ${QUANTIZATION}"

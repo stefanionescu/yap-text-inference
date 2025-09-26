@@ -25,6 +25,7 @@ fi
 
 # Log key env knobs
 log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${CHAT_MODEL:-} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
+log_info "DEPLOY_MODELS=${DEPLOY_MODELS:-both} CHAT=${CHAT_MODEL:-} TOOL=${TOOL_MODEL:-}"
 log_info "TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_V1:-} ENFORCE_EAGER=${ENFORCE_EAGER:-}"
 
 # Start as a new session so Ctrl+C in the calling shell won't touch it.
