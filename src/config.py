@@ -58,7 +58,7 @@ else:
     TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
-QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq_marlin'
+QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin'
 
 # Validate required configuration
 if DEPLOY_CHAT and not CHAT_MODEL:
@@ -67,8 +67,8 @@ if DEPLOY_TOOL and not TOOL_MODEL:
     raise ValueError("TOOL_MODEL environment variable is required when deploying tool (DEPLOY_MODELS=both|tool)")
 if not QUANTIZATION:
     raise ValueError("QUANTIZATION environment variable is required")
-if QUANTIZATION not in ["fp8", "gptq_marlin"]:
-    raise ValueError(f"QUANTIZATION must be 'fp8' or 'gptq_marlin', got: {QUANTIZATION}")
+if QUANTIZATION not in ["fp8", "gptq", "gptq_marlin"]:
+    raise ValueError(f"QUANTIZATION must be 'fp8', 'gptq', or 'gptq_marlin', got: {QUANTIZATION}")
 
 # Validate allowed models
 ALLOWED_CHAT_MODELS = [
@@ -157,6 +157,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     quant_value = QUANTIZATION if is_chat else None
 
     # Build kwargs for V1 engine.
+    # Disable chunked prefill for all GPTQ setups to avoid compatibility issues
+    enable_chunked_prefill = "gptq" not in QUANTIZATION.lower()
+    
     kwargs = dict(
         model=model,
         trust_remote_code=True,
@@ -165,7 +168,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         gpu_memory_utilization=gpu_frac,
         # Allow CUDA graphs for better performance
         enforce_eager=False,
-        enable_chunked_prefill=True,
+        enable_chunked_prefill=enable_chunked_prefill,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,  # Always enable prefix caching for performance
         # Weight quantization for chat; tools remain unquantized for stability

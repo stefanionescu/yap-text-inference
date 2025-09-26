@@ -238,12 +238,12 @@ async def _run_once(args: argparse.Namespace) -> None:
                     "time_to_first_3_words_ms": round((first_3_words_ts - sent_ts) * 1000.0, 2) if first_3_words_ts is not None else None,
                     "chunks": chunks,
                     "chars": len(final_text),
-                }))
+                }, ensure_ascii=False))
                 # Full response last
                 print(json.dumps({
                     "type": "final_text",
                     "text": final_text,
-                }))
+                }, ensure_ascii=False))
                 break
 
             if t == "error":
