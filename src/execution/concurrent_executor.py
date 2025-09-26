@@ -41,8 +41,8 @@ async def run_concurrent_execution(
     session_manager.set_tool_request(session_id, tool_req_id)
     session_manager.set_active_request(session_id, chat_req_id)  # chat gets active req id for cancellation
     
-    # Start tool model
-    tool_coro = run_toolcall(session_id, user_utt, request_id=tool_req_id, mark_active=False)
+    # Start tool model with shared history for KV cache efficiency
+    tool_coro = run_toolcall(session_id, user_utt, history_text, request_id=tool_req_id, mark_active=False)
     
     # Start chat model  
     chat_stream = run_chat_stream(

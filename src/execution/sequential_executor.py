@@ -37,7 +37,7 @@ async def run_sequential_execution(
     # Run tool router (do not mark active to avoid clobbering chat req id)
     tool_req_id = f"tool-{uuid.uuid4()}"
     session_manager.set_tool_request(session_id, tool_req_id)
-    tool_coro = run_toolcall(session_id, user_utt, request_id=tool_req_id, mark_active=False)
+    tool_coro = run_toolcall(session_id, user_utt, history_text, request_id=tool_req_id, mark_active=False)
 
     tool_res = None
     try:

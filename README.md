@@ -486,7 +486,7 @@ The server supports two model calling modes:
 - Good for most use cases
 
 ```bash
-# Sequential mode (default - general purpose)
+# Sequential mode (default for roleplay)
 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
 # Sequential mode (roleplay/creative optimized)

@@ -84,6 +84,30 @@ def build_hammer_prompt(user_utt: str) -> str:
     )
 
 
+def build_hammer_prompt_with_history(user_utt: str, history_text: str = "") -> str:
+    """Build Hammer tool prompt with shared history context for KV cache efficiency.
+    
+    Args:
+        user_utt: User utterance to analyze for tool calls
+        history_text: Recent conversation history (trimmed to TOOL_HISTORY_TOKENS)
+        
+    Returns:
+        Formatted prompt string for tool model
+    """
+    prompt_parts = [
+        HAMMER_TASK_INSTRUCTION.strip(),
+        HAMMER_FORMAT_INSTRUCTION.strip()
+    ]
+    
+    # Include recent history for context if available (enables KV cache sharing)
+    if history_text.strip():
+        prompt_parts.append(f"Recent conversation context:\n{history_text.strip()}")
+    
+    prompt_parts.append(f"User message:\n{user_utt.strip()}")
+    
+    return "\n\n".join(prompt_parts) + "\n"
+
+
 
 # ----------------- Prefix sharing helpers (static vs runtime) -----------------
 

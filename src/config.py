@@ -55,10 +55,10 @@ if CHAT_MODEL not in ALLOWED_CHAT_MODELS:
 if TOOL_MODEL not in ALLOWED_TOOL_MODELS:
     raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5760"))
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
-TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "1536"))
+TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user + 1200 history
 
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
@@ -67,8 +67,12 @@ USE_LMCACHE = False  # removed
 LMCACHE_REDIS_URI = ""
 
 # History and user limits (approximate tokens)
-HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
+HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "2400"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
+
+# Tool model specific limits  
+TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1200"))  # Half of chat history for KV sharing
+TOOL_SYSTEM_TOKENS = int(os.getenv("TOOL_SYSTEM_TOKENS", "1450"))  # System prompt + tool response
 
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
 EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
@@ -79,6 +83,11 @@ CONCURRENT_MODEL_CALL = os.getenv("CONCURRENT_MODEL_CALL", "0") == "1"
 # Maximum concurrent WebSocket connections (to protect GPU resources)
 MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "24"))
 
+# Per-user memory optimization for toolcalls
+# Increase GPU memory utilization when toolcalls are enabled to handle larger KV cache per user
+TOOLCALL_MEMORY_SCALING = float(os.getenv("TOOLCALL_MEMORY_SCALING", "1.2"))  # 20% increase
+MAX_USERS_WITH_TOOLCALLS = int(os.getenv("MAX_USERS_WITH_TOOLCALLS", "16"))  # Reduced concurrent users for higher per-user allocation
+
 # API Key for authentication (all endpoints except /healthz)
 API_KEY = os.getenv("YAP_API_KEY", "yap_token")
 
@@ -86,7 +95,18 @@ API_KEY = os.getenv("YAP_API_KEY", "yap_token")
 # ----------------- Helpers -----------------
 
 def make_kv_transfer_config():
-    return None
+    """Configure KV cache transfer for sharing history tokens between chat and tool models."""
+    # Always enable KV cache sharing since both models always run together
+    # This allows the tool model to reuse the latest TOOL_HISTORY_TOKENS from chat model's cache
+    enable_kv_sharing = os.getenv("ENABLE_KV_SHARING", "1") == "1"
+    if not enable_kv_sharing:
+        return None
+        
+    return {
+        "kv_connector": "PyNcclConnector",  # Use NCCL for efficient GPU-to-GPU transfer
+        "kv_buffer_size": TOOL_HISTORY_TOKENS * 2,  # Buffer for key and value tensors
+        "kv_buffer_dtype": "auto",  # Match model dtype
+    }
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
@@ -104,12 +124,17 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     quant_value = QUANTIZATION if is_chat else None
 
     # Build kwargs for V1 engine.
+    # Scale GPU memory for tool models to handle larger per-user KV cache
+    actual_gpu_frac = gpu_frac
+    if not is_chat:  # Tool model gets memory scaling for enhanced KV cache
+        actual_gpu_frac = min(gpu_frac * TOOLCALL_MEMORY_SCALING, 0.95)
+    
     kwargs = dict(
         model=model,
         trust_remote_code=True,
         tensor_parallel_size=1,
         max_model_len=max_len,
-        gpu_memory_utilization=gpu_frac,
+        gpu_memory_utilization=actual_gpu_frac,
         # Allow CUDA graphs for better performance
         enforce_eager=False,
         enable_chunked_prefill=True,

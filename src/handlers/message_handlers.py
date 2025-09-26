@@ -9,11 +9,14 @@ from vllm.sampling_params import SamplingParams
 
 from ..config import (
     CHAT_MAX_OUT, HISTORY_MAX_TOKENS, USER_UTT_MAX_TOKENS,
-    EXACT_TOKEN_TRIM, CONCURRENT_MODEL_CALL
+    EXACT_TOKEN_TRIM, CONCURRENT_MODEL_CALL, TOOL_HISTORY_TOKENS
 )
 from ..engines import get_chat_engine
 from ..persona import get_static_prefix, compose_persona_runtime
-from ..tokens import approx_token_count, trim_text_to_token_limit
+from ..tokens import (
+    approx_token_count, trim_text_to_token_limit, trim_text_exact,
+    trim_history_preserve_messages
+)
 from ..utils.validation import (
     normalize_gender, validate_persona_style, validate_user_identity,
     ALLOWED_PERSONALITIES
@@ -122,14 +125,13 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         user_utt = trim_text_to_token_limit(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
     
     # Trim rolling history to HISTORY_MAX_TOKENS, keep most recent
-    if EXACT_TOKEN_TRIM:
-        # Fast path: only tokenize if likely over the limit by approx check
-        if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
-            # exact trim using end-keep
-            history_text = trim_text_exact(history_text, max_tokens=HISTORY_MAX_TOKENS, keep="end")
-    else:
-        if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
-            history_text = trim_text_to_token_limit(history_text, max_tokens=HISTORY_MAX_TOKENS, keep="end")
+    # Use message-boundary-aware trimming to avoid partial messages
+    if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
+        history_text = trim_history_preserve_messages(
+            history_text, 
+            HISTORY_MAX_TOKENS, 
+            exact=EXACT_TOKEN_TRIM
+        )
 
     # Choose execution mode based on CONCURRENT_MODEL_CALL flag
     async def _run_start():
@@ -217,12 +219,12 @@ async def handle_warm_history_message(ws: WebSocket, msg: Dict[str, Any]) -> Non
         msg: Message data
     """
     history_text = msg.get("history_text", "")
-    if EXACT_TOKEN_TRIM:
-        if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
-            history_text = trim_text_exact(history_text, max_tokens=HISTORY_MAX_TOKENS, keep="end")
-    else:
-        if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
-            history_text = trim_text_to_token_limit(history_text, max_tokens=HISTORY_MAX_TOKENS, keep="end")
+    if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
+        history_text = trim_history_preserve_messages(
+            history_text,
+            HISTORY_MAX_TOKENS,
+            exact=EXACT_TOKEN_TRIM
+        )
     
     warm_prompt = f"<|history|>\n{history_text.strip()}\n<|assistant|>\n"
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
