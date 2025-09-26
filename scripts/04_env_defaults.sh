@@ -95,8 +95,10 @@ export TRITON_CACHE_DIR="${ROOT_DIR}/.triton"
 export FLASHINFER_CACHE_DIR="${ROOT_DIR}/.flashinfer"
 export XFORMERS_CACHE_DIR="${ROOT_DIR}/.xformers"
 
-# Backend selection is now centralized in Python; scripts may still export hints if needed
-export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-}
+# Backend selection is centralized in Python. Only export if explicitly set.
+if [ -n "${VLLM_ATTENTION_BACKEND:-}" ]; then
+  export VLLM_ATTENTION_BACKEND
+fi
 
 # --- GPU detection and optimization ---
 GPU_NAME=""

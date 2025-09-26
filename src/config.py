@@ -12,11 +12,13 @@ def _select_attention_backend() -> None:
     - If FP8 KV is requested but flashinfer is unavailable, force KV_DTYPE=auto.
     """
     global KV_DTYPE
-    try:
-        import flashinfer  # noqa: F401
-        os.environ.setdefault("VLLM_ATTENTION_BACKEND", "FLASHINFER")
-    except Exception:
-        os.environ.setdefault("VLLM_ATTENTION_BACKEND", "XFORMERS")
+    # If user explicitly set a backend, respect it. Otherwise pick one.
+    if not os.getenv("VLLM_ATTENTION_BACKEND"):
+        try:
+            import flashinfer  # noqa: F401
+            os.environ.setdefault("VLLM_ATTENTION_BACKEND", "FLASHINFER")
+        except Exception:
+            os.environ.setdefault("VLLM_ATTENTION_BACKEND", "XFORMERS")
         if (KV_DTYPE or "auto").lower() == "fp8":
             # Safe fallback to fp16 KV
             KV_DTYPE = "auto"
