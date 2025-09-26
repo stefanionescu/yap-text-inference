@@ -1,8 +1,9 @@
 # Yap Text Inference Server
 
-A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It runs:
+A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It can run:
 - vLLM chat engine with chat models ranging from 3B-24B
 - Hammer tool engine (e.g., Hammer 2.1 3B or 1.5B) for tool-call detection
+- Both engines together, or deploy chat-only or tool-only for specialized use cases
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
@@ -10,7 +11,7 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Interrupts/barge-in via cancel or a new start.
-- Concurrent connection limiting to protect GPU resources (configurable, default: 24)
+- Concurrent connection limiting to protect GPU resources (deployment-aware: 32 for tool-only, 24 for chat-only, 16 for both)
 - API key authentication for secure access (configurable, default: "yap_token")
 
 ## Quickstart (RunPod or any CUDA Linux image)
@@ -280,14 +281,15 @@ Outputs: totals and p50/p95 for `toolcall_ttfb_ms`, `chat_ttfb_ms`, and `first_s
 
 Server configuration
 - `YAP_API_KEY` (default `yap_token`) - API key for authentication (all endpoints except `/healthz`)
-- `MAX_CONCURRENT_CONNECTIONS` (default `24`) - Maximum concurrent WebSocket connections to protect GPU resources
+- `MAX_CONCURRENT_CONNECTIONS` - Maximum concurrent WebSocket connections (deployment-aware: 32 for tool-only, 24 for chat-only, 16 for both)
+- `DEPLOY_MODELS` (default `both`) - Which models to deploy: `both`, `chat`, or `tool`
 
 Models and GPU split
-- `CHAT_MODEL` (required):
+- `CHAT_MODEL` (required when deploying chat):
   - For 8bit: Multiple options available (see model list below)
   - For 4bit: `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64` or `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`
-- `TOOL_MODEL` (required: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
-- `CHAT_GPU_FRAC` (default `0.70`), `TOOL_GPU_FRAC` (default `0.20`)
+- `TOOL_MODEL` (required when deploying tool: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
+- `CHAT_GPU_FRAC`, `TOOL_GPU_FRAC` - GPU memory allocation (deployment-aware: 90% for single-model, 70%/20% for both)
 - `QUANTIZATION` (required: `fp8` for 8bit mode, `gptq_marlin` for 4bit mode)
 - `KV_DTYPE` = `fp8|auto|int8` (auto-selected based on GPU and quantization mode)
 - `VLLM_ATTENTION_BACKEND` (auto; prefers `FLASHINFER` if available, else `XFORMERS`)
@@ -579,9 +581,10 @@ Prefix caching reuses any repeated spans within the process. If you swap persona
 
 ## GPU memory fractions
 
-We reserve GPU memory per-engine via fractions only:
+GPU memory is allocated based on deployment mode:
 
-- Defaults: `CHAT_GPU_FRAC=0.75`, `TOOL_GPU_FRAC=0.20`.
+- **Single model**: 90% GPU memory (chat-only or tool-only)
+- **Both models**: Chat gets 70%, Tool gets 20%
 - Override as needed:
 
 ```bash
@@ -597,7 +600,7 @@ Note: `CHAT_MAX_LEN` defaults to `5760`; adjust to trade off KV usage vs context
 - Chat outputs are capped at 200 tokens per response.
 - Rolling history capped at ~3000 tokens (not counting persona). Long personas reduce remaining context.
 - User utterances trimmed to first 350 tokens.
-- **Concurrent connections limited** (default: 24) to protect GPU resources from overload.
+- **Concurrent connections limited** (deployment-aware: 32 for tool-only, 24 for chat-only, 16 for both) to protect GPU resources from overload.
 - Single-process, single-GPU by default. Under very high concurrency or very long contexts, you'll be KV-bound. Scale by running another process or GPU.
 - **Authentication required** for all API access except health checks.
 
