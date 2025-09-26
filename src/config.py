@@ -72,6 +72,7 @@ if QUANTIZATION not in ["fp8", "gptq_marlin"]:
 
 # Validate allowed models
 ALLOWED_CHAT_MODELS = [
+    "kyx0r/Neona-12B",
     "SicariusSicariiStuff/Impish_Nemo_12B",
     "SicariusSicariiStuff/Impish_Magic_24B",
     "SicariusSicariiStuff/Wingless_Imp_8B",
@@ -79,8 +80,8 @@ ALLOWED_CHAT_MODELS = [
     "SicariusSicariiStuff/Eximius_Persona_5B",
     "SicariusSicariiStuff/Impish_LLAMA_4B",
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
-    "kyx0r/Neona-12B",
     "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored",
+    "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64", 
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
     "SicariusSicariiStuff/Impish_Magic_24B_GPTQ_4-bit-32",
