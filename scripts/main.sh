@@ -10,7 +10,7 @@ log_info "Starting Yap Text Inference Server"
 
 # Usage function
 usage() {
-  echo "Usage: $0 <quantization> <chat_model> <tool_model>"
+  echo "Usage: $0 <quantization> <chat_model> <tool_model> [deploy_mode]"
   echo ""
   echo "Quantization options:"
   echo "  8bit  - Use 8-bit quantization (fp8)"
@@ -31,6 +31,7 @@ usage() {
   echo ""
   echo "Environment options:"
   echo "  CONCURRENT_MODEL_CALL=1  - Enable concurrent model calls (default: 0=sequential)"
+  echo "  DEPLOY_MODELS=both|chat|tool  - Which models to deploy (default: both)"
   echo ""
   echo "Examples:"
   echo "  # Sequential mode (default)"
@@ -47,18 +48,37 @@ usage() {
   echo ""
   echo "  # 4-bit with concurrent mode"
   echo "  CONCURRENT_MODEL_CALL=1 $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b"
+  echo ""
+  echo "  # Chat-only deployment (DEPLOY_MODELS can be 4th arg or env)"
+  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b chat"
+  echo "  DEPLOY_MODELS=chat $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo ""
+  echo "  # Tool-only deployment"
+  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b tool"
   exit 1
 }
 
-# Check if we have exactly 3 arguments
-if [ $# -ne 3 ]; then
-  log_warn "Error: Must specify quantization, chat model, and tool model"
+# Check argument count (3 required, 4th optional deploy mode)
+if [ $# -lt 3 ] || [ $# -gt 4 ]; then
+  log_warn "Error: Must specify quantization, chat model, tool model, and optional deploy_mode"
   usage
 fi
 
 QUANT_TYPE="$1"
 CHAT_MODEL_NAME="$2"
 TOOL_MODEL_NAME="$3"
+DEPLOY_MODE_ARG="${4:-${DEPLOY_MODELS:-both}}"
+
+# Normalize and validate deploy mode
+case "${DEPLOY_MODE_ARG}" in
+  both|chat|tool)
+    export DEPLOY_MODELS="${DEPLOY_MODE_ARG}"
+    ;;
+  *)
+    log_warn "Invalid deploy_mode '${DEPLOY_MODE_ARG}', defaulting to 'both'"
+    export DEPLOY_MODELS=both
+    ;;
+esac
 
 # Validate quantization type and chat model
 case "${QUANT_TYPE}" in
@@ -109,6 +129,7 @@ fi
 log_info "Configuration: ${QUANT_TYPE} quantization"
 log_info "  Chat model: ${CHAT_MODEL_NAME}"
 log_info "  Tool model: ${TOOL_MODEL_NAME}"
+log_info "  Deploy mode: ${DEPLOY_MODELS}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"
 
 bash "${SCRIPT_DIR}/01_check_gpu.sh"

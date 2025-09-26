@@ -9,7 +9,8 @@ from vllm.sampling_params import SamplingParams
 
 from ..config import (
     CHAT_MAX_OUT, HISTORY_MAX_TOKENS, USER_UTT_MAX_TOKENS,
-    EXACT_TOKEN_TRIM, CONCURRENT_MODEL_CALL, TOOL_HISTORY_TOKENS
+    EXACT_TOKEN_TRIM, CONCURRENT_MODEL_CALL, TOOL_HISTORY_TOKENS,
+    DEPLOY_CHAT, DEPLOY_TOOL,
 )
 from ..engines import get_chat_engine
 from ..persona import get_static_prefix, compose_persona_runtime
@@ -24,6 +25,9 @@ from ..utils.validation import (
 from ..handlers.session_manager import session_manager
 from ..execution.sequential_executor import run_sequential_execution
 from ..execution.concurrent_executor import run_concurrent_execution
+from ..execution.chat_streamer import run_chat_stream
+from ..execution.tool_runner import run_toolcall
+from ..execution.tool_parser import parse_tool_result
 
 if EXACT_TOKEN_TRIM:
     from ..tokenizer_utils import exact_token_count as token_count_exact
@@ -133,12 +137,50 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
             exact=EXACT_TOKEN_TRIM
         )
 
-    # Choose execution mode based on CONCURRENT_MODEL_CALL flag
+    # Choose execution based on deploy mode and concurrency flag
     async def _run_start():
-        if CONCURRENT_MODEL_CALL:
-            await run_concurrent_execution(ws, session_id, static_prefix, runtime_text, history_text, user_utt)
-        else:
-            await run_sequential_execution(ws, session_id, static_prefix, runtime_text, history_text, user_utt)
+        if DEPLOY_CHAT and DEPLOY_TOOL:
+            if CONCURRENT_MODEL_CALL:
+                await run_concurrent_execution(ws, session_id, static_prefix, runtime_text, history_text, user_utt)
+            else:
+                await run_sequential_execution(ws, session_id, static_prefix, runtime_text, history_text, user_utt)
+            return
+
+        if DEPLOY_CHAT and not DEPLOY_TOOL:
+            # Chat-only deployment: stream chat tokens and finalize
+            final_text = ""
+            async for chunk in run_chat_stream(
+                session_id,
+                static_prefix,
+                runtime_text,
+                history_text,
+                user_utt,
+            ):
+                await ws.send_text(json.dumps({"type": "token", "text": chunk}))
+                final_text += chunk
+
+            await ws.send_text(json.dumps({
+                "type": "final",
+                "normalized_text": final_text
+            }))
+            await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+            return
+
+        if DEPLOY_TOOL and not DEPLOY_CHAT:
+            # Tool-only deployment: run tool router, emit decision, and finalize
+            tool_res = await run_toolcall(session_id, user_utt, history_text, mark_active=False)
+            raw_field, is_tool = parse_tool_result(tool_res)
+            await ws.send_text(json.dumps({
+                "type": "toolcall",
+                "status": "yes" if is_tool else "no",
+                "raw": raw_field,
+            }))
+            await ws.send_text(json.dumps({
+                "type": "final",
+                "normalized_text": ""
+            }))
+            await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+            return
 
     task = asyncio.create_task(_run_start())
     session_manager.session_tasks[session_id] = task

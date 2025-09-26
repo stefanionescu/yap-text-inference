@@ -28,6 +28,10 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 
 # ----------------- Environment / Defaults -----------------
 
+DEPLOY_MODELS = (os.getenv("DEPLOY_MODELS", "both") or "both").lower()
+DEPLOY_CHAT = DEPLOY_MODELS in ("both", "chat")
+DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool")
+
 CHAT_MODEL = os.getenv("CHAT_MODEL")
 TOOL_MODEL = os.getenv("TOOL_MODEL")
 
@@ -38,10 +42,10 @@ KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq_marlin'
 
 # Validate required configuration
-if not CHAT_MODEL:
-    raise ValueError("CHAT_MODEL environment variable is required")
-if not TOOL_MODEL:
-    raise ValueError("TOOL_MODEL environment variable is required")
+if DEPLOY_CHAT and not CHAT_MODEL:
+    raise ValueError("CHAT_MODEL environment variable is required when deploying chat (DEPLOY_MODELS=both|chat)")
+if DEPLOY_TOOL and not TOOL_MODEL:
+    raise ValueError("TOOL_MODEL environment variable is required when deploying tool (DEPLOY_MODELS=both|tool)")
 if not QUANTIZATION:
     raise ValueError("QUANTIZATION environment variable is required")
 if QUANTIZATION not in ["fp8", "gptq_marlin"]:
@@ -68,9 +72,9 @@ ALLOWED_TOOL_MODELS = [
     "MadeAgents/Hammer2.1-3b"
 ]
 
-if CHAT_MODEL not in ALLOWED_CHAT_MODELS:
+if DEPLOY_CHAT and CHAT_MODEL not in ALLOWED_CHAT_MODELS:
     raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
-if TOOL_MODEL not in ALLOWED_TOOL_MODELS:
+if DEPLOY_TOOL and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
     raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))
@@ -114,7 +118,9 @@ API_KEY = os.getenv("YAP_API_KEY", "yap_token")
 
 def make_kv_transfer_config():
     """Configure KV cache transfer for sharing history tokens between chat and tool models."""
-    # Always enable KV cache sharing since both models always run together
+    # Only meaningful when both chat and tool are deployed
+    if not (DEPLOY_CHAT and DEPLOY_TOOL):
+        return None
     # This allows the tool model to reuse the latest TOOL_HISTORY_TOKENS from chat model's cache
     enable_kv_sharing = os.getenv("ENABLE_KV_SHARING", "1") == "1"
     if not enable_kv_sharing:

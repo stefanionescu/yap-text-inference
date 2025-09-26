@@ -18,6 +18,8 @@ from .config import (
     TOOL_MODEL,
     TOOL_GPU_FRAC,
     TOOL_MAX_LEN,
+    DEPLOY_CHAT,
+    DEPLOY_TOOL,
     make_engine_args,
 )
 
@@ -29,22 +31,26 @@ _tool_engine: AsyncLLMEngine | None = None
 _ENGINE_CONSTRUCTION_LOCK = asyncio.Lock()
 
 
-def _build_engines() -> Tuple[AsyncLLMEngine, AsyncLLMEngine]:
-    tool = AsyncLLMEngine.from_engine_args(
-        make_engine_args(TOOL_MODEL, TOOL_GPU_FRAC, TOOL_MAX_LEN, is_chat=False)
-    )
-    chat = AsyncLLMEngine.from_engine_args(
-        make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN, is_chat=True)
-    )
+def _build_engines() -> Tuple[AsyncLLMEngine | None, AsyncLLMEngine | None]:
+    tool = None
+    chat = None
+    if DEPLOY_TOOL:
+        tool = AsyncLLMEngine.from_engine_args(
+            make_engine_args(TOOL_MODEL, TOOL_GPU_FRAC, TOOL_MAX_LEN, is_chat=False)
+        )
+    if DEPLOY_CHAT:
+        chat = AsyncLLMEngine.from_engine_args(
+            make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN, is_chat=True)
+        )
     return chat, tool
 
 
 async def get_chat_engine() -> AsyncLLMEngine:
     global _chat_engine, _tool_engine
-    if _chat_engine is None or _tool_engine is None:
+    if _chat_engine is None or (_tool_engine is None and DEPLOY_TOOL):
         async with _ENGINE_CONSTRUCTION_LOCK:
             # Double-check pattern to avoid building engines twice
-            if _chat_engine is None or _tool_engine is None:
+            if _chat_engine is None or (_tool_engine is None and DEPLOY_TOOL):
                 _chat, _tool = _build_engines()
                 _chat_engine, _tool_engine = _chat, _tool
     return _chat_engine  # type: ignore[return-value]
@@ -52,10 +58,10 @@ async def get_chat_engine() -> AsyncLLMEngine:
 
 async def get_tool_engine() -> AsyncLLMEngine:
     global _chat_engine, _tool_engine
-    if _chat_engine is None or _tool_engine is None:
+    if (_chat_engine is None and DEPLOY_CHAT) or _tool_engine is None:
         async with _ENGINE_CONSTRUCTION_LOCK:
             # Double-check pattern to avoid building engines twice
-            if _chat_engine is None or _tool_engine is None:
+            if (_chat_engine is None and DEPLOY_CHAT) or _tool_engine is None:
                 _chat, _tool = _build_engines()
                 _chat_engine, _tool_engine = _chat, _tool
     return _tool_engine  # type: ignore[return-value]
