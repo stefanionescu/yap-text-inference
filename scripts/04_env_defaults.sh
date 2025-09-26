@@ -72,21 +72,8 @@ export TRITON_CACHE_DIR="${ROOT_DIR}/.triton"
 export FLASHINFER_CACHE_DIR="${ROOT_DIR}/.flashinfer"
 export XFORMERS_CACHE_DIR="${ROOT_DIR}/.xformers"
 
-# --- Attention backend selection (prefer FLASHINFER when installed) ---
-# User cannot override: always auto-select based on availability of flashinfer.
-if python - <<'PY'
-import sys
-try:
-    import flashinfer  # noqa: F401
-    sys.exit(0)
-except Exception:
-    sys.exit(1)
-PY
-then
-  export VLLM_ATTENTION_BACKEND=FLASHINFER
-else
-  export VLLM_ATTENTION_BACKEND=XFORMERS
-fi
+# Backend selection is now centralized in Python; scripts may still export hints if needed
+export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-}
 
 # --- GPU detection and optimization ---
 GPU_NAME=""
@@ -116,19 +103,19 @@ case "${QUANTIZATION}" in
         export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
         export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
         ;;
-      *A100*)
-        export KV_DTYPE=${KV_DTYPE:-auto}  # fp16 for A100 stability
-        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
-        export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-        export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
-        export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
-        export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-        export CUDA_DEVICE_MAX_CONNECTIONS=1
-        export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
-        export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
-        export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
-        export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
-        ;;
+    *A100*)
+      export KV_DTYPE=${KV_DTYPE:-auto}  # fp16 preferred for A100 stability
+      export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+      export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+      export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
+      export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+      export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      export CUDA_DEVICE_MAX_CONNECTIONS=1
+      export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
+      export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
+      export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
+      export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
+      ;;
       *)
         # Unknown GPU: conservative fp8 defaults
         export KV_DTYPE=${KV_DTYPE:-auto}
@@ -148,15 +135,14 @@ case "${QUANTIZATION}" in
         log_info "A100 4-bit mode: V0 engine + INT8 KV for maximum context slots"
         ;;
       *H100*|*L40S*|*L40*)
-        # Hopper/Ada: Keep V1 engine + auto FP8 KV + FlashInfer
+        # Hopper/Ada: Prefer V1 engine + FP8 KV if backend supports it (Python enforces)
         export VLLM_USE_V1=1
         export KV_DTYPE=${KV_DTYPE:-fp8}
-        # VLLM_ATTENTION_BACKEND already set to FLASHINFER globally
         export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
         if [[ "${GPU_NAME}" == *H100* ]]; then
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
         fi
-        log_info "Hopper/Ada 4-bit mode: V1 engine + auto FP8 KV with FlashInfer"
+        log_info "Hopper/Ada 4-bit mode: V1 engine preferred; backend decided in Python"
         ;;
       *)
         # Unknown GPU: conservative approach (V0 + auto KV)

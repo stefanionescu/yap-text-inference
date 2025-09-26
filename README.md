@@ -301,6 +301,21 @@ All of the above have sensible defaults in `scripts/04_env_defaults.sh`.
 ## KV caching
 Using vLLM’s internal prefix caching with chunked prefill.
 
+### Log rotation
+Example logrotate config (optional):
+
+```
+/path/to/repo/server.log {
+  size 100M
+  rotate 3
+  copytruncate
+  compress
+  missingok
+}
+```
+
+Or rely on the built-in simple rotation in `scripts/06_follow_logs.sh` which rotates at ~100MB once to `server.log.1`.
+
 ## API — WebSocket `/ws`
 
 The server maintains persistent WebSocket connections with session-based user assignment. Each client provides a `session_id` for user identification, and the connection can handle multiple requests over time with automatic interruption support.

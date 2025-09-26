@@ -10,4 +10,20 @@ else
   nvidia-smi || true
 fi
 
+# Print CUDA/Torch ABI hint if available
+if [ -d "${ROOT_DIR}/.venv" ]; then
+  CU_VER=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
+import sys
+try:
+    import torch
+    print((torch.version.cuda or '').strip())
+except Exception:
+    sys.exit(1)
+PY
+  )
+  if [ -n "${CU_VER:-}" ]; then
+    log_info "Torch CUDA version detected: ${CU_VER}"
+  fi
+fi
+
 
