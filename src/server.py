@@ -42,7 +42,13 @@ async def status(api_key: str = Depends(get_api_key)):
 
 @app.on_event("startup")
 async def startup_warmup():
-    """Warm deployed engines to reduce first-turn TTFT."""
+    """Warm deployed engines to reduce first-turn TTFT.
+
+    Controlled by env WARMUP_ON_START (default: 1). If set to 0, skip warmup
+    to avoid delaying server readiness.
+    """
+    if os.getenv("WARMUP_ON_START", "1") != "1":
+        return
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["\n", "</s>"])
 
     if DEPLOY_CHAT:
