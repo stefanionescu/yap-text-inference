@@ -5,6 +5,24 @@ import os
 # Ensure V1 engine is selected before importing any vLLM modules
 os.environ.setdefault("VLLM_USE_V1", "1")
 
+# Centralize backend selection and FP8 safety in Python
+def _select_attention_backend() -> None:
+    """Set attention backend and KV dtype safeguards based on availability.
+    - Prefer FLASHINFER when importable.
+    - If FP8 KV is requested but flashinfer is unavailable, force KV_DTYPE=auto.
+    """
+    global KV_DTYPE
+    try:
+        import flashinfer  # noqa: F401
+        os.environ.setdefault("VLLM_ATTENTION_BACKEND", "FLASHINFER")
+    except Exception:
+        os.environ.setdefault("VLLM_ATTENTION_BACKEND", "XFORMERS")
+        if (KV_DTYPE or "auto").lower() == "fp8":
+            # Safe fallback to fp16 KV
+            KV_DTYPE = "auto"
+
+_select_attention_backend()
+
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 

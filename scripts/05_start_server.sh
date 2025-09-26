@@ -10,40 +10,22 @@ if [ -d "${ROOT_DIR}/.venv" ]; then
   source "${ROOT_DIR}/.venv/bin/activate"
 fi
 
-# Force backend selection here too; ignore any pre-set value
-if python - <<'PY'
-import sys
-try:
-    import flashinfer  # noqa: F401
-    sys.exit(0)
-except Exception:
-    sys.exit(1)
-PY
-then
-  export VLLM_ATTENTION_BACKEND=FLASHINFER
-else
-  export VLLM_ATTENTION_BACKEND=XFORMERS
-fi
-
-# If FP8 KV cache is requested but FlashInfer is unavailable, force safe fallback to INT8
-if [ "${KV_DTYPE:-fp8}" = "fp8" ]; then
-  if ! python - <<'PY'
-import sys
-try:
-    import flashinfer  # noqa: F401
-    sys.exit(0)
-except Exception:
-    sys.exit(1)
-PY
-  then
-    log_warn "flashinfer not importable; forcing KV_DTYPE=auto (fp16) to avoid FP8+xFormers crash"
-    export KV_DTYPE=auto
+# Double-start guard and stale PID handling
+PID_FILE="${ROOT_DIR}/server.pid"
+if [ -f "${PID_FILE}" ]; then
+  OLD_PID="$(cat "${PID_FILE}" 2>/dev/null || true)"
+  if [ -n "${OLD_PID}" ] && ps -p "${OLD_PID}" >/dev/null 2>&1; then
+    log_warn "Server already running (PID=${OLD_PID}). Aborting start."
+    exit 1
+  else
+    log_warn "Stale PID file found; removing ${PID_FILE}"
+    rm -f "${PID_FILE}" || true
   fi
 fi
 
-# Log key env knobs for backend selection
+# Log key env knobs
 log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${CHAT_MODEL:-} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
-log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-} TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_V1:-} ENFORCE_EAGER=${ENFORCE_EAGER:-}"
+log_info "TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_V1:-} ENFORCE_EAGER=${ENFORCE_EAGER:-}"
 
 # Start as a new session so Ctrl+C in the calling shell won't touch it.
 # Write the session leader PID so we can kill the whole tree later.
@@ -51,14 +33,29 @@ setsid uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1 > "${ROOT_D
 SERVER_PID=$!
 echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 
-sleep 1
-if ps -p "$(cat "${ROOT_DIR}/server.pid" 2>/dev/null)" >/dev/null 2>&1; then
-  log_info "Server started: PID=$(cat "${ROOT_DIR}/server.pid")"
-  log_info "Health:  curl -s http://127.0.0.1:8000/healthz"
-  log_info "Logs:    tail -f ${ROOT_DIR}/server.log"
-  log_info "Stop:    kill -TERM -$(cat ${ROOT_DIR}/server.pid)  # negative PID kills session"
-else
-  log_warn "Server may have failed to start. See ${ROOT_DIR}/server.log"
+# Readiness probe: wait up to 30s for /healthz
+READY=0
+for _ in {1..60}; do
+  if ps -p "${SERVER_PID}" >/dev/null 2>&1 && curl -fsS "http://127.0.0.1:8000/healthz" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 0.5
+done
+
+if [ "${READY}" != "1" ]; then
+  log_warn "Server failed readiness within timeout. See ${ROOT_DIR}/server.log"
   exit 1
+fi
+
+log_info "Server started: PID=$(cat "${ROOT_DIR}/server.pid")"
+log_info "Health:  curl -s http://127.0.0.1:8000/healthz"
+log_info "Logs:    tail -f ${ROOT_DIR}/server.log"
+log_info "Stop:    kill -TERM -$(cat ${ROOT_DIR}/server.pid)  # negative PID kills session"
+
+# Optional warmup to prefill KV, kernels, tokenizer
+if [ "${WARMUP_ON_START:-1}" = "1" ]; then
+  log_info "Running warmup client"
+  RECV_TIMEOUT_SEC=${RECV_TIMEOUT_SEC:-60} "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/test/warmup.py" >/dev/null 2>&1 || true
 fi
 

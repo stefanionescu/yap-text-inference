@@ -94,18 +94,8 @@ case "${QUANT_TYPE}" in
     ;;
 esac
 
-# Validate tool model
-case "${TOOL_MODEL_NAME}" in
-  MadeAgents/Hammer2.1-1.5b|MadeAgents/Hammer2.1-3b)
-    # Valid tool model
-    ;;
-  *)
-    log_warn "Error: Invalid tool model '${TOOL_MODEL_NAME}'. Must be one of:"
-    log_warn "  MadeAgents/Hammer2.1-1.5b"
-    log_warn "  MadeAgents/Hammer2.1-3b"
-    usage
-    ;;
-esac
+# Note: Model & quantization validation is centralized in Python (src/config.py).
+# main.sh only passes through the selected values.
 
 export CHAT_MODEL="${CHAT_MODEL_NAME}"
 export TOOL_MODEL="${TOOL_MODEL_NAME}"

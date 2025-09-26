@@ -98,6 +98,7 @@ PY
         log_warn "FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi
     fi
+    log_info "FlashInfer wheel source: ${FI_IDX_PRIMARY} (CUDA=${CUDA_NVVER} Torch=${TORCH_MAJMIN})"
   else
     log_warn "Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
   fi
