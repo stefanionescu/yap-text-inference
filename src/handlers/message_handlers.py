@@ -8,14 +8,14 @@ from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
 from ..config import (
-    CHAT_MAX_OUT, HISTORY_MAX_TOKENS, USER_UTT_MAX_TOKENS,
-    EXACT_TOKEN_TRIM, CONCURRENT_MODEL_CALL, TOOL_HISTORY_TOKENS,
+    HISTORY_MAX_TOKENS, USER_UTT_MAX_TOKENS,
+    EXACT_TOKEN_TRIM, CONCURRENT_MODEL_CALL,
     DEPLOY_CHAT, DEPLOY_TOOL,
 )
 from ..engines import get_chat_engine
 from ..persona import get_static_prefix, compose_persona_runtime
 from ..tokens import (
-    approx_token_count, trim_text_to_token_limit, trim_text_exact,
+    approx_token_count, trim_text_to_token_limit,
     trim_history_preserve_messages
 )
 from ..utils.validation import (
@@ -30,7 +30,6 @@ from ..execution.tool_runner import run_toolcall
 from ..execution.tool_parser import parse_tool_result
 
 if EXACT_TOKEN_TRIM:
-    from ..tokenizer_utils import exact_token_count as token_count_exact
     from ..tokenizer_utils import trim_text_to_token_limit_exact as trim_text_exact
 
 
