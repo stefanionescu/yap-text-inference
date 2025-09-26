@@ -140,6 +140,9 @@ def make_kv_transfer_config():
         
     return {
         "kv_connector": "PyNcclConnector",  # Use NCCL for efficient GPU-to-GPU transfer
+        # vLLM v1 requires a role to be specified when connector is set
+        # Use 'kv_both' for same-process producer/consumer engines
+        "kv_disagg_role": "kv_both",
         "kv_buffer_size": TOOL_HISTORY_TOKENS * 2,  # Buffer for key and value tensors
         "kv_buffer_dtype": "auto",  # Match model dtype
     }
