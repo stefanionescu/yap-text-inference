@@ -47,8 +47,15 @@ DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool")
 CHAT_MODEL = os.getenv("CHAT_MODEL")
 TOOL_MODEL = os.getenv("TOOL_MODEL")
 
-CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
-TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
+# GPU memory fractions: adjust based on deployment mode
+if DEPLOY_CHAT and DEPLOY_TOOL:
+    # Both models: split GPU memory
+    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
+else:
+    # Single model: use most of GPU memory
+    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq_marlin'
@@ -114,39 +121,25 @@ EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
 # Concurrent toolcall mode: if True, run chat and tool models concurrently (default: True)
 CONCURRENT_MODEL_CALL = os.getenv("CONCURRENT_MODEL_CALL", "1") == "1"
 
-# Maximum concurrent WebSocket connections (to protect GPU resources)
-MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "24"))
+# Maximum concurrent WebSocket connections (deployment-aware)
+if DEPLOY_TOOL and not DEPLOY_CHAT:
+    # Tool-only: higher capacity since tool model is lighter
+    MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "32"))
+elif DEPLOY_CHAT and not DEPLOY_TOOL:
+    # Chat-only: standard capacity
+    MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "24"))
+else:
+    # Both models: reduced capacity due to dual-engine overhead
+    MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "16"))
 
-# Per-user memory optimization for toolcalls
-# Increase GPU memory utilization when toolcalls are enabled to handle larger KV cache per user
-TOOLCALL_MEMORY_SCALING = float(os.getenv("TOOLCALL_MEMORY_SCALING", "1.2"))  # 20% increase
-MAX_USERS_WITH_TOOLCALLS = int(os.getenv("MAX_USERS_WITH_TOOLCALLS", "16"))  # Reduced concurrent users for higher per-user allocation
+# Legacy variable for backwards compatibility
+MAX_USERS_WITH_TOOLCALLS = MAX_CONCURRENT_CONNECTIONS
 
 # API Key for authentication (all endpoints except /healthz)
 API_KEY = os.getenv("YAP_API_KEY", "yap_token")
 
 
 # ----------------- Helpers -----------------
-
-def make_kv_transfer_config():
-    """Configure KV cache transfer for sharing history tokens between chat and tool models."""
-    # Only meaningful when both chat and tool are deployed
-    if not (DEPLOY_CHAT and DEPLOY_TOOL):
-        return None
-    # This allows the tool model to reuse the latest TOOL_HISTORY_TOKENS from chat model's cache
-    enable_kv_sharing = os.getenv("ENABLE_KV_SHARING", "1") == "1"
-    if not enable_kv_sharing:
-        return None
-        
-    return {
-        "kv_connector": "PyNcclConnector",  # Use NCCL for efficient GPU-to-GPU transfer
-        # vLLM v1 requires a role to be specified when connector is set
-        # Use 'kv_both' for same-process producer/consumer engines
-        "kv_disagg_role": "kv_both",
-        "kv_buffer_size": TOOL_HISTORY_TOKENS * 2,  # Buffer for key and value tensors
-        "kv_buffer_dtype": "auto",  # Match model dtype
-    }
-
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
 
@@ -163,17 +156,12 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     quant_value = QUANTIZATION if is_chat else None
 
     # Build kwargs for V1 engine.
-    # Scale GPU memory for tool models to handle larger per-user KV cache
-    actual_gpu_frac = gpu_frac
-    if not is_chat:  # Tool model gets memory scaling for enhanced KV cache
-        actual_gpu_frac = min(gpu_frac * TOOLCALL_MEMORY_SCALING, 0.95)
-    
     kwargs = dict(
         model=model,
         trust_remote_code=True,
         tensor_parallel_size=1,
         max_model_len=max_len,
-        gpu_memory_utilization=actual_gpu_frac,
+        gpu_memory_utilization=gpu_frac,
         # Allow CUDA graphs for better performance
         enforce_eager=False,
         enable_chunked_prefill=True,
@@ -195,13 +183,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         if kv_dtype.startswith("fp8"):
             # Enable dynamic k/v scale calculation for FP8 KV cache
             kwargs["calculate_kv_scales"] = True
-
-    if use_v1:
-        _kv_transfer = make_kv_transfer_config()
-        if _kv_transfer is not None:
-            kwargs["kv_transfer_config"] = _kv_transfer
-            # vLLM v1 requires a role when kv transfer connector is used
-            kwargs["kv_disagg_role"] = "kv_producer" if is_chat else "kv_consumer"
 
     return AsyncEngineArgs(**kwargs)
 

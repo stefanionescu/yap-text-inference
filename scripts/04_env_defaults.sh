@@ -68,14 +68,12 @@ export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-1}
 export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-2400}
 export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 
-# Tool model specific token limits for KV cache sharing
-export TOOL_HISTORY_TOKENS=${TOOL_HISTORY_TOKENS:-1200}  # Half of chat history for sharing
+# Tool model specific token limits
+export TOOL_HISTORY_TOKENS=${TOOL_HISTORY_TOKENS:-1200}  # Tool model context allocation
 export TOOL_SYSTEM_TOKENS=${TOOL_SYSTEM_TOKENS:-1450}   # System prompt + response space
 
-# KV cache sharing and memory optimization
-export ENABLE_KV_SHARING=${ENABLE_KV_SHARING:-1}         # Enable KV cache sharing between models
-export TOOLCALL_MEMORY_SCALING=${TOOLCALL_MEMORY_SCALING:-1.2}  # 20% extra GPU memory for tool models
-export MAX_USERS_WITH_TOOLCALLS=${MAX_USERS_WITH_TOOLCALLS:-16}  # Fewer concurrent users for more memory per user
+# Connection limits for resource protection
+export MAX_USERS_WITH_TOOLCALLS=${MAX_USERS_WITH_TOOLCALLS:-16}  # Fewer concurrent users when tools are active
 
 # vLLM engine selection; attention backend chosen below (FLASHINFER preferred)
 export VLLM_USE_V1=${VLLM_USE_V1:-1}
