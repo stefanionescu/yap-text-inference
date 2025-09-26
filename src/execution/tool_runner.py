@@ -8,8 +8,9 @@ from typing import Optional, Dict, Any
 from vllm.sampling_params import SamplingParams
 
 from ..engines import get_tool_engine
-from ..persona import build_hammer_prompt
-from ..config import TOOL_MAX_OUT
+from ..persona import build_hammer_prompt, build_hammer_prompt_with_history
+from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, EXACT_TOKEN_TRIM
+from ..tokens import trim_history_for_tool_sharing
 from ..handlers.session_manager import session_manager
 
 # --- Toolcall sampling defaults ---
@@ -22,14 +23,16 @@ TOOL_STOP = ["\n", "</s>"]
 async def run_toolcall(
     session_id: str,
     user_utt: str,
+    history_text: str = "",
     request_id: Optional[str] = None,
     mark_active: bool = True,
 ) -> Dict[str, Any]:
-    """Execute a tool call with timeout handling.
+    """Execute a tool call with timeout handling and KV cache sharing.
     
     Args:
         session_id: Session identifier
         user_utt: User utterance to process
+        history_text: Recent conversation history for context and KV sharing
         request_id: Optional request ID (generates one if not provided)
         mark_active: Whether to mark this as the active request
         
@@ -53,10 +56,23 @@ async def run_toolcall(
     pieces = []
     tool_timeout_s = float(os.getenv("TOOL_TIMEOUT_S", "10"))
 
+    # Trim history for tool model to enable KV cache sharing
+    tool_history = trim_history_for_tool_sharing(
+        history_text, 
+        TOOL_HISTORY_TOKENS, 
+        exact=EXACT_TOKEN_TRIM
+    )
+
     async def _iter_tool():
         """Internal generator for tool output."""
+        # Use enhanced prompt with history for better context and KV cache sharing
+        if tool_history.strip():
+            prompt = build_hammer_prompt_with_history(user_utt, tool_history)
+        else:
+            prompt = build_hammer_prompt(user_utt)
+            
         stream = (await get_tool_engine()).generate(
-            prompt=build_hammer_prompt(user_utt),
+            prompt=prompt,
             sampling_params=params,
             request_id=req_id,
             priority=1,
