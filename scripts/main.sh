@@ -28,6 +28,7 @@ usage() {
   echo "           w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored (10.7B, uncensored)"
   echo "  For 4bit: SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
   echo "           SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
+  echo "           SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32"
   echo ""
   echo "Tool model options:"
   echo "  MadeAgents/Hammer2.1-1.5b"
@@ -147,10 +148,12 @@ case "${QUANT_TYPE}" in
   4bit)
     export QUANTIZATION=gptq_marlin
     if [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64" ] && 
-       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128" ]; then
+       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128" ] &&
+       [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32" ]; then
       log_warn "Error: For 4bit quantization, must use one of:"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
+      log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32"
       usage
     fi
     ;;
