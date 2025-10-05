@@ -25,3 +25,6 @@ logs/
 *.swp
 *.swo
 .cursor/
+
+# Leanings
+learnings/
