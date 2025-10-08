@@ -146,6 +146,40 @@ case "${QUANTIZATION}" in
         ;;
     esac
     ;;
+  awq)
+    # 4-bit AWQ via vLLM auto-AWQ. Prefer V1 engine; KV dtype fp8 on Hopper/Ada if available.
+    case "${GPU_NAME}" in
+      *H100*|*L40S*|*L40*)
+        export VLLM_USE_V1=1
+        export KV_DTYPE=${KV_DTYPE:-fp8}
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
+        if [[ "${GPU_NAME}" == *H100* ]]; then
+          export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
+        fi
+        export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+        export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
+        export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+        export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+        ;;
+      *A100*)
+        # A100: V0 for max slots, keep KV fp16/auto for stability
+        export VLLM_USE_V1=0
+        export KV_DTYPE=${KV_DTYPE:-auto}
+        export VLLM_ATTENTION_BACKEND=XFORMERS
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+        export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
+        export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
+        export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
+        ;;
+      *)
+        # Unknown GPU: conservative defaults
+        export VLLM_USE_V1=${VLLM_USE_V1:-1}
+        export KV_DTYPE=${KV_DTYPE:-auto}
+        export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
+        export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+        ;;
+    esac
+    ;;
   gptq_marlin)
     # 4-bit mode optimizations
     case "${GPU_NAME}" in

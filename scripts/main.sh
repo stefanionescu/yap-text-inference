@@ -18,7 +18,8 @@ usage() {
   echo ""
   echo "Quantization options:"
   echo "  8bit  - Use 8-bit quantization (fp8)"
-  echo "  4bit  - Use 4-bit quantization (GPTQ)"
+  echo "  4bit  - Use 4-bit quantization (GPTQ pre-quantized weights)"
+  echo "  awq   - Use 4-bit AWQ via vLLM auto-AWQ (quantize float model on load)"
   echo ""
   echo "Chat model options:"
   echo "  For 8bit: SicariusSicariiStuff/Impish_Nemo_12B (12B, general purpose)"
@@ -26,9 +27,14 @@ usage() {
   echo "           SicariusSicariiStuff/Impish_Mind_8B (8B, highest rated, uncensored)"
   echo "           kyx0r/Neona-12B (12B)"
   echo "           w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored (10.7B, uncensored)"
-  echo "  For 4bit: SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
+  echo "  For 4bit (GPTQ): SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
   echo "           SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
   echo "           SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32"
+  echo "  For awq (float weights): SicariusSicariiStuff/Impish_Nemo_12B"
+  echo "                          SicariusSicariiStuff/Wingless_Imp_8B"
+  echo "                          SicariusSicariiStuff/Impish_Mind_8B"
+  echo "                          kyx0r/Neona-12B"
+  echo "                          w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored"
   echo ""
   echo "Tool model options:"
   echo "  MadeAgents/Hammer2.1-1.5b"
@@ -51,8 +57,11 @@ usage() {
   echo "  # Concurrent mode for lower latency"
   echo "  CONCURRENT_MODEL_CALL=1 $0 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b"
   echo ""
-  echo "  # 4-bit with concurrent mode"
+  echo "  # 4-bit GPTQ with concurrent mode"
   echo "  CONCURRENT_MODEL_CALL=1 $0 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b"
+  echo ""
+  echo "  # 4-bit AWQ (quantize both chat and tool models on load)"
+  echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
   echo "  # Chat-only deployment"
   echo "  $0 8bit chat SicariusSicariiStuff/Impish_Nemo_12B"
@@ -150,15 +159,37 @@ case "${QUANT_TYPE}" in
     if [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64" ] && 
        [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128" ] &&
        [ "${CHAT_MODEL_NAME}" != "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32" ]; then
-      log_warn "Error: For 4bit quantization, must use one of:"
+      log_warn "Error: For 4bit (GPTQ) quantization, must use one of:"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128"
       log_warn "  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32"
       usage
     fi
     ;;
+  awq)
+    export QUANTIZATION=awq
+    # AWQ requires float (non-GPTQ) chat model; tool will be quantized too
+    case "${CHAT_MODEL_NAME}" in
+      "SicariusSicariiStuff/Impish_Nemo_12B"|
+      "SicariusSicariiStuff/Wingless_Imp_8B"|
+      "SicariusSicariiStuff/Impish_Mind_8B"|
+      "kyx0r/Neona-12B"|
+      "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored")
+        ;;
+      *)
+        log_warn "Error: For awq, provide a FLOAT chat model (not GPTQ)."
+        log_warn "  Allowed examples:"
+        log_warn "    SicariusSicariiStuff/Impish_Nemo_12B"
+        log_warn "    SicariusSicariiStuff/Wingless_Imp_8B"
+        log_warn "    SicariusSicariiStuff/Impish_Mind_8B"
+        log_warn "    kyx0r/Neona-12B"
+        log_warn "    w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored"
+        usage
+        ;;
+    esac
+    ;;
   *)
-    log_warn "Error: Invalid quantization '${QUANT_TYPE}'. Must be '8bit' or '4bit'"
+    log_warn "Error: Invalid quantization '${QUANT_TYPE}'. Must be '8bit', '4bit', or 'awq'"
     usage
     ;;
 esac
