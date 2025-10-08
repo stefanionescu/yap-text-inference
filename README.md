@@ -41,6 +41,9 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Ne
 # 4-bit quantization with 3B tool model (concurrent mode)
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
 
+# 4-bit AWQ auto-quantization (quantizes both chat and tool on load)
+bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
+
 # Chat-only deployment
 bash scripts/main.sh 8bit chat SicariusSicariiStuff/Impish_Nemo_12B
 
@@ -291,6 +294,7 @@ Models and GPU split
 - `TOOL_MODEL` (required when deploying tool: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
 - `CHAT_GPU_FRAC`, `TOOL_GPU_FRAC` - GPU memory allocation (deployment-aware: 90% for single-model, 70%/20% for both)
 - `QUANTIZATION` (required: `fp8` for 8bit mode, `gptq_marlin` for 4bit mode)
+  - Also supports `awq` for 4-bit AWQ (auto-quantizes float weights at load)
 - `KV_DTYPE` = `fp8|auto|int8` (auto-selected based on GPU and quantization mode)
 - `VLLM_ATTENTION_BACKEND` (auto; prefers `FLASHINFER` if available, else `XFORMERS`)
 - `dtype` is set to `auto` internally; no need to configure
@@ -453,7 +457,7 @@ The server supports real-time interruption for natural conversation flow:
 
 ## Quantization modes
 
-The server supports two quantization modes that must be explicitly specified:
+The server supports three quantization modes that must be explicitly specified:
 
 **8-bit mode (FP8):**
 ```bash
@@ -502,6 +506,20 @@ bash scripts/main.sh 4bit SicariusSicariiStuff/Fiendish_LLAMA_3B_GPTQ-4-bit-128 
 # Concurrent mode  
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
 ```
+
+**4-bit mode (AWQ via vLLM auto-AWQ):**
+```bash
+# Uses float (non-GPTQ) chat model weights and quantizes BOTH chat and tool models at load
+bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
+
+# With concurrent mode
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+```
+
+Notes for AWQ:
+- Provide a float chat model (e.g., `SicariusSicariiStuff/Impish_Nemo_12B`, `kyx0r/Neona-12B`, `SicariusSicariiStuff/Wingless_Imp_8B`, etc.) — do not pass a GPTQ repo.
+- The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency.
+- AWQ requires additional wheels (installed automatically via `requirements.txt`).
 
 ## Model calling modes
 

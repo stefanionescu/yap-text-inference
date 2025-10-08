@@ -58,7 +58,7 @@ else:
     TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
-QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin'
+QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
 
 # Validate required configuration
 if DEPLOY_CHAT and not CHAT_MODEL:
@@ -67,8 +67,10 @@ if DEPLOY_TOOL and not TOOL_MODEL:
     raise ValueError("TOOL_MODEL environment variable is required when deploying tool (DEPLOY_MODELS=both|tool)")
 if not QUANTIZATION:
     raise ValueError("QUANTIZATION environment variable is required")
-if QUANTIZATION not in ["fp8", "gptq", "gptq_marlin"]:
-    raise ValueError(f"QUANTIZATION must be 'fp8', 'gptq', or 'gptq_marlin', got: {QUANTIZATION}")
+if QUANTIZATION not in ["fp8", "gptq", "gptq_marlin", "awq"]:
+    raise ValueError(
+        f"QUANTIZATION must be 'fp8', 'gptq', 'gptq_marlin', or 'awq', got: {QUANTIZATION}"
+    )
 
 # Validate allowed models
 ALLOWED_CHAT_MODELS = [
@@ -96,6 +98,13 @@ if DEPLOY_CHAT and CHAT_MODEL not in ALLOWED_CHAT_MODELS:
     raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
 if DEPLOY_TOOL and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
     raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
+
+# Additional safety: AWQ requires non-GPTQ chat weights
+if QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and "GPTQ" in CHAT_MODEL:
+    raise ValueError(
+        "For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
+        f"Got: {CHAT_MODEL}"
+    )
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
@@ -154,7 +163,11 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     kv_dtype = (KV_DTYPE or "").strip().lower()  # empty => let vLLM decide
 
     # Use the validated quantization setting
-    quant_value = QUANTIZATION if is_chat else None
+    # - For GPTQ: only chat model is quantized (tool remains unquantized)
+    # - For FP8: weight quantization applies to chat path per existing behavior
+    # - For AWQ: quantize BOTH chat and tool models (user requirement)
+    quantize_tool = (QUANTIZATION == "awq")
+    quant_value = QUANTIZATION if (is_chat or quantize_tool) else None
 
     # Build kwargs for V1 engine.
     kwargs = dict(
@@ -168,8 +181,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,  # Always enable prefix caching for performance
-        # Weight quantization for chat; tools remain unquantized for stability
-        quantization=(quant_value if is_chat else None),
+        # Weight quantization
+        quantization=quant_value,
         dtype="auto",
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
