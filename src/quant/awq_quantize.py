@@ -41,26 +41,15 @@ def is_hammer_model(model_id: str) -> bool:
     return any(marker in norm for marker in HAMMER_MODEL_MARKERS)
 
 
-def _locate_catcher_cls(quantizer_module: Any) -> Optional[Type[Any]]:
-    try:
-        from torch.nn import Module as TorchModule  # type: ignore
-    except Exception:
-        return None
-
-    candidates: list[Type[Any]] = []
+def _iter_catcher_classes(quantizer_module: Any) -> list[Type[Any]]:
+    classes: list[Type[Any]] = []
     for attr_name in dir(quantizer_module):
         if "catch" not in attr_name.lower():
             continue
         attr_value = getattr(quantizer_module, attr_name, None)
-        if isinstance(attr_value, type) and issubclass(attr_value, TorchModule):
-            candidates.append(attr_value)
-    if not candidates:
-        return None
-
-    for candidate in candidates:
-        if candidate.__name__ == "Catcher":
-            return candidate
-    return candidates[0]
+        if isinstance(attr_value, type):
+            classes.append(attr_value)
+    return classes
 
 
 def apply_hammer_awq_patches() -> None:
@@ -70,52 +59,89 @@ def apply_hammer_awq_patches() -> None:
         print(f"[awq] Hammer patch skipped: unable to import AutoAWQ quantizer ({exc})")
         return
 
-    catcher_cls = _locate_catcher_cls(quantizer)
-    if catcher_cls is None:
+    catcher_classes = _iter_catcher_classes(quantizer)
+    if not catcher_classes:
         print("[awq] Hammer patch skipped: AutoAWQ catcher helper not found")
+    else:
+        def _patch_single_catcher(cls: Type[Any]) -> None:
+            original_init = cls.__init__
+            original_getattr = getattr(cls, "__getattr__", None)
+
+            def patched_init(self, module, *args, **kwargs):  # type: ignore[override]
+                original_init(self, module, *args, **kwargs)
+                object.__setattr__(self, "_hammer_wrapped_module", module)
+                if hasattr(module, "attention_type"):
+                    object.__setattr__(self, "attention_type", getattr(module, "attention_type"))
+
+            def patched_getattr(self, name, _orig_getattr=original_getattr):  # type: ignore[override]
+                if name == "_hammer_wrapped_module":
+                    raise AttributeError(name)
+
+                if _orig_getattr is not None:
+                    try:
+                        return _orig_getattr(self, name)  # type: ignore[misc]
+                    except AttributeError:
+                        pass
+
+                try:
+                    return object.__getattribute__(self, name)
+                except AttributeError:
+                    pass
+
+                try:
+                    wrapped = object.__getattribute__(self, "_hammer_wrapped_module")
+                except AttributeError:
+                    raise AttributeError(name) from None
+
+                try:
+                    return getattr(wrapped, name)
+                except AttributeError:
+                    raise AttributeError(name) from None
+
+            cls.__init__ = patched_init  # type: ignore[assignment]
+            cls.__getattr__ = patched_getattr  # type: ignore[assignment]
+            setattr(cls, "_hammer_attribute_proxy_patch", True)
+            print(f"[awq] Applied Hammer-specific catcher patch ({cls.__name__})")
+
+        for catcher_cls in catcher_classes:
+            if getattr(catcher_cls, "_hammer_attribute_proxy_patch", False):
+                continue
+            _patch_single_catcher(catcher_cls)
+
+    _apply_hammer_qwen_patch()
+
+
+def _apply_hammer_qwen_patch() -> None:
+    try:
+        from transformers.models.qwen2.modeling_qwen2 import Qwen2Model  # type: ignore
+    except Exception as exc:
+        print(f"[awq] Hammer patch skipped: unable to import Qwen2Model ({exc})")
         return
 
-    if getattr(catcher_cls, "_hammer_attribute_proxy_patch", False):
+    if getattr(Qwen2Model, "_hammer_attention_type_patch", False):
         return
 
-    original_init = catcher_cls.__init__
-    original_getattr = getattr(catcher_cls, "__getattr__", None)
+    original_forward = Qwen2Model.forward
 
-    def patched_init(self, module, *args, **kwargs):  # type: ignore[override]
-        original_init(self, module, *args, **kwargs)
-        object.__setattr__(self, "_hammer_wrapped_module", module)
-        if hasattr(module, "attention_type"):
-            object.__setattr__(self, "attention_type", getattr(module, "attention_type"))
-
-    def patched_getattr(self, name):  # type: ignore[override]
-        if name == "_hammer_wrapped_module":
-            raise AttributeError(name)
-
-        if original_getattr is not None:
-            try:
-                return original_getattr(self, name)  # type: ignore[misc]
-            except AttributeError:
-                pass
-
+    def patched_forward(self, *args, **kwargs):  # type: ignore[override]
         try:
-            return object.__getattribute__(self, name)
-        except AttributeError:
+            layer_types = getattr(self.config, "layer_types", None)
+            if layer_types is not None:
+                for idx, decoder_layer in enumerate(self.layers[: self.config.num_hidden_layers]):
+                    if hasattr(decoder_layer, "attention_type"):
+                        continue
+                    try:
+                        attention_type = layer_types[idx]
+                    except Exception:
+                        attention_type = "full_attention"
+                    setattr(decoder_layer, "attention_type", attention_type)
+        except Exception:
             pass
+        return original_forward(self, *args, **kwargs)
 
-        try:
-            wrapped = object.__getattribute__(self, "_hammer_wrapped_module")
-        except AttributeError:
-            raise AttributeError(name) from None
-
-        try:
-            return getattr(wrapped, name)
-        except AttributeError:
-            raise AttributeError(name) from None
-
-    catcher_cls.__init__ = patched_init  # type: ignore[assignment]
-    catcher_cls.__getattr__ = patched_getattr  # type: ignore[assignment]
-    setattr(catcher_cls, "_hammer_attribute_proxy_patch", True)
-    print(f"[awq] Applied Hammer-specific catcher patch ({catcher_cls.__name__})")
+    Qwen2Model.forward = patched_forward  # type: ignore[assignment]
+    Qwen2Model._hammer_attention_type_patch = True
+    print("[awq] Applied Hammer-specific Qwen2 attention patch")
 
 
 def resolve_calibration_seqlen(requested: int, model: Any) -> int:
