@@ -34,6 +34,9 @@ def main() -> int:
     parser.add_argument("--zero-point", type=int, default=1)
     parser.add_argument("--version", default="GEMM")
     parser.add_argument("--force", action="store_true", help="Re-quantize even if output looks already quantized")
+    parser.add_argument("--calib-dataset", default=os.environ.get("AWQ_CALIB_DATASET", "pileval"), help="Calibration dataset name supported by AutoAWQ (e.g., pileval, wikitext2)")
+    parser.add_argument("--nsamples", type=int, default=int(os.environ.get("AWQ_NSAMPLES", "64")))
+    parser.add_argument("--seqlen", type=int, default=int(os.environ.get("AWQ_SEQLEN", "2048")))
     args = parser.parse_args()
 
     model_path = args.model
@@ -67,10 +70,16 @@ def main() -> int:
         low_cpu_mem_usage=True,
         use_cache=False,
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
 
     print(f"[awq] Quantizing with config: {json.dumps(quant_config)}")
-    model.quantize(tokenizer, quant_config=quant_config)
+    model.quantize(
+        tokenizer,
+        quant_config=quant_config,
+        calib_dataset=args.calib_dataset,
+        nsamples=int(args.nsamples),
+        seqlen=int(args.seqlen),
+    )
 
     print(f"[awq] Saving quantized model to: {out_dir}")
     model.save_quantized(out_dir)

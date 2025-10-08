@@ -220,16 +220,21 @@ if [ "${QUANTIZATION}" = "awq" ]; then
   # Quantize TOOL first (if deployed)
   if [ "${DEPLOY_TOOL}" = "1" ]; then
     TOOL_OUT_DIR="${AWQ_CACHE_DIR}/tool_awq"
-    if [ ! -f "${TOOL_OUT_DIR}/awq_config.json" ] && [ ! -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
-      log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
-      "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}" || {
-        log_warn "AWQ quantization failed for tool model"
-        exit 1
-      }
-    else
+    if [ -f "${TOOL_OUT_DIR}/awq_config.json" ] || [ -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
       log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
+      export TOOL_MODEL="${TOOL_OUT_DIR}"
+    else
+      log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
+      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
+        export TOOL_MODEL="${TOOL_OUT_DIR}"
+      else
+        log_warn "AWQ quantization failed for tool model; continuing without AWQ for tool"
+        if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
+          log_warn "AWQ_FAIL_HARD=1 set; aborting"
+          exit 1
+        fi
+      fi
     fi
-    export TOOL_MODEL="${TOOL_OUT_DIR}"
   fi
   # Then quantize CHAT (if deployed)
   if [ "${DEPLOY_CHAT}" = "1" ]; then
