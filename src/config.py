@@ -1,6 +1,7 @@
 """Configuration management for vLLM inference stack."""
 
 import os
+from typing import Optional
 
 # Ensure V1 engine is selected before importing any vLLM modules
 os.environ.setdefault("VLLM_USE_V1", "1")
@@ -96,9 +97,18 @@ ALLOWED_TOOL_MODELS = [
     "MadeAgents/Hammer2.1-3b"
 ]
 
-if DEPLOY_CHAT and CHAT_MODEL not in ALLOWED_CHAT_MODELS:
+
+def _is_local_model_path(value: Optional[str]) -> bool:
+    if not value:
+        return False
+    try:
+        return os.path.exists(value)
+    except Exception:
+        return False
+
+if DEPLOY_CHAT and not (CHAT_MODEL in ALLOWED_CHAT_MODELS or _is_local_model_path(CHAT_MODEL)):
     raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
-if DEPLOY_TOOL and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
+if DEPLOY_TOOL and not (TOOL_MODEL in ALLOWED_TOOL_MODELS or _is_local_model_path(TOOL_MODEL)):
     raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
 
 # Additional safety: AWQ requires non-GPTQ chat weights
@@ -198,4 +208,3 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
             kwargs["calculate_kv_scales"] = True
 
     return AsyncEngineArgs(**kwargs)
-
