@@ -72,14 +72,12 @@ export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 export TOOL_HISTORY_TOKENS=${TOOL_HISTORY_TOKENS:-1200}  # Tool model context allocation
 export TOOL_SYSTEM_TOKENS=${TOOL_SYSTEM_TOKENS:-1450}   # System prompt + response space
 
-# Connection limits for resource protection
-export MAX_USERS_WITH_TOOLCALLS=${MAX_USERS_WITH_TOOLCALLS:-16}  # Fewer concurrent users when tools are active
-
 # vLLM engine selection; attention backend chosen below (FLASHINFER preferred)
 export VLLM_USE_V1=${VLLM_USE_V1:-1}
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-}
 export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
 export VLLM_ALLOW_LONG_MAX_MODEL_LEN=${VLLM_ALLOW_LONG_MAX_MODEL_LEN:-1}
+export AWQ_CACHE_DIR="${ROOT_DIR}/.awq"
 
 # Speed up subsequent installs: persist pip cache under repo (stop.sh keeps it by default)
 export PIP_CACHE_DIR="${ROOT_DIR}/.pip_cache"
@@ -212,6 +210,41 @@ case "${QUANTIZATION}" in
     esac
     ;;
 esac
+
+# If awq is selected, prepare local quantized dirs and rewrite models to local paths.
+if [ "${QUANTIZATION}" = "awq" ]; then
+  mkdir -p "${AWQ_CACHE_DIR}"
+  if [ "${DEPLOY_CHAT}" = "1" ]; then
+    CHAT_OUT_DIR="${AWQ_CACHE_DIR}/chat_awq"
+    if [[ "${CHAT_MODEL}" == *GPTQ* ]]; then
+      log_warn "AWQ selected but GPTQ chat model provided; refusing."
+      exit 1
+    fi
+    if [ ! -f "${CHAT_OUT_DIR}/awq_config.json" ] && [ ! -f "${CHAT_OUT_DIR}/.awq_ok" ]; then
+      log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${CHAT_OUT_DIR}"
+      "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}" || {
+        log_warn "AWQ quantization failed for chat model"
+        exit 1
+      }
+    else
+      log_info "Using existing AWQ chat model at ${CHAT_OUT_DIR}"
+    fi
+    export CHAT_MODEL="${CHAT_OUT_DIR}"
+  fi
+  if [ "${DEPLOY_TOOL}" = "1" ]; then
+    TOOL_OUT_DIR="${AWQ_CACHE_DIR}/tool_awq"
+    if [ ! -f "${TOOL_OUT_DIR}/awq_config.json" ] && [ ! -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
+      log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
+      "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}" || {
+        log_warn "AWQ quantization failed for tool model"
+        exit 1
+      }
+    else
+      log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
+    fi
+    export TOOL_MODEL="${TOOL_OUT_DIR}"
+  fi
+fi
 
 # Final defaults if still unset
 export KV_DTYPE=${KV_DTYPE:-auto}

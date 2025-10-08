@@ -114,9 +114,6 @@ TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user 
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
-USE_LMCACHE = False  # removed
-LMCACHE_REDIS_URI = ""
-
 # History and user limits (approximate tokens)
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "2400"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
@@ -141,9 +138,6 @@ elif DEPLOY_CHAT and not DEPLOY_TOOL:
 else:
     # Both models: reduced capacity due to dual-engine overhead
     MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", "16"))
-
-# Legacy variable for backwards compatibility
-MAX_USERS_WITH_TOOLCALLS = MAX_CONCURRENT_CONNECTIONS
 
 # API Key for authentication (all endpoints except /healthz)
 API_KEY = os.getenv("YAP_API_KEY", "yap_token")

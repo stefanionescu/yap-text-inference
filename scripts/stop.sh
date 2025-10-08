@@ -168,10 +168,6 @@ if [ "${NUKE_HOME_CACHE:-0}" = "1" ]; then
   done
 fi
 
-# 10) Legacy LMCache paths (still clean up if present)
-[ -f "/workspace/lmcache.yaml" ] && { log_info "Removing legacy /workspace/lmcache.yaml"; rm -f /workspace/lmcache.yaml || true; }
-[ -d "/workspace/lmcache_store" ] && { log_info "Removing legacy /workspace/lmcache_store"; rm -rf /workspace/lmcache_store || true; }
-
 # 12) Clean server artifacts
 rm -f "${ROOT_DIR}/server.log" "${ROOT_DIR}/server.pid" || true
 
