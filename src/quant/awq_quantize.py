@@ -3,12 +3,12 @@ import argparse
 import json
 import os
 import sys
-from typing import Any, Optional, Type
+from typing import Any
 
-HAMMER_MODEL_MARKERS = (
-    "madeagents/hammer",
-    "hammer2.1",
-    "hammer_model",
+from awq_hammer_adapter import (
+    apply_hammer_awq_adapters,
+    compute_hammer_calibration_seqlen,
+    is_hammer_model,
 )
 
 
@@ -24,124 +24,12 @@ def is_awq_dir(path: str) -> bool:
     candidates = [
         os.path.join(path, "awq_config.json"),
         os.path.join(path, "quant_config.json"),
-        os.path.join(path, "model.safetensors"),  # presence indicates saved model
+        os.path.join(path, "model.safetensors"),
     ]
     for cand in candidates:
         if file_exists(cand):
             return True
     return False
-
-
-def normalize_model_id(model_id: str) -> str:
-    return model_id.strip().lower()
-
-
-def is_hammer_model(model_id: str) -> bool:
-    norm = normalize_model_id(model_id)
-    return any(marker in norm for marker in HAMMER_MODEL_MARKERS)
-
-
-def _iter_catcher_classes(quantizer_module: Any) -> list[Type[Any]]:
-    classes: list[Type[Any]] = []
-    for attr_name in dir(quantizer_module):
-        if "catch" not in attr_name.lower():
-            continue
-        attr_value = getattr(quantizer_module, attr_name, None)
-        if isinstance(attr_value, type):
-            classes.append(attr_value)
-    return classes
-
-
-def apply_hammer_awq_patches() -> None:
-    try:
-        from awq.quantize import quantizer  # type: ignore
-    except Exception as exc:
-        print(f"[awq] Hammer patch skipped: unable to import AutoAWQ quantizer ({exc})")
-        return
-
-    catcher_classes = _iter_catcher_classes(quantizer)
-    if not catcher_classes:
-        print("[awq] Hammer patch skipped: AutoAWQ catcher helper not found")
-    else:
-        def _patch_single_catcher(cls: Type[Any]) -> None:
-            original_init = cls.__init__
-            original_getattr = getattr(cls, "__getattr__", None)
-
-            def patched_init(self, module, *args, **kwargs):  # type: ignore[override]
-                original_init(self, module, *args, **kwargs)
-                object.__setattr__(self, "_hammer_wrapped_module", module)
-                if hasattr(module, "attention_type"):
-                    object.__setattr__(self, "attention_type", getattr(module, "attention_type"))
-
-            def patched_getattr(self, name, _orig_getattr=original_getattr):  # type: ignore[override]
-                if name == "_hammer_wrapped_module":
-                    raise AttributeError(name)
-
-                if _orig_getattr is not None:
-                    try:
-                        return _orig_getattr(self, name)  # type: ignore[misc]
-                    except AttributeError:
-                        pass
-
-                try:
-                    return object.__getattribute__(self, name)
-                except AttributeError:
-                    pass
-
-                try:
-                    wrapped = object.__getattribute__(self, "_hammer_wrapped_module")
-                except AttributeError:
-                    raise AttributeError(name) from None
-
-                try:
-                    return getattr(wrapped, name)
-                except AttributeError:
-                    raise AttributeError(name) from None
-
-            cls.__init__ = patched_init  # type: ignore[assignment]
-            cls.__getattr__ = patched_getattr  # type: ignore[assignment]
-            setattr(cls, "_hammer_attribute_proxy_patch", True)
-            print(f"[awq] Applied Hammer-specific catcher patch ({cls.__name__})")
-
-        for catcher_cls in catcher_classes:
-            if getattr(catcher_cls, "_hammer_attribute_proxy_patch", False):
-                continue
-            _patch_single_catcher(catcher_cls)
-
-    _apply_hammer_qwen_patch()
-
-
-def _apply_hammer_qwen_patch() -> None:
-    try:
-        from transformers.models.qwen2.modeling_qwen2 import Qwen2Model  # type: ignore
-    except Exception as exc:
-        print(f"[awq] Hammer patch skipped: unable to import Qwen2Model ({exc})")
-        return
-
-    if getattr(Qwen2Model, "_hammer_attention_type_patch", False):
-        return
-
-    original_forward = Qwen2Model.forward
-
-    def patched_forward(self, *args, **kwargs):  # type: ignore[override]
-        try:
-            layer_types = getattr(self.config, "layer_types", None)
-            if layer_types is not None:
-                for idx, decoder_layer in enumerate(self.layers[: self.config.num_hidden_layers]):
-                    if hasattr(decoder_layer, "attention_type"):
-                        continue
-                    try:
-                        attention_type = layer_types[idx]
-                    except Exception:
-                        attention_type = "full_attention"
-                    setattr(decoder_layer, "attention_type", attention_type)
-        except Exception:
-            pass
-        return original_forward(self, *args, **kwargs)
-
-    Qwen2Model.forward = patched_forward  # type: ignore[assignment]
-    Qwen2Model._hammer_attention_type_patch = True
-    print("[awq] Applied Hammer-specific Qwen2 attention patch")
 
 
 def resolve_calibration_seqlen(requested: int, model: Any) -> int:
@@ -156,7 +44,7 @@ def resolve_calibration_seqlen(requested: int, model: Any) -> int:
             if isinstance(value, int) and value > 0:
                 candidates.append(value)
         if candidates:
-            max_positions = min(candidates)
+            max_positions = max(candidates)
 
     if max_positions is not None and requested > max_positions:
         print(
@@ -219,7 +107,6 @@ def main() -> int:
 
     os.makedirs(out_dir, exist_ok=True)
 
-    # Lazy import to avoid import cost when not used
     try:
         from awq import AutoAWQForCausalLM  # type: ignore
         from transformers import AutoTokenizer  # type: ignore
@@ -243,20 +130,23 @@ def main() -> int:
     )
 
     hammer_model = is_hammer_model(model_path)
-    if hammer_model:
-        apply_hammer_awq_patches()
 
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
 
-    target_seqlen = resolve_calibration_seqlen(args.seqlen, model)
+    requested_seqlen = int(args.seqlen)
+    if hammer_model:
+        requested_seqlen = compute_hammer_calibration_seqlen(requested_seqlen)
+
+    target_seqlen = resolve_calibration_seqlen(requested_seqlen, model)
     prepare_tokenizer_for_calibration(tokenizer, target_seqlen)
 
-    if hammer_model and target_seqlen != int(args.seqlen):
-        print(f"[awq] Hammer model calibration seqlen adjusted to {target_seqlen}")
+    if hammer_model:
+        apply_hammer_awq_adapters(target_seqlen)
+        if target_seqlen != requested_seqlen:
+            print(f"[awq] Hammer model calibration seqlen adjusted to {target_seqlen}")
 
     print(f"[awq] Quantizing with config: {json.dumps(quant_config)}")
     try:
-        # Newer AutoAWQ variants
         model.quantize(
             tokenizer,
             quant_config=quant_config,
@@ -265,7 +155,6 @@ def main() -> int:
             seqlen=target_seqlen,
         )
     except TypeError:
-        # Older AutoAWQ API without these kwargs
         print("[awq] AutoAWQ API does not accept calib_dataset/nsamples/seqlen; retrying with defaults")
         model.quantize(
             tokenizer,
@@ -276,7 +165,6 @@ def main() -> int:
     model.save_quantized(out_dir)
     tokenizer.save_pretrained(out_dir)
 
-    # Mark directory for quick detection next runs
     marker = os.path.join(out_dir, ".awq_ok")
     try:
         with open(marker, "w", encoding="utf-8") as f:
