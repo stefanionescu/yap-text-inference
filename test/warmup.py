@@ -113,7 +113,7 @@ def _parse_args() -> argparse.Namespace:
                         choices=["female", "male", "woman", "man"],
                         help="assistant gender (normalized by server)")
     parser.add_argument("--persona-style", "--style", "-s", dest="persona_style",
-                        help="persona style (e.g., wholesome, nerdy, playful)")
+                        help="persona style (e.g., wholesome, savage, playful)")
     return parser.parse_args()
 
 

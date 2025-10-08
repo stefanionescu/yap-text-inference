@@ -73,7 +73,7 @@ def _parse_args() -> argparse.Namespace:
         "-s",
         dest="persona_style",
         default=os.getenv("PERSONA_STYLE", "flirty"),
-        help="persona style (e.g., wholesome, nerdy, flirty)",
+        help="persona style (e.g., wholesome, savage, flirty)",
     )
     return p.parse_args()
 
