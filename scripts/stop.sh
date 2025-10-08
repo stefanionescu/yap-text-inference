@@ -56,6 +56,7 @@ REPO_CACHE_DIRS=(
   "${ROOT_DIR}/.triton"
   "${ROOT_DIR}/.flashinfer"
   "${ROOT_DIR}/.xformers"
+  "${ROOT_DIR}/.awq"
 )
 for d in "${REPO_CACHE_DIRS[@]}"; do
   [ -d "$d" ] && { log_info "Removing repo cache at $d"; rm -rf "$d" || true; }

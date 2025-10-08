@@ -204,7 +204,7 @@ Examples:
 
 ```bash
 SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 test/warmup.py
-RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style nerdy "hey there"
+RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey there"
 ```
 
 ### What it prints
@@ -365,7 +365,7 @@ Messages you send
   "type": "start",
   "session_id": "<stable-per-user uuid>",
   "persona_text": "...optional full persona...",
-  "persona_style": "nerdy|flirty|...",
+  "persona_style": "savage|flirty|...",
   "assistant_gender": "woman|man",
   "user_identity": "woman|man|non-binary",
   "history_text": "...prior transcript...",
