@@ -1,7 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cu128
 
 vllm==0.10.1.1
-torch==2.7.1+cu128 ; sys_platform == 'linux'
+torch==2.8.0+cu128 ; sys_platform == 'linux'
 flashinfer-python==0.3.1
 autoawq==0.2.7
 
