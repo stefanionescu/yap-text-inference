@@ -56,16 +56,36 @@ def resolve_calibration_seqlen(requested: int, model: Any) -> int:
 
 
 def prepare_tokenizer_for_calibration(tokenizer: Any, seqlen: int) -> None:
-    try:
-        tokenizer.model_max_length = seqlen
-    except Exception:
-        pass
+    def _maybe_set_attr(obj: Any, attr: str, value: int) -> None:
+        if not hasattr(obj, attr):
+            try:
+                setattr(obj, attr, value)
+            except Exception:
+                pass
+            return
+
+        try:
+            current = getattr(obj, attr)
+        except Exception:
+            current = None
+
+        try:
+            if isinstance(current, int) and current > 0:
+                if current < value:
+                    setattr(obj, attr, value)
+            else:
+                setattr(obj, attr, value)
+        except Exception:
+            pass
+
+    _maybe_set_attr(tokenizer, "model_max_length", seqlen)
 
     init_kwargs = getattr(tokenizer, "init_kwargs", None)
     if isinstance(init_kwargs, dict):
-        init_kwargs["model_max_length"] = seqlen
-        init_kwargs["max_length"] = seqlen
-        init_kwargs["max_position_embeddings"] = seqlen
+        for key in ("model_max_length", "max_length", "max_position_embeddings"):
+            current = init_kwargs.get(key)
+            if not isinstance(current, int) or current <= 0 or current < seqlen:
+                init_kwargs[key] = seqlen
 
     for attr in (
         "max_len_single_sentence",
@@ -73,11 +93,7 @@ def prepare_tokenizer_for_calibration(tokenizer: Any, seqlen: int) -> None:
         "max_length",
         "n_positions",
     ):
-        if hasattr(tokenizer, attr):
-            try:
-                setattr(tokenizer, attr, seqlen)
-            except Exception:
-                pass
+        _maybe_set_attr(tokenizer, attr, seqlen)
 
 
 def main() -> int:
