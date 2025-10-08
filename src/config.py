@@ -178,6 +178,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
     quant_value = selected_quant
 
+    dtype_value = "auto"
+    if quant_value in {"awq", "awq_marlin"}:
+        dtype_value = "float16"
+
     # Build kwargs for V1 engine.
     kwargs = dict(
         model=model,
@@ -192,7 +196,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enable_prefix_caching=True,  # Always enable prefix caching for performance
         # Weight quantization (None => float weights)
         quantization=quant_value,
-        dtype="auto",
+        dtype=dtype_value,
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
     )

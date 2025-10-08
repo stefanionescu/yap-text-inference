@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import argparse
+import inspect
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, Iterable
 
+from awq_chat_adapter import compute_chat_calibration_seqlen
 from awq_hammer_adapter import (
     apply_hammer_awq_adapters,
     compute_hammer_calibration_seqlen,
@@ -44,7 +46,7 @@ def resolve_calibration_seqlen(requested: int, model: Any) -> int:
             if isinstance(value, int) and value > 0:
                 candidates.append(value)
         if candidates:
-            max_positions = max(candidates)
+            max_positions = min(candidates)
 
     if max_positions is not None and requested > max_positions:
         print(
@@ -94,6 +96,20 @@ def prepare_tokenizer_for_calibration(tokenizer: Any, seqlen: int) -> None:
         "n_positions",
     ):
         _maybe_set_attr(tokenizer, attr, seqlen)
+
+
+def _quantize_supports_kwargs(quantize_fn: Any, keys: Iterable[str]) -> bool:
+    try:
+        sig = inspect.signature(quantize_fn)
+    except (TypeError, ValueError):
+        return True
+
+    params = sig.parameters
+    for param in params.values():
+        if param.kind in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL):
+            return True
+
+    return all(key in params for key in keys)
 
 
 def main() -> int:
@@ -152,6 +168,8 @@ def main() -> int:
     requested_seqlen = int(args.seqlen)
     if hammer_model:
         requested_seqlen = compute_hammer_calibration_seqlen(requested_seqlen)
+    else:
+        requested_seqlen = compute_chat_calibration_seqlen(requested_seqlen)
 
     target_seqlen = resolve_calibration_seqlen(requested_seqlen, model)
     prepare_tokenizer_for_calibration(tokenizer, target_seqlen)
@@ -160,22 +178,36 @@ def main() -> int:
         apply_hammer_awq_adapters(target_seqlen)
         if target_seqlen != requested_seqlen:
             print(f"[awq] Hammer model calibration seqlen adjusted to {target_seqlen}")
+    else:
+        if target_seqlen != requested_seqlen:
+            print(f"[awq] Chat model calibration seqlen adjusted to {target_seqlen}")
 
     print(f"[awq] Quantizing with config: {json.dumps(quant_config)}")
+
+    quant_kwargs = {
+        "tokenizer": tokenizer,
+        "quant_config": quant_config,
+    }
+    advanced_kwargs = {
+        "calib_dataset": args.calib_dataset,
+        "nsamples": int(args.nsamples),
+        "seqlen": target_seqlen,
+    }
+
+    supports_advanced = _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys())
+    if supports_advanced:
+        quant_kwargs.update(advanced_kwargs)
+    else:
+        print("[awq] AutoAWQ quantize() does not expose calib_dataset/nsamples/seqlen; using defaults")
+
     try:
-        model.quantize(
-            tokenizer,
-            quant_config=quant_config,
-            calib_dataset=args.calib_dataset,
-            nsamples=int(args.nsamples),
-            seqlen=target_seqlen,
-        )
+        model.quantize(**quant_kwargs)
     except TypeError:
-        print("[awq] AutoAWQ API does not accept calib_dataset/nsamples/seqlen; retrying with defaults")
-        model.quantize(
-            tokenizer,
-            quant_config=quant_config,
-        )
+        if supports_advanced:
+            print("[awq] AutoAWQ quantize() rejected calib_dataset/nsamples/seqlen; retrying with defaults")
+            model.quantize(tokenizer=tokenizer, quant_config=quant_config)
+        else:
+            raise
 
     print(f"[awq] Saving quantized model to: {out_dir}")
     model.save_quantized(out_dir)
