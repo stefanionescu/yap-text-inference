@@ -125,7 +125,10 @@ case "${QUANTIZATION}" in
         export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
         ;;
     *A100*)
-      export KV_DTYPE=${KV_DTYPE:-auto}  # fp16 preferred for A100 stability
+      # A100: prefer V0 + INT8 KV for higher slot count; no FP8 KV support
+      export VLLM_USE_V1=0
+      export KV_DTYPE=${KV_DTYPE:-int8}
+      export VLLM_ATTENTION_BACKEND=XFORMERS
       export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
       export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
       export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
@@ -162,7 +165,7 @@ case "${QUANTIZATION}" in
       *A100*)
         # A100: V0 for max slots, keep KV fp16/auto for stability
         export VLLM_USE_V1=0
-        export KV_DTYPE=${KV_DTYPE:-auto}
+        export KV_DTYPE=${KV_DTYPE:-int8}
         export VLLM_ATTENTION_BACKEND=XFORMERS
         export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
         export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
