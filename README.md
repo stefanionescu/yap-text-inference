@@ -41,8 +41,8 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12
 # GPTQ chat model (auto → GPTQ) with concurrent mode
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
 
-# 4-bit AWQ auto-quantization (quantizes both chat and tool on load)
-bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# 4-bit AWQ auto-quantization with concurrent mode (quantizes both chat and tool on load)
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
 # Chat-only deployment (auto determines FP8/GPTQ)
 bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B

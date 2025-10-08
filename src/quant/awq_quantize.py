@@ -3,7 +3,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, Optional, Type
 
 HAMMER_MODEL_MARKERS = (
     "madeagents/hammer",
@@ -41,6 +41,28 @@ def is_hammer_model(model_id: str) -> bool:
     return any(marker in norm for marker in HAMMER_MODEL_MARKERS)
 
 
+def _locate_catcher_cls(quantizer_module: Any) -> Optional[Type[Any]]:
+    try:
+        from torch.nn import Module as TorchModule  # type: ignore
+    except Exception:
+        return None
+
+    candidates: list[Type[Any]] = []
+    for attr_name in dir(quantizer_module):
+        if "catch" not in attr_name.lower():
+            continue
+        attr_value = getattr(quantizer_module, attr_name, None)
+        if isinstance(attr_value, type) and issubclass(attr_value, TorchModule):
+            candidates.append(attr_value)
+    if not candidates:
+        return None
+
+    for candidate in candidates:
+        if candidate.__name__ == "Catcher":
+            return candidate
+    return candidates[0]
+
+
 def apply_hammer_awq_patches() -> None:
     try:
         from awq.quantize import quantizer  # type: ignore
@@ -48,9 +70,9 @@ def apply_hammer_awq_patches() -> None:
         print(f"[awq] Hammer patch skipped: unable to import AutoAWQ quantizer ({exc})")
         return
 
-    catcher_cls = getattr(quantizer, "Catcher", None)
+    catcher_cls = _locate_catcher_cls(quantizer)
     if catcher_cls is None:
-        print("[awq] Hammer patch skipped: AutoAWQ Catcher helper not found")
+        print("[awq] Hammer patch skipped: AutoAWQ catcher helper not found")
         return
 
     if getattr(catcher_cls, "_hammer_attribute_proxy_patch", False):
@@ -93,7 +115,7 @@ def apply_hammer_awq_patches() -> None:
     catcher_cls.__init__ = patched_init  # type: ignore[assignment]
     catcher_cls.__getattr__ = patched_getattr  # type: ignore[assignment]
     setattr(catcher_cls, "_hammer_attribute_proxy_patch", True)
-    print("[awq] Applied Hammer-specific AutoAWQ Catcher patch")
+    print(f"[awq] Applied Hammer-specific catcher patch ({catcher_cls.__name__})")
 
 
 def resolve_calibration_seqlen(requested: int, model: Any) -> int:
@@ -128,6 +150,20 @@ def prepare_tokenizer_for_calibration(tokenizer: Any, seqlen: int) -> None:
     init_kwargs = getattr(tokenizer, "init_kwargs", None)
     if isinstance(init_kwargs, dict):
         init_kwargs["model_max_length"] = seqlen
+        init_kwargs["max_length"] = seqlen
+        init_kwargs["max_position_embeddings"] = seqlen
+
+    for attr in (
+        "max_len_single_sentence",
+        "max_len_sentences_pair",
+        "max_length",
+        "n_positions",
+    ):
+        if hasattr(tokenizer, attr):
+            try:
+                setattr(tokenizer, attr, seqlen)
+            except Exception:
+                pass
 
 
 def main() -> int:
@@ -190,9 +226,7 @@ def main() -> int:
     prepare_tokenizer_for_calibration(tokenizer, target_seqlen)
 
     if hammer_model and target_seqlen != int(args.seqlen):
-        print(
-            f"[awq] Hammer model calibration seqlen adjusted to {target_seqlen}"
-        )
+        print(f"[awq] Hammer model calibration seqlen adjusted to {target_seqlen}")
 
     print(f"[awq] Quantizing with config: {json.dumps(quant_config)}")
     try:
