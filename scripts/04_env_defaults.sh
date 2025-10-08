@@ -227,8 +227,10 @@ if [ "${QUANTIZATION}" = "awq" ]; then
       log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
       if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
         export TOOL_MODEL="${TOOL_OUT_DIR}"
+        export TOOL_QUANTIZATION=awq
       else
-        log_warn "AWQ quantization failed for tool model; continuing without AWQ for tool"
+        log_warn "AWQ quantization failed for tool model; falling back to auto-detected quant (float)"
+        unset TOOL_QUANTIZATION
         if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
           log_warn "AWQ_FAIL_HARD=1 set; aborting"
           exit 1
@@ -245,14 +247,19 @@ if [ "${QUANTIZATION}" = "awq" ]; then
     fi
     if [ ! -f "${CHAT_OUT_DIR}/awq_config.json" ] && [ ! -f "${CHAT_OUT_DIR}/.awq_ok" ]; then
       log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${CHAT_OUT_DIR}"
-      "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}" || {
-        log_warn "AWQ quantization failed for chat model"
-        exit 1
-      }
+      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
+        export CHAT_MODEL="${CHAT_OUT_DIR}"
+        export CHAT_QUANTIZATION=awq
+      else
+        log_warn "AWQ quantization failed for chat model; falling back to auto-detected quant"
+        unset CHAT_QUANTIZATION
+        # Fallback to auto-detected quant for chat: leave CHAT_MODEL unchanged
+      fi
     else
       log_info "Using existing AWQ chat model at ${CHAT_OUT_DIR}"
+      export CHAT_MODEL="${CHAT_OUT_DIR}"
+      export CHAT_QUANTIZATION=awq
     fi
-    export CHAT_MODEL="${CHAT_OUT_DIR}"
   fi
 fi
 

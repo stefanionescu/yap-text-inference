@@ -59,6 +59,8 @@ else:
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
+CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override per-engine
+TOOL_QUANTIZATION = os.getenv("TOOL_QUANTIZATION")  # Optional override per-engine
 
 # Validate required configuration
 if DEPLOY_CHAT and not CHAT_MODEL:
@@ -156,12 +158,15 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     # Normalize/validate KV cache dtype  
     kv_dtype = (KV_DTYPE or "").strip().lower()  # empty => let vLLM decide
 
-    # Use the validated quantization setting
-    # - For GPTQ: only chat model is quantized (tool remains unquantized)
-    # - For FP8: weight quantization applies to chat path per existing behavior
-    # - For AWQ: quantize BOTH chat and tool models (user requirement)
-    quantize_tool = (QUANTIZATION == "awq")
-    quant_value = QUANTIZATION if (is_chat or quantize_tool) else None
+    # Select per-engine quantization:
+    # - If CHAT_QUANTIZATION/TOOL_QUANTIZATION is set, prefer that.
+    # - Else default: chat uses QUANTIZATION; tool uses 'awq' only when QUANTIZATION=='awq'.
+    if is_chat:
+        selected_quant = (CHAT_QUANTIZATION or QUANTIZATION)
+    else:
+        selected_quant = TOOL_QUANTIZATION or ("awq" if QUANTIZATION == "awq" else None)
+
+    quant_value = selected_quant
 
     # Build kwargs for V1 engine.
     kwargs = dict(
@@ -175,7 +180,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,  # Always enable prefix caching for performance
-        # Weight quantization
+        # Weight quantization (None => float weights)
         quantization=quant_value,
         dtype="auto",
         # Enable per-request priorities used by generate(..., priority=...)
