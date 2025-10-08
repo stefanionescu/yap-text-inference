@@ -169,24 +169,16 @@ case "${QUANT_TYPE}" in
   awq)
     export QUANTIZATION=awq
     # AWQ requires float (non-GPTQ) chat model; tool will be quantized too
-    case "${CHAT_MODEL_NAME}" in
-      "SicariusSicariiStuff/Impish_Nemo_12B"|
-      "SicariusSicariiStuff/Wingless_Imp_8B"|
-      "SicariusSicariiStuff/Impish_Mind_8B"|
-      "kyx0r/Neona-12B"|
-      "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored")
-        ;;
-      *)
-        log_warn "Error: For awq, provide a FLOAT chat model (not GPTQ)."
-        log_warn "  Allowed examples:"
-        log_warn "    SicariusSicariiStuff/Impish_Nemo_12B"
-        log_warn "    SicariusSicariiStuff/Wingless_Imp_8B"
-        log_warn "    SicariusSicariiStuff/Impish_Mind_8B"
-        log_warn "    kyx0r/Neona-12B"
-        log_warn "    w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored"
-        usage
-        ;;
-    esac
+    if [[ "${CHAT_MODEL_NAME}" == *GPTQ* ]]; then
+      log_warn "Error: For awq, provide a FLOAT chat model (not GPTQ)."
+      log_warn "  Example float models:"
+      log_warn "    SicariusSicariiStuff/Impish_Nemo_12B"
+      log_warn "    SicariusSicariiStuff/Wingless_Imp_8B"
+      log_warn "    SicariusSicariiStuff/Impish_Mind_8B"
+      log_warn "    kyx0r/Neona-12B"
+      log_warn "    w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored"
+      usage
+    fi
     ;;
   *)
     log_warn "Error: Invalid quantization '${QUANT_TYPE}'. Must be '8bit', '4bit', or 'awq'"
