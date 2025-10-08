@@ -20,35 +20,35 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 
 ```bash
 # Both models (default)
-bash scripts/main.sh <quantization> <chat_model> <tool_model> [deploy_mode]
+bash scripts/main.sh [awq] <chat_model> <tool_model> [deploy_mode]
 
 # Single-model forms
-bash scripts/main.sh <quantization> chat <chat_model>
-bash scripts/main.sh <quantization> tool <tool_model>
+bash scripts/main.sh [awq] chat <chat_model>
+bash scripts/main.sh [awq] tool <tool_model>
 ```
 
 Examples:
 ```bash
-# 8-bit quantization with 12B general model (sequential mode - default)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
+# Float chat model (auto → FP8)
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# 8-bit quantization with 8B roleplay model (good for creative/RP tasks)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
+# Float roleplay model (auto → FP8)
+bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
 
-# Concurrent mode for faster response
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# Concurrent mode for faster response (auto → FP8)
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
-# 4-bit quantization with 3B tool model (concurrent mode)
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
+# GPTQ chat model (auto → GPTQ) with concurrent mode
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
 
 # 4-bit AWQ auto-quantization (quantizes both chat and tool on load)
 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# Chat-only deployment
-bash scripts/main.sh 8bit chat SicariusSicariiStuff/Impish_Nemo_12B
+# Chat-only deployment (auto determines FP8/GPTQ)
+bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B
 
 # Tool-only deployment
-bash scripts/main.sh 8bit tool MadeAgents/Hammer2.1-1.5b
+bash scripts/main.sh tool MadeAgents/Hammer2.1-1.5b
 ```
 
 This will:
@@ -177,15 +177,15 @@ Compare performance between sequential and concurrent model calling:
 python3 test/warmup.py "write a simple hello world function"
 
 # Test concurrent mode (restart server first)
-# Terminal 1: Start server with concurrent mode
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# Terminal 1: Start server with concurrent mode (auto → FP8)
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
 # Terminal 2: Test the same query
 python3 test/warmup.py "write a simple hello world function"
 
 # Test the roleplay-optimized model
-# Terminal 1: Start server with Wingless_Imp_8B
-bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
+# Terminal 1: Start server with Wingless_Imp_8B (auto → FP8)
+bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
 
 # Terminal 2: Test creative/roleplay query
 python3 test/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
@@ -244,9 +244,9 @@ Compare performance characteristics between modes:
 # Benchmark sequential mode (default server)
 python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
 
-# Stop server and restart with concurrent mode
+# Stop server and restart with concurrent mode (auto → FP8)
 bash scripts/stop.sh
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
 # Benchmark concurrent mode
 python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
@@ -288,18 +288,13 @@ Server configuration
 - `DEPLOY_MODELS` (default `both`) - Which models to deploy: `both`, `chat`, or `tool`
 
 Models and GPU split
-- `CHAT_MODEL` (required when deploying chat):
-  - For 8bit: Multiple options available (see model list below)
-  - For 4bit: `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64` or `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128`
+- `CHAT_MODEL` (required when deploying chat)
 - `TOOL_MODEL` (required when deploying tool: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
 - `CHAT_GPU_FRAC`, `TOOL_GPU_FRAC` - GPU memory allocation (deployment-aware: 90% for single-model, 70%/20% for both)
-- `QUANTIZATION` (required: `fp8` for 8bit mode, `gptq_marlin` for 4bit mode)
-  - Also supports `awq` for 4-bit AWQ (auto-quantizes float weights at load)
+- `QUANTIZATION` (auto-set by `scripts/main.sh`): GPTQ if chat repo contains `GPTQ`, else FP8; explicit `awq` supported
 - `KV_DTYPE` = `fp8|auto|int8` (auto-selected based on GPU and quantization mode)
 - `VLLM_ATTENTION_BACKEND` (auto; prefers `FLASHINFER` if available, else `XFORMERS`)
 - `dtype` is set to `auto` internally; no need to configure
-
-LMCache: removed.
 
 Streaming and concurrency
 - `STREAM_FLUSH_MS` (default `0`; optional micro-coalescer in ms to reduce packet count)
@@ -457,55 +452,11 @@ The server supports real-time interruption for natural conversation flow:
 
 ## Quantization modes
 
-The server supports three quantization modes that must be explicitly specified:
+By default, quantization is implicit:
+- If the chat model repo name contains "GPTQ" → GPTQ (gptq_marlin).
+- Otherwise → FP8 (8-bit).
 
-**8-bit mode (FP8):**
-```bash
-# 12B model
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
-
-# 12B alternative model
-bash scripts/main.sh 8bit kyx0r/Neona-12B MadeAgents/Hammer2.1-1.5b
-
-# 10.7B uncensored model
-bash scripts/main.sh 8bit w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored MadeAgents/Hammer2.1-1.5b
-
-# 8B roleplay model
-bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
-
-# 8B highest rated uncensored model  
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-1.5b
-
-# 5B exceptional roleplay model (2nd highest rated in 3-6B category)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Eximius_Persona_5B MadeAgents/Hammer2.1-1.5b
-
-# 4B compact roleplay model (great for resource-constrained environments)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-1.5b
-
-# 3B fiendish roleplay model (specialized for creative writing)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hammer2.1-1.5b
-
-# 24B flagship model (ultimate performance)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Magic_24B MadeAgents/Hammer2.1-3b
-
-# Concurrent mode for lower latency
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-```
-
-**4-bit mode (GPTQ):**
-```bash
-# Sequential mode - 12B model
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-1.5b
-
-# Sequential mode - 24B flagship model (4-bit)
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Magic_24B_GPTQ_4-bit-32 MadeAgents/Hammer2.1-3b
-
-# Sequential mode - 3B fiendish roleplay (4-bit)
-bash scripts/main.sh 4bit SicariusSicariiStuff/Fiendish_LLAMA_3B_GPTQ-4-bit-128 MadeAgents/Hammer2.1-1.5b
-
-# Concurrent mode  
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128 MadeAgents/Hammer2.1-3b
-```
+You can explicitly select AWQ:
 
 **4-bit mode (AWQ via vLLM auto-AWQ):**
 ```bash
