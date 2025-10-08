@@ -73,13 +73,22 @@ def main() -> int:
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
 
     print(f"[awq] Quantizing with config: {json.dumps(quant_config)}")
-    model.quantize(
-        tokenizer,
-        quant_config=quant_config,
-        calib_dataset=args.calib_dataset,
-        nsamples=int(args.nsamples),
-        seqlen=int(args.seqlen),
-    )
+    try:
+        # Newer AutoAWQ variants
+        model.quantize(
+            tokenizer,
+            quant_config=quant_config,
+            calib_dataset=args.calib_dataset,
+            nsamples=int(args.nsamples),
+            seqlen=int(args.seqlen),
+        )
+    except TypeError:
+        # Older AutoAWQ API without these kwargs
+        print("[awq] AutoAWQ API does not accept calib_dataset/nsamples/seqlen; retrying with defaults")
+        model.quantize(
+            tokenizer,
+            quant_config=quant_config,
+        )
 
     print(f"[awq] Saving quantized model to: {out_dir}")
     model.save_quantized(out_dir)
