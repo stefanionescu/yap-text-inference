@@ -217,6 +217,21 @@ esac
 # If awq is selected, prepare local quantized dirs and rewrite models to local paths.
 if [ "${QUANTIZATION}" = "awq" ]; then
   mkdir -p "${AWQ_CACHE_DIR}"
+  # Quantize TOOL first (if deployed)
+  if [ "${DEPLOY_TOOL}" = "1" ]; then
+    TOOL_OUT_DIR="${AWQ_CACHE_DIR}/tool_awq"
+    if [ ! -f "${TOOL_OUT_DIR}/awq_config.json" ] && [ ! -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
+      log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
+      "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}" || {
+        log_warn "AWQ quantization failed for tool model"
+        exit 1
+      }
+    else
+      log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
+    fi
+    export TOOL_MODEL="${TOOL_OUT_DIR}"
+  fi
+  # Then quantize CHAT (if deployed)
   if [ "${DEPLOY_CHAT}" = "1" ]; then
     CHAT_OUT_DIR="${AWQ_CACHE_DIR}/chat_awq"
     if [[ "${CHAT_MODEL}" == *GPTQ* ]]; then
@@ -233,19 +248,6 @@ if [ "${QUANTIZATION}" = "awq" ]; then
       log_info "Using existing AWQ chat model at ${CHAT_OUT_DIR}"
     fi
     export CHAT_MODEL="${CHAT_OUT_DIR}"
-  fi
-  if [ "${DEPLOY_TOOL}" = "1" ]; then
-    TOOL_OUT_DIR="${AWQ_CACHE_DIR}/tool_awq"
-    if [ ! -f "${TOOL_OUT_DIR}/awq_config.json" ] && [ ! -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
-      log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
-      "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}" || {
-        log_warn "AWQ quantization failed for tool model"
-        exit 1
-      }
-    else
-      log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
-    fi
-    export TOOL_MODEL="${TOOL_OUT_DIR}"
   fi
 fi
 
