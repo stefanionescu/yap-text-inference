@@ -194,7 +194,7 @@ response = client.completions.create(
 llm = LLM(
     model="{repo_name}",
     quantization="awq", 
-    gpu_memory_utilization=0.95,
+    gpu_memory_utilization=0.90,
     swap_space=4,  # GB
     enforce_eager=True
 )
@@ -278,25 +278,3 @@ llm = LLM(model="/path/to/cached/model")
 - 📖 **Original Model**: {source_model_link}
 - 🔧 **vLLM Documentation**: [https://docs.vllm.ai](https://docs.vllm.ai)
 - 🛠️ **AutoAWQ**: [https://github.com/casper-hansen/AutoAWQ](https://github.com/casper-hansen/AutoAWQ)
-- 💬 **Community**: [Yap Text Inference](https://github.com/your-org/yap-text-inference)
-
----
-
-## 📄 License
-
-This quantized model inherits the license from the original model: **Apache 2.0**
-
-## 🙏 Acknowledgments
-
-- **Original Model**: Created by the team behind {original_author}
-- **Quantization**: Powered by [AutoAWQ](https://github.com/casper-hansen/AutoAWQ)
-- **Infrastructure**: [Yap Text Inference](https://github.com/your-org/yap-text-inference) pipeline
-
----
-
-<div align="center">
-  <p style="font-size: 14px; color: #888;">
-    Generated with ❤️ by Yap Text Inference Pipeline<br>
-    AWQ Version: {awq_version} | Generated: {generated_at}
-  </p>
-</div>

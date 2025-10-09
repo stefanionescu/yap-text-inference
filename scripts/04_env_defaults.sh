@@ -35,7 +35,7 @@ push_awq_to_hf() {
     return
   fi
 
-  local python_cmd=("${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/hf_push.py" --src "${src_dir}" --repo-id "${repo_id}" --branch "${HF_AWQ_BRANCH}" --token "${HF_TOKEN}")
+  local python_cmd=("${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/awq/hf_push.py" --src "${src_dir}" --repo-id "${repo_id}" --branch "${HF_AWQ_BRANCH}" --token "${HF_TOKEN}")
   if [ "${HF_AWQ_PRIVATE}" = "1" ]; then
     python_cmd+=(--private)
   fi
@@ -299,7 +299,7 @@ if [ "${QUANTIZATION}" = "awq" ]; then
       push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
     else
       log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
-      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
+      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/awq/quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
         export TOOL_MODEL="${TOOL_OUT_DIR}"
         export TOOL_QUANTIZATION=awq
         push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
@@ -322,7 +322,7 @@ if [ "${QUANTIZATION}" = "awq" ]; then
     fi
     if [ ! -f "${CHAT_OUT_DIR}/awq_config.json" ] && [ ! -f "${CHAT_OUT_DIR}/.awq_ok" ]; then
       log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${CHAT_OUT_DIR}"
-      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
+      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/awq/quantize.py" --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
         export CHAT_MODEL="${CHAT_OUT_DIR}"
         export CHAT_QUANTIZATION=awq
         push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
