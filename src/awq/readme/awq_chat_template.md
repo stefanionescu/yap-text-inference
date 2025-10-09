@@ -34,7 +34,7 @@ pipeline_tag: text-generation
 
 ## Model Overview
 
-This is a **professional AWQ quantized version** of {source_model_link}, optimized for high-performance inference with **vLLM** and other AWQ-compatible frameworks. 
+This is an **AWQ quantized version** of {source_model_link}, optimized for fast inference with **vLLM** and other AWQ-compatible frameworks. 
 
 **Key Features:**
 - **Optimized for Production**: Ready for high-throughput serving
@@ -158,30 +158,6 @@ response = client.completions.create(
 - **Calibration Data**: High-quality, diverse text samples
 - **Optimization**: Per-channel quantization for optimal quality
 - **Validation**: Extensive testing against original model
-
----
-
-## Performance Benchmarks
-
-| Metric | Original FP16 | AWQ {w_bit}-bit | Improvement |
-|--------|---------------|-----------------|-------------|
-| **Memory Usage** | 100% | ~{memory_reduction}% | {w_bit}x reduction |
-| **Inference Speed** | 1x | ~3x | 3x faster |
-| **Quality Loss** | 0% | <2% | Minimal |
-| **Throughput** | Baseline | +200% | Significant |
-
-*Benchmarks performed on NVIDIA A100 80GB*
-
----
-
-## Use Cases
-
-**Perfect for:**
-- **Production Serving**: High-throughput API endpoints
-- **Real-time Applications**: Chat, completion, generation
-- **Edge Deployment**: Resource-constrained environments  
-- **Interactive Apps**: Gaming, creative tools, assistants
-- **Batch Processing**: Large-scale text processing
 
 ---
 

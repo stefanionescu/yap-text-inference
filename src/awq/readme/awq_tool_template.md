@@ -21,7 +21,7 @@ pipeline_tag: text-generation
     {model_name} - AWQ Quantized
   </h1>
   <p style="font-size: 18px; color: #666;">
-    High-performance {w_bit}-bit AWQ quantization for function calling and tool use
+    {w_bit}-bit AWQ quantization for function calling and tool use
   </p>
 </div>
 
@@ -38,7 +38,7 @@ pipeline_tag: text-generation
 
 ## Tool Model Overview
 
-This is a **professional AWQ quantized version** of {source_model_link}, specifically optimized for **function calling** and **tool use** with **vLLM** and other AWQ-compatible frameworks.
+This is an **AWQ quantized version** of {source_model_link}, specifically optimized for **function calling** and **tool use** with **vLLM** and other AWQ-compatible frameworks.
 
 **Key Features:**
 - **Function Calling**: Optimized for tool detection and structured output
@@ -158,30 +158,6 @@ vllm serve {repo_name} \
 - **Calibration Data**: Function calling and tool use examples
 - **Optimization**: Optimized for structured output and JSON generation
 - **Validation**: Tested against function calling benchmarks
-
----
-
-## Function Calling Performance
-
-| Metric | Original FP16 | AWQ {w_bit}-bit | Improvement |
-|--------|---------------|-----------------|-------------|
-| **Tool Detection Accuracy** | 95.2% | 94.8% | -0.4% (minimal loss) |
-| **Inference Speed** | 1x | ~3x | 3x faster |
-| **Memory Usage** | 100% | ~{memory_reduction}% | {w_bit}x reduction |
-| **JSON Parsing Success** | 99.1% | 98.9% | Maintained |
-
-*Benchmarks on Berkeley Function Calling Leaderboard (BFCL)*
-
----
-
-## Use Cases
-
-**Perfect for:**
-- **AI Agents**: Tool selection and parameter extraction
-- **API Integration**: Automated function calling systems
-- **Workflow Automation**: Multi-step task execution
-- **Chatbots**: Enhanced with tool capabilities
-- **Enterprise**: High-throughput tool detection services
 
 ---
 

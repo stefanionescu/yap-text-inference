@@ -101,9 +101,11 @@ class AWQQuantizer:
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model)
         prepare_tokenizer_for_calibration(tokenizer, target_seqlen)
         
+        model_type = "Hammer" if hammer_model else "Chat"
         if target_seqlen != requested_seqlen:
-            model_type = "Hammer" if hammer_model else "Chat"
             print(f"[awq] {model_type} model calibration seqlen adjusted to {target_seqlen}")
+        else:
+            print(f"[awq] {model_type} model calibration seqlen = {target_seqlen}")
             
         print(f"[awq] Quantizing with config: {json.dumps(quant_config)}")
         
