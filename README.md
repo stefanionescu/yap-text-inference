@@ -135,37 +135,53 @@ Opt-out examples:
 NUKE_ALL=0 bash scripts/stop.sh
 ```
 
-## Quick Restart (Reuse AWQ Models)
+## Quick Restart (Local & HuggingFace AWQ Models)
 
-If you want to stop and restart the server without rebuilding AWQ models or dependencies:
+The restart script works with **both local and HuggingFace AWQ models** - no rebuilding needed:
 
 ```bash
-# Quick restart using existing AWQ models (both chat and tool)
-bash scripts/restart.sh
+# Quick restart (auto-detects local or HF models)
+bash scripts/restart.sh [both|chat|tool]
 
-# Chat-only restart
-bash scripts/restart.sh chat
-
-# Tool-only restart
-bash scripts/restart.sh tool
+# Examples with different sources:
+bash scripts/restart.sh                                    # Local models (if available)
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq bash scripts/restart.sh chat
+AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/restart.sh tool
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/restart.sh both
 
 # Sequential mode restart
 CONCURRENT_MODEL_CALL=0 bash scripts/restart.sh
 ```
 
-The restart script:
-- Stops server with light clean (preserves `.awq/` models and `.venv`)
-- Starts server directly using existing local AWQ models
+### How it works:
+
+**Smart Detection:**
+- **Local models**: Uses `.awq/` directory (created by full deployment)
+- **HF models**: Uses `AWQ_CHAT_MODEL`/`AWQ_TOOL_MODEL` environment variables
+- **Automatic**: Uses whichever is available for the requested deploy mode
+
+**What it does:**
+- Stops server with light clean (preserves models and dependencies)
+- Starts server directly using detected AWQ models
 - Skips GPU check, dependency install, and quantization
+- **For HF models**: Auto-creates venv/deps if missing
 - Much faster than full deployment (seconds vs minutes)
 
-**Requirements**: You must have run a full AWQ deployment first to create the cached models:
+### Usage scenarios:
+
+**Local AWQ models** (requires prior full deployment):
 ```bash
 # Initial deployment (creates .awq/ cache)
 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# Then you can use quick restart
+# Quick restart using cached models
 bash scripts/restart.sh
+```
+
+**HuggingFace AWQ models** (works immediately):
+```bash
+# No initial deployment needed - uses published AWQ models
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/restart.sh
 ```
 
 ## Security Configuration

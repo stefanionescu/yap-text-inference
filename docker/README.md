@@ -69,30 +69,36 @@ DOCKER_HUB_USERNAME=yourusername ./build.sh
 TAG=v1.0.0 ./build.sh
 ```
 
-### Using Docker Compose
+### Running the Container
 
-1. **Option A**: Use defaults (yapwithai AWQ models):
+**Simple (uses defaults):**
 ```bash
-docker-compose up -d
+# Run with defaults (yapwithai AWQ models)
+docker run -d --gpus all --name yap-server \
+  -p 8000:8000 \
+  yourusername/yap-text-inference:latest
+
+# Check logs
+docker logs -f yap-server
 ```
 
-2. **Option B**: Override with your own AWQ models in `docker-compose.yml`:
-```yaml
-environment:
-  - AWQ_CHAT_MODEL=your-org/chat-awq    # Override default
-  - AWQ_TOOL_MODEL=your-org/tool-awq    # Override default
-  # Other optional overrides:
-  - YAP_API_KEY=your_secret_key
-  - DEPLOY_MODELS=both
+**Custom models:**
+```bash
+# Override with your own AWQ models
+docker run -d --gpus all --name yap-server \
+  -e AWQ_CHAT_MODEL=your-org/chat-awq \
+  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -p 8000:8000 \
+  yourusername/yap-text-inference:latest
 ```
 
 **Default models** are automatically configured:
-- **Chat**: `yapwithai/impish-12b-awq`
-- **Tool**: `yapwithai/hammer-2.1-3b-awq`
+- **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq)
+- **Tool**: [yapwithai/hammer-2.1-3b-awq](https://huggingface.co/yapwithai/hammer-2.1-3b-awq)
 
-## Deployment Examples
+## Container Operations
 
-### Both Models (Concurrent)
+### Starting the Server
 ```bash
 docker run -d --gpus all --name yap-both \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
@@ -248,8 +254,7 @@ The Docker setup includes:
 ```
 docker/
 ├── Dockerfile              # Multi-stage production image
-├── build.sh                # Build and push to Docker Hub
-├── docker-compose.yml      # Easy deployment config
+├── build.sh                # Build script
 ├── README.md               # This documentation
 └── scripts/                # Container scripts with defaults
     ├── main.sh             # Entry point
