@@ -120,13 +120,13 @@ import json
 
 # Example API call
 response = requests.post("http://localhost:8001/v1/completions", 
-    headers={"Content-Type": "application/json"},
-    json={
+    headers={{"Content-Type": "application/json"}},
+    json={{
         "model": "{repo_name}",
         "prompt": "What's the weather like?",
         "max_tokens": 100,
         "tools": tools
-    }
+    }}
 )
 ```
 
