@@ -202,7 +202,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     )
     
     # Special handling for local AWQ models to avoid Hugging Face repo ID validation
-    if quant_value == "awq" and _is_local_model_path(model):
+    is_local_awq = quant_value == "awq" and _is_local_model_path(model)
+    if is_local_awq:
         # For local AWQ models, ensure the path is absolute so vLLM treats it as local
         kwargs["model"] = os.path.abspath(model)
     
@@ -216,4 +217,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
             # Enable dynamic k/v scale calculation for FP8 KV cache
             kwargs["calculate_kv_scales"] = True
 
-    return AsyncEngineArgs(**kwargs)
+    engine_args = AsyncEngineArgs(**kwargs)
+    
+    # Add flag for local AWQ handling in engine creation
+    if is_local_awq:
+        engine_args._is_local_awq = True
+    
+    return engine_args
