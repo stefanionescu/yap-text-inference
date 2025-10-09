@@ -472,6 +472,38 @@ Notes for AWQ:
 - The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency.
 - AWQ requires additional wheels (installed automatically via `requirements.txt`).
 
+### Pushing AWQ exports to Hugging Face
+
+When `QUANTIZATION=awq`, the deployment pipeline can upload the freshly
+quantized folders to the Hugging Face Hub so you can skip the quantization step
+next time. The upload is **opt-in** and controlled via environment variables:
+
+```bash
+export HF_AWQ_PUSH=1                           # enable uploads (quits early if token/repos missing)
+export HF_TOKEN="hf_your_api_token"            # token with write access
+export HF_AWQ_CHAT_REPO="your-org/chat-awq"    # repo for the chat model (required if chat deployed)
+export HF_AWQ_TOOL_REPO="your-org/tool-awq"    # repo for the tool model (required if tool deployed)
+# optional tweaks
+export HF_AWQ_BRANCH=main                      # branch name (default: main)
+export HF_AWQ_PRIVATE=1                        # create repo as private (0 = public)
+export HF_AWQ_ALLOW_CREATE=1                   # create repo automatically (0 = expect it to exist)
+export HF_AWQ_COMMIT_MSG_CHAT="Upload Nemo AWQ build"   # optional commit message override
+export HF_AWQ_COMMIT_MSG_TOOL="Upload Hammer AWQ build"
+
+# now run the usual launcher
+HF_AWQ_PUSH=1 scripts/main.sh awq <chat_model> <tool_model>
+```
+
+The pipeline writes a small `awq_metadata.json` and `README.md` inside each
+quantized folder. Those files are included in the upload so anyone pulling the
+repository can see the source model, quantization parameters, calibration
+settings, and generation timestamp. If you enable uploads while reusing an
+existing `.awq` directory, the contents are re-sent to Hugging Face so your hub
+stays in sync with local changes.
+
+> **Note:** leave `HF_AWQ_PUSH=0` (default) if you just want to quantize locally
+> without publishing anything.
+
 ## Model calling modes
 
 The server supports two model calling modes:

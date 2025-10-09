@@ -6,6 +6,50 @@ source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Setting environment defaults"
 
+push_awq_to_hf() {
+  local src_dir="$1"
+  local repo_id="$2"
+  local commit_msg="$3"
+
+  if [ "${HF_AWQ_PUSH}" != "1" ]; then
+    return
+  fi
+
+  if [ -z "${repo_id}" ] || [[ "${repo_id}" == your-org/* ]]; then
+    log_warn "HF_AWQ_PUSH=1 but Hugging Face repo not configured; skipping upload for ${src_dir}"
+    return
+  fi
+
+  if [[ "${repo_id}" == /* ]]; then
+    log_warn "HF_AWQ_PUSH=1 but repo id '${repo_id}' looks like a local path; skipping upload"
+    return
+  fi
+
+  if [ -z "${HF_TOKEN:-}" ]; then
+    log_warn "HF_AWQ_PUSH=1 but no Hugging Face token available; skipping upload"
+    return
+  fi
+
+  if [ ! -d "${src_dir}" ]; then
+    log_warn "HF AWQ push skipped; directory not found: ${src_dir}"
+    return
+  fi
+
+  local python_cmd=("${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/hf_push.py" --src "${src_dir}" --repo-id "${repo_id}" --branch "${HF_AWQ_BRANCH}" --token "${HF_TOKEN}")
+  if [ "${HF_AWQ_PRIVATE}" = "1" ]; then
+    python_cmd+=(--private)
+  fi
+  if [ "${HF_AWQ_ALLOW_CREATE}" != "1" ]; then
+    python_cmd+=(--no-create)
+  fi
+  if [ -n "${commit_msg}" ]; then
+    python_cmd+=(--commit-message "${commit_msg}")
+  fi
+
+  log_info "Uploading AWQ weights from ${src_dir} to Hugging Face repo ${repo_id}"
+  HF_TOKEN="${HF_TOKEN}" "${python_cmd[@]}"
+}
+
 # Deploy mode: both | chat | tool (default: both)
 export DEPLOY_MODELS=${DEPLOY_MODELS:-both}
 case "${DEPLOY_MODELS}" in
@@ -90,6 +134,35 @@ export TORCHINDUCTOR_CACHE_DIR="${ROOT_DIR}/.torch_inductor"
 export TRITON_CACHE_DIR="${ROOT_DIR}/.triton"
 export FLASHINFER_CACHE_DIR="${ROOT_DIR}/.flashinfer"
 export XFORMERS_CACHE_DIR="${ROOT_DIR}/.xformers"
+
+# Hugging Face upload controls for AWQ builds
+export HF_AWQ_PUSH=${HF_AWQ_PUSH:-0}
+export HF_AWQ_CHAT_REPO=${HF_AWQ_CHAT_REPO:-"your-org/chat-awq"}
+export HF_AWQ_TOOL_REPO=${HF_AWQ_TOOL_REPO:-"your-org/tool-awq"}
+export HF_AWQ_BRANCH=${HF_AWQ_BRANCH:-main}
+export HF_AWQ_PRIVATE=${HF_AWQ_PRIVATE:-1}
+export HF_AWQ_ALLOW_CREATE=${HF_AWQ_ALLOW_CREATE:-1}
+export HF_AWQ_COMMIT_MSG_CHAT=${HF_AWQ_COMMIT_MSG_CHAT:-}
+export HF_AWQ_COMMIT_MSG_TOOL=${HF_AWQ_COMMIT_MSG_TOOL:-}
+
+if [ "${HF_AWQ_PUSH}" = "1" ]; then
+  if [ -z "${HF_TOKEN:-}" ]; then
+    log_warn "HF_AWQ_PUSH=1 but HF_TOKEN is not set. Aborting."
+    exit 1
+  fi
+  if [ "${DEPLOY_CHAT}" = "1" ]; then
+    if [ -z "${HF_AWQ_CHAT_REPO}" ] || [[ "${HF_AWQ_CHAT_REPO}" == your-org/* ]]; then
+      log_warn "HF_AWQ_PUSH=1 requires HF_AWQ_CHAT_REPO to be set for chat deployments. Aborting."
+      exit 1
+    fi
+  fi
+  if [ "${DEPLOY_TOOL}" = "1" ]; then
+    if [ -z "${HF_AWQ_TOOL_REPO}" ] || [[ "${HF_AWQ_TOOL_REPO}" == your-org/* ]]; then
+      log_warn "HF_AWQ_PUSH=1 requires HF_AWQ_TOOL_REPO to be set for tool deployments. Aborting."
+      exit 1
+    fi
+  fi
+fi
 
 # Backend selection is centralized in Python. Only export if explicitly set.
 if [ -n "${VLLM_ATTENTION_BACKEND:-}" ]; then
@@ -223,11 +296,13 @@ if [ "${QUANTIZATION}" = "awq" ]; then
     if [ -f "${TOOL_OUT_DIR}/awq_config.json" ] || [ -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
       log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
       export TOOL_MODEL="${TOOL_OUT_DIR}"
+      push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
     else
       log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
       if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
         export TOOL_MODEL="${TOOL_OUT_DIR}"
         export TOOL_QUANTIZATION=awq
+        push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
       else
         log_warn "AWQ quantization failed for tool model; falling back to auto-detected quant (float)"
         unset TOOL_QUANTIZATION
@@ -250,6 +325,7 @@ if [ "${QUANTIZATION}" = "awq" ]; then
       if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/quant/awq_quantize.py" --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
         export CHAT_MODEL="${CHAT_OUT_DIR}"
         export CHAT_QUANTIZATION=awq
+        push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
       else
         log_warn "AWQ quantization failed for chat model; falling back to auto-detected quant"
         unset CHAT_QUANTIZATION
@@ -259,6 +335,7 @@ if [ "${QUANTIZATION}" = "awq" ]; then
       log_info "Using existing AWQ chat model at ${CHAT_OUT_DIR}"
       export CHAT_MODEL="${CHAT_OUT_DIR}"
       export CHAT_QUANTIZATION=awq
+      push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
     fi
   fi
 fi
@@ -279,4 +356,3 @@ log_info "  Tool model: ${TOOL_MODEL}"
 log_info "  Quantization: ${QUANTIZATION}"
 log_info "  KV dtype: ${KV_DTYPE}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"
-

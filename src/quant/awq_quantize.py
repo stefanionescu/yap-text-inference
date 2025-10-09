@@ -4,6 +4,8 @@ import inspect
 import json
 import os
 import sys
+from datetime import datetime
+from textwrap import dedent
 from typing import Any, Iterable
 
 from awq_chat_adapter import compute_chat_calibration_seqlen
@@ -12,6 +14,9 @@ from awq_hammer_adapter import (
     compute_hammer_calibration_seqlen,
     is_hammer_model,
 )
+
+
+_ADVANCED_QUANTIZE_SUPPORTED: bool | None = None
 
 
 def file_exists(path: str) -> bool:
@@ -80,14 +85,18 @@ def prepare_tokenizer_for_calibration(tokenizer: Any, seqlen: int) -> None:
         except Exception:
             pass
 
-    _maybe_set_attr(tokenizer, "model_max_length", seqlen)
+    current_len = getattr(tokenizer, "model_max_length", 0)
+    if not isinstance(current_len, int):
+        current_len = 0
+    max_len_target = max(seqlen, current_len, 1_000_000)
+    _maybe_set_attr(tokenizer, "model_max_length", max_len_target)
 
     init_kwargs = getattr(tokenizer, "init_kwargs", None)
     if isinstance(init_kwargs, dict):
         for key in ("model_max_length", "max_length", "max_position_embeddings"):
             current = init_kwargs.get(key)
-            if not isinstance(current, int) or current <= 0 or current < seqlen:
-                init_kwargs[key] = seqlen
+            if not isinstance(current, int) or current <= 0 or current < max_len_target:
+                init_kwargs[key] = max_len_target
 
     for attr in (
         "max_len_single_sentence",
@@ -95,7 +104,7 @@ def prepare_tokenizer_for_calibration(tokenizer: Any, seqlen: int) -> None:
         "max_length",
         "n_positions",
     ):
-        _maybe_set_attr(tokenizer, attr, seqlen)
+        _maybe_set_attr(tokenizer, attr, max_len_target)
 
 
 def _quantize_supports_kwargs(quantize_fn: Any, keys: Iterable[str]) -> bool:
@@ -140,11 +149,13 @@ def main() -> int:
     os.makedirs(out_dir, exist_ok=True)
 
     try:
+        import awq as awq_pkg  # type: ignore
         from awq import AutoAWQForCausalLM  # type: ignore
         from transformers import AutoTokenizer  # type: ignore
     except Exception as e:
         print(f"[awq] Failed to import AutoAWQ/transformers: {e}", file=sys.stderr)
         return 1
+    awq_version = getattr(awq_pkg, "__version__", "unknown")
 
     quant_config = {
         "zero_point": bool(args.zero_point),
@@ -194,24 +205,107 @@ def main() -> int:
         "seqlen": target_seqlen,
     }
 
-    supports_advanced = _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys())
+    global _ADVANCED_QUANTIZE_SUPPORTED
+    if _ADVANCED_QUANTIZE_SUPPORTED is None:
+        supports_advanced = _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys())
+    else:
+        supports_advanced = _ADVANCED_QUANTIZE_SUPPORTED
     if supports_advanced:
         quant_kwargs.update(advanced_kwargs)
-    else:
-        print("[awq] AutoAWQ quantize() does not expose calib_dataset/nsamples/seqlen; using defaults")
 
     try:
         model.quantize(**quant_kwargs)
     except TypeError:
         if supports_advanced:
-            print("[awq] AutoAWQ quantize() rejected calib_dataset/nsamples/seqlen; retrying with defaults")
+            _ADVANCED_QUANTIZE_SUPPORTED = False
+            supports_advanced = False
             model.quantize(tokenizer=tokenizer, quant_config=quant_config)
         else:
             raise
+    else:
+        if _ADVANCED_QUANTIZE_SUPPORTED is None:
+            _ADVANCED_QUANTIZE_SUPPORTED = supports_advanced
 
     print(f"[awq] Saving quantized model to: {out_dir}")
     model.save_quantized(out_dir)
     tokenizer.save_pretrained(out_dir)
+
+    calibration_mode = "explicit" if supports_advanced else "auto"
+    metadata = {
+        "source_model": model_path,
+        "awq_version": awq_version,
+        "quant_config": quant_config,
+        "hammer_model": hammer_model,
+        "calibration": {
+            "mode": calibration_mode,
+            "dataset": args.calib_dataset if supports_advanced else "auto",
+            "nsamples": int(args.nsamples) if supports_advanced else None,
+            "seqlen": target_seqlen,
+        },
+        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+    }
+    meta_path = os.path.join(out_dir, "awq_metadata.json")
+    try:
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, sort_keys=True)
+    except Exception as exc:
+        print(f"[awq] Warning: failed to write metadata ({exc})")
+
+    quant_summary = json.dumps(quant_config, indent=2)
+    if supports_advanced:
+        calib_section = dedent(
+            f"""
+            - Calibration dataset: `{args.calib_dataset}`
+            - Calibration samples: {int(args.nsamples)}
+            - Calibration sequence length: {target_seqlen}
+            """
+        )
+    else:
+        calib_section = "- Calibration: AutoAWQ default pipeline"
+
+    readme_contents = dedent(
+        f"""
+        # AWQ Quantized Model
+
+        - Source model: `{model_path}`
+        - AWQ version: `{awq_version}`
+        - Quantization config:
+        ```json
+        {quant_summary}
+        ```
+        - Generated: {metadata['generated_at']}
+
+        ## Calibration
+
+        {calib_section}
+
+        ## Usage
+
+        The contents of this repository were produced by the Yap Text Inference
+        pipeline using AutoAWQ. You can load the weights with libraries such as
+        `vllm` or `auto-gptq` that support AWQ checkpoints. Example with vLLM:
+
+        ```python
+        from vllm import LLM
+
+        engine = LLM(
+            model="{os.path.basename(out_dir)}",
+            quantization="awq",
+            trust_remote_code=True,
+        )
+        ```
+
+        Ensure your runtime uses the same or newer CUDA/Torch stack as the
+        environment that produced this model to avoid kernel incompatibilities.
+        """
+    ).strip() + "\n"
+
+    readme_path = os.path.join(out_dir, "README.md")
+    try:
+        with open(readme_path, "w", encoding="utf-8") as f:
+            f.write(readme_contents)
+    except Exception as exc:
+        print(f"[awq] Warning: failed to write README ({exc})")
 
     marker = os.path.join(out_dir, ".awq_ok")
     try:
