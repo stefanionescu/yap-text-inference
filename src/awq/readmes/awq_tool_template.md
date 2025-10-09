@@ -1,5 +1,7 @@
 ---
-license: apache-2.0
+license: {license}
+license_name: {license_name}
+license_link: {license_link}
 base_model: {base_model}
 tags:
 - awq
@@ -16,7 +18,7 @@ pipeline_tag: text-generation
 
 <div align="center">
   <h1 style="font-size: 48px; color: #E31515; font-weight: bold;">
-    🔨 {model_name} - AWQ Quantized
+    {model_name} - AWQ Quantized
   </h1>
   <p style="font-size: 18px; color: #666;">
     High-performance {w_bit}-bit AWQ quantization for function calling and tool use
@@ -34,20 +36,20 @@ pipeline_tag: text-generation
 
 ---
 
-## 🔨 Tool Model Overview
+## Tool Model Overview
 
 This is a **professional AWQ quantized version** of {source_model_link}, specifically optimized for **function calling** and **tool use** with **vLLM** and other AWQ-compatible frameworks.
 
-**✨ Key Features:**
-- 🔧 **Function Calling**: Optimized for tool detection and structured output
-- ⚡ **Ultra-Fast**: Up to 3x faster inference for tool detection
-- 💾 **Lightweight**: Minimal memory footprint for efficient deployment
-- 🎯 **Accurate**: High precision tool detection with minimal latency
-- 🔄 **Multi-Turn**: Supports complex multi-step function calling workflows
+**Key Features:**
+- **Function Calling**: Optimized for tool detection and structured output
+- **Ultra-Fast**: Up to 3x faster inference for tool detection
+- **Lightweight**: Minimal memory footprint for efficient deployment
+- **Accurate**: High precision tool detection with minimal latency
+- **Multi-Turn**: Supports complex multi-step function calling workflows
 
 ---
 
-## 🔧 Technical Specifications
+## Technical Specifications
 
 | Specification | Details |
 |---------------|---------|
@@ -58,9 +60,9 @@ This is a **professional AWQ quantized version** of {source_model_link}, specifi
 | **Group Size** | {q_group_size} |
 | **AWQ Version** | `{awq_version}` |
 | **Generated** | {generated_at} |
-| **Pipeline** | Yap Text Inference |
+| **Pipeline** | AWQ Quantization |
 
-### 📊 Performance Comparison
+### Performance Comparison
 
 | Version | Size | Memory Usage | Inference Speed | Tool Detection |
 |---------|------|--------------|----------------|----------------|
@@ -69,7 +71,7 @@ This is a **professional AWQ quantized version** of {source_model_link}, specifi
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Using vLLM for Function Calling
 
@@ -109,23 +111,22 @@ outputs = llm.generate([prompt], sampling_params)
 print(outputs[0].outputs[0].text)
 ```
 
-### Using with Yap Text Inference Pipeline
+### Using with Python API
 
 ```python
-# This model integrates seamlessly with the Yap pipeline
-# for concurrent chat + tool detection
+# Direct integration with your inference pipeline
+import requests
+import json
 
-from yap_inference import YapPipeline
-
-pipeline = YapPipeline(
-    chat_model="your-chat-model",
-    tool_model="{repo_name}",  # This AWQ quantized tool model
-    quantization="awq"
-)
-
-response = pipeline.process(
-    user_input="What's the weather like?",
-    tools=tools
+# Example API call
+response = requests.post("http://localhost:8001/v1/completions", 
+    headers={"Content-Type": "application/json"},
+    json={
+        "model": "{repo_name}",
+        "prompt": "What's the weather like?",
+        "max_tokens": 100,
+        "tools": tools
+    }
 )
 ```
 
@@ -142,7 +143,7 @@ vllm serve {repo_name} \
 
 ---
 
-## ⚙️ Quantization Details
+## Quantization Details
 
 {calib_section}
 
@@ -160,7 +161,7 @@ vllm serve {repo_name} \
 
 ---
 
-## 🎯 Function Calling Performance
+## Function Calling Performance
 
 | Metric | Original FP16 | AWQ {w_bit}-bit | Improvement |
 |--------|---------------|-----------------|-------------|
@@ -173,18 +174,18 @@ vllm serve {repo_name} \
 
 ---
 
-## 💡 Use Cases
+## Use Cases
 
 **Perfect for:**
-- 🤖 **AI Agents**: Tool selection and parameter extraction
-- 📞 **API Integration**: Automated function calling systems
-- 🔄 **Workflow Automation**: Multi-step task execution
-- 💬 **Chatbots**: Enhanced with tool capabilities
-- 🏢 **Enterprise**: High-throughput tool detection services
+- **AI Agents**: Tool selection and parameter extraction
+- **API Integration**: Automated function calling systems
+- **Workflow Automation**: Multi-step task execution
+- **Chatbots**: Enhanced with tool capabilities
+- **Enterprise**: High-throughput tool detection services
 
 ---
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### High-Throughput Tool Detection
 
@@ -213,7 +214,7 @@ tool_llm = LLM(
 
 ---
 
-## ⚠️ Requirements & Compatibility
+## Requirements & Compatibility
 
 ### System Requirements
 - **GPU**: NVIDIA GPU with Compute Capability ≥ 7.5
@@ -222,15 +223,15 @@ tool_llm = LLM(
 - **Python**: 3.8+
 
 ### Framework Compatibility
-- ✅ **vLLM** with function calling support
-- ✅ **AutoAWQ** for local inference
-- ✅ **Transformers** with tool calling templates
-- ✅ **Yap Text Inference Pipeline** (recommended)
-- ✅ **OpenAI-compatible tool calling APIs**
+- **vLLM** with function calling support
+- **AutoAWQ** for local inference
+- **Transformers** with tool calling templates
+- **Custom inference pipelines**
+- **OpenAI-compatible tool calling APIs**
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 <details>
 <summary><b>Tool Detection Issues</b></summary>
@@ -261,30 +262,22 @@ llm = LLM(
 
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
-- 📖 **Original Model**: {source_model_link}
-- 🔧 **vLLM Tool Calling**: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#tool-calling](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#tool-calling)
-- 🛠️ **AutoAWQ**: [https://github.com/casper-hansen/AutoAWQ](https://github.com/casper-hansen/AutoAWQ)
-- 🔨 **Function Calling Guide**: [Yap Text Inference Docs](https://github.com/your-org/yap-text-inference)
+- **Original Model**: {source_model_link}
+- **vLLM Tool Calling**: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#tool-calling](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#tool-calling)
+- **AutoAWQ**: [https://github.com/casper-hansen/AutoAWQ](https://github.com/casper-hansen/AutoAWQ)
 
 ---
 
-## 📄 License
+## License
 
-This quantized model inherits the license from the original model: **Apache 2.0**
+This quantized model inherits the license from the original model: **{license_name}**
 
-## 🙏 Acknowledgments
+For more details, see the [original model license]({license_link}).
+
+## Acknowledgments
 
 - **Original Model**: Created by the team behind {original_author}
 - **Quantization**: Powered by [AutoAWQ](https://github.com/casper-hansen/AutoAWQ)
-- **Infrastructure**: [Yap Text Inference](https://github.com/your-org/yap-text-inference) pipeline
 
----
-
-<div align="center">
-  <p style="font-size: 14px; color: #888;">
-    Generated with ❤️ by Yap Text Inference Pipeline<br>
-    AWQ Version: {awq_version} | Generated: {generated_at}
-  </p>
-</div>

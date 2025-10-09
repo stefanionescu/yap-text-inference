@@ -1,5 +1,5 @@
 ---
-license: apache-2.0
+license: {license}
 base_model: {base_model}
 tags:
 - awq
@@ -14,7 +14,7 @@ pipeline_tag: text-generation
 
 <div align="center">
   <h1 style="font-size: 48px; color: #2E86AB; font-weight: bold;">
-    🔥 {model_name} - AWQ Quantized
+    {model_name} - AWQ Quantized
   </h1>
   <p style="font-size: 18px; color: #666;">
     High-performance {w_bit}-bit AWQ quantization for production deployment
@@ -32,20 +32,20 @@ pipeline_tag: text-generation
 
 ---
 
-## 📋 Model Overview
+## Model Overview
 
 This is a **professional AWQ quantized version** of {source_model_link}, optimized for high-performance inference with **vLLM** and other AWQ-compatible frameworks. 
 
-**✨ Key Features:**
-- 🚀 **Optimized for Production**: Ready for high-throughput serving
-- ⚡ **Faster Inference**: Up to 3x faster than FP16 with minimal quality loss
-- 💾 **Memory Efficient**: ~{w_bit}x smaller memory footprint
-- 🔧 **Drop-in Replacement**: Compatible with existing vLLM deployments
-- 🎯 **Calibrated**: Professionally quantized using high-quality calibration data
+**Key Features:**
+- **Optimized for Production**: Ready for high-throughput serving
+- **Faster Inference**: Up to 3x faster than FP16 with minimal quality loss
+- **Memory Efficient**: ~{w_bit}x smaller memory footprint
+- **Drop-in Replacement**: Compatible with existing vLLM deployments
+- **Calibrated**: Professionally quantized using high-quality calibration data
 
 ---
 
-## 🔧 Technical Specifications
+## Technical Specifications
 
 | Specification | Details |
 |---------------|---------|
@@ -55,9 +55,9 @@ This is a **professional AWQ quantized version** of {source_model_link}, optimiz
 | **Group Size** | {q_group_size} |
 | **AWQ Version** | `{awq_version}` |
 | **Generated** | {generated_at} |
-| **Pipeline** | Yap Text Inference |
+| **Pipeline** | AWQ Quantization |
 
-### 📊 Size Comparison
+### Size Comparison
 
 | Version | Size | Memory Usage | Speed |
 |---------|------|--------------|-------|
@@ -66,7 +66,7 @@ This is a **professional AWQ quantized version** of {source_model_link}, optimiz
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Using vLLM (Recommended)
 
@@ -143,7 +143,7 @@ response = client.completions.create(
 
 ---
 
-## ⚙️ Quantization Details
+## Quantization Details
 
 {calib_section}
 
@@ -161,7 +161,7 @@ response = client.completions.create(
 
 ---
 
-## 🎯 Performance Benchmarks
+## Performance Benchmarks
 
 | Metric | Original FP16 | AWQ {w_bit}-bit | Improvement |
 |--------|---------------|-----------------|-------------|
@@ -174,18 +174,18 @@ response = client.completions.create(
 
 ---
 
-## 💡 Use Cases
+## Use Cases
 
 **Perfect for:**
-- 🏢 **Production Serving**: High-throughput API endpoints
-- 🔄 **Real-time Applications**: Chat, completion, generation
-- 📱 **Edge Deployment**: Resource-constrained environments  
-- 🎮 **Interactive Apps**: Gaming, creative tools, assistants
-- 📊 **Batch Processing**: Large-scale text processing
+- **Production Serving**: High-throughput API endpoints
+- **Real-time Applications**: Chat, completion, generation
+- **Edge Deployment**: Resource-constrained environments  
+- **Interactive Apps**: Gaming, creative tools, assistants
+- **Batch Processing**: Large-scale text processing
 
 ---
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Memory Optimization
 
@@ -214,7 +214,7 @@ llm = LLM(
 
 ---
 
-## ⚠️ Requirements & Compatibility
+## Requirements & Compatibility
 
 ### System Requirements
 - **GPU**: NVIDIA GPU with Compute Capability ≥ 7.5
@@ -223,11 +223,11 @@ llm = LLM(
 - **Python**: 3.8+
 
 ### Framework Compatibility
-- ✅ **vLLM** (`pip install vllm`)
-- ✅ **AutoAWQ** (`pip install autoawq`)
-- ✅ **Transformers** (with AutoAWQ backend)
-- ✅ **Text Generation Inference** (TGI)
-- ✅ **OpenAI-compatible APIs**
+- **vLLM** (`pip install vllm`)
+- **AutoAWQ** (`pip install autoawq`)
+- **Transformers** (with AutoAWQ backend)
+- **Text Generation Inference** (TGI)
+- **OpenAI-compatible APIs**
 
 ### Installation
 
@@ -241,7 +241,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 <details>
 <summary><b>CUDA Out of Memory</b></summary>
@@ -273,8 +273,14 @@ llm = LLM(model="/path/to/cached/model")
 
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
-- 📖 **Original Model**: {source_model_link}
-- 🔧 **vLLM Documentation**: [https://docs.vllm.ai](https://docs.vllm.ai)
-- 🛠️ **AutoAWQ**: [https://github.com/casper-hansen/AutoAWQ](https://github.com/casper-hansen/AutoAWQ)
+- **Original Model**: {source_model_link}
+- **vLLM Documentation**: [https://docs.vllm.ai](https://docs.vllm.ai)
+- **AutoAWQ**: [https://github.com/casper-hansen/AutoAWQ](https://github.com/casper-hansen/AutoAWQ)
+
+---
+
+## License
+
+This quantized model inherits the license from the original model: **{license_name}**
