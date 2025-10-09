@@ -186,6 +186,7 @@ case "${QUANTIZATION}" in
       *H100*|*L40S*|*L40*)
         export VLLM_USE_V1=1
         export KV_DTYPE=${KV_DTYPE:-fp8}
+        export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
         export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
         if [[ "${GPU_NAME}" == *H100* ]]; then
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
@@ -194,7 +195,7 @@ case "${QUANTIZATION}" in
         export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
         export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
         export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-        ;;
+      ;;
       *A100*)
         # A100: V0 for max slots, keep KV fp16/auto for stability
         export VLLM_USE_V1=0
