@@ -188,7 +188,7 @@ python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 
 **Authentication Coverage:**
 - ✅ **`/healthz`** - No authentication required (for load balancers/monitoring)
-- 🔐 **`/status`** - Requires API key  
+- 🔐 **`/status`** - Requires API key
 - 🔐 **`/ws`** - Requires API key
 
 ## Warmup test client
@@ -289,51 +289,7 @@ Override URL and timeout:
 python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
-### Benchmarking concurrent vs sequential modes
-
-Compare performance characteristics between modes:
-
-```bash
-# Benchmark sequential mode (default server)
-python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
-
-# Stop server and restart with concurrent mode (auto → FP8)
-bash scripts/stop.sh
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-
-# Wait for server to be ready, then benchmark concurrent mode
-python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
-```
-
-For chat-heavy workloads, concurrent mode typically shows:
-- ✅ Lower `chat_ttfb_ms` (faster first token)
-- ⚠️ Slightly higher resource usage
-- ⚠️ May show higher `toolcall_ttfb_ms` when tools are actually needed
-
-## Pipecat Integration
-
-The server is designed for seamless [Pipecat](https://github.com/pipecat-ai/pipecat) integration with persistent connections and real-time interruption:
-
-**Key features for Pipecat:**
-- ✅ **Long-term WebSocket connections** - One connection per user, stays open indefinitely
-- ✅ **Session-based user assignment** - Each user gets a unique `session_id` 
-- ✅ **Automatic barge-in** - New messages cancel ongoing generation (perfect for voice interruption)
-- ✅ **Persistent session state** - Persona, settings maintained across requests
-- ✅ **Real-time streaming** - Tokens stream immediately with minimal buffering
-- ✅ **Concurrent model support** - Optional concurrent mode for lowest latency
-
-Environment alternatives:
-
-- `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
-- `ASSISTANT_GENDER` (default `female`)
-- `PERSONA_STYLE` (default `flirty`)
-- `YAP_API_KEY` (default `yap_token`) - API key for authentication
-
-**Note**: All test clients now require API key authentication. Ensure `YAP_API_KEY` matches your server configuration.
-
-Outputs: totals and p50/p95 for `toolcall_ttfb_ms`, `chat_ttfb_ms`, and `first_sentence_ms`.
-
-## Environment variables (common)
+## Environment variables
 
 Server configuration
 - `YAP_API_KEY` (default `yap_token`) - API key for authentication (all endpoints except `/healthz`)
@@ -577,59 +533,6 @@ stays in sync with local changes.
 
 > **Note:** leave `HF_AWQ_PUSH=0` (default) if you just want to quantize locally
 > without publishing anything.
-
-## Model calling modes
-
-The server supports two model calling modes:
-
-**Sequential mode (default):**
-- Tool model runs first to detect function calls
-- Chat model always runs after tool decision (regardless of tool detection)
-- Lower resource usage, predictable behavior  
-- Good for most use cases
-
-```bash
-# Sequential mode (default for roleplay) - auto → FP8
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-
-# Sequential mode (roleplay/creative optimized) - auto → FP8
-bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-3b
-
-# Sequential mode (highest rated uncensored) - auto → FP8
-bash scripts/main.sh SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-3b
-
-# Sequential mode (flagship 24B model) - auto → FP8
-bash scripts/main.sh SicariusSicariiStuff/Impish_Magic_24B MadeAgents/Hammer2.1-3b
-
-# Sequential mode (exceptional 5B roleplay) - auto → FP8
-bash scripts/main.sh SicariusSicariiStuff/Eximius_Persona_5B MadeAgents/Hammer2.1-3b
-
-# Sequential mode (compact 4B roleplay) - auto → FP8
-bash scripts/main.sh SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-3b
-
-# Sequential mode (creative 3B roleplay) - auto → FP8
-bash scripts/main.sh SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hammer2.1-3b
-```
-
-**Concurrent mode:**
-- Both chat and tool models start simultaneously
-- Chat tokens are buffered while waiting for tool decision
-- If tool call detected: chat stream is cancelled, tool response sent, then new chat stream starts
-- If no tool call: buffered chat text is flushed immediately, streaming continues
-- Faster perceived response time for chat interactions
-- Higher resource usage (both models running)
-
-```bash
-# Enable concurrent mode - auto → FP8
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-```
-
-**When to use concurrent mode:**
-- ✅ High-performance scenarios where latency matters most
-- ✅ Workloads with mostly chat interactions (few tool calls)  
-- ✅ Systems with sufficient GPU memory and compute
-- ❌ Resource-constrained environments
-- ❌ Workloads with frequent tool calls (wasted compute)
 
 ## Persona and history behavior
 
