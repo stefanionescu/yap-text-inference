@@ -18,15 +18,14 @@ services:
     # Environment variables for AWQ deployment
     # Only specify the variables you want to override - all have sensible defaults
     environment:
-      # Required: Pre-quantized AWQ models from Hugging Face
-      # Uncomment and specify your models:
-      # - AWQ_CHAT_MODEL=your-org/chat-awq
-      # - AWQ_TOOL_MODEL=your-org/tool-awq
+      # Pre-quantized AWQ models from Hugging Face (defaults provided)
+      - AWQ_CHAT_MODEL=${AWQ_CHAT_MODEL:-yapwithai/impish-12b-awq}
+      - AWQ_TOOL_MODEL=${AWQ_TOOL_MODEL:-yapwithai/hammer-2.1-3b-awq}
       
       # Optional overrides (all have defaults):
-      # - DEPLOY_MODELS=both          # both|chat|tool
-      # - CONCURRENT_MODEL_CALL=1     # 0=sequential, 1=concurrent
-      # - YAP_API_KEY=yap_token       # API authentication
+      - DEPLOY_MODELS=${DEPLOY_MODELS:-both}          # both|chat|tool
+      - CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-1}     # 0=sequential, 1=concurrent
+      # - YAP_API_KEY=yap_token       # API authentication  
       # - CHAT_GPU_FRAC=0.70          # GPU memory for chat model
       # - TOOL_GPU_FRAC=0.20          # GPU memory for tool model
     

@@ -1,6 +1,10 @@
 # Yap Text Inference Docker Setup
 
-This Docker setup provides a containerized deployment of Yap's text inference API for **pre-quantized AWQ models only**.
+This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**. 
+
+**Default Models:**
+- **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - Professional AWQ quantized Impish Nemo 12B
+- **Tool**: [yapwithai/hammer-2.1-3b-awq](https://huggingface.co/yapwithai/hammer-2.1-3b-awq) - Professional AWQ quantized Hammer 2.1 3B
 
 ## Quick Start
 
@@ -16,7 +20,12 @@ This Docker setup provides a containerized deployment of Yap's text inference AP
 # Build the Docker image
 DOCKER_HUB_USERNAME=yourusername ./build.sh
 
-# Run with both chat and tool models
+# Run with default AWQ models (yapwithai models)
+docker run -d --gpus all --name yap-server \
+  -p 8000:8000 \
+  yourusername/yap-text-inference:latest
+
+# Or override with your own AWQ models
 docker run -d --gpus all --name yap-server \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
@@ -26,10 +35,10 @@ docker run -d --gpus all --name yap-server \
 
 ## Environment Variables
 
-### Required (no defaults - must be set)
-- `AWQ_CHAT_MODEL` - Hugging Face repo with pre-quantized AWQ chat model
-- `AWQ_TOOL_MODEL` - Hugging Face repo with pre-quantized AWQ tool model
-- At least one of the above must be set when running the container
+### AWQ Models (with defaults)
+- `AWQ_CHAT_MODEL` - Hugging Face repo with pre-quantized AWQ chat model (default: `yapwithai/impish-12b-awq`)
+- `AWQ_TOOL_MODEL` - Hugging Face repo with pre-quantized AWQ tool model (default: `yapwithai/hammer-2.1-3b-awq`)
+- Override these to use your own pre-quantized AWQ models
 
 ### Optional (all have sensible defaults)
 - `DEPLOY_MODELS=both|chat|tool` (default: both)
@@ -62,21 +71,24 @@ TAG=v1.0.0 ./build.sh
 
 ### Using Docker Compose
 
-1. Edit `docker-compose.yml` and uncomment/set your AWQ model repos:
-```yaml
-environment:
-  - AWQ_CHAT_MODEL=your-org/chat-awq
-  - AWQ_TOOL_MODEL=your-org/tool-awq
-  # Optional overrides:
-  - YAP_API_KEY=your_secret_key
-```
-
-2. Start the services:
+1. **Option A**: Use defaults (yapwithai AWQ models):
 ```bash
 docker-compose up -d
 ```
 
-All parameters have sensible defaults - you only need to specify what you want to override.
+2. **Option B**: Override with your own AWQ models in `docker-compose.yml`:
+```yaml
+environment:
+  - AWQ_CHAT_MODEL=your-org/chat-awq    # Override default
+  - AWQ_TOOL_MODEL=your-org/tool-awq    # Override default
+  # Other optional overrides:
+  - YAP_API_KEY=your_secret_key
+  - DEPLOY_MODELS=both
+```
+
+**Default models** are automatically configured:
+- **Chat**: `yapwithai/impish-12b-awq`
+- **Tool**: `yapwithai/hammer-2.1-3b-awq`
 
 ## Deployment Examples
 

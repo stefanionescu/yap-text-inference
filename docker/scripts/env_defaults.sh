@@ -30,12 +30,13 @@ PY
 fi
 export HAS_FLASHINFER
 
-# Validate required AWQ models are set
-if [ -z "${AWQ_CHAT_MODEL:-}" ] && [ -z "${AWQ_TOOL_MODEL:-}" ]; then
-  log_error "Error: At least one of AWQ_CHAT_MODEL or AWQ_TOOL_MODEL must be set for Docker deployment"
-  log_error "Example: docker run -e AWQ_CHAT_MODEL=your-org/chat-awq -e AWQ_TOOL_MODEL=your-org/tool-awq ..."
-  exit 1
-fi
+# Set default AWQ models if not provided by user
+export AWQ_CHAT_MODEL=${AWQ_CHAT_MODEL:-yapwithai/impish-12b-awq}
+export AWQ_TOOL_MODEL=${AWQ_TOOL_MODEL:-yapwithai/hammer-2.1-3b-awq}
+
+log_info "AWQ models configured:"
+log_info "  Chat: ${AWQ_CHAT_MODEL}"
+log_info "  Tool: ${AWQ_TOOL_MODEL}"
 
 # Deploy mode: both | chat | tool (default: both)
 export DEPLOY_MODELS=${DEPLOY_MODELS:-both}
