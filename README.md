@@ -65,22 +65,18 @@ This will:
 
 ### Viewing logs
 
-The deployment process creates logs in the `logs/` directory:
+All deployment and server logs are unified in a single file:
 
-- **Deployment logs** (`logs/deployment.log`): Setup, quantization, server startup
-- **Server logs** (`server.log`): Runtime server activity
+- **All logs** (`server.log`): Setup, quantization, server startup, and runtime activity
 
 View logs:
 
 ```bash
-# Deployment logs (setup, quantization, startup)
-tail -f logs/deployment.log
-
-# Server logs (runtime activity)
+# All logs (deployment + server activity)
 tail -f server.log
 ```
 
-**Note**: `main.sh` auto-tails deployment logs by default. Ctrl+C detaches from tail without stopping the deployment.
+**Note**: `main.sh` auto-tails all logs by default. Ctrl+C detaches from tail without stopping the deployment.
 
 2) Health check (no authentication required)
 
@@ -299,6 +295,8 @@ Server configuration
 Models and GPU split
 - `CHAT_MODEL` (required when deploying chat)
 - `TOOL_MODEL` (required when deploying tool: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
+- `AWQ_CHAT_MODEL` (optional: use pre-quantized AWQ chat model from HF instead of local quantization)
+- `AWQ_TOOL_MODEL` (optional: use pre-quantized AWQ tool model from HF instead of local quantization)
 - `CHAT_GPU_FRAC`, `TOOL_GPU_FRAC` - GPU memory allocation (deployment-aware: 90% for single-model, 70%/20% for both)
 - `QUANTIZATION` (auto-set by `scripts/main.sh`): GPTQ if chat repo contains `GPTQ`, else FP8; explicit `awq` supported
 - `KV_DTYPE` = `fp8|auto|int8` (auto-selected based on GPU and quantization mode)
@@ -335,7 +333,7 @@ Example logrotate config (optional):
 }
 ```
 
-Or rely on the built-in rotation in deployment logs (`logs/deployment.log`) which rotates at ~100MB automatically.
+The deployment system has built-in rotation for `server.log` which rotates at ~100MB automatically.
 
 ## API — WebSocket `/ws`
 
@@ -468,6 +466,8 @@ By default, quantization is implicit:
 You can explicitly select AWQ:
 
 **4-bit mode (AWQ via vLLM auto-AWQ):**
+
+**Option 1: Local quantization (quantizes on first run):**
 ```bash
 # Uses float (non-GPTQ) chat model weights and quantizes BOTH chat and tool models at load
 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
@@ -476,9 +476,26 @@ bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 ```
 
+**Option 2: Pre-quantized AWQ models from Hugging Face:**
+```bash
+# Use pre-quantized AWQ models (no quantization step, faster startup)
+AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq dummy dummy
+
+# Chat-only with pre-quantized model
+AWQ_CHAT_MODEL=your-org/chat-awq bash scripts/main.sh awq chat dummy
+
+# Tool-only with pre-quantized model  
+AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq tool dummy
+
+# With concurrent mode
+AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq dummy dummy
+```
+
 Notes for AWQ:
-- Provide a float chat model (e.g., `SicariusSicariiStuff/Impish_Nemo_12B`, `kyx0r/Neona-12B`, `SicariusSicariiStuff/Wingless_Imp_8B`, etc.) — do not pass a GPTQ repo.
-- The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency.
+- **Local quantization**: Provide a float chat model (e.g., `SicariusSicariiStuff/Impish_Nemo_12B`, `kyx0r/Neona-12B`, `SicariusSicariiStuff/Wingless_Imp_8B`, etc.) — do not pass a GPTQ repo.
+- **Pre-quantized models**: Use `AWQ_CHAT_MODEL` and/or `AWQ_TOOL_MODEL` environment variables to specify HF repos with pre-quantized AWQ models.
+- The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency (local mode).
+- When using pre-quantized models, the original model arguments are ignored (can use "dummy" placeholders).
 - AWQ requires additional wheels (installed automatically via `requirements.txt`).
 
 ### Pushing AWQ exports to Hugging Face

@@ -24,6 +24,7 @@ usage() {
   echo "Quantization:"
   echo "  Omit flag  → auto: GPTQ if chat model name contains 'GPTQ', else FP8"
   echo "  awq        → explicit 4-bit AWQ (quantizes BOTH chat and tool on load)"
+  echo "             → or use pre-quantized AWQ models via AWQ_CHAT_MODEL/AWQ_TOOL_MODEL env vars"
   echo ""
   echo "Chat model options:"
   echo "  Float models (FP8 auto): SicariusSicariiStuff/Impish_Nemo_12B"
@@ -47,6 +48,8 @@ usage() {
   echo "Environment options:"
   echo "  CONCURRENT_MODEL_CALL=1       - Enable concurrent model calls (default: 0=sequential)"
   echo "  DEPLOY_MODELS=both|chat|tool  - Which models to deploy (default: both)"
+  echo "  AWQ_CHAT_MODEL=hf_repo        - Use pre-quantized AWQ chat model from HF (with awq flag)"
+  echo "  AWQ_TOOL_MODEL=hf_repo        - Use pre-quantized AWQ tool model from HF (with awq flag)"
   echo ""
   echo "Examples:"
   echo "  # Sequential mode (default)"
@@ -69,6 +72,9 @@ usage() {
   echo ""
   echo "  # 4-bit AWQ (quantize both chat and tool models on load)"
   echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo ""
+  echo "  # Use pre-quantized AWQ models from Hugging Face"
+  echo "  AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq $0 awq dummy dummy"
   echo ""
   echo "  # Chat-only deployment"
   echo "  $0 chat SicariusSicariiStuff/Impish_Nemo_12B"
@@ -220,6 +226,7 @@ mkdir -p "${ROOT_DIR}/.run"
 # Export all environment variables for the background process
 export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL CONCURRENT_MODEL_CALL
 export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
+export AWQ_CHAT_MODEL AWQ_TOOL_MODEL  # Pre-quantized AWQ model URLs
 
 # Rotate log if it exists and is too large - use unified server.log for everything
 SERVER_LOG="${ROOT_DIR}/server.log"
@@ -253,5 +260,3 @@ log_info "Following all logs (Ctrl+C detaches, deployment continues)..."
 # Tail logs with graceful handling
 touch "$SERVER_LOG" || true
 exec tail -n +1 -F "$SERVER_LOG"
-
-

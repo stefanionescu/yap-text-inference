@@ -101,6 +101,10 @@ export HF_AWQ_ALLOW_CREATE=${HF_AWQ_ALLOW_CREATE:-1}
 export HF_AWQ_COMMIT_MSG_CHAT=${HF_AWQ_COMMIT_MSG_CHAT:-}
 export HF_AWQ_COMMIT_MSG_TOOL=${HF_AWQ_COMMIT_MSG_TOOL:-}
 
+# Pre-quantized AWQ model URLs (alternative to local quantization)
+export AWQ_CHAT_MODEL=${AWQ_CHAT_MODEL:-}
+export AWQ_TOOL_MODEL=${AWQ_TOOL_MODEL:-}
+
 if [ "${HF_AWQ_PUSH}" = "1" ]; then
   if [ -z "${HF_TOKEN:-}" ]; then
     log_warn "HF_AWQ_PUSH=1 but HF_TOKEN is not set. Aborting."
