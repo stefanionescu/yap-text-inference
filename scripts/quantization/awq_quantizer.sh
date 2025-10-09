@@ -50,66 +50,154 @@ push_awq_to_hf() {
   HF_TOKEN="${HF_TOKEN}" "${python_cmd[@]}"
 }
 
+# Check if pre-quantized AWQ models are specified
+USE_PREQUANT_AWQ=0
+if [ -n "${AWQ_CHAT_MODEL:-}" ] || [ -n "${AWQ_TOOL_MODEL:-}" ]; then
+  if [ "${QUANTIZATION}" = "awq" ]; then
+    USE_PREQUANT_AWQ=1
+    log_info "Using pre-quantized AWQ models from Hugging Face"
+  else
+    log_warn "AWQ_CHAT_MODEL/AWQ_TOOL_MODEL specified but QUANTIZATION is not 'awq'; ignoring pre-quantized models"
+  fi
+fi
+
 # Main quantization logic - only run if QUANTIZATION=awq
 if [ "${QUANTIZATION}" = "awq" ]; then
-  log_info "Starting AWQ quantization process"
   mkdir -p "${AWQ_CACHE_DIR}"
   
-  # Quantize TOOL first (if deployed)
-  if [ "${DEPLOY_TOOL}" = "1" ]; then
-    TOOL_OUT_DIR="${AWQ_CACHE_DIR}/tool_awq"
-    if [ -f "${TOOL_OUT_DIR}/awq_config.json" ] || [ -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
-      log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
-      export TOOL_MODEL="${TOOL_OUT_DIR}"
-      push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
-    else
-      log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
-      if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
-        export TOOL_MODEL="${TOOL_OUT_DIR}"
+  if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
+    log_info "Using pre-quantized AWQ models from Hugging Face"
+    
+    # Handle pre-quantized TOOL model (if deployed)
+    if [ "${DEPLOY_TOOL}" = "1" ]; then
+      if [ -n "${AWQ_TOOL_MODEL:-}" ]; then
+        log_info "Using pre-quantized AWQ tool model: ${AWQ_TOOL_MODEL}"
+        export TOOL_MODEL="${AWQ_TOOL_MODEL}"
         export TOOL_QUANTIZATION=awq
-        push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
       else
-        log_warn "AWQ quantization failed for tool model; falling back to auto-detected quant (float)"
-        unset TOOL_QUANTIZATION
-        if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
-          log_warn "AWQ_FAIL_HARD=1 set; aborting"
-          exit 1
+        log_warn "DEPLOY_TOOL=1 but AWQ_TOOL_MODEL not specified; falling back to quantizing ${TOOL_MODEL}"
+        TOOL_OUT_DIR="${AWQ_CACHE_DIR}/tool_awq"
+        if [ -f "${TOOL_OUT_DIR}/awq_config.json" ] || [ -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
+          log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
+          export TOOL_MODEL="${TOOL_OUT_DIR}"
+          push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
         else
-          log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
+          log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
+          if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
+            export TOOL_MODEL="${TOOL_OUT_DIR}"
+            export TOOL_QUANTIZATION=awq
+            push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
+          else
+            log_warn "AWQ quantization failed for tool model; falling back to auto-detected quant (float)"
+            unset TOOL_QUANTIZATION
+            if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
+              log_warn "AWQ_FAIL_HARD=1 set; aborting"
+              exit 1
+            else
+              log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
+            fi
+          fi
         fi
       fi
     fi
-  fi
-  
-  # Then quantize CHAT (if deployed)
-  if [ "${DEPLOY_CHAT}" = "1" ]; then
-    CHAT_OUT_DIR="${AWQ_CACHE_DIR}/chat_awq"
-    if [[ "${CHAT_MODEL}" == *GPTQ* ]]; then
-      log_warn "AWQ selected but GPTQ chat model provided; refusing."
-      exit 1
+    
+    # Handle pre-quantized CHAT model (if deployed)
+    if [ "${DEPLOY_CHAT}" = "1" ]; then
+      if [ -n "${AWQ_CHAT_MODEL:-}" ]; then
+        log_info "Using pre-quantized AWQ chat model: ${AWQ_CHAT_MODEL}"
+        export CHAT_MODEL="${AWQ_CHAT_MODEL}"
+        export CHAT_QUANTIZATION=awq
+      else
+        log_warn "DEPLOY_CHAT=1 but AWQ_CHAT_MODEL not specified; falling back to quantizing ${CHAT_MODEL}"
+        CHAT_OUT_DIR="${AWQ_CACHE_DIR}/chat_awq"
+        if [[ "${CHAT_MODEL}" == *GPTQ* ]]; then
+          log_warn "AWQ selected but GPTQ chat model provided; refusing."
+          exit 1
+        fi
+        if [ ! -f "${CHAT_OUT_DIR}/awq_config.json" ] && [ ! -f "${CHAT_OUT_DIR}/.awq_ok" ]; then
+          log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${CHAT_OUT_DIR}"
+          if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
+            export CHAT_MODEL="${CHAT_OUT_DIR}"
+            export CHAT_QUANTIZATION=awq
+            push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
+          else
+            log_warn "AWQ quantization failed for chat model; falling back to auto-detected quant"
+            unset CHAT_QUANTIZATION
+            if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
+              log_warn "AWQ_FAIL_HARD=1 set; aborting"
+              exit 1
+            else
+              log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
+            fi
+            # Fallback to auto-detected quant for chat: leave CHAT_MODEL unchanged
+          fi
+        else
+          log_info "Using existing AWQ chat model at ${CHAT_OUT_DIR}"
+          export CHAT_MODEL="${CHAT_OUT_DIR}"
+          export CHAT_QUANTIZATION=awq
+          push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
+        fi
+      fi
     fi
-    if [ ! -f "${CHAT_OUT_DIR}/awq_config.json" ] && [ ! -f "${CHAT_OUT_DIR}/.awq_ok" ]; then
-      log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${CHAT_OUT_DIR}"
-      if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
+  else
+    log_info "Starting local AWQ quantization process"
+    
+    # Quantize TOOL first (if deployed)
+    if [ "${DEPLOY_TOOL}" = "1" ]; then
+      TOOL_OUT_DIR="${AWQ_CACHE_DIR}/tool_awq"
+      if [ -f "${TOOL_OUT_DIR}/awq_config.json" ] || [ -f "${TOOL_OUT_DIR}/.awq_ok" ]; then
+        log_info "Using existing AWQ tool model at ${TOOL_OUT_DIR}"
+        export TOOL_MODEL="${TOOL_OUT_DIR}"
+        push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
+      else
+        log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
+        if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
+          export TOOL_MODEL="${TOOL_OUT_DIR}"
+          export TOOL_QUANTIZATION=awq
+          push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
+        else
+          log_warn "AWQ quantization failed for tool model; falling back to auto-detected quant (float)"
+          unset TOOL_QUANTIZATION
+          if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
+            log_warn "AWQ_FAIL_HARD=1 set; aborting"
+            exit 1
+          else
+            log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
+          fi
+        fi
+      fi
+    fi
+    
+    # Then quantize CHAT (if deployed) - local quantization path
+    if [ "${DEPLOY_CHAT}" = "1" ]; then
+      CHAT_OUT_DIR="${AWQ_CACHE_DIR}/chat_awq"
+      if [[ "${CHAT_MODEL}" == *GPTQ* ]]; then
+        log_warn "AWQ selected but GPTQ chat model provided; refusing."
+        exit 1
+      fi
+      if [ ! -f "${CHAT_OUT_DIR}/awq_config.json" ] && [ ! -f "${CHAT_OUT_DIR}/.awq_ok" ]; then
+        log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${CHAT_OUT_DIR}"
+        if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
+          export CHAT_MODEL="${CHAT_OUT_DIR}"
+          export CHAT_QUANTIZATION=awq
+          push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
+        else
+          log_warn "AWQ quantization failed for chat model; falling back to auto-detected quant"
+          unset CHAT_QUANTIZATION
+          if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
+            log_warn "AWQ_FAIL_HARD=1 set; aborting"
+            exit 1
+          else
+            log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
+          fi
+          # Fallback to auto-detected quant for chat: leave CHAT_MODEL unchanged
+        fi
+      else
+        log_info "Using existing AWQ chat model at ${CHAT_OUT_DIR}"
         export CHAT_MODEL="${CHAT_OUT_DIR}"
         export CHAT_QUANTIZATION=awq
         push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
-      else
-        log_warn "AWQ quantization failed for chat model; falling back to auto-detected quant"
-        unset CHAT_QUANTIZATION
-        if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
-          log_warn "AWQ_FAIL_HARD=1 set; aborting"
-          exit 1
-        else
-          log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
-        fi
-        # Fallback to auto-detected quant for chat: leave CHAT_MODEL unchanged
       fi
-    else
-      log_info "Using existing AWQ chat model at ${CHAT_OUT_DIR}"
-      export CHAT_MODEL="${CHAT_OUT_DIR}"
-      export CHAT_QUANTIZATION=awq
-      push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
     fi
   fi
 else
