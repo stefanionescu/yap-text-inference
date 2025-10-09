@@ -10,7 +10,7 @@ import argparse
 import os
 import sys
 
-from .core import AWQQuantizer, CalibrationConfig
+from src.awq.core import AWQQuantizer, CalibrationConfig
 
 
 def main() -> int:
