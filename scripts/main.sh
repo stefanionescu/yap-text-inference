@@ -214,45 +214,44 @@ DEPLOYMENT_CMD="
   echo '[INFO] $(date -Iseconds) Use scripts/stop.sh to stop the server'
 "
 
-# Create directories for logs and runtime files
-mkdir -p "${ROOT_DIR}/logs" "${ROOT_DIR}/.run"
+# Create directories for runtime files  
+mkdir -p "${ROOT_DIR}/.run"
 
 # Export all environment variables for the background process
 export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL CONCURRENT_MODEL_CALL
 export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
 
-# Rotate log if it exists and is too large
-DEPLOYMENT_LOG="${ROOT_DIR}/logs/deployment.log"
-if [ -f "$DEPLOYMENT_LOG" ]; then
+# Rotate log if it exists and is too large - use unified server.log for everything
+SERVER_LOG="${ROOT_DIR}/server.log"
+if [ -f "$SERVER_LOG" ]; then
   MAX_KEEP_BYTES=$((100 * 1024 * 1024))  # 100MB
-  SIZE=$(wc -c <"$DEPLOYMENT_LOG" 2>/dev/null || echo 0)
+  SIZE=$(wc -c <"$SERVER_LOG" 2>/dev/null || echo 0)
   if [ "$SIZE" -gt "$MAX_KEEP_BYTES" ]; then
     OFFSET=$((SIZE - MAX_KEEP_BYTES))
-    TMP_FILE="${ROOT_DIR}/.deployment.log.trim"
-    if tail -c "$MAX_KEEP_BYTES" "$DEPLOYMENT_LOG" > "$TMP_FILE" 2>/dev/null; then
-      mv "$TMP_FILE" "$DEPLOYMENT_LOG" 2>/dev/null || true
-      echo "[INFO] $(date -Iseconds) Trimmed deployment.log to latest 100MB (removed ${OFFSET} bytes)" >> "$DEPLOYMENT_LOG"
+    TMP_FILE="${ROOT_DIR}/.server.log.trim"
+    if tail -c "$MAX_KEEP_BYTES" "$SERVER_LOG" > "$TMP_FILE" 2>/dev/null; then
+      mv "$TMP_FILE" "$SERVER_LOG" 2>/dev/null || true
+      echo "[INFO] $(date -Iseconds) Trimmed server.log to latest 100MB (removed ${OFFSET} bytes)" >> "$SERVER_LOG"
     fi
   fi
 fi
 
 # Run deployment in background with proper process isolation
 log_info "Starting deployment pipeline in background..."
-setsid nohup bash -lc "$DEPLOYMENT_CMD" </dev/null > "$DEPLOYMENT_LOG" 2>&1 &
+setsid nohup bash -lc "$DEPLOYMENT_CMD" </dev/null > "$SERVER_LOG" 2>&1 &
 
 # Store background process ID
 BG_PID=$!
 echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
 
 log_info "Deployment started (PID: $BG_PID)"
-log_info "Deployment logs: logs/deployment.log" 
-log_info "Server logs: server.log (when server starts)"
+log_info "All logs (deployment + server): server.log" 
 log_info "To stop: bash scripts/stop.sh"
 echo ""
-log_info "Following deployment logs (Ctrl+C detaches, deployment continues)..."
+log_info "Following all logs (Ctrl+C detaches, deployment continues)..."
 
 # Tail logs with graceful handling
-touch "$DEPLOYMENT_LOG" || true
-exec tail -n +1 -F "$DEPLOYMENT_LOG"
+touch "$SERVER_LOG" || true
+exec tail -n +1 -F "$SERVER_LOG"
 
 

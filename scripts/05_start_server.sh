@@ -30,13 +30,14 @@ log_info "TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_
 
 # Start as a new session so Ctrl+C in the calling shell won't touch it.
 # Write the session leader PID so we can kill the whole tree later.
-setsid uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1 > "${ROOT_DIR}/server.log" 2>&1 &
+# Append to server.log to continue the unified deployment+server log
+setsid uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1 >> "${ROOT_DIR}/server.log" 2>&1 &
 SERVER_PID=$!
 echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 
 log_info "Server started: PID=$(cat "${ROOT_DIR}/server.pid")"
 log_info "Health:  curl -s http://127.0.0.1:8000/healthz"
-log_info "Logs:    tail -f ${ROOT_DIR}/server.log"
+log_info "All logs: tail -f ${ROOT_DIR}/server.log"
 log_info "Stop:    kill -TERM -$(cat ${ROOT_DIR}/server.pid)  # negative PID kills session"
 
 # Optional warmup to prefill KV, kernels, tokenizer

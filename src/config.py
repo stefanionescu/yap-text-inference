@@ -203,11 +203,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     
     # Special handling for local AWQ models to avoid Hugging Face repo ID validation
     if quant_value == "awq" and _is_local_model_path(model):
-        # For local AWQ models, ensure the path is absolute and exists
-        # This helps vLLM properly identify it as a local path rather than a repo ID
+        # For local AWQ models, ensure the path is absolute so vLLM treats it as local
         kwargs["model"] = os.path.abspath(model)
-        # Mark this as a local AWQ model so engines.py can handle offline mode
-        kwargs["_is_local_awq"] = True
     
     # Only pass kv_cache_dtype if explicitly set AND V1 is off
     # (V1 rejects --kv-cache-dtype and will throw NotImplementedError)
