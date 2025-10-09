@@ -120,15 +120,34 @@ class AWQQuantizer:
         }
         
         # Check if advanced quantization is supported
-        if _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys()):
+        supports_advanced = _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys())
+        if supports_advanced:
             quant_kwargs.update(advanced_kwargs)
             
         try:
             model.quantize(**quant_kwargs)
+        except TypeError as err:
+            if supports_advanced and "calib_dataset" in str(err):
+                print("[awq] AutoAWQ quantize() rejected calib_dataset/nsamples/seqlen; retrying with defaults")
+                global _ADVANCED_QUANTIZE_SUPPORTED
+                _ADVANCED_QUANTIZE_SUPPORTED = False
+                supports_advanced = False
+                quant_kwargs = {
+                    "tokenizer": tokenizer,
+                    "quant_config": quant_config,
+                }
+                try:
+                    model.quantize(**quant_kwargs)
+                except Exception as final_err:
+                    print(f"[awq] Quantization failed: {final_err}")
+                    return False
+            else:
+                print(f"[awq] Quantization failed: {err}")
+                return False
         except Exception as e:
             print(f"[awq] Quantization failed: {e}")
             return False
-            
+
         # Save the quantized model
         print(f"[awq] Saving quantized model to: {output_dir}")
         model.save_quantized(output_dir)

@@ -19,12 +19,16 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 1) Install deps and start the server
 
 ```bash
-# Both models (default)
+# Both models (default) - always runs in background with auto-tail
 bash scripts/main.sh [awq] <chat_model> <tool_model> [deploy_mode]
 
 # Single-model forms
 bash scripts/main.sh [awq] chat <chat_model>
 bash scripts/main.sh [awq] tool <tool_model>
+
+# Behavior: Auto-detached deployment + log tailing
+# Ctrl+C stops tail only, deployment continues
+# Use scripts/stop.sh to stop deployment
 ```
 
 Examples:
@@ -56,24 +60,27 @@ This will:
 - Install Python deps from `requirements.txt`
 - Export environment defaults
 - Launch `uvicorn src.server:app --port 8000`
+- **Always runs in background** with auto-detached process isolation
+- **Auto-tails logs** - Ctrl+C stops tail only, deployment continues
 
-### Viewing server logs
+### Viewing logs
 
-`05_start_server.sh` launches the server and writes logs to `server.log` at the repo root.
+The deployment process creates logs in the `logs/` directory:
 
-- Print the last 100 lines:
+- **Deployment logs** (`logs/deployment.log`): Setup, quantization, server startup
+- **Server logs** (`server.log`): Runtime server activity
+
+View logs:
 
 ```bash
-tail -n 100 server.log
+# Deployment logs (setup, quantization, startup)
+tail -f logs/deployment.log
+
+# Server logs (runtime activity)
+tail -f server.log
 ```
 
-- Follow logs live (Ctrl+C to stop following; server keeps running):
-
-```bash
-bash scripts/06_follow_logs.sh
-# or
-tail -F server.log
-```
+**Note**: `main.sh` auto-tails deployment logs by default. Ctrl+C detaches from tail without stopping the deployment.
 
 2) Health check (no authentication required)
 
@@ -178,16 +185,18 @@ python3 test/warmup.py "write a simple hello world function"
 
 # Test concurrent mode (restart server first)
 # Terminal 1: Start server with concurrent mode (auto → FP8)
+bash scripts/stop.sh  # Stop previous deployment
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
-# Terminal 2: Test the same query
+# Terminal 2: Test the same query (after server is ready)
 python3 test/warmup.py "write a simple hello world function"
 
 # Test the roleplay-optimized model
 # Terminal 1: Start server with Wingless_Imp_8B (auto → FP8)
+bash scripts/stop.sh  # Stop previous deployment
 bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
 
-# Terminal 2: Test creative/roleplay query
+# Terminal 2: Test creative/roleplay query (after server is ready)
 python3 test/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
 ```
 
@@ -248,7 +257,7 @@ python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
 bash scripts/stop.sh
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
-# Benchmark concurrent mode
+# Wait for server to be ready, then benchmark concurrent mode
 python3 test/bench.py -n 50 -c 8 "explain how machine learning works"
 ```
 
@@ -326,7 +335,7 @@ Example logrotate config (optional):
 }
 ```
 
-Or rely on the built-in simple rotation in `scripts/06_follow_logs.sh` which rotates at ~100MB once to `server.log.1`.
+Or rely on the built-in rotation in deployment logs (`logs/deployment.log`) which rotates at ~100MB automatically.
 
 ## API — WebSocket `/ws`
 
@@ -515,26 +524,26 @@ The server supports two model calling modes:
 - Good for most use cases
 
 ```bash
-# Sequential mode (default for roleplay)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# Sequential mode (default for roleplay) - auto → FP8
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
-# Sequential mode (roleplay/creative optimized)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-3b
+# Sequential mode (roleplay/creative optimized) - auto → FP8
+bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-3b
 
-# Sequential mode (highest rated uncensored)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-3b
+# Sequential mode (highest rated uncensored) - auto → FP8
+bash scripts/main.sh SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-3b
 
-# Sequential mode (flagship 24B model)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Magic_24B MadeAgents/Hammer2.1-3b
+# Sequential mode (flagship 24B model) - auto → FP8
+bash scripts/main.sh SicariusSicariiStuff/Impish_Magic_24B MadeAgents/Hammer2.1-3b
 
-# Sequential mode (exceptional 5B roleplay)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Eximius_Persona_5B MadeAgents/Hammer2.1-3b
+# Sequential mode (exceptional 5B roleplay) - auto → FP8
+bash scripts/main.sh SicariusSicariiStuff/Eximius_Persona_5B MadeAgents/Hammer2.1-3b
 
-# Sequential mode (compact 4B roleplay)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-3b
+# Sequential mode (compact 4B roleplay) - auto → FP8
+bash scripts/main.sh SicariusSicariiStuff/Impish_LLAMA_4B MadeAgents/Hammer2.1-3b
 
-# Sequential mode (creative 3B roleplay)
-bash scripts/main.sh 8bit SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hammer2.1-3b
+# Sequential mode (creative 3B roleplay) - auto → FP8
+bash scripts/main.sh SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hammer2.1-3b
 ```
 
 **Concurrent mode:**
@@ -546,8 +555,8 @@ bash scripts/main.sh 8bit SicariusSicariiStuff/Fiendish_LLAMA_3B MadeAgents/Hamm
 - Higher resource usage (both models running)
 
 ```bash
-# Enable concurrent mode
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh 8bit SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# Enable concurrent mode - auto → FP8
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 ```
 
 **When to use concurrent mode:**
