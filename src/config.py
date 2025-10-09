@@ -90,11 +90,15 @@ ALLOWED_CHAT_MODELS = [
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64", 
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
     "SicariusSicariiStuff/Impish_Magic_24B_GPTQ_4-bit-32",
-    "SicariusSicariiStuff/Fiendish_LLAMA_3B_GPTQ-4-bit-128"
+    "SicariusSicariiStuff/Fiendish_LLAMA_3B_GPTQ-4-bit-128",
+    # Pre-quantized AWQ models
+    "yapwithai/impish-12b-awq",
 ]
 ALLOWED_TOOL_MODELS = [
     "MadeAgents/Hammer2.1-1.5b",
-    "MadeAgents/Hammer2.1-3b"
+    "MadeAgents/Hammer2.1-3b",
+    # Pre-quantized AWQ models
+    "yapwithai/hammer-2.1-3b-awq",
 ]
 
 
@@ -106,16 +110,51 @@ def _is_local_model_path(value: Optional[str]) -> bool:
     except Exception:
         return False
 
-if DEPLOY_CHAT and not (CHAT_MODEL in ALLOWED_CHAT_MODELS or _is_local_model_path(CHAT_MODEL)):
-    raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
-if DEPLOY_TOOL and not (TOOL_MODEL in ALLOWED_TOOL_MODELS or _is_local_model_path(TOOL_MODEL)):
-    raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
+def _is_awq_model(value: Optional[str]) -> bool:
+    """Check if model name suggests it's a pre-quantized AWQ model."""
+    if not value:
+        return False
+    return "awq" in value.lower() and "/" in value
 
-# Additional safety: AWQ requires non-GPTQ chat weights
-if QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and "GPTQ" in CHAT_MODEL:
+def _is_valid_model(model: str, allowed_models: list, model_type: str) -> bool:
+    """Enhanced model validation with AWQ support."""
+    if not model:
+        return False
+    
+    # Check if it's in the explicit allowed list
+    if model in allowed_models:
+        return True
+    
+    # Check if it's a local path
+    if _is_local_model_path(model):
+        return True
+    
+    # For AWQ quantization, be more permissive with AWQ model names
+    if QUANTIZATION == "awq" and _is_awq_model(model):
+        return True
+    
+    return False
+
+if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALLOWED_CHAT_MODELS, "chat"):
+    if QUANTIZATION == "awq" and _is_awq_model(CHAT_MODEL):
+        # Allow AWQ models with a warning
+        print(f"[WARNING] Using AWQ model not in approved list: {CHAT_MODEL}")
+    else:
+        raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
+
+if DEPLOY_TOOL and not _is_valid_model(TOOL_MODEL, ALLOWED_TOOL_MODELS, "tool"):
+    if QUANTIZATION == "awq" and _is_awq_model(TOOL_MODEL):
+        # Allow AWQ models with a warning
+        print(f"[WARNING] Using AWQ model not in approved list: {TOOL_MODEL}")
+    else:
+        raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
+
+# Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
+if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and 
+    "GPTQ" in CHAT_MODEL and not _is_awq_model(CHAT_MODEL)):
     raise ValueError(
         "For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
-        f"Got: {CHAT_MODEL}"
+        f"Got: {CHAT_MODEL}. Use a pre-quantized AWQ model or a float model instead."
     )
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))
