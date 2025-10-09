@@ -51,14 +51,22 @@ def generate_readme(
     # Original author for attribution
     original_author = model_path.split('/')[0] if '/' in model_path else 'the original authors'
     
-    # Determine license based on model type
+    # Determine license based on model type and specific model
     if is_tool:
-        # Hammer models use Qwen research license
-        license_info = {
-            'license': 'other',
-            'license_name': 'qwen-research', 
-            'license_link': f'https://huggingface.co/{model_path}/blob/main/LICENSE' if is_hf_model else ''
-        }
+        # Special case for Hammer2.1-1.5b which uses CC-BY-NC-4.0
+        if 'Hammer2.1-1.5b' in model_path:
+            license_info = {
+                'license': 'cc-by-nc-4.0',
+                'license_name': 'CC BY-NC 4.0', 
+                'license_link': f'https://huggingface.co/{model_path}/blob/main/LICENSE' if is_hf_model else ''
+            }
+        else:
+            # Other Hammer models use Qwen research license
+            license_info = {
+                'license': 'other',
+                'license_name': 'qwen-research', 
+                'license_link': f'https://huggingface.co/{model_path}/blob/main/LICENSE' if is_hf_model else ''
+            }
     else:
         # Chat models use Apache 2.0
         license_info = {

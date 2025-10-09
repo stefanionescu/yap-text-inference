@@ -11,10 +11,13 @@ log_info "Starting Yap Text Inference Server"
 # Usage function
 usage() {
   echo "Usage:"
-  echo "  $0 [awq] <chat_model> <tool_model> [deploy_mode]"
-  echo "  $0 [awq] chat <chat_model>"
-  echo "  $0 [awq] tool <tool_model>"
-  echo "  $0 [awq] both <chat_model> <tool_model>"
+  echo "  $0 [--background] [awq] <chat_model> <tool_model> [deploy_mode]"
+  echo "  $0 [--background] [awq] chat <chat_model>"
+  echo "  $0 [--background] [awq] tool <tool_model>"
+  echo "  $0 [--background] [awq] both <chat_model> <tool_model>"
+  echo ""
+  echo "Options:"
+  echo "  --background   → Run deployment in background with log tailing (Ctrl+C exits tail only)"
   echo ""
   echo "Quantization:"
   echo "  Omit flag  → auto: GPTQ if chat model name contains 'GPTQ', else FP8"
@@ -47,6 +50,9 @@ usage() {
   echo "  # Sequential mode (default)"
   echo "  $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
+  echo "  # Background deployment with log tailing (recommended)"
+  echo "  $0 --background SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo ""
   echo "  # 8B roleplay model"
   echo "  $0 SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b"
   echo ""
@@ -62,6 +68,9 @@ usage() {
   echo "  # 4-bit AWQ (quantize both chat and tool models on load)"
   echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
+  echo "  # Background AWQ deployment"
+  echo "  $0 --background awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo ""
   echo "  # Chat-only deployment"
   echo "  $0 chat SicariusSicariiStuff/Impish_Nemo_12B"
   echo "  DEPLOY_MODELS=chat $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
@@ -73,6 +82,13 @@ usage() {
 }
 
 # Parse and normalize arguments
+# Check for --background flag first
+BACKGROUND_FLAG=""
+if [ "${1:-}" = "--background" ]; then
+  BACKGROUND_FLAG="--background"
+  shift
+fi
+
 if [ $# -lt 1 ]; then
   log_warn "Error: Not enough arguments"
   usage
@@ -189,11 +205,72 @@ log_info "  Chat model: ${CHAT_MODEL_NAME}"
 log_info "  Tool model: ${TOOL_MODEL_NAME}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"
 
-bash "${SCRIPT_DIR}/01_check_gpu.sh"
-bash "${SCRIPT_DIR}/02_python_env.sh"
-bash "${SCRIPT_DIR}/03_install_deps.sh"
-source "${SCRIPT_DIR}/04_env_defaults.sh"
-bash "${SCRIPT_DIR}/05_start_server.sh"
-bash "${SCRIPT_DIR}/06_follow_logs.sh"
+# Function to run the deployment process
+run_deployment() {
+  bash "${SCRIPT_DIR}/01_check_gpu.sh"
+  bash "${SCRIPT_DIR}/02_python_env.sh"
+  bash "${SCRIPT_DIR}/03_install_deps.sh"
+  source "${SCRIPT_DIR}/04_env_defaults.sh"
+  bash "${SCRIPT_DIR}/05_start_server.sh"
+  
+  log_info "Deployment process completed successfully"
+  log_info "Server is running in the background"
+  log_info "Use 'tail -f ${ROOT_DIR}/server.log' to follow server logs"
+  log_info "Use scripts/stop.sh to stop the server"
+}
+
+# Function to handle log rotation for deployment logs
+rotate_deployment_log() {
+  local log_file="${ROOT_DIR}/deployment.log"
+  if [ -f "$log_file" ]; then
+    local max_keep_bytes=$((100 * 1024 * 1024))  # 100MB
+    local sz=$(wc -c <"$log_file" 2>/dev/null || echo 0)
+    if [ "$sz" -gt "$max_keep_bytes" ]; then
+      local offset=$((sz - max_keep_bytes))
+      local tmp_file="${ROOT_DIR}/.deployment.log.trim"
+      if tail -c "$max_keep_bytes" "$log_file" > "$tmp_file" 2>/dev/null; then
+        mv "$tmp_file" "$log_file" 2>/dev/null || true
+        echo "[INFO] $(timestamp) Trimmed deployment.log to latest 100MB (removed ${offset} bytes)" >> "$log_file"
+      fi
+    fi
+  fi
+}
+
+# Check if we should run in background
+if [ -n "${BACKGROUND_FLAG}" ] || [ "${BACKGROUND_DEPLOY:-0}" = "1" ]; then
+  
+  # Rotate log before starting
+  rotate_deployment_log
+  
+  # Run deployment in background with logging
+  {
+    log_info "Starting background deployment process"
+    log_info "Follow progress with: tail -f ${ROOT_DIR}/deployment.log"
+    log_info "Stop deployment with: pkill -f 'bash.*main.sh' (if still running)"
+    echo ""
+    
+    # Re-run this script without background flag in a new session
+    setsid bash "$0" "$@" 2>&1
+  } >> "${ROOT_DIR}/deployment.log" &
+  
+  DEPLOY_PID=$!
+  echo "$DEPLOY_PID" > "${ROOT_DIR}/deployment.pid"
+  
+  echo "[INFO] $(timestamp) Deployment started in background (PID=${DEPLOY_PID})"
+  echo "[INFO] $(timestamp) Follow progress with: tail -f ${ROOT_DIR}/deployment.log"
+  echo "[INFO] $(timestamp) Stop with Ctrl+C (only stops tail, deployment continues)"
+  echo ""
+  
+  # Start tailing the log file
+  sleep 1  # Give a moment for the log to be created
+  tail -f "${ROOT_DIR}/deployment.log" 2>/dev/null || {
+    echo "[WARN] $(timestamp) deployment.log not yet available, waiting..."
+    sleep 2
+    tail -f "${ROOT_DIR}/deployment.log" 2>/dev/null || true
+  }
+else
+  # Run normally (for background execution or direct execution)
+  run_deployment
+fi
 
 
