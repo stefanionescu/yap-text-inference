@@ -11,13 +11,15 @@ log_info "Starting Yap Text Inference Server"
 # Usage function
 usage() {
   echo "Usage:"
-  echo "  $0 [--background] [awq] <chat_model> <tool_model> [deploy_mode]"
-  echo "  $0 [--background] [awq] chat <chat_model>"
-  echo "  $0 [--background] [awq] tool <tool_model>"
-  echo "  $0 [--background] [awq] both <chat_model> <tool_model>"
+  echo "  $0 [awq] <chat_model> <tool_model> [deploy_mode]"
+  echo "  $0 [awq] chat <chat_model>"
+  echo "  $0 [awq] tool <tool_model>"
+  echo "  $0 [awq] both <chat_model> <tool_model>"
   echo ""
-  echo "Options:"
-  echo "  --background   → Run deployment in background with log tailing (Ctrl+C exits tail only)"
+  echo "Behavior:"
+  echo "  • Always runs deployment in background (auto-detached)"
+  echo "  • Auto-tails logs (Ctrl+C stops tail, deployment continues)"
+  echo "  • Use scripts/stop.sh to stop the deployment"
   echo ""
   echo "Quantization:"
   echo "  Omit flag  → auto: GPTQ if chat model name contains 'GPTQ', else FP8"
@@ -50,8 +52,8 @@ usage() {
   echo "  # Sequential mode (default)"
   echo "  $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
-  echo "  # Background deployment with log tailing (recommended)"
-  echo "  $0 --background SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo "  # Standard deployment (auto-background with log tailing)"
+  echo "  $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
   echo "  # 8B roleplay model"
   echo "  $0 SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b"
@@ -68,9 +70,6 @@ usage() {
   echo "  # 4-bit AWQ (quantize both chat and tool models on load)"
   echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
-  echo "  # Background AWQ deployment"
-  echo "  $0 --background awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
-  echo ""
   echo "  # Chat-only deployment"
   echo "  $0 chat SicariusSicariiStuff/Impish_Nemo_12B"
   echo "  DEPLOY_MODELS=chat $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
@@ -82,13 +81,6 @@ usage() {
 }
 
 # Parse and normalize arguments
-# Check for --background flag first
-BACKGROUND_FLAG=""
-if [ "${1:-}" = "--background" ]; then
-  BACKGROUND_FLAG="--background"
-  shift
-fi
-
 if [ $# -lt 1 ]; then
   log_warn "Error: Not enough arguments"
   usage
@@ -204,73 +196,62 @@ log_info "  Deploy mode: ${DEPLOY_MODELS}"
 log_info "  Chat model: ${CHAT_MODEL_NAME}"
 log_info "  Tool model: ${TOOL_MODEL_NAME}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"
+log_info ""
+log_info "Starting deployment in background (auto-detached)"
+log_info "Ctrl+C stops log tailing only - deployment continues"
+log_info "Use scripts/stop.sh to stop the deployment"
 
-# Function to run the deployment process
-run_deployment() {
-  bash "${SCRIPT_DIR}/01_check_gpu.sh"
-  bash "${SCRIPT_DIR}/02_python_env.sh"
-  bash "${SCRIPT_DIR}/03_install_deps.sh"
-  source "${SCRIPT_DIR}/04_env_defaults.sh"
-  bash "${SCRIPT_DIR}/05_start_server.sh"
-  
-  log_info "Deployment process completed successfully"
-  log_info "Server is running in the background"
-  log_info "Use 'tail -f ${ROOT_DIR}/server.log' to follow server logs"
-  log_info "Use scripts/stop.sh to stop the server"
-}
+# Define the deployment pipeline command
+DEPLOYMENT_CMD="
+  bash '${SCRIPT_DIR}/01_check_gpu.sh' && \\
+  bash '${SCRIPT_DIR}/02_python_env.sh' && \\
+  bash '${SCRIPT_DIR}/03_install_deps.sh' && \\
+  source '${SCRIPT_DIR}/04_env_defaults.sh' && \\
+  bash '${SCRIPT_DIR}/05_start_server.sh' && \\
+  echo '[INFO] $(date -Iseconds) Deployment process completed successfully' && \\
+  echo '[INFO] $(date -Iseconds) Server is running in the background' && \\
+  echo '[INFO] $(date -Iseconds) Use scripts/stop.sh to stop the server'
+"
 
-# Function to handle log rotation for deployment logs
-rotate_deployment_log() {
-  local log_file="${ROOT_DIR}/deployment.log"
-  if [ -f "$log_file" ]; then
-    local max_keep_bytes=$((100 * 1024 * 1024))  # 100MB
-    local sz=$(wc -c <"$log_file" 2>/dev/null || echo 0)
-    if [ "$sz" -gt "$max_keep_bytes" ]; then
-      local offset=$((sz - max_keep_bytes))
-      local tmp_file="${ROOT_DIR}/.deployment.log.trim"
-      if tail -c "$max_keep_bytes" "$log_file" > "$tmp_file" 2>/dev/null; then
-        mv "$tmp_file" "$log_file" 2>/dev/null || true
-        echo "[INFO] $(timestamp) Trimmed deployment.log to latest 100MB (removed ${offset} bytes)" >> "$log_file"
-      fi
+# Create directories for logs and runtime files
+mkdir -p "${ROOT_DIR}/logs" "${ROOT_DIR}/.run"
+
+# Export all environment variables for the background process
+export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL CONCURRENT_MODEL_CALL
+export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
+
+# Rotate log if it exists and is too large
+DEPLOYMENT_LOG="${ROOT_DIR}/logs/deployment.log"
+if [ -f "$DEPLOYMENT_LOG" ]; then
+  MAX_KEEP_BYTES=$((100 * 1024 * 1024))  # 100MB
+  SIZE=$(wc -c <"$DEPLOYMENT_LOG" 2>/dev/null || echo 0)
+  if [ "$SIZE" -gt "$MAX_KEEP_BYTES" ]; then
+    OFFSET=$((SIZE - MAX_KEEP_BYTES))
+    TMP_FILE="${ROOT_DIR}/.deployment.log.trim"
+    if tail -c "$MAX_KEEP_BYTES" "$DEPLOYMENT_LOG" > "$TMP_FILE" 2>/dev/null; then
+      mv "$TMP_FILE" "$DEPLOYMENT_LOG" 2>/dev/null || true
+      echo "[INFO] $(date -Iseconds) Trimmed deployment.log to latest 100MB (removed ${OFFSET} bytes)" >> "$DEPLOYMENT_LOG"
     fi
   fi
-}
-
-# Check if we should run in background
-if [ -n "${BACKGROUND_FLAG}" ] || [ "${BACKGROUND_DEPLOY:-0}" = "1" ]; then
-  
-  # Rotate log before starting
-  rotate_deployment_log
-  
-  # Run deployment in background with logging
-  {
-    log_info "Starting background deployment process"
-    log_info "Follow progress with: tail -f ${ROOT_DIR}/deployment.log"
-    log_info "Stop deployment with: pkill -f 'bash.*main.sh' (if still running)"
-    echo ""
-    
-    # Re-run this script without background flag in a new session
-    setsid bash "$0" "$@" 2>&1
-  } >> "${ROOT_DIR}/deployment.log" &
-  
-  DEPLOY_PID=$!
-  echo "$DEPLOY_PID" > "${ROOT_DIR}/deployment.pid"
-  
-  echo "[INFO] $(timestamp) Deployment started in background (PID=${DEPLOY_PID})"
-  echo "[INFO] $(timestamp) Follow progress with: tail -f ${ROOT_DIR}/deployment.log"
-  echo "[INFO] $(timestamp) Stop with Ctrl+C (only stops tail, deployment continues)"
-  echo ""
-  
-  # Start tailing the log file
-  sleep 1  # Give a moment for the log to be created
-  tail -f "${ROOT_DIR}/deployment.log" 2>/dev/null || {
-    echo "[WARN] $(timestamp) deployment.log not yet available, waiting..."
-    sleep 2
-    tail -f "${ROOT_DIR}/deployment.log" 2>/dev/null || true
-  }
-else
-  # Run normally (for background execution or direct execution)
-  run_deployment
 fi
+
+# Run deployment in background with proper process isolation
+log_info "Starting deployment pipeline in background..."
+setsid nohup bash -lc "$DEPLOYMENT_CMD" </dev/null > "$DEPLOYMENT_LOG" 2>&1 &
+
+# Store background process ID
+BG_PID=$!
+echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
+
+log_info "Deployment started (PID: $BG_PID)"
+log_info "Deployment logs: logs/deployment.log" 
+log_info "Server logs: server.log (when server starts)"
+log_info "To stop: bash scripts/stop.sh"
+echo ""
+log_info "Following deployment logs (Ctrl+C detaches, deployment continues)..."
+
+# Tail logs with graceful handling
+touch "$DEPLOYMENT_LOG" || true
+exec tail -n +1 -F "$DEPLOYMENT_LOG"
 
 
