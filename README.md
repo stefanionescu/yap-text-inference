@@ -84,8 +84,7 @@ After initial deployment, you can use these faster commands:
 
 ```bash
 # Light stop (preserve AWQ models and dependencies)
-bash scripts/stop_light.sh
-# or: NUKE_ALL=0 bash scripts/stop.sh
+NUKE_ALL=0 bash scripts/stop.sh
 
 # Quick restart using existing AWQ models
 bash scripts/restart.sh [both|chat|tool]
