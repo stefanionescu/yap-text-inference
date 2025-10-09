@@ -5,6 +5,31 @@ source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Setting AWQ Docker environment defaults"
 
+# Detect FlashInfer availability (optional fast-path)
+HAS_FLASHINFER=0
+if [ -f "/opt/venv/bin/python" ]; then
+  PY_BIN="/opt/venv/bin/python"
+elif [ -f "${SCRIPT_DIR}/../../.venv/bin/python" ]; then
+  PY_BIN="${SCRIPT_DIR}/../../.venv/bin/python"
+elif command -v python >/dev/null 2>&1; then
+  PY_BIN="python"
+else
+  PY_BIN=""
+fi
+
+if [ -n "${PY_BIN}" ]; then
+  if "${PY_BIN}" - <<'PY' >/dev/null 2>&1
+try:
+    import flashinfer  # noqa: F401
+except Exception:
+    raise SystemExit(1)
+PY
+  then
+    HAS_FLASHINFER=1
+  fi
+fi
+export HAS_FLASHINFER
+
 # Validate required AWQ models are set
 if [ -z "${AWQ_CHAT_MODEL:-}" ] && [ -z "${AWQ_TOOL_MODEL:-}" ]; then
   log_error "Error: At least one of AWQ_CHAT_MODEL or AWQ_TOOL_MODEL must be set for Docker deployment"
@@ -94,8 +119,16 @@ export DETECTED_GPU_NAME="${GPU_NAME}"
 # Set GPU-specific defaults based on GPU type (AWQ optimized)
 case "${GPU_NAME}" in
   *H100*|*L40S*|*L40*)
-    export KV_DTYPE=${KV_DTYPE:-fp8}
-    export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+    if [ "${HAS_FLASHINFER}" = "1" ]; then
+      export VLLM_USE_V1=1
+      export KV_DTYPE=${KV_DTYPE:-fp8}
+      export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+    else
+      export VLLM_USE_V1=0
+      export KV_DTYPE=${KV_DTYPE:-auto}
+      export VLLM_ATTENTION_BACKEND=XFORMERS
+      log_warn "FlashInfer not available; falling back to V0 + XFORMERS backend for AWQ (slower)."
+    fi
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
     export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
     export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
