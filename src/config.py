@@ -261,7 +261,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     engine_args = AsyncEngineArgs(**kwargs)
     
     # Add flag for local AWQ handling in engine creation
-    if is_local_awq:
+    if raw_quant == "awq" and _is_local_model_path(model):
         engine_args._is_local_awq = True
     
     return engine_args
