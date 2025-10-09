@@ -48,6 +48,9 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12
 # 4-bit AWQ auto-quantization with concurrent mode (quantizes both chat and tool on load)
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
+# Use pre-quantized AWQ models (no dummy params needed!)
+AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq
+
 # Chat-only deployment (auto determines FP8/GPTQ)
 bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B
 
@@ -65,9 +68,7 @@ This will:
 
 ### Viewing logs
 
-All deployment and server logs are unified in a single file:
-
-- **All logs** (`server.log`): Setup, quantization, server startup, and runtime activity
+All deployment and server logs are unified in a single `server.log` file.
 
 View logs:
 
@@ -343,8 +344,6 @@ The deployment system has built-in rotation for `server.log` which rotates at ~1
 
 The server maintains persistent WebSocket connections with session-based user assignment. Each client provides a `session_id` for user identification, and the connection can handle multiple requests over time with automatic interruption support.
 
-**🔐 Authentication Required**: All WebSocket connections require API key authentication via query parameter or header.
-
 **Connection lifecycle:**
 1. Client connects to `ws://server:8000/ws?api_key=your_key` (with authentication)
 2. Client sends `start` message with `session_id` to assign/identify user  
@@ -483,23 +482,27 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nem
 **Option 2: Pre-quantized AWQ models from Hugging Face:**
 ```bash
 # Use pre-quantized AWQ models (no quantization step, faster startup)
-AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq dummy dummy
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/main.sh awq
 
 # Chat-only with pre-quantized model
-AWQ_CHAT_MODEL=your-org/chat-awq bash scripts/main.sh awq chat dummy
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq bash scripts/main.sh awq chat
 
 # Tool-only with pre-quantized model  
-AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq tool dummy
+AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/main.sh awq tool
 
 # With concurrent mode
-AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq dummy dummy
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq
+
+# Use your own pre-quantized AWQ models (auto-detected)
+AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq
 ```
 
 Notes for AWQ:
 - **Local quantization**: Provide a float chat model (e.g., `SicariusSicariiStuff/Impish_Nemo_12B`, `kyx0r/Neona-12B`, `SicariusSicariiStuff/Wingless_Imp_8B`, etc.) — do not pass a GPTQ repo.
 - **Pre-quantized models**: Use `AWQ_CHAT_MODEL` and/or `AWQ_TOOL_MODEL` environment variables to specify HF repos with pre-quantized AWQ models.
+- **Smart detection**: When using pre-quantized models, just use `awq` flag — no model parameters needed! The script automatically detects and uses the model names you provide.
+- **Custom AWQ models**: Any HuggingFace repo containing "awq" in the name will be automatically accepted when using AWQ quantization.
 - The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency (local mode).
-- When using pre-quantized models, the original model arguments are ignored (can use "dummy" placeholders).
 - AWQ requires additional wheels (installed automatically via `requirements.txt`).
 
 ### Pushing AWQ exports to Hugging Face
