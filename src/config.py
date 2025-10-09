@@ -215,10 +215,13 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     else:
         selected_quant = TOOL_QUANTIZATION or ("awq" if QUANTIZATION == "awq" else None)
 
-    quant_value = selected_quant
+    raw_quant = selected_quant
+    inference_quant = raw_quant
+    if raw_quant == "awq":
+        inference_quant = "awq_marlin"
 
     dtype_value = "auto"
-    if quant_value in {"awq", "awq_marlin"}:
+    if inference_quant in {"awq", "awq_marlin"}:
         dtype_value = "float16"
 
     # Build kwargs for V1 engine.
@@ -234,15 +237,14 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         max_num_batched_tokens=max_batched,
         enable_prefix_caching=True,  # Always enable prefix caching for performance
         # Weight quantization (None => float weights)
-        quantization=quant_value,
+        quantization=inference_quant,
         dtype=dtype_value,
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
     )
-    
+
     # Special handling for local AWQ models to avoid Hugging Face repo ID validation
-    is_local_awq = quant_value == "awq" and _is_local_model_path(model)
-    if is_local_awq:
+    if raw_quant == "awq" and _is_local_model_path(model):
         # For local AWQ models, ensure the path is absolute so vLLM treats it as local
         kwargs["model"] = os.path.abspath(model)
     
