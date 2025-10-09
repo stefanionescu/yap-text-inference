@@ -64,7 +64,14 @@ fi
 # Attempt GPU-aware FlashInfer install if we're on Linux with CUDA/Torch available.
 # This prefers official FlashInfer wheel indices by CUDA/Torch version, and falls back gracefully.
 if [ "$(uname -s)" = "Linux" ]; then
-  CUDA_NVVER=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
+  SKIP_FLASHINFER=${SKIP_FLASHINFER:-0}
+  if [ "${QUANTIZATION:-}" = "awq" ]; then
+    log_info "QUANTIZATION=awq; skipping FlashInfer install (awq uses marlin kernels)"
+    SKIP_FLASHINFER=1
+  fi
+
+  if [ "${SKIP_FLASHINFER}" != "1" ]; then
+    CUDA_NVVER=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
 import sys
 try:
     import torch
@@ -75,9 +82,9 @@ try:
 except Exception:
     sys.exit(1)
 PY
-  )
+    )
 
-  TORCH_MAJMIN=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
+    TORCH_MAJMIN=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
 import sys
 try:
     import torch
@@ -87,20 +94,23 @@ try:
 except Exception:
     sys.exit(1)
 PY
-  )
+    )
 
-  if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
-    FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
-    log_info "Installing flashinfer-python (extra-index: ${FI_IDX_PRIMARY})"
-    if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" flashinfer-python; then
-      log_warn "FlashInfer install failed even with extra index; falling back to PyPI only"
-      if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary flashinfer-python; then
-        log_warn "FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
+    if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
+      FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
+      log_info "Installing flashinfer-python (extra-index: ${FI_IDX_PRIMARY})"
+      if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" flashinfer-python; then
+        log_warn "FlashInfer install failed even with extra index; falling back to PyPI only"
+        if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary flashinfer-python; then
+          log_warn "FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
+        fi
       fi
+      log_info "FlashInfer wheel source: ${FI_IDX_PRIMARY} (CUDA=${CUDA_NVVER} Torch=${TORCH_MAJMIN})"
+    else
+      log_warn "Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
     fi
-    log_info "FlashInfer wheel source: ${FI_IDX_PRIMARY} (CUDA=${CUDA_NVVER} Torch=${TORCH_MAJMIN})"
   else
-    log_warn "Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
+    log_info "Skipping FlashInfer install due to configuration"
   fi
 else
   log_warn "Non-Linux platform detected; skipping FlashInfer GPU wheel install."
@@ -110,5 +120,3 @@ fi
 if [ -f "${REQ_FILE}" ]; then
   sha256sum "${REQ_FILE}" | awk '{print $1}' > "${STAMP_FILE}" || true
 fi
-
-
