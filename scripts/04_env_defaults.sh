@@ -299,7 +299,7 @@ if [ "${QUANTIZATION}" = "awq" ]; then
       push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
     else
       log_info "Quantizing tool model to AWQ: ${TOOL_MODEL} -> ${TOOL_OUT_DIR}"
-      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/awq/quantize.py" --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
+      if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${TOOL_MODEL}" --out "${TOOL_OUT_DIR}"; then
         export TOOL_MODEL="${TOOL_OUT_DIR}"
         export TOOL_QUANTIZATION=awq
         push_awq_to_hf "${TOOL_OUT_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
@@ -309,6 +309,8 @@ if [ "${QUANTIZATION}" = "awq" ]; then
         if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
           log_warn "AWQ_FAIL_HARD=1 set; aborting"
           exit 1
+        else
+          log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
         fi
       fi
     fi
@@ -322,13 +324,19 @@ if [ "${QUANTIZATION}" = "awq" ]; then
     fi
     if [ ! -f "${CHAT_OUT_DIR}/awq_config.json" ] && [ ! -f "${CHAT_OUT_DIR}/.awq_ok" ]; then
       log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${CHAT_OUT_DIR}"
-      if "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/awq/quantize.py" --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
+      if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${CHAT_MODEL}" --out "${CHAT_OUT_DIR}"; then
         export CHAT_MODEL="${CHAT_OUT_DIR}"
         export CHAT_QUANTIZATION=awq
         push_awq_to_hf "${CHAT_OUT_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
       else
         log_warn "AWQ quantization failed for chat model; falling back to auto-detected quant"
         unset CHAT_QUANTIZATION
+        if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
+          log_warn "AWQ_FAIL_HARD=1 set; aborting"
+          exit 1
+        else
+          log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
+        fi
         # Fallback to auto-detected quant for chat: leave CHAT_MODEL unchanged
       fi
     else
