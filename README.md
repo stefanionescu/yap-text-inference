@@ -78,6 +78,22 @@ tail -f server.log
 
 **Note**: `main.sh` auto-tails all logs by default. Ctrl+C detaches from tail without stopping the deployment.
 
+### Quick Operations
+
+After initial deployment, you can use these faster commands:
+
+```bash
+# Light stop (preserve AWQ models and dependencies)
+bash scripts/stop_light.sh
+# or: NUKE_ALL=0 bash scripts/stop.sh
+
+# Quick restart using existing AWQ models
+bash scripts/restart.sh [both|chat|tool]
+
+# Full stop and restart cycle
+bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
+```
+
 2) Health check (no authentication required)
 
 ```bash
@@ -117,6 +133,39 @@ Opt-out examples:
 ```bash
 # Light clean (keep venv/home caches)
 NUKE_ALL=0 bash scripts/stop.sh
+```
+
+## Quick Restart (Reuse AWQ Models)
+
+If you want to stop and restart the server without rebuilding AWQ models or dependencies:
+
+```bash
+# Quick restart using existing AWQ models (both chat and tool)
+bash scripts/restart.sh
+
+# Chat-only restart
+bash scripts/restart.sh chat
+
+# Tool-only restart
+bash scripts/restart.sh tool
+
+# Sequential mode restart
+CONCURRENT_MODEL_CALL=0 bash scripts/restart.sh
+```
+
+The restart script:
+- Stops server with light clean (preserves `.awq/` models and `.venv`)
+- Starts server directly using existing local AWQ models
+- Skips GPU check, dependency install, and quantization
+- Much faster than full deployment (seconds vs minutes)
+
+**Requirements**: You must have run a full AWQ deployment first to create the cached models:
+```bash
+# Initial deployment (creates .awq/ cache)
+bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
+
+# Then you can use quick restart
+bash scripts/restart.sh
 ```
 
 ## Security Configuration

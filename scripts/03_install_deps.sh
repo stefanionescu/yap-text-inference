@@ -65,10 +65,6 @@ fi
 # This prefers official FlashInfer wheel indices by CUDA/Torch version, and falls back gracefully.
 if [ "$(uname -s)" = "Linux" ]; then
   SKIP_FLASHINFER=${SKIP_FLASHINFER:-0}
-  if [ "${QUANTIZATION:-}" = "awq" ]; then
-    log_info "QUANTIZATION=awq; skipping FlashInfer install (awq uses marlin kernels)"
-    SKIP_FLASHINFER=1
-  fi
 
   if [ "${SKIP_FLASHINFER}" != "1" ]; then
     CUDA_NVVER=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
