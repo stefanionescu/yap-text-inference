@@ -56,11 +56,17 @@ REPO_CACHE_DIRS=(
   "${ROOT_DIR}/.triton"
   "${ROOT_DIR}/.flashinfer"
   "${ROOT_DIR}/.xformers"
-  "${ROOT_DIR}/.awq"
 )
 for d in "${REPO_CACHE_DIRS[@]}"; do
   [ -d "$d" ] && { log_info "Removing repo cache at $d"; rm -rf "$d" || true; }
 done
+
+# Remove AWQ models only on full cleanup (NUKE_ALL=1)
+if [ "${NUKE_ALL:-1}" = "1" ]; then
+  [ -d "${ROOT_DIR}/.awq" ] && { log_info "Removing AWQ models at ${ROOT_DIR}/.awq"; rm -rf "${ROOT_DIR}/.awq" || true; }
+else
+  [ -d "${ROOT_DIR}/.awq" ] && log_info "Keeping AWQ models at ${ROOT_DIR}/.awq (set NUKE_ALL=1 to remove)"
+fi
 if [ "${NUKE_PIP_CACHE:-0}" = "1" ]; then
   [ -d "${ROOT_DIR}/.pip_cache" ] && { log_info "Removing repo pip cache at ${ROOT_DIR}/.pip_cache"; rm -rf "${ROOT_DIR}/.pip_cache" || true; }
 else
