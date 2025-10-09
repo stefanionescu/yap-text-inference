@@ -51,6 +51,22 @@ def generate_readme(
     # Original author for attribution
     original_author = model_path.split('/')[0] if '/' in model_path else 'the original authors'
     
+    # Determine license based on model type
+    if is_tool:
+        # Hammer models use Qwen research license
+        license_info = {
+            'license': 'other',
+            'license_name': 'qwen-research', 
+            'license_link': f'https://huggingface.co/{model_path}/blob/main/LICENSE' if is_hf_model else ''
+        }
+    else:
+        # Chat models use Apache 2.0
+        license_info = {
+            'license': 'apache-2.0',
+            'license_name': 'Apache 2.0',  # For consistency
+            'license_link': ''  # Not needed for Apache
+        }
+    
     # Template variables
     template_vars = {
         'model_name': model_name,
@@ -67,6 +83,7 @@ def generate_readme(
         'calib_section': calib_section,
         'quant_summary': quant_summary,
         'original_author': original_author,
+        **license_info,  # Add license info dynamically
     }
     
     # Try to use template, fallback to basic if not found
