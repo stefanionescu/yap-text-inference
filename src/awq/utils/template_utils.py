@@ -23,7 +23,7 @@ def generate_readme(
     
     # Choose template based on model type
     template_name = "awq_tool_template.md" if is_tool else "awq_chat_template.md"
-    template_path = os.path.join(os.path.dirname(__file__), "..", "readmes", template_name)
+    template_path = os.path.join(os.path.dirname(__file__), "..", "readme", template_name)
     
     # Extract model name and details
     model_name = model_path.split('/')[-1] if '/' in model_path else model_path
