@@ -1,5 +1,5 @@
 # Multi-stage build for efficient Docker image
-FROM nvidia/cuda:12.8-cudnn-devel-ubuntu22.04 AS builder
+FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 AS builder
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -37,31 +37,10 @@ COPY requirements.txt /tmp/requirements.txt
 RUN set -eux; \
     export PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PIP_PREFER_BINARY=1 FLASHINFER_ENABLE_AOT=1; \
     TMP_REQ=/tmp/requirements.no_flashinfer.txt; \
-    grep -v -E '^\s*flashinfer-python(\s|$|==|>=|<=|~=|!=)' /tmp/requirements.txt > "${TMP_REQ}" || cp /tmp/requirements.txt "${TMP_REQ}" || true; \
+    grep -v -E '^[[:space:]]*flashinfer-python([[:space:]]|$|==|>=|<=|~=|!=)' /tmp/requirements.txt > "${TMP_REQ}" || cp /tmp/requirements.txt "${TMP_REQ}" || true; \
     pip install --no-cache-dir -r "${TMP_REQ}"; \
-    CUDA_NVVER=$(python - <<'PY' || true
-import sys
-try:
-    import torch
-    cu = (torch.version.cuda or '').strip()
-    if not cu:
-        raise SystemExit(1)
-    print(cu.replace('.', ''))
-except Exception:
-    sys.exit(1)
-PY
-    ); \
-    TORCH_MAJMIN=$(python - <<'PY' || true
-import sys
-try:
-    import torch
-    ver = torch.__version__.split('+', 1)[0]
-    parts = ver.split('.')
-    print(f"{parts[0]}.{parts[1]}")
-except Exception:
-    sys.exit(1)
-PY
-    ); \
+    CUDA_NVVER="$(python -c 'import sys, torch; cu=(torch.version.cuda or "").strip(); sys.exit(1) if not cu else print(cu.replace(".", ""))' 2>/dev/null || true)"; \
+    TORCH_MAJMIN="$(python -c 'import sys, torch; ver=torch.__version__.split("+",1)[0]; p=ver.split("."); print(p[0]+"."+p[1])' 2>/dev/null || true)"; \
     if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then \
         FI_IDX="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"; \
         echo "[INFO] Installing flashinfer-python from ${FI_IDX}"; \
@@ -73,7 +52,7 @@ PY
     fi
 
 # Production stage
-FROM nvidia/cuda:12.8-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
 # Set environment variables for production
 ENV DEBIAN_FRONTEND=noninteractive
