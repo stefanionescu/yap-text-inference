@@ -41,7 +41,7 @@ log_info "All logs: tail -f ${ROOT_DIR}/server.log"
 log_info "Stop:    kill -TERM -$(cat ${ROOT_DIR}/server.pid)  # negative PID kills session"
 
 # Optional warmup to prefill KV, kernels, tokenizer
-if [ "${WARMUP_ON_START:-1}" = "1" ]; then
+if [ "${WARMUP_ON_START:-0}" = "1" ]; then
   log_info "Running warmup client"
   RECV_TIMEOUT_SEC=${RECV_TIMEOUT_SEC:-60} "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/test/warmup.py" >/dev/null 2>&1 || true
 fi

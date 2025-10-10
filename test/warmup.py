@@ -18,7 +18,7 @@ Usage:
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
-  YAP_API_KEY=yap_token (or your custom API key)
+  YAP_TEXT_API_KEY=yap_token (or your custom API key)
   ASSISTANT_GENDER=female|male
   PERSONA_STYLE=flirty
 
@@ -119,7 +119,7 @@ def _parse_args() -> argparse.Namespace:
 
 async def _run_once(args: argparse.Namespace) -> None:
     server_ws_url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
-    api_key = os.getenv("YAP_API_KEY", "yap_token")
+    api_key = os.getenv("YAP_TEXT_API_KEY", "yap_token")
     assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", "female")
     persona_style = args.persona_style or os.getenv("PERSONA_STYLE", "flirty")
 
@@ -253,7 +253,7 @@ async def _run_once(args: argparse.Namespace) -> None:
                 
                 # Special handling for authentication errors
                 if error_code == "authentication_failed":
-                    print(f"[HINT] Check your YAP_API_KEY environment variable (currently: '{api_key}')")
+                    print(f"[HINT] Check your YAP_TEXT_API_KEY environment variable (currently: '{api_key}')")
                 elif error_code == "server_at_capacity":
                     print("[HINT] Server is at maximum connection capacity. Try again later.")
                 break
