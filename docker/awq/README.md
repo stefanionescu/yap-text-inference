@@ -1,4 +1,4 @@
-# Yap Text Inference Docker Setup
+# Yap Text Inference Docker Setup (AWQ)
 
 This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**.
 
