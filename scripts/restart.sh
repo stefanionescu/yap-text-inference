@@ -208,7 +208,7 @@ fi
 
 # Load environment defaults (for GPU detection and other settings)
 log_info "Loading environment defaults..."
-source "${SCRIPT_DIR}/04_env_defaults.sh"
+source "${SCRIPT_DIR}/04_env.sh"
 
 # Create server log
 SERVER_LOG="${ROOT_DIR}/server.log"

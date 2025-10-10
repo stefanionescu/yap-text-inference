@@ -11,7 +11,7 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Interrupts/barge-in via cancel or a new start.
-- Concurrent connection limiting to protect GPU resources (deployment-aware: 32 for tool-only, 24 for chat-only, 16 for both)
+- Concurrent connection limiting to protect GPU resources (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both)
 - API key authentication for secure access (configurable, default: "yap_token")
 
 ## Quickstart (RunPod or any CUDA Linux image)
@@ -196,9 +196,9 @@ export YAP_API_KEY="my_super_secret_key_2024"
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 ```
 
-**Connection Limiting:**
+**Connection Limiting (deployment/quantization-aware):**
 ```bash
-# Set custom connection limit (default: 24)
+# Set custom connection limit (defaults vary: non-AWQ → 16 both / 24 chat-only / 32 tool-only; AWQ → 26 both / 40 chat-only / 64 tool-only)
 export MAX_CONCURRENT_CONNECTIONS=50
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 ```
@@ -310,7 +310,7 @@ python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 
 Server configuration
 - `YAP_API_KEY` (default `yap_token`) - API key for authentication (all endpoints except `/healthz`)
-- `MAX_CONCURRENT_CONNECTIONS` - Maximum concurrent WebSocket connections (deployment-aware: 32 for tool-only, 24 for chat-only, 16 for both)
+- `MAX_CONCURRENT_CONNECTIONS` - Maximum concurrent WebSocket connections (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both)
 - `DEPLOY_MODELS` (default `both`) - Which models to deploy: `both`, `chat`, or `tool`
 
 Models and GPU split
@@ -336,7 +336,7 @@ Token limits
 - `USER_UTT_MAX_TOKENS=350` (keeps beginning of user utterance)
 - `EXACT_TOKEN_TRIM=1` (fast HF tokenizer for exact trimming; set `0` to disable)
 
-All of the above have sensible defaults in `scripts/04_env_defaults.sh`.
+All of the above have sensible defaults in `scripts/04_env.sh`.
 
 ## KV caching
 Using vLLM’s internal prefix caching with chunked prefill.
@@ -366,7 +366,7 @@ The server maintains persistent WebSocket connections with session-based user as
 3. Connection stays open for multiple requests (up to server connection limit)
 4. Session state (persona, settings) persists across requests
 5. New `start` messages automatically cancel previous requests (barge-in)
-6. Connections are limited to protect GPU resources (default: 24 concurrent)
+6. Connections are limited to protect GPU resources (default depends on deploy/quantization; e.g., 24 non-AWQ chat-only, 40 AWQ chat-only)
 
 **Authentication methods:**
 ```javascript
@@ -597,7 +597,7 @@ Note: `CHAT_MAX_LEN` defaults to `5760`; adjust to trade off KV usage vs context
 - Chat outputs are capped at 200 tokens per response.
 - Rolling history capped at ~3000 tokens (not counting persona). Long personas reduce remaining context.
 - User utterances trimmed to first 350 tokens.
-- **Concurrent connections limited** (deployment-aware: 32 for tool-only, 24 for chat-only, 16 for both) to protect GPU resources from overload.
+- **Concurrent connections limited** (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both) to protect GPU resources from overload.
 - Single-process, single-GPU by default. Under very high concurrency or very long contexts, you'll be KV-bound. Scale by running another process or GPU.
 - **Authentication required** for all API access except health checks.
 
