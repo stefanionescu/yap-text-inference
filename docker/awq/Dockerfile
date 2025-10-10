@@ -32,8 +32,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
 # Copy requirements and install Python dependencies
-# requirements.txt comes from the repo context (mounted as 'repo' by build.sh)
-COPY --from=repo requirements.txt /tmp/requirements.txt
+COPY requirements.txt /tmp/requirements.txt
 # Install all requirements except flashinfer-python first, mirroring the scripts install flow
 RUN set -eux; \
     export PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PIP_PREFER_BINARY=1 FLASHINFER_ENABLE_AOT=1; \
@@ -75,10 +74,10 @@ COPY --from=builder /opt/venv /opt/venv
 # Create app directory
 WORKDIR /app
 
-# Copy application code from repo context
-COPY --from=repo src/ /app/src/
-COPY --from=repo prompts.py /app/
-COPY docker/awq/scripts/ /app/scripts/
+# Copy application code from build context
+COPY src/ /app/src/
+COPY prompts.py /app/
+COPY scripts/ /app/scripts/
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache
