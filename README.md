@@ -66,6 +66,30 @@ This will:
 - **Always runs in background** with auto-detached process isolation
 - **Auto-tails logs** - Ctrl+C stops tail only, deployment continues
 
+### Docker deployment (optional)
+
+You can deploy the server in Docker using the stacks in `docker/awq` (pre-quantized AWQ) and `docker/fp8` (auto FP8/GPTQ):
+
+```bash
+# AWQ (pre-quantized models)
+DOCKER_USERNAME=youruser docker/awq/build.sh
+docker run -d --gpus all --name yap-awq \
+  -e AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
+  -e AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
+  -e YAP_TEXT_API_KEY=yap_token \
+  -p 8000:8000 youruser/yap-text-inference-awq:latest
+
+# Auto-quant (FP8/GPTQ auto-detect)
+DOCKER_USERNAME=youruser docker/fp8/build.sh
+docker run -d --gpus all --name yap-auto \
+  -e CHAT_MODEL=your-org/float-or-gptq-chat \
+  -e TOOL_MODEL=your-org/float-or-gptq-tool \
+  -e YAP_TEXT_API_KEY=yap_token \
+  -p 8000:8000 youruser/yap-text-inference-auto:latest
+```
+
+See `docker/awq/README.md` and `docker/fp8/README.md` for environment variables and advanced options.
+
 ### Viewing logs
 
 All deployment and server logs are unified in a single `server.log` file.
