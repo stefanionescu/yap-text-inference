@@ -1,4 +1,4 @@
-# Multi-stage build for efficient Docker image
+# Multi-stage build for efficient Docker image (FP8/GPTQ auto-quant stack)
 FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 AS builder
 
 # Set environment variables
@@ -78,7 +78,7 @@ WORKDIR /app
 # Copy application code from repo context
 COPY --from=repo src/ /app/src/
 COPY --from=repo prompts.py /app/
-COPY docker/awq/scripts/ /app/scripts/
+COPY docker/fp8/scripts/ /app/scripts/
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache
@@ -101,3 +101,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Default command
 CMD ["/app/scripts/main.sh"]
+
+

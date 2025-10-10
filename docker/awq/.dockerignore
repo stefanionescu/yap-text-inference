@@ -1,4 +1,9 @@
-# Git and version control
+# AWQ stack-specific dockerignore
+
+# Exclude other docker stacks
+docker/fp8/
+
+# Git and VCS
 .git
 .gitignore
 .gitattributes
@@ -76,6 +81,4 @@ test_*.py
 .env.local
 .env.*.local
 
-# Scripts directory (we'll copy our own)
-scripts/
 
