@@ -8,7 +8,6 @@ tags:
 - quantized
 - {w_bit}-bit
 - vllm
-- yap-text-inference
 - function-calling
 - tool-use
 language:
