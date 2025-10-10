@@ -20,30 +20,36 @@ This Docker setup provides a containerized deployment of Yap's text inference AP
 # Build the Docker image
 DOCKER_USERNAME=yourusername ./build.sh
 
-docker run -d --gpus all --name yap-server \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+# Run (always deploys both chat and tool models)
+# Minimal envs: provide AWQ repos and (optionally) API key, warmup, GPU fractions
+YAP_API_KEY=yap_token \
+AWQ_CHAT_MODEL=your-org/chat-awq \
+AWQ_TOOL_MODEL=your-org/tool-awq \
+WARMUP_ON_START=0 \
+CHAT_GPU_FRAC=0.70 \
+TOOL_GPU_FRAC=0.20 \
+  docker run -d --gpus all --name yap-server \
+  -e YAP_API_KEY -e AWQ_CHAT_MODEL -e AWQ_TOOL_MODEL \
+  -e WARMUP_ON_START -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
   yourusername/yap-text-inference:latest
 ```
 
 ## Environment Variables
 
-### AWQ Models (with defaults)
+### Required
 - `AWQ_CHAT_MODEL` - Hugging Face repo with pre-quantized AWQ chat model (default: `yapwithai/impish-12b-awq`)
 - `AWQ_TOOL_MODEL` - Hugging Face repo with pre-quantized AWQ tool model (default: `yapwithai/hammer-2.1-3b-awq`)
-- Override these to use your own pre-quantized AWQ models
 
-### Optional (all have sensible defaults)
-- `DEPLOY_MODELS=both|chat|tool` (default: both)
-- `CONCURRENT_MODEL_CALL=0|1` (default: 1=concurrent)
-- `YAP_API_KEY` (default: yap_token)
-- `WARMUP_ON_START=0|1` (default: 1)
-- `CHAT_GPU_FRAC=0.70` - GPU memory fraction for chat model
-- `TOOL_GPU_FRAC=0.20` - GPU memory fraction for tool model
-- `KV_DTYPE=fp8|int8|auto` (default: fp8 on supported GPUs)
-- `VLLM_USE_V1=0|1` (default: 1)
-- `VLLM_ATTENTION_BACKEND` (default: FLASHINFER on supported GPUs)
+### Optional
+- `YAP_API_KEY` (default: `yap_token`)
+- `WARMUP_ON_START=0|1` (default: `0`)
+- `CHAT_GPU_FRAC` (default: `0.70`)
+- `TOOL_GPU_FRAC` (default: `0.20`)
+
+Engine/attention backend are auto-selected; no manual configuration required.
+
+Note: Docker deployment always runs both models; single-model deployment is not supported in Docker.
 
 ## Build and Deploy
 
@@ -65,68 +71,19 @@ TAG=v1.0.0 ./build.sh
 
 ### Running the Container
 
-**Simple:**
 ```bash
 docker run -d --gpus all --name yap-server \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -e YAP_API_KEY=yap_token \
+  -e WARMUP_ON_START=0 \
+  -e CHAT_GPU_FRAC=0.70 \
+  -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \
   yourusername/yap-text-inference:latest
 
 # Check logs
 docker logs -f yap-server
-```
-
-**Custom models:**
-```bash
-# Override with your own AWQ models
-docker run -d --gpus all --name yap-server \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
-  -p 8000:8000 \
-  yourusername/yap-text-inference:latest
-```
-
-Defaults mirror the host scripts' behavior (no baked AWQ model repos). Provide AWQ repos explicitly.
-
-## Container Operations
-
-### Starting the Server
-```bash
-docker run -d --gpus all --name yap-both \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
-  -e CONCURRENT_MODEL_CALL=1 \
-  -p 8000:8000 \
-  yourusername/yap-text-inference:latest
-```
-
-### Chat Only
-```bash
-docker run -d --gpus all --name yap-chat \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e DEPLOY_MODELS=chat \
-  -p 8000:8000 \
-  yourusername/yap-text-inference:latest
-```
-
-### Tool Only
-```bash
-docker run -d --gpus all --name yap-tool \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
-  -e DEPLOY_MODELS=tool \
-  -p 8000:8000 \
-  yourusername/yap-text-inference:latest
-```
-
-### Sequential Mode (Lower Resource Usage)
-```bash
-docker run -d --gpus all --name yap-sequential \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
-  -e CONCURRENT_MODEL_CALL=0 \
-  -p 8000:8000 \
-  yourusername/yap-text-inference:latest
 ```
 
 ## Monitoring and Health Checks
@@ -165,17 +122,6 @@ docker run -d --gpus all --name yap-server \
   yourusername/yap-text-inference:latest
 ```
 
-### Custom GPU Memory Allocation
-```bash
-docker run -d --gpus all --name yap-server \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
-  -e CHAT_GPU_FRAC=0.80 \
-  -e TOOL_GPU_FRAC=0.15 \
-  -p 8000:8000 \
-  yourusername/yap-text-inference:latest
-```
-
 ### Persistent Cache Volumes
 ```bash
 docker run -d --gpus all --name yap-server \
@@ -193,11 +139,10 @@ docker run -d --gpus all --name yap-server \
 
 1. **CUDA/GPU not available**
    - Ensure nvidia-docker is installed
-   - Check GPU visibility: `docker run --gpus all nvidia/cuda:12.8-runtime-ubuntu22.04 nvidia-smi`
+   - Check GPU visibility: `docker run --gpus all nvidia/cuda:12.8.0-runtime-ubuntu22.04 nvidia-smi`
 
 2. **Out of memory errors**
    - Reduce GPU memory fractions: `CHAT_GPU_FRAC=0.60 TOOL_GPU_FRAC=0.15`
-   - Use sequential mode: `CONCURRENT_MODEL_CALL=0`
    - Try int8 KV cache: `KV_DTYPE=int8`
 
 3. **Model loading failures**
@@ -206,9 +151,9 @@ docker run -d --gpus all --name yap-server \
    - Ensure models are properly quantized AWQ format
 
 4. **Performance issues**
-   - Enable concurrent mode: `CONCURRENT_MODEL_CALL=1`
+   - Keep concurrent mode (default)
    - Use fp8 KV cache on supported GPUs: `KV_DTYPE=fp8`
-   - Try FlashInfer backend: `VLLM_ATTENTION_BACKEND=FLASHINFER`
+   - Prefer FlashInfer backend when available
 
 ### Debug Mode
 ```bash
