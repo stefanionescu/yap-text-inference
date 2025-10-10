@@ -27,7 +27,7 @@ TOOL_GPU_FRAC=0.20 \
   -e YAP_TEXT_API_KEY -e CHAT_MODEL -e TOOL_MODEL \
   -e WARMUP_ON_START -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
-  yourusername/yap-text-inference-auto-quant:latest
+  yourusername/yap-text-inference-auto:latest
 ```
 
 ## Environment Variables
@@ -75,7 +75,7 @@ docker run -d --gpus all --name yap-server \
   -e CHAT_GPU_FRAC=0.70 \
   -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \
-  yourusername/yap-text-inference-auto-quant:latest
+  yourusername/yap-text-inference-auto:latest
 
 # Check logs
 docker logs -f yap-server
@@ -104,7 +104,7 @@ docker run -d --gpus all --name yap-server \
   -e CHAT_MODEL=your-org/chat-model \
   -e TOOL_MODEL=your-org/tool-model \
   -p 8000:8000 \
-  yourusername/yap-text-inference-auto-quant:latest
+  yourusername/yap-text-inference-auto:latest
 ```
 
 ### Persistent Cache Volumes
@@ -115,7 +115,7 @@ docker run -d --gpus all --name yap-server \
   -e CHAT_MODEL=your-org/chat-model \
   -e TOOL_MODEL=your-org/tool-model \
   -p 8000:8000 \
-  yourusername/yap-text-inference-auto-quant:latest
+  yourusername/yap-text-inference-auto:latest
 ```
 
 ## Troubleshooting

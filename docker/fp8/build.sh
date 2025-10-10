@@ -7,7 +7,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Docker configuration
 DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
-IMAGE_NAME="${IMAGE_NAME:-yap-text-inference-auto-quant}"
+IMAGE_NAME="${IMAGE_NAME:-yap-text-inference-auto}"
 TAG="${TAG:-latest}"
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
@@ -47,7 +47,7 @@ usage() {
     echo ""
     echo "Environment Variables:"
     echo "  DOCKER_USERNAME     - Docker Hub username (default: your-username)"
-    echo "  IMAGE_NAME          - Docker image name (default: yap-text-inference-auto-quant)"
+    echo "  IMAGE_NAME          - Docker image name (default: yap-text-inference-auto)"
     echo "  TAG                 - Docker image tag (default: latest)"
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
     echo ""
@@ -78,7 +78,22 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
-:
+ensure_docker_login() {
+    # If already logged in, nothing to do
+    if docker info 2>/dev/null | grep -q "Username:"; then
+        log_info "Docker login detected."
+        return
+    fi
+    # Try non-interactive login via env vars
+    if [ -n "${DOCKER_PASSWORD:-}" ]; then
+        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin && return
+    fi
+    if [ -n "${DOCKER_TOKEN:-}" ]; then
+        echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USERNAME}" --password-stdin && return
+    fi
+    log_warn "Not logged in to Docker Hub and no DOCKER_PASSWORD/DOCKER_TOKEN set; push may fail."
+}
+ensure_docker_login
 
 log_info "Building Yap Text Inference Docker image (FP8/GPTQ)"
 log_info "Image: ${FULL_IMAGE_NAME}"
@@ -87,7 +102,21 @@ log_info "Build context: ${BUILD_CONTEXT}"
 log_info "Dockerfile: ${DOCKERFILE}"
 
 # Build the image
-log_info "Starting Docker build..."
+log_info "Preparing build context..."
+
+# Create a minimal temporary build context that includes root files
+TMP_BUILD_DIR="$(mktemp -d -t yap-auto-build-XXXXXX)"
+cleanup() { rm -rf "${TMP_BUILD_DIR}" 2>/dev/null || true; }
+trap cleanup EXIT
+
+cp -a "${DOCKERFILE}" "${TMP_BUILD_DIR}/Dockerfile"
+cp -a "${SCRIPT_DIR}/scripts" "${TMP_BUILD_DIR}/scripts"
+cp -a "${ROOT_DIR}/requirements.txt" "${TMP_BUILD_DIR}/requirements.txt"
+cp -a "${ROOT_DIR}/prompts.py" "${TMP_BUILD_DIR}/prompts.py"
+cp -a "${ROOT_DIR}/src" "${TMP_BUILD_DIR}/src"
+
+BUILD_CONTEXT="${TMP_BUILD_DIR}"
+log_info "Starting Docker build from temp context: ${BUILD_CONTEXT}"
 
 BUILD_ARGS=(
     --file "${DOCKERFILE}"
@@ -104,13 +133,15 @@ log_info "Image ID: $(docker images "${FULL_IMAGE_NAME}" --format "{{.ID}}")"
 # Push the image
 log_info "Pushing image to Docker Hub..."
 
-# Check if logged in to Docker Hub
-if ! docker info | grep -q "Username:"; then
-    log_error "Not logged in to Docker Hub. Please run 'docker login' then re-run this script."
-    exit 1
+# Try push; if unauthorized, attempt non-interactive login and retry once
+if ! docker push "${FULL_IMAGE_NAME}"; then
+    log_warn "Initial docker push failed. Attempting non-interactive login and retry..."
+    ensure_docker_login || true
+    if ! docker push "${FULL_IMAGE_NAME}"; then
+        log_error "Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+        exit 1
+    fi
 fi
-
-docker push "${FULL_IMAGE_NAME}"
 
 log_success "Image pushed successfully to Docker Hub!"
 log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"

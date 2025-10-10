@@ -27,12 +27,12 @@ usage() {
   echo "  docker run -d --gpus all --name yap-server \\
     -e CHAT_MODEL=your-org/chat-float \\
     -e TOOL_MODEL=your-org/tool-float \\
-    yourusername/yap-text-inference-auto-quant:latest"
+    yourusername/yap-text-inference-auto:latest"
   echo ""
   echo "  docker run -d --gpus all --name yap-server \\
     -e CHAT_MODEL=SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 \\
     -e TOOL_MODEL=MadeAgents/Hammer2.1-3b \\
-    yourusername/yap-text-inference-auto-quant:latest"
+    yourusername/yap-text-inference-auto:latest"
   echo ""
   echo "Health check: curl http://localhost:8000/healthz"
   exit 0
