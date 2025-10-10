@@ -7,7 +7,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Docker configuration
 DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
-IMAGE_NAME="${IMAGE_NAME:-yap-text-inference-awq}"
+IMAGE_NAME="${IMAGE_NAME:-yap-text-inference-auto-quant}"
 TAG="${TAG:-latest}"
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
@@ -40,15 +40,14 @@ log_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-# Usage function
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
-    echo "Build and push Yap Text Inference Docker image for AWQ deployment"
+    echo "Build and push Yap Text Inference Docker image for FP8/GPTQ auto-quant deployment"
     echo ""
     echo "Environment Variables:"
     echo "  DOCKER_USERNAME     - Docker Hub username (default: your-username)"
-    echo "  IMAGE_NAME          - Docker image name (default: yap-text-inference-awq)"
+    echo "  IMAGE_NAME          - Docker image name (default: yap-text-inference-auto-quant)"
     echo "  TAG                 - Docker image tag (default: latest)"
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
     echo ""
@@ -130,7 +129,7 @@ if [[ "${MULTI_PLATFORM}" == "true" ]]; then
     fi
 fi
 
-log_info "Building Yap Text Inference Docker image"
+log_info "Building Yap Text Inference Docker image (FP8/GPTQ)"
 log_info "Image: ${FULL_IMAGE_NAME}"
 log_info "Platform: ${PLATFORM}"
 log_info "Build context: ${BUILD_CONTEXT}"
@@ -151,7 +150,7 @@ if [[ "${PUSH_ONLY}" == "false" ]]; then
     fi
     
     if [[ "${MULTI_PLATFORM}" == "true" ]]; then
-        # Use buildx for multi-platform and mount repo context for copying root files
+        # Use buildx for multi-platform and mount repo context
         docker buildx build \
           --build-context repo="${ROOT_DIR}" \
           "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
@@ -194,7 +193,7 @@ if [[ "${BUILD_ONLY}" == "false" ]]; then
     fi
     
     if [[ "${MULTI_PLATFORM}" == "true" ]]; then
-        # Push multi-platform image using buildx with named repo context
+        # Push multi-platform image using buildx with repo context
         docker buildx build \
           --build-context repo="${ROOT_DIR}" \
           "${BUILD_ARGS[@]}" --push "${BUILD_CONTEXT}"
@@ -207,19 +206,21 @@ if [[ "${BUILD_ONLY}" == "false" ]]; then
     log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"
 fi
 
-# Provide usage examples
+# Usage examples
 log_info ""
 log_info "Usage:"
 log_info ""
-log_info "docker run -d --gpus all --name yap-server \\"
-log_info "  -e AWQ_CHAT_MODEL=your-org/chat-awq \\"
-log_info "  -e AWQ_TOOL_MODEL=your-org/tool-awq \\"
-log_info "  -e YAP_TEXT_API_KEY=yap_token \\" 
-log_info "  -e WARMUP_ON_START=0 \\"
-log_info "  -e CHAT_GPU_FRAC=0.70 \\"
-log_info "  -e TOOL_GPU_FRAC=0.20 \\"
-log_info "  -p 8000:8000 \\"
-log_info "  ${FULL_IMAGE_NAME}"
+log_info "docker run -d --gpus all --name yap-server \\
+  -e CHAT_MODEL=your-org/chat-model \\
+  -e TOOL_MODEL=your-org/tool-model \\
+  -e YAP_TEXT_API_KEY=yap_token \\
+  -e WARMUP_ON_START=0 \\
+  -e CHAT_GPU_FRAC=0.70 \\
+  -e TOOL_GPU_FRAC=0.20 \\
+  -p 8000:8000 \\
+  ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "Health: curl http://localhost:8000/healthz"
 log_success "Build process completed!"
+
+

@@ -1,0 +1,84 @@
+# FP8/GPTQ stack-specific dockerignore
+
+# Exclude other docker stacks
+docker/awq/
+
+# Git and VCS
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+
+# Local caches and temporary files
+.hf/
+.vllm_cache/
+.torch_inductor/
+.triton/
+.flashinfer/
+.xformers/
+.pip_cache/
+.awq/
+*.log
+logs/
+.run/
+server.pid
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test files
+test/
+tests/
+*_test.py
+test_*.py
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+
+
