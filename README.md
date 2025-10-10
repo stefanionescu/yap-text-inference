@@ -3,7 +3,7 @@
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It can run:
 - vLLM chat engine with chat models ranging from 3B-24B
 - Hammer tool engine (e.g., Hammer 2.1 3B or 1.5B) for tool-call detection
-- Both engines together, or deploy chat-only or tool-only for specialized use cases
+- Both engines together by default; chat-only/tool-only are supported in host scripts but not in Docker
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key features
@@ -22,7 +22,7 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 # Both models (default) - always runs in background with auto-tail
 bash scripts/main.sh [awq] <chat_model> <tool_model> [deploy_mode]
 
-# Single-model forms
+# Single-model forms (host scripts only; Docker always runs both)
 bash scripts/main.sh [awq] chat <chat_model>
 bash scripts/main.sh [awq] tool <tool_model>
 
@@ -192,7 +192,7 @@ AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-a
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 
 # Set custom API key before starting server
-export YAP_API_KEY="my_super_secret_key_2024"
+export YAP_TEXT_API_KEY="my_super_secret_key_2024"
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 ```
 
@@ -309,7 +309,7 @@ python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ## Environment variables
 
 Server configuration
-- `YAP_API_KEY` (default `yap_token`) - API key for authentication (all endpoints except `/healthz`)
+- `YAP_TEXT_API_KEY` (default `yap_token`) - API key for authentication (all endpoints except `/healthz`)
 - `MAX_CONCURRENT_CONNECTIONS` - Maximum concurrent WebSocket connections (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both)
 - `DEPLOY_MODELS` (default `both`) - Which models to deploy: `both`, `chat`, or `tool`
 

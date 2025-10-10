@@ -13,7 +13,7 @@ Prints p50/p95 for each metric across completed requests. No intermediate logs.
 
 Environment Variables:
 - SERVER_WS_URL: WebSocket URL (default: ws://127.0.0.1:8000/ws)
-- YAP_API_KEY: API key for authentication (default: yap_token)
+- YAP_TEXT_API_KEY: API key for authentication (default: yap_token)
 - ASSISTANT_GENDER: female|male (default: female)
 - PERSONA_STYLE: persona style (default: flirty)
 
@@ -87,7 +87,7 @@ def _choose_message(words: List[str]) -> str:
 async def _one_request(url: str, gender: str, style: str, message: str, timeout_s: float) -> Dict[str, Any]:
     async def _session() -> Dict[str, Any]:
         # Add API key authentication to the URL
-        api_key = os.getenv("YAP_API_KEY", "yap_token")
+        api_key = os.getenv("YAP_TEXT_API_KEY", "yap_token")
         if "?" in url:
             auth_url = f"{url}&api_key={api_key}"
         else:
@@ -239,8 +239,8 @@ async def _main_async(args: argparse.Namespace) -> None:
         
         # Special hints for common authentication issues
         if "authentication_failed" in emsg:
-            api_key = os.getenv("YAP_API_KEY", "yap_token")
-            print(f"hint: Check YAP_API_KEY environment variable (currently: '{api_key}')")
+            api_key = os.getenv("YAP_TEXT_API_KEY", "yap_token")
+            print(f"hint: Check YAP_TEXT_API_KEY environment variable (currently: '{api_key}')")
         elif "server_at_capacity" in emsg:
             print("hint: Server at capacity. Reduce concurrency (-c) or try again later.")
 

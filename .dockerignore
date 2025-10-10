@@ -79,5 +79,3 @@ test_*.py
 # Scripts directory (we'll copy our own)
 scripts/
 
-# Docker files (avoid recursive copying)
-docker/
