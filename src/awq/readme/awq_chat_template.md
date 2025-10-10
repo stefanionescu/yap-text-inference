@@ -6,7 +6,6 @@ tags:
 - quantized
 - {w_bit}-bit
 - vllm
-- yap-text-inference
 language:
 - en
 pipeline_tag: text-generation

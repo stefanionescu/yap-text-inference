@@ -32,7 +32,7 @@ TOOL_GPU_FRAC=0.20 \
   -e YAP_TEXT_API_KEY -e AWQ_CHAT_MODEL -e AWQ_TOOL_MODEL \
   -e WARMUP_ON_START -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
-  yourusername/yap-text-inference:latest
+  yourusername/yap-text-inference-awq:latest
 ```
 
 ## Environment Variables
@@ -80,7 +80,7 @@ docker run -d --gpus all --name yap-server \
   -e CHAT_GPU_FRAC=0.70 \
   -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \
-  yourusername/yap-text-inference:latest
+  yourusername/yap-text-inference-awq:latest
 
 # Check logs
 docker logs -f yap-server
@@ -119,7 +119,7 @@ docker run -d --gpus all --name yap-server \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
   -p 8000:8000 \
-  yourusername/yap-text-inference:latest
+  yourusername/yap-text-inference-awq:latest
 ```
 
 ### Persistent Cache Volumes
@@ -130,7 +130,7 @@ docker run -d --gpus all --name yap-server \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
   -p 8000:8000 \
-  yourusername/yap-text-inference:latest
+  yourusername/yap-text-inference-awq:latest
 ```
 
 ## Troubleshooting
@@ -160,7 +160,7 @@ docker run -d --gpus all --name yap-server \
 docker run -it --gpus all --rm \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
-  yourusername/yap-text-inference:latest \
+  yourusername/yap-text-inference-awq:latest \
   /bin/bash
 ```
 
@@ -168,7 +168,7 @@ docker run -it --gpus all --rm \
 
 ### Update Container
 ```bash
-docker pull yourusername/yap-text-inference:latest
+docker pull yourusername/yap-text-inference-awq:latest
 docker stop yap-server
 docker rm yap-server
 # Run with new image
@@ -180,7 +180,7 @@ docker rm yap-server
 docker stop yap-server && docker rm yap-server
 
 # Remove image
-docker rmi yourusername/yap-text-inference:latest
+docker rmi yourusername/yap-text-inference-awq:latest
 
 # Clean up volumes (careful!)
 docker volume prune
