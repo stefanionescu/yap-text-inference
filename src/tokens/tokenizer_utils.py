@@ -7,7 +7,7 @@ from typing import Optional
 
 from tokenizers import Tokenizer
 
-from .config import CHAT_MODEL
+from ..config import CHAT_MODEL
 
 
 class FastTokenizer:
