@@ -52,61 +52,18 @@ usage() {
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
     echo ""
     echo "Options:"
-    echo "  --build-only        - Only build, don't push to Docker Hub"
-    echo "  --push-only         - Only push existing image (skip build)"
-    echo "  --multi-platform    - Build for multiple platforms (amd64,arm64)"
-    echo "  --no-cache          - Build without using Docker cache"
     echo "  --help              - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  # Basic build and push"
     echo "  DOCKER_USERNAME=myuser ./build.sh"
-    echo ""
-    echo "  # Build only (no push)"
-    echo "  ./build.sh --build-only"
-    echo ""
-    echo "  # Multi-platform build"
-    echo "  ./build.sh --multi-platform"
-    echo ""
-    echo "  # Build with custom tag"
     echo "  TAG=v1.0.0 ./build.sh"
     exit 0
 }
 
-# Parse command line arguments
-BUILD_ONLY=false
-PUSH_ONLY=false
-MULTI_PLATFORM=false
-NO_CACHE=false
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --build-only)
-            BUILD_ONLY=true
-            shift
-            ;;
-        --push-only)
-            PUSH_ONLY=true
-            shift
-            ;;
-        --multi-platform)
-            MULTI_PLATFORM=true
-            PLATFORM="linux/amd64,linux/arm64"
-            shift
-            ;;
-        --no-cache)
-            NO_CACHE=true
-            shift
-            ;;
-        --help)
-            usage
-            ;;
-        *)
-            log_error "Unknown option: $1"
-            usage
-            ;;
-    esac
-done
+# No command-line flags supported except --help
+if [[ "${1:-}" == "--help" ]]; then
+    usage
+fi
 
 # Validate configuration
 if [[ "${DOCKER_USERNAME}" == "your-username" ]]; then
@@ -121,13 +78,7 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check if buildx is available for multi-platform builds
-if [[ "${MULTI_PLATFORM}" == "true" ]]; then
-    if ! docker buildx version >/dev/null 2>&1; then
-        log_error "Docker buildx is required for multi-platform builds"
-        exit 1
-    fi
-fi
+:
 
 log_info "Building Yap Text Inference Docker image (FP8/GPTQ)"
 log_info "Image: ${FULL_IMAGE_NAME}"
@@ -136,75 +87,33 @@ log_info "Build context: ${BUILD_CONTEXT}"
 log_info "Dockerfile: ${DOCKERFILE}"
 
 # Build the image
-if [[ "${PUSH_ONLY}" == "false" ]]; then
-    log_info "Starting Docker build..."
-    
-    BUILD_ARGS=(
-        --file "${DOCKERFILE}"
-        --tag "${FULL_IMAGE_NAME}"
-        --platform "${PLATFORM}"
-    )
-    
-    if [[ "${NO_CACHE}" == "true" ]]; then
-        BUILD_ARGS+=(--no-cache)
-    fi
-    
-    if [[ "${MULTI_PLATFORM}" == "true" ]]; then
-        # Use buildx for multi-platform and mount repo context
-        docker buildx build \
-          --build-context repo="${ROOT_DIR}" \
-          "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
-    else
-        # Regular build (requires Docker 24+ for --build-context); fallback if unsupported
-        if docker build --help 2>/dev/null | grep -q "--build-context"; then
-          docker build \
-            --build-context repo="${ROOT_DIR}" \
-            "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
-        else
-          log_warn "Docker version lacks --build-context; copying from stack context only"
-          docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
-        fi
-    fi
-    
-    log_success "Docker build completed successfully!"
-    
-    # Show image info
-    if [[ "${MULTI_PLATFORM}" == "false" ]]; then
-        log_info "Image size: $(docker images "${FULL_IMAGE_NAME}" --format "{{.Size}}")"
-        log_info "Image ID: $(docker images "${FULL_IMAGE_NAME}" --format "{{.ID}}")"
-    fi
-fi
+log_info "Starting Docker build..."
+
+BUILD_ARGS=(
+    --file "${DOCKERFILE}"
+    --tag "${FULL_IMAGE_NAME}"
+    --platform "${PLATFORM}"
+)
+
+docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
+
+log_success "Docker build completed successfully!"
+log_info "Image size: $(docker images "${FULL_IMAGE_NAME}" --format "{{.Size}}")"
+log_info "Image ID: $(docker images "${FULL_IMAGE_NAME}" --format "{{.ID}}")"
 
 # Push the image
-if [[ "${BUILD_ONLY}" == "false" ]]; then
-    log_info "Pushing image to Docker Hub..."
-    
-    # Check if logged in to Docker Hub
-    if ! docker info | grep -q "Username:"; then
-        log_warn "Not logged in to Docker Hub. Please run 'docker login' first."
-        read -p "Do you want to login now? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            docker login
-        else
-            log_error "Docker login required to push image"
-            exit 1
-        fi
-    fi
-    
-    if [[ "${MULTI_PLATFORM}" == "true" ]]; then
-        # Push multi-platform image using buildx with repo context
-        docker buildx build \
-          --build-context repo="${ROOT_DIR}" \
-          "${BUILD_ARGS[@]}" --push "${BUILD_CONTEXT}"
-    else
-        # Push regular image
-        docker push "${FULL_IMAGE_NAME}"
-    fi
-    
-    log_success "Image pushed successfully to Docker Hub!"
-    log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"
+log_info "Pushing image to Docker Hub..."
+
+# Check if logged in to Docker Hub
+if ! docker info | grep -q "Username:"; then
+    log_error "Not logged in to Docker Hub. Please run 'docker login' then re-run this script."
+    exit 1
 fi
+
+docker push "${FULL_IMAGE_NAME}"
+
+log_success "Image pushed successfully to Docker Hub!"
+log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"
 
 # Usage examples
 log_info ""
