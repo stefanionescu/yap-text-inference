@@ -1,10 +1,10 @@
 # Yap Text Inference Docker Setup
 
-This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**. 
+This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**.
 
 **Default Models:**
-- **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - Professional AWQ quantized Impish Nemo 12B
-- **Tool**: [yapwithai/hammer-2.1-3b-awq](https://huggingface.co/yapwithai/hammer-2.1-3b-awq) - Professional AWQ quantized Hammer 2.1 3B
+- **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - AWQ quantized Impish Nemo 12B
+- **Tool**: [yapwithai/hammer-2.1-3b-awq](https://huggingface.co/yapwithai/hammer-2.1-3b-awq) - AWQ quantized Hammer 2.1 3B
 
 ## Quick Start
 
@@ -18,14 +18,8 @@ This Docker setup provides a containerized deployment of Yap's text inference AP
 
 ```bash
 # Build the Docker image
-DOCKER_HUB_USERNAME=yourusername ./build.sh
+DOCKER_USERNAME=yourusername ./build.sh
 
-# Run with default AWQ models (yapwithai models)
-docker run -d --gpus all --name yap-server \
-  -p 8000:8000 \
-  yourusername/yap-text-inference:latest
-
-# Or override with your own AWQ models
 docker run -d --gpus all --name yap-server \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
@@ -57,7 +51,7 @@ docker run -d --gpus all --name yap-server \
 
 ```bash
 # Basic build and push
-DOCKER_HUB_USERNAME=yourusername ./build.sh
+DOCKER_USERNAME=yourusername ./build.sh
 
 # Build only (no push)
 ./build.sh --build-only
@@ -71,10 +65,11 @@ TAG=v1.0.0 ./build.sh
 
 ### Running the Container
 
-**Simple (uses defaults):**
+**Simple:**
 ```bash
-# Run with defaults (yapwithai AWQ models)
 docker run -d --gpus all --name yap-server \
+  -e AWQ_CHAT_MODEL=your-org/chat-awq \
+  -e AWQ_TOOL_MODEL=your-org/tool-awq \
   -p 8000:8000 \
   yourusername/yap-text-inference:latest
 
@@ -92,9 +87,7 @@ docker run -d --gpus all --name yap-server \
   yourusername/yap-text-inference:latest
 ```
 
-**Default models** are automatically configured:
-- **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq)
-- **Tool**: [yapwithai/hammer-2.1-3b-awq](https://huggingface.co/yapwithai/hammer-2.1-3b-awq)
+Defaults mirror the host scripts' behavior (no baked AWQ model repos). Provide AWQ repos explicitly.
 
 ## Container Operations
 
@@ -247,33 +240,6 @@ docker rmi yourusername/yap-text-inference:latest
 # Clean up volumes (careful!)
 docker volume prune
 ```
-
-## File Structure
-
-The Docker setup includes:
-```
-docker/
-├── Dockerfile              # Multi-stage production image
-├── build.sh                # Build script
-├── README.md               # This documentation
-└── scripts/                # Container scripts with defaults
-    ├── main.sh             # Entry point
-    ├── env_defaults.sh     # Environment setup
-    ├── start_server.sh     # Server startup
-    └── utils.sh            # Logging utilities
-```
-
-**Note**: `.dockerignore` is at the repository root to optimize build context.
-
-## Production Considerations
-
-1. **Use specific tags** instead of `latest` for production
-2. **Set resource limits** to prevent resource exhaustion
-3. **Use persistent volumes** for model caches
-4. **Monitor container health** and set up alerting
-5. **Configure log rotation** to prevent disk space issues
-6. **Use secrets management** for API keys
-7. **Consider using Docker Swarm or Kubernetes** for orchestration
 
 ## API Usage
 

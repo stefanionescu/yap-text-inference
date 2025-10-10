@@ -33,7 +33,44 @@ RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+# Install all requirements except flashinfer-python first, mirroring the scripts install flow
+RUN set -eux; \
+    export PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PIP_PREFER_BINARY=1 FLASHINFER_ENABLE_AOT=1; \
+    TMP_REQ=/tmp/requirements.no_flashinfer.txt; \
+    grep -v -E '^\s*flashinfer-python(\s|$|==|>=|<=|~=|!=)' /tmp/requirements.txt > "${TMP_REQ}" || cp /tmp/requirements.txt "${TMP_REQ}" || true; \
+    pip install --no-cache-dir -r "${TMP_REQ}"; \
+    CUDA_NVVER=$(python - <<'PY' || true
+import sys
+try:
+    import torch
+    cu = (torch.version.cuda or '').strip()
+    if not cu:
+        raise SystemExit(1)
+    print(cu.replace('.', ''))
+except Exception:
+    sys.exit(1)
+PY
+    ); \
+    TORCH_MAJMIN=$(python - <<'PY' || true
+import sys
+try:
+    import torch
+    ver = torch.__version__.split('+', 1)[0]
+    parts = ver.split('.')
+    print(f"{parts[0]}.{parts[1]}")
+except Exception:
+    sys.exit(1)
+PY
+    ); \
+    if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then \
+        FI_IDX="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"; \
+        echo "[INFO] Installing flashinfer-python from ${FI_IDX}"; \
+        pip install --no-cache-dir --prefer-binary --extra-index-url "${FI_IDX}" flashinfer-python || \
+        (echo "[WARN] FlashInfer install via extra index failed, falling back to PyPI" && pip install --no-cache-dir --prefer-binary flashinfer-python || true); \
+    else \
+        echo "[WARN] Torch/CUDA not detected at build-time; attempting PyPI install for flashinfer-python"; \
+        pip install --no-cache-dir --prefer-binary flashinfer-python || true; \
+    fi
 
 # Production stage
 FROM nvidia/cuda:12.8-cudnn-runtime-ubuntu22.04
@@ -68,21 +105,6 @@ RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache
 
 # Set proper permissions
 RUN chmod +x /app/scripts/*.sh
-
-# Default environment variables for AWQ deployment
-ENV QUANTIZATION=awq
-ENV DEPLOY_MODELS=both
-ENV CONCURRENT_MODEL_CALL=1
-ENV YAP_API_KEY=yap_token
-ENV WARMUP_ON_START=1
-
-# GPU-specific optimizations
-ENV CUDA_DEVICE_MAX_CONNECTIONS=1
-ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-ENV VLLM_USE_V1=1
-ENV KV_DTYPE=fp8
-ENV VLLM_ATTENTION_BACKEND=FLASHINFER
-ENV ENFORCE_EAGER=0
 
 # Cache directories
 ENV HF_HOME=/app/.hf

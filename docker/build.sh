@@ -6,10 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Docker configuration
-DOCKER_HUB_USERNAME="${DOCKER_HUB_USERNAME:-your-username}"
+DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
 IMAGE_NAME="${IMAGE_NAME:-yap-text-inference}"
 TAG="${TAG:-latest}"
-FULL_IMAGE_NAME="${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${TAG}"
+FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
 # Build configuration
 PLATFORM="${PLATFORM:-linux/amd64}"
@@ -46,7 +46,7 @@ usage() {
     echo "Build and push Yap Text Inference Docker image for AWQ deployment"
     echo ""
     echo "Environment Variables:"
-    echo "  DOCKER_HUB_USERNAME  - Docker Hub username (default: your-username)"
+    echo "  DOCKER_USERNAME  - Docker Hub username (default: your-username)"
     echo "  IMAGE_NAME          - Docker image name (default: yap-text-inference)"
     echo "  TAG                 - Docker image tag (default: latest)"
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
@@ -60,7 +60,7 @@ usage() {
     echo ""
     echo "Examples:"
     echo "  # Basic build and push"
-    echo "  DOCKER_HUB_USERNAME=myuser ./build.sh"
+    echo "  DOCKER_USERNAME=myuser ./build.sh"
     echo ""
     echo "  # Build only (no push)"
     echo "  ./build.sh --build-only"
@@ -109,9 +109,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate configuration
-if [[ "${DOCKER_HUB_USERNAME}" == "your-username" ]]; then
-    log_error "Please set DOCKER_HUB_USERNAME environment variable"
-    log_info "Example: DOCKER_HUB_USERNAME=myuser $0"
+if [[ "${DOCKER_USERNAME}" == "your-username" ]]; then
+    log_error "Please set DOCKER_USERNAME environment variable"
+    log_info "Example: DOCKER_USERNAME=myuser $0"
     exit 1
 fi
 
