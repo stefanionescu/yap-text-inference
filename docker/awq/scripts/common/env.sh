@@ -5,6 +5,9 @@ source "${SCRIPT_DIR}/utils.sh"
 
 log_info "Setting environment defaults"
 
+# Ensure QUANTIZATION is set (Docker AWQ stack defaults to 'awq')
+export QUANTIZATION=${QUANTIZATION:-awq}
+
 # Detect FlashInfer availability (optional fast-path)
 HAS_FLASHINFER=0
 if [ -f "/opt/venv/bin/python" ]; then
@@ -164,6 +167,6 @@ log_info "  GPU: ${DETECTED_GPU_NAME:-unknown}"
 log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
 log_info "  Chat model: ${CHAT_MODEL:-none}"
 log_info "  Tool model: ${TOOL_MODEL:-none}"
-log_info "  Quantization: ${QUANTIZATION}"
+log_info "  Quantization: ${QUANTIZATION:-awq}"
 log_info "  KV dtype: ${KV_DTYPE}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"
