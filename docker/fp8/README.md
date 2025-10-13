@@ -36,6 +36,8 @@ TOOL_GPU_FRAC=0.20 \
 - `CHAT_MODEL`: Hugging Face repo for chat model (float or GPTQ)
 - `TOOL_MODEL`: Hugging Face repo for tool model (float or GPTQ)
 
+> Important: Both `CHAT_MODEL` and `TOOL_MODEL` must be provided for Docker deployments. This stack always deploys both models. `DEPLOY_MODELS` is ignored and effectively forced to `both` inside the Docker container.
+
 ### Optional
 - `YAP_TEXT_API_KEY` (default: `yap_token`)
 - `WARMUP_ON_START=0|1` (default: `0`)

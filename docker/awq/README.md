@@ -41,6 +41,8 @@ TOOL_GPU_FRAC=0.20 \
 - `AWQ_CHAT_MODEL` - Hugging Face repo with pre-quantized AWQ chat model (default: `yapwithai/impish-12b-awq`)
 - `AWQ_TOOL_MODEL` - Hugging Face repo with pre-quantized AWQ tool model (default: `yapwithai/hammer-2.1-3b-awq`)
 
+> Important: Both `AWQ_CHAT_MODEL` and `AWQ_TOOL_MODEL` must be provided for Docker deployments. This stack always deploys both models. `DEPLOY_MODELS` is ignored and effectively forced to `both`.
+
 ### Optional
 - `YAP_TEXT_API_KEY` (default: `yap_token`)
 - `WARMUP_ON_START=0|1` (default: `0`)
