@@ -613,19 +613,3 @@ export CHAT_GPU_FRAC=0.80
 export TOOL_GPU_FRAC=0.15
 bash scripts/stop.sh && bash scripts/main.sh
 ```
-
-Note: `CHAT_MAX_LEN` defaults to `5760`; adjust to trade off KV usage vs context.
-
-## Limits and tradeoffs
-
-- Chat outputs are capped at 200 tokens per response.
-- Rolling history capped at ~3000 tokens (not counting persona). Long personas reduce remaining context.
-- User utterances trimmed to first 350 tokens.
-- **Concurrent connections limited** (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both) to protect GPU resources from overload.
-- Single-process, single-GPU by default. Under very high concurrency or very long contexts, you'll be KV-bound. Scale by running another process or GPU.
-- **Authentication required** for all API access except health checks.
-
-## Personality switching
-
-- Send a new `start` with updated `persona_text` or new `persona_style`/`assistant_gender`/`user_identity`.
-- Optionally warm the new persona via `warm_persona` to avoid first-turn spike.
