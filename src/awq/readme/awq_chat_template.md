@@ -5,63 +5,53 @@ tags:
 - awq
 - quantized
 - {w_bit}-bit
-- vllm
 language:
 - en
 pipeline_tag: text-generation
 ---
+ 
+# {model_name} — AWQ {w_bit}-bit
 
-<div align="center">
-  <h1 style="font-size: 48px; color: #2E86AB; font-weight: bold;">
-    {model_name} - AWQ Quantized
-  </h1>
-  <p style="font-size: 18px; color: #666;">
-    High-performance {w_bit}-bit AWQ quantization for production deployment
-  </p>
-</div>
+Clean, fast, memory‑efficient AWQ quantized chat model based on {source_model_link}.
 
----
+## What it is
+- Playful, expressive chat model with a classic Character AI vibe.
+- Quantized with AWQ for smaller memory and faster inference.
+- Drop-in for common text-generation stacks (Transformers, TGI, vLLM).
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Quantization-AWQ-blue?style=for-the-badge" alt="AWQ">
-  <img src="https://img.shields.io/badge/Precision-{w_bit}bit-green?style=for-the-badge" alt="{w_bit}-bit">
-  <img src="https://img.shields.io/badge/Framework-vLLM-red?style=for-the-badge" alt="vLLM">
-  <img src="https://img.shields.io/badge/License-Apache%202.0-yellow?style=for-the-badge" alt="License">
-</div>
+## Quick use (Transformers + AutoAWQ)
+```python
+from awq import AutoAWQForCausalLM
+from transformers import AutoTokenizer
 
----
+model = AutoAWQForCausalLM.from_quantized("{repo_name}", trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained("{repo_name}", use_fast=True)
+inputs = tokenizer("You are Impish. Say hi!", return_tensors="pt")
+outputs = model.generate(**inputs, max_new_tokens=200)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
 
-## Model Overview
+## Details
+- Precision: {w_bit}-bit weights, group size {q_group_size}
+- AWQ version: `{awq_version}`
+- Generated: {generated_at}
 
-This is an **AWQ quantized version** of {source_model_link}, optimized for fast inference with **vLLM** and other AWQ-compatible frameworks. 
+### Quantization config
+```json
+{quant_summary}
+```
 
-**Key Features:**
-- **Optimized for Production**: Ready for high-throughput serving
-- **Faster Inference**: Up to 3x faster than FP16 with minimal quality loss
-- **Memory Efficient**: ~{w_bit}x smaller memory footprint
-- **Drop-in Replacement**: Compatible with existing vLLM deployments
-- **Calibrated**: Professionally quantized using high-quality calibration data
+### Calibration
+{calib_section}
 
----
+## Notes
+- Apply your own safety/guardrails as needed.
+- Target runtime & hardware: intended for vLLM on NVIDIA L40S. Not a TensorRT-LLM/TensorRT quantization.
 
-## Technical Specifications
+## License
+This model card inherits the license of the source model: {license}.
 
-| Specification | Details |
-|---------------|---------|
-| **Source Model** | {source_model_link} |
-| **Quantization Method** | AWQ (Activation-aware Weight Quantization) |
-| **Precision** | {w_bit}-bit weights, 16-bit activations |
-| **Group Size** | {q_group_size} |
-| **AWQ Version** | `{awq_version}` |
-| **Generated** | {generated_at} |
-| **Pipeline** | AWQ Quantization |
-
-### Size Comparison
-
-| Version | Size | Memory Usage | Speed |
-|---------|------|--------------|-------|
-| Original FP16 | {original_size_gb} GB | ~{original_size_gb} GB VRAM | 1x |
-| **AWQ {w_bit}-bit** | **{quantized_size_gb} GB** | **~{quantized_size_gb} GB VRAM** | **~3x faster** |
+Source model: {source_model_link}
 
 ---
 
