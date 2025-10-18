@@ -38,7 +38,6 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 ## Details
 - Precision: {w_bit}-bit weights, group size {q_group_size}
 - AWQ version: `{awq_version}`
-- Generated: {generated_at}
 
 ### Quantization config
 ```json
@@ -55,7 +54,3 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 ## License
 - {license_name}
 {license_link}
-
-Source model: {source_model_link}
-
-
