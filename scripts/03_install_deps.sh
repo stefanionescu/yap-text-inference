@@ -13,6 +13,30 @@ export PIP_PREFER_BINARY=${PIP_PREFER_BINARY:-1}
 # Prefer AOT kernels for FlashInfer to avoid long first-run JIT compiles
 export FLASHINFER_ENABLE_AOT=${FLASHINFER_ENABLE_AOT:-1}
 
+# Ensure CA certificates are present for HTTPS (HF downloads)
+if [ "$(uname -s)" = "Linux" ] && [ ! -f "/etc/ssl/certs/ca-certificates.crt" ]; then
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y >/dev/null 2>&1 || true
+    apt-get install -y ca-certificates >/dev/null 2>&1 || true
+    update-ca-certificates >/dev/null 2>&1 || true
+  elif command -v apk >/dev/null 2>&1; then
+    apk add --no-cache ca-certificates >/dev/null 2>&1 || true
+    update-ca-certificates >/dev/null 2>&1 || true
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y ca-certificates >/dev/null 2>&1 || true
+    update-ca-trust >/dev/null 2>&1 || true
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y ca-certificates >/dev/null 2>&1 || true
+    update-ca-trust >/dev/null 2>&1 || true
+  fi
+fi
+
+if [ -f "/etc/ssl/certs/ca-certificates.crt" ]; then
+  export REQUESTS_CA_BUNDLE=${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
+  export CURL_CA_BUNDLE=${CURL_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
+  export GIT_SSL_CAINFO=${GIT_SSL_CAINFO:-/etc/ssl/certs/ca-certificates.crt}
+fi
+
 # Ensure correct CUDA arch is visible during build steps (FlashInfer, etc.)
 if [ -z "${TORCH_CUDA_ARCH_LIST:-}" ]; then
   if command -v nvidia-smi >/dev/null 2>&1; then

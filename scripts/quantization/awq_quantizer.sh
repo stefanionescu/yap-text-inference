@@ -6,6 +6,17 @@ source "${SCRIPT_DIR}/../utils.sh"
 
 log_info "Running AWQ quantization process"
 
+# Harden HF connectivity for downloads (best-effort)
+export HF_HOME="${HF_HOME:-${ROOT_DIR}/.hf}"
+export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}}"
+if [ -f "/etc/ssl/certs/ca-certificates.crt" ]; then
+  export REQUESTS_CA_BUNDLE="${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
+fi
+
+# Optional retry env for HF Hub (if respected by downstream tools)
+export HF_HUB_DISABLE_TELEMETRY=1
+export HF_HUB_ENABLE_HF_TRANSFER=1
+
 push_awq_to_hf() {
   local src_dir="$1"
   local repo_id="$2"
