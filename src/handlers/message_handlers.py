@@ -30,7 +30,7 @@ from ..execution.tool_runner import run_toolcall
 from ..execution.tool_parser import parse_tool_result
 
 if EXACT_TOKEN_TRIM:
-    from ..tokenizer_utils import trim_text_to_token_limit_exact as trim_text_exact
+    from ..tokens.tokenizer_utils import trim_text_to_token_limit_exact as trim_text_exact
 
 
 async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
