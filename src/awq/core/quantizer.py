@@ -188,7 +188,6 @@ class AWQQuantizer:
             "quantization_config": quant_config,
             "calibration_seqlen": target_seqlen,
             "is_hammer_model": hammer_model,
-            "generated_at": datetime.now().isoformat(),
             "pipeline": "yap-text-inference",
         }
         

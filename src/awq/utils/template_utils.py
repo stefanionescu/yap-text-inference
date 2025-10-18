@@ -84,7 +84,6 @@ def generate_readme(
         'w_bit': w_bit,
         'q_group_size': q_group_size,
         'awq_version': awq_version,
-        'generated_at': metadata.get('generated_at', 'Unknown'),
         'original_size_gb': original_size_gb,
         'quantized_size_gb': quantized_size_gb,
         'memory_reduction': memory_reduction,
@@ -111,7 +110,6 @@ def generate_readme(
         ```json
         {quant_summary}
         ```
-        - Generated: {metadata.get('generated_at', 'Unknown')}
 
         ## Calibration
         {calib_section}
