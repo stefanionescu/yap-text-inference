@@ -89,7 +89,29 @@ if [ ! -d "${ROOT_DIR}/.venv" ]; then
   fi
 fi
 
-"${ROOT_DIR}/.venv/bin/python" -m pip install --upgrade pip
+# Ensure pip is available inside the virtual environment (handle broken venvs)
+if ! "${ROOT_DIR}/.venv/bin/python" -m pip --version >/dev/null 2>&1; then
+  log_warn "pip missing in virtual environment; bootstrapping pip."
+  if ! "${ROOT_DIR}/.venv/bin/python" -m ensurepip --upgrade >/dev/null 2>&1; then
+    TMP_PIP="${ROOT_DIR}/.get-pip.py"
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL -o "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
+    elif command -v wget >/dev/null 2>&1; then
+      wget -qO "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
+    fi
+    if [ -f "${TMP_PIP}" ]; then
+      "${ROOT_DIR}/.venv/bin/python" "${TMP_PIP}" || true
+      rm -f "${TMP_PIP}" || true
+    fi
+  fi
+fi
+
+if "${ROOT_DIR}/.venv/bin/python" -m pip --version >/dev/null 2>&1; then
+  "${ROOT_DIR}/.venv/bin/python" -m pip install --upgrade pip
+else
+  log_err "pip is not available in the virtual environment; please install python3-venv or virtualenv and retry."
+  exit 1
+fi
 
 # Skip reinstall if requirements.txt didn't change since last successful install (unless FORCE_REINSTALL=1)
 REQ_FILE="${ROOT_DIR}/requirements.txt"
