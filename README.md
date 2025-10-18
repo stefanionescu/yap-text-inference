@@ -301,7 +301,7 @@ SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 test/warmup.py
 RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey there"
 ```
 
-### What it prints
+### What It Prints
 
 - An ACK line confirming session seed/time and effective `assistant_gender`/`persona_style`.
 - Two JSON lines when streaming completes:
@@ -470,11 +470,25 @@ What you receive
 { "type": "toolcall", "status": "no",  "raw": "..." }
 ```
 
-- If `status":"no"`, steady token stream for chat
+- In both-model deployments, chat tokens always stream after the toolcall decision (for both `"yes"` and `"no"`). Examples:
+
+After toolcall: `status: "no"`
 
 ```json
+{ "type": "toolcall", "status": "no", "raw": "..." }
 { "type": "token", "text": "..." }
 ...
+{ "type": "final", "normalized_text": "..." }
+{ "type": "done", "usage": {} }
+```
+
+After toolcall: `status: "yes"`
+
+```json
+{ "type": "toolcall", "status": "yes", "raw": "..." }
+{ "type": "token", "text": "..." }
+...
+{ "type": "final", "normalized_text": "..." }
 { "type": "done", "usage": {} }
 ```
 
