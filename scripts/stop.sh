@@ -120,8 +120,11 @@ fi
 HF_DIRS=(
   "${HF_HOME:-}"
   "${TRANSFORMERS_CACHE:-}"
+  "${HUGGINGFACE_HUB_CACHE:-}"
   "$HOME/.cache/huggingface"
+  "$HOME/.cache/huggingface/hub"
   "/root/.cache/huggingface"
+  "/root/.cache/huggingface/hub"
 )
 for d in "${HF_DIRS[@]}"; do
   [ -n "$d" ] && [ -d "$d" ] && { log_info "Removing HF cache at $d"; rm -rf "$d" || true; }
@@ -147,6 +150,10 @@ if [ "${NUKE_PIP_CACHE:-0}" = "1" ]; then
   for PIP_CACHE in "$HOME/.cache/pip" "/root/.cache/pip"; do
     [ -d "$PIP_CACHE" ] && rm -rf "$PIP_CACHE" || true
   done
+  if [ -n "${PIP_CACHE_DIR:-}" ] && [ -d "${PIP_CACHE_DIR}" ]; then
+    log_info "Removing pip cache dir at ${PIP_CACHE_DIR}"
+    rm -rf "${PIP_CACHE_DIR}" || true
+  fi
 else
   log_info "Keeping pip cache (set NUKE_PIP_CACHE=1 to purge)"
 fi
@@ -166,16 +173,26 @@ find "${ROOT_DIR}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/n
 find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
 
 # 10) Temp directories
-rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* 2>/dev/null || true
+rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* /tmp/pip-* /tmp/pip-build-* /tmp/pip-modern-metadata-* /tmp/uvicorn* 2>/dev/null || true
+
+# Remove runtime state directory
+if [ -d "${ROOT_DIR}/.run" ]; then
+  log_info "Removing runtime state at ${ROOT_DIR}/.run"
+  rm -rf "${ROOT_DIR}/.run" || true
+fi
 
 # 11) Optionally nuke entire home caches (heavy-handed)
 if [ "${NUKE_HOME_CACHE:-0}" = "1" ]; then
   for C in "$HOME/.cache" "/root/.cache"; do
     [ -d "$C" ] && { log_warn "NUKE_HOME_CACHE=1 removing $C"; rm -rf "$C" || true; }
   done
+  if [ -n "${XDG_CACHE_HOME:-}" ] && [ -d "${XDG_CACHE_HOME}" ]; then
+    log_warn "NUKE_HOME_CACHE=1 removing XDG cache at ${XDG_CACHE_HOME}"
+    rm -rf "${XDG_CACHE_HOME}" || true
+  fi
 fi
 
 # 12) Clean server artifacts
-rm -f "${ROOT_DIR}/server.log" "${ROOT_DIR}/server.pid" || true
+rm -f "${ROOT_DIR}/server.log" "${ROOT_DIR}/server.pid" "${ROOT_DIR}/.server.log.trim" || true
 
 log_info "Done. Repo preserved. Jupyter/console/container remain running."
