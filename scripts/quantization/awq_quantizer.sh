@@ -15,7 +15,8 @@ fi
 
 # Optional retry env for HF Hub (if respected by downstream tools)
 export HF_HUB_DISABLE_TELEMETRY=1
-export HF_HUB_ENABLE_HF_TRANSFER=1
+# Respect user override; default to disabled to avoid DNS issues with xet transfer endpoints
+export HF_HUB_ENABLE_HF_TRANSFER=${HF_HUB_ENABLE_HF_TRANSFER:-0}
 
 push_awq_to_hf() {
   local src_dir="$1"
