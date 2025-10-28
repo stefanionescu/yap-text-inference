@@ -1,7 +1,7 @@
 """Validation utilities for input normalization and checks."""
 
 from typing import Optional, Set
-from prompts import PERSONALITIES
+from prompts.chat.personality import PERSONALITIES
 
 
 # Allowed personalities/styles (from prompts.py)
