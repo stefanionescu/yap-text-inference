@@ -6,22 +6,17 @@ from datetime import datetime, timezone
 from typing import Optional
 from functools import lru_cache
 
-from prompts import (
-    ANSWER_TYPES,
-    AVOID_BASE_PERSONALITY,
-    EXTERNAL_CONTEXT,
-    FEATURES,
-    TOOLCALL_FORMAT_INSTRUCTION,
-    TOOLCALL_TASK_INSTRUCTION,
-    HOW_TO_CHATS,
-    LANGUAGE,
-    MAN_GENDER,
-    PERSONALITIES,
-    UNIQUE_FEATURES,
-    USER_INFO,
-    USER_PERSONAL_INFO,
-    WOMAN_GENDER,
-)
+from prompts.chat.personality import PERSONALITIES
+from prompts.chat.how_to import HOW_TO_CHATS
+from prompts.chat.misc import ANSWER_TYPES, EXTERNAL_CONTEXT
+from prompts.chat.features import FEATURES
+from prompts.chat.language import LANGUAGE
+from prompts.chat.unique_features import UNIQUE_FEATURES
+from prompts.chat.user import USER_INFO, USER_PERSONAL_INFO
+from prompts.chat.gender import WOMAN_GENDER, MAN_GENDER
+from prompts.chat.avoid_base import AVOID_BASE_PERSONALITY
+from prompts.toolcall.general import TOOLCALL_TASK_INSTRUCTION
+from prompts.toolcall.formatting import TOOLCALL_FORMAT_INSTRUCTION
 
 
 def compose_persona(
