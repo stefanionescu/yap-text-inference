@@ -5,7 +5,7 @@ import os
 from textwrap import dedent
 from typing import Dict, Any
 
-from ..adapters.awq_hammer_adapter import is_hammer_model
+from ..adapters.awq_toolcall_adapter import is_toolcall_model
 
 
 def generate_readme(
@@ -19,7 +19,7 @@ def generate_readme(
     """Generate a comprehensive README using templates."""
     
     # Determine if this is a tool model
-    is_tool = is_hammer_model(model_path)
+    is_tool = is_toolcall_model(model_path)
     
     # Choose template based on model type
     template_name = "awq_tool_template.md" if is_tool else "awq_chat_template.md"

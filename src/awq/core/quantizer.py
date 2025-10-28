@@ -8,10 +8,10 @@ from typing import Any, Dict, Iterable, Optional
 import time
 
 from ..adapters import (
-    apply_hammer_awq_adapters,
+    apply_toolcall_awq_adapters,
     compute_chat_calibration_seqlen,
-    compute_hammer_calibration_seqlen,
-    is_hammer_model,
+    compute_toolcall_calibration_seqlen,
+    is_toolcall_model,
 )
 from ..utils import resolve_calibration_seqlen, generate_readme, is_awq_dir
 from .calibration import CalibrationConfig, prepare_tokenizer_for_calibration
@@ -128,20 +128,20 @@ class AWQQuantizer:
             use_cache=False,
         )
         
-        hammer_model = is_hammer_model(model_path)
+        toolcall_model = is_toolcall_model(model_path)
         tokenizer = AutoTokenizer.from_pretrained(resolved_model_path, trust_remote_code=True, use_fast=False)
         
         # Compute calibration sequence length
-        if hammer_model:
-            requested_seqlen = compute_hammer_calibration_seqlen(self.config.seqlen)
-            apply_hammer_awq_adapters(resolve_calibration_seqlen(requested_seqlen, model))
+        if toolcall_model:
+            requested_seqlen = compute_toolcall_calibration_seqlen(self.config.seqlen)
+            apply_toolcall_awq_adapters(resolve_calibration_seqlen(requested_seqlen, model))
         else:
             requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
             
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model)
         prepare_tokenizer_for_calibration(tokenizer, target_seqlen)
         
-        model_type = "Hammer" if hammer_model else "Chat"
+        model_type = "Toolcall" if toolcall_model else "Chat"
         if target_seqlen != requested_seqlen:
             print(f"[awq] {model_type} model calibration seqlen adjusted to {target_seqlen}")
         else:
@@ -202,7 +202,7 @@ class AWQQuantizer:
             awq_version=awq_version,
             quant_config=quant_config,
             target_seqlen=target_seqlen,
-            hammer_model=hammer_model,
+            toolcall_model=toolcall_model,
             advanced_kwargs=advanced_kwargs if _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys()) else None
         )
         
@@ -216,7 +216,7 @@ class AWQQuantizer:
         awq_version: str,
         quant_config: Dict,
         target_seqlen: int,
-        hammer_model: bool,
+        toolcall_model: bool,
         advanced_kwargs: Optional[Dict] = None
     ) -> None:
         """Save metadata and generate README."""
@@ -227,7 +227,7 @@ class AWQQuantizer:
             "awq_version": awq_version,
             "quantization_config": quant_config,
             "calibration_seqlen": target_seqlen,
-            "is_hammer_model": hammer_model,
+            "is_toolcall_model": toolcall_model,
             "pipeline": "yap-text-inference",
         }
         
@@ -249,7 +249,7 @@ class AWQQuantizer:
 - **Dataset**: {advanced_kwargs.get('calib_dataset', 'Unknown')}
 - **Samples**: {advanced_kwargs.get('nsamples', 'Unknown')}  
 - **Sequence Length**: {advanced_kwargs.get('seqlen', 'Unknown')}
-- **Model Type**: {'Hammer (Tool)' if hammer_model else 'Chat'}"""
+- **Model Type**: {'Toolcall (Tool)' if toolcall_model else 'Chat'}"""
         else:
             calib_section = "- Calibration: AutoAWQ default pipeline"
             

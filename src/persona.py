@@ -11,8 +11,8 @@ from prompts import (
     AVOID_BASE_PERSONALITY,
     EXTERNAL_CONTEXT,
     FEATURES,
-    HAMMER_FORMAT_INSTRUCTION,
-    HAMMER_TASK_INSTRUCTION,
+    TOOLCALL_FORMAT_INSTRUCTION,
+    TOOLCALL_TASK_INSTRUCTION,
     HOW_TO_CHATS,
     LANGUAGE,
     MAN_GENDER,
@@ -76,16 +76,16 @@ def build_chat_prompt(persona_text: str, history_text: str, user_utt: str) -> st
     )
 
 
-def build_hammer_prompt(user_utt: str) -> str:
+def build_toolcall_prompt(user_utt: str) -> str:
     return (
-        f"{HAMMER_TASK_INSTRUCTION.strip()}\n\n"
-        f"{HAMMER_FORMAT_INSTRUCTION.strip()}\n\n"
+        f"{TOOLCALL_TASK_INSTRUCTION.strip()}\n\n"
+        f"{TOOLCALL_FORMAT_INSTRUCTION.strip()}\n\n"
         f"User message:\n{user_utt.strip()}\n"
     )
 
 
-def build_hammer_prompt_with_history(user_utt: str, history_text: str = "") -> str:
-    """Build Hammer tool prompt with shared history context for KV cache efficiency.
+def build_toolcall_prompt_with_history(user_utt: str, history_text: str = "") -> str:
+    """Build Toolcall prompt with shared history context for KV cache efficiency.
     
     Args:
         user_utt: User utterance to analyze for tool calls
@@ -95,8 +95,8 @@ def build_hammer_prompt_with_history(user_utt: str, history_text: str = "") -> s
         Formatted prompt string for tool model
     """
     prompt_parts = [
-        HAMMER_TASK_INSTRUCTION.strip(),
-        HAMMER_FORMAT_INSTRUCTION.strip()
+        TOOLCALL_TASK_INSTRUCTION.strip(),
+        TOOLCALL_FORMAT_INSTRUCTION.strip()
     ]
     
     # Include recent history for context if available (enables KV cache sharing)

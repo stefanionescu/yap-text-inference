@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 from vllm.sampling_params import SamplingParams
 
 from ..engines import get_tool_engine
-from ..persona import build_hammer_prompt, build_hammer_prompt_with_history
+from ..persona import build_toolcall_prompt, build_toolcall_prompt_with_history
 from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, EXACT_TOKEN_TRIM
 from ..tokens import trim_history_for_tool_sharing
 from ..handlers.session_manager import session_manager
@@ -67,9 +67,9 @@ async def run_toolcall(
         """Internal generator for tool output."""
         # Use enhanced prompt with history for better context and KV cache sharing
         if tool_history.strip():
-            prompt = build_hammer_prompt_with_history(user_utt, tool_history)
+            prompt = build_toolcall_prompt_with_history(user_utt, tool_history)
         else:
-            prompt = build_hammer_prompt(user_utt)
+            prompt = build_toolcall_prompt(user_utt)
             
         stream = (await get_tool_engine()).generate(
             prompt=prompt,

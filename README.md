@@ -2,12 +2,12 @@
 
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It can run:
 - vLLM chat engine with chat models ranging from 3B–24B
-- Hammer tool engine (e.g., Hammer 2.1 3B or 1.5B) for tool-call detection
+- Engine for tool-call detection
 - Both engines together by default; chat-only/tool-only are supported in host scripts but not in Docker
 - FastAPI + WebSocket streaming, Pipecat-friendly
 
 ## Key Features
-- Tool-call-first detection (Hammer). Toolcall signal is sent when detected, then (when chat is deployed) chat tokens always stream regardless.
+- Tool-call-first detection. Toolcall signal is sent when detected, then (when chat is deployed) chat tokens always stream regardless.
 - Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Interrupts/barge-in via cancel or a new start.
