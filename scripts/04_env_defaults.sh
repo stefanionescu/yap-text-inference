@@ -98,7 +98,6 @@ export AWQ_CACHE_DIR="${ROOT_DIR}/.awq"
 export PIP_CACHE_DIR="${ROOT_DIR}/.pip_cache"
 # Centralize heavy caches under the repo so wipe scripts can fully clean them
 export HF_HOME="${ROOT_DIR}/.hf"
-export TRANSFORMERS_CACHE="${HF_HOME}"
 export HUGGINGFACE_HUB_CACHE="${HF_HOME}/hub"
 export VLLM_CACHE_DIR="${ROOT_DIR}/.vllm_cache"
 export TORCHINDUCTOR_CACHE_DIR="${ROOT_DIR}/.torch_inductor"

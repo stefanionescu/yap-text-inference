@@ -285,7 +285,7 @@ bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1
 python3 test/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
 ```
 
-The concurrent mode should show lower `ttfb_ms` (time to first byte) for chat responses that don't involve tool calls.
+The concurrent mode should show lower `ttfb_ms` (time to first byte) for chat responses where the toolcall model returns false.
 
 ### Environment overrides
 
@@ -361,6 +361,14 @@ Token limits
 - `EXACT_TOKEN_TRIM=1` (fast HF tokenizer for exact trimming; set `0` to disable)
 
 All of the above have sensible defaults in `scripts/04_env.sh`.
+
+Networking and downloads
+
+- `HF_HUB_ENABLE_HF_TRANSFER` (default `0` in scripts): Opt-in to Hugging Face
+  transfer acceleration. Some environments block or fail DNS for the xet
+  transfer endpoint; if you see repeated retries to `transfer.xethub.hf.co`,
+  leave this unset/`0`. To enable explicitly when your network supports it:
+  `HF_HUB_ENABLE_HF_TRANSFER=1 bash scripts/main.sh ...`
 
 ## KV caching
 Using vLLM’s internal prefix caching with chunked prefill.
@@ -558,6 +566,16 @@ Notes for AWQ:
 - **Custom AWQ models**: Any HuggingFace repo containing "awq" in the name will be automatically accepted when using AWQ quantization.
 - The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency (local mode).
 - AWQ requires additional wheels (installed automatically via `requirements.txt`).
+
+- **Auth for private/gated repos**: If your models are private or gated, set an access token in the environment before running the scripts: `export HUGGINGFACE_HUB_TOKEN=hf_...` (or `HF_TOKEN=hf_...`).
+- **Cache location**: This repo standardizes on `HF_HOME` for caches; `TRANSFORMERS_CACHE` is deprecated and no longer used. You can override with `export HF_HOME=/path/to/cache`.
+
+- Networking: For script-based deployments, HF transfer acceleration is
+  disabled by default to avoid DNS issues with the xet transfer endpoint. If
+  your environment supports it, opt in by setting
+  `HF_HUB_ENABLE_HF_TRANSFER=1` when running `bash scripts/main.sh awq ...`.
+
+Behind the scenes, the quantizer now prefetches models with retries via the Hugging Face Hub before calling AutoAWQ. This makes AWQ quantization more resilient to transient network issues and avoids mid-quantization fetch errors.
 
 ### Pushing AWQ exports to Hugging Face
 

@@ -5,6 +5,7 @@ import json
 import os
 from datetime import datetime
 from typing import Any, Dict, Iterable, Optional
+import time
 
 from ..adapters import (
     apply_hammer_awq_adapters,
@@ -80,16 +81,55 @@ class AWQQuantizer:
             "version": self.config.version,
         }
         
-        print(f"[awq] Loading float model: {model_path}")
+        # Resolve remote HF repo to a local snapshot first for robustness
+        resolved_model_path = model_path
+        try:
+            if not os.path.isdir(model_path) and "/" in model_path:
+                from huggingface_hub import snapshot_download  # lazy import
+
+                token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
+                cache_dir = os.environ.get("HF_HOME")
+
+                print(f"[awq] Prefetching model from Hub: {model_path}")
+                last_err: Optional[Exception] = None
+                for attempt in range(1, 4):
+                    try:
+                        resolved_model_path = snapshot_download(
+                            repo_id=model_path,
+                            token=token,
+                            local_files_only=False,
+                            resume_download=True,
+                            cache_dir=cache_dir,
+                        )
+                        last_err = None
+                        break
+                    except Exception as dl_err:  # noqa: BLE001
+                        last_err = dl_err
+                        backoff = min(2 ** attempt, 5)
+                        print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
+                        if attempt < 3:
+                            print(f"[awq] Retrying in {backoff}s…")
+                            time.sleep(backoff)
+                if last_err is not None:
+                    print(
+                        "[awq] Quantization failed: could not download model from Hugging Face. "
+                        "Check network access, repository visibility, and set HF_TOKEN or HUGGINGFACE_HUB_TOKEN if needed."
+                    )
+                    return False
+        except Exception as e:  # noqa: BLE001
+            print(f"[awq] Prefetch step encountered an unexpected error: {e}")
+            return False
+
+        print(f"[awq] Loading float model: {resolved_model_path}")
         model = AutoAWQForCausalLM.from_pretrained(
-            model_path,
+            resolved_model_path,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
             use_cache=False,
         )
         
         hammer_model = is_hammer_model(model_path)
-        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
+        tokenizer = AutoTokenizer.from_pretrained(resolved_model_path, trust_remote_code=True, use_fast=False)
         
         # Compute calibration sequence length
         if hammer_model:
