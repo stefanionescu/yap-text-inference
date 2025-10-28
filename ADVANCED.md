@@ -344,7 +344,7 @@ Capacity errors
 }
 ```
 
-Tool-call decision (Hammer)
+Tool-call decision
 
 ```json
 { "type": "toolcall", "status": "yes", "raw": "..." }
@@ -425,7 +425,7 @@ The pipeline writes `awq_metadata.json` and `README.md` into each quantized fold
   - Modular architecture – Clean separation of concerns (`handlers/`, `execution/`, `utils/`)
   - Connection limiting – Protects GPU resources from overload
   - API key authentication – Secure access with configurable keys
-  - Toolcall detection (Hammer), then chat streaming always continues
+  - Toolcall detection, then chat streaming always continues
   - Realtime token streaming by default (no artificial pacing)
   - Interrupts via `abort_request`
   - Thread-safe session and connection management

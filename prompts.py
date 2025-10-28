@@ -624,7 +624,7 @@ EXTERNAL CONTEXT
  • DATE AND TIME: {date_time}
 """
 
-# ── hammer tool calling ──────────────────────────────────────────────────────
+# ── tool calling ──────────────────────────────────────────────────────
 
 HAMMER_GENERAL_RULES = """You are a smart tool-calling assistant. Decide: should I take a screenshot to see what the user is showing me?
 
@@ -741,12 +741,12 @@ CONTEXT-DEPENDENT DECISIONS:
 
 DECISION RULE: If user mentions something specific but it wasn't discussed before = they're showing you something visual."""
 
-HAMMER_TASK_INSTRUCTION = f"""{HAMMER_GENERAL_RULES}
+TOOLCALL_TASK_INSTRUCTION = f"""{HAMMER_GENERAL_RULES}
 
 {HAMMER_SCREENSHOTS_RULES}
 """
 
-HAMMER_FORMAT_INSTRUCTION = """
+TOOLCALL_FORMAT_INSTRUCTION = """
 The output MUST strictly adhere to the following JSON format, and NO other text MUST be included.
 The example formats are as follows. If no function call is needed, please directly output an empty list '[]'
 
@@ -763,7 +763,7 @@ When NO tool call is needed, output EXACTLY:
 ```
 """
 
-# Describe the tools we expose to the Hammer model
+# Describe the tools we expose to the toolcall model
 TAKE_SCREENSHOTS_TOOL = {
     "name": "take_screenshot",
     "description": "Take a screenshot when user wants to show you visual content. Use when: user references something visual with 'this/that/these/those', asks for visual feedback, or directly requests to see something. The key question: 'Is the user trying to show me something visual right now?' If yes and it's a single request, use this tool. Don't use for: multiple requests, abstract conversation, or capability questions.",

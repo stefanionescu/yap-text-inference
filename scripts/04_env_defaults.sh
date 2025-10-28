@@ -64,7 +64,7 @@ fi
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5160}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
-# Tool model max context length (Hammer). 3000 allows for 1450 system + 350 user + 1200 history tokens
+# Tool model max context length (Toolcall). 3000 allows for 1450 system + 350 user + 1200 history tokens
 export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3000}
 # GPU memory fractions (weights + KV). Use fractions only.
 export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
