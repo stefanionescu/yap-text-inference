@@ -87,7 +87,6 @@ RUN chmod +x /app/scripts/*.sh
 
 # Cache directories
 ENV HF_HOME=/app/.hf
-ENV TRANSFORMERS_CACHE=/app/.hf
 ENV HUGGINGFACE_HUB_CACHE=/app/.hf/hub
 ENV VLLM_CACHE_DIR=/app/.vllm_cache
 

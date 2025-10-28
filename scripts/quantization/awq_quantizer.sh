@@ -8,7 +8,7 @@ log_info "Running AWQ quantization process"
 
 # Harden HF connectivity for downloads (best-effort)
 export HF_HOME="${HF_HOME:-${ROOT_DIR}/.hf}"
-export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}}"
+export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-${HF_HOME}/hub}"
 if [ -f "/etc/ssl/certs/ca-certificates.crt" ]; then
   export REQUESTS_CA_BUNDLE="${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
 fi
