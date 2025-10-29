@@ -57,8 +57,9 @@ class FastTokenizer:
                     awq_metadata_model = None
 
         if is_local and tokenizer_json_path and os.path.isfile(tokenizer_json_path):
-            # Fast path: local folder with tokenizer.json
-            self.tok = Tokenizer.from_pretrained(path_or_repo)
+            # Fast path: local folder with tokenizer.json — load directly from file
+            # Using from_file avoids any Hugging Face Hub repo-id validation for local paths
+            self.tok = Tokenizer.from_file(tokenizer_json_path)
             return
 
         # Fallback: rely on Transformers. Prefer fast; fallback to slow if needed.
