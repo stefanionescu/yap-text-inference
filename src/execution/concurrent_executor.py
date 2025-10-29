@@ -242,5 +242,5 @@ async def run_concurrent_execution(
                 )
         except Exception:
             pass
-        logger.error(f"concurrent_exec: error {e}")
-        raise e
+        logger.exception("concurrent_exec: error")
+        raise

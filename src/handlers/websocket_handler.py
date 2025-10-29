@@ -101,7 +101,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         await _cleanup_session(session_id)
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.exception("WebSocket error")
         try:
             await ws.send_text(json.dumps({
                 "type": "error", 

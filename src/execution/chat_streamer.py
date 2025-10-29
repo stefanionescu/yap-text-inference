@@ -69,6 +69,8 @@ async def run_chat_stream(
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     # Realtime mode: emit ASAP. Optional micro-coalescer if STREAM_FLUSH_MS>0
     last_text = ""
+    ttfb_logged = False
+    t_start = time.perf_counter()
     
     # Robust env parsing; treat blank/None as 0
     env_flush = os.getenv("STREAM_FLUSH_MS", "")
@@ -138,6 +140,12 @@ async def run_chat_stream(
                     last_flush = now
                     logger.info(f"chat_stream: flushed coalesced chunk session_id={session_id} req_id={req_id}")
 
+            # Log TTFB once after first delta
+            if not ttfb_logged:
+                ttfb_ms = (time.perf_counter() - t_start) * 1000.0
+                logger.info(f"chat_stream: first token session_id={session_id} req_id={req_id} ttfb_ms={ttfb_ms:.1f}")
+                ttfb_logged = True
+
     except asyncio.TimeoutError:
         try:
             await (await get_chat_engine()).abort_request(req_id)
@@ -150,3 +158,4 @@ async def run_chat_stream(
     if flush_ms > 0 and buf:
         yield "".join(buf)
         logger.info(f"chat_stream: flushed tail session_id={session_id} req_id={req_id} len={len(''.join(buf))}")
+    logger.info(f"chat_stream: end session_id={session_id} req_id={req_id} total_len={len(last_text)} ms={(time.perf_counter()-t_start)*1000.0:.1f}")
