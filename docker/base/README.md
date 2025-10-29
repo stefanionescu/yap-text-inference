@@ -25,7 +25,7 @@ Important: specify exactly one source per engine (chat/tool). Do not set both `C
 Use `TAG` to publish a distinct tag per deployment combo. Examples:
 
 ```bash
-# Float/GPTQ (both)
+# Float (both)
 TAG=float-both \
 DOCKER_USERNAME=yourusername \
 PRELOAD_MODELS=1 DEPLOY_MODELS=both \
