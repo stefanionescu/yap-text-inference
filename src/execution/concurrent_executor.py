@@ -95,10 +95,12 @@ async def run_concurrent_execution(
     try:
         # Consume chat stream while also reacting immediately if tool decision arrives first
         aiter = chat_stream.__aiter__()
+        pending_next_chunk_task = None
        
         while True:
             # Create a task to await the next chat chunk
             next_chunk_task = asyncio.create_task(aiter.__anext__())
+            pending_next_chunk_task = next_chunk_task
 
             done, pending = await asyncio.wait({tool_task, next_chunk_task}, return_when=asyncio.FIRST_COMPLETED)
 
@@ -127,16 +129,15 @@ async def run_concurrent_execution(
 
                 # Continue loop to fetch next chunk (tool decision not ready yet)
                 continue
+            else:
+                # If chat produced a chunk, clear pending tracker
+                pending_next_chunk_task = None
 
             # Tool task completed first
             if tool_task in done:
                 tool_decision_ready = True
-                # Cancel waiting for the next chunk to avoid blocking; do NOT await it
-                try:
-                    next_chunk_task.cancel()
-                except Exception:
-                    pass
-                logger.info("concurrent_exec: tool decision arrived before first chat chunk (cancelled chat next_chunk)")
+                # Do not cancel the in-flight next_chunk_task here; we'll handle it after parsing the decision
+                logger.info("concurrent_exec: tool decision arrived before first chat chunk")
                 break
 
         # Ensure tool task completes
@@ -156,6 +157,14 @@ async def run_concurrent_execution(
         
         if is_tool:
             # Tool detected: cancel first chat stream, ignore buffered tokens, start new chat stream
+            # Best-effort: cancel any in-flight next-chunk and wait for cancellation to settle
+            try:
+                if 'pending_next_chunk_task' in locals() and pending_next_chunk_task and not pending_next_chunk_task.done():
+                    pending_next_chunk_task.cancel()
+                    with contextlib.suppress(Exception):
+                        await pending_next_chunk_task
+            except Exception:
+                pass
             try:
                 await (await get_chat_engine()).abort_request(chat_req_id)
             except Exception:
@@ -213,6 +222,22 @@ async def run_concurrent_execution(
         
         # Continue streaming the rest of chat output
         final_text = chat_buffer
+
+        # If we had an in-flight next-chunk task when the tool decision arrived, await it now to
+        # consume the first chunk and clear the generator's running state before continuing.
+        if 'pending_next_chunk_task' in locals() and pending_next_chunk_task:
+            try:
+                first_chunk = await pending_next_chunk_task
+                if first_chunk:
+                    await ws.send_text(json.dumps({"type": "token", "text": first_chunk}))
+                    final_text += first_chunk
+            except (asyncio.CancelledError, StopAsyncIteration):
+                pass
+            except Exception:
+                logger.exception("concurrent_exec: error awaiting pending first chunk")
+            finally:
+                pending_next_chunk_task = None
+
         # Continue consuming from the same iterator we used above
         async for chunk in aiter:
             await ws.send_text(json.dumps({"type": "token", "text": chunk}))
