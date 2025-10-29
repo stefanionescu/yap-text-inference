@@ -68,7 +68,7 @@ docker run -d --gpus all --name yap-awq \
   -p 8000:8000 youruser/yap-text-inference-awq:latest
 
 # Base (float/GPTQ, pre-quantized AWQ, or runtime AWQ)
-docker build -t youruser/yap-text-inference-base:latest -f docker/base/Dockerfile .
+DOCKER_USERNAME=youruser docker/base/build.sh
 docker run -d --gpus all --name yap-base \
   -e CHAT_MODEL=your-org/float-or-gptq-chat \
   -e TOOL_MODEL=your-org/float-or-gptq-tool \
