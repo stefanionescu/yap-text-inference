@@ -57,12 +57,13 @@ case "${DEPLOY_MODE}" in
 esac
 
 # --- Generic restart path for non-AWQ quantization (fp8, gptq_marlin, etc.) ---
-# Try to detect last running configuration from server.log when env vars missing
+# Try to detect last running configuration from server.log or .run/last_config.env when env vars missing
 SERVER_LOG="${ROOT_DIR}/server.log"
 LAST_QUANT=""
 LAST_DEPLOY=""
 LAST_CHAT=""
 LAST_TOOL=""
+LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
 
 if [ -f "${SERVER_LOG}" ]; then
   LAST_QUANT=$(grep -E "  Quantization: " "${SERVER_LOG}" | tail -n1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
@@ -75,6 +76,16 @@ if [ -f "${SERVER_LOG}" ]; then
   if [ -z "${LAST_TOOL}" ] || [ "${LAST_TOOL}" = "(none)" ]; then
     LAST_TOOL=$(grep -E "DEPLOY_MODELS=.* TOOL=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*TOOL=([^ ]*).*/\1/' || true)
   fi
+fi
+
+# Fallback: load last-known env snapshot from .run/last_config.env
+if [ -z "${LAST_QUANT}" ] && [ -f "${LAST_ENV_FILE}" ]; then
+  # shellcheck disable=SC1090
+  source "${LAST_ENV_FILE}" || true
+  LAST_QUANT="${LAST_QUANT:-${QUANTIZATION:-}}"
+  LAST_DEPLOY="${LAST_DEPLOY:-${DEPLOY_MODELS:-}}"
+  LAST_CHAT="${LAST_CHAT:-${CHAT_MODEL:-}}"
+  LAST_TOOL="${LAST_TOOL:-${TOOL_MODEL:-}}"
 fi
 
 # Decide if we should use non-AWQ fast path
