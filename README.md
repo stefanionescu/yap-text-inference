@@ -203,6 +203,53 @@ Override URL and timeout:
 python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
-## Advanced Usage
+## Viewing Logs
+
+All deployment and server logs are unified in a single `server.log` file.
+
+```bash
+# All logs (deployment + server activity)
+tail -f server.log
+```
+
+Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tail without stopping the deployment.
+
+## Stopping and Restarting
+
+After initial deployment, you can use these commands to stop and/or restart the server:
+
+```bash
+# Light stop (preserve AWQ models and dependencies)
+NUKE_ALL=0 bash scripts/stop.sh
+
+# Quick restart using existing AWQ models
+bash scripts/restart.sh [both|chat|tool]
+
+# Full stop and restart cycle
+bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
+```
+
+## Health Check
+
+```bash
+curl -s http://127.0.0.1:8000/healthz
+```
+
+## Server Status and Capacity
+
+```bash
+# With default API key
+curl -H "X-API-Key: yap_token" http://127.0.0.1:8000/status
+
+# With custom API key
+curl -H "X-API-Key: your_custom_key" http://127.0.0.1:8000/status
+
+# Via query parameter
+curl "http://127.0.0.1:8000/status?api_key=yap_token"
+```
+
+Returns server status and connection capacity information, including current active connections and limits.
+
+## Advanced Usage and Tips
 
 Looking for logs, status/health endpoints, security configuration, restart flows, environment variables, WebSocket protocol details, or pushing AWQ exports? See `ADVANCED.md`.

@@ -2,53 +2,6 @@
 
 This document covers advanced operations, configuration, and deep-dive details.
 
-## Viewing Logs
-
-All deployment and server logs are unified in a single `server.log` file.
-
-```bash
-# All logs (deployment + server activity)
-tail -f server.log
-```
-
-Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tail without stopping the deployment.
-
-## Quick Operations
-
-After initial deployment, you can use these commands to stop and/or restart the server:
-
-```bash
-# Light stop (preserve AWQ models and dependencies)
-NUKE_ALL=0 bash scripts/stop.sh
-
-# Quick restart using existing AWQ models
-bash scripts/restart.sh [both|chat|tool]
-
-# Full stop and restart cycle
-bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
-```
-
-## Health Check
-
-```bash
-curl -s http://127.0.0.1:8000/healthz
-```
-
-## Server Status and Capacity
-
-```bash
-# With default API key
-curl -H "X-API-Key: yap_token" http://127.0.0.1:8000/status
-
-# With custom API key
-curl -H "X-API-Key: your_custom_key" http://127.0.0.1:8000/status
-
-# Via query parameter
-curl "http://127.0.0.1:8000/status?api_key=yap_token"
-```
-
-Returns server status and connection capacity information, including current active connections and limits.
-
 ## Stop Script Behavior (Deep Clean)
 
 Default behavior (deep clean):
@@ -317,22 +270,6 @@ The pipeline writes `awq_metadata.json` and `README.md` into each quantized fold
 - The chat prompt is structured as two explicit segments: `<|persona|> ...` and `<|history|> ...`
 - Prefix caching reuses any repeated spans within the process. If you swap persona but keep the history bytes identical, history KV stays hot.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
-
-## Optimizations in This Stack
-
-- vLLM
-  - Continuous batching + PagedAttention
-  - `enforce_eager` + `enable_chunked_prefill` for low TTFT
-  - FP8/INT8 KV cache (`KV_DTYPE`) for speed/VRAM
-  - Attention backend auto-select: FLASHINFER preferred (falls back to XFORMERS)
-- Server
-  - Modular architecture – Clean separation of concerns (`handlers/`, `execution/`, `utils/`)
-  - Connection limiting – Protects GPU resources from overload
-  - API key authentication – Secure access with configurable keys
-  - Toolcall detection, then chat streaming always continues
-  - Realtime token streaming by default (no artificial pacing)
-  - Interrupts via `abort_request`
-  - Thread-safe session and connection management
 
 ## GPU Memory Fractions
 
