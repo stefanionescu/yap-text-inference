@@ -54,8 +54,9 @@ async def startup_warmup():
     # Warm tokenizer used by exact trimming to avoid first-request stalls
     try:
         _ = get_tokenizer()
-    except Exception:
+    except Exception as e:
         # Tokenizer warmup failures shouldn't block server start; generation warmups below will still proceed
+        print(f"Warning: Tokenizer warmup failed: {e}")
         pass
 
     if DEPLOY_CHAT:
