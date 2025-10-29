@@ -10,6 +10,8 @@ same public methods.
 from __future__ import annotations
 
 import os
+import json
+from pathlib import Path
 from threading import Lock
 from typing import Optional
 
@@ -41,6 +43,19 @@ class FastTokenizer:
 
         tokenizer_json_path = os.path.join(path_or_repo, "tokenizer.json") if is_local else None
 
+        # Detect AWQ output directory to optionally use original source model's tokenizer
+        awq_metadata_model: Optional[str] = None
+        if is_local:
+            meta_path = Path(path_or_repo) / "awq_metadata.json"
+            if meta_path.is_file():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                    candidate = (meta.get("source_model") or "").strip()
+                    if candidate:
+                        awq_metadata_model = candidate
+                except Exception:
+                    awq_metadata_model = None
+
         if is_local and tokenizer_json_path and os.path.isfile(tokenizer_json_path):
             # Fast path: local folder with tokenizer.json
             self.tok = Tokenizer.from_pretrained(path_or_repo)
@@ -52,15 +67,48 @@ class FastTokenizer:
         except Exception as exc:  # pragma: no cover - transformers is a hard dep in this project
             raise RuntimeError(f"Transformers is required for tokenizer fallback: {exc}")
 
-        # Try fast tokenizer first
+        # Strategy:
+        # - If this is a local AWQ dir, force local-only loading to avoid Hub calls.
+        # - If local loading fails (missing tokenizer files), try original source model from metadata.
+        # - Else, use provided identifier as-is.
+
+        load_target = path_or_repo
+        use_local_only = is_local
+
+        # If AWQ metadata is present, prefer using the original source model for tokenizer
+        # when the local dir lacks tokenizer files.
+        if is_local and not (tokenizer_json_path and os.path.isfile(tokenizer_json_path)):
+            if awq_metadata_model:
+                load_target = awq_metadata_model
+                use_local_only = False  # allow Hub for the original model tokenizer
+
+        # Helper to attempt loading with a given setting; prefer fast
+        def _try_load(target: str, local_only: bool):
+            # Transformers honors local_files_only to avoid any Hub calls
+            try:
+                return AutoTokenizer.from_pretrained(
+                    target,
+                    use_fast=True,
+                    trust_remote_code=True,
+                    local_files_only=local_only,
+                )
+            except Exception:
+                return AutoTokenizer.from_pretrained(
+                    target,
+                    use_fast=False,
+                    trust_remote_code=True,
+                    local_files_only=local_only,
+                )
+
         try:
-            hf_tok = AutoTokenizer.from_pretrained(path_or_repo, use_fast=True, trust_remote_code=True)
-            self._hf_tok = hf_tok
+            self._hf_tok = _try_load(load_target, use_local_only)
             return
         except Exception:
-            # Fall back to slow tokenizer
-            hf_tok = AutoTokenizer.from_pretrained(path_or_repo, use_fast=False, trust_remote_code=True)
-            self._hf_tok = hf_tok
+            # Final fallback: if we tried metadata and failed, try the original path without Hub
+            if load_target != path_or_repo and is_local:
+                self._hf_tok = _try_load(path_or_repo, local_only=True)
+                return
+            raise
 
     def count(self, text: str) -> int:
         if not text:
