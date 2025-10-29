@@ -12,41 +12,47 @@ General-purpose image that mirrors `scripts/` behavior: installs deps, can prelo
 
 Build-time preloading is optional. You can embed the models into the image to avoid network during `docker run`.
 
+Quick build and push:
+
+```bash
+DOCKER_USERNAME=yourusername docker/base/build.sh
+```
+
 Important: specify exactly one source per engine (chat/tool). Do not set both `CHAT_MODEL` and `AWQ_CHAT_MODEL` for chat, nor both `TOOL_MODEL` and `AWQ_TOOL_MODEL` for tool.
 
 Float/GPTQ preload example (both engines):
 
 ```bash
-docker build -t yap-text-base \
-  --build-arg PRELOAD_MODELS=1 \                                  # 0|1 (default 0)
-  --build-arg DEPLOY_MODELS=both \                                # both|chat|tool (preload scope)
-  --build-arg CHAT_MODEL=SicariusSicariiStuff/Impish_Nemo_12B \   # float/GPTQ repo
-  --build-arg TOOL_MODEL=MadeAgents/Hammer2.1-3b \                # float/GPTQ repo
-  --build-arg HF_TOKEN= \                                         # optional HF token for private repos
-  -f docker/base/Dockerfile .
+DOCKER_USERNAME=yourusername \
+PRELOAD_MODELS=1 \
+DEPLOY_MODELS=both \
+CHAT_MODEL=SicariusSicariiStuff/Impish_Nemo_12B \
+TOOL_MODEL=MadeAgents/Hammer2.1-3b \
+HF_TOKEN= \
+  docker/base/build.sh
 ```
 
 Pre-quantized AWQ preload example (both engines):
 
 ```bash
-docker build -t yap-text-base \
-  --build-arg PRELOAD_MODELS=1 \                                  # 0|1 (default 0)
-  --build-arg DEPLOY_MODELS=both \                                # both|chat|tool (preload scope)
-  --build-arg AWQ_CHAT_MODEL=your-org/chat-awq \                  # AWQ repo
-  --build-arg AWQ_TOOL_MODEL=your-org/tool-awq \                  # AWQ repo
-  --build-arg HF_TOKEN= \                                         # optional HF token for private repos
-  -f docker/base/Dockerfile .
+DOCKER_USERNAME=yourusername \
+PRELOAD_MODELS=1 \
+DEPLOY_MODELS=both \
+AWQ_CHAT_MODEL=your-org/chat-awq \
+AWQ_TOOL_MODEL=your-org/tool-awq \
+HF_TOKEN= \
+  docker/base/build.sh
 ```
 
 Mixed preload example (chat AWQ, tool float):
 
 ```bash
-docker build -t yap-text-base \
-  --build-arg PRELOAD_MODELS=1 \
-  --build-arg DEPLOY_MODELS=both \
-  --build-arg AWQ_CHAT_MODEL=your-org/chat-awq \                  # AWQ chat
-  --build-arg TOOL_MODEL=MadeAgents/Hammer2.1-3b \                # float tool
-  -f docker/base/Dockerfile .
+DOCKER_USERNAME=yourusername \
+PRELOAD_MODELS=1 \
+DEPLOY_MODELS=both \
+AWQ_CHAT_MODEL=your-org/chat-awq \
+TOOL_MODEL=MadeAgents/Hammer2.1-3b \
+  docker/base/build.sh
 ```
 
 Preloaded paths (if used):
