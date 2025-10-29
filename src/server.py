@@ -18,6 +18,7 @@ from .config import DEPLOY_CHAT, DEPLOY_TOOL
 from .handlers.websocket_handler import handle_websocket_connection
 from .handlers.connection_manager import connection_manager
 from .auth import get_api_key
+from .tokens.tokenizer_utils import get_tokenizer
 
 
 app = FastAPI(default_response_class=ORJSONResponse)
@@ -49,6 +50,13 @@ async def startup_warmup():
     and weights are fully initialized before the server accepts traffic.
     """
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["\n", "</s>"])
+
+    # Warm tokenizer used by exact trimming to avoid first-request stalls
+    try:
+        _ = get_tokenizer()
+    except Exception:
+        # Tokenizer warmup failures shouldn't block server start; generation warmups below will still proceed
+        pass
 
     if DEPLOY_CHAT:
         rid_c = f"warm-chat-{uuid.uuid4()}"
