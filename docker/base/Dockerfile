@@ -65,9 +65,19 @@ ARG DEPLOY_MODELS=both
 WORKDIR /app
 COPY src/ /app/src/
 
+# Ensure model directory exists regardless of preload flag (so we can copy it later)
+RUN mkdir -p /app/models /app/.hf
+
 # Preload Hugging Face models into image layers (optional)
 # - Stored under /app/models/{chat,tool,chat_awq,tool_awq}
-RUN python - <<'PY'
+RUN PRELOAD_MODELS=${PRELOAD_MODELS} \
+    DEPLOY_MODELS=${DEPLOY_MODELS} \
+    CHAT_MODEL="${CHAT_MODEL}" \
+    TOOL_MODEL="${TOOL_MODEL}" \
+    AWQ_CHAT_MODEL="${AWQ_CHAT_MODEL}" \
+    AWQ_TOOL_MODEL="${AWQ_TOOL_MODEL}" \
+    HF_TOKEN="${HF_TOKEN}" \
+    python - <<'PY'
 import os
 from pathlib import Path
 
@@ -79,6 +89,7 @@ Path('/app/models').mkdir(parents=True, exist_ok=True)
 Path('/app/.hf').mkdir(parents=True, exist_ok=True)
 
 from huggingface_hub import snapshot_download
+from huggingface_hub.errors import HfHubHTTPError
 
 hf_token = os.environ.get('HF_TOKEN', '')
 
@@ -87,7 +98,14 @@ def dl(repo_id: str, local_dir: str):
         return
     print(f"[INFO] Preloading {repo_id} -> {local_dir}")
     Path(local_dir).mkdir(parents=True, exist_ok=True)
-    snapshot_download(repo_id=repo_id, local_dir=local_dir, local_dir_use_symlinks=False, token=hf_token)
+    try:
+        snapshot_download(repo_id=repo_id, local_dir=local_dir, local_dir_use_symlinks=False, token=hf_token)
+    except HfHubHTTPError as e:
+        # Fail with a clear message only for auth errors; otherwise re-raise
+        msg = str(e).lower()
+        if '401' in msg or 'unauthorized' in msg:
+            raise SystemExit("Unauthorized from Hugging Face. Provide HF_TOKEN or skip PRELOAD_MODELS=1.")
+        raise
 
 deploy = (os.environ.get('DEPLOY_MODELS') or 'both').lower()
 chat = os.environ.get('CHAT_MODEL', '')
@@ -132,6 +150,9 @@ WORKDIR /app
 COPY src/ /app/src/
 COPY prompts/ /app/prompts/
 COPY test/ /app/test/
+
+# Copy preloaded models (if any)
+COPY --from=builder /app/models /app/models
 
 # Copy base docker scripts (build context provides ./scripts)
 COPY scripts/ /app/scripts/

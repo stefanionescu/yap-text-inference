@@ -63,11 +63,6 @@ async def run_chat_stream(
     )
 
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
-    logger.info(
-        f"chat_stream: start session_id={session_id} req_id={req_id} max_out={params.max_tokens} "
-        f"flush_ms={flush_ms} gen_timeout_s={gen_timeout_s}"
-    )
-    
     # Realtime mode: emit ASAP. Optional micro-coalescer if STREAM_FLUSH_MS>0
     last_text = ""
     
@@ -78,9 +73,14 @@ async def run_chat_stream(
     except Exception:
         flush_ms = float(STREAM_FLUSH_MS)
     
+    gen_timeout_s = float(os.getenv("GEN_TIMEOUT_S", "60"))
+    logger.info(
+        f"chat_stream: start session_id={session_id} req_id={req_id} max_out={params.max_tokens} "
+        f"flush_ms={flush_ms} gen_timeout_s={gen_timeout_s}"
+    )
+    
     buf = []
     last_flush = time.perf_counter()
-    gen_timeout_s = float(os.getenv("GEN_TIMEOUT_S", "60"))
 
     async def _iter_stream():
         """Internal generator for chat output."""
