@@ -265,12 +265,12 @@ log_info "Use scripts/stop.sh to stop the deployment"
 
 # Define the deployment pipeline command
 DEPLOYMENT_CMD="
-  bash '${SCRIPT_DIR}/01_check_gpu.sh' && \\
-  bash '${SCRIPT_DIR}/02_python_env.sh' && \\
-  bash '${SCRIPT_DIR}/03_install_deps.sh' && \\
-  source '${SCRIPT_DIR}/04_env_defaults.sh' && \\
+  bash '${SCRIPT_DIR}/steps/01_check_gpu.sh' && \\
+  bash '${SCRIPT_DIR}/steps/02_python_env.sh' && \\
+  bash '${SCRIPT_DIR}/steps/03_install_deps.sh' && \\
+  source '${SCRIPT_DIR}/steps/04_env_defaults.sh' && \\
   source '${SCRIPT_DIR}/quantization/awq_quantizer.sh' && \\
-  bash '${SCRIPT_DIR}/05_start_server.sh' && \\
+  bash '${SCRIPT_DIR}/steps/05_start_server.sh' && \\
   echo '[INFO] $(date -Iseconds) Deployment process completed successfully' && \\
   echo '[INFO] $(date -Iseconds) Server is running in the background' && \\
   echo '[INFO] $(date -Iseconds) Use scripts/stop.sh to stop the server'

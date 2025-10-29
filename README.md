@@ -229,6 +229,22 @@ bash scripts/restart.sh [both|chat|tool]
 bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
 ```
 
+### Stop Script Behavior (Deep Clean)
+
+Default behavior (deep clean):
+- Terminates only `uvicorn src.server:app`
+- Removes venv and purges pip caches
+- Clears repo-local caches (`.hf`, `.vllm_cache`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
+- Clears HF caches, torch caches, NVIDIA PTX JIT cache, and (by default) `$HOME/.cache`
+- Preserves the repository, the container, and services like Jupyter/web console
+
+Opt-out example:
+
+```bash
+# Light clean (keep venv/home caches)
+NUKE_ALL=0 bash scripts/stop.sh
+```
+
 ## Health Check
 
 ```bash
