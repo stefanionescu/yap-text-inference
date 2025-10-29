@@ -260,7 +260,7 @@ export HF_AWQ_COMMIT_MSG_CHAT="Upload Nemo AWQ build"   # optional commit messag
 export HF_AWQ_COMMIT_MSG_TOOL="Upload Hammer AWQ build"
 
 # now run the usual launcher
-HF_AWQ_PUSH=1 scripts/main.sh awq <chat_model> <tool_model>
+scripts/main.sh awq <chat_model> <tool_model>
 ```
 
 The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.

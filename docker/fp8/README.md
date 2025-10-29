@@ -20,12 +20,11 @@ DOCKER_USERNAME=yourusername ./build.sh
 YAP_TEXT_API_KEY=yap_token \
 CHAT_MODEL=your-org/chat-model \
 TOOL_MODEL=your-org/tool-model \
-WARMUP_ON_START=0 \
 CHAT_GPU_FRAC=0.70 \
 TOOL_GPU_FRAC=0.20 \
   docker run -d --gpus all --name yap-server \
   -e YAP_TEXT_API_KEY -e CHAT_MODEL -e TOOL_MODEL \
-  -e WARMUP_ON_START -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
+  -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
   yourusername/yap-text-inference-auto:latest
 ```
@@ -40,7 +39,6 @@ TOOL_GPU_FRAC=0.20 \
 
 ### Optional
 - `YAP_TEXT_API_KEY` (default: `yap_token`)
-- `WARMUP_ON_START=0|1` (default: `0`)
 - `CHAT_GPU_FRAC` (default: `0.70` when both models)
 - `TOOL_GPU_FRAC` (default: `0.20` when both models)
 - `DEPLOY_MODELS=both|chat|tool` (default: `both`)
@@ -73,7 +71,6 @@ docker run -d --gpus all --name yap-server \
   -e CHAT_MODEL=your-org/chat-model \
   -e TOOL_MODEL=your-org/tool-model \
   -e YAP_TEXT_API_KEY=yap_token \
-  -e WARMUP_ON_START=0 \
   -e CHAT_GPU_FRAC=0.70 \
   -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \

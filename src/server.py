@@ -42,17 +42,17 @@ async def status(api_key: str = Depends(get_api_key)):
 
 @app.on_event("startup")
 async def startup_warmup():
-    """Warm deployed engines to reduce first-turn TTFT.
+    """Warm deployed engines so models are loaded BEFORE serving requests.
 
-    Controlled by env WARMUP_ON_START (default: 0). If set to 0, skip warmup
-    to avoid delaying server readiness.
+    This runs unconditionally at startup and blocks until the first token
+    is produced for each deployed engine. This ensures engines, tokenizers,
+    and weights are fully initialized before the server accepts traffic.
     """
-    if os.getenv("WARMUP_ON_START", "0") != "1":
-        return
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["\n", "</s>"])
 
     if DEPLOY_CHAT:
         rid_c = f"warm-chat-{uuid.uuid4()}"
+        # Construct engine and force first token generation
         stream_c = (await get_chat_engine()).generate(
             prompt="<|persona|>\nWARM\n<|assistant|>\n",
             sampling_params=params,
@@ -64,6 +64,7 @@ async def startup_warmup():
 
     if DEPLOY_TOOL:
         rid_t = f"warm-tool-{uuid.uuid4()}"
+        # Construct engine and force first token generation
         stream_t = (await get_tool_engine()).generate(
             prompt="warmup",
             sampling_params=params,

@@ -154,7 +154,6 @@ log_info "docker run -d --gpus all --name yap-server \\
   -e CHAT_MODEL=your-org/chat-model \\
   -e TOOL_MODEL=your-org/tool-model \\
   -e YAP_TEXT_API_KEY=yap_token \\
-  -e WARMUP_ON_START=0 \\
   -e CHAT_GPU_FRAC=0.70 \\
   -e TOOL_GPU_FRAC=0.20 \\
   -p 8000:8000 \\

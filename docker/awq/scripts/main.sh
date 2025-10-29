@@ -19,7 +19,6 @@ usage() {
   echo ""
   echo "Optional Environment Variables:"
   echo "  YAP_API_KEY                     - API key for authentication (default: yap_token)"
-  echo "  WARMUP_ON_START=0|1             - Run warmup on startup (default: 0)"
   echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model (default: 0.70)"
   echo "  TOOL_GPU_FRAC                   - GPU memory fraction for tool model (default: 0.20)"
   echo ""
