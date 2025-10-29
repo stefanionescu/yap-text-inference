@@ -94,36 +94,46 @@ async def run_chat_stream(
             yield out
 
     try:
-        async with asyncio.timeout(gen_timeout_s):
-            async for out in _iter_stream():
-                # Check if request was cancelled
-                if session_manager.session_active_req.get(session_id) != req_id:
-                    await (await get_chat_engine()).abort_request(req_id)
-                    return
+        # Python 3.8+ compatible timeout handling without asyncio.timeout
+        deadline = time.perf_counter() + gen_timeout_s
+        aiter = _iter_stream().__aiter__()
+        while True:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                raise asyncio.TimeoutError()
+            try:
+                out = await asyncio.wait_for(aiter.__anext__(), timeout=remaining)
+            except StopAsyncIteration:
+                break
 
-                if not out.outputs:
-                    continue
+            # Check if request was cancelled
+            if session_manager.session_active_req.get(session_id) != req_id:
+                await (await get_chat_engine()).abort_request(req_id)
+                return
 
-                full_text = out.outputs[0].text
-                delta = full_text[len(last_text):]
-                if not delta:
-                    continue
+            if not out.outputs:
+                continue
 
-                last_text = full_text
+            full_text = out.outputs[0].text
+            delta = full_text[len(last_text):]
+            if not delta:
+                continue
 
-                if flush_ms <= 0:
-                    # Pure realtime: send immediately
-                    yield delta
-                else:
-                    # Buffer mode: accumulate and flush periodically
-                    buf.append(delta)
-                    now = time.perf_counter()
-                    if (now - last_flush) * 1000.0 >= flush_ms:
-                        yield "".join(buf)
-                        buf.clear()
-                        last_flush = now
-                        logger.info(f"chat_stream: flushed coalesced chunk session_id={session_id} req_id={req_id}")
-                        
+            last_text = full_text
+
+            if flush_ms <= 0:
+                # Pure realtime: send immediately
+                yield delta
+            else:
+                # Buffer mode: accumulate and flush periodically
+                buf.append(delta)
+                now = time.perf_counter()
+                if (now - last_flush) * 1000.0 >= flush_ms:
+                    yield "".join(buf)
+                    buf.clear()
+                    last_flush = now
+                    logger.info(f"chat_stream: flushed coalesced chunk session_id={session_id} req_id={req_id}")
+
     except asyncio.TimeoutError:
         try:
             await (await get_chat_engine()).abort_request(req_id)

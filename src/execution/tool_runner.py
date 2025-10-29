@@ -86,16 +86,26 @@ async def run_toolcall(
             yield out
 
     try:
-        async with asyncio.timeout(tool_timeout_s):
-            async for out in _iter_tool():
-                # Check if this request was cancelled
-                if (mark_active and 
-                    session_manager.session_active_req.get(session_id) != req_id):
-                    await (await get_tool_engine()).abort_request(req_id)
-                    return {"cancelled": True}
-                    
-                if out.outputs:
-                    pieces.append(out.outputs[0].text)
+        # Python 3.8+ compatible timeout handling without asyncio.timeout
+        deadline = time.perf_counter() + tool_timeout_s
+        aiter = _iter_tool().__aiter__()
+        while True:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                raise asyncio.TimeoutError()
+            try:
+                out = await asyncio.wait_for(aiter.__anext__(), timeout=remaining)
+            except StopAsyncIteration:
+                break
+
+            # Check if this request was cancelled
+            if (mark_active and 
+                session_manager.session_active_req.get(session_id) != req_id):
+                await (await get_tool_engine()).abort_request(req_id)
+                return {"cancelled": True}
+                
+            if out.outputs:
+                pieces.append(out.outputs[0].text)
                     
     except asyncio.TimeoutError:
         try:
