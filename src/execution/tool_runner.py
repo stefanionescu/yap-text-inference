@@ -3,6 +3,8 @@
 import asyncio
 import os
 import uuid
+import time
+import logging
 from typing import Optional, Dict, Any
 
 from vllm.sampling_params import SamplingParams
@@ -12,6 +14,8 @@ from ..persona import build_toolcall_prompt, build_toolcall_prompt_with_history
 from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
 from ..tokens import trim_history_for_tool_sharing
 from ..handlers.session_manager import session_manager
+
+logger = logging.getLogger(__name__)
 
 # --- Toolcall sampling defaults ---
 TOOL_TEMPERATURE = 0.05
@@ -55,6 +59,8 @@ async def run_toolcall(
 
     pieces = []
     tool_timeout_s = float(os.getenv("TOOL_TIMEOUT_S", "10"))
+    t0 = time.perf_counter()
+    logger.info(f"tool_runner: start session_id={session_id} req_id={req_id} timeout_s={tool_timeout_s}")
 
     # Trim history for tool model to enable KV cache sharing
     tool_history = trim_history_for_tool_sharing(
@@ -96,7 +102,10 @@ async def run_toolcall(
             await (await get_tool_engine()).abort_request(req_id)
         except Exception:
             pass
+        logger.info(f"tool_runner: timeout session_id={session_id} req_id={req_id}")
         return {"cancelled": True}
 
     text = "".join(pieces).strip()
+    dt_ms = (time.perf_counter() - t0) * 1000.0
+    logger.info(f"tool_runner: done session_id={session_id} req_id={req_id} len={len(text)} ms={dt_ms:.1f}")
     return {"cancelled": False, "text": text}

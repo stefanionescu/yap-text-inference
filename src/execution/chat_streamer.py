@@ -5,6 +5,7 @@ import os
 import time
 import uuid
 from typing import AsyncGenerator, Optional
+import logging
 
 from vllm.sampling_params import SamplingParams
 
@@ -12,6 +13,8 @@ from ..engines import get_chat_engine
 from ..persona import build_chat_prompt_with_prefix
 from ..config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ..handlers.session_manager import session_manager
+
+logger = logging.getLogger(__name__)
 
 # --- Chat sampling defaults ---
 CHAT_TEMPERATURE = 0.55
@@ -60,6 +63,10 @@ async def run_chat_stream(
     )
 
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
+    logger.info(
+        f"chat_stream: start session_id={session_id} req_id={req_id} max_out={params.max_tokens} "
+        f"flush_ms={flush_ms} gen_timeout_s={gen_timeout_s}"
+    )
     
     # Realtime mode: emit ASAP. Optional micro-coalescer if STREAM_FLUSH_MS>0
     last_text = ""
@@ -115,14 +122,17 @@ async def run_chat_stream(
                         yield "".join(buf)
                         buf.clear()
                         last_flush = now
+                        logger.info(f"chat_stream: flushed coalesced chunk session_id={session_id} req_id={req_id}")
                         
     except asyncio.TimeoutError:
         try:
             await (await get_chat_engine()).abort_request(req_id)
         except Exception:
             pass
+        logger.info(f"chat_stream: timeout session_id={session_id} req_id={req_id}")
         return
 
     # Flush any tail if coalescer was on
     if flush_ms > 0 and buf:
         yield "".join(buf)
+        logger.info(f"chat_stream: flushed tail session_id={session_id} req_id={req_id} len={len(''.join(buf))}")

@@ -9,11 +9,14 @@ import os
 import json
 from pathlib import Path
 from threading import Lock
+import logging
 from typing import Optional
 
 from tokenizers import Tokenizer
 
 from ..config import CHAT_MODEL
+
+logger = logging.getLogger(__name__)
 
 
 class FastTokenizer:
@@ -56,6 +59,7 @@ class FastTokenizer:
             # Fast path: local folder with tokenizer.json — load directly from file
             # Using from_file avoids any Hugging Face Hub repo-id validation for local paths
             self.tok = Tokenizer.from_file(tokenizer_json_path)
+            logger.info(f"tokenizer: loaded local tokenizer.json at {tokenizer_json_path}")
             return
 
         # Fallback: rely on Transformers. Prefer fast; fallback to slow if needed.
@@ -99,11 +103,13 @@ class FastTokenizer:
 
         try:
             self._hf_tok = _try_load(load_target, use_local_only)
+            logger.info(f"tokenizer: loaded transformers tokenizer target={load_target} local_only={use_local_only}")
             return
         except Exception:
             # Final fallback: if we tried metadata and failed, try the original path without Hub
             if load_target != path_or_repo and is_local:
                 self._hf_tok = _try_load(path_or_repo, local_only=True)
+                logger.info(f"tokenizer: fallback load transformers local path={path_or_repo}")
                 return
             raise
 

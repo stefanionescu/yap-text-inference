@@ -5,24 +5,33 @@ Provides exact token counting, trimming, and history-aware trimming.
 
 from __future__ import annotations
 
+import logging
 from .tokenizer import get_tokenizer
+
+logger = logging.getLogger(__name__)
 
 
 def count_tokens(text: str) -> int:
     """Return the exact token count for the given text."""
-    return get_tokenizer().count(text)
+    n = get_tokenizer().count(text)
+    logger.info(f"tokens.count: len_chars={len(text)} tokens={n}")
+    return n
 
 
 def trim_text_to_token_limit(text: str, max_tokens: int, keep: str = "end") -> str:
     """Trim text to a token limit using the shared tokenizer (exact)."""
-    return get_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
+    out = get_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
+    logger.info(f"tokens.trim_text: in_tokens≈? out_len={len(out)} max_tokens={max_tokens} keep={keep}")
+    return out
 
 
 def trim_history_for_tool_sharing(history_text: str, tool_history_tokens: int) -> str:
     """Trim history for tool model KV cache sharing using exact tokenization."""
     if not history_text.strip():
         return ""
-    return trim_history_preserve_messages(history_text, tool_history_tokens)
+    out = trim_history_preserve_messages(history_text, tool_history_tokens)
+    logger.info(f"tokens.trim_history_for_tool: in_len={len(history_text)} out_len={len(out)} max_tokens={tool_history_tokens}")
+    return out
 
 
 def trim_history_preserve_messages(history_text: str, max_tokens: int) -> str:
@@ -71,6 +80,8 @@ def trim_history_preserve_messages(history_text: str, max_tokens: int) -> str:
     for part in result_parts[1:]:
         result += chosen_pattern + part
 
-    return result.strip()
+    out = result.strip()
+    logger.info(f"tokens.trim_history_preserve: in_len={len(history_text)} out_len={len(out)} max_tokens={max_tokens}")
+    return out
 
 
