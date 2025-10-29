@@ -9,13 +9,13 @@ from vllm.sampling_params import SamplingParams
 
 from ..config import (
     HISTORY_MAX_TOKENS, USER_UTT_MAX_TOKENS,
-    EXACT_TOKEN_TRIM, CONCURRENT_MODEL_CALL,
+    CONCURRENT_MODEL_CALL,
     DEPLOY_CHAT, DEPLOY_TOOL,
 )
 from ..engines import get_chat_engine
 from ..persona import get_static_prefix, compose_persona_runtime
 from ..tokens import (
-    approx_token_count, trim_text_to_token_limit,
+    count_tokens, trim_text_to_token_limit,
     trim_history_preserve_messages
 )
 from ..utils.validation import (
@@ -28,9 +28,6 @@ from ..execution.concurrent_executor import run_concurrent_execution
 from ..execution.chat_streamer import run_chat_stream
 from ..execution.tool_runner import run_toolcall
 from ..execution.tool_parser import parse_tool_result
-
-if EXACT_TOKEN_TRIM:
-    from ..tokens.tokenizer_utils import trim_text_to_token_limit_exact as trim_text_exact
 
 
 async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
@@ -121,19 +118,15 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     history_text = msg.get("history_text", "")
     user_utt = msg["user_utterance"]
     
-    # Trim user utterance to first USER_UTT_MAX_TOKENS
-    if EXACT_TOKEN_TRIM:
-        user_utt = trim_text_exact(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
-    else:
-        user_utt = trim_text_to_token_limit(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+    # Trim user utterance to first USER_UTT_MAX_TOKENS (exact)
+    user_utt = trim_text_to_token_limit(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
     
     # Trim rolling history to HISTORY_MAX_TOKENS, keep most recent
     # Use message-boundary-aware trimming to avoid partial messages
-    if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
+    if count_tokens(history_text) > HISTORY_MAX_TOKENS:
         history_text = trim_history_preserve_messages(
-            history_text, 
-            HISTORY_MAX_TOKENS, 
-            exact=EXACT_TOKEN_TRIM
+            history_text,
+            HISTORY_MAX_TOKENS,
         )
 
     # Choose execution based on deploy mode and concurrency flag
@@ -260,11 +253,10 @@ async def handle_warm_history_message(ws: WebSocket, msg: Dict[str, Any]) -> Non
         msg: Message data
     """
     history_text = msg.get("history_text", "")
-    if approx_token_count(history_text) > HISTORY_MAX_TOKENS:
+    if count_tokens(history_text) > HISTORY_MAX_TOKENS:
         history_text = trim_history_preserve_messages(
             history_text,
             HISTORY_MAX_TOKENS,
-            exact=EXACT_TOKEN_TRIM
         )
     
     warm_prompt = f"<|history|>\n{history_text.strip()}\n<|assistant|>\n"

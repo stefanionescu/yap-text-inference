@@ -1,10 +1,6 @@
-"""Fast tokenization utilities using HuggingFace tokenizers.
+"""Tokenizer access: provides a cached tokenizer instance for token utils.
 
-This module prefers the ultra-fast `tokenizers` backend when available
-(`tokenizer.json` present). For local AWQ output directories that may only
-contain classic Transformers tokenizer files (no `tokenizer.json`), it
-gracefully falls back to `transformers.AutoTokenizer` while preserving the
-same public methods.
+This module exposes only `get_tokenizer()` for use by token utilities.
 """
 
 from __future__ import annotations
@@ -165,13 +161,5 @@ def get_tokenizer() -> FastTokenizer:
         if _fast_tok is None:
             _fast_tok = FastTokenizer(CHAT_MODEL)
     return _fast_tok
-
-
-def exact_token_count(text: str) -> int:
-    return get_tokenizer().count(text)
-
-
-def trim_text_to_token_limit_exact(text: str, max_tokens: int, keep: str = "end") -> str:
-    return get_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
 
 

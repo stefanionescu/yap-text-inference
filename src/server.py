@@ -18,7 +18,7 @@ from .config import DEPLOY_CHAT, DEPLOY_TOOL
 from .handlers.websocket_handler import handle_websocket_connection
 from .handlers.connection_manager import connection_manager
 from .auth import get_api_key
-from .tokens.tokenizer_utils import get_tokenizer
+from .tokens.tokenizer import get_tokenizer
 
 
 app = FastAPI(default_response_class=ORJSONResponse)

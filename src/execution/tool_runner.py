@@ -9,7 +9,7 @@ from vllm.sampling_params import SamplingParams
 
 from ..engines import get_tool_engine
 from ..persona import build_toolcall_prompt, build_toolcall_prompt_with_history
-from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, EXACT_TOKEN_TRIM
+from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
 from ..tokens import trim_history_for_tool_sharing
 from ..handlers.session_manager import session_manager
 
@@ -58,9 +58,8 @@ async def run_toolcall(
 
     # Trim history for tool model to enable KV cache sharing
     tool_history = trim_history_for_tool_sharing(
-        history_text, 
-        TOOL_HISTORY_TOKENS, 
-        exact=EXACT_TOKEN_TRIM
+        history_text,
+        TOOL_HISTORY_TOKENS,
     )
 
     async def _iter_tool():

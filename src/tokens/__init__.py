@@ -1,18 +1,14 @@
-"""Public API for token utilities.
+"""Public API for token utilities (exact semantics)."""
 
-Exports commonly used functions for convenient imports like:
-    from src.tokens import approx_token_count, trim_text_to_token_limit
-"""
-
-from .tokens import (
-    approx_token_count,
+from .token_utils import (
+    count_tokens,
     trim_text_to_token_limit,
     trim_history_preserve_messages,
     trim_history_for_tool_sharing,
 )
 
 __all__ = [
-    "approx_token_count",
+    "count_tokens",
     "trim_text_to_token_limit",
     "trim_history_preserve_messages",
     "trim_history_for_tool_sharing",

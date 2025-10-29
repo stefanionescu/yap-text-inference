@@ -4,6 +4,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../utils.sh"
 
+# If not using AWQ, do nothing and stay silent (no logs)
+if [ "${QUANTIZATION:-}" != "awq" ]; then
+  return 0 2>/dev/null || exit 0
+fi
+
 log_info "Running AWQ quantization process"
 
 # Harden HF connectivity for downloads (best-effort)
@@ -73,7 +78,7 @@ if [ -n "${AWQ_CHAT_MODEL:-}" ] || [ -n "${AWQ_TOOL_MODEL:-}" ]; then
   fi
 fi
 
-# Main quantization logic - only run if QUANTIZATION=awq
+# Main quantization logic (QUANTIZATION=awq guaranteed by early guard)
 if [ "${QUANTIZATION}" = "awq" ]; then
   mkdir -p "${AWQ_CACHE_DIR}"
   
@@ -212,8 +217,6 @@ if [ "${QUANTIZATION}" = "awq" ]; then
       fi
     fi
   fi
-else
-  log_info "Quantization mode is '${QUANTIZATION}', skipping AWQ quantization"
 fi
 
 log_info "AWQ quantization process completed"
