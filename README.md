@@ -14,7 +14,7 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - Concurrent connection limiting to protect GPU resources (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both)
 - API key authentication for secure access (configurable, default: "yap_token")
 
-## Quickstart (RunPod or Any CUDA Linux Image)
+## Quickstart
 
 1) Install deps and start the server
 

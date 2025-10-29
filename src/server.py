@@ -23,6 +23,29 @@ from .tokens.tokenizer import get_tokenizer
 
 app = FastAPI(default_response_class=ORJSONResponse)
 
+# ---- Logging configuration ----
+import logging
+
+_LOG_LEVEL = (os.getenv("APP_LOG_LEVEL", "INFO") or "INFO").upper()
+_LOG_FORMAT = os.getenv(
+    "APP_LOG_FORMAT",
+    "%(levelname)s %(asctime)s [%(name)s:%(lineno)d] %(message)s",
+)
+
+root_logger = logging.getLogger()
+if not root_logger.handlers:
+    logging.basicConfig(level=_LOG_LEVEL, format=_LOG_FORMAT)
+else:
+    root_logger.setLevel(_LOG_LEVEL)
+    for _h in root_logger.handlers:
+        try:
+            _h.setLevel(_LOG_LEVEL)
+        except Exception:
+            pass
+
+# Ensure our package logs are at least at APP_LOG_LEVEL
+logging.getLogger("src").setLevel(_LOG_LEVEL)
+
 
 @app.get("/healthz")
 async def healthz():
