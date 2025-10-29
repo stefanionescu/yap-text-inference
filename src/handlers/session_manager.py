@@ -1,7 +1,6 @@
 """Session management for WebSocket connections."""
 
 import asyncio
-import random
 from typing import Dict, Any, Optional
 
 from ..config import CHAT_MODEL, TOOL_MODEL
@@ -12,7 +11,7 @@ class SessionManager:
     """Manages session metadata and lifecycle."""
     
     def __init__(self):
-        # Per-session metadata: fixed seed + timestamp string
+        # Per-session metadata: timestamp string and persona/model config
         self.session_meta: Dict[str, Dict[str, Any]] = {}
         
         # Track active session tasks/requests
@@ -32,11 +31,9 @@ class SessionManager:
             Session metadata dict
         """
         if session_id not in self.session_meta:
-            session_seed = random.randint(1, 1_000_000)
             now_str = format_session_timestamp()
             
             self.session_meta[session_id] = {
-                "seed": session_seed,
                 "now_str": now_str,
                 # defaults that can be overridden on start
                 "assistant_gender": None,
@@ -149,16 +146,7 @@ class SessionManager:
             "tool": tool_req
         }
     
-    def get_session_seed(self, session_id: str) -> int:
-        """Get the fixed seed for a session.
-        
-        Args:
-            session_id: Session identifier
-            
-        Returns:
-            Session seed value
-        """
-        return self.session_meta.get(session_id, {}).get("seed", 0)
+    # Seed support removed: generation is non-deterministic by design
 
 
 # Global session manager instance

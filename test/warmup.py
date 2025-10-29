@@ -174,12 +174,11 @@ async def _run_once(args: argparse.Namespace) -> None:
             t = msg.get("type")
             if t == "ack" and msg.get("for") == "start":
                 ack_seen = True
-                seed = msg.get("seed")
                 now = msg.get("now")
                 gender = msg.get("assistant_gender")
                 style = msg.get("persona_style")
                 models = msg.get("models", {})
-                print(f"ACK start → seed={seed} now='{now}' gender={gender} style={style} models={models}")
+                print(f"ACK start → now='{now}' gender={gender} style={style} models={models}")
                 continue
 
             # Optional: acknowledge runtime persona/gender switches if you send them

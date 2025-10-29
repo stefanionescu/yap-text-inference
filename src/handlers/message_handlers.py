@@ -50,7 +50,6 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     session_config = session_manager.initialize_session(session_id)
     
     # Pull fixed values for this session
-    sess_seed = session_config["seed"]
     sess_now_str = session_config["now_str"]
 
     # Require assistant_gender & persona_style on start; allow override persona
@@ -114,7 +113,6 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         "for": "start",
         "ok": True,
         "session_id": session_id,
-        "seed": sess_seed,
         "now": sess_now_str,
         "assistant_gender": updated_config["assistant_gender"],
         "persona_style": updated_config["persona_style"],

@@ -178,7 +178,7 @@ RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey 
 
 ### What It Prints
 
-- An ACK line confirming session seed/time and effective `assistant_gender`/`persona_style`.
+- An ACK line confirming session time and effective `assistant_gender`/`persona_style`.
 - Two JSON lines when streaming completes:
   - Metrics: `{ "type": "metrics", "ttfb_ms": ..., "total_ms": ..., "stream_ms": ..., "chunks": ..., "chars": ... }`
   - Final text: `{ "type": "final_text", "text": "..." }`
