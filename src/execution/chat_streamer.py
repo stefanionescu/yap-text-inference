@@ -51,9 +51,7 @@ async def run_chat_stream(
     req_id = request_id or f"chat-{uuid.uuid4()}"
     session_manager.set_active_request(session_id, req_id)
 
-    # Avoid per-request generator when using FlashInfer backend to prevent fallback
-    backend = (os.getenv("VLLM_ATTENTION_BACKEND", "").upper() or "").strip()
-    params_kwargs = dict(
+    params = SamplingParams(
         temperature=CHAT_TEMPERATURE,
         top_p=CHAT_TOP_P,
         top_k=CHAT_TOP_K,
@@ -62,9 +60,6 @@ async def run_chat_stream(
         max_tokens=CHAT_MAX_OUT,
         stop=STOP + ["<|end|>", "</s>"],
     )
-    if backend != "FLASHINFER":
-        params_kwargs["seed"] = session_manager.get_session_seed(session_id)
-    params = SamplingParams(**params_kwargs)
 
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     # Realtime mode: emit ASAP. Optional micro-coalescer if STREAM_FLUSH_MS>0

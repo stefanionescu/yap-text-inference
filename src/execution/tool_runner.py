@@ -48,18 +48,13 @@ async def run_toolcall(
     if mark_active:
         session_manager.set_active_request(session_id, req_id)
 
-    # Avoid per-request generator when using FlashInfer backend to prevent fallback
-    backend = (os.getenv("VLLM_ATTENTION_BACKEND", "").upper() or "").strip()
-    params_kwargs = dict(
+    params = SamplingParams(
         temperature=TOOL_TEMPERATURE,
         top_p=TOOL_TOP_P,
         top_k=TOOL_TOP_K,
         max_tokens=TOOL_MAX_OUT,
         stop=TOOL_STOP,
     )
-    if backend != "FLASHINFER":
-        params_kwargs["seed"] = session_manager.get_session_seed(session_id)
-    params = SamplingParams(**params_kwargs)
 
     pieces = []
     tool_timeout_s = float(os.getenv("TOOL_TIMEOUT_S", "10"))
