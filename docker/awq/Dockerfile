@@ -1,6 +1,10 @@
 # Multi-stage build for efficient Docker image
 FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 AS builder
 
+# Allow overriding FlashInfer version at build time
+ARG FLASHINFER_VERSION_SPEC=">=0.2.3,<0.3.2"
+ENV FLASHINFER_VERSION_SPEC=${FLASHINFER_VERSION_SPEC}
+
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -43,12 +47,14 @@ RUN set -eux; \
     TORCH_MAJMIN="$(python -c 'import sys, torch; ver=torch.__version__.split("+",1)[0]; p=ver.split("."); print(p[0]+"."+p[1])' 2>/dev/null || true)"; \
     if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then \
         FI_IDX="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"; \
-        echo "[INFO] Installing flashinfer-python from ${FI_IDX}"; \
-        pip install --no-cache-dir --prefer-binary --extra-index-url "${FI_IDX}" flashinfer-python || \
-        (echo "[WARN] FlashInfer install via extra index failed, falling back to PyPI" && pip install --no-cache-dir --prefer-binary flashinfer-python || true); \
+        FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:->=0.2.3,<0.3.2}"; \
+        echo "[INFO] Installing ${FI_PKG} from ${FI_IDX}"; \
+        pip install --no-cache-dir --prefer-binary --extra-index-url "${FI_IDX}" "${FI_PKG}" || \
+        (echo "[WARN] FlashInfer install via extra index failed, falling back to PyPI" && pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true); \
     else \
-        echo "[WARN] Torch/CUDA not detected at build-time; attempting PyPI install for flashinfer-python"; \
-        pip install --no-cache-dir --prefer-binary flashinfer-python || true; \
+        echo "[WARN] Torch/CUDA not detected at build-time; attempting PyPI install for FlashInfer with version spec"; \
+        FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:->=0.2.3,<0.3.2}"; \
+        pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true; \
     fi
 
 # Production stage
