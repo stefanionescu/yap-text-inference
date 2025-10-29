@@ -129,9 +129,9 @@ async def run_concurrent_execution(
 
                 # Continue loop to fetch next chunk (tool decision not ready yet)
                 continue
-            else:
-                # If chat produced a chunk, clear pending tracker
-                pending_next_chunk_task = None
+            
+            # Note: Do not clear pending_next_chunk_task here. If the tool decision arrives first,
+            # we must preserve the in-flight next-chunk task to await/cancel it after the decision.
 
             # Tool task completed first
             if tool_task in done:
