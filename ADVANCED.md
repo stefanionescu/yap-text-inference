@@ -2,47 +2,6 @@
 
 This document covers advanced operations, configuration, and deep-dive details.
 
-## Stop Script Behavior (Deep Clean)
-
-Default behavior (deep clean):
-- Terminates only `uvicorn src.server:app`
-- Removes venv and purges pip caches
-- Clears repo-local caches (`.hf`, `.vllm_cache`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
-- Clears HF caches, torch caches, NVIDIA PTX JIT cache, and (by default) `$HOME/.cache`
-- Preserves the repository, the container, and services like Jupyter/web console
-
-Opt-out example:
-
-```bash
-# Light clean (keep venv/home caches)
-NUKE_ALL=0 bash scripts/stop.sh
-```
-
-## Quick Restart (Local and Hugging Face AWQ Models)
-
-The restart script works with both local and Hugging Face AWQ models.
-
-```bash
-# Quick restart (auto-detects local or HF models)
-bash scripts/restart.sh [both|chat|tool]
-
-# Examples with different sources:
-bash scripts/restart.sh                                    # Local models (if available)
-AWQ_CHAT_MODEL=yapwithai/impish-12b-awq bash scripts/restart.sh chat
-AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/restart.sh tool
-AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/restart.sh both
-
-# Sequential mode restart
-CONCURRENT_MODEL_CALL=0 bash scripts/restart.sh
-```
-
-How it works:
-- Smart detection of local `.awq/` cache vs. `AWQ_CHAT_MODEL`/`AWQ_TOOL_MODEL`
-- Stops server with light clean (preserves models and dependencies)
-- Starts server directly using detected AWQ models
-- Skips GPU check, dependency install, and quantization
-- For HF models: Auto-creates venv/deps if missing
-
 ## Security Configuration
 
 ### API Key Setup
@@ -69,41 +28,6 @@ python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 - `/healthz` – No authentication required
 - `/status` – Requires API key
 - `/ws` – Requires API key
-
-## Environment Variables
-
-Server configuration
-- `YAP_TEXT_API_KEY` (default `yap_token`) – API key for authentication (all endpoints except `/healthz`)
-- `MAX_CONCURRENT_CONNECTIONS` – Maximum concurrent WebSocket connections (deployment/quantization-aware; defaults vary)
-- `DEPLOY_MODELS` (default `both`) – Which models to deploy: `both`, `chat`, or `tool`
-
-Models and GPU split
-- `CHAT_MODEL` (required when deploying chat)
-- `TOOL_MODEL` (required when deploying tool: `MadeAgents/Hammer2.1-1.5b` or `MadeAgents/Hammer2.1-3b`)
-- `AWQ_CHAT_MODEL` – Use pre-quantized AWQ chat model from HF instead of local quantization
-- `AWQ_TOOL_MODEL` – Use pre-quantized AWQ tool model from HF instead of local quantization
-- `CHAT_GPU_FRAC`, `TOOL_GPU_FRAC` – GPU memory allocation
-- `QUANTIZATION` – Auto-set by `scripts/main.sh`: GPTQ if chat repo contains `GPTQ`, else FP8; explicit `awq` supported
-- `KV_DTYPE` = `fp8|auto|int8` – Auto-selected based on GPU and quantization mode
-- `VLLM_ATTENTION_BACKEND` – Auto; prefers `FLASHINFER` if available, else `XFORMERS`
-- `dtype` is set to `auto` internally; no need to configure
-
-Streaming and concurrency
-- `STREAM_FLUSH_MS` (default `0`) – Optional micro-coalescer in ms to reduce packet count
-- `CONCURRENT_MODEL_CALL` (default `0`) – Set to `1` to run chat and tool models concurrently instead of sequentially
-  - Sequential mode: Tool model runs first, then chat model always runs
-  - Concurrent mode: Both models start together, chat buffered until tool decision
-
-Token limits
-- `CHAT_MAX_OUT=200` – Max assistant tokens per response
-- `HISTORY_MAX_TOKENS=3000` – Rolling history cap (keeps most recent)
-- `USER_UTT_MAX_TOKENS=350` – Keeps beginning of user utterance
-- `EXACT_TOKEN_TRIM=1` – Fast HF tokenizer for exact trimming; set `0` to disable
-
-Networking and downloads
-- `HF_HUB_ENABLE_HF_TRANSFER` (default `0` in scripts): Opt-in to Hugging Face transfer acceleration.
-
-All of the above have sensible defaults in `scripts/04_env_defaults.sh`.
 
 ## Log Rotation
 
