@@ -1,6 +1,7 @@
 """Concurrent execution: tool and chat models run in parallel."""
 
 import asyncio
+import contextlib
 import json
 import os
 import uuid
@@ -58,7 +59,7 @@ async def run_concurrent_execution(
     chat_buffer = ""
     tool_decision_ready = False
     tool_result = None
-    
+
     # Create task for tool result collection
     async def collect_tool_result():
         """Collect tool result with timeout handling."""
@@ -79,25 +80,56 @@ async def run_concurrent_execution(
             tool_result = {"cancelled": True}
         finally:
             tool_decision_ready = True
-    
+
     # Start tool collection task
     tool_task = asyncio.create_task(collect_tool_result())
-    
+
     try:
-        # Stream chat tokens and buffer them until tool decision is ready
-        async for chunk in chat_stream:
-            if tool_decision_ready:
-                # Flush the current chunk before breaking to avoid dropping first token(s)
+        # Consume chat stream while also reacting immediately if tool decision arrives first
+        aiter = chat_stream.__aiter__()
+       
+        while True:
+            # Create a task to await the next chat chunk
+            next_chunk_task = asyncio.create_task(aiter.__anext__())
+
+            done, pending = await asyncio.wait({tool_task, next_chunk_task}, return_when=asyncio.FIRST_COMPLETED)
+
+            if next_chunk_task in done:
+                try:
+                    chunk = next_chunk_task.result()
+                except StopAsyncIteration:
+                    # Chat stream finished before producing any new chunk
+                    # Ensure tool task completed so we can proceed
+                    if not tool_task.done():
+                        await tool_task
+                    break
+
+                if tool_decision_ready:
+                    # Tool decision arrived: capture this first chunk then break to process decision
+                    chat_buffer += chunk
+                    break
+
                 chat_buffer += chunk
+                if len(chat_buffer) >= prebuffer_max_chars:
+                    await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
+                    chat_buffer = ""
+
+                # Continue loop to fetch next chunk (tool decision not ready yet)
+                continue
+
+            # Tool task completed first
+            if tool_task in done:
+                tool_decision_ready = True
+                # Cancel waiting for the next chunk to avoid blocking
+                try:
+                    next_chunk_task.cancel()
+                except Exception:
+                    pass
+                # Ensure cancellation is processed
+                with contextlib.suppress(Exception):
+                    await next_chunk_task
                 break
-            
-            chat_buffer += chunk
-            
-            # If buffer exceeds max size, flush it to prevent excessive memory usage
-            if len(chat_buffer) >= prebuffer_max_chars:
-                await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
-                chat_buffer = ""
-        
+
         # Ensure tool task completes
         if not tool_decision_ready:
             await tool_task
@@ -165,7 +197,8 @@ async def run_concurrent_execution(
         
         # Continue streaming the rest of chat output
         final_text = chat_buffer
-        async for chunk in chat_stream:
+        # Continue consuming from the same iterator we used above
+        async for chunk in aiter:
             await ws.send_text(json.dumps({"type": "token", "text": chunk}))
             final_text += chunk
         
