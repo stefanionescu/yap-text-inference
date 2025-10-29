@@ -15,7 +15,7 @@ Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tai
 
 ## Quick Operations
 
-After initial deployment, you can use these faster commands:
+After initial deployment, you can use these commands to stop and/or restart the server:
 
 ```bash
 # Light stop (preserve AWQ models and dependencies)
@@ -117,98 +117,6 @@ python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 - `/status` – Requires API key
 - `/ws` – Requires API key
 
-## Warmup Test Client
-
-Activate the virtualenv created by the setup scripts:
-
-```bash
-source .venv/bin/activate
-```
-
-### Basic Usage
-
-```bash
-python3 test/warmup.py
-```
-
-### With a Custom Message
-
-```bash
-python3 test/warmup.py "who was Columbus?"
-```
-
-### With Gender/Style Flags
-
-```bash
-python3 test/warmup.py --gender male --style flirty "hello there"
-```
-
-### Testing Concurrent vs. Sequential Modes
-
-```bash
-# Test sequential mode (default)
-python3 test/warmup.py "write a simple hello world function"
-
-# Test concurrent mode (restart server first)
-# Terminal 1: Start server with concurrent mode (auto → FP8)
-bash scripts/stop.sh  # Stop previous deployment
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-
-# Terminal 2: Test the same query (after server is ready)
-python3 test/warmup.py "write a simple hello world function"
-
-# Test the roleplay-optimized model
-# Terminal 1: Start server with Wingless_Imp_8B (auto → FP8)
-bash scripts/stop.sh  # Stop previous deployment
-bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
-
-# Terminal 2: Test creative/roleplay query (after server is ready)
-python3 test/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
-```
-
-The concurrent mode should show lower `ttfb_ms` for chat responses where the toolcall model returns false.
-
-### Environment Overrides
-
-- `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
-- `ASSISTANT_GENDER` (default `female`) — aliases accepted: `woman|man`
-- `PERSONA_STYLE` (default `wholesome`)
-- `RECV_TIMEOUT_SEC` (default `60`)
-
-Examples:
-
-```bash
-SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 test/warmup.py
-RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey there"
-```
-
-### What It Prints
-
-- An ACK line confirming session seed/time and effective `assistant_gender`/`persona_style`.
-- Two JSON lines when streaming completes:
-  - Metrics: `{ "type": "metrics", "ttfb_ms": ..., "total_ms": ..., "stream_ms": ..., "chunks": ..., "chars": ... }`
-  - Final text: `{ "type": "final_text", "text": "..." }`
-
-## Benchmark Client
-
-Run concurrent sessions and report p50/p95 latencies:
-
-```bash
-python3 test/bench.py -n 32 -c 8
-```
-
-With a custom message and persona:
-
-```bash
-python3 test/bench.py --gender female --style flirty "who was Columbus?"
-```
-
-Override URL and timeout:
-
-```bash
-python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
-```
-
 ## Environment Variables
 
 Server configuration
@@ -243,10 +151,6 @@ Networking and downloads
 - `HF_HUB_ENABLE_HF_TRANSFER` (default `0` in scripts): Opt-in to Hugging Face transfer acceleration.
 
 All of the above have sensible defaults in `scripts/04_env_defaults.sh`.
-
-## KV Caching
-
-Using vLLM’s internal prefix caching with chunked prefill.
 
 ## Log Rotation
 
