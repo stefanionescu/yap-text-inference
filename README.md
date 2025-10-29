@@ -3,8 +3,8 @@
 A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It can run:
 - vLLM chat engine with chat models ranging from 3B–24B
 - Engine for tool-call detection
-- Both engines together by default; chat-only/tool-only are supported in host scripts but not in Docker
-- FastAPI + WebSocket streaming, Pipecat-friendly
+- Both engines together by default; chat-only/tool-only are supported in host scripts and Docker (base image)
+- FastAPI + WebSocket streaming
 
 ## Key Features
 - Tool-call-first detection. Toolcall signal is sent when detected, then (when chat is deployed) chat tokens always stream regardless.
@@ -56,7 +56,7 @@ This will:
 
 ## Docker Deployment
 
-You can deploy the server in Docker using the stacks in `docker/awq` (pre-quantized AWQ) and `docker/fp8` (auto FP8/GPTQ):
+You can deploy the server in Docker using the stacks in `docker/awq` (pre-quantized AWQ) and `docker/base` (general-purpose base: float/GPTQ, pre-quantized AWQ, or runtime AWQ):
 
 ```bash
 # AWQ (pre-quantized models)
@@ -67,16 +67,16 @@ docker run -d --gpus all --name yap-awq \
   -e YAP_TEXT_API_KEY=yap_token \
   -p 8000:8000 youruser/yap-text-inference-awq:latest
 
-# Auto-quant (FP8/GPTQ auto-detect)
-DOCKER_USERNAME=youruser docker/fp8/build.sh
-docker run -d --gpus all --name yap-auto \
+# Base (float/GPTQ, pre-quantized AWQ, or runtime AWQ)
+docker build -t youruser/yap-text-inference-base:latest -f docker/base/Dockerfile .
+docker run -d --gpus all --name yap-base \
   -e CHAT_MODEL=your-org/float-or-gptq-chat \
   -e TOOL_MODEL=your-org/float-or-gptq-tool \
   -e YAP_TEXT_API_KEY=yap_token \
-  -p 8000:8000 youruser/yap-text-inference-auto:latest
+  -p 8000:8000 youruser/yap-text-inference-base:latest
 ```
 
-See `docker/awq/README.md` and `docker/fp8/README.md` for environment variables and advanced options.
+See `docker/awq/README.md` and `docker/base/README.md` for environment variables and advanced options.
 
 ## Quantization Modes (AWQ)
 

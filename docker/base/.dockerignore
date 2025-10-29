@@ -1,7 +1,8 @@
-# FP8/GPTQ stack-specific dockerignore
+# Base stack-specific dockerignore (mirrors awq, but keeps test/ included)
 
 # Exclude other docker stacks
 docker/awq/
+docker/fp8/
 
 # Git and VCS
 .git
@@ -69,12 +70,6 @@ server.pid
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# Test files
-test/
-tests/
-*_test.py
-test_*.py
 
 # Local configuration
 .env
