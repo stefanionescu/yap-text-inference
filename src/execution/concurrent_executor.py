@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import logging
 import json
 import os
 import uuid
@@ -12,6 +13,8 @@ from .tool_parser import parse_tool_result
 from .chat_streamer import run_chat_stream
 from ..engines import get_chat_engine, get_tool_engine
 from ..handlers.session_manager import session_manager
+
+logger = logging.getLogger(__name__)
 
 
 async def run_concurrent_execution(
@@ -34,6 +37,9 @@ async def run_concurrent_execution(
     """
     tool_hard_timeout_ms = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
     prebuffer_max_chars = int(os.getenv("PREBUFFER_MAX_CHARS", "1000"))
+    logger.info(
+        f"concurrent_exec: session_id={session_id} tool_timeout_ms={tool_hard_timeout_ms} prebuffer={prebuffer_max_chars}"
+    )
     
     # Start both tool and chat coroutines concurrently
     tool_req_id = f"tool-{uuid.uuid4()}"
@@ -44,6 +50,7 @@ async def run_concurrent_execution(
     
     # Start tool model with shared history for KV cache efficiency
     tool_coro = run_toolcall(session_id, user_utt, history_text, request_id=tool_req_id, mark_active=False)
+    logger.info(f"concurrent_exec: tool start req_id={tool_req_id}")
     
     # Start chat model  
     chat_stream = run_chat_stream(
@@ -54,6 +61,7 @@ async def run_concurrent_execution(
         user_utt,
         request_id=chat_req_id,
     )
+    logger.info(f"concurrent_exec: chat start req_id={chat_req_id}")
     
     # Buffer to accumulate chat tokens while waiting for tool decision
     chat_buffer = ""
@@ -102,16 +110,19 @@ async def run_concurrent_execution(
                     # Ensure tool task completed so we can proceed
                     if not tool_task.done():
                         await tool_task
+                    logger.info("concurrent_exec: chat stream ended before tool decision")
                     break
 
                 if tool_decision_ready:
                     # Tool decision arrived: capture this first chunk then break to process decision
                     chat_buffer += chunk
+                    logger.info(f"concurrent_exec: tool decision ready; first chat chunk len={len(chunk)}")
                     break
 
                 chat_buffer += chunk
                 if len(chat_buffer) >= prebuffer_max_chars:
                     await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
+                    logger.info(f"concurrent_exec: flushed prebuffer len={len(chat_buffer)}")
                     chat_buffer = ""
 
                 # Continue loop to fetch next chunk (tool decision not ready yet)
@@ -128,6 +139,7 @@ async def run_concurrent_execution(
                 # Ensure cancellation is processed
                 with contextlib.suppress(Exception):
                     await next_chunk_task
+                logger.info("concurrent_exec: tool decision arrived before first chat chunk")
                 break
 
         # Ensure tool task completes
@@ -136,6 +148,8 @@ async def run_concurrent_execution(
         
         # Parse tool decision
         raw_field, is_tool = parse_tool_result(tool_result)
+        _txt = (tool_result or {}).get("text") if tool_result else None
+        logger.info(f"concurrent_exec: tool_result is_tool={is_tool} text_len={(len(_txt) if isinstance(_txt, str) else 0)}")
         
         # Cleanup tool req id tracking (no longer in-flight)
         try:
@@ -156,6 +170,7 @@ async def run_concurrent_execution(
                 "status": "yes", 
                 "raw": raw_field
             }))
+            logger.info("concurrent_exec: sent toolcall yes")
             
             # Start new chat stream (ignoring buffered tokens from first stream)
             new_chat_req_id = f"chat-{uuid.uuid4()}"
@@ -169,6 +184,7 @@ async def run_concurrent_execution(
                 user_utt,
                 request_id=new_chat_req_id,
             )
+            logger.info(f"concurrent_exec: new chat stream after tool yes req_id={new_chat_req_id}")
             
             # Stream from the new chat stream
             final_text = ""
@@ -182,6 +198,7 @@ async def run_concurrent_execution(
                 "normalized_text": final_text
             }))
             await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+            logger.info(f"concurrent_exec: done after tool yes chars={len(final_text)}")
             return
         
         # Tool says NO: flush buffered chat text and continue streaming
@@ -190,10 +207,12 @@ async def run_concurrent_execution(
             "status": "no", 
             "raw": raw_field
         }))
+        logger.info("concurrent_exec: sent toolcall no")
         
         # Flush any buffered chat text
         if chat_buffer:
             await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
+            logger.info(f"concurrent_exec: flushed buffered chat len={len(chat_buffer)}")
         
         # Continue streaming the rest of chat output
         final_text = chat_buffer
@@ -208,6 +227,7 @@ async def run_concurrent_execution(
             "normalized_text": final_text
         }))
         await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+        logger.info(f"concurrent_exec: done after tool no chars={len(final_text)}")
     
     except Exception as e:
         # Clean up on any error
@@ -222,4 +242,5 @@ async def run_concurrent_execution(
                 )
         except Exception:
             pass
+        logger.error(f"concurrent_exec: error {e}")
         raise e

@@ -3,6 +3,7 @@
 import asyncio
 import json
 import uuid
+import logging
 from typing import Dict, Any
 from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
@@ -29,6 +30,8 @@ from ..execution.chat_streamer import run_chat_stream
 from ..execution.tool_runner import run_toolcall
 from ..execution.tool_parser import parse_tool_result
 
+logger = logging.getLogger(__name__)
+
 
 async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
     """Handle 'start' message type.
@@ -39,6 +42,11 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         session_id: Session identifier
     """
     # Initialize session metadata
+    logger.info(
+        f"handle_start: session_id={session_id} gender_in={msg.get('assistant_gender')} "
+        f"style_in={msg.get('persona_style')} hist_len={len(msg.get('history_text',''))} "
+        f"user_len={len(msg.get('user_utterance',''))}"
+    )
     session_config = session_manager.initialize_session(session_id)
     
     # Pull fixed values for this session
@@ -52,6 +60,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
             "type": "error",
             "message": "assistant_gender is required on start: use 'female'/'male' (or 'woman'/'man')."
         }))
+        logger.info("handle_start: error → missing assistant_gender")
         return
     
     if incoming_gender is not None:
@@ -65,6 +74,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
                 "type": "error",
                 "message": f"persona_style is required on start; allowed: {sorted(ALLOWED_PERSONALITIES)}"
             }))
+            logger.info("handle_start: error → missing persona_style")
             return
         if incoming_style:
             if not validate_persona_style(incoming_style):
@@ -72,6 +82,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
                     "type": "error",
                     "message": f"invalid persona_style '{incoming_style}'; allowed: {sorted(ALLOWED_PERSONALITIES)}"
                 }))
+                logger.info("handle_start: error → invalid persona_style")
                 return
             session_manager.update_session_config(session_id, persona_style=incoming_style)
 
@@ -113,6 +124,10 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
             "tool": updated_config["tool_model"]
         }
     }))
+    logger.info(
+        f"handle_start: ack sent session_id={session_id} chat_model={updated_config['chat_model']} "
+        f"tool_model={updated_config['tool_model']}"
+    )
 
     # Process history and user utterance
     history_text = msg.get("history_text", "")
@@ -133,13 +148,16 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     async def _run_start():
         if DEPLOY_CHAT and DEPLOY_TOOL:
             if CONCURRENT_MODEL_CALL:
+                logger.info(f"handle_start: concurrent execution session_id={session_id}")
                 await run_concurrent_execution(ws, session_id, static_prefix, runtime_text, history_text, user_utt)
             else:
+                logger.info(f"handle_start: sequential execution session_id={session_id}")
                 await run_sequential_execution(ws, session_id, static_prefix, runtime_text, history_text, user_utt)
             return
 
         if DEPLOY_CHAT and not DEPLOY_TOOL:
             # Chat-only deployment: stream chat tokens and finalize
+            logger.info(f"handle_start: chat-only streaming session_id={session_id}")
             final_text = ""
             async for chunk in run_chat_stream(
                 session_id,
@@ -156,10 +174,12 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
                 "normalized_text": final_text
             }))
             await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+            logger.info(f"handle_start: chat-only done session_id={session_id} chars={len(final_text)}")
             return
 
         if DEPLOY_TOOL and not DEPLOY_CHAT:
             # Tool-only deployment: run tool router, emit decision, and finalize
+            logger.info(f"handle_start: tool-only routing session_id={session_id}")
             tool_res = await run_toolcall(session_id, user_utt, history_text, mark_active=False)
             raw_field, is_tool = parse_tool_result(tool_res)
             await ws.send_text(json.dumps({
@@ -172,6 +192,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
                 "normalized_text": ""
             }))
             await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+            logger.info(f"handle_start: tool-only done session_id={session_id} is_tool={is_tool}")
             return
 
     task = asyncio.create_task(_run_start())

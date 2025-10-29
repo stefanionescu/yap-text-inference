@@ -1,6 +1,7 @@
 """Sequential execution: tool-first, then chat streaming."""
 
 import asyncio
+import logging
 import json
 import os
 import uuid
@@ -12,6 +13,8 @@ from .tool_parser import parse_tool_result
 from .chat_streamer import run_chat_stream
 from ..engines import get_tool_engine
 from ..handlers.session_manager import session_manager
+
+logger = logging.getLogger(__name__)
 
 
 async def run_sequential_execution(
@@ -33,11 +36,13 @@ async def run_sequential_execution(
         user_utt: User utterance
     """
     tool_hard_timeout_ms = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
+    logger.info(f"sequential_exec: session_id={session_id} tool_timeout_ms={tool_hard_timeout_ms}")
 
     # Run tool router (do not mark active to avoid clobbering chat req id)
     tool_req_id = f"tool-{uuid.uuid4()}"
     session_manager.set_tool_request(session_id, tool_req_id)
     tool_coro = run_toolcall(session_id, user_utt, history_text, request_id=tool_req_id, mark_active=False)
+    logger.info(f"sequential_exec: tool start req_id={tool_req_id}")
 
     tool_res = None
     try:
@@ -55,6 +60,7 @@ async def run_sequential_execution(
         except Exception:
             pass
         tool_res = {"cancelled": True}
+        logger.info("sequential_exec: tool timeout → cancelled")
 
     # Parse tool decision
     raw_field, is_tool = parse_tool_result(tool_res)
@@ -72,6 +78,7 @@ async def run_sequential_execution(
             "status": "yes", 
             "raw": raw_field
         }))
+        logger.info("sequential_exec: sent toolcall yes")
     else:
         # Tool says NO (or timed out): notify client
         await ws.send_text(json.dumps({
@@ -79,6 +86,7 @@ async def run_sequential_execution(
             "status": "no", 
             "raw": raw_field
         }))
+        logger.info("sequential_exec: sent toolcall no")
 
     # Start chat stream (always runs regardless of tool decision)
     chat_req_id = f"chat-{uuid.uuid4()}"
@@ -102,3 +110,4 @@ async def run_sequential_execution(
         "normalized_text": final_text
     }))
     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+    logger.info(f"sequential_exec: done chars={len(final_text)}")

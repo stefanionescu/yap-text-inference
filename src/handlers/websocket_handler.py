@@ -67,23 +67,29 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             msg = json.loads(await ws.receive_text())
 
             if msg["type"] == "start":
+                logger.info(f"WS recv: start session_id={msg.get('session_id')} gender={msg.get('assistant_gender')} style={msg.get('persona_style')} len(history)={len(msg.get('history_text',''))} len(user)={len(msg.get('user_utterance',''))}")
                 # Cancel previous session if exists
                 if session_id and session_id in session_manager.session_tasks:
                     session_manager.cancel_session_requests(session_id)
 
                 session_id = msg["session_id"]
                 await handle_start_message(ws, msg, session_id)
+                logger.info(f"WS start scheduled for session_id={session_id}")
 
             elif msg["type"] == "cancel":
+                logger.info(f"WS recv: cancel session_id={session_id}")
                 await handle_cancel_message(ws, session_id)
 
             elif msg["type"] == "warm_persona":
+                logger.info("WS recv: warm_persona")
                 await handle_warm_persona_message(ws, msg)
 
             elif msg["type"] == "warm_history":
+                logger.info("WS recv: warm_history")
                 await handle_warm_history_message(ws, msg)
 
             elif msg["type"] == "set_persona":
+                logger.info("WS recv: set_persona")
                 await handle_set_persona_message(ws, msg, session_id)
 
             else:
