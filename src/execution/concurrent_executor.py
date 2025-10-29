@@ -131,15 +131,12 @@ async def run_concurrent_execution(
             # Tool task completed first
             if tool_task in done:
                 tool_decision_ready = True
-                # Cancel waiting for the next chunk to avoid blocking
+                # Cancel waiting for the next chunk to avoid blocking; do NOT await it
                 try:
                     next_chunk_task.cancel()
                 except Exception:
                     pass
-                # Ensure cancellation is processed
-                with contextlib.suppress(Exception):
-                    await next_chunk_task
-                logger.info("concurrent_exec: tool decision arrived before first chat chunk")
+                logger.info("concurrent_exec: tool decision arrived before first chat chunk (cancelled chat next_chunk)")
                 break
 
         # Ensure tool task completes
