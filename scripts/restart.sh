@@ -220,6 +220,7 @@ log_info "To stop: bash scripts/stop.sh"
 log_info ""
 
 # Start server in background and tail logs
+mkdir -p "${ROOT_DIR}/.run"
 setsid nohup "${SCRIPT_DIR}/05_start_server.sh" </dev/null >> "${SERVER_LOG}" 2>&1 &
 BG_PID=$!
 echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
