@@ -67,15 +67,21 @@ COPY src/ /app/src/
 
 # Preload Hugging Face models into image layers (optional)
 # - Stored under /app/models/{chat,tool,chat_awq,tool_awq}
-RUN set -eux; \
-    mkdir -p /app/models /app/.hf; \
-    if [ "${PRELOAD_MODELS}" = "1" ]; then \
-      python - <<'PY'
+RUN python - <<'PY'
 import os
 from pathlib import Path
+
+# Only run when requested
+if os.environ.get('PRELOAD_MODELS', '0') != '1':
+    raise SystemExit(0)
+
+Path('/app/models').mkdir(parents=True, exist_ok=True)
+Path('/app/.hf').mkdir(parents=True, exist_ok=True)
+
 from huggingface_hub import snapshot_download
 
 hf_token = os.environ.get('HF_TOKEN', '')
+
 def dl(repo_id: str, local_dir: str):
     if not repo_id:
         return
@@ -89,19 +95,17 @@ tool = os.environ.get('TOOL_MODEL', '')
 awq_chat = os.environ.get('AWQ_CHAT_MODEL', '')
 awq_tool = os.environ.get('AWQ_TOOL_MODEL', '')
 
-if deploy in ('both','chat'):
+if deploy in ('both', 'chat'):
     if awq_chat:
         dl(awq_chat, '/app/models/chat_awq')
     elif chat:
         dl(chat, '/app/models/chat')
-if deploy in ('both','tool'):
+if deploy in ('both', 'tool'):
     if awq_tool:
         dl(awq_tool, '/app/models/tool_awq')
     elif tool:
         dl(tool, '/app/models/tool')
 PY
-    ; \
-    fi
 
 
 # ---- Runtime stage ----
@@ -129,8 +133,8 @@ COPY src/ /app/src/
 COPY prompts/ /app/prompts/
 COPY test/ /app/test/
 
-# Copy base docker scripts
-COPY docker/base/scripts/ /app/scripts/
+# Copy base docker scripts (build context provides ./scripts)
+COPY scripts/ /app/scripts/
 
 # Create runtime dirs and caches
 RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache /app/models

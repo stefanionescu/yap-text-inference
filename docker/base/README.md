@@ -20,38 +20,52 @@ DOCKER_USERNAME=yourusername docker/base/build.sh
 
 Important: specify exactly one source per engine (chat/tool). Do not set both `CHAT_MODEL` and `AWQ_CHAT_MODEL` for chat, nor both `TOOL_MODEL` and `AWQ_TOOL_MODEL` for tool.
 
-Float/GPTQ preload example (both engines):
+### Tagging and Variants
+
+Use `TAG` to publish a distinct tag per deployment combo. Examples:
 
 ```bash
+# Float/GPTQ (both)
+TAG=float-both \
 DOCKER_USERNAME=yourusername \
-PRELOAD_MODELS=1 \
-DEPLOY_MODELS=both \
+PRELOAD_MODELS=1 DEPLOY_MODELS=both \
 CHAT_MODEL=SicariusSicariiStuff/Impish_Nemo_12B \
 TOOL_MODEL=MadeAgents/Hammer2.1-3b \
-HF_TOKEN= \
   docker/base/build.sh
-```
 
-Pre-quantized AWQ preload example (both engines):
-
-```bash
+# Pre-quantized AWQ (both)
+TAG=awq-both \
 DOCKER_USERNAME=yourusername \
-PRELOAD_MODELS=1 \
-DEPLOY_MODELS=both \
+PRELOAD_MODELS=1 DEPLOY_MODELS=both \
 AWQ_CHAT_MODEL=your-org/chat-awq \
 AWQ_TOOL_MODEL=your-org/tool-awq \
-HF_TOKEN= \
   docker/base/build.sh
-```
 
-Mixed preload example (chat AWQ, tool float):
-
-```bash
+# Mixed: chat=AWQ, tool=float
+TAG=awqchat-toolfloat \
 DOCKER_USERNAME=yourusername \
-PRELOAD_MODELS=1 \
-DEPLOY_MODELS=both \
+PRELOAD_MODELS=1 DEPLOY_MODELS=both \
 AWQ_CHAT_MODEL=your-org/chat-awq \
 TOOL_MODEL=MadeAgents/Hammer2.1-3b \
+  docker/base/build.sh
+
+# Chat-only float
+TAG=float-chat \
+DOCKER_USERNAME=yourusername \
+PRELOAD_MODELS=1 DEPLOY_MODELS=chat \
+CHAT_MODEL=SicariusSicariiStuff/Impish_Nemo_12B \
+  docker/base/build.sh
+
+# Tool-only float
+TAG=float-tool \
+DOCKER_USERNAME=yourusername \
+PRELOAD_MODELS=1 DEPLOY_MODELS=tool \
+TOOL_MODEL=MadeAgents/Hammer2.1-3b \
+  docker/base/build.sh
+
+# Runtime AWQ (quantize on run; no preload)
+TAG=awq-rt-both \
+DOCKER_USERNAME=yourusername \
   docker/base/build.sh
 ```
 
