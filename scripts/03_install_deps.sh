@@ -194,10 +194,11 @@ PY
 
     if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
       FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
-      log_info "Installing flashinfer-python (extra-index: ${FI_IDX_PRIMARY})"
-      if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" flashinfer-python; then
+      FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:->=0.2.3,<0.3.2}"
+      log_info "Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
+      if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
         log_warn "FlashInfer install failed even with extra index; falling back to PyPI only"
-        if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary flashinfer-python; then
+        if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary "${FI_PKG}"; then
           log_warn "FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
         fi
       fi
