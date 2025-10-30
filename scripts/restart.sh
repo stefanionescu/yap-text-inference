@@ -132,10 +132,10 @@ if [ "${SHOULD_USE_GENERIC}" = "1" ]; then
 
   # Stop server preserving models/deps and restart directly
   log_info "Stopping server (preserving models and dependencies)..."
-  NUKE_ALL=0 "${ROOT_DIR}/scripts/stop.sh"
+  NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
   log_info "Loading environment defaults..."
-  source "${ROOT_DIR}/scripts/steps/04_env_defaults.sh"
+  source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 
   SERVER_LOG_PATH="${ROOT_DIR}/server.log"
   touch "${SERVER_LOG_PATH}"
@@ -249,8 +249,8 @@ fi
 # For HF models, create venv if it doesn't exist
 if [ "${USING_HF_MODELS}" = "1" ] && [ ! -d "${ROOT_DIR}/.venv" ]; then
   log_info "HuggingFace AWQ models detected - setting up minimal environment"
-  "${ROOT_DIR}/scripts/steps/02_python_env.sh"
-  "${ROOT_DIR}/scripts/steps/03_install_deps.sh"
+  "${SCRIPT_DIR}/steps/02_python_env.sh"
+  "${SCRIPT_DIR}/steps/03_install_deps.sh"
 fi
 
 # Report detected model sources
@@ -274,7 +274,7 @@ fi
 
 # Light stop - preserve models and dependencies
 log_info "Stopping server (preserving models and dependencies)..."
-NUKE_ALL=0 "${ROOT_DIR}/scripts/stop.sh"
+NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 # Set environment for direct server startup
 export QUANTIZATION=awq
@@ -307,7 +307,7 @@ fi
 
 # Load environment defaults (for GPU detection and other settings)
 log_info "Loading environment defaults..."
-source "${ROOT_DIR}/scripts/steps/04_env_defaults.sh"
+source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 
 # Create server log
 SERVER_LOG="${ROOT_DIR}/server.log"
