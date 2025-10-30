@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-source "${SCRIPT_DIR}/../lib/common/log.sh"
+THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Respect existing ROOT_DIR when this file is sourced; fall back to repo root when executed directly
+ROOT_DIR="${ROOT_DIR:-$(cd "${THIS_SCRIPT_DIR}/.." && pwd)}"
+source "${THIS_SCRIPT_DIR}/../lib/common/log.sh"
 
 # Shared library functions
-LIB_DIR="${SCRIPT_DIR}/../lib"
+LIB_DIR="${THIS_SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/env/detect.sh"
 source "${LIB_DIR}/env/paths.sh"
 source "${LIB_DIR}/env/quantization.sh"
