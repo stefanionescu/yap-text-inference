@@ -16,4 +16,19 @@ log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-auto}"
 
 # Start server with logging to stdout (Docker best practice)
 log_info "Starting uvicorn server..."
-exec python -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
+if command -v uvicorn >/dev/null 2>&1; then
+  exec uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
+elif command -v python >/dev/null 2>&1 && python - <<'PY' >/dev/null 2>&1
+import uvicorn
+PY
+then
+  exec python -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
+elif command -v python3 >/dev/null 2>&1 && python3 - <<'PY' >/dev/null 2>&1
+import uvicorn
+PY
+then
+  exec python3 -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
+else
+  echo "[ERROR] uvicorn not found in container. Ensure dependencies are installed." >&2
+  exit 127
+fi
