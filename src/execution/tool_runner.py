@@ -1,7 +1,6 @@
 """Tool execution logic for processing tool calls."""
 
 import asyncio
-import os
 import uuid
 import time
 import logging
@@ -14,14 +13,18 @@ from ..persona import build_toolcall_prompt, build_toolcall_prompt_with_history
 from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
 from ..tokens import trim_history_for_tool_sharing
 from ..handlers.session_manager import session_manager
+from ..config.sampling import (
+    TOOL_TEMPERATURE,
+    TOOL_TOP_P,
+    TOOL_TOP_K,
+    TOOL_STOP,
+)
+from ..config.timeouts import TOOL_TIMEOUT_S
+from .streaming_utils import stream_with_timeout
 
 logger = logging.getLogger(__name__)
 
-# --- Toolcall sampling defaults ---
-TOOL_TEMPERATURE = 0.05
-TOOL_TOP_P = 1.0
-TOOL_TOP_K = 1
-TOOL_STOP = ["\n", "</s>"]
+# Sampling defaults moved to src/config/sampling.py
 
 
 async def run_toolcall(
@@ -57,7 +60,7 @@ async def run_toolcall(
     )
 
     pieces = []
-    tool_timeout_s = float(os.getenv("TOOL_TIMEOUT_S", "10"))
+    tool_timeout_s = float(TOOL_TIMEOUT_S)
     t0 = time.perf_counter()
     logger.info(f"tool_runner: start session_id={session_id} req_id={req_id} timeout_s={tool_timeout_s}")
 
@@ -68,49 +71,44 @@ async def run_toolcall(
     )
 
     async def _iter_tool():
-        """Internal generator for tool output."""
+        """Internal generator for tool output with timeout/cancel handling."""
         # Use enhanced prompt with history for better context and KV cache sharing
         if tool_history.strip():
             prompt = build_toolcall_prompt_with_history(user_utt, tool_history)
         else:
             prompt = build_toolcall_prompt(user_utt)
-            
-        stream = (await get_tool_engine()).generate(
+
+        async for out in stream_with_timeout(
+            get_engine=get_tool_engine,
             prompt=prompt,
             sampling_params=params,
             request_id=req_id,
             priority=1,
-        )
-        async for out in stream:
+            timeout_s=tool_timeout_s,
+            cancel_check=(
+                (lambda: session_manager.session_active_req.get(session_id) != req_id)
+                if mark_active else None
+            ),
+        ):
             yield out
 
     try:
-        # Python 3.8+ compatible timeout handling without asyncio.timeout
-        deadline = time.perf_counter() + tool_timeout_s
         aiter = _iter_tool().__aiter__()
         while True:
-            remaining = deadline - time.perf_counter()
-            if remaining <= 0:
-                raise asyncio.TimeoutError()
             try:
-                out = await asyncio.wait_for(aiter.__anext__(), timeout=remaining)
+                out = await aiter.__anext__()
             except StopAsyncIteration:
                 break
 
             # Check if this request was cancelled
             if (mark_active and 
                 session_manager.session_active_req.get(session_id) != req_id):
-                await (await get_tool_engine()).abort_request(req_id)
                 return {"cancelled": True}
                 
             if out.outputs:
                 pieces.append(out.outputs[0].text)
                     
     except asyncio.TimeoutError:
-        try:
-            await (await get_tool_engine()).abort_request(req_id)
-        except Exception:
-            pass
         logger.info(f"tool_runner: timeout session_id={session_id} req_id={req_id}")
         return {"cancelled": True}
 
