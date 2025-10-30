@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     python3.11-dev \
     python3.11-venv \
     python3-pip \
+    ca-certificates \
     git \
     wget \
     curl \
@@ -70,6 +71,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN apt-get update && apt-get install -y \
     python3.11 \
     python3.11-venv \
+    ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
@@ -82,7 +84,7 @@ WORKDIR /app
 
 # Copy application code from build context
 COPY src/ /app/src/
-COPY prompts.py /app/
+COPY prompts/ /app/prompts/
 COPY scripts/ /app/scripts/
 
 # Create necessary directories
@@ -95,6 +97,9 @@ RUN chmod +x /app/scripts/*.sh
 ENV HF_HOME=/app/.hf
 ENV HUGGINGFACE_HUB_CACHE=/app/.hf/hub
 ENV VLLM_CACHE_DIR=/app/.vllm_cache
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    GIT_SSL_CAINFO=/etc/ssl/certs/ca-certificates.crt
 
 # Expose port
 EXPOSE 8000
