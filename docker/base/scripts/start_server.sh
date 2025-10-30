@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common/utils.sh"
+source "${SCRIPT_DIR}/logs.sh"
 
 log_info "Starting Base server on :8000"
 cd /app
