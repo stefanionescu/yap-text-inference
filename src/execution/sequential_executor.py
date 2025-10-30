@@ -13,6 +13,8 @@ from .tool_parser import parse_tool_result
 from .chat_streamer import run_chat_stream
 from ..engines import get_tool_engine
 from ..handlers.session_manager import session_manager
+from ..config.timeouts import TOOL_HARD_TIMEOUT_MS
+from .executor_utils import send_toolcall
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ async def run_sequential_execution(
         history_text: Conversation history
         user_utt: User utterance
     """
-    tool_hard_timeout_ms = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
+    tool_hard_timeout_ms = float(TOOL_HARD_TIMEOUT_MS)
     logger.info(f"sequential_exec: session_id={session_id} tool_timeout_ms={tool_hard_timeout_ms}")
 
     # Run tool router (do not mark active to avoid clobbering chat req id)
@@ -73,19 +75,11 @@ async def run_sequential_execution(
 
     if is_tool:
         # Tool detected: send toolcall response but continue with chat
-        await ws.send_text(json.dumps({
-            "type": "toolcall", 
-            "status": "yes", 
-            "raw": raw_field
-        }))
+        await send_toolcall(ws, "yes", raw_field)
         logger.info("sequential_exec: sent toolcall yes")
     else:
         # Tool says NO (or timed out): notify client
-        await ws.send_text(json.dumps({
-            "type": "toolcall", 
-            "status": "no", 
-            "raw": raw_field
-        }))
+        await send_toolcall(ws, "no", raw_field)
         logger.info("sequential_exec: sent toolcall no")
 
     # Start chat stream (always runs regardless of tool decision)

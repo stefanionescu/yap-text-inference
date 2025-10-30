@@ -15,6 +15,7 @@ from vllm.sampling_params import SamplingParams
 
 from .engines import get_chat_engine, get_tool_engine
 from .config import DEPLOY_CHAT, DEPLOY_TOOL
+from .config.logging import APP_LOG_LEVEL, APP_LOG_FORMAT
 from .handlers.websocket_handler import handle_websocket_connection
 from .handlers.connection_manager import connection_manager
 from .auth import get_api_key
@@ -26,25 +27,19 @@ app = FastAPI(default_response_class=ORJSONResponse)
 # ---- Logging configuration ----
 import logging
 
-_LOG_LEVEL = (os.getenv("APP_LOG_LEVEL", "INFO") or "INFO").upper()
-_LOG_FORMAT = os.getenv(
-    "APP_LOG_FORMAT",
-    "%(levelname)s %(asctime)s [%(name)s:%(lineno)d] %(message)s",
-)
-
 root_logger = logging.getLogger()
 if not root_logger.handlers:
-    logging.basicConfig(level=_LOG_LEVEL, format=_LOG_FORMAT)
+    logging.basicConfig(level=APP_LOG_LEVEL, format=APP_LOG_FORMAT)
 else:
-    root_logger.setLevel(_LOG_LEVEL)
+    root_logger.setLevel(APP_LOG_LEVEL)
     for _h in root_logger.handlers:
         try:
-            _h.setLevel(_LOG_LEVEL)
+            _h.setLevel(APP_LOG_LEVEL)
         except Exception:
             pass
 
 # Ensure our package logs are at least at APP_LOG_LEVEL
-logging.getLogger("src").setLevel(_LOG_LEVEL)
+logging.getLogger("src").setLevel(APP_LOG_LEVEL)
 
 
 @app.get("/healthz")

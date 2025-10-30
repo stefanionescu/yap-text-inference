@@ -13,6 +13,8 @@ from .tool_parser import parse_tool_result
 from .chat_streamer import run_chat_stream
 from ..engines import get_chat_engine, get_tool_engine
 from ..handlers.session_manager import session_manager
+from ..config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
+from .executor_utils import send_toolcall, flush_and_send, cancel_task
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +37,8 @@ async def run_concurrent_execution(
         history_text: Conversation history
         user_utt: User utterance
     """
-    tool_hard_timeout_ms = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
-    prebuffer_max_chars = int(os.getenv("PREBUFFER_MAX_CHARS", "1000"))
+    tool_hard_timeout_ms = float(TOOL_HARD_TIMEOUT_MS)
+    prebuffer_max_chars = int(PREBUFFER_MAX_CHARS)
     logger.info(
         f"concurrent_exec: session_id={session_id} tool_timeout_ms={tool_hard_timeout_ms} prebuffer={prebuffer_max_chars}"
     )
@@ -123,7 +125,7 @@ async def run_concurrent_execution(
 
                 chat_buffer += chunk
                 if len(chat_buffer) >= prebuffer_max_chars:
-                    await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
+                    await flush_and_send(ws, chat_buffer)
                     logger.info(f"concurrent_exec: flushed prebuffer len={len(chat_buffer)}")
                     chat_buffer = ""
 
@@ -160,9 +162,7 @@ async def run_concurrent_execution(
             # Best-effort: cancel any in-flight next-chunk and wait for cancellation to settle
             try:
                 if 'pending_next_chunk_task' in locals() and pending_next_chunk_task and not pending_next_chunk_task.done():
-                    pending_next_chunk_task.cancel()
-                    with contextlib.suppress(Exception):
-                        await pending_next_chunk_task
+                    await cancel_task(pending_next_chunk_task)
             except Exception:
                 pass
             try:
@@ -171,11 +171,7 @@ async def run_concurrent_execution(
                 pass
             
             # Send toolcall response
-            await ws.send_text(json.dumps({
-                "type": "toolcall", 
-                "status": "yes", 
-                "raw": raw_field
-            }))
+            await send_toolcall(ws, "yes", raw_field)
             logger.info("concurrent_exec: sent toolcall yes")
             
             # Start new chat stream (ignoring buffered tokens from first stream)
@@ -208,16 +204,12 @@ async def run_concurrent_execution(
             return
         
         # Tool says NO: flush buffered chat text and continue streaming
-        await ws.send_text(json.dumps({
-            "type": "toolcall", 
-            "status": "no", 
-            "raw": raw_field
-        }))
+        await send_toolcall(ws, "no", raw_field)
         logger.info("concurrent_exec: sent toolcall no")
         
         # Flush any buffered chat text
         if chat_buffer:
-            await ws.send_text(json.dumps({"type": "token", "text": chat_buffer}))
+            await flush_and_send(ws, chat_buffer)
             logger.info(f"concurrent_exec: flushed buffered chat len={len(chat_buffer)}")
         
         # Continue streaming the rest of chat output

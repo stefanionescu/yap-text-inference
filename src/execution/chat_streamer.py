@@ -16,15 +16,16 @@ from ..handlers.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
 
-# --- Chat sampling defaults ---
-CHAT_TEMPERATURE = 0.55
-CHAT_TOP_P = 0.90
-CHAT_TOP_K = 60
-CHAT_MIN_P = 0.05
-CHAT_REPEAT_PENALTY = 1.10
-
-# --- Extra STOP sequences for chat model ---
-STOP = [" |", "  |", "<|im_end|>", "|im_end|>", " ‍♀️", " ‍♂️"]
+from ..config.sampling import (
+    CHAT_TEMPERATURE,
+    CHAT_TOP_P,
+    CHAT_TOP_K,
+    CHAT_MIN_P,
+    CHAT_REPEAT_PENALTY,
+    CHAT_STOP,
+)
+from ..config.timeouts import GEN_TIMEOUT_S
+from .streaming_utils import stream_with_timeout
 
 
 async def run_chat_stream(
@@ -58,7 +59,7 @@ async def run_chat_stream(
         min_p=CHAT_MIN_P,
         repetition_penalty=CHAT_REPEAT_PENALTY,
         max_tokens=CHAT_MAX_OUT,
-        stop=STOP + ["<|end|>", "</s>"],
+        stop=CHAT_STOP,
     )
 
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
@@ -66,15 +67,8 @@ async def run_chat_stream(
     last_text = ""
     ttfb_logged = False
     t_start = time.perf_counter()
-    
-    # Robust env parsing; treat blank/None as 0
-    env_flush = os.getenv("STREAM_FLUSH_MS", "")
-    try:
-        flush_ms = float(env_flush) if env_flush.strip() else float(STREAM_FLUSH_MS)
-    except Exception:
-        flush_ms = float(STREAM_FLUSH_MS)
-    
-    gen_timeout_s = float(os.getenv("GEN_TIMEOUT_S", "60"))
+    flush_ms = float(STREAM_FLUSH_MS)
+    gen_timeout_s = float(GEN_TIMEOUT_S)
     logger.info(
         f"chat_stream: start session_id={session_id} req_id={req_id} max_out={params.max_tokens} "
         f"flush_ms={flush_ms} gen_timeout_s={gen_timeout_s}"
@@ -84,26 +78,23 @@ async def run_chat_stream(
     last_flush = time.perf_counter()
 
     async def _iter_stream():
-        """Internal generator for chat output."""
-        stream = (await get_chat_engine()).generate(
+        """Internal generator for chat output with timeout/cancel handling."""
+        async for out in stream_with_timeout(
+            get_engine=get_chat_engine,
             prompt=prompt,
             sampling_params=params,
             request_id=req_id,
             priority=0,
-        )
-        async for out in stream:
+            timeout_s=gen_timeout_s,
+            cancel_check=lambda: session_manager.session_active_req.get(session_id) != req_id,
+        ):
             yield out
 
     try:
-        # Python 3.8+ compatible timeout handling without asyncio.timeout
-        deadline = time.perf_counter() + gen_timeout_s
         aiter = _iter_stream().__aiter__()
         while True:
-            remaining = deadline - time.perf_counter()
-            if remaining <= 0:
-                raise asyncio.TimeoutError()
             try:
-                out = await asyncio.wait_for(aiter.__anext__(), timeout=remaining)
+                out = await aiter.__anext__()
             except StopAsyncIteration:
                 break
 
@@ -142,10 +133,6 @@ async def run_chat_stream(
                 ttfb_logged = True
 
     except asyncio.TimeoutError:
-        try:
-            await (await get_chat_engine()).abort_request(req_id)
-        except Exception:
-            pass
         logger.info(f"chat_stream: timeout session_id={session_id} req_id={req_id}")
         return
 
