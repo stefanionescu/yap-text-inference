@@ -12,3 +12,5 @@ log_warn() {
 log_error() {
     echo "[ERROR] $(date -Iseconds) $1" >&2
 }
+
+
