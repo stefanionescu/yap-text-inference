@@ -43,8 +43,8 @@ LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
 
 # Start as a new session so Ctrl+C in the calling shell won't touch it.
 # Write the session leader PID so we can kill the whole tree later.
-# Append to server.log to continue the unified deployment+server log
-setsid uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1 >> "${ROOT_DIR}/server.log" 2>&1 &
+# Use python -m uvicorn for robustness (console script may be missing in some envs)
+setsid python -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1 >> "${ROOT_DIR}/server.log" 2>&1 &
 SERVER_PID=$!
 echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 

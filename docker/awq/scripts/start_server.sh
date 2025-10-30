@@ -16,4 +16,4 @@ log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-auto}"
 
 # Start server with logging to stdout (Docker best practice)
 log_info "Starting uvicorn server..."
-exec uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
+exec python -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
