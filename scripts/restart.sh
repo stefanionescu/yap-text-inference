@@ -345,6 +345,17 @@ fi
 log_info "Loading environment defaults..."
 source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 
+# Optional dependency installation for AWQ restart as well
+if [ "${INSTALL_DEPS}" = "1" ]; then
+  log_info "Installing dependencies as requested (--install-deps)"
+  if [ ! -d "${ROOT_DIR}/.venv" ]; then
+    "${SCRIPT_DIR}/steps/02_python_env.sh"
+  fi
+  "${SCRIPT_DIR}/steps/03_install_deps.sh"
+else
+  log_info "Skipping dependency installation (default)"
+fi
+
 # Create server log
 SERVER_LOG="${ROOT_DIR}/server.log"
 touch "${SERVER_LOG}"
