@@ -17,7 +17,7 @@ from .engines import get_chat_engine, get_tool_engine
 from .config import DEPLOY_CHAT, DEPLOY_TOOL
 from .config.logging import APP_LOG_LEVEL, APP_LOG_FORMAT
 from .handlers.websocket_handler import handle_websocket_connection
-from .handlers.connection_manager import connection_manager
+from .handlers.connection_handler import connection_handler
 from .auth import get_api_key
 from .tokens.tokenizer import get_tokenizer
 
@@ -51,7 +51,7 @@ async def healthz():
 @app.get("/status")
 async def status(api_key: str = Depends(get_api_key)):
     """Server status and capacity information (requires authentication)."""
-    capacity = connection_manager.get_capacity_info()
+    capacity = connection_handler.get_capacity_info()
     return {
         "status": "running",
         "connections": capacity,

@@ -6,7 +6,7 @@ from fastapi import WebSocket
 from ...utils.validation import (
     normalize_gender, validate_persona_style, ALLOWED_PERSONALITIES,
 )
-from ..session_manager import session_manager
+from ..handlers.session_handler import session_handler
 
 
 async def handle_set_persona_message(ws: WebSocket, msg: dict, session_id: str) -> None:
@@ -20,7 +20,7 @@ async def handle_set_persona_message(ws: WebSocket, msg: dict, session_id: str) 
 
     g = normalize_gender(msg.get("assistant_gender"))
     if g is not None:
-        changed.update(session_manager.update_session_config(session_id, assistant_gender=g))
+        changed.update(session_handler.update_session_config(session_id, assistant_gender=g))
 
     if "persona_style" in msg and msg["persona_style"]:
         style = msg["persona_style"].strip()
@@ -30,15 +30,15 @@ async def handle_set_persona_message(ws: WebSocket, msg: dict, session_id: str) 
                 "message": f"invalid persona_style '{style}'; allowed: {sorted(ALLOWED_PERSONALITIES)}"
             }))
             return
-        changed.update(session_manager.update_session_config(session_id, persona_style=style))
+        changed.update(session_handler.update_session_config(session_id, persona_style=style))
 
     if "persona_text" in msg:
         # explicit None/empty clears the override
         ov = msg.get("persona_text") or None
-        changed.update(session_manager.update_session_config(session_id, persona_text_override=ov))
+        changed.update(session_handler.update_session_config(session_id, persona_text_override=ov))
 
     # Get updated config for response
-    config = session_manager.get_session_config(session_id)
+    config = session_handler.get_session_config(session_id)
 
     # Send ACK: persona/gender switch applied
     await ws.send_text(json.dumps({

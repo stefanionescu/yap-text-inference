@@ -6,16 +6,14 @@ from typing import Optional
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..engines import get_chat_engine, get_tool_engine
-from ..handlers.session_manager import session_manager
-from ..handlers.connection_manager import connection_manager
+from ..handlers.session_handler import session_handler
+from ..handlers.connection_handler import connection_handler
 from ..auth import authenticate_websocket
-from ..handlers.message_handlers import (
-    handle_start_message,
-    handle_cancel_message,
-    handle_warm_persona_message,
-    handle_warm_history_message,
-    handle_set_persona_message,
-)
+from ..messages.start import handle_start_message
+from ..messages.cancel import handle_cancel_message
+from ..messages.warm_persona import handle_warm_persona_message
+from ..messages.warm_history import handle_warm_history_message
+from ..messages.set_persona import handle_set_persona_message
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +39,11 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         return
     
     # Check connection limit after authentication
-    can_connect = await connection_manager.connect(ws)
+    can_connect = await connection_handler.connect(ws)
     
     if not can_connect:
         # Server at capacity - send error and close connection
-        capacity_info = connection_manager.get_capacity_info()
+        capacity_info = connection_handler.get_capacity_info()
         await ws.accept()  # Need to accept to send error message
         await ws.send_text(json.dumps({
             "type": "error",
@@ -60,7 +58,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     await ws.accept()
     session_id: Optional[str] = None
     
-    logger.info(f"WebSocket connection accepted. Active: {connection_manager.get_connection_count()}")
+    logger.info(f"WebSocket connection accepted. Active: {connection_handler.get_connection_count()}")
 
     try:
         while True:
@@ -69,8 +67,8 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             if msg["type"] == "start":
                 logger.info(f"WS recv: start session_id={msg.get('session_id')} gender={msg.get('assistant_gender')} style={msg.get('persona_style')} len(history)={len(msg.get('history_text',''))} len(user)={len(msg.get('user_utterance',''))}")
                 # Cancel previous session if exists
-                if session_id and session_id in session_manager.session_tasks:
-                    session_manager.cancel_session_requests(session_id)
+                if session_id and session_id in session_handler.session_tasks:
+                    session_handler.cancel_session_requests(session_id)
 
                 session_id = msg["session_id"]
                 await handle_start_message(ws, msg, session_id)
@@ -112,8 +110,8 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             pass
     finally:
         # Always remove connection from manager when done
-        await connection_manager.disconnect(ws)
-        logger.info(f"WebSocket connection closed. Active: {connection_manager.get_connection_count()}")
+        await connection_handler.disconnect(ws)
+        logger.info(f"WebSocket connection closed. Active: {connection_handler.get_connection_count()}")
 
 
 async def _cleanup_session(session_id: Optional[str]) -> None:
@@ -126,8 +124,8 @@ async def _cleanup_session(session_id: Optional[str]) -> None:
         return
         
     # Cancel requests and get request IDs for cleanup
-    session_manager.cancel_session_requests(session_id)
-    req_info = session_manager.cleanup_session_requests(session_id)
+    session_handler.cancel_session_requests(session_id)
+    req_info = session_handler.cleanup_session_requests(session_id)
     
     # Abort active chat request
     try:

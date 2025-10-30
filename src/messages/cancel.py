@@ -4,14 +4,14 @@ import json
 from fastapi import WebSocket
 
 from ...engines import get_chat_engine, get_tool_engine
-from ..session_manager import session_manager
+from ..handlers.session_handler import session_handler
 
 
 async def handle_cancel_message(ws: WebSocket, session_id: str) -> None:
     """Handle 'cancel' message type."""
     if session_id:
-        session_manager.cancel_session_requests(session_id)
-        req_info = session_manager.cleanup_session_requests(session_id)
+        session_handler.cancel_session_requests(session_id)
+        req_info = session_handler.cleanup_session_requests(session_id)
 
         # Abort active chat request
         try:
