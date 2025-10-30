@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+# Logging helpers (timestamped)
 
 timestamp() { date +"%Y-%m-%dT%H:%M:%S%z"; }
 
