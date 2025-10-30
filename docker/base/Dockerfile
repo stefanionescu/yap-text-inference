@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     python3.11-dev \
     python3.11-venv \
     python3-pip \
+    ca-certificates \
     git \
     wget \
     curl \
@@ -143,6 +144,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update && apt-get install -y \
     python3.11 \
     python3.11-venv \
+    ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
@@ -170,7 +172,10 @@ RUN chmod +x /app/scripts/*.sh /app/scripts/common/*.sh /app/scripts/quantizatio
 # Cache directories
 ENV HF_HOME=/app/.hf \
     HUGGINGFACE_HUB_CACHE=/app/.hf/hub \
-    VLLM_CACHE_DIR=/app/.vllm_cache
+    VLLM_CACHE_DIR=/app/.vllm_cache \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    GIT_SSL_CAINFO=/etc/ssl/certs/ca-certificates.crt
 
 # Expose port
 EXPOSE 8000

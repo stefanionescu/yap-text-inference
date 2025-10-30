@@ -110,5 +110,3 @@ log_info "  ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "Health: curl http://localhost:8000/healthz"
 log_success "Build process completed!"
-
-
