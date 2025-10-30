@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common/utils.sh"
+source "${SCRIPT_DIR}/logs.sh"
 
 log_info "Starting Yap Text Inference Docker Container (AWQ Mode)"
 
@@ -37,7 +37,7 @@ fi
 
 # Validate environment and set defaults
 log_info "Setting up environment defaults..."
-source "${SCRIPT_DIR}/common/env.sh"
+source "${SCRIPT_DIR}/bootstrap.sh"
 
 # Display final configuration
 log_info ""
