@@ -3,7 +3,7 @@
 import json
 from fastapi import WebSocket
 
-from ...utils.validation import (
+from ..utils.validation import (
     normalize_gender, validate_persona_style, ALLOWED_PERSONALITIES,
 )
 from ..handlers.session_handler import session_handler

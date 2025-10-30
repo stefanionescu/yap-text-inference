@@ -3,7 +3,7 @@
 import json
 from fastapi import WebSocket
 
-from ...engines import get_chat_engine, get_tool_engine
+from ..engines import get_chat_engine, get_tool_engine
 from ..handlers.session_handler import session_handler
 
 
