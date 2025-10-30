@@ -12,7 +12,7 @@ from vllm.sampling_params import SamplingParams
 from ..engines import get_chat_engine
 from ..persona import build_chat_prompt_with_prefix
 from ..config import CHAT_MAX_OUT, STREAM_FLUSH_MS
-from ..handlers.session_manager import session_manager
+from ..handlers.session_handler import session_handler
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ async def run_chat_stream(
         Text chunks from chat generation
     """
     req_id = request_id or f"chat-{uuid.uuid4()}"
-    session_manager.set_active_request(session_id, req_id)
+    session_handler.set_active_request(session_id, req_id)
 
     params = SamplingParams(
         temperature=CHAT_TEMPERATURE,
@@ -86,7 +86,7 @@ async def run_chat_stream(
             request_id=req_id,
             priority=0,
             timeout_s=gen_timeout_s,
-            cancel_check=lambda: session_manager.session_active_req.get(session_id) != req_id,
+            cancel_check=lambda: session_handler.session_active_req.get(session_id) != req_id,
         ):
             yield out
 
@@ -99,7 +99,7 @@ async def run_chat_stream(
                 break
 
             # Check if request was cancelled
-            if session_manager.session_active_req.get(session_id) != req_id:
+            if session_handler.session_active_req.get(session_id) != req_id:
                 await (await get_chat_engine()).abort_request(req_id)
                 return
 

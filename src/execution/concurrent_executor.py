@@ -12,7 +12,7 @@ from .tool_runner import run_toolcall
 from .tool_parser import parse_tool_result
 from .chat_streamer import run_chat_stream
 from ..engines import get_chat_engine, get_tool_engine
-from ..handlers.session_manager import session_manager
+from ..handlers.session_handler import session_handler
 from ..config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
 from .executor_utils import send_toolcall, flush_and_send, cancel_task
 
@@ -47,8 +47,8 @@ async def run_concurrent_execution(
     tool_req_id = f"tool-{uuid.uuid4()}"
     chat_req_id = f"chat-{uuid.uuid4()}"
     
-    session_manager.set_tool_request(session_id, tool_req_id)
-    session_manager.set_active_request(session_id, chat_req_id)  # chat gets active req id for cancellation
+    session_handler.set_tool_request(session_id, tool_req_id)
+    session_handler.set_active_request(session_id, chat_req_id)  # chat gets active req id for cancellation
     
     # Start tool model with shared history for KV cache efficiency
     tool_coro = run_toolcall(session_id, user_utt, history_text, request_id=tool_req_id, mark_active=False)
@@ -81,9 +81,9 @@ async def run_concurrent_execution(
                 tool_result = await asyncio.wait_for(tool_coro, timeout=tool_hard_timeout_ms / 1000.0)
         except asyncio.TimeoutError:
             try:
-                if session_manager.session_tool_req.get(session_id):
+                if session_handler.session_tool_req.get(session_id):
                     await (await get_tool_engine()).abort_request(
-                        session_manager.session_tool_req.get(session_id, "")
+                        session_handler.session_tool_req.get(session_id, "")
                     )
             except Exception:
                 pass
@@ -153,7 +153,7 @@ async def run_concurrent_execution(
         
         # Cleanup tool req id tracking (no longer in-flight)
         try:
-            session_manager.session_tool_req.pop(session_id, None)
+            session_handler.session_tool_req.pop(session_id, None)
         except Exception:
             pass
         
@@ -176,7 +176,7 @@ async def run_concurrent_execution(
             
             # Start new chat stream (ignoring buffered tokens from first stream)
             new_chat_req_id = f"chat-{uuid.uuid4()}"
-            session_manager.set_active_request(session_id, new_chat_req_id)
+            session_handler.set_active_request(session_id, new_chat_req_id)
             
             new_chat_stream = run_chat_stream(
                 session_id,
@@ -250,9 +250,9 @@ async def run_concurrent_execution(
         except Exception:
             pass
         try:
-            if session_manager.session_tool_req.get(session_id):
+            if session_handler.session_tool_req.get(session_id):
                 await (await get_tool_engine()).abort_request(
-                    session_manager.session_tool_req.get(session_id, "")
+                    session_handler.session_tool_req.get(session_id, "")
                 )
         except Exception:
             pass

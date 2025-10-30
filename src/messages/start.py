@@ -22,7 +22,7 @@ from ...utils.validation import (
     normalize_gender, validate_persona_style, validate_user_identity,
     ALLOWED_PERSONALITIES
 )
-from ..session_manager import session_manager
+from ..handlers.session_handler import session_handler
 from ...execution.sequential_executor import run_sequential_execution
 from ...execution.concurrent_executor import run_concurrent_execution
 from ...execution.chat_streamer import run_chat_stream
@@ -40,7 +40,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         f"style_in={msg.get('persona_style')} hist_len={len(msg.get('history_text',''))} "
         f"user_len={len(msg.get('user_utterance',''))}"
     )
-    session_config = session_manager.initialize_session(session_id)
+    session_config = session_handler.initialize_session(session_id)
 
     # Pull fixed values for this session
     sess_now_str = session_config["now_str"]
@@ -56,7 +56,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         return
 
     if incoming_gender is not None:
-        session_manager.update_session_config(session_id, assistant_gender=incoming_gender)
+        session_handler.update_session_config(session_id, assistant_gender=incoming_gender)
 
     # Validate persona_style: required at start and must be allowed
     incoming_style = (msg.get("persona_style") or "").strip()
@@ -76,15 +76,15 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
                 }))
                 logger.info("handle_start: error → invalid persona_style")
                 return
-            session_manager.update_session_config(session_id, persona_style=incoming_style)
+            session_handler.update_session_config(session_id, persona_style=incoming_style)
 
     # Optional raw persona override for this session
     persona_override = msg.get("persona_text") or None
     if persona_override:
-        session_manager.update_session_config(session_id, persona_text_override=persona_override)
+        session_handler.update_session_config(session_id, persona_text_override=persona_override)
 
     # Get updated config after changes
-    updated_config = session_manager.get_session_config(session_id)
+    updated_config = session_handler.get_session_config(session_id)
 
     # Persona resolution for prefix-sharing: static prefix + small runtime
     if updated_config["persona_text_override"]:
@@ -187,6 +187,6 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
             return
 
     task = asyncio.create_task(_run_start())
-    session_manager.session_tasks[session_id] = task
+    session_handler.session_tasks[session_id] = task
 
 

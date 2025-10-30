@@ -12,7 +12,7 @@ from ..engines import get_tool_engine
 from ..persona import build_toolcall_prompt, build_toolcall_prompt_with_history
 from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
 from ..tokens import trim_history_for_tool_sharing
-from ..handlers.session_manager import session_manager
+from ..handlers.session_handler import session_handler
 from ..config.sampling import (
     TOOL_TEMPERATURE,
     TOOL_TOP_P,
@@ -49,7 +49,7 @@ async def run_toolcall(
     req_id = request_id or f"tool-{uuid.uuid4()}"
     
     if mark_active:
-        session_manager.set_active_request(session_id, req_id)
+        session_handler.set_active_request(session_id, req_id)
 
     params = SamplingParams(
         temperature=TOOL_TEMPERATURE,
@@ -86,7 +86,7 @@ async def run_toolcall(
             priority=1,
             timeout_s=tool_timeout_s,
             cancel_check=(
-                (lambda: session_manager.session_active_req.get(session_id) != req_id)
+                (lambda: session_handler.session_active_req.get(session_id) != req_id)
                 if mark_active else None
             ),
         ):
@@ -102,7 +102,7 @@ async def run_toolcall(
 
             # Check if this request was cancelled
             if (mark_active and 
-                session_manager.session_active_req.get(session_id) != req_id):
+                session_handler.session_active_req.get(session_id) != req_id):
                 return {"cancelled": True}
                 
             if out.outputs:
