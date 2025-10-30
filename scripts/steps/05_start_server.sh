@@ -7,7 +7,8 @@ source "${SCRIPT_DIR}/../lib/common/log.sh"
 log_info "Starting server on :8000 in background"
 cd "${ROOT_DIR}"
 if [ -d "${ROOT_DIR}/.venv" ]; then
-  source "${ROOT_DIR}/.venv/bin/activate"
+  # shellcheck disable=SC1091
+  source "${ROOT_DIR}/.venv/bin/activate" || true
 fi
 
 # Double-start guard and stale PID handling
@@ -41,10 +42,37 @@ LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
   echo "KV_DTYPE=${KV_DTYPE:-}";
 } > "${LAST_ENV_FILE}" 2>/dev/null || true
 
+# Resolve uvicorn launcher robustly (prefer venv, then PATH, then python -m)
+CMD_ARGS=("src.server:app" "--host" "0.0.0.0" "--port" "8000" "--workers" "1")
+
+if [ -x "${ROOT_DIR}/.venv/bin/uvicorn" ]; then
+  CMD=("${ROOT_DIR}/.venv/bin/uvicorn" "${CMD_ARGS[@]}")
+elif command -v uvicorn >/dev/null 2>&1; then
+  CMD=("$(command -v uvicorn)" "${CMD_ARGS[@]}")
+elif [ -x "${ROOT_DIR}/.venv/bin/python" ] && "${ROOT_DIR}/.venv/bin/python" - <<'PY' >/dev/null 2>&1
+import uvicorn
+PY
+then
+  CMD=("${ROOT_DIR}/.venv/bin/python" "-m" "uvicorn" "${CMD_ARGS[@]}")
+elif command -v python3 >/dev/null 2>&1 && python3 - <<'PY' >/dev/null 2>&1
+import uvicorn
+PY
+then
+  CMD=("python3" "-m" "uvicorn" "${CMD_ARGS[@]}")
+elif command -v python >/dev/null 2>&1 && python - <<'PY' >/dev/null 2>&1
+import uvicorn
+PY
+then
+  CMD=("python" "-m" "uvicorn" "${CMD_ARGS[@]}")
+else
+  log_error "uvicorn is not installed in .venv or system."
+  log_error "Run: bash scripts/steps/03_install_deps.sh"
+  exit 127
+fi
+
 # Start as a new session so Ctrl+C in the calling shell won't touch it.
 # Write the session leader PID so we can kill the whole tree later.
-# Use python -m uvicorn for robustness (console script may be missing in some envs)
-setsid python -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1 >> "${ROOT_DIR}/server.log" 2>&1 &
+setsid "${CMD[@]}" >> "${ROOT_DIR}/server.log" 2>&1 &
 SERVER_PID=$!
 echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 
