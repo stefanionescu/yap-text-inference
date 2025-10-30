@@ -5,9 +5,9 @@ import uuid
 from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
-from ...engines import get_chat_engine
-from ...persona import get_static_prefix
-from ...utils.validation import normalize_gender
+from ..engines import get_chat_engine
+from ..persona import get_static_prefix
+from ..utils.validation import normalize_gender
 
 
 async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
