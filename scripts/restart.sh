@@ -4,6 +4,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
+source "${SCRIPT_DIR}/lib/restart/args.sh"
+source "${SCRIPT_DIR}/lib/restart/generic.sh"
+source "${SCRIPT_DIR}/lib/restart/awq.sh"
+source "${SCRIPT_DIR}/lib/restart/env.sh"
+source "${SCRIPT_DIR}/lib/restart/launch.sh"
 
 log_info "Quick restart using existing models and dependencies"
 
@@ -44,213 +49,17 @@ usage() {
   exit 1
 }
 
-# Check if help is requested
-if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+# Parse args using helper
+if ! restart_parse_args "$@"; then
   usage
 fi
+case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
+export INSTALL_DEPS DEPLOY_MODE
 
-# Parse args: deploy mode and optional flags
-DEPLOY_MODE=""
-INSTALL_DEPS="${INSTALL_DEPS:-0}"
-for arg in "$@"; do
-  case "${arg}" in
-    both|chat|tool)
-      if [ -z "${DEPLOY_MODE}" ]; then DEPLOY_MODE="${arg}"; fi ;;
-    --install-deps)
-      INSTALL_DEPS=1 ;;
-    --no-install-deps)
-      INSTALL_DEPS=0 ;;
-    --help|-h)
-      usage ;;
-    *)
-      : ;;
-  esac
-done
-DEPLOY_MODE="${DEPLOY_MODE:-both}"
-case "${DEPLOY_MODE}" in
-  both|chat|tool) : ;;
-  *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;;
-esac
-export INSTALL_DEPS
+# Generic path may start and tail the server; if not applicable, it returns
+restart_generic_restart_if_needed
 
-# --- Generic restart path for non-AWQ quantization (fp8, gptq_marlin, etc.) ---
-# Try to detect last running configuration from server.log or .run/last_config.env when env vars missing
-SERVER_LOG="${ROOT_DIR}/server.log"
-LAST_QUANT=""
-LAST_DEPLOY=""
-LAST_CHAT=""
-LAST_TOOL=""
-LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
-
-if [ -f "${SERVER_LOG}" ]; then
-  LAST_QUANT=$(grep -E "  Quantization: " "${SERVER_LOG}" | tail -n1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
-  LAST_DEPLOY=$(grep -E "  Deploy mode: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Deploy mode: ([^ ]+).*/\1/' || true)
-  LAST_CHAT=$(grep -E "  Chat model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Chat model: *(.*)/\1/' || true)
-  LAST_TOOL=$(grep -E "  Tool model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Tool model: *(.*)/\1/' || true)
-  if [ -z "${LAST_CHAT}" ] || [ "${LAST_CHAT}" = "(none)" ]; then
-    LAST_CHAT=$(grep -E "DEPLOY_MODELS=.* CHAT=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*CHAT=([^ ]*).*/\1/' || true)
-  fi
-  if [ -z "${LAST_TOOL}" ] || [ "${LAST_TOOL}" = "(none)" ]; then
-    LAST_TOOL=$(grep -E "DEPLOY_MODELS=.* TOOL=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*TOOL=([^ ]*).*/\1/' || true)
-  fi
-fi
-
-# Fallback: load last-known env snapshot from .run/last_config.env
-if [ -z "${LAST_QUANT}" ] && [ -f "${LAST_ENV_FILE}" ]; then
-  # shellcheck disable=SC1090
-  source "${LAST_ENV_FILE}" || true
-  LAST_QUANT="${LAST_QUANT:-${QUANTIZATION:-}}"
-  LAST_DEPLOY="${LAST_DEPLOY:-${DEPLOY_MODELS:-}}"
-  LAST_CHAT="${LAST_CHAT:-${CHAT_MODEL:-}}"
-  LAST_TOOL="${LAST_TOOL:-${TOOL_MODEL:-}}"
-fi
-
-# Decide if we should use non-AWQ fast path
-SHOULD_USE_GENERIC=0
-if [ -n "${QUANTIZATION:-}" ] && [ "${QUANTIZATION}" != "awq" ]; then
-  SHOULD_USE_GENERIC=1
-elif [ -n "${LAST_QUANT}" ] && [ "${LAST_QUANT}" != "awq" ]; then
-  SHOULD_USE_GENERIC=1
-fi
-
-if [ "${SHOULD_USE_GENERIC}" = "1" ]; then
-  # Select deploy mode preference
-  SELECTED_DEPLOY="${DEPLOY_MODE}"
-  if [ -z "${SELECTED_DEPLOY}" ] || ! [[ "${SELECTED_DEPLOY}" =~ ^(both|chat|tool)$ ]]; then
-    SELECTED_DEPLOY="${DEPLOY_MODELS:-${LAST_DEPLOY:-both}}"
-  fi
-
-  export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-fp8}}"
-  export DEPLOY_MODELS="${SELECTED_DEPLOY}"
-
-  # Models: prefer env if set, else pick from server.log
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
-    export CHAT_MODEL="${CHAT_MODEL:-${LAST_CHAT:-}}"
-  fi
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
-    export TOOL_MODEL="${TOOL_MODEL:-${LAST_TOOL:-}}"
-  fi
-
-  # Validate
-  if [ "${DEPLOY_MODELS}" != "tool" ] && [ -z "${CHAT_MODEL:-}" ]; then
-    log_error "CHAT_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
-    [ -f "${SERVER_LOG}" ] && log_error "Hint: Could not parse chat model from server.log"
-    exit 1
-  fi
-  if [ "${DEPLOY_MODELS}" != "chat" ] && [ -z "${TOOL_MODEL:-}" ]; then
-    log_error "TOOL_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
-    [ -f "${SERVER_LOG}" ] && log_error "Hint: Could not parse tool model from server.log"
-    exit 1
-  fi
-
-  log_info "Detected last quantization='${QUANTIZATION}', deploy='${DEPLOY_MODELS}'"
-  if [ -n "${CHAT_MODEL:-}" ]; then log_info "  Chat model: ${CHAT_MODEL}"; fi
-  if [ -n "${TOOL_MODEL:-}" ]; then log_info "  Tool model: ${TOOL_MODEL}"; fi
-
-  # Stop server preserving models/deps and restart directly
-  log_info "Stopping server (preserving models and dependencies)..."
-  NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
-
-  log_info "Loading environment defaults..."
-  source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
-
-  if [ "${INSTALL_DEPS}" = "1" ]; then
-    log_info "Installing dependencies as requested (--install-deps)"
-    "${SCRIPT_DIR}/steps/02_python_env.sh"
-    "${SCRIPT_DIR}/steps/03_install_deps.sh"
-  else
-    log_info "Skipping dependency installation (default)"
-  fi
-
-  SERVER_LOG_PATH="${ROOT_DIR}/server.log"
-  touch "${SERVER_LOG_PATH}"
-
-  log_info "Starting server directly with existing models (quant=${QUANTIZATION})..."
-  log_info "All logs: tail -f server.log"
-  log_info "To stop: bash scripts/stop.sh"
-  log_info ""
-
-  mkdir -p "${ROOT_DIR}/.run"
-  setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG_PATH}" 2>&1 &
-  BG_PID=$!
-  echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
-
-  log_info "Server started (PID: $BG_PID)"
-  log_info "Following logs (Ctrl+C detaches, server continues)..."
-  exec tail -n +1 -F "${SERVER_LOG_PATH}"
-fi
-
-# Detect AWQ model sources (local or HuggingFace)
-AWQ_CACHE_DIR="${ROOT_DIR}/.awq"
-CHAT_AWQ_DIR="${AWQ_CACHE_DIR}/chat_awq"
-TOOL_AWQ_DIR="${AWQ_CACHE_DIR}/tool_awq"
-
-USING_LOCAL_MODELS=0
-USING_HF_MODELS=0
-
-# Check for local AWQ models
-if [ -d "${AWQ_CACHE_DIR}" ]; then
-  LOCAL_CHAT_OK=0
-  LOCAL_TOOL_OK=0
-  
-  if [ -f "${CHAT_AWQ_DIR}/awq_config.json" ] || [ -f "${CHAT_AWQ_DIR}/.awq_ok" ]; then
-    LOCAL_CHAT_OK=1
-  fi
-  
-  if [ -f "${TOOL_AWQ_DIR}/awq_config.json" ] || [ -f "${TOOL_AWQ_DIR}/.awq_ok" ]; then
-    LOCAL_TOOL_OK=1
-  fi
-  
-  # Check if we have the required local models for the deploy mode
-  case "${DEPLOY_MODE}" in
-    both)
-      if [ "${LOCAL_CHAT_OK}" = "1" ] && [ "${LOCAL_TOOL_OK}" = "1" ]; then
-        USING_LOCAL_MODELS=1
-      fi
-      ;;
-    chat)
-      if [ "${LOCAL_CHAT_OK}" = "1" ]; then
-        USING_LOCAL_MODELS=1
-      fi
-      ;;
-    tool)
-      if [ "${LOCAL_TOOL_OK}" = "1" ]; then
-        USING_LOCAL_MODELS=1
-      fi
-      ;;
-  esac
-fi
-
-# Check for HuggingFace AWQ models
-HF_CHAT_OK=0
-HF_TOOL_OK=0
-
-if [ -n "${AWQ_CHAT_MODEL:-}" ]; then
-  HF_CHAT_OK=1
-fi
-
-if [ -n "${AWQ_TOOL_MODEL:-}" ]; then
-  HF_TOOL_OK=1
-fi
-
-# Check if we have the required HF models for the deploy mode  
-case "${DEPLOY_MODE}" in
-  both)
-    if [ "${HF_CHAT_OK}" = "1" ] && [ "${HF_TOOL_OK}" = "1" ]; then
-      USING_HF_MODELS=1
-    fi
-    ;;
-  chat)
-    if [ "${HF_CHAT_OK}" = "1" ]; then
-      USING_HF_MODELS=1
-    fi
-    ;;
-  tool)
-    if [ "${HF_TOOL_OK}" = "1" ]; then
-      USING_HF_MODELS=1
-    fi
-    ;;
-esac
+restart_detect_awq_models "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
 if [ "${USING_LOCAL_MODELS}" = "0" ] && [ "${USING_HF_MODELS}" = "0" ]; then
@@ -312,67 +121,7 @@ fi
 log_info "Stopping server (preserving models and dependencies)..."
 NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
-# Set environment for direct server startup
-export QUANTIZATION=awq
-export DEPLOY_MODELS="${DEPLOY_MODE}"
+restart_setup_env_for_awq "${DEPLOY_MODE}"
 
-# Set model paths based on detected source
-if [ "${USING_LOCAL_MODELS}" = "1" ]; then
-  # Use local AWQ models
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-    export CHAT_MODEL="${CHAT_AWQ_DIR}"
-    export CHAT_QUANTIZATION=awq
-  fi
-  
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-    export TOOL_MODEL="${TOOL_AWQ_DIR}" 
-    export TOOL_QUANTIZATION=awq
-  fi
-elif [ "${USING_HF_MODELS}" = "1" ]; then
-  # Use HuggingFace AWQ models 
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-    export CHAT_MODEL="${AWQ_CHAT_MODEL}"
-    export CHAT_QUANTIZATION=awq
-  fi
-  
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-    export TOOL_MODEL="${AWQ_TOOL_MODEL}"
-    export TOOL_QUANTIZATION=awq
-  fi
-fi
-
-# Load environment defaults (for GPU detection and other settings)
-log_info "Loading environment defaults..."
-source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
-
-# Optional dependency installation for AWQ restart as well
-if [ "${INSTALL_DEPS}" = "1" ]; then
-  log_info "Installing dependencies as requested (--install-deps)"
-  if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    "${SCRIPT_DIR}/steps/02_python_env.sh"
-  fi
-  "${SCRIPT_DIR}/steps/03_install_deps.sh"
-else
-  log_info "Skipping dependency installation (default)"
-fi
-
-# Create server log
-SERVER_LOG="${ROOT_DIR}/server.log"
-touch "${SERVER_LOG}"
-
-log_info "Starting server directly with existing AWQ models..."
-log_info "All logs: tail -f server.log"
-log_info "To stop: bash scripts/stop.sh"
-log_info ""
-
-# Start server in background and tail logs
-mkdir -p "${ROOT_DIR}/.run"
-setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG}" 2>&1 &
-BG_PID=$!
-echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
-
-log_info "Server started (PID: $BG_PID)"
-log_info "Following logs (Ctrl+C detaches, server continues)..."
-
-# Tail logs
-exec tail -n +1 -F "${SERVER_LOG}"
+restart_apply_defaults_and_deps
+restart_start_server_background
