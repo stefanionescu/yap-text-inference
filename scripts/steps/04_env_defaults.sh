@@ -2,17 +2,17 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-source "${SCRIPT_DIR}/../lib/log.sh"
+source "${SCRIPT_DIR}/../lib/common/log.sh"
 
 # Shared library functions
 LIB_DIR="${SCRIPT_DIR}/../lib"
-source "${LIB_DIR}/env_detect.sh"
-source "${LIB_DIR}/env_paths.sh"
-source "${LIB_DIR}/env_quantization.sh"
-source "${LIB_DIR}/env_deploy.sh"
-source "${LIB_DIR}/env_limits.sh"
-source "${LIB_DIR}/env_engine.sh"
-source "${LIB_DIR}/env_awq.sh"
+source "${LIB_DIR}/env/detect.sh"
+source "${LIB_DIR}/env/paths.sh"
+source "${LIB_DIR}/env/quantization.sh"
+source "${LIB_DIR}/env/deploy.sh"
+source "${LIB_DIR}/env/limits.sh"
+source "${LIB_DIR}/env/engine.sh"
+source "${LIB_DIR}/env/awq.sh"
 
 log_info "Setting environment defaults"
 
