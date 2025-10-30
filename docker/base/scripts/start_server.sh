@@ -16,6 +16,4 @@ log_info "VLLM_USE_V1=${VLLM_USE_V1:-1} KV_DTYPE=${KV_DTYPE:-auto}"
 log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-auto}"
 
 log_info "Starting uvicorn server..."
-exec uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
-
-
+exec python -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
