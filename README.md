@@ -225,6 +225,9 @@ NUKE_ALL=0 bash scripts/stop.sh
 # Quick restart using existing AWQ models
 bash scripts/restart.sh [both|chat|tool]
 
+# Restart and reinstall dependencies (e.g., refresh venv)
+bash scripts/restart.sh both --install-deps
+
 # Full stop and restart cycle
 bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
 ```

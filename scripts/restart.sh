@@ -9,12 +9,15 @@ log_info "Quick restart using existing models and dependencies"
 
 usage() {
   echo "Usage:"
-  echo "  $0 [deploy_mode]    - Restart using existing AWQ models"
+  echo "  $0 [deploy_mode] [--install-deps]    - Restart using existing AWQ models"
   echo ""
   echo "Deploy modes:"
   echo "  both (default)  - Use both chat and tool AWQ models"
   echo "  chat            - Use only chat AWQ model"  
   echo "  tool            - Use only tool AWQ model"
+  echo ""
+  echo "Flags:"
+  echo "  --install-deps   - Reinstall/ensure Python deps before starting (default: off)"
   echo ""
   echo "AWQ Model Sources (auto-detected):"
   echo "  • Local models: Uses .awq/ directory (created by full deployment)"
@@ -37,6 +40,7 @@ usage() {
   echo "  $0 chat                    # Restart chat-only"
   echo "  AWQ_CHAT_MODEL=yapwithai/impish-12b-awq $0 chat"
   echo "  CONCURRENT_MODEL_CALL=0 $0 # Restart sequential mode"
+  echo "  $0 both --install-deps    # Force reinstall deps before start"
   exit 1
 }
 
@@ -45,16 +49,29 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
   usage
 fi
 
-# Parse deployment mode
-DEPLOY_MODE="${1:-both}"
+# Parse args: deploy mode and optional flags
+DEPLOY_MODE=""
+INSTALL_DEPS="${INSTALL_DEPS:-0}"
+for arg in "$@"; do
+  case "${arg}" in
+    both|chat|tool)
+      if [ -z "${DEPLOY_MODE}" ]; then DEPLOY_MODE="${arg}"; fi ;;
+    --install-deps)
+      INSTALL_DEPS=1 ;;
+    --no-install-deps)
+      INSTALL_DEPS=0 ;;
+    --help|-h)
+      usage ;;
+    *)
+      : ;;
+  esac
+done
+DEPLOY_MODE="${DEPLOY_MODE:-both}"
 case "${DEPLOY_MODE}" in
-  both|chat|tool)
-    ;;
-  *)
-    log_warn "Invalid deploy mode '${DEPLOY_MODE}'"
-    usage
-    ;;
+  both|chat|tool) : ;;
+  *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;;
 esac
+export INSTALL_DEPS
 
 # --- Generic restart path for non-AWQ quantization (fp8, gptq_marlin, etc.) ---
 # Try to detect last running configuration from server.log or .run/last_config.env when env vars missing
@@ -136,6 +153,14 @@ if [ "${SHOULD_USE_GENERIC}" = "1" ]; then
 
   log_info "Loading environment defaults..."
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
+
+  if [ "${INSTALL_DEPS}" = "1" ]; then
+    log_info "Installing dependencies as requested (--install-deps)"
+    "${SCRIPT_DIR}/steps/02_python_env.sh"
+    "${SCRIPT_DIR}/steps/03_install_deps.sh"
+  else
+    log_info "Skipping dependency installation (default)"
+  fi
 
   SERVER_LOG_PATH="${ROOT_DIR}/server.log"
   touch "${SERVER_LOG_PATH}"
@@ -247,10 +272,21 @@ if [ ! -d "${ROOT_DIR}/.venv" ] && [ "${USING_HF_MODELS}" = "0" ]; then
 fi
 
 # For HF models, create venv if it doesn't exist
-if [ "${USING_HF_MODELS}" = "1" ] && [ ! -d "${ROOT_DIR}/.venv" ]; then
-  log_info "HuggingFace AWQ models detected - setting up minimal environment"
-  "${SCRIPT_DIR}/steps/02_python_env.sh"
-  "${SCRIPT_DIR}/steps/03_install_deps.sh"
+if [ "${USING_HF_MODELS}" = "1" ]; then
+  if [ ! -d "${ROOT_DIR}/.venv" ]; then
+    if [ "${INSTALL_DEPS}" = "1" ]; then
+      log_info "No venv found; creating and installing deps (--install-deps)"
+      "${SCRIPT_DIR}/steps/02_python_env.sh"
+      "${SCRIPT_DIR}/steps/03_install_deps.sh"
+    else
+      log_error "No virtual environment found at ${ROOT_DIR}/.venv"
+      log_error "Run with --install-deps or run full deployment to set up the environment."
+      exit 1
+    fi
+  elif [ "${INSTALL_DEPS}" = "1" ]; then
+    log_info "Reinstalling/upgrading dependencies in existing venv (--install-deps)"
+    "${SCRIPT_DIR}/steps/03_install_deps.sh"
+  fi
 fi
 
 # Report detected model sources
