@@ -132,10 +132,10 @@ if [ "${SHOULD_USE_GENERIC}" = "1" ]; then
 
   # Stop server preserving models/deps and restart directly
   log_info "Stopping server (preserving models and dependencies)..."
-  NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
+  NUKE_ALL=0 "${ROOT_DIR}/scripts/stop.sh"
 
   log_info "Loading environment defaults..."
-  source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
+  source "${ROOT_DIR}/scripts/steps/04_env_defaults.sh"
 
   SERVER_LOG_PATH="${ROOT_DIR}/server.log"
   touch "${SERVER_LOG_PATH}"
@@ -146,7 +146,7 @@ if [ "${SHOULD_USE_GENERIC}" = "1" ]; then
   log_info ""
 
   mkdir -p "${ROOT_DIR}/.run"
-  setsid nohup "${SCRIPT_DIR}/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG_PATH}" 2>&1 &
+  setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG_PATH}" 2>&1 &
   BG_PID=$!
   echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
 
@@ -249,8 +249,8 @@ fi
 # For HF models, create venv if it doesn't exist
 if [ "${USING_HF_MODELS}" = "1" ] && [ ! -d "${ROOT_DIR}/.venv" ]; then
   log_info "HuggingFace AWQ models detected - setting up minimal environment"
-  "${SCRIPT_DIR}/steps/02_python_env.sh"
-  "${SCRIPT_DIR}/steps/03_install_deps.sh"
+  "${ROOT_DIR}/scripts/steps/02_python_env.sh"
+  "${ROOT_DIR}/scripts/steps/03_install_deps.sh"
 fi
 
 # Report detected model sources
@@ -274,7 +274,7 @@ fi
 
 # Light stop - preserve models and dependencies
 log_info "Stopping server (preserving models and dependencies)..."
-NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
+NUKE_ALL=0 "${ROOT_DIR}/scripts/stop.sh"
 
 # Set environment for direct server startup
 export QUANTIZATION=awq
@@ -307,7 +307,7 @@ fi
 
 # Load environment defaults (for GPU detection and other settings)
 log_info "Loading environment defaults..."
-source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
+source "${ROOT_DIR}/scripts/steps/04_env_defaults.sh"
 
 # Create server log
 SERVER_LOG="${ROOT_DIR}/server.log"
@@ -320,7 +320,7 @@ log_info ""
 
 # Start server in background and tail logs
 mkdir -p "${ROOT_DIR}/.run"
-setsid nohup "${SCRIPT_DIR}/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG}" 2>&1 &
+setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG}" 2>&1 &
 BG_PID=$!
 echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
 
