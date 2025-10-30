@@ -2,7 +2,8 @@
 set -euo pipefail
 THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Respect existing ROOT_DIR when this file is sourced; fall back to repo root when executed directly
-ROOT_DIR="${ROOT_DIR:-$(cd "${THIS_SCRIPT_DIR}/.." && pwd)}"
+# Repo root is two levels up from steps/ when executed directly
+ROOT_DIR="${ROOT_DIR:-$(cd "${THIS_SCRIPT_DIR}/../.." && pwd)}"
 source "${THIS_SCRIPT_DIR}/../lib/common/log.sh"
 
 # Shared library functions
