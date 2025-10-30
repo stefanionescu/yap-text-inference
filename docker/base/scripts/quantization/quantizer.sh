@@ -2,7 +2,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="/app"
-source "${SCRIPT_DIR}/../common/utils.sh"
+source "${SCRIPT_DIR}/../logs.sh"
 
 # Only act for AWQ
 if [ "${QUANTIZATION:-}" != "awq" ]; then

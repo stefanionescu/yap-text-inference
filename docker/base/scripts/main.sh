@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common/utils.sh"
+source "${SCRIPT_DIR}/logs.sh"
 
 log_info "Starting Yap Text Inference Docker Container (Base)"
 
@@ -47,7 +47,7 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
 fi
 
 # Load env and decide quantization choices
-source "${SCRIPT_DIR}/common/deps.sh"
+source "${SCRIPT_DIR}/bootstrap.sh"
 
 # If QUANTIZATION=awq, run optional local quantization unless pre-quantized models are already provided
 if [ "${QUANTIZATION}" = "awq" ]; then
