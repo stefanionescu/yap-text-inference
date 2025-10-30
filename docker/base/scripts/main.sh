@@ -47,11 +47,11 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
 fi
 
 # Load env and decide quantization choices
-source "${SCRIPT_DIR}/common/env.sh"
+source "${SCRIPT_DIR}/common/deps.sh"
 
 # If QUANTIZATION=awq, run optional local quantization unless pre-quantized models are already provided
 if [ "${QUANTIZATION}" = "awq" ]; then
-  source "${SCRIPT_DIR}/quantization/awq_quantizer.sh"
+  source "${SCRIPT_DIR}/quantization/quantizer.sh"
 fi
 
 log_info "Starting server..."
