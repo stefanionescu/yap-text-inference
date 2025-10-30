@@ -2,15 +2,15 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-source "${SCRIPT_DIR}/../lib/log.sh"
+source "${SCRIPT_DIR}/../lib/common/log.sh"
 
 # Shared library functions
 LIB_DIR="${SCRIPT_DIR}/../lib"
-source "${LIB_DIR}/certs.sh"
-source "${LIB_DIR}/torch_env.sh"
-source "${LIB_DIR}/venv.sh"
-source "${LIB_DIR}/reqs.sh"
-source "${LIB_DIR}/flashinfer.sh"
+source "${LIB_DIR}/deps/certs.sh"
+source "${LIB_DIR}/torch/env.sh"
+source "${LIB_DIR}/deps/venv.sh"
+source "${LIB_DIR}/deps/reqs.sh"
+source "${LIB_DIR}/deps/flashinfer.sh"
 
 log_info "Installing Python dependencies"
 
