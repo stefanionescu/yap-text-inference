@@ -77,29 +77,31 @@ async def startup_warmup():
         print(f"Warning: Tokenizer warmup failed: {e}")
         pass
 
-    if DEPLOY_CHAT:
-        rid_c = f"warm-chat-{uuid.uuid4()}"
-        # Construct engine and force first token generation
-        stream_c = (await get_chat_engine()).generate(
-            prompt="<|persona|>\nWARM\n<|assistant|>\n",
-            sampling_params=params,
-            request_id=rid_c,
-            priority=1,
-        )
-        async for _ in stream_c:
-            break
+    async def _warm(name: str, get_engine_fn, prompt: str, priority: int) -> None:
+        try:
+            rid = f"warm-{name}-{uuid.uuid4()}"
+            engine = await get_engine_fn()
+            stream = engine.generate(
+                prompt=prompt,
+                sampling_params=params,
+                request_id=rid,
+                priority=priority,
+            )
+            async for _ in stream:
+                break
+        except Exception as e:
+            # Do not fail startup if warmup errors; models will still lazy-load
+            print(f"Warning: warmup for {name} failed: {e}")
 
+    tasks = []
+    if DEPLOY_CHAT:
+        tasks.append(_warm("chat", get_chat_engine, "<|persona|>\nWARM\n<|assistant|>\n", 0))
     if DEPLOY_TOOL:
-        rid_t = f"warm-tool-{uuid.uuid4()}"
-        # Construct engine and force first token generation
-        stream_t = (await get_tool_engine()).generate(
-            prompt="warmup",
-            sampling_params=params,
-            request_id=rid_t,
-            priority=1,
-        )
-        async for _ in stream_t:
-            break
+        tasks.append(_warm("tool", get_tool_engine, "warmup", 1))
+    if tasks:
+        # Run warmups concurrently
+        import asyncio as _asyncio
+        await _asyncio.gather(*tasks)
 
 
 @app.websocket("/ws")
