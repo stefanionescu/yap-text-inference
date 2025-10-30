@@ -15,17 +15,11 @@ FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error(){ echo -e "${RED}[ERROR]${NC} $1"; }
-log_success(){ echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+# Modules
+source "${SCRIPT_DIR}/scripts/build/logs.sh"
+source "${SCRIPT_DIR}/scripts/build/docker.sh"
+source "${SCRIPT_DIR}/scripts/build/args.sh"
+source "${SCRIPT_DIR}/scripts/build/context.sh"
 
 usage() {
   echo "Usage: $0"
@@ -64,24 +58,8 @@ if [[ "${DOCKER_USERNAME}" == "your-username" ]]; then
   exit 1
 fi
 
-if ! docker info >/dev/null 2>&1; then
-  log_error "Docker is not running. Please start Docker and try again."
-  exit 1
-fi
+require_docker
 
-ensure_docker_login() {
-  if docker info 2>/dev/null | grep -q "Username:"; then
-    log_info "Docker login detected."
-    return
-  fi
-  if [ -n "${DOCKER_PASSWORD:-}" ]; then
-    echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin && return
-  fi
-  if [ -n "${DOCKER_TOKEN:-}" ]; then
-    echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USERNAME}" --password-stdin && return
-  fi
-  log_warn "Not logged in to Docker Hub and no DOCKER_PASSWORD/DOCKER_TOKEN set; push may fail."
-}
 ensure_docker_login
 
 log_info "Building Yap Text Inference Docker image (Base)"
@@ -89,26 +67,11 @@ log_info "Image: ${FULL_IMAGE_NAME}"
 log_info "Platform: ${PLATFORM}"
 log_info "Dockerfile: ${DOCKERFILE}"
 
-# Prepare temp build context (ensures only necessary files are sent)
-TMP_BUILD_DIR="$(mktemp -d -t yap-base-build-XXXXXX)"
-cleanup() { rm -rf "${TMP_BUILD_DIR}" 2>/dev/null || true; }
-trap cleanup EXIT
+prepare_build_context
 
-cp -a "${DOCKERFILE}" "${TMP_BUILD_DIR}/Dockerfile"
-cp -a "${SCRIPT_DIR}/scripts" "${TMP_BUILD_DIR}/scripts"
-cp -a "${ROOT_DIR}/requirements.txt" "${TMP_BUILD_DIR}/requirements.txt"
-cp -a "${ROOT_DIR}/src" "${TMP_BUILD_DIR}/src"
-cp -a "${ROOT_DIR}/prompts" "${TMP_BUILD_DIR}/prompts"
-cp -a "${ROOT_DIR}/test" "${TMP_BUILD_DIR}/test"
-
-BUILD_ARGS=(
-  --file "${TMP_BUILD_DIR}/Dockerfile"
-  --tag "${FULL_IMAGE_NAME}"
-  --platform "${PLATFORM}"
-)
+init_build_args
 
 # Append optional build args if provided
-append_arg() { local k="$1"; local v="$2"; if [ -n "${v}" ]; then BUILD_ARGS+=(--build-arg "${k}=${v}"); fi; }
 append_arg PRELOAD_MODELS "${PRELOAD_MODELS:-}"
 append_arg DEPLOY_MODELS "${DEPLOY_MODELS:-}"
 append_arg CHAT_MODEL "${CHAT_MODEL:-}"
