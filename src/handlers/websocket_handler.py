@@ -5,7 +5,7 @@ import logging
 from typing import Optional
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..engines import get_chat_engine, get_tool_engine
+from ..engines import get_chat_engine, get_tool_engine, clear_all_engine_caches_on_disconnect
 from ..handlers.session_handler import session_handler
 from ..handlers.connection_handler import connection_handler
 from ..auth import authenticate_websocket
@@ -66,7 +66,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             msg = json.loads(await ws.receive_text())
 
             if msg["type"] == "start":
-                logger.info(f"WS recv: start session_id={msg.get('session_id')} gender={msg.get('assistant_gender')} style={msg.get('persona_style')} len(history)={len(msg.get('history_text',''))} len(user)={len(msg.get('user_utterance',''))}")
+                logger.info(f"WS recv: start session_id={msg.get('session_id')} gender={msg.get('assistant_gender')} len(history)={len(msg.get('history_text',''))} len(user)={len(msg.get('user_utterance',''))}")
                 # Cancel previous session if exists
                 if session_id and session_id in session_handler.session_tasks:
                     session_handler.cancel_session_requests(session_id)
@@ -143,5 +143,11 @@ async def _cleanup_session(session_id: Optional[str]) -> None:
     try:
         if req_info["tool"]:
             await (await get_tool_engine()).abort_request(req_info["tool"])
+    except Exception:
+        pass
+
+    # Clear caches for any constructed engines (chat/tool) after disconnect
+    try:
+        await clear_all_engine_caches_on_disconnect()
     except Exception:
         pass

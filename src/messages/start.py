@@ -10,16 +10,17 @@ from ..config import (
     HISTORY_MAX_TOKENS, USER_UTT_MAX_TOKENS,
     CONCURRENT_MODEL_CALL,
     DEPLOY_CHAT, DEPLOY_TOOL,
+    CHAT_PROMPT_MAX_TOKENS, TOOL_PROMPT_MAX_TOKENS,
 )
-from ..persona import get_static_prefix, compose_persona_runtime
 from ..tokens import (
-    count_tokens, trim_text_to_token_limit,
-    trim_history_preserve_messages
+    count_tokens_chat, count_tokens_tool,
+    trim_text_to_token_limit_chat,
+    trim_history_preserve_messages_chat,
 )
 from ..utils.validation import (
-    normalize_gender, validate_persona_style, validate_user_identity,
-    ALLOWED_PERSONALITIES
+    normalize_gender,
 )
+from ..utils.sanitize import sanitize_prompt
 from ..handlers.session_handler import session_handler
 from ..execution.sequential_executor import run_sequential_execution
 from ..execution.concurrent_executor import run_concurrent_execution
@@ -35,68 +36,97 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     """Handle 'start' message type."""
     logger.info(
         f"handle_start: session_id={session_id} gender_in={msg.get('assistant_gender')} "
-        f"style_in={msg.get('persona_style')} hist_len={len(msg.get('history_text',''))} "
-        f"user_len={len(msg.get('user_utterance',''))}"
+        f"hist_len={len(msg.get('history_text',''))} user_len={len(msg.get('user_utterance',''))}"
     )
     session_config = session_handler.initialize_session(session_id)
 
     # Pull fixed values for this session
     sess_now_str = session_config["now_str"]
 
-    # Require assistant_gender & persona_style on start; allow override persona
+    # assistant_gender no longer required for dynamic prompts; keep if provided
     incoming_gender = normalize_gender(msg.get("assistant_gender"))
-    if incoming_gender is None and session_config.get("assistant_gender") is None:
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "message": "assistant_gender is required on start: use 'female'/'male' (or 'woman'/'man')."
-        }))
-        logger.info("handle_start: error → missing assistant_gender")
-        return
-
     if incoming_gender is not None:
         session_handler.update_session_config(session_id, assistant_gender=incoming_gender)
 
-    # Validate persona_style: required at start and must be allowed
-    incoming_style = (msg.get("persona_style") or "").strip()
-    if not session_config.get("persona_text_override"):
-        if not incoming_style and session_config.get("persona_style") is None:
+    # Require client-provided prompts depending on deployment mode
+    # chat prompt alias: allow legacy 'persona_text'
+    raw_chat_prompt = msg.get("chat_prompt") or msg.get("persona_text")
+    raw_tool_prompt = msg.get("tool_prompt")
+
+    if DEPLOY_CHAT and not raw_chat_prompt:
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "missing_chat_prompt",
+            "message": "chat_prompt is required for this deployment"
+        }))
+        await ws.close(code=1008)
+        logger.info("handle_start: error → missing chat_prompt; connection closed")
+        return
+
+    if DEPLOY_TOOL and not raw_tool_prompt:
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "missing_tool_prompt",
+            "message": "tool_prompt is required for this deployment"
+        }))
+        await ws.close(code=1008)
+        logger.info("handle_start: error → missing tool_prompt; connection closed")
+        return
+
+    # Sanitize and token-limit prompts
+    if raw_chat_prompt is not None:
+        try:
+            chat_prompt = sanitize_prompt(raw_chat_prompt)
+        except ValueError as e:
             await ws.send_text(json.dumps({
                 "type": "error",
-                "message": f"persona_style is required on start; allowed: {sorted(ALLOWED_PERSONALITIES)}"
+                "error_code": "invalid_chat_prompt",
+                "message": str(e)
             }))
-            logger.info("handle_start: error → missing persona_style")
+            await ws.close(code=1008)
+            logger.info("handle_start: error → invalid chat_prompt; connection closed")
             return
-        if incoming_style:
-            if not validate_persona_style(incoming_style):
-                await ws.send_text(json.dumps({
-                    "type": "error",
-                    "message": f"invalid persona_style '{incoming_style}'; allowed: {sorted(ALLOWED_PERSONALITIES)}"
-                }))
-                logger.info("handle_start: error → invalid persona_style")
-                return
-            session_handler.update_session_config(session_id, persona_style=incoming_style)
+        # Enforce token limit
+        if count_tokens_chat(chat_prompt) > CHAT_PROMPT_MAX_TOKENS:
+            await ws.send_text(json.dumps({
+                "type": "error",
+                "error_code": "chat_prompt_too_long",
+                "message": f"chat_prompt exceeds token limit ({CHAT_PROMPT_MAX_TOKENS})"
+            }))
+            await ws.close(code=1008)
+            logger.info("handle_start: error → chat_prompt too long; connection closed")
+            return
+        session_handler.update_session_config(session_id, persona_text_override=chat_prompt)
 
-    # Optional raw persona override for this session
-    persona_override = msg.get("persona_text") or None
-    if persona_override:
-        session_handler.update_session_config(session_id, persona_text_override=persona_override)
+    if raw_tool_prompt is not None:
+        try:
+            tool_prompt = sanitize_prompt(raw_tool_prompt)
+        except ValueError as e:
+            await ws.send_text(json.dumps({
+                "type": "error",
+                "error_code": "invalid_tool_prompt",
+                "message": str(e)
+            }))
+            await ws.close(code=1008)
+            logger.info("handle_start: error → invalid tool_prompt; connection closed")
+            return
+        if count_tokens_tool(tool_prompt) > TOOL_PROMPT_MAX_TOKENS:
+            await ws.send_text(json.dumps({
+                "type": "error",
+                "error_code": "tool_prompt_too_long",
+                "message": f"tool_prompt exceeds token limit ({TOOL_PROMPT_MAX_TOKENS})"
+            }))
+            await ws.close(code=1008)
+            logger.info("handle_start: error → tool_prompt too long; connection closed")
+            return
+        session_handler.update_session_config(session_id, tool_prompt_override=tool_prompt)
 
     # Get updated config after changes
     updated_config = session_handler.get_session_config(session_id)
 
-    # Persona resolution for prefix-sharing: static prefix + small runtime
-    if updated_config["persona_text_override"]:
-        static_prefix = updated_config["persona_text_override"]
-        runtime_text = ""
-    else:
-        static_prefix = get_static_prefix(
-            style=updated_config["persona_style"],
-            gender=updated_config["assistant_gender"] or "woman",
-        )
-        runtime_text = compose_persona_runtime(
-            user_identity=validate_user_identity(msg.get("user_identity", "non-binary")),
-            now_str=sess_now_str,
-        )
+    # Dynamic prompts: chat prompt must be provided when chat is deployed
+    static_prefix = updated_config.get("persona_text_override") or ""
+    runtime_text = ""
 
     # Send ACK: session start / (re)config pinned
     await ws.send_text(json.dumps({
@@ -105,8 +135,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         "ok": True,
         "session_id": session_id,
         "now": sess_now_str,
-        "assistant_gender": updated_config["assistant_gender"],
-        "persona_style": updated_config["persona_style"],
+        "assistant_gender": updated_config.get("assistant_gender"),
         "persona_text_override": bool(updated_config["persona_text_override"]),
         "models": {
             "chat": updated_config["chat_model"],
@@ -122,13 +151,13 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     history_text = msg.get("history_text", "")
     user_utt = msg["user_utterance"]
 
-    # Trim user utterance to first USER_UTT_MAX_TOKENS (exact)
-    user_utt = trim_text_to_token_limit(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+    # Trim user utterance for chat using chat tokenizer
+    user_utt = trim_text_to_token_limit_chat(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
 
     # Trim rolling history to HISTORY_MAX_TOKENS, keep most recent
     # Use message-boundary-aware trimming to avoid partial messages
-    if count_tokens(history_text) > HISTORY_MAX_TOKENS:
-        history_text = trim_history_preserve_messages(
+    if count_tokens_chat(history_text) > HISTORY_MAX_TOKENS:
+        history_text = trim_history_preserve_messages_chat(
             history_text,
             HISTORY_MAX_TOKENS,
         )
