@@ -8,6 +8,11 @@ CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user + 1200 history
 
+# Max tokens allowed for incoming prompts (provided by clients)
+# Defaults per request: 1800 for both chat and tool prompts
+CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1800"))
+TOOL_PROMPT_MAX_TOKENS = int(os.getenv("TOOL_PROMPT_MAX_TOKENS", "1800"))
+
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
@@ -72,6 +77,8 @@ __all__ = [
     "CHAT_MAX_OUT",
     "TOOL_MAX_OUT",
     "TOOL_MAX_LEN",
+    "CHAT_PROMPT_MAX_TOKENS",
+    "TOOL_PROMPT_MAX_TOKENS",
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
     "USER_UTT_MAX_TOKENS",

@@ -1,6 +1,7 @@
-"""Tokenizer access: provides a cached tokenizer instance for token utils.
+"""Tokenizer access for chat and tool models.
 
-This module exposes only `get_tokenizer()` for use by token utilities.
+Provides cached tokenizers for each deployed model so counting/trimming always
+uses the correct tokenizer (chat vs tool).
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from typing import Optional
 
 from tokenizers import Tokenizer
 
-from ..config import CHAT_MODEL
+from ..config import CHAT_MODEL, TOOL_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -155,17 +156,29 @@ class FastTokenizer:
             return self._hf_tok.decode(kept, skip_special_tokens=True, clean_up_tokenization_spaces=False)  # type: ignore[attr-defined]
 
 
-_fast_tok: Optional[FastTokenizer] = None
-_fast_tok_lock = Lock()
+_chat_tok: Optional[FastTokenizer] = None
+_tool_tok: Optional[FastTokenizer] = None
+_chat_tok_lock = Lock()
+_tool_tok_lock = Lock()
 
 
-def get_tokenizer() -> FastTokenizer:
-    global _fast_tok
-    if _fast_tok is not None:
-        return _fast_tok
-    with _fast_tok_lock:
-        if _fast_tok is None:
-            _fast_tok = FastTokenizer(CHAT_MODEL)
-    return _fast_tok
+def get_chat_tokenizer() -> FastTokenizer:
+    global _chat_tok
+    if _chat_tok is not None:
+        return _chat_tok
+    with _chat_tok_lock:
+        if _chat_tok is None:
+            _chat_tok = FastTokenizer(CHAT_MODEL)
+    return _chat_tok
+
+
+def get_tool_tokenizer() -> FastTokenizer:
+    global _tool_tok
+    if _tool_tok is not None:
+        return _tool_tok
+    with _tool_tok_lock:
+        if _tool_tok is None:
+            _tool_tok = FastTokenizer(TOOL_MODEL)
+    return _tool_tok
 
 

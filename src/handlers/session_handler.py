@@ -37,8 +37,8 @@ class SessionHandler:
                 "now_str": now_str,
                 # defaults that can be overridden on start
                 "assistant_gender": None,
-                "persona_style": "wholesome",
                 "persona_text_override": None,
+                "tool_prompt_override": None,
                 # expose models (handy for client logs)
                 "chat_model": CHAT_MODEL,
                 "tool_model": TOOL_MODEL,
@@ -50,15 +50,14 @@ class SessionHandler:
         self,
         session_id: str,
         assistant_gender: Optional[str] = None,
-        persona_style: Optional[str] = None,
         persona_text_override: Optional[str] = None,
+        tool_prompt_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Update session configuration.
 
         Args:
             session_id: Session identifier
             assistant_gender: Normalized assistant gender
-            persona_style: Persona style string
             persona_text_override: Raw persona text override
 
         Returns:
@@ -73,15 +72,17 @@ class SessionHandler:
             self.session_meta[session_id]["assistant_gender"] = assistant_gender
             changed["assistant_gender"] = assistant_gender
 
-        if persona_style is not None:
-            self.session_meta[session_id]["persona_style"] = persona_style
-            changed["persona_style"] = persona_style
-
         if persona_text_override is not None:
             # explicit None/empty clears the override
             override_val = persona_text_override or None
             self.session_meta[session_id]["persona_text_override"] = override_val
             changed["persona_text_override"] = bool(override_val)
+
+        if tool_prompt_override is not None:
+            # explicit None/empty clears the override
+            tool_val = tool_prompt_override or None
+            self.session_meta[session_id]["tool_prompt_override"] = tool_val
+            changed["tool_prompt_override"] = bool(tool_val)
 
         return changed
 

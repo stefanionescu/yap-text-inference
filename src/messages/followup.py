@@ -12,7 +12,6 @@ from typing import Dict, Any
 from fastapi import WebSocket
 
 from ..handlers.session_handler import session_handler
-from ..persona import get_static_prefix, compose_persona_runtime
 from ..execution.chat_streamer import run_chat_stream
 from ..config import SCREEN_CHECKED_PREFIX
 
@@ -43,19 +42,12 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
 
     history_text = msg.get("history_text", "")
 
-    # Resolve persona
-    if cfg["persona_text_override"]:
-        static_prefix = cfg["persona_text_override"]
-        runtime_text = ""
-    else:
-        static_prefix = get_static_prefix(
-            style=cfg["persona_style"],
-            gender=cfg["assistant_gender"] or "woman",
-        )
-        runtime_text = compose_persona_runtime(
-            user_identity=msg.get("user_identity", "non-binary"),
-            now_str=cfg["now_str"],
-        )
+    # Resolve persona: require session-provided chat prompt
+    static_prefix = cfg.get("persona_text_override") or ""
+    runtime_text = ""
+    if not static_prefix:
+        await ws.send_text(json.dumps({"type": "error", "message": "chat_prompt must be set in session (send in start)"}))
+        return
 
     # Synthesize the follow-up prompt for the chat model
     user_utt = f"{SCREEN_CHECKED_PREFIX} {analysis_text}".strip()

@@ -104,3 +104,43 @@ async def get_tool_engine() -> AsyncLLMEngine:
                 _chat_engine, _tool_engine = _chat, _tool
     return _tool_engine  # type: ignore[return-value]
 
+
+def _best_effort_clear_engine_caches(engine: AsyncLLMEngine) -> None:
+    """Best-effort clearing of KV and prefix caches for a given engine.
+
+    vLLM does not currently expose a stable public API to clear all caches per
+    session, so we defensively try common internal attributes. Failures are
+    ignored to avoid impacting runtime.
+    """
+    try:
+        candidates = [engine]
+        for name in ("_engine", "engine", "llm_engine"):
+            obj = getattr(engine, name, None)
+            if obj is not None:
+                candidates.append(obj)
+
+        for obj in candidates:
+            for attr in ("prefix_cache", "_prefix_cache", "cache", "_cache", "cache_engine", "kv_cache", "kv_cache_manager"):
+                cache_obj = getattr(obj, attr, None)
+                if cache_obj is None:
+                    continue
+                for method_name in ("reset", "clear", "clear_all", "reset_cache", "free_all", "evict_all"):
+                    method = getattr(cache_obj, method_name, None)
+                    if callable(method):
+                        try:
+                            method()
+                        except Exception:
+                            pass
+    except Exception:
+        # Best effort only
+        pass
+
+
+async def clear_all_engine_caches_on_disconnect() -> None:
+    """Clear caches of any constructed engines after a client disconnects."""
+    global _chat_engine, _tool_engine
+    if _chat_engine is not None:
+        _best_effort_clear_engine_caches(_chat_engine)
+    if _tool_engine is not None:
+        _best_effort_clear_engine_caches(_tool_engine)
+

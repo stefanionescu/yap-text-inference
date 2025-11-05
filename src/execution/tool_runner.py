@@ -9,9 +9,10 @@ from typing import Optional, Dict, Any
 from vllm.sampling_params import SamplingParams
 
 from ..engines import get_tool_engine
-from ..persona import build_toolcall_prompt, build_toolcall_prompt_with_history
+from ..persona import build_toolcall_prompt_with_history
 from ..config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
-from ..tokens import trim_history_for_tool_sharing
+from ..tokens import trim_history_for_tool_sharing, trim_text_to_token_limit_tool
+from ..config import USER_UTT_MAX_TOKENS
 from ..handlers.session_handler import session_handler
 from ..config.sampling import (
     TOOL_TEMPERATURE,
@@ -64,7 +65,7 @@ async def run_toolcall(
     t0 = time.perf_counter()
     logger.info(f"tool_runner: start session_id={session_id} req_id={req_id} timeout_s={tool_timeout_s}")
 
-    # Trim history for tool model to enable KV cache sharing
+    # Trim history for tool model to enable KV cache sharing (prefix caching)
     tool_history = trim_history_for_tool_sharing(
         history_text,
         TOOL_HISTORY_TOKENS,
@@ -72,11 +73,15 @@ async def run_toolcall(
 
     async def _iter_tool():
         """Internal generator for tool output with timeout/cancel handling."""
-        # Use enhanced prompt with history for better context and KV cache sharing
-        if tool_history.strip():
-            prompt = build_toolcall_prompt_with_history(user_utt, tool_history)
-        else:
-            prompt = build_toolcall_prompt(user_utt)
+        # Build prompt from session-provided base tool prompt (always include history for KV cache)
+        cfg = session_handler.get_session_config(session_id)
+        base_tool_prompt = cfg.get("tool_prompt_override")
+        if not base_tool_prompt:
+            raise RuntimeError("tool_prompt not set for session")
+        # Trim user utterance using tool tokenizer for accurate limits
+        tool_user_utt = trim_text_to_token_limit_tool(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+        # Always include history segment; empty history is fine
+        prompt = build_toolcall_prompt_with_history(base_tool_prompt, tool_user_utt, tool_history)
 
         async for out in stream_with_timeout(
             get_engine=get_tool_engine,
