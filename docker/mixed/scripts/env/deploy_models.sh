@@ -13,23 +13,7 @@ if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then DEPL
 if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then DEPLOY_TOOL=1; fi
 export DEPLOY_CHAT DEPLOY_TOOL
 
-# Check for models provided by the user
-CHAT_MODEL_IN=${CHAT_MODEL:-}
-TOOL_MODEL_IN=${TOOL_MODEL:-}
-AWQ_CHAT_MODEL_IN=${AWQ_CHAT_MODEL:-}
-AWQ_TOOL_MODEL_IN=${AWQ_TOOL_MODEL:-}
-
-# Enforce exactly one source per engine
-if [ -n "${AWQ_CHAT_MODEL_IN}" ] && [ -n "${CHAT_MODEL_IN}" ]; then
-  log_error "Specify only one chat model source: either AWQ_CHAT_MODEL or CHAT_MODEL (not both)"
-  exit 1
-fi
-if [ -n "${AWQ_TOOL_MODEL_IN}" ] && [ -n "${TOOL_MODEL_IN}" ]; then
-  log_error "Specify only one tool model source: either AWQ_TOOL_MODEL or TOOL_MODEL (not both)"
-  exit 1
-fi
-
-# Prefer preloaded models if env not given
+# Only use preloaded models embedded into the image
 PRELOADED_CHAT_DIR="/app/models/chat"
 PRELOADED_TOOL_DIR="/app/models/tool"
 PRELOADED_CHAT_AWQ_DIR="/app/models/chat_awq"
@@ -45,26 +29,18 @@ if [ -f "${PRELOADED_TOOL_AWQ_DIR}/awq_config.json" ] || [ -f "${PRELOADED_TOOL_
   HAS_PRELOADED_AWQ_TOOL=1
 fi
 
-# Resolve model sources in priority order: explicit env -> preloaded AWQ -> preloaded float/GPTQ
+# Resolve model sources: preloaded AWQ -> preloaded float
 if [ "${DEPLOY_CHAT}" = "1" ]; then
-  if [ -n "${AWQ_CHAT_MODEL_IN}" ]; then
-    export CHAT_MODEL="${AWQ_CHAT_MODEL_IN}"; export CHAT_QUANTIZATION=awq
-  elif [ "${HAS_PRELOADED_AWQ_CHAT}" = "1" ]; then
+  if [ "${HAS_PRELOADED_AWQ_CHAT}" = "1" ]; then
     export CHAT_MODEL="${PRELOADED_CHAT_AWQ_DIR}"; export CHAT_QUANTIZATION=awq
-  elif [ -n "${CHAT_MODEL_IN}" ]; then
-    export CHAT_MODEL="${CHAT_MODEL_IN}"
   elif [ -d "${PRELOADED_CHAT_DIR}" ]; then
     export CHAT_MODEL="${PRELOADED_CHAT_DIR}"
   fi
 fi
 
 if [ "${DEPLOY_TOOL}" = "1" ]; then
-  if [ -n "${AWQ_TOOL_MODEL_IN}" ]; then
-    export TOOL_MODEL="${AWQ_TOOL_MODEL_IN}"; export TOOL_QUANTIZATION=awq
-  elif [ "${HAS_PRELOADED_AWQ_TOOL}" = "1" ]; then
+  if [ "${HAS_PRELOADED_AWQ_TOOL}" = "1" ]; then
     export TOOL_MODEL="${PRELOADED_TOOL_AWQ_DIR}"; export TOOL_QUANTIZATION=awq
-  elif [ -n "${TOOL_MODEL_IN}" ]; then
-    export TOOL_MODEL="${TOOL_MODEL_IN}"
   elif [ -d "${PRELOADED_TOOL_DIR}" ]; then
     export TOOL_MODEL="${PRELOADED_TOOL_DIR}"
   fi
@@ -72,11 +48,11 @@ fi
 
 # Guard required models
 if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
-  log_error "CHAT_MODEL must be specified (env or preloaded) when deploying chat"
+  log_error "CHAT model not embedded in image; rebuild the image with a chat source"
   exit 1
 fi
 if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
-  log_error "TOOL_MODEL must be specified (env or preloaded) when deploying tool"
+  log_error "TOOL model not embedded in image; rebuild the image with a tool source"
   exit 1
 fi
 

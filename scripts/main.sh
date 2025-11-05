@@ -99,10 +99,10 @@ if [ $# -lt 1 ]; then
   usage
 fi
 
-# Optional first token may be a quant flag: 'awq' (explicit), or deprecated '8bit'/'4bit'
+# Optional first token may be a quant flag: 'awq' (explicit)
 QUANT_TYPE="auto"
 case "${1:-}" in
-  awq|8bit|4bit)
+  awq)
     QUANT_TYPE="$1"; shift ;;
 esac
 
@@ -218,14 +218,6 @@ case "${QUANT_TYPE}" in
       log_warn "Error: For awq, provide a FLOAT chat model (not GPTQ)."
       usage
     fi
-    ;;
-  8bit)
-    log_warn "Deprecated flag '8bit'. Omit the flag to auto-detect FP8/GPTQ; keeping compatibility."
-    export QUANTIZATION=fp8
-    ;;
-  4bit)
-    log_warn "Deprecated flag '4bit'. Omit the flag; GPTQ will be auto-detected."
-    export QUANTIZATION=gptq_marlin
     ;;
   auto)
     if [[ "${CHAT_MODEL_NAME}" == *GPTQ* ]]; then

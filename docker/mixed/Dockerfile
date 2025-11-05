@@ -59,8 +59,6 @@ RUN set -eux; \
         pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true; \
     fi
 
-# Build-time preload controls for models
-ARG PRELOAD_MODELS=0
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
 ARG AWQ_CHAT_MODEL=""
@@ -75,10 +73,9 @@ COPY src/ /app/src/
 # Ensure model directory exists regardless of preload flag (so we can copy it later)
 RUN mkdir -p /app/models /app/.hf
 
-# Preload Hugging Face models into image layers (optional)
+# Preload Hugging Face models into image layers (always for embed-first design)
 # - Stored under /app/models/{chat,tool,chat_awq,tool_awq}
-RUN PRELOAD_MODELS=${PRELOAD_MODELS} \
-    DEPLOY_MODELS=${DEPLOY_MODELS} \
+RUN DEPLOY_MODELS=${DEPLOY_MODELS} \
     CHAT_MODEL="${CHAT_MODEL}" \
     TOOL_MODEL="${TOOL_MODEL}" \
     AWQ_CHAT_MODEL="${AWQ_CHAT_MODEL}" \
@@ -87,10 +84,6 @@ RUN PRELOAD_MODELS=${PRELOAD_MODELS} \
     python - <<'PY'
 import os
 from pathlib import Path
-
-# Only run when requested
-if os.environ.get('PRELOAD_MODELS', '0') != '1':
-    raise SystemExit(0)
 
 Path('/app/models').mkdir(parents=True, exist_ok=True)
 Path('/app/.hf').mkdir(parents=True, exist_ok=True)
@@ -111,24 +104,33 @@ def dl(repo_id: str, local_dir: str):
         # Fail with a clear message only for auth errors; otherwise re-raise
         msg = str(e).lower()
         if '401' in msg or 'unauthorized' in msg:
-            raise SystemExit("Unauthorized from Hugging Face. Provide HF_TOKEN or skip PRELOAD_MODELS=1.")
+            raise SystemExit("Unauthorized from Hugging Face. Provide HF_TOKEN or ensure public access.")
         raise
 
 deploy = (os.environ.get('DEPLOY_MODELS') or 'both').lower()
-chat = os.environ.get('CHAT_MODEL', '')
-tool = os.environ.get('TOOL_MODEL', '')
-awq_chat = os.environ.get('AWQ_CHAT_MODEL', '')
-awq_tool = os.environ.get('AWQ_TOOL_MODEL', '')
+chat = os.environ.get('CHAT_MODEL', '').strip()
+tool = os.environ.get('TOOL_MODEL', '').strip()
+awq_chat = os.environ.get('AWQ_CHAT_MODEL', '').strip()
+awq_tool = os.environ.get('AWQ_TOOL_MODEL', '').strip()
+
+# Enforce exactly one source per selected engine and require presence
+def require_exactly_one(name_a: str, name_b: str, engine: str):
+    if name_a and name_b:
+        raise SystemExit(f"Provide exactly one source for {engine}: not both AWQ and float/GPTQ")
+    if not (name_a or name_b):
+        raise SystemExit(f"Missing model for {engine}. Provide AWQ_{engine.upper()}_MODEL or {engine.upper()}_MODEL at build time.")
 
 if deploy in ('both', 'chat'):
+    require_exactly_one(awq_chat, chat, 'chat')
     if awq_chat:
         dl(awq_chat, '/app/models/chat_awq')
-    elif chat:
+    else:
         dl(chat, '/app/models/chat')
 if deploy in ('both', 'tool'):
+    require_exactly_one(awq_tool, tool, 'tool')
     if awq_tool:
         dl(awq_tool, '/app/models/tool_awq')
-    elif tool:
+    else:
         dl(tool, '/app/models/tool')
 PY
 
@@ -136,10 +138,12 @@ PY
 # ---- Runtime stage ----
 FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
+ARG DEFAULT_CONCURRENT=1
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    CONCURRENT_MODEL_CALL=${DEFAULT_CONCURRENT}
 
 RUN apt-get update && apt-get install -y \
     python3.11 \
