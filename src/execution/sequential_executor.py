@@ -2,10 +2,7 @@
 
 import asyncio
 import logging
-import json
-import os
 import uuid
-from typing import Any, Dict
 from fastapi import WebSocket
 
 from .tool_runner import run_toolcall
@@ -15,6 +12,7 @@ from ..engines import get_tool_engine
 from ..handlers.session_handler import session_handler
 from ..config.timeouts import TOOL_HARD_TIMEOUT_MS
 from .executor_utils import send_toolcall
+from ..config import CHECK_SCREEN_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +72,7 @@ async def run_sequential_execution(
         pass
 
     if is_tool:
-        # Tool detected: send toolcall response but continue with chat
+        # Tool detected: send toolcall response but continue with chat (CHECK SCREEN)
         await send_toolcall(ws, "yes", raw_field)
         logger.info("sequential_exec: sent toolcall yes")
     else:
@@ -87,12 +85,15 @@ async def run_sequential_execution(
     session_handler.set_active_request(session_id, chat_req_id)
     final_text = ""
     
+    # If tool said yes, prefix the user utterance with CHECK SCREEN
+    user_utt_for_chat = f"{CHECK_SCREEN_PREFIX} {user_utt}".strip() if is_tool else user_utt
+
     async for chunk in run_chat_stream(
         session_id,
         static_prefix,
         runtime_text,
         history_text,
-        user_utt,
+        user_utt_for_chat,
         request_id=chat_req_id,
     ):
         await ws.send_text(json.dumps({"type": "token", "text": chunk}))

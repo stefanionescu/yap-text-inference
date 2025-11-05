@@ -67,6 +67,10 @@ QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gpt
 CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override per-engine
 TOOL_QUANTIZATION = os.getenv("TOOL_QUANTIZATION")  # Optional override per-engine
 
+# Prefixes used to steer chat behavior around screenshot flows
+CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "CHECK SCREEN:").strip()
+SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "SCREEN CHECKED:").strip()
+
 
 # Validate required configuration
 if DEPLOY_CHAT and not CHAT_MODEL:
@@ -93,6 +97,9 @@ __all__ = [
     "QUANTIZATION",
     "CHAT_QUANTIZATION",
     "TOOL_QUANTIZATION",
+    # prefixes
+    "CHECK_SCREEN_PREFIX",
+    "SCREEN_CHECKED_PREFIX",
 ]
 
 

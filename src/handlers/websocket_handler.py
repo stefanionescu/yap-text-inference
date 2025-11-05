@@ -14,6 +14,7 @@ from ..messages.cancel import handle_cancel_message
 from ..messages.warm_persona import handle_warm_persona_message
 from ..messages.warm_history import handle_warm_history_message
 from ..messages.set_persona import handle_set_persona_message
+from ..messages.followup import handle_followup_message
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,10 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             elif msg["type"] == "set_persona":
                 logger.info("WS recv: set_persona")
                 await handle_set_persona_message(ws, msg, session_id)
+
+            elif msg["type"] == "followup":
+                logger.info("WS recv: followup")
+                await handle_followup_message(ws, msg, session_id)
 
             else:
                 await ws.send_text(json.dumps({
