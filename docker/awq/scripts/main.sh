@@ -12,19 +12,33 @@ usage() {
   echo ""
   echo "This container only supports pre-quantized AWQ models from Hugging Face."
   echo ""
-  echo "Required Environment Variables:"
-  echo "  AWQ_CHAT_MODEL - Hugging Face repo with pre-quantized AWQ chat model"
-  echo "  AWQ_TOOL_MODEL - Hugging Face repo with pre-quantized AWQ tool model"
-  echo "  (Both are required; Docker always deploys both models)"
+  echo "Required Environment Variables (based on DEPLOY_MODELS):"
+  echo "  DEPLOY_MODELS=both|chat|tool  (default: both)"
+  echo "  If DEPLOY_MODELS=chat  -> AWQ_CHAT_MODEL required"
+  echo "  If DEPLOY_MODELS=tool  -> AWQ_TOOL_MODEL required"
+  echo "  If DEPLOY_MODELS=both  -> AWQ_CHAT_MODEL and AWQ_TOOL_MODEL required"
   echo ""
   echo "Optional Environment Variables:"
-  echo "  YAP_API_KEY                     - API key for authentication (default: yap_token)"
+  echo "  YAP_TEXT_API_KEY                - API key for authentication (default: yap_token)"
   echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model (default: 0.70)"
   echo "  TOOL_GPU_FRAC                   - GPU memory fraction for tool model (default: 0.20)"
   echo ""
   echo "Examples:"
-  echo "  # Always-both deployment"
-  echo "  docker run -e AWQ_CHAT_MODEL=your-org/chat-awq -e AWQ_TOOL_MODEL=your-org/tool-awq ..."
+  echo "  # Both models"
+  echo "  docker run --gpus all -d \\
+  -e DEPLOY_MODELS=both \\
+  -e AWQ_CHAT_MODEL=your-org/chat-awq \\
+  -e AWQ_TOOL_MODEL=your-org/tool-awq IMAGE"
+  echo ""
+  echo "  # Chat only"
+  echo "  docker run --gpus all -d \\
+  -e DEPLOY_MODELS=chat \\
+  -e AWQ_CHAT_MODEL=your-org/chat-awq IMAGE"
+  echo ""
+  echo "  # Tool only"
+  echo "  docker run --gpus all -d \\
+  -e DEPLOY_MODELS=tool \\
+  -e AWQ_TOOL_MODEL=your-org/tool-awq IMAGE"
   echo ""
   echo "Health check: curl http://localhost:8000/healthz"
   exit 0

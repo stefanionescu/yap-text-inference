@@ -17,30 +17,47 @@ This Docker setup provides a containerized deployment of Yap's text inference AP
 ### Basic Usage
 
 ```bash
-# Build the Docker image
-DOCKER_USERNAME=yourusername ./build.sh
+# Build the Docker image (tag auto-set by DEPLOY_MODELS)
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=both ./build.sh  # tag :both
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat ./build.sh  # tag :chat
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool ./build.sh  # tag :tool
 
-# Run (always deploys both chat and tool models)
-# Minimal envs: provide AWQ repos and (optionally) API key and GPU fractions
+# Run (deploy both models)
 YAP_TEXT_API_KEY=yap_token \
+DEPLOY_MODELS=both \
 AWQ_CHAT_MODEL=your-org/chat-awq \
 AWQ_TOOL_MODEL=your-org/tool-awq \
 CHAT_GPU_FRAC=0.70 \
 TOOL_GPU_FRAC=0.20 \
   docker run -d --gpus all --name yap-server \
-  -e YAP_TEXT_API_KEY -e AWQ_CHAT_MODEL -e AWQ_TOOL_MODEL \
+  -e YAP_TEXT_API_KEY -e DEPLOY_MODELS \
+  -e AWQ_CHAT_MODEL -e AWQ_TOOL_MODEL \
   -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
-  yourusername/yap-text-inference-awq:latest
+  yourusername/yap-text-inference-awq:both
+
+# Run (chat only)
+docker run -d --gpus all --name yap-chat \
+  -e DEPLOY_MODELS=chat \
+  -e AWQ_CHAT_MODEL=your-org/chat-awq \
+  -p 8000:8000 \
+  yourusername/yap-text-inference-awq:chat
+
+# Run (tool only)
+docker run -d --gpus all --name yap-tool \
+  -e DEPLOY_MODELS=tool \
+  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -p 8000:8000 \
+  yourusername/yap-text-inference-awq:tool
 ```
 
 ## Environment Variables
 
 ### Required
-- `AWQ_CHAT_MODEL` - Hugging Face repo with pre-quantized AWQ chat model (default: `yapwithai/impish-12b-awq`)
-- `AWQ_TOOL_MODEL` - Hugging Face repo with pre-quantized AWQ tool model (default: `yapwithai/hammer-2.1-3b-awq`)
-
-> Important: Both `AWQ_CHAT_MODEL` and `AWQ_TOOL_MODEL` must be provided for Docker deployments. This stack always deploys both models. `DEPLOY_MODELS` is ignored and effectively forced to `both`.
+- `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
+- If `DEPLOY_MODELS=chat`: `AWQ_CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
+- If `DEPLOY_MODELS=tool`: `AWQ_TOOL_MODEL` (default: `yapwithai/hammer-2.1-3b-awq`)
+- If `DEPLOY_MODELS=both`: `AWQ_CHAT_MODEL` and `AWQ_TOOL_MODEL`
 
 ### Optional
 - `YAP_TEXT_API_KEY` (default: `yap_token`)
@@ -49,7 +66,7 @@ TOOL_GPU_FRAC=0.20 \
 
 Engine/attention backend are auto-selected; no manual configuration required.
 
-Note: Docker deployment always runs both models; single-model deployment is not supported in Docker.
+Note: This AWQ image now supports chat-only, tool-only, or both.
 
 ## Build and Deploy
 
@@ -73,6 +90,7 @@ TAG=v1.0.0 ./build.sh
 
 ```bash
 docker run -d --gpus all --name yap-server \
+  -e DEPLOY_MODELS=both \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
   -e YAP_TEXT_API_KEY=yap_token \
@@ -167,7 +185,7 @@ docker run -it --gpus all --rm \
 
 ### Update Container
 ```bash
-docker pull yourusername/yap-text-inference-awq:latest
+docker pull yourusername/yap-text-inference-awq:both
 docker stop yap-server
 docker rm yap-server
 # Run with new image

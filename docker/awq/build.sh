@@ -7,8 +7,20 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Docker configuration
 DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
-IMAGE_NAME="${IMAGE_NAME:-yap-text-inference-awq}"
-TAG="${TAG:-latest}"
+# Enforce fixed image name
+IMAGE_NAME="yap-text-inference-awq"
+
+# Label/tag must reflect DEPLOY_MODELS
+DEPLOY_MODELS_VAL="${DEPLOY_MODELS:-both}"
+case "${DEPLOY_MODELS_VAL}" in
+  chat|tool|both) ;;
+  *)
+    echo "[WARN] Invalid DEPLOY_MODELS='${DEPLOY_MODELS_VAL}', defaulting to 'both'" >&2
+    DEPLOY_MODELS_VAL="both"
+    ;;
+esac
+
+TAG="${DEPLOY_MODELS_VAL}"
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
 # Build configuration
@@ -30,17 +42,17 @@ usage() {
     echo "Build and push Yap Text Inference Docker image for AWQ deployment"
     echo ""
     echo "Environment Variables:"
-    echo "  DOCKER_USERNAME     - Docker Hub username (default: your-username)"
-    echo "  IMAGE_NAME          - Docker image name (default: yap-text-inference-awq)"
-    echo "  TAG                 - Docker image tag (default: latest)"
+    echo "  DOCKER_USERNAME     - Docker Hub username (required)"
+    echo "  DEPLOY_MODELS       - chat|tool|both (controls image tag; default: both)"
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
     echo ""
     echo "Options:"
     echo "  --help              - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  DOCKER_USERNAME=myuser ./build.sh"
-    echo "  TAG=v1.0.0 ./build.sh"
+    echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=both ./build.sh"
+    echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=chat ./build.sh"
+    echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=tool ./build.sh"
     exit 0
 }
 
@@ -61,7 +73,7 @@ require_docker
 ensure_docker_login
 
 log_info "Building Yap Text Inference Docker image"
-log_info "Image: ${FULL_IMAGE_NAME}"
+log_info "Image: ${FULL_IMAGE_NAME} (DEPLOY_MODELS=${DEPLOY_MODELS_VAL})"
 log_info "Platform: ${PLATFORM}"
 log_info "Build context (stack): ${BUILD_CONTEXT}"
 log_info "Dockerfile: ${DOCKERFILE}"

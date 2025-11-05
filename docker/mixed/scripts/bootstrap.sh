@@ -14,7 +14,6 @@ source "${SCRIPT_DIR}/env/runtime_flags.sh"
 source "${SCRIPT_DIR}/env/quantization_select.sh"
 source "${SCRIPT_DIR}/env/limits.sh"
 source "${SCRIPT_DIR}/env/gpu_backend.sh"
-source "${SCRIPT_DIR}/env/awq_push_env.sh"
 source "${SCRIPT_DIR}/env/final_defaults.sh"
 
 CONCURRENT_STATUS="sequential"
