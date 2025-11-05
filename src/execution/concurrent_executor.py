@@ -14,6 +14,7 @@ from .chat_streamer import run_chat_stream
 from ..engines import get_chat_engine, get_tool_engine
 from ..handlers.session_handler import session_handler
 from ..config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
+from ..config import CHECK_SCREEN_PREFIX
 from .executor_utils import send_toolcall, flush_and_send, cancel_task
 
 logger = logging.getLogger(__name__)
@@ -169,38 +170,42 @@ async def run_concurrent_execution(
                 await (await get_chat_engine()).abort_request(chat_req_id)
             except Exception:
                 pass
-            
+
             # Send toolcall response
             await send_toolcall(ws, "yes", raw_field)
             logger.info("concurrent_exec: sent toolcall yes")
-            
-            # Start new chat stream (ignoring buffered tokens from first stream)
+
+            # Start new chat stream with CHECK SCREEN prefix
             new_chat_req_id = f"chat-{uuid.uuid4()}"
             session_handler.set_active_request(session_id, new_chat_req_id)
-            
+
+            modified_user_utt = f"{CHECK_SCREEN_PREFIX} {user_utt}".strip()
+
             new_chat_stream = run_chat_stream(
                 session_id,
                 static_prefix,
                 runtime_text,
                 history_text,
-                user_utt,
+                modified_user_utt,
                 request_id=new_chat_req_id,
             )
-            logger.info(f"concurrent_exec: new chat stream after tool yes req_id={new_chat_req_id}")
-            
+            logger.info(
+                f"concurrent_exec: new chat stream after tool yes (prefix={CHECK_SCREEN_PREFIX}) req_id={new_chat_req_id}"
+            )
+
             # Stream from the new chat stream
             final_text = ""
             async for chunk in new_chat_stream:
                 await ws.send_text(json.dumps({"type": "token", "text": chunk}))
                 final_text += chunk
-            
+
             # Send final text
             await ws.send_text(json.dumps({
-                "type": "final", 
+                "type": "final",
                 "normalized_text": final_text
             }))
             await ws.send_text(json.dumps({"type": "done", "usage": {}}))
-            logger.info(f"concurrent_exec: done after tool yes chars={len(final_text)}")
+            logger.info(f"concurrent_exec: done after tool yes (CHECK SCREEN) chars={len(final_text)}")
             return
         
         # Tool says NO: flush buffered chat text and continue streaming
