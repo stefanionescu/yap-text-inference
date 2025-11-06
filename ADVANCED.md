@@ -11,7 +11,7 @@ This document covers advanced operations, configuration, and deep-dive details.
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 
 # Set custom API key before starting server
-export YAP_TEXT_API_KEY="my_super_secret_key_2024"
+export YAP_API_KEY="my_super_secret_key_2024"
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 ```
 

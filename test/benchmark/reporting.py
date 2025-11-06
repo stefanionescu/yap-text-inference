@@ -49,8 +49,8 @@ def print_report(url: str, requests: int, concurrency: int, results: List[Dict[s
         print(f"example_error={emsg}")
 
         if "authentication_failed" in emsg:
-            api_key = os.getenv("YAP_TEXT_API_KEY", "yap_token")
-            print(f"hint: Check YAP_TEXT_API_KEY environment variable (currently: '{api_key}')")
+            api_key = os.getenv("YAP_API_KEY", "yap_token")
+            print(f"hint: Check YAP_API_KEY environment variable (currently: '{api_key}')")
         elif "server_at_capacity" in emsg:
             print("hint: Server at capacity. Reduce concurrency (-c) or try again later.")
 

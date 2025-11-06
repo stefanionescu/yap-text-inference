@@ -38,7 +38,7 @@ usage() {
   echo "  AWQ_CHAT_MODEL=repo        - HuggingFace AWQ chat model"
   echo "  AWQ_TOOL_MODEL=repo        - HuggingFace AWQ tool model"
   echo "  CONCURRENT_MODEL_CALL=0|1  - Model calling mode (default: 1)"
-  echo "  YAP_TEXT_API_KEY                - API key (default: yap_token)"
+  echo "  YAP_API_KEY                     - API key (default: yap_token)"
   echo ""
   echo "Examples:"
   echo "  $0                         # Restart both (local or HF)"

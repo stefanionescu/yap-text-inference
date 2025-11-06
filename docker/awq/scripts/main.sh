@@ -19,7 +19,7 @@ usage() {
   echo "  If DEPLOY_MODELS=both  -> AWQ_CHAT_MODEL and AWQ_TOOL_MODEL required"
   echo ""
   echo "Optional Environment Variables:"
-  echo "  YAP_TEXT_API_KEY                - API key for authentication (default: yap_token)"
+  echo "  YAP_API_KEY                     - API key for authentication (default: yap_token)"
   echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model (default: 0.70)"
   echo "  TOOL_GPU_FRAC                   - GPU memory fraction for tool model (default: 0.20)"
   echo ""

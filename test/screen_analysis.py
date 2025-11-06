@@ -10,7 +10,7 @@ Flow:
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
-  YAP_TEXT_API_KEY=yap_token
+  YAP_API_KEY=yap_token
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ ANALYSIS_TEXT = (
 )
 
 
-def _with_api_key(url: str, env: str = "YAP_TEXT_API_KEY", default_key: str = "yap_token") -> str:
+def _with_api_key(url: str, env: str = "YAP_API_KEY", default_key: str = "yap_token") -> str:
     key = os.getenv(env, default_key)
     return f"{url}&api_key={key}" if "?" in url else f"{url}?api_key={key}"
 
