@@ -75,7 +75,7 @@ async def run_toolcall(
         """Internal generator for tool output with timeout/cancel handling."""
         # Build prompt from session-provided base tool prompt (always include history for KV cache)
         cfg = session_handler.get_session_config(session_id)
-        base_tool_prompt = cfg.get("tool_prompt_override")
+        base_tool_prompt = cfg.get("tool_prompt")
         if not base_tool_prompt:
             raise RuntimeError("tool_prompt not set for session")
         # Trim user utterance using tool tokenizer for accurate limits

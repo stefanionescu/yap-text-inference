@@ -22,6 +22,7 @@ from .env import (
     TOOL_QUANTIZATION,
     CHECK_SCREEN_PREFIX,
     SCREEN_CHECKED_PREFIX,
+    ALLOWED_PERSONALITIES,
 )
 from .models import (
     ALLOWED_CHAT_MODELS,
@@ -87,6 +88,8 @@ __all__ = [
     # prefixes
     "CHECK_SCREEN_PREFIX",
     "SCREEN_CHECKED_PREFIX",
+    # chat personalities
+    "ALLOWED_PERSONALITIES",
     # models/validation
     "ALLOWED_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",

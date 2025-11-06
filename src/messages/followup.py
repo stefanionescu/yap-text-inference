@@ -43,7 +43,7 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
     history_text = msg.get("history_text", "")
 
     # Resolve persona: require session-provided chat prompt
-    static_prefix = cfg.get("persona_text_override") or ""
+    static_prefix = cfg.get("chat_prompt") or ""
     runtime_text = ""
     if not static_prefix:
         await ws.send_text(json.dumps({"type": "error", "message": "chat_prompt must be set in session (send in start)"}))
