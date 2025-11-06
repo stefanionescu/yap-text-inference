@@ -64,13 +64,13 @@ DOCKER_USERNAME=youruser docker/awq/build.sh
 docker run -d --gpus all --name yap-awq \
   -e AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
   -e AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
-  -e YAP_TEXT_API_KEY=yap_token \
+  -e YAP_API_KEY=yap_token \
   -p 8000:8000 youruser/yap-text-inference-awq:latest
 
 # Base (float/GPTQ, pre-quantized AWQ, or runtime AWQ)
 DOCKER_USERNAME=youruser DEPLOY_MODELS=both CHAT_MODEL=org/chat TOOL_MODEL=org/tool docker/mixed/build.sh  # builds :both-fp8
 docker run -d --gpus all --name yap-mixed \
-  -e YAP_TEXT_API_KEY=yap_token \
+  -e YAP_API_KEY=yap_token \
   -p 8000:8000 youruser/yap-text-inference-mixed:both-fp8
 ```
 
