@@ -1,7 +1,8 @@
 """Validation utilities for input normalization and checks."""
 
 from typing import Optional
-from ..config import ALLOWED_PERSONALITIES
+import re
+from ..config import PERSONALITY_MAX_LEN
 
 
 def normalize_gender(val: Optional[str]) -> Optional[str]:
@@ -16,13 +17,32 @@ def normalize_gender(val: Optional[str]) -> Optional[str]:
     return None
 
 
+_LETTERS_ONLY_RE = re.compile(r"^[A-Za-z]+$")
+
+
+def normalize_personality(val: Optional[str]) -> Optional[str]:
+    """Normalize personality: letters-only, length-limited, lowercased.
+
+    Returns lowercase personality or None if invalid.
+    """
+    if not val:
+        return None
+    v = val.strip()
+    if not v:
+        return None
+    if len(v) > PERSONALITY_MAX_LEN:
+        return None
+    if not _LETTERS_ONLY_RE.match(v):
+        return None
+    return v.lower()
+
+
 def validate_personality(personality: Optional[str]) -> bool:
-    if not personality:
-        return False
-    return personality.strip() in ALLOWED_PERSONALITIES
+    return normalize_personality(personality) is not None
 
 
 __all__ = [
     "normalize_gender",
     "validate_personality",
+    "normalize_personality",
 ]

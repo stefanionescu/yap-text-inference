@@ -13,6 +13,9 @@ TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user 
 CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1800"))
 TOOL_PROMPT_MAX_TOKENS = int(os.getenv("TOOL_PROMPT_MAX_TOKENS", "1800"))
 
+# Personality validation
+PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
+
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
@@ -79,6 +82,7 @@ __all__ = [
     "TOOL_MAX_LEN",
     "CHAT_PROMPT_MAX_TOKENS",
     "TOOL_PROMPT_MAX_TOKENS",
+    "PERSONALITY_MAX_LEN",
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
     "USER_UTT_MAX_TOKENS",

@@ -77,8 +77,11 @@ class SessionHandler:
             changed["chat_gender"] = chat_gender
 
         if chat_personality is not None:
-            self.session_meta[session_id]["chat_personality"] = chat_personality
-            changed["chat_personality"] = chat_personality
+            cpers = chat_personality or None
+            if isinstance(cpers, str):
+                cpers = cpers.lower()
+            self.session_meta[session_id]["chat_personality"] = cpers
+            changed["chat_personality"] = cpers
 
         if chat_prompt is not None:
             # explicit None/empty clears the prompt

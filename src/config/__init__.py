@@ -22,7 +22,6 @@ from .env import (
     TOOL_QUANTIZATION,
     CHECK_SCREEN_PREFIX,
     SCREEN_CHECKED_PREFIX,
-    ALLOWED_PERSONALITIES,
 )
 from .models import (
     ALLOWED_CHAT_MODELS,
@@ -37,6 +36,7 @@ from .limits import (
     TOOL_MAX_LEN,
     CHAT_PROMPT_MAX_TOKENS,
     TOOL_PROMPT_MAX_TOKENS,
+    PERSONALITY_MAX_LEN,
     STREAM_FLUSH_MS,
     HISTORY_MAX_TOKENS,
     USER_UTT_MAX_TOKENS,
@@ -88,8 +88,6 @@ __all__ = [
     # prefixes
     "CHECK_SCREEN_PREFIX",
     "SCREEN_CHECKED_PREFIX",
-    # chat personalities
-    "ALLOWED_PERSONALITIES",
     # models/validation
     "ALLOWED_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
@@ -100,6 +98,7 @@ __all__ = [
     "TOOL_MAX_LEN",
     "CHAT_PROMPT_MAX_TOKENS",
     "TOOL_PROMPT_MAX_TOKENS",
+    "PERSONALITY_MAX_LEN",
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
     "USER_UTT_MAX_TOKENS",

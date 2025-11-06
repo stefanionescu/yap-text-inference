@@ -14,7 +14,7 @@ from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
 from ..handlers.session_handler import session_handler
-from ..utils.validation import normalize_gender, validate_personality
+from ..utils.validation import normalize_gender, normalize_personality
 from ..utils.sanitize import sanitize_prompt
 from ..tokens import (
     count_tokens_chat,
@@ -27,7 +27,7 @@ from ..config import (
 from ..engines import get_chat_engine
 
 
-async def handle_update_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
+async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
         await ws.send_text(json.dumps({"type": "error", "message": "no active session; send 'start' first"}))
@@ -53,28 +53,29 @@ async def handle_update_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_
     if g is None:
         await ws.send_text(json.dumps({
             "type": "ack",
-            "for": "update_chat_prompt",
+            "for": "chat_prompt",
             "ok": False,
             "code": 400,
             "message": "assistant_gender must be 'female' or 'male'"
         }))
         return
 
-    if not validate_personality(raw_personality):
+    norm_personality = normalize_personality(raw_personality)
+    if norm_personality is None:
         await ws.send_text(json.dumps({
             "type": "ack",
-            "for": "update_chat_prompt",
+            "for": "chat_prompt",
             "ok": False,
             "code": 400,
-            "message": "personality is not allowed"
+            "message": "personality must be letters-only and <= configured max length"
         }))
         return
 
     # Must change at least one of gender or personality
-    if (cfg.get("chat_gender") == g) and (cfg.get("chat_personality") == raw_personality):
+    if (cfg.get("chat_gender") == g) and (cfg.get("chat_personality") == norm_personality):
         await ws.send_text(json.dumps({
             "type": "ack",
-            "for": "update_chat_prompt",
+            "for": "chat_prompt",
             "ok": True,
             "code": 204,
             "message": "no change"
@@ -87,7 +88,7 @@ async def handle_update_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_
     except Exception as e:
         await ws.send_text(json.dumps({
             "type": "ack",
-            "for": "update_chat_prompt",
+            "for": "chat_prompt",
             "ok": False,
             "code": 400,
             "message": str(e)
@@ -97,7 +98,7 @@ async def handle_update_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_
     if count_tokens_chat(chat_prompt) > CHAT_PROMPT_MAX_TOKENS:
         await ws.send_text(json.dumps({
             "type": "ack",
-            "for": "update_chat_prompt",
+            "for": "chat_prompt",
             "ok": False,
             "code": 413,
             "message": f"chat_prompt exceeds token limit ({CHAT_PROMPT_MAX_TOKENS})"
@@ -108,7 +109,7 @@ async def handle_update_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_
     session_handler.update_session_config(
         session_id,
         chat_gender=g,
-        chat_personality=raw_personality,
+        chat_personality=norm_personality,
         chat_prompt=chat_prompt,
     )
 
@@ -135,12 +136,12 @@ async def handle_update_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_
 
     await ws.send_text(json.dumps({
         "type": "ack",
-        "for": "update_chat_prompt",
+        "for": "chat_prompt",
         "ok": True,
         "code": 200,
         "message": "updated",
         "assistant_gender": g,
-        "personality": raw_personality,
+        "personality": norm_personality,
     }))
 
 
