@@ -19,6 +19,7 @@ from ..tokens import (
 )
 from ..utils.validation import (
     normalize_gender,
+    validate_personality,
 )
 from ..utils.sanitize import sanitize_prompt
 from ..handlers.session_handler import session_handler
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
     """Handle 'start' message type."""
     logger.info(
-        f"handle_start: session_id={session_id} gender_in={msg.get('assistant_gender')} "
+        f"handle_start: session_id={session_id} gender_in={msg.get('assistant_gender')} personality_in={msg.get('personality')} "
         f"hist_len={len(msg.get('history_text',''))} user_len={len(msg.get('user_utterance',''))}"
     )
     session_config = session_handler.initialize_session(session_id)
@@ -43,10 +44,32 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     # Pull fixed values for this session
     sess_now_str = session_config["now_str"]
 
-    # assistant_gender no longer required for dynamic prompts; keep if provided
+    # Require assistant_gender and personality at start; validate them first
     incoming_gender = normalize_gender(msg.get("assistant_gender"))
-    if incoming_gender is not None:
-        session_handler.update_session_config(session_id, assistant_gender=incoming_gender)
+    incoming_personality = (msg.get("personality") or "").strip()
+    if incoming_gender is None:
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "invalid_gender",
+            "message": "assistant_gender must be 'female' or 'male'"
+        }))
+        await ws.close(code=1008)
+        logger.info("handle_start: error → invalid assistant_gender; connection closed")
+        return
+    if not validate_personality(incoming_personality):
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "invalid_personality",
+            "message": "personality is not allowed"
+        }))
+        await ws.close(code=1008)
+        logger.info("handle_start: error → invalid personality; connection closed")
+        return
+    session_handler.update_session_config(
+        session_id,
+        chat_gender=incoming_gender,
+        chat_personality=incoming_personality,
+    )
 
     # Require client-provided prompts depending on deployment mode
     # chat prompt alias: allow legacy 'persona_text'
@@ -96,7 +119,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
             await ws.close(code=1008)
             logger.info("handle_start: error → chat_prompt too long; connection closed")
             return
-        session_handler.update_session_config(session_id, persona_text_override=chat_prompt)
+        session_handler.update_session_config(session_id, chat_prompt=chat_prompt)
 
     if raw_tool_prompt is not None:
         try:
@@ -119,13 +142,13 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
             await ws.close(code=1008)
             logger.info("handle_start: error → tool_prompt too long; connection closed")
             return
-        session_handler.update_session_config(session_id, tool_prompt_override=tool_prompt)
+        session_handler.update_session_config(session_id, tool_prompt=tool_prompt)
 
     # Get updated config after changes
     updated_config = session_handler.get_session_config(session_id)
 
     # Dynamic prompts: chat prompt must be provided when chat is deployed
-    static_prefix = updated_config.get("persona_text_override") or ""
+    static_prefix = updated_config.get("chat_prompt") or ""
     runtime_text = ""
 
     # Send ACK: session start / (re)config pinned
@@ -135,8 +158,9 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         "ok": True,
         "session_id": session_id,
         "now": sess_now_str,
-        "assistant_gender": updated_config.get("assistant_gender"),
-        "persona_text_override": bool(updated_config["persona_text_override"]),
+        "assistant_gender": updated_config.get("chat_gender"),
+        "personality": updated_config.get("chat_personality"),
+        "chat_prompt": bool(updated_config.get("chat_prompt")),
         "models": {
             "chat": updated_config["chat_model"],
             "tool": updated_config["tool_model"]

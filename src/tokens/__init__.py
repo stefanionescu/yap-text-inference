@@ -10,10 +10,6 @@ from .token_utils import (
     trim_text_to_token_limit_tool,
     trim_history_preserve_messages_tool,
     trim_history_for_tool_sharing,
-    # Back-compat aliases
-    count_tokens,
-    trim_text_to_token_limit,
-    trim_history_preserve_messages,
 )
 
 __all__ = [
@@ -26,10 +22,6 @@ __all__ = [
     "trim_text_to_token_limit_tool",
     "trim_history_preserve_messages_tool",
     "trim_history_for_tool_sharing",
-    # Back-compat
-    "count_tokens",
-    "trim_text_to_token_limit",
-    "trim_history_preserve_messages",
 ]
 
 

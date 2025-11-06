@@ -126,16 +126,16 @@ def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> s
     return out
 
 
-# Back-compat exports used by older imports
-def count_tokens(text: str) -> int:
-    return count_tokens_chat(text)
-
-
-def trim_text_to_token_limit(text: str, max_tokens: int, keep: str = "end") -> str:
-    return trim_text_to_token_limit_chat(text, max_tokens, keep)
-
-
-def trim_history_preserve_messages(history_text: str, max_tokens: int) -> str:
-    return trim_history_preserve_messages_chat(history_text, max_tokens)
+__all__ = [
+    # Chat
+    "count_tokens_chat",
+    "trim_text_to_token_limit_chat",
+    "trim_history_preserve_messages_chat",
+    # Tool
+    "count_tokens_tool",
+    "trim_text_to_token_limit_tool",
+    "trim_history_preserve_messages_tool",
+    "trim_history_for_tool_sharing",
+]
 
 

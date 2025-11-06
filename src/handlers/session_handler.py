@@ -36,9 +36,10 @@ class SessionHandler:
             self.session_meta[session_id] = {
                 "now_str": now_str,
                 # defaults that can be overridden on start
-                "assistant_gender": None,
-                "persona_text_override": None,
-                "tool_prompt_override": None,
+                "chat_gender": None,
+                "chat_personality": None,
+                "chat_prompt": None,
+                "tool_prompt": None,
                 # expose models (handy for client logs)
                 "chat_model": CHAT_MODEL,
                 "tool_model": TOOL_MODEL,
@@ -49,16 +50,19 @@ class SessionHandler:
     def update_session_config(
         self,
         session_id: str,
-        assistant_gender: Optional[str] = None,
-        persona_text_override: Optional[str] = None,
-        tool_prompt_override: Optional[str] = None,
+        chat_gender: Optional[str] = None,
+        chat_personality: Optional[str] = None,
+        chat_prompt: Optional[str] = None,
+        tool_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Update session configuration.
 
         Args:
             session_id: Session identifier
-            assistant_gender: Normalized assistant gender
-            persona_text_override: Raw persona text override
+            chat_gender: 'female' or 'male'
+            chat_personality: validated personality string
+            chat_prompt: Raw chat prompt provided by client
+            tool_prompt: Raw tool prompt provided by client
 
         Returns:
             Dict of changed fields
@@ -68,21 +72,24 @@ class SessionHandler:
 
         changed = {}
 
-        if assistant_gender is not None:
-            self.session_meta[session_id]["assistant_gender"] = assistant_gender
-            changed["assistant_gender"] = assistant_gender
+        if chat_gender is not None:
+            self.session_meta[session_id]["chat_gender"] = chat_gender
+            changed["chat_gender"] = chat_gender
 
-        if persona_text_override is not None:
-            # explicit None/empty clears the override
-            override_val = persona_text_override or None
-            self.session_meta[session_id]["persona_text_override"] = override_val
-            changed["persona_text_override"] = bool(override_val)
+        if chat_personality is not None:
+            self.session_meta[session_id]["chat_personality"] = chat_personality
+            changed["chat_personality"] = chat_personality
 
-        if tool_prompt_override is not None:
-            # explicit None/empty clears the override
-            tool_val = tool_prompt_override or None
-            self.session_meta[session_id]["tool_prompt_override"] = tool_val
-            changed["tool_prompt_override"] = bool(tool_val)
+        if chat_prompt is not None:
+            # explicit None/empty clears the prompt
+            cp = chat_prompt or None
+            self.session_meta[session_id]["chat_prompt"] = cp
+            changed["chat_prompt"] = bool(cp)
+
+        if tool_prompt is not None:
+            tp = tool_prompt or None
+            self.session_meta[session_id]["tool_prompt"] = tp
+            changed["tool_prompt"] = bool(tp)
 
         return changed
 

@@ -12,11 +12,11 @@ from ..utils.sanitize import sanitize_prompt
 async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
     """Handle 'warm_persona' message type."""
     # Warm the STATIC PREFIX using client-provided chat prompt
-    raw_prompt = msg.get("chat_prompt") or msg.get("persona_text")
+    raw_prompt = msg.get("chat_prompt")
     if not raw_prompt:
         await ws.send_text(json.dumps({
             "type": "error",
-            "message": "chat_prompt (or persona_text) is required to warm persona"
+            "message": "chat_prompt is required to warm persona"
         }))
         return
     try:

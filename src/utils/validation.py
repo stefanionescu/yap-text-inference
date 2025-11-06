@@ -1,40 +1,28 @@
 """Validation utilities for input normalization and checks."""
 
 from typing import Optional
+from ..config import ALLOWED_PERSONALITIES
 
 
 def normalize_gender(val: Optional[str]) -> Optional[str]:
-    """Normalize gender input to standardized values.
-    
-    Args:
-        val: Raw gender string input
-        
-    Returns:
-        Normalized gender value ('woman', 'man') or None if invalid
-    """
+    """Normalize gender input to standardized values ('female'|'male')."""
     if not val:
         return None
     v = val.strip().lower()
     if v in ("woman", "female", "f", "w"):
-        return "woman"
+        return "female"
     if v in ("man", "male", "m"):
-        return "man"
+        return "male"
     return None
 
 
-def validate_persona_style(style: str) -> bool:  # deprecated, kept for compatibility
-    return True
+def validate_personality(personality: Optional[str]) -> bool:
+    if not personality:
+        return False
+    return personality.strip() in ALLOWED_PERSONALITIES
 
 
-def validate_user_identity(user_identity: str) -> str:
-    """Validate and normalize user identity.
-    
-    Args:
-        user_identity: Raw user identity input
-        
-    Returns:
-        Normalized user identity ('man', 'woman', 'non-binary')
-    """
-    if user_identity in {"man", "woman", "non-binary"}:
-        return user_identity
-    return "non-binary"
+__all__ = [
+    "normalize_gender",
+    "validate_personality",
+]
