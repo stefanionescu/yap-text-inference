@@ -84,16 +84,6 @@ if QUANTIZATION not in ["fp8", "gptq", "gptq_marlin", "awq"]:
         f"QUANTIZATION must be 'fp8', 'gptq', 'gptq_marlin', or 'awq', got: {QUANTIZATION}"
     )
 
-# Allowed chat personalities (comma-separated). Required when chat is deployed.
-_raw_allowed_personalities = os.getenv("ALLOWED_PERSONALITIES", "").strip()
-if DEPLOY_CHAT and not _raw_allowed_personalities:
-    raise ValueError(
-        "ALLOWED_PERSONALITIES environment variable is required when deploying chat; provide comma-separated values"
-    )
-ALLOWED_PERSONALITIES = tuple(
-    p.strip() for p in _raw_allowed_personalities.split(",") if p.strip()
-)
-
 
 __all__ = [
     "DEPLOY_MODELS",
@@ -110,8 +100,6 @@ __all__ = [
     # prefixes
     "CHECK_SCREEN_PREFIX",
     "SCREEN_CHECKED_PREFIX",
-    # chat personalities
-    "ALLOWED_PERSONALITIES",
 ]
 
 

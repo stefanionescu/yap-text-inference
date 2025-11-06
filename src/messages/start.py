@@ -19,7 +19,7 @@ from ..tokens import (
 )
 from ..utils.validation import (
     normalize_gender,
-    validate_personality,
+    normalize_personality,
 )
 from ..utils.sanitize import sanitize_prompt
 from ..handlers.session_handler import session_handler
@@ -46,7 +46,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
 
     # Require assistant_gender and personality at start; validate them first
     incoming_gender = normalize_gender(msg.get("assistant_gender"))
-    incoming_personality = (msg.get("personality") or "").strip()
+    incoming_personality = normalize_personality(msg.get("personality"))
     if incoming_gender is None:
         await ws.send_text(json.dumps({
             "type": "error",
@@ -56,11 +56,11 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         await ws.close(code=1008)
         logger.info("handle_start: error → invalid assistant_gender; connection closed")
         return
-    if not validate_personality(incoming_personality):
+    if incoming_personality is None:
         await ws.send_text(json.dumps({
             "type": "error",
             "error_code": "invalid_personality",
-            "message": "personality is not allowed"
+            "message": "personality must be letters-only and <= configured max length"
         }))
         await ws.close(code=1008)
         logger.info("handle_start: error → invalid personality; connection closed")
@@ -161,15 +161,8 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         "assistant_gender": updated_config.get("chat_gender"),
         "personality": updated_config.get("chat_personality"),
         "chat_prompt": bool(updated_config.get("chat_prompt")),
-        "models": {
-            "chat": updated_config["chat_model"],
-            "tool": updated_config["tool_model"]
-        }
     }))
-    logger.info(
-        f"handle_start: ack sent session_id={session_id} chat_model={updated_config['chat_model']} "
-        f"tool_model={updated_config['tool_model']}"
-    )
+    logger.info(f"handle_start: ack sent session_id={session_id}")
 
     # Process history and user utterance
     history_text = msg.get("history_text", "")

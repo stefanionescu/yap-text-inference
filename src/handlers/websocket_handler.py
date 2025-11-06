@@ -14,7 +14,7 @@ from ..messages.cancel import handle_cancel_message
 from ..messages.warm_persona import handle_warm_persona_message
 from ..messages.warm_history import handle_warm_history_message
 from ..messages.followup import handle_followup_message
-from ..messages.update_chat_prompt import handle_update_chat_prompt
+from ..messages.chat_prompt import handle_chat_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +92,9 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 logger.info("WS recv: followup")
                 await handle_followup_message(ws, msg, session_id)
 
-            elif msg["type"] == "update_chat_prompt":
-                logger.info("WS recv: update_chat_prompt")
-                await handle_update_chat_prompt(ws, msg, session_id)
+            elif msg["type"] == "chat_prompt":
+                logger.info("WS recv: chat_prompt")
+                await handle_chat_prompt(ws, msg, session_id)
 
             else:
                 await ws.send_text(json.dumps({
