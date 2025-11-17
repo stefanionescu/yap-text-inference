@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import re
 
 
 _SENTENCE_END_RE = re.compile(r"[.!?](?:[\"”')\]]+)?(?:\s|$)")
