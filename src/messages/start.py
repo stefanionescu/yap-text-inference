@@ -11,6 +11,7 @@ from ..config import (
     CONCURRENT_MODEL_CALL,
     DEPLOY_CHAT, DEPLOY_TOOL,
     CHAT_PROMPT_MAX_TOKENS, TOOL_PROMPT_MAX_TOKENS,
+    PERSONALITY_MAX_LEN,
 )
 from ..tokens import (
     count_tokens_chat, count_tokens_tool,
@@ -18,7 +19,9 @@ from ..tokens import (
 )
 from ..utils.validation import (
     normalize_gender,
+    is_gender_empty_or_null,
     normalize_personality,
+    is_personality_empty_or_null,
 )
 from ..utils.sanitize import sanitize_prompt
 from ..handlers.session_handler import session_handler
@@ -44,8 +47,18 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     sess_now_str = session_config["now_str"]
 
     # Require assistant_gender and personality at start; validate them first
-    incoming_gender = normalize_gender(msg.get("assistant_gender"))
-    incoming_personality = normalize_personality(msg.get("personality"))
+    raw_gender = msg.get("assistant_gender")
+    raw_personality = msg.get("personality")
+    if is_gender_empty_or_null(raw_gender):
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "missing_gender",
+            "message": "assistant_gender is required and cannot be empty"
+        }))
+        await ws.close(code=1008)
+        logger.info("handle_start: error → missing assistant_gender; connection closed")
+        return
+    incoming_gender = normalize_gender(raw_gender)
     if incoming_gender is None:
         await ws.send_text(json.dumps({
             "type": "error",
@@ -55,11 +68,21 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         await ws.close(code=1008)
         logger.info("handle_start: error → invalid assistant_gender; connection closed")
         return
+    if is_personality_empty_or_null(raw_personality):
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "error_code": "missing_personality",
+            "message": "personality is required and cannot be empty"
+        }))
+        await ws.close(code=1008)
+        logger.info("handle_start: error → missing personality; connection closed")
+        return
+    incoming_personality = normalize_personality(raw_personality)
     if incoming_personality is None:
         await ws.send_text(json.dumps({
             "type": "error",
             "error_code": "invalid_personality",
-            "message": "personality must be letters-only and <= configured max length"
+            "message": f"personality must be letters-only and lower than or equal to {PERSONALITY_MAX_LEN} characters"
         }))
         await ws.close(code=1008)
         logger.info("handle_start: error → invalid personality; connection closed")
