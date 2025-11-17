@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import sys
 import time
 import uuid
 from typing import Any, Dict, List, Optional
@@ -13,17 +15,29 @@ from common.util import choose_message
 from common.ws import with_api_key
 from .reporting import print_report
 
+# Ensure prompts module is importable when running as script
+_TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _TEST_DIR not in sys.path:
+    sys.path.insert(0, _TEST_DIR)
+
+from prompts.chat import FIRST_PROMPT, SECOND_PROMPT  # noqa: E402
+from prompts.toolcall import TOOLCALL_PROMPT  # noqa: E402
+
 
 async def _one_request(url: str, gender: str, style: str, message: str, timeout_s: float) -> Dict[str, Any]:
     async def _session() -> Dict[str, Any]:
         auth_url = with_api_key(url)
 
         session_id = str(uuid.uuid4())
+        gender_normalized = gender.strip().lower()
+        chat_prompt = FIRST_PROMPT if gender_normalized == "female" else SECOND_PROMPT
         start_payload: Dict[str, Any] = {
             "type": "start",
             "session_id": session_id,
             "assistant_gender": gender,
             "personality": style,
+            "chat_prompt": chat_prompt,
+            "tool_prompt": TOOLCALL_PROMPT,
             "history_text": "",
             "user_utterance": message,
         }
