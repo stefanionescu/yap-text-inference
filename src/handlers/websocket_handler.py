@@ -117,7 +117,13 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     finally:
         # Always remove connection from manager when done
         await connection_handler.disconnect(ws)
-        logger.info(f"WebSocket connection closed. Active: {connection_handler.get_connection_count()}")
+        remaining = connection_handler.get_connection_count()
+        logger.info(f"WebSocket connection closed. Active: {remaining}")
+        if remaining == 0:
+            try:
+                await clear_all_engine_caches_on_disconnect()
+            except Exception:
+                pass
 
 
 async def _cleanup_session(session_id: Optional[str]) -> None:
@@ -147,8 +153,5 @@ async def _cleanup_session(session_id: Optional[str]) -> None:
     except Exception:
         pass
 
-    # Clear caches for any constructed engines (chat/tool) after disconnect
-    try:
-        await clear_all_engine_caches_on_disconnect()
-    except Exception:
-        pass
+    # Drop session state after cleanup
+    session_handler.clear_session_state(session_id)

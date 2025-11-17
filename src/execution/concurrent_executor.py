@@ -205,6 +205,7 @@ async def run_concurrent_execution(
                 "normalized_text": final_text
             }))
             await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+            session_handler.append_history_turn(session_id, modified_user_utt, final_text)
             logger.info(f"concurrent_exec: done after tool yes (CHECK SCREEN) chars={len(final_text)}")
             return
         
@@ -246,6 +247,7 @@ async def run_concurrent_execution(
             "normalized_text": final_text
         }))
         await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+        session_handler.append_history_turn(session_id, user_utt, final_text)
         logger.info(f"concurrent_exec: done after tool no chars={len(final_text)}")
     
     except Exception as e:

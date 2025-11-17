@@ -7,7 +7,7 @@ from typing import Dict, Any
 from fastapi import WebSocket
 
 from ..config import (
-    HISTORY_MAX_TOKENS, USER_UTT_MAX_TOKENS,
+    USER_UTT_MAX_TOKENS,
     CONCURRENT_MODEL_CALL,
     DEPLOY_CHAT, DEPLOY_TOOL,
     CHAT_PROMPT_MAX_TOKENS, TOOL_PROMPT_MAX_TOKENS,
@@ -15,7 +15,6 @@ from ..config import (
 from ..tokens import (
     count_tokens_chat, count_tokens_tool,
     trim_text_to_token_limit_chat,
-    trim_history_preserve_messages_chat,
 )
 from ..utils.validation import (
     normalize_gender,
@@ -165,19 +164,16 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
     logger.info(f"handle_start: ack sent session_id={session_id}")
 
     # Process history and user utterance
-    history_text = msg.get("history_text", "")
+    if "history_text" in msg:
+        incoming_history = msg.get("history_text") or ""
+        history_text = session_handler.set_history_text(session_id, incoming_history)
+    else:
+        history_text = session_handler.get_history_text(session_id)
+
     user_utt = msg["user_utterance"]
 
     # Trim user utterance for chat using chat tokenizer
     user_utt = trim_text_to_token_limit_chat(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
-
-    # Trim rolling history to HISTORY_MAX_TOKENS, keep most recent
-    # Use message-boundary-aware trimming to avoid partial messages
-    if count_tokens_chat(history_text) > HISTORY_MAX_TOKENS:
-        history_text = trim_history_preserve_messages_chat(
-            history_text,
-            HISTORY_MAX_TOKENS,
-        )
 
     # Choose execution based on deploy mode and concurrency flag
     async def _run_start():
@@ -209,6 +205,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
                 "normalized_text": final_text
             }))
             await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+            session_handler.append_history_turn(session_id, user_utt, final_text)
             logger.info(f"handle_start: chat-only done session_id={session_id} chars={len(final_text)}")
             return
 

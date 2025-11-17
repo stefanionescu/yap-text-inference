@@ -46,7 +46,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str
     raw_gender = msg.get("assistant_gender")
     raw_personality = (msg.get("personality") or "").strip()
     raw_prompt = msg.get("chat_prompt") or msg.get("persona_text")
-    history_text = msg.get("history_text", "")
+    history_text = session_handler.get_history_text(session_id)
 
     # Validate gender and personality first
     g = normalize_gender(raw_gender)
@@ -116,6 +116,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str
     # Trim history (chat tokenizer) and warm the new prefix (prompt + history)
     if count_tokens_chat(history_text) > HISTORY_MAX_TOKENS:
         history_text = trim_history_preserve_messages_chat(history_text, HISTORY_MAX_TOKENS)
+        session_handler.set_history_text(session_id, history_text)
 
     warm_prompt = (
         f"<|persona|>\n{chat_prompt.strip()}\n"

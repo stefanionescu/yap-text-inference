@@ -105,4 +105,5 @@ async def run_sequential_execution(
         "normalized_text": final_text
     }))
     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+    session_handler.append_history_turn(session_id, user_utt_for_chat, final_text)
     logger.info(f"sequential_exec: done chars={len(final_text)}")

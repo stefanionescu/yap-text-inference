@@ -3,7 +3,8 @@
 import asyncio
 from typing import Dict, Any, Optional
 
-from ..config import CHAT_MODEL, TOOL_MODEL
+from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS
+from ..tokens import count_tokens_chat, trim_history_preserve_messages_chat
 from ..utils.time_utils import format_session_timestamp
 
 
@@ -13,6 +14,9 @@ class SessionHandler:
     def __init__(self):
         # Per-session metadata: timestamp string and persona/model config
         self.session_meta: Dict[str, Dict[str, Any]] = {}
+
+        # Rolling history per session (server-managed)
+        self.session_history: Dict[str, str] = {}
 
         # Track active session tasks/requests
         self.session_tasks: Dict[str, asyncio.Task] = {}
@@ -44,6 +48,8 @@ class SessionHandler:
                 "chat_model": CHAT_MODEL,
                 "tool_model": TOOL_MODEL,
             }
+
+        self.session_history.setdefault(session_id, "")
 
         return self.session_meta[session_id]
 
@@ -153,6 +159,52 @@ class SessionHandler:
         tool_req = self.session_tool_req.pop(session_id, "")
 
         return {"active": active_req, "tool": tool_req}
+
+    def get_history_text(self, session_id: str) -> str:
+        """Return the server-tracked history for the session."""
+        return self.session_history.get(session_id, "")
+
+    def set_history_text(self, session_id: str, history_text: str) -> str:
+        """Set (and trim) the server-tracked history for the session."""
+        normalized = self._normalize_history(history_text)
+        self.session_history[session_id] = normalized
+        return normalized
+
+    def append_history_turn(self, session_id: str, user_utt: str, assistant_text: str) -> str:
+        """Append a formatted user/assistant turn to the stored history."""
+        turn = self._format_turn(user_utt, assistant_text)
+        if not turn:
+            return self.session_history.get(session_id, "")
+
+        existing = self.session_history.get(session_id, "")
+        combined = f"{existing}\n\n{turn}".strip() if existing.strip() else turn
+        normalized = self._normalize_history(combined)
+        self.session_history[session_id] = normalized
+        return normalized
+
+    def clear_session_state(self, session_id: str) -> None:
+        """Clear all stored state for a session."""
+        self.session_meta.pop(session_id, None)
+        self.session_tasks.pop(session_id, None)
+        self.session_active_req.pop(session_id, None)
+        self.session_tool_req.pop(session_id, None)
+        self.session_history.pop(session_id, None)
+
+    def _normalize_history(self, history_text: str) -> str:
+        text = (history_text or "").strip()
+        if not text:
+            return ""
+        if count_tokens_chat(text) > HISTORY_MAX_TOKENS:
+            text = trim_history_preserve_messages_chat(text, HISTORY_MAX_TOKENS)
+        return text
+
+    @staticmethod
+    def _format_turn(user_utt: str, assistant_text: str) -> str:
+        user = (user_utt or "").strip()
+        assistant = (assistant_text or "").strip()
+        if not user and not assistant:
+            return ""
+        return f"User: {user}\nAssistant: {assistant}".strip()
 
 
 # Global session handler instance
