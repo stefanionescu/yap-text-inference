@@ -46,7 +46,7 @@ from .limits import (
     CONCURRENT_MODEL_CALL,
     MAX_CONCURRENT_CONNECTIONS,
 )
-from .secrets import YAP_API_KEY
+from .secrets import TEXT_API_KEY
 from .args import make_engine_args
 
 
@@ -108,7 +108,7 @@ __all__ = [
     "CONCURRENT_MODEL_CALL",
     "MAX_CONCURRENT_CONNECTIONS",
     # secrets
-    "YAP_API_KEY",
+    "TEXT_API_KEY",
     # helpers
     "make_engine_args",
 ]

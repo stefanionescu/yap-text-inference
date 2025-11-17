@@ -6,7 +6,7 @@ from fastapi import HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyQuery, APIKeyHeader
 from fastapi import WebSocket
 
-from .config import YAP_API_KEY
+from .config import TEXT_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def validate_api_key(provided_key: str) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    return provided_key == YAP_API_KEY
+    return provided_key == TEXT_API_KEY
 
 
 async def get_api_key(

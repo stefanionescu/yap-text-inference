@@ -10,7 +10,7 @@ Flow:
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
-  YAP_API_KEY=yap_token
+  TEXT_API_KEY=yap_token
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import time
 import uuid
 
 import websockets
@@ -30,7 +29,7 @@ ANALYSIS_TEXT = (
 )
 
 
-def _with_api_key(url: str, env: str = "YAP_API_KEY", default_key: str = "yap_token") -> str:
+def _with_api_key(url: str, env: str = "TEXT_API_KEY", default_key: str = "yap_token") -> str:
     key = os.getenv(env, default_key)
     return f"{url}&api_key={key}" if "?" in url else f"{url}?api_key={key}"
 
@@ -101,7 +100,6 @@ async def run_once() -> None:
         followup_payload = {
             "type": "followup",
             "analysis_text": ANALYSIS_TEXT,
-            # You can provide history_text if you have it; keeping empty for simplicity.
             "history_text": "",
         }
         await ws.send(json.dumps(followup_payload))
