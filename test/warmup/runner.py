@@ -11,6 +11,8 @@ from typing import Any, Dict
 from common.regex import contains_complete_sentence, has_at_least_n_words
 from common.ws import with_api_key
 from .messages import choose_message
+from test.prompts.chat import FIRST_PROMPT, SECOND_PROMPT
+from test.prompts.toolcall import TOOLCALL_PROMPT
 
 
 async def run_once(args) -> None:
@@ -23,11 +25,21 @@ async def run_once(args) -> None:
 
     user_msg = choose_message(args.message)
     session_id = str(uuid.uuid4())
+    
+    # Select chat prompt based on gender (server normalizes to 'female' or 'male')
+    gender_normalized = assistant_gender.lower().strip()
+    if gender_normalized == "female":
+        chat_prompt = FIRST_PROMPT
+    else:
+        chat_prompt = SECOND_PROMPT  # Default to male/Mark prompt
+    
     start_payload: Dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
         "assistant_gender": assistant_gender,
         "personality": personality,
+        "chat_prompt": chat_prompt,
+        "tool_prompt": TOOLCALL_PROMPT,
         "history_text": "",
         "user_utterance": user_msg,
     }

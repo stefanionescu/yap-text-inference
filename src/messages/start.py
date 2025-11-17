@@ -102,7 +102,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         await ws.send_text(json.dumps({
             "type": "error",
             "error_code": "missing_chat_prompt",
-            "message": "chat_prompt is required for this deployment"
+            "message": "chat_prompt is required"
         }))
         await ws.close(code=1008)
         logger.info("handle_start: error → missing chat_prompt; connection closed")
@@ -112,7 +112,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         await ws.send_text(json.dumps({
             "type": "error",
             "error_code": "missing_tool_prompt",
-            "message": "tool_prompt is required for this deployment"
+            "message": "tool_prompt is required"
         }))
         await ws.close(code=1008)
         logger.info("handle_start: error → missing tool_prompt; connection closed")
