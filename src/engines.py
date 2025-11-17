@@ -84,6 +84,8 @@ def _create_engine_with_awq_handling(engine_args):
 
 
 async def get_chat_engine() -> AsyncLLMEngine:
+    if not DEPLOY_CHAT:
+        raise RuntimeError("get_chat_engine() called but DEPLOY_CHAT is False")
     global _chat_engine, _tool_engine
     if _chat_engine is None or (_tool_engine is None and DEPLOY_TOOL):
         async with _ENGINE_CONSTRUCTION_LOCK:
@@ -95,6 +97,8 @@ async def get_chat_engine() -> AsyncLLMEngine:
 
 
 async def get_tool_engine() -> AsyncLLMEngine:
+    if not DEPLOY_TOOL:
+        raise RuntimeError("get_tool_engine() called but DEPLOY_TOOL is False")
     global _chat_engine, _tool_engine
     if (_chat_engine is None and DEPLOY_CHAT) or _tool_engine is None:
         async with _ENGINE_CONSTRUCTION_LOCK:
