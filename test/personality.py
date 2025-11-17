@@ -84,7 +84,7 @@ async def send_start(ws, session_id: str, assistant_gender: str, personality: st
 
 async def send_update_chat_prompt(ws, session_id: str, assistant_gender: str, personality: str, chat_prompt: str, history_text: str) -> dict:
     msg = {
-        "type": "update_chat_prompt",
+        "type": "chat_prompt",
         "session_id": session_id,
         "assistant_gender": assistant_gender,
         "personality": personality,
@@ -95,7 +95,7 @@ async def send_update_chat_prompt(ws, session_id: str, assistant_gender: str, pe
     # Wait for a single ack/error
     while True:
         ack = json.loads(await ws.recv())
-        if ack.get("type") == "ack" and ack.get("for") == "update_chat_prompt":
+        if ack.get("type") == "ack" and ack.get("for") == "chat_prompt":
             return ack
         if ack.get("type") == "error":
             return ack
