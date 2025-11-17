@@ -180,5 +180,3 @@ def get_tool_tokenizer() -> FastTokenizer:
         if _tool_tok is None:
             _tool_tok = FastTokenizer(TOOL_MODEL)
     return _tool_tok
-
-

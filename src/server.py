@@ -19,7 +19,7 @@ from .config.logging import APP_LOG_LEVEL, APP_LOG_FORMAT
 from .handlers.websocket_handler import handle_websocket_connection
 from .handlers.connection_handler import connection_handler
 from .auth import get_api_key
-from .tokens.tokenizer import get_tokenizer
+from .tokens.tokenizer import get_chat_tokenizer, get_tool_tokenizer
 
 
 app = FastAPI(default_response_class=ORJSONResponse)
@@ -69,9 +69,12 @@ async def startup_warmup():
     """
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["\n", "</s>"])
 
-    # Warm tokenizer used by exact trimming to avoid first-request stalls
+    # Warm tokenizer(s) used by exact trimming to avoid first-request stalls
     try:
-        _ = get_tokenizer()
+        if DEPLOY_CHAT:
+            _ = get_chat_tokenizer()
+        if DEPLOY_TOOL:
+            _ = get_tool_tokenizer()
     except Exception as e:
         # Tokenizer warmup failures shouldn't block server start; generation warmups below will still proceed
         print(f"Warning: Tokenizer warmup failed: {e}")
