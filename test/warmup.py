@@ -18,7 +18,7 @@ Usage:
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
-  YAP_API_KEY=yap_token (or your custom API key)
+  TEXT_API_KEY=yap_token (or your custom API key)
   ASSISTANT_GENDER=female|male
   PERSONA_STYLE=flirty
 

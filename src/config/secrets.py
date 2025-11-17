@@ -4,9 +4,11 @@ import os
 
 
 # API Key for authentication (all endpoints except /healthz)
-YAP_API_KEY = os.getenv("YAP_API_KEY", "yap_token")
+TEXT_API_KEY = os.getenv("TEXT_API_KEY")
+if not TEXT_API_KEY:
+    raise ValueError("TEXT_API_KEY environment variable is required")
 
 
-__all__ = ["YAP_API_KEY"]
+__all__ = ["TEXT_API_KEY"]
 
 

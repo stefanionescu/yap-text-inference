@@ -13,7 +13,7 @@ Prints p50/p95 for each metric across completed requests. No intermediate logs.
 
 Environment Variables:
 - SERVER_WS_URL: WebSocket URL (default: ws://127.0.0.1:8000/ws)
-- YAP_API_KEY: API key for authentication (default: yap_token)
+- TEXT_API_KEY: API key for authentication (default: yap_token)
 - ASSISTANT_GENDER: female|male (default: female)
 - PERSONA_STYLE: persona style (default: flirty)
 

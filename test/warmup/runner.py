@@ -15,7 +15,7 @@ from .messages import choose_message
 
 async def run_once(args) -> None:
     server_ws_url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
-    api_key = os.getenv("YAP_API_KEY", "yap_token")
+    api_key = os.getenv("TEXT_API_KEY", "yap_token")
     assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", "female")
     persona_style = args.persona_style or os.getenv("PERSONA_STYLE", "flirty")
 
@@ -138,7 +138,7 @@ async def run_once(args) -> None:
                 error_message = msg.get("message", "unknown error")
                 print(f"[ERROR] {error_code}: {error_message}")
                 if error_code == "authentication_failed":
-                    print(f"[HINT] Check your YAP_API_KEY environment variable (currently: '{api_key}')")
+                    print(f"[HINT] Check your TEXT_API_KEY environment variable (currently: '{api_key}')")
                 elif error_code == "server_at_capacity":
                     print("[HINT] Server is at maximum connection capacity. Try again later.")
                 break

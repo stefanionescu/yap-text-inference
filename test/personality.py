@@ -36,7 +36,7 @@ MOCK_REPLIES: List[str] = [
 
 
 def get_api_key() -> str:
-    return os.getenv("YAP_API_KEY", "")
+    return os.getenv("TEXT_API_KEY", "")
 
 
 def build_ws_url(base: str, api_key: str) -> str:
