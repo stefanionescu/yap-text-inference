@@ -6,11 +6,19 @@ from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
 from ..engines import get_chat_engine
+from ..config import DEPLOY_CHAT
 from ..utils.sanitize import sanitize_prompt
 
 
 async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
     """Handle 'warm_persona' message type."""
+    if not DEPLOY_CHAT:
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "message": "warm_persona requires chat model deployment"
+        }))
+        return
+    
     # Warm the STATIC PREFIX using client-provided chat prompt
     raw_prompt = msg.get("chat_prompt")
     if not raw_prompt:

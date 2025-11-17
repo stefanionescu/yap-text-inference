@@ -3,7 +3,7 @@
 import asyncio
 from typing import Dict, Any, Optional
 
-from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS
+from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
 from ..tokens import count_tokens_chat, trim_history_preserve_messages_chat
 from ..utils.time_utils import format_session_timestamp
 
@@ -44,9 +44,9 @@ class SessionHandler:
                 "chat_personality": None,
                 "chat_prompt": None,
                 "tool_prompt": None,
-                # expose models (handy for client logs)
-                "chat_model": CHAT_MODEL,
-                "tool_model": TOOL_MODEL,
+                # expose models (handy for client logs) - only include if deployed
+                "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
+                "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
             }
 
         self.session_history.setdefault(session_id, "")
@@ -194,7 +194,8 @@ class SessionHandler:
         text = (history_text or "").strip()
         if not text:
             return ""
-        if count_tokens_chat(text) > HISTORY_MAX_TOKENS:
+        # Only trim history if chat model is deployed (history trimming uses chat tokenizer)
+        if DEPLOY_CHAT and count_tokens_chat(text) > HISTORY_MAX_TOKENS:
             text = trim_history_preserve_messages_chat(text, HISTORY_MAX_TOKENS)
         return text
 

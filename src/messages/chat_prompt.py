@@ -14,6 +14,7 @@ from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
 from ..handlers.session_handler import session_handler
+from ..config import DEPLOY_CHAT
 from ..utils.validation import (
     normalize_gender,
     is_gender_empty_or_null,
@@ -34,6 +35,16 @@ from ..engines import get_chat_engine
 
 
 async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
+    if not DEPLOY_CHAT:
+        await ws.send_text(json.dumps({
+            "type": "ack",
+            "for": "chat_prompt",
+            "ok": False,
+            "code": 400,
+            "message": "chat_prompt requires chat model deployment"
+        }))
+        return
+    
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
         await ws.send_text(json.dumps({"type": "error", "message": "no active session; send 'start' first"}))

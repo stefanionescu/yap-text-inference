@@ -15,7 +15,7 @@ from ..config import (
 )
 from ..tokens import (
     count_tokens_chat, count_tokens_tool,
-    trim_text_to_token_limit_chat,
+    trim_text_to_token_limit_chat, trim_text_to_token_limit_tool,
 )
 from ..utils.validation import (
     normalize_gender,
@@ -119,7 +119,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
         return
 
     # Sanitize and token-limit prompts
-    if raw_chat_prompt is not None:
+    if DEPLOY_CHAT and raw_chat_prompt is not None:
         try:
             chat_prompt = sanitize_prompt(raw_chat_prompt)
         except ValueError as e:
@@ -143,7 +143,7 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
             return
         session_handler.update_session_config(session_id, chat_prompt=chat_prompt)
 
-    if raw_tool_prompt is not None:
+    if DEPLOY_TOOL and raw_tool_prompt is not None:
         try:
             tool_prompt = sanitize_prompt(raw_tool_prompt)
         except ValueError as e:
@@ -195,8 +195,11 @@ async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: s
 
     user_utt = msg["user_utterance"]
 
-    # Trim user utterance for chat using chat tokenizer
-    user_utt = trim_text_to_token_limit_chat(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+    # Trim user utterance using appropriate tokenizer based on deployment mode
+    if DEPLOY_CHAT:
+        user_utt = trim_text_to_token_limit_chat(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+    elif DEPLOY_TOOL:
+        user_utt = trim_text_to_token_limit_tool(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
 
     # Choose execution based on deploy mode and concurrency flag
     async def _run_start():

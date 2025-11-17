@@ -6,12 +6,19 @@ from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
 from ..engines import get_chat_engine
-from ..config import HISTORY_MAX_TOKENS
+from ..config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
 from ..tokens import count_tokens_chat, trim_history_preserve_messages_chat
 
 
 async def handle_warm_history_message(ws: WebSocket, msg: dict) -> None:
     """Handle 'warm_history' message type."""
+    if not DEPLOY_CHAT:
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "message": "warm_history requires chat model deployment"
+        }))
+        return
+    
     history_text = msg.get("history_text", "")
     if count_tokens_chat(history_text) > HISTORY_MAX_TOKENS:
         history_text = trim_history_preserve_messages_chat(

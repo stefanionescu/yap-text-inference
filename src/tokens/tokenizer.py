@@ -15,7 +15,7 @@ from typing import Optional
 
 from tokenizers import Tokenizer
 
-from ..config import CHAT_MODEL, TOOL_MODEL
+from ..config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 
 logger = logging.getLogger(__name__)
 
@@ -163,20 +163,28 @@ _tool_tok_lock = Lock()
 
 
 def get_chat_tokenizer() -> FastTokenizer:
+    if not DEPLOY_CHAT:
+        raise RuntimeError("get_chat_tokenizer() called but DEPLOY_CHAT is False")
     global _chat_tok
     if _chat_tok is not None:
         return _chat_tok
     with _chat_tok_lock:
         if _chat_tok is None:
+            if not CHAT_MODEL:
+                raise ValueError("CHAT_MODEL is required when DEPLOY_CHAT is True")
             _chat_tok = FastTokenizer(CHAT_MODEL)
     return _chat_tok
 
 
 def get_tool_tokenizer() -> FastTokenizer:
+    if not DEPLOY_TOOL:
+        raise RuntimeError("get_tool_tokenizer() called but DEPLOY_TOOL is False")
     global _tool_tok
     if _tool_tok is not None:
         return _tool_tok
     with _tool_tok_lock:
         if _tool_tok is None:
+            if not TOOL_MODEL:
+                raise ValueError("TOOL_MODEL is required when DEPLOY_TOOL is True")
             _tool_tok = FastTokenizer(TOOL_MODEL)
     return _tool_tok

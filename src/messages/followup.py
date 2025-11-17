@@ -13,7 +13,7 @@ from fastapi import WebSocket
 
 from ..handlers.session_handler import session_handler
 from ..execution.chat_streamer import run_chat_stream
-from ..config import SCREEN_CHECKED_PREFIX, USER_UTT_MAX_TOKENS
+from ..config import DEPLOY_CHAT, SCREEN_CHECKED_PREFIX, USER_UTT_MAX_TOKENS
 from ..tokens import trim_text_to_token_limit_chat
 
 
@@ -30,6 +30,13 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
         - user_identity: str
         - user_utterance: str (ignored for synthesis; may be used by clients)
     """
+    if not DEPLOY_CHAT:
+        await ws.send_text(json.dumps({
+            "type": "error",
+            "message": "followup requires chat model deployment"
+        }))
+        return
+    
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
         await ws.send_text(json.dumps({"type": "error", "message": "no active session; send 'start' first"}))
