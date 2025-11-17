@@ -11,8 +11,8 @@ from typing import Any, Dict
 from common.regex import contains_complete_sentence, has_at_least_n_words
 from common.ws import with_api_key
 from .messages import choose_message
-from test.prompts.chat import FIRST_PROMPT, SECOND_PROMPT
-from test.prompts.toolcall import TOOLCALL_PROMPT
+from ..prompts.chat import FIRST_PROMPT, SECOND_PROMPT
+from ..prompts.toolcall import TOOLCALL_PROMPT
 
 
 async def run_once(args) -> None:
