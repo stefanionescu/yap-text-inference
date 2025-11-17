@@ -85,11 +85,11 @@ usage() {
   echo ""
   echo "  # Chat-only deployment"
   echo "  $0 chat SicariusSicariiStuff/Impish_Nemo_12B"
-  echo "  DEPLOY_MODELS=chat $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo "  DEPLOY_MODELS=chat $0 SicariusSicariiStuff/Impish_Nemo_12B"
   echo ""
   echo "  # Tool-only deployment"
   echo "  $0 tool MadeAgents/Hammer2.1-1.5b"
-  echo "  DEPLOY_MODELS=tool $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo "  DEPLOY_MODELS=tool $0 MadeAgents/Hammer2.1-1.5b"
   exit 1
 }
 

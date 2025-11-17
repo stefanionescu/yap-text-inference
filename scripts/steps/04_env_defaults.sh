@@ -47,8 +47,8 @@ fi
 
 log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
-log_info "  Chat model: ${CHAT_MODEL}"
-log_info "  Tool model: ${TOOL_MODEL}"
+log_info "  Chat model: ${CHAT_MODEL:-}"
+log_info "  Tool model: ${TOOL_MODEL:-}"
 log_info "  Quantization: ${QUANTIZATION}"
 log_info "  KV dtype: ${KV_DTYPE}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"

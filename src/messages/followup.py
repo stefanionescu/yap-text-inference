@@ -13,7 +13,8 @@ from fastapi import WebSocket
 
 from ..handlers.session_handler import session_handler
 from ..execution.chat_streamer import run_chat_stream
-from ..config import SCREEN_CHECKED_PREFIX
+from ..config import SCREEN_CHECKED_PREFIX, USER_UTT_MAX_TOKENS
+from ..tokens import trim_text_to_token_limit_chat
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,6 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
         - analysis_text: str
 
     Optional fields:
-        - history_text: str (conversation history)
         - user_identity: str
         - user_utterance: str (ignored for synthesis; may be used by clients)
     """
@@ -40,7 +40,7 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
         await ws.send_text(json.dumps({"type": "error", "message": "analysis_text is required"}))
         return
 
-    history_text = msg.get("history_text", "")
+    history_text = session_handler.get_history_text(session_id)
 
     # Resolve persona: require session-provided chat prompt
     static_prefix = cfg.get("chat_prompt") or ""
@@ -50,7 +50,8 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
         return
 
     # Synthesize the follow-up prompt for the chat model
-    user_utt = f"{SCREEN_CHECKED_PREFIX} {analysis_text}".strip()
+    prefixed = f"{SCREEN_CHECKED_PREFIX} {analysis_text}".strip()
+    user_utt = trim_text_to_token_limit_chat(prefixed, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
 
     final_text = ""
     async for chunk in run_chat_stream(
@@ -65,5 +66,6 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
 
     await ws.send_text(json.dumps({"type": "final", "normalized_text": final_text}))
     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+    session_handler.append_history_turn(session_id, user_utt, final_text)
 
 
