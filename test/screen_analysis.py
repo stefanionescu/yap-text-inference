@@ -45,7 +45,7 @@ async def run_once() -> None:
         "type": "start",
         "session_id": session_id,
         "assistant_gender": "female",
-        "persona_style": "flirty",
+        "personality": "flirty",
         "history_text": "",
         "user_utterance": "look at this — what do you think?",
     }

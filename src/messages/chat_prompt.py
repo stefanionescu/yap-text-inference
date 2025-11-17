@@ -14,7 +14,12 @@ from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
 from ..handlers.session_handler import session_handler
-from ..utils.validation import normalize_gender, normalize_personality
+from ..utils.validation import (
+    normalize_gender,
+    is_gender_empty_or_null,
+    normalize_personality,
+    is_personality_empty_or_null,
+)
 from ..utils.sanitize import sanitize_prompt
 from ..tokens import (
     count_tokens_chat,
@@ -23,6 +28,7 @@ from ..tokens import (
 from ..config import (
     HISTORY_MAX_TOKENS,
     CHAT_PROMPT_MAX_TOKENS,
+    PERSONALITY_MAX_LEN,
 )
 from ..engines import get_chat_engine
 
@@ -44,11 +50,20 @@ async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str
 
     # Required fields
     raw_gender = msg.get("assistant_gender")
-    raw_personality = (msg.get("personality") or "").strip()
+    raw_personality = msg.get("personality")
     raw_prompt = msg.get("chat_prompt") or msg.get("persona_text")
     history_text = session_handler.get_history_text(session_id)
 
     # Validate gender and personality first
+    if is_gender_empty_or_null(raw_gender):
+        await ws.send_text(json.dumps({
+            "type": "ack",
+            "for": "chat_prompt",
+            "ok": False,
+            "code": 400,
+            "message": "assistant_gender is required and cannot be empty"
+        }))
+        return
     g = normalize_gender(raw_gender)
     if g is None:
         await ws.send_text(json.dumps({
@@ -60,6 +75,16 @@ async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str
         }))
         return
 
+    if is_personality_empty_or_null(raw_personality):
+        await ws.send_text(json.dumps({
+            "type": "ack",
+            "for": "chat_prompt",
+            "ok": False,
+            "code": 400,
+            "message": "personality is required and cannot be empty"
+        }))
+        return
+
     norm_personality = normalize_personality(raw_personality)
     if norm_personality is None:
         await ws.send_text(json.dumps({
@@ -67,7 +92,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str
             "for": "chat_prompt",
             "ok": False,
             "code": 400,
-            "message": "personality must be letters-only and <= configured max length"
+            "message": f"personality must be letters-only and lower than or equal to {PERSONALITY_MAX_LEN} characters"
         }))
         return
 

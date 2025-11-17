@@ -17,7 +17,7 @@ async def run_once(args) -> None:
     server_ws_url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
     api_key = os.getenv("TEXT_API_KEY", "yap_token")
     assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", "female")
-    persona_style = args.persona_style or os.getenv("PERSONA_STYLE", "flirty")
+    personality = args.personality or os.getenv("PERSONALITY", "flirty")
 
     ws_url_with_auth = with_api_key(server_ws_url)
 
@@ -27,7 +27,7 @@ async def run_once(args) -> None:
         "type": "start",
         "session_id": session_id,
         "assistant_gender": assistant_gender,
-        "persona_style": persona_style,
+        "personality": personality,
         "history_text": "",
         "user_utterance": user_msg,
     }
@@ -67,9 +67,9 @@ async def run_once(args) -> None:
                 ack_seen = True
                 now = msg.get("now")
                 gender = msg.get("assistant_gender")
-                style = msg.get("persona_style")
+                personality = msg.get("personality")
                 models = msg.get("models", {})
-                print(f"ACK start → now='{now}' gender={gender} style={style} models={models}")
+                print(f"ACK start → now='{now}' gender={gender} personality={personality} models={models}")
                 continue
 
             if t == "ack" and msg.get("for") == "set_persona":

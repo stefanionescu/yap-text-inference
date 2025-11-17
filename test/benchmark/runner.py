@@ -23,7 +23,7 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
             "type": "start",
             "session_id": session_id,
             "assistant_gender": gender,
-            "persona_style": style,
+            "personality": style,
             "history_text": "",
             "user_utterance": message,
         }
@@ -99,7 +99,7 @@ async def _worker(num: int, url: str, gender: str, style: str, message: str, tim
 async def run_benchmark(args) -> None:
     url: str = args.url
     gender: str = args.assistant_gender
-    style: str = args.persona_style
+    style: str = args.personality
     message: str = choose_message(args.message, fallback="who was Columbus?")
 
     requests = max(1, int(args.requests))

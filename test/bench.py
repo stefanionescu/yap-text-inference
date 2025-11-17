@@ -15,7 +15,7 @@ Environment Variables:
 - SERVER_WS_URL: WebSocket URL (default: ws://127.0.0.1:8000/ws)
 - TEXT_API_KEY: API key for authentication (default: yap_token)
 - ASSISTANT_GENDER: female|male (default: female)
-- PERSONA_STYLE: persona style (default: flirty)
+- PERSONALITY: personality (default: flirty)
 
 Note: API key authentication is required. The client will automatically
 append the API key as a query parameter to all WebSocket connections.
@@ -61,12 +61,12 @@ def _parse_args() -> argparse.Namespace:
         help="assistant gender (normalized by server)",
     )
     p.add_argument(
-        "--persona-style",
+        "--personality",
         "--style",
         "-s",
-        dest="persona_style",
-        default=os.getenv("PERSONA_STYLE", "flirty"),
-        help="persona style (e.g., wholesome, savage, flirty)",
+        dest="personality",
+        default=os.getenv("PERSONALITY", "flirty"),
+        help="personality (e.g., wholesome, savage, flirty)",
     )
     return p.parse_args()
 

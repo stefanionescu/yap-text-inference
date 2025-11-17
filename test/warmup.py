@@ -20,7 +20,7 @@ Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
   TEXT_API_KEY=yap_token (or your custom API key)
   ASSISTANT_GENDER=female|male
-  PERSONA_STYLE=flirty
+  PERSONALITY=flirty
 
 Note: API key authentication is required. The client will automatically
 append the API key as a query parameter to the WebSocket URL.
@@ -44,11 +44,11 @@ def _parse_args() -> argparse.Namespace:
         help="assistant gender (normalized by server)",
     )
     parser.add_argument(
-        "--persona-style",
+        "--personality",
         "--style",
         "-s",
-        dest="persona_style",
-        help="persona style (e.g., wholesome, savage, playful)",
+        dest="personality",
+        help="personality (e.g., wholesome, savage, playful)",
     )
     return parser.parse_args()
 
