@@ -3,16 +3,22 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 import uuid
 import time
 import websockets
 from typing import Any, Dict
 
+# Add test directory to path for imports
+_test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _test_dir not in sys.path:
+    sys.path.insert(0, _test_dir)
+
 from common.regex import contains_complete_sentence, has_at_least_n_words
 from common.ws import with_api_key
 from .messages import choose_message
-from ..prompts.chat import FIRST_PROMPT, SECOND_PROMPT
-from ..prompts.toolcall import TOOLCALL_PROMPT
+from prompts.chat import FIRST_PROMPT, SECOND_PROMPT
+from prompts.toolcall import TOOLCALL_PROMPT
 
 
 async def run_once(args) -> None:
