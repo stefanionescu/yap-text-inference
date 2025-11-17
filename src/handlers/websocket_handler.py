@@ -142,19 +142,19 @@ async def _cleanup_session(session_id: Optional[str]) -> None:
     
     # Abort active chat request (only if chat is deployed)
     if DEPLOY_CHAT:
-        try:
-            if req_info["active"]:
-                await (await get_chat_engine()).abort_request(req_info["active"])
-        except Exception:
-            pass
+    try:
+        if req_info["active"]:
+            await (await get_chat_engine()).abort_request(req_info["active"])
+    except Exception:
+        pass
     
     # Abort tool request if exists (only if tool is deployed)
     if DEPLOY_TOOL:
-        try:
-            if req_info["tool"]:
-                await (await get_tool_engine()).abort_request(req_info["tool"])
-        except Exception:
-            pass
+    try:
+        if req_info["tool"]:
+            await (await get_tool_engine()).abort_request(req_info["tool"])
+    except Exception:
+        pass
 
     # Drop session state after cleanup
     session_handler.clear_session_state(session_id)
