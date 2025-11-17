@@ -39,16 +39,20 @@ async def run_once(args) -> None:
     else:
         chat_prompt = SECOND_PROMPT  # Default to male/Mark prompt
     
+    # Build start payload - tool_prompt is optional (only required if DEPLOY_TOOL=True)
     start_payload: Dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
         "assistant_gender": assistant_gender,
         "personality": personality,
         "chat_prompt": chat_prompt,
-        "tool_prompt": TOOLCALL_PROMPT,
         "history_text": "",
         "user_utterance": user_msg,
     }
+    
+    # Include tool_prompt if available (server will validate if DEPLOY_TOOL=True)
+    # This allows the test to work with both chat-only and chat+tool deployments
+    start_payload["tool_prompt"] = TOOLCALL_PROMPT
 
     print(f"Connecting to {server_ws_url} (with API key auth) …")
     async with websockets.connect(ws_url_with_auth, max_queue=None) as ws:
