@@ -12,6 +12,16 @@ source "${SCRIPT_DIR}/lib/restart/launch.sh"
 
 log_info "Quick restart using existing models and dependencies"
 
+ensure_text_api_key() {
+  if [ -z "${TEXT_API_KEY:-}" ]; then
+    log_warn "TEXT_API_KEY not set; defaulting to 'yap_token'"
+    TEXT_API_KEY="yap_token"
+  fi
+  export TEXT_API_KEY
+}
+
+ensure_text_api_key
+
 usage() {
   echo "Usage:"
   echo "  $0 [deploy_mode] [--install-deps]    - Restart using existing AWQ models"

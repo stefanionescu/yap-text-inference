@@ -8,6 +8,16 @@ source "${SCRIPT_DIR}/lib/common/log.sh"
 
 log_info "Starting Yap Text Inference Server"
 
+ensure_text_api_key() {
+  if [ -z "${TEXT_API_KEY:-}" ]; then
+    log_warn "TEXT_API_KEY not set; defaulting to 'yap_token'"
+    TEXT_API_KEY="yap_token"
+  fi
+  export TEXT_API_KEY
+}
+
+ensure_text_api_key
+
 # Usage function
 usage() {
   echo "Usage:"
