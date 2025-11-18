@@ -44,7 +44,7 @@ from ..execution.executors.concurrent_executor import run_concurrent_execution
 from ..execution.streaming.chat_streamer import run_chat_stream
 from ..execution.tool.tool_runner import run_toolcall
 from ..execution.tool.tool_parser import parse_tool_result
-from ..utils.executor_utils import stream_chat_response
+from ..utils.executor import stream_chat_response
 from .validators import (
     ValidationError,
     require_prompt,

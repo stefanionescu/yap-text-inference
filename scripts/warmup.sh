@@ -56,7 +56,7 @@ PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export PYTHONPATH
 
 wait_for_ready() {
-  local timeout_s=180
+  local timeout_s=1200
   local start_ts
   start_ts=$(date +%s)
   while true; do
