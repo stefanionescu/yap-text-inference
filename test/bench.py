@@ -19,6 +19,10 @@ Environment Variables:
 
 Note: API key authentication is required. The client will automatically
 append the API key as a query parameter to all WebSocket connections.
+
+If concurrency exceeds the server's MAX_CONCURRENT_CONNECTIONS limit, the
+benchmark will surface the resulting "server_at_capacity" errors so you can
+see how many sessions were rejected by the guardrail.
 """
 
 from __future__ import annotations

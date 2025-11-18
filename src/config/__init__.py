@@ -48,6 +48,15 @@ from .limits import (
 )
 from .secrets import TEXT_API_KEY
 from .args import make_engine_args
+from .websocket import (
+    WS_IDLE_TIMEOUT_S,
+    WS_WATCHDOG_TICK_S,
+    WS_HANDSHAKE_ACQUIRE_TIMEOUT_S,
+    WS_CLOSE_UNAUTHORIZED_CODE,
+    WS_CLOSE_BUSY_CODE,
+    WS_CLOSE_IDLE_CODE,
+    WS_CLOSE_CLIENT_REQUEST_CODE,
+)
 
 
 # Validate models with the same logic as before, raising on invalid
@@ -109,6 +118,14 @@ __all__ = [
     "MAX_CONCURRENT_CONNECTIONS",
     # secrets
     "TEXT_API_KEY",
+    # websocket
+    "WS_IDLE_TIMEOUT_S",
+    "WS_WATCHDOG_TICK_S",
+    "WS_HANDSHAKE_ACQUIRE_TIMEOUT_S",
+    "WS_CLOSE_UNAUTHORIZED_CODE",
+    "WS_CLOSE_BUSY_CODE",
+    "WS_CLOSE_IDLE_CODE",
+    "WS_CLOSE_CLIENT_REQUEST_CODE",
     # helpers
     "make_engine_args",
 ]

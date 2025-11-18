@@ -12,7 +12,7 @@ fi
 log_info "Running AWQ quantization process (Docker Base)"
 
 ## Respect pre-quantized setups strictly: if either engine is already AWQ,
-## do not perform any additional quantization. We "run like that" and skip.
+## do not perform any additional quantization.
 if [ "${CHAT_QUANTIZATION:-}" = "awq" ] || [ "${TOOL_QUANTIZATION:-}" = "awq" ]; then
   log_info "Detected pre-quantized AWQ for at least one model; skipping runtime quantization to honor existing setup"
   return 0 2>/dev/null || exit 0

@@ -3,9 +3,11 @@
 import asyncio
 import logging
 from typing import Set
+
 from fastapi import WebSocket
 
 from ..config import MAX_CONCURRENT_CONNECTIONS
+from ..config.websocket import WS_HANDSHAKE_ACQUIRE_TIMEOUT_S
 
 logger = logging.getLogger(__name__)
 
@@ -13,10 +15,16 @@ logger = logging.getLogger(__name__)
 class ConnectionHandler:
     """Handles WebSocket connections and enforces concurrency limits."""
 
-    def __init__(self, max_connections: int = MAX_CONCURRENT_CONNECTIONS):
+    def __init__(
+        self,
+        max_connections: int = MAX_CONCURRENT_CONNECTIONS,
+        acquire_timeout: float = WS_HANDSHAKE_ACQUIRE_TIMEOUT_S,
+    ):
         self.max_connections = max_connections
+        self.acquire_timeout = acquire_timeout
         self.active_connections: Set[WebSocket] = set()
         self._lock = asyncio.Lock()
+        self._semaphore = asyncio.Semaphore(max_connections)
 
     async def connect(self, websocket: WebSocket) -> bool:
         """Attempt to add a new WebSocket connection.
@@ -27,18 +35,28 @@ class ConnectionHandler:
         Returns:
             True if connection was accepted, False if at capacity
         """
-        async with self._lock:
-            if len(self.active_connections) >= self.max_connections:
-                logger.warning(
-                    f"Connection rejected: at capacity ({len(self.active_connections)}/{self.max_connections})"
-                )
-                return False
-
-            self.active_connections.add(websocket)
-            logger.info(
-                f"Connection accepted: {len(self.active_connections)}/{self.max_connections} active"
+        try:
+            await asyncio.wait_for(self._semaphore.acquire(), timeout=self.acquire_timeout)
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Connection rejected: at capacity (%s/%s)",
+                len(self.active_connections),
+                self.max_connections,
             )
+            return False
+
+        try:
+            async with self._lock:
+                self.active_connections.add(websocket)
+                logger.info(
+                    "Connection accepted: %s/%s active",
+                    len(self.active_connections),
+                    self.max_connections,
+                )
             return True
+        except Exception:
+            self._semaphore.release()
+            raise
 
     async def disconnect(self, websocket: WebSocket) -> None:
         """Remove a WebSocket connection.
@@ -46,12 +64,18 @@ class ConnectionHandler:
         Args:
             websocket: WebSocket connection to remove
         """
+        should_release = False
         async with self._lock:
             if websocket in self.active_connections:
                 self.active_connections.remove(websocket)
+                should_release = True
                 logger.info(
-                    f"Connection removed: {len(self.active_connections)}/{self.max_connections} active"
+                    "Connection removed: %s/%s active",
+                    len(self.active_connections),
+                    self.max_connections,
                 )
+        if should_release:
+            self._semaphore.release()
 
     def get_connection_count(self) -> int:
         """Get current number of active connections.
