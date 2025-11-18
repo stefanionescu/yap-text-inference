@@ -35,7 +35,7 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
         start_payload: dict[str, Any] = {
             "type": "start",
             "session_id": session_id,
-            "assistant_gender": gender,
+            "gender": gender,
             "personality": style,
             "chat_prompt": chat_prompt,
             "tool_prompt": TOOLCALL_PROMPT,
@@ -111,7 +111,7 @@ async def _worker(num: int, url: str, gender: str, style: str, message: str, tim
 
 async def run_benchmark(args) -> None:
     url: str = args.url
-    gender: str = args.assistant_gender
+    gender: str = args.gender
     style: str = args.personality
     message: str = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
 

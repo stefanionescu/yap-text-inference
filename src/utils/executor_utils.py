@@ -75,19 +75,28 @@ async def stream_chat_response(
 ) -> str:
     """Stream chat chunks, emit final/done messages, and record history."""
     final_text = initial_text
+    text_visible = bool(initial_text) and initial_text_already_sent
 
-    if initial_text and not initial_text_already_sent:
-        await ws.send_text(json.dumps({"type": "token", "text": initial_text}))
+    try:
+        if initial_text and not initial_text_already_sent:
+            await ws.send_text(json.dumps({"type": "token", "text": initial_text}))
+            text_visible = True
 
-    async for chunk in stream:
-        await ws.send_text(json.dumps({"type": "token", "text": chunk}))
-        final_text += chunk
+        async for chunk in stream:
+            await ws.send_text(json.dumps({"type": "token", "text": chunk}))
+            final_text += chunk
+            text_visible = True
 
-    await ws.send_text(json.dumps({
-        "type": "final",
-        "normalized_text": final_text,
-    }))
-    await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+        await ws.send_text(json.dumps({
+            "type": "final",
+            "normalized_text": final_text,
+        }))
+        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+    except asyncio.CancelledError:
+        if text_visible:
+            session_handler.append_history_turn(session_id, user_utt, final_text)
+        raise
+
     session_handler.append_history_turn(session_id, user_utt, final_text)
     return final_text
 

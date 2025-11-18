@@ -27,13 +27,13 @@ def validate_required_gender(raw_gender: str | None) -> str:
     if is_gender_empty_or_null(raw_gender):
         raise ValidationError(
             "missing_gender",
-            "assistant_gender is required and cannot be empty",
+            "gender is required and cannot be empty",
         )
     gender = normalize_gender(raw_gender)
     if gender is None:
         raise ValidationError(
             "invalid_gender",
-            "assistant_gender must be 'female' or 'male'",
+            "gender must be 'female' or 'male'",
         )
     return gender
 

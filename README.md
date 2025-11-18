@@ -215,7 +215,7 @@ The concurrent mode should show lower `ttfb_ms` for chat responses where the too
 ### Environment Overrides
 
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
-- `ASSISTANT_GENDER` (default `female`) — aliases accepted: `woman|man`
+- `GENDER` (default `female`) — aliases accepted: `woman|man`
 - `PERSONA_STYLE` (default `wholesome`)
 - `RECV_TIMEOUT_SEC` (default `60`)
 
@@ -228,7 +228,7 @@ RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey 
 
 ### What It Prints
 
-- An ACK line confirming session time and effective `assistant_gender`/`persona_style`.
+- An ACK line confirming session time and effective `gender`/`persona_style`.
 - Two JSON lines when streaming completes:
   - Metrics: `{ "type": "metrics", "ttfb_ms": ..., "total_ms": ..., "stream_ms": ..., "chunks": ..., "chars": ... }`
   - Final text: `{ "type": "final_text", "text": "..." }`

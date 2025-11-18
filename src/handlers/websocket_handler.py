@@ -207,7 +207,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 logger.info(
                     "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
                     msg.get("session_id"),
-                    msg.get("assistant_gender"),
+                    msg.get("gender"),
                     len(msg.get("history_text", "")),
                     len(msg.get("user_utterance", "")),
                 )

@@ -9,6 +9,7 @@ from .env import (
     CHAT_QUANTIZATION,
     TOOL_QUANTIZATION,
 )
+from .quantization import is_lowbit_quantization
 from .models import _is_local_model_path
 
 
@@ -25,11 +26,16 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
     # Select per-engine quantization:
     # - If CHAT_QUANTIZATION/TOOL_QUANTIZATION is set, prefer that.
-    # - Else default: chat uses QUANTIZATION; tool uses 'awq' only when QUANTIZATION=='awq'.
+    # - Else default: chat uses QUANTIZATION; tool inherits QUANTIZATION for low-bit modes.
     if is_chat:
         selected_quant = (CHAT_QUANTIZATION or QUANTIZATION)
     else:
-        selected_quant = TOOL_QUANTIZATION or ("awq" if QUANTIZATION == "awq" else None)
+        if TOOL_QUANTIZATION:
+            selected_quant = TOOL_QUANTIZATION
+        elif is_lowbit_quantization(QUANTIZATION):
+            selected_quant = QUANTIZATION
+        else:
+            selected_quant = None
 
     raw_quant = selected_quant
     inference_quant = raw_quant

@@ -14,7 +14,7 @@ Prints p50/p95 for each metric across completed requests. No intermediate logs.
 Environment Variables:
 - SERVER_WS_URL: WebSocket URL (default: ws://127.0.0.1:8000/ws)
 - TEXT_API_KEY: API key for authentication (default: yap_token)
-- ASSISTANT_GENDER: female|male (default: female)
+- GENDER: female|male (default: female)
 - PERSONALITY: personality (default: flirty)
 
 Note: API key authentication is required. The client will automatically
@@ -37,7 +37,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from test.config import (
-    DEFAULT_ASSISTANT_GENDER,
+    DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
     BENCHMARK_DEFAULT_CONCURRENCY,
@@ -74,13 +74,12 @@ def _parse_args() -> argparse.Namespace:
         help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     p.add_argument(
-        "--assistant-gender",
         "--gender",
         "-g",
-        dest="assistant_gender",
+        dest="gender",
         choices=["female", "male", "woman", "man"],
-        default=os.getenv("ASSISTANT_GENDER", DEFAULT_ASSISTANT_GENDER),
-        help="assistant gender (normalized by server)",
+        default=os.getenv("GENDER", DEFAULT_GENDER),
+        help="gender (normalized by server)",
     )
     p.add_argument(
         "--personality",
