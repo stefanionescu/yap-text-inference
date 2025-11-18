@@ -94,6 +94,26 @@ Cancel a turn
 ```json
 { "type": "cancel" }
 ```
+- Shortcut: send the literal `__CANCEL__` string (configurable via `WS_CANCEL_SENTINEL`) when clients cannot emit JSON.
+- Optional: include `"request_id"` to get it echoed back in the server’s `{"type":"done","cancelled":true}` acknowledgement.
+
+Gracefully end a session
+
+```json
+{ "type": "end" }
+```
+
+- The literal `__END__` sentinel (configurable via `WS_END_SENTINEL`) is also accepted.
+- The server responds with `{"type":"connection_closed","reason":"client_request"}` and closes the socket with code `1000`.
+
+Keep the connection warm during long pauses
+
+```json
+{ "type": "ping" }
+```
+
+- Server replies with `{"type":"pong"}` and resets the idle timer (default idle timeout: 150 s, set via `WS_IDLE_TIMEOUT_S`).
+- Incoming `{"type":"pong"}` frames are treated as no-ops so clients can mirror the heartbeat without extra logic.
 
 Warm persona/history (cache priming; optional)
 
@@ -141,6 +161,8 @@ Explicit cancellation:
 ```json
 {"type": "cancel"}
 ```
+- `{"cancel": true}` or `__CANCEL__` produce the same result.
+- The server immediately aborts both chat and tool engines, stops streaming tokens, and sends `{"type":"done","cancelled":true}` (plus `request_id` when provided).
 
 Automatic barge-in (recommended for Pipecat):
 
@@ -150,6 +172,8 @@ Automatic barge-in (recommended for Pipecat):
 
 - New `start` messages automatically cancel any ongoing generation for that session
 - Both chat and tool models are immediately aborted; new response begins streaming right away
+- Always send either a new `start`, `cancel`, or `end` before disconnecting so the connection slot is returned without waiting for the idle watchdog (150 s, configurable).
+- Idle sockets are closed with code `4000` (`WS_CLOSE_IDLE_CODE`); periodic `ping` frames keep the session alive indefinitely.
 
 Response handling:
 - Cancelled requests return: `{ "type": "done", "cancelled": true }`

@@ -95,8 +95,7 @@ async def run_once(args) -> None:
                     now = msg.get("now")
                     gender = msg.get("assistant_gender")
                     personality = msg.get("personality")
-                    models = msg.get("models", {})
-                    print(f"ACK start → now='{now}' gender={gender} personality={personality} models={models}")
+                    print(f"ACK start → now='{now}' gender={gender} personality={personality}")
                     continue
 
                 if t == "ack" and msg.get("for") == "set_persona":
