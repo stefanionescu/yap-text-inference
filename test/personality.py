@@ -88,7 +88,12 @@ async def _send_start_request(ws, session: PersonaSession, variant: PersonaVaria
         "user_utterance": user_text,
     }
     await ws.send(json.dumps(payload))
-    return await _collect_response(ws)
+    reply = await _collect_response(ws)
+    print(
+        f"[persona={variant.personality} gender={variant.assistant_gender}] "
+        f"user: {user_text!r} -> assistant: {reply!r}"
+    )
+    return reply
 
 
 async def _wait_for_chat_prompt_ack(ws) -> dict:

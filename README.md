@@ -1,6 +1,6 @@
 # Yap Text Inference Server
 
-A single-process, GPU-accelerated text inference server optimized for low TTFT and steady streaming. It can run:
+A text inference server optimized for low TTFT and steady text streaming. It can run:
 - vLLM chat engine with chat models ranging from 3B–24B
 - Engine for tool-call detection
 - Both engines together by default; chat-only/tool-only are supported in host scripts and Docker (mixed image)
