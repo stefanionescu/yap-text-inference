@@ -6,6 +6,7 @@ from .env import QUANTIZATION
 
 
 ALLOWED_CHAT_MODELS: list[str] = [
+    # Full precision models
     "kyx0r/Neona-12B",
     "SicariusSicariiStuff/Impish_Nemo_12B",
     "SicariusSicariiStuff/Impish_Magic_24B",
@@ -15,6 +16,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_LLAMA_4B",
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
     "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored",
+    # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
@@ -25,6 +27,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
+    # Full precision models
     "MadeAgents/Hammer2.1-1.5b",
     "MadeAgents/Hammer2.1-3b",
     # Pre-quantized AWQ models
