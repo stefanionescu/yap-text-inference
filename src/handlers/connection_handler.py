@@ -38,21 +38,21 @@ class ConnectionHandler:
         try:
             await asyncio.wait_for(self._semaphore.acquire(), timeout=self.acquire_timeout)
         except asyncio.TimeoutError:
-            logger.warning(
+                logger.warning(
                 "Connection rejected: at capacity (%s/%s)",
                 len(self.active_connections),
                 self.max_connections,
-            )
-            return False
+                )
+                return False
 
         try:
             async with self._lock:
-                self.active_connections.add(websocket)
-                logger.info(
+            self.active_connections.add(websocket)
+            logger.info(
                     "Connection accepted: %s/%s active",
                     len(self.active_connections),
                     self.max_connections,
-                )
+            )
             return True
         except Exception:
             self._semaphore.release()

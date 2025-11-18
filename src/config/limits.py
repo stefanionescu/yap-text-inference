@@ -68,7 +68,7 @@ else:
     if DEPLOY_TOOL and not DEPLOY_CHAT:
         default_max = "32"  # tool-only
     elif DEPLOY_CHAT and not DEPLOY_TOOL:
-        default_max = "24"  # chat-only
+        default_max = "20"  # chat-only
     else:
         default_max = "16"  # both models
 

@@ -58,52 +58,52 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
 
         async with websockets.connect(auth_url, max_queue=None) as ws:
             try:
-                await ws.send(json.dumps(start_payload))
+            await ws.send(json.dumps(start_payload))
 
-                while True:
-                    raw = await ws.recv()
-                    try:
-                        msg = json.loads(raw)
-                    except Exception:
-                        continue
-                    t = msg.get("type")
+            while True:
+                raw = await ws.recv()
+                try:
+                    msg = json.loads(raw)
+                except Exception:
+                    continue
+                t = msg.get("type")
 
-                    if t == "toolcall":
-                        if ttfb_toolcall_ms is None:
-                            ttfb_toolcall_ms = (time.perf_counter() - t_sent) * 1000.0
-                        continue
+                if t == "toolcall":
+                    if ttfb_toolcall_ms is None:
+                        ttfb_toolcall_ms = (time.perf_counter() - t_sent) * 1000.0
+                    continue
 
-                    if t == "token":
-                        if ttfb_chat_ms is None:
-                            ttfb_chat_ms = (time.perf_counter() - t_sent) * 1000.0
-                        chunk = msg.get("text", "")
-                        final_text += chunk
-                        if first_3_words_ms is None and has_at_least_n_words(final_text, 3):
-                            first_3_words_ms = (time.perf_counter() - t_sent) * 1000.0
-                        if first_sentence_ms is None and contains_complete_sentence(final_text):
-                            first_sentence_ms = (time.perf_counter() - t_sent) * 1000.0
-                        continue
+                if t == "token":
+                    if ttfb_chat_ms is None:
+                        ttfb_chat_ms = (time.perf_counter() - t_sent) * 1000.0
+                    chunk = msg.get("text", "")
+                    final_text += chunk
+                    if first_3_words_ms is None and has_at_least_n_words(final_text, 3):
+                        first_3_words_ms = (time.perf_counter() - t_sent) * 1000.0
+                    if first_sentence_ms is None and contains_complete_sentence(final_text):
+                        first_sentence_ms = (time.perf_counter() - t_sent) * 1000.0
+                    continue
 
-                    if t == "final":
-                        normalized = msg.get("normalized_text")
-                        if normalized:
-                            final_text = normalized
-                        continue
+                if t == "final":
+                    normalized = msg.get("normalized_text")
+                    if normalized:
+                        final_text = normalized
+                    continue
 
-                    if t == "done":
-                        cancelled = bool(msg.get("cancelled"))
-                        return {
-                            "ok": not cancelled,
-                            "ttfb_toolcall_ms": ttfb_toolcall_ms,
-                            "ttfb_chat_ms": ttfb_chat_ms,
-                            "first_sentence_ms": first_sentence_ms,
-                            "first_3_words_ms": first_3_words_ms,
-                        }
+                if t == "done":
+                    cancelled = bool(msg.get("cancelled"))
+                    return {
+                        "ok": not cancelled,
+                        "ttfb_toolcall_ms": ttfb_toolcall_ms,
+                        "ttfb_chat_ms": ttfb_chat_ms,
+                        "first_sentence_ms": first_sentence_ms,
+                        "first_3_words_ms": first_3_words_ms,
+                    }
 
-                    if t == "error":
-                        error_code = msg.get("error_code", "")
-                        error_message = msg.get("message", "unknown error")
-                        return {"ok": False, "error": f"{error_code}: {error_message}" if error_code else error_message}
+                if t == "error":
+                    error_code = msg.get("error_code", "")
+                    error_message = msg.get("message", "unknown error")
+                    return {"ok": False, "error": f"{error_code}: {error_message}" if error_code else error_message}
             finally:
                 await _send_client_end(ws)
 

@@ -114,8 +114,8 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
 
     # Cycle between two prompts/genders/personalities
     variants = [
-        ("female", "anna", FIRST_PROMPT),
-        ("male", "mark", SECOND_PROMPT),
+        ("female", "flirty", FIRST_PROMPT),
+        ("male", "flirty", SECOND_PROMPT),
     ]
 
     history_text = ""
