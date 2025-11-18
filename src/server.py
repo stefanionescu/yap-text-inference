@@ -16,14 +16,12 @@ from .config.logging import configure_logging
 from .handlers.websocket_handler import handle_websocket_connection
 from .handlers.connection_handler import connection_handler
 from .auth import get_api_key
-from .startup import StartupWarmup
 
 
 app = FastAPI(default_response_class=ORJSONResponse)
 
 configure_logging()
 validate_env()
-_warmup_service = StartupWarmup()
 
 
 @app.get("/healthz")
@@ -41,12 +39,6 @@ async def status(api_key: str = Depends(get_api_key)):
         "connections": capacity,
         "healthy": not capacity["at_capacity"]
     }
-
-
-@app.on_event("startup")
-async def startup_warmup():
-    """Warm deployed engines so models are loaded before serving requests."""
-    await _warmup_service.run()
 
 
 @app.websocket("/ws")

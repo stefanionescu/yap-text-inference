@@ -82,3 +82,13 @@ log_info "Health:  curl -s http://127.0.0.1:8000/healthz"
 log_info "All logs: tail -f ${ROOT_DIR}/server.log"
 log_info "Stop:    kill -TERM -$(cat "${ROOT_DIR}/server.pid")  # negative PID kills session"
 
+WARMUP_SCRIPT="${ROOT_DIR}/scripts/warmup.sh"
+if [ -x "${WARMUP_SCRIPT}" ]; then
+  log_info "Running warmup validation script..."
+  if ! "${WARMUP_SCRIPT}"; then
+    log_warn "Warmup script detected issues (see logs/warmup.log)"
+  fi
+else
+  log_warn "Warmup script not found at ${WARMUP_SCRIPT}"
+fi
+
