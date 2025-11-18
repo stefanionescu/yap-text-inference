@@ -1,0 +1,28 @@
+"""WebSocket-specific runtime configuration values."""
+
+from __future__ import annotations
+
+import os
+
+WS_IDLE_TIMEOUT_S = float(os.getenv("WS_IDLE_TIMEOUT_S", "150"))
+WS_WATCHDOG_TICK_S = float(os.getenv("WS_WATCHDOG_TICK_S", "5"))
+WS_HANDSHAKE_ACQUIRE_TIMEOUT_S = float(os.getenv("WS_HANDSHAKE_ACQUIRE_TIMEOUT_S", "0.5"))
+WS_CLOSE_UNAUTHORIZED_CODE = int(os.getenv("WS_CLOSE_UNAUTHORIZED_CODE", "1008"))
+WS_CLOSE_BUSY_CODE = int(os.getenv("WS_CLOSE_BUSY_CODE", "1013"))
+WS_CLOSE_IDLE_CODE = int(os.getenv("WS_CLOSE_IDLE_CODE", "4000"))
+WS_CLOSE_CLIENT_REQUEST_CODE = int(os.getenv("WS_CLOSE_CLIENT_REQUEST_CODE", "1000"))
+WS_END_SENTINEL = os.getenv("WS_END_SENTINEL", "__END__")
+WS_CANCEL_SENTINEL = os.getenv("WS_CANCEL_SENTINEL", "__CANCEL__")
+
+__all__ = [
+    "WS_IDLE_TIMEOUT_S",
+    "WS_WATCHDOG_TICK_S",
+    "WS_HANDSHAKE_ACQUIRE_TIMEOUT_S",
+    "WS_CLOSE_UNAUTHORIZED_CODE",
+    "WS_CLOSE_BUSY_CODE",
+    "WS_CLOSE_IDLE_CODE",
+    "WS_CLOSE_CLIENT_REQUEST_CODE",
+    "WS_END_SENTINEL",
+    "WS_CANCEL_SENTINEL",
+]
+

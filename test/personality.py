@@ -1,8 +1,9 @@
+import argparse
 import asyncio
+import contextlib
 import json
 import os
 import uuid
-import argparse
 from typing import List, Tuple
 
 import websockets
@@ -44,6 +45,11 @@ def build_ws_url(base: str, api_key: str) -> str:
         return base
     sep = '&' if ('?' in base) else '?'
     return f"{base}{sep}api_key={api_key}"
+
+
+async def _send_client_end(ws) -> None:
+    with contextlib.suppress(Exception):
+        await ws.send(json.dumps({"type": "end"}))
 
 
 async def recv_until_done(ws) -> Tuple[str, List[dict]]:
@@ -116,28 +122,31 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
     reply_idx = 0
 
     async with websockets.connect(url, ping_interval=20, ping_timeout=20) as ws:
-        # Initial start with first variant and a simple opener
-        g0, p0, c0 = variants[0]
-        opener = MOCK_REPLIES[reply_idx % len(MOCK_REPLIES)]
-        reply_idx += 1
-        final0 = await send_start(ws, session_id, g0, p0, c0, TOOLCALL_PROMPT, history_text, opener)
-        history_text = f"User: {opener}\nAssistant: {final0}".strip()
+        try:
+            # Initial start with first variant and a simple opener
+            g0, p0, c0 = variants[0]
+            opener = MOCK_REPLIES[reply_idx % len(MOCK_REPLIES)]
+            reply_idx += 1
+            final0 = await send_start(ws, session_id, g0, p0, c0, TOOLCALL_PROMPT, history_text, opener)
+            history_text = f"User: {opener}\nAssistant: {final0}".strip()
 
-        for i in range(switches):
-            await asyncio.sleep(delay_s)
-            g, p, c = variants[(i + 1) % len(variants)]
+            for i in range(switches):
+                await asyncio.sleep(delay_s)
+                g, p, c = variants[(i + 1) % len(variants)]
 
-            ack = await send_update_chat_prompt(ws, session_id, g, p, c, history_text)
-            # If no change (204), still proceed to send replies
-            if ack.get("type") == "ack" and ack.get("ok") and ack.get("code") in (200, 204):
-                # Send two replies after each update
-                for _ in range(2):
-                    user_text = MOCK_REPLIES[reply_idx % len(MOCK_REPLIES)]
-                    reply_idx += 1
-                    final_text = await send_start(ws, session_id, g, p, c, TOOLCALL_PROMPT, history_text, user_text)
-                    history_text = (history_text + f"\nUser: {user_text}\nAssistant: {final_text}").strip()
-            else:
-                raise RuntimeError(f"update_chat_prompt failed: {ack}")
+                ack = await send_update_chat_prompt(ws, session_id, g, p, c, history_text)
+                # If no change (204), still proceed to send replies
+                if ack.get("type") == "ack" and ack.get("ok") and ack.get("code") in (200, 204):
+                    # Send two replies after each update
+                    for _ in range(2):
+                        user_text = MOCK_REPLIES[reply_idx % len(MOCK_REPLIES)]
+                        reply_idx += 1
+                        final_text = await send_start(ws, session_id, g, p, c, TOOLCALL_PROMPT, history_text, user_text)
+                        history_text = (history_text + f"\nUser: {user_text}\nAssistant: {final_text}").strip()
+                else:
+                    raise RuntimeError(f"update_chat_prompt failed: {ack}")
+        finally:
+            await _send_client_end(ws)
 
 
 def main() -> None:

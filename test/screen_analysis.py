@@ -16,6 +16,7 @@ Env:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import uuid
@@ -32,6 +33,11 @@ ANALYSIS_TEXT = (
 def _with_api_key(url: str, env: str = "TEXT_API_KEY", default_key: str = "yap_token") -> str:
     key = os.getenv(env, default_key)
     return f"{url}&api_key={key}" if "?" in url else f"{url}?api_key={key}"
+
+
+async def _send_client_end(ws) -> None:
+    with contextlib.suppress(Exception):
+        await ws.send(json.dumps({"type": "end"}))
 
 
 async def run_once() -> None:
@@ -51,80 +57,83 @@ async def run_once() -> None:
     }
 
     async with websockets.connect(ws_url, max_queue=None) as ws:
-        await ws.send(json.dumps(start_payload))
+        try:
+            await ws.send(json.dumps(start_payload))
 
-        saw_tool_yes = False
-        short_text = ""
+            saw_tool_yes = False
+            short_text = ""
 
-        # Phase 1: observe toolcall & first answer
-        while True:
-            raw = await ws.recv()
-            try:
-                msg = json.loads(raw)
-            except Exception:
-                continue
-            t = msg.get("type")
+            # Phase 1: observe toolcall & first answer
+            while True:
+                raw = await ws.recv()
+                try:
+                    msg = json.loads(raw)
+                except Exception:
+                    continue
+                t = msg.get("type")
 
-            if t == "ack":
-                continue
+                if t == "ack":
+                    continue
 
-            if t == "toolcall":
-                print("TOOLCALL:", msg)
-                status = (msg.get("status") or "").lower()
-                if status != "yes":
-                    raise RuntimeError(f"Expected toolcall 'yes', got '{status}'")
-                saw_tool_yes = True
-                continue
+                if t == "toolcall":
+                    print("TOOLCALL:", msg)
+                    status = (msg.get("status") or "").lower()
+                    if status != "yes":
+                        raise RuntimeError(f"Expected toolcall 'yes', got '{status}'")
+                    saw_tool_yes = True
+                    continue
 
-            if t == "token":
-                piece = msg.get("text", "")
-                short_text += piece
-                continue
+                if t == "token":
+                    piece = msg.get("text", "")
+                    short_text += piece
+                    continue
 
-            if t == "final":
-                if msg.get("normalized_text"):
-                    short_text = msg["normalized_text"]
-                continue
+                if t == "final":
+                    if msg.get("normalized_text"):
+                        short_text = msg["normalized_text"]
+                    continue
 
-            if t == "done":
-                break
+                if t == "done":
+                    break
 
-            if t == "error":
-                raise RuntimeError(msg)
+                if t == "error":
+                    raise RuntimeError(msg)
 
-        print("First reply:", short_text)
-        if not saw_tool_yes:
-            raise RuntimeError("Did not receive toolcall 'yes'")
+            print("First reply:", short_text)
+            if not saw_tool_yes:
+                raise RuntimeError("Did not receive toolcall 'yes'")
 
-        # Phase 2: send followup with fake analysis
-        followup_payload = {
-            "type": "followup",
-            "analysis_text": ANALYSIS_TEXT,
-            "history_text": "",
-        }
-        await ws.send(json.dumps(followup_payload))
+            # Phase 2: send followup with fake analysis
+            followup_payload = {
+                "type": "followup",
+                "analysis_text": ANALYSIS_TEXT,
+                "history_text": "",
+            }
+            await ws.send(json.dumps(followup_payload))
 
-        final2 = ""
-        while True:
-            raw = await ws.recv()
-            try:
-                msg = json.loads(raw)
-            except Exception:
-                continue
-            t = msg.get("type")
-            if t == "token":
-                final2 += msg.get("text", "")
-                continue
-            if t == "final":
-                if msg.get("normalized_text"):
-                    final2 = msg["normalized_text"]
-                continue
-            if t == "done":
-                break
-            if t == "error":
-                raise RuntimeError(msg)
+            final2 = ""
+            while True:
+                raw = await ws.recv()
+                try:
+                    msg = json.loads(raw)
+                except Exception:
+                    continue
+                t = msg.get("type")
+                if t == "token":
+                    final2 += msg.get("text", "")
+                    continue
+                if t == "final":
+                    if msg.get("normalized_text"):
+                        final2 = msg["normalized_text"]
+                    continue
+                if t == "done":
+                    break
+                if t == "error":
+                    raise RuntimeError(msg)
 
-        print("PHASE2 FOLLOWUP FINAL (trunc):", final2[:240])
+            print("PHASE2 FOLLOWUP FINAL (trunc):", final2[:240])
+        finally:
+            await _send_client_end(ws)
 
 
 if __name__ == "__main__":
