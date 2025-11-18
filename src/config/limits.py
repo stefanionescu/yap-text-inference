@@ -4,9 +4,25 @@ import os
 
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))
-CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "200"))
+CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user + 1200 history
+
+# Chat sampling override limits (optional client-provided values)
+CHAT_TEMPERATURE_MIN = float(os.getenv("CHAT_TEMPERATURE_MIN", "0.2"))
+CHAT_TEMPERATURE_MAX = float(os.getenv("CHAT_TEMPERATURE_MAX", "1.2"))
+CHAT_TOP_P_MIN = float(os.getenv("CHAT_TOP_P_MIN", "0.6"))
+CHAT_TOP_P_MAX = float(os.getenv("CHAT_TOP_P_MAX", "1.0"))
+CHAT_TOP_K_MIN = int(os.getenv("CHAT_TOP_K_MIN", "10"))
+CHAT_TOP_K_MAX = int(os.getenv("CHAT_TOP_K_MAX", "60"))
+CHAT_MIN_P_MIN = float(os.getenv("CHAT_MIN_P_MIN", "0.0"))
+CHAT_MIN_P_MAX = float(os.getenv("CHAT_MIN_P_MAX", "0.20"))
+CHAT_REPEAT_PENALTY_MIN = float(os.getenv("CHAT_REPEAT_PENALTY_MIN", "1.0"))
+CHAT_REPEAT_PENALTY_MAX = float(os.getenv("CHAT_REPEAT_PENALTY_MAX", "1.3"))
+CHAT_PRESENCE_PENALTY_MIN = float(os.getenv("CHAT_PRESENCE_PENALTY_MIN", "0.0"))
+CHAT_PRESENCE_PENALTY_MAX = float(os.getenv("CHAT_PRESENCE_PENALTY_MAX", "0.15"))
+CHAT_FREQUENCY_PENALTY_MIN = float(os.getenv("CHAT_FREQUENCY_PENALTY_MIN", "0.0"))
+CHAT_FREQUENCY_PENALTY_MAX = float(os.getenv("CHAT_FREQUENCY_PENALTY_MAX", "0.15"))
 
 # Max tokens allowed for incoming prompts (provided by clients)
 # Defaults per request: 1800 for both chat and tool prompts
@@ -80,6 +96,20 @@ __all__ = [
     "CHAT_MAX_OUT",
     "TOOL_MAX_OUT",
     "TOOL_MAX_LEN",
+    "CHAT_TEMPERATURE_MIN",
+    "CHAT_TEMPERATURE_MAX",
+    "CHAT_TOP_P_MIN",
+    "CHAT_TOP_P_MAX",
+    "CHAT_TOP_K_MIN",
+    "CHAT_TOP_K_MAX",
+    "CHAT_MIN_P_MIN",
+    "CHAT_MIN_P_MAX",
+    "CHAT_REPEAT_PENALTY_MIN",
+    "CHAT_REPEAT_PENALTY_MAX",
+    "CHAT_PRESENCE_PENALTY_MIN",
+    "CHAT_PRESENCE_PENALTY_MAX",
+    "CHAT_FREQUENCY_PENALTY_MIN",
+    "CHAT_FREQUENCY_PENALTY_MAX",
     "CHAT_PROMPT_MAX_TOKENS",
     "TOOL_PROMPT_MAX_TOKENS",
     "PERSONALITY_MAX_LEN",
@@ -92,5 +122,3 @@ __all__ = [
     "CONCURRENT_MODEL_CALL",
     "MAX_CONCURRENT_CONNECTIONS",
 ]
-
-

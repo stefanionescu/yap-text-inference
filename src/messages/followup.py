@@ -68,12 +68,15 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     user_utt = trim_text_to_token_limit_chat(prefixed, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
 
     final_text = ""
+    sampling_overrides = cfg.get("chat_sampling")
+
     async for chunk in run_chat_stream(
         session_id=session_id,
         static_prefix=static_prefix,
         runtime_text=runtime_text,
         history_text=history_text,
         user_utt=user_utt,
+        sampling_overrides=sampling_overrides,
     ):
         await ws.send_text(json.dumps({"type": "token", "text": chunk}))
         final_text += chunk

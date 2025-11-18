@@ -27,6 +27,8 @@ async def run_sequential_execution(
     runtime_text: str,
     history_text: str,
     user_utt: str,
+    *,
+    sampling_overrides: dict[str, float | int] | None = None,
 ) -> None:
     """Execute sequential tool-then-chat workflow.
     
@@ -86,6 +88,7 @@ async def run_sequential_execution(
             history_text,
             user_utt_for_chat,
             request_id=chat_req_id,
+            sampling_overrides=sampling_overrides,
         ),
         session_id,
         user_utt_for_chat,
