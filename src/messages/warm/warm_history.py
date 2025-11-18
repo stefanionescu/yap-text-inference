@@ -3,8 +3,8 @@
 import json
 from fastapi import WebSocket
 
-from ..config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
-from ..tokens import count_tokens_chat, trim_history_preserve_messages_chat
+from ...config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
+from ...tokens import count_tokens_chat, trim_history_preserve_messages_chat
 from .warm_utils import warm_chat_segment
 
 

@@ -75,8 +75,8 @@ def _create_engine_with_awq_handling(engine_args):
     if is_local_awq:
             if hasattr(engine_args, '_is_local_awq'):
                 delattr(engine_args, '_is_local_awq')
-        with _awq_offline_mode():
-            engine = AsyncLLMEngine.from_engine_args(engine_args)
+            with _awq_offline_mode():
+                engine = AsyncLLMEngine.from_engine_args(engine_args)
     else:
         # Normal model loading - let HF download and cache as usual
         engine = AsyncLLMEngine.from_engine_args(engine_args)

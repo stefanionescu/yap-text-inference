@@ -8,7 +8,7 @@ import uuid
 from vllm.sampling_params import SamplingParams
 from fastapi import WebSocket
 
-from ..engines import get_chat_engine
+from ...engines import get_chat_engine
 
 _WARM_PARAMS = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
 

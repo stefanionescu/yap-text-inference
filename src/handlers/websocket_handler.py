@@ -6,7 +6,6 @@ import logging
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..auth import authenticate_websocket
-from ..config import DEPLOY_CHAT, DEPLOY_TOOL
 from ..config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
@@ -19,8 +18,8 @@ from ..messages.cancel import handle_cancel_message
 from ..messages.chat_prompt import handle_chat_prompt
 from ..messages.followup import handle_followup_message
 from ..messages.start import handle_start_message
-from ..messages.warm_history import handle_warm_history_message
-from ..messages.warm_persona import handle_warm_persona_message
+from ..messages.warm.warm_history import handle_warm_history_message
+from ..messages.warm.warm_persona import handle_warm_persona_message
 from .connection_handler import connection_handler
 from .session_handler import abort_session_requests, session_handler
 from .ws_lifecycle import WebSocketLifecycle

@@ -12,7 +12,7 @@ from fastapi import WebSocket
 
 from ..engines import get_tool_engine
 from ..handlers.session_handler import session_handler
-from .tool_runner import run_toolcall
+from ..execution.tool.tool_runner import run_toolcall
 
 
 async def send_toolcall(ws: WebSocket, status: str, raw: object) -> None:

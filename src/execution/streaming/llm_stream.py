@@ -6,7 +6,8 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
+from collections.abc import Awaitable, Callable
 from collections.abc import AsyncGenerator
 
 from .streaming_utils import CancelCheck, StreamCancelledError, stream_with_timeout
