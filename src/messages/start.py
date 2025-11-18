@@ -25,12 +25,12 @@ from ..tokens import (
     trim_text_to_token_limit_tool,
 )
 from ..handlers.session_handler import session_handler
-from ..execution.sequential_executor import run_sequential_execution
-from ..execution.concurrent_executor import run_concurrent_execution
-from ..execution.chat_streamer import run_chat_stream
-from ..execution.tool_runner import run_toolcall
-from ..execution.tool_parser import parse_tool_result
-from ..execution.executor_utils import stream_chat_response
+from ..execution.executors.sequential_executor import run_sequential_execution
+from ..execution.executors.concurrent_executor import run_concurrent_execution
+from ..execution.streaming.chat_streamer import run_chat_stream
+from ..execution.tool.tool_runner import run_toolcall
+from ..execution.tool.tool_parser import parse_tool_result
+from ..utils.executor_utils import stream_chat_response
 from .validators import (
     ValidationError,
     require_prompt,

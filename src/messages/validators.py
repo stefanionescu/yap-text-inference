@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from ..config import PERSONALITY_MAX_LEN
 from ..utils.sanitize import sanitize_prompt

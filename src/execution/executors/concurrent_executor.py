@@ -7,17 +7,17 @@ import contextlib
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Awaitable
+from collections.abc import Awaitable
 
 from fastapi import WebSocket
 
-from .tool_parser import parse_tool_result
-from .chat_streamer import run_chat_stream
-from ..engines import get_chat_engine
-from ..handlers.session_handler import session_handler
-from ..config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
-from ..config import CHECK_SCREEN_PREFIX
-from .executor_utils import (
+from ..tool.tool_parser import parse_tool_result
+from ..streaming.chat_streamer import run_chat_stream
+from ...engines import get_chat_engine
+from ...handlers.session_handler import session_handler
+from ...config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
+from ...config import CHECK_SCREEN_PREFIX
+from ...utils.executor_utils import (
     abort_tool_request,
     cancel_task,
     flush_and_send,

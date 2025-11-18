@@ -6,7 +6,8 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 from vllm.sampling_params import SamplingParams
 

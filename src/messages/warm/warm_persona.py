@@ -3,8 +3,8 @@
 import json
 from fastapi import WebSocket
 
-from ..config import DEPLOY_CHAT
-from ..utils.sanitize import sanitize_prompt
+from ...config import DEPLOY_CHAT
+from ...utils.sanitize import sanitize_prompt
 from .warm_utils import warm_chat_segment
 
 
