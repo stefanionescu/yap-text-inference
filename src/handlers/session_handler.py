@@ -12,7 +12,8 @@ from typing import Any
 
 from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
 from ..tokens import count_tokens_chat
-from ..utils.time_utils import format_session_timestamp
+from ..utils.sanitize import sanitize_llm_output
+from ..utils.time import format_session_timestamp
 
 
 SESSION_IDLE_TTL_SECONDS = int(os.getenv("SESSION_IDLE_TTL_SECONDS", "1800"))
@@ -204,7 +205,8 @@ class SessionHandler:
             self.initialize_session(session_id)
             state = self._sessions[session_id]
         user = (user_utt or "").strip()
-        assistant = (assistant_text or "").strip()
+        assistant_raw = assistant_text or ""
+        assistant = sanitize_llm_output(assistant_raw) if assistant_raw else ""
 
         target_turn: HistoryTurn | None = None
         if turn_id:

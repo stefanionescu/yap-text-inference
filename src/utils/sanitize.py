@@ -1,21 +1,28 @@
-"""Prompt sanitization utilities.
-
-Performs conservative, content-preserving sanitization suitable for LLM prompts:
-- Unicode normalization and fixing (ftfy)
-- Removal of control characters (except TAB/CR/LF)
-- Removal of bidi/invisible directional controls
-
-Note: We intentionally do not HTML-escape or strip symbols like angle brackets or
-JSON punctuation to avoid altering prompt semantics.
-"""
+"""Sanitization utilities for both user prompts and assistant outputs."""
 
 from __future__ import annotations
 
+import html
 import re
 import unicodedata
 
+from ..config.filters import (
+    BACKSLASH_ESCAPE_PATTERN,
+    BLOCKQUOTE_PATTERN,
+    CODE_BLOCK_PATTERN,
+    EMOJI_PATTERN,
+    EMOTICON_PATTERN,
+    HEADING_PATTERN,
+    HTML_TAG_PATTERN,
+    IMAGE_PATTERN,
+    INLINE_CODE_PATTERN,
+    LINK_PATTERN,
+    LIST_MARKER_PATTERN,
+    TABLE_BORDER_PATTERN,
+)
+
 try:
-    from ftfy import fix_text
+    from ftfy import fix_text  # type: ignore[import-not-found]
 except Exception:  # pragma: no cover - ftfy is declared in requirements
     def fix_text(text: str) -> str:  # type: ignore
         return text
@@ -64,3 +71,56 @@ def sanitize_prompt(raw: str | None, max_chars: int = 200_000) -> str:
     return text
 
 
+def sanitize_llm_output(
+    text: str | None,
+    *,
+    strip_markdown: bool = True,
+    strip_emojis: bool = True,
+) -> str:
+    """Normalize assistant output while keeping semantics intact."""
+    if not text:
+        return ""
+
+    cleaned = text
+    if strip_markdown:
+        cleaned = _strip_markdown(cleaned)
+    if strip_emojis:
+        cleaned = _strip_emojis(cleaned)
+    return _normalize_whitespace(cleaned)
+
+
+def _strip_markdown(text: str) -> str:
+    """Convert Markdown-like text into plain text."""
+    text = CODE_BLOCK_PATTERN.sub(" ", text)
+    text = INLINE_CODE_PATTERN.sub(r"\1", text)
+    text = IMAGE_PATTERN.sub(lambda match: match.group(1) or "", text)
+    text = LINK_PATTERN.sub(lambda match: match.group(1), text)
+    text = HEADING_PATTERN.sub("", text)
+    text = BLOCKQUOTE_PATTERN.sub("", text)
+    text = LIST_MARKER_PATTERN.sub("", text)
+    text = TABLE_BORDER_PATTERN.sub("", text)
+    text = text.replace("|", " ")
+    text = text.replace("**", "").replace("__", "")
+    text = text.replace("*", " ").replace("_", " ")
+    text = text.replace("~~", " ")
+    text = BACKSLASH_ESCAPE_PATTERN.sub(r"\1", text)
+    text = HTML_TAG_PATTERN.sub(" ", text)
+    return html.unescape(text)
+
+
+def _strip_emojis(text: str) -> str:
+    """Remove unicode emojis and common ASCII emoticons."""
+    text = EMOJI_PATTERN.sub("", text)
+    return EMOTICON_PATTERN.sub("", text)
+
+
+def _normalize_whitespace(text: str) -> str:
+    """Collapse redundant whitespace without removing intentional spacing."""
+    text = text.replace("\r", "\n")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n+", " ", text)
+    text = re.sub(r"\s{2,}", " ", text)
+    return text.strip()
+
+
+__all__ = ["sanitize_prompt", "sanitize_llm_output"]
