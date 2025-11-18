@@ -30,9 +30,27 @@ from ..execution.concurrent_executor import run_concurrent_execution
 from ..execution.chat_streamer import run_chat_stream
 from ..execution.tool_runner import run_toolcall
 from ..execution.tool_parser import parse_tool_result
+from ..execution.executor_utils import stream_chat_response
+from .validators import (
+    ValidationError,
+    require_prompt,
+    sanitize_prompt_with_limit,
+    validate_required_gender,
+    validate_required_personality,
+)
 
 
 logger = logging.getLogger(__name__)
+
+
+async def _close_with_validation_error(ws: WebSocket, err: ValidationError) -> None:
+    await ws.send_text(json.dumps({
+        "type": "error",
+        "error_code": err.error_code,
+        "message": err.message,
+    }))
+    await ws.close(code=1008)
+    logger.info("handle_start: error → %s; connection closed", err.error_code)
 
 
 async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
@@ -53,44 +71,14 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     # Require assistant_gender and personality at start; validate them first
     raw_gender = msg.get("assistant_gender")
     raw_personality = msg.get("personality")
-    if is_gender_empty_or_null(raw_gender):
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "missing_gender",
-            "message": "assistant_gender is required and cannot be empty"
-        }))
-        await ws.close(code=1008)
-        logger.info("handle_start: error → missing assistant_gender; connection closed")
+
+    try:
+        incoming_gender = validate_required_gender(raw_gender)
+        incoming_personality = validate_required_personality(raw_personality)
+    except ValidationError as err:
+        await _close_with_validation_error(ws, err)
         return
-    incoming_gender = normalize_gender(raw_gender)
-    if incoming_gender is None:
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "invalid_gender",
-            "message": "assistant_gender must be 'female' or 'male'"
-        }))
-        await ws.close(code=1008)
-        logger.info("handle_start: error → invalid assistant_gender; connection closed")
-        return
-    if is_personality_empty_or_null(raw_personality):
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "missing_personality",
-            "message": "personality is required and cannot be empty"
-        }))
-        await ws.close(code=1008)
-        logger.info("handle_start: error → missing personality; connection closed")
-        return
-    incoming_personality = normalize_personality(raw_personality)
-    if incoming_personality is None:
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "invalid_personality",
-            "message": f"personality must be letters-only and lower than or equal to {PERSONALITY_MAX_LEN} characters"
-        }))
-        await ws.close(code=1008)
-        logger.info("handle_start: error → invalid personality; connection closed")
-        return
+
     session_handler.update_session_config(
         session_id,
         chat_gender=incoming_gender,
@@ -102,72 +90,44 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     raw_chat_prompt = msg.get("chat_prompt") or msg.get("persona_text")
     raw_tool_prompt = msg.get("tool_prompt")
 
-    if DEPLOY_CHAT and not raw_chat_prompt:
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "missing_chat_prompt",
-            "message": "chat_prompt is required"
-        }))
-        await ws.close(code=1008)
-        logger.info("handle_start: error → missing chat_prompt; connection closed")
+    try:
+        chat_prompt = None
+        tool_prompt = None
+        if DEPLOY_CHAT:
+            required_chat_prompt = require_prompt(
+                raw_chat_prompt,
+                error_code="missing_chat_prompt",
+                message="chat_prompt is required",
+            )
+            chat_prompt = sanitize_prompt_with_limit(
+                required_chat_prompt,
+                field_label="chat_prompt",
+                invalid_error_code="invalid_chat_prompt",
+                too_long_error_code="chat_prompt_too_long",
+                max_tokens=CHAT_PROMPT_MAX_TOKENS,
+                count_tokens_fn=count_tokens_chat,
+            )
+        if DEPLOY_TOOL:
+            required_tool_prompt = require_prompt(
+                raw_tool_prompt,
+                error_code="missing_tool_prompt",
+                message="tool_prompt is required",
+            )
+            tool_prompt = sanitize_prompt_with_limit(
+                required_tool_prompt,
+                field_label="tool_prompt",
+                invalid_error_code="invalid_tool_prompt",
+                too_long_error_code="tool_prompt_too_long",
+                max_tokens=TOOL_PROMPT_MAX_TOKENS,
+                count_tokens_fn=count_tokens_tool,
+            )
+    except ValidationError as err:
+        await _close_with_validation_error(ws, err)
         return
 
-    if DEPLOY_TOOL and not raw_tool_prompt:
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "missing_tool_prompt",
-            "message": "tool_prompt is required"
-        }))
-        await ws.close(code=1008)
-        logger.info("handle_start: error → missing tool_prompt; connection closed")
-        return
-
-    # Sanitize and token-limit prompts
-    if DEPLOY_CHAT and raw_chat_prompt is not None:
-        try:
-            chat_prompt = sanitize_prompt(raw_chat_prompt)
-        except ValueError as e:
-            await ws.send_text(json.dumps({
-                "type": "error",
-                "error_code": "invalid_chat_prompt",
-                "message": str(e)
-            }))
-            await ws.close(code=1008)
-            logger.info("handle_start: error → invalid chat_prompt; connection closed")
-            return
-        # Enforce token limit
-        if count_tokens_chat(chat_prompt) > CHAT_PROMPT_MAX_TOKENS:
-            await ws.send_text(json.dumps({
-                "type": "error",
-                "error_code": "chat_prompt_too_long",
-                "message": f"chat_prompt exceeds token limit ({CHAT_PROMPT_MAX_TOKENS})"
-            }))
-            await ws.close(code=1008)
-            logger.info("handle_start: error → chat_prompt too long; connection closed")
-            return
+    if chat_prompt is not None:
         session_handler.update_session_config(session_id, chat_prompt=chat_prompt)
-
-    if DEPLOY_TOOL and raw_tool_prompt is not None:
-        try:
-            tool_prompt = sanitize_prompt(raw_tool_prompt)
-        except ValueError as e:
-            await ws.send_text(json.dumps({
-                "type": "error",
-                "error_code": "invalid_tool_prompt",
-                "message": str(e)
-            }))
-            await ws.close(code=1008)
-            logger.info("handle_start: error → invalid tool_prompt; connection closed")
-            return
-        if count_tokens_tool(tool_prompt) > TOOL_PROMPT_MAX_TOKENS:
-            await ws.send_text(json.dumps({
-                "type": "error",
-                "error_code": "tool_prompt_too_long",
-                "message": f"tool_prompt exceeds token limit ({TOOL_PROMPT_MAX_TOKENS})"
-            }))
-            await ws.close(code=1008)
-            logger.info("handle_start: error → tool_prompt too long; connection closed")
-            return
+    if tool_prompt is not None:
         session_handler.update_session_config(session_id, tool_prompt=tool_prompt)
 
     # Get updated config after changes
@@ -219,24 +179,23 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         if DEPLOY_CHAT and not DEPLOY_TOOL:
             # Chat-only deployment: stream chat tokens and finalize
             logger.info(f"handle_start: chat-only streaming session_id={session_id}")
-            final_text = ""
-            async for chunk in run_chat_stream(
+            final_text = await stream_chat_response(
+                ws,
+                run_chat_stream(
+                    session_id,
+                    static_prefix,
+                    runtime_text,
+                    history_text,
+                    user_utt,
+                ),
                 session_id,
-                static_prefix,
-                runtime_text,
-                history_text,
                 user_utt,
-            ):
-                await ws.send_text(json.dumps({"type": "token", "text": chunk}))
-                final_text += chunk
-
-            await ws.send_text(json.dumps({
-                "type": "final",
-                "normalized_text": final_text
-            }))
-            await ws.send_text(json.dumps({"type": "done", "usage": {}}))
-            session_handler.append_history_turn(session_id, user_utt, final_text)
-            logger.info(f"handle_start: chat-only done session_id={session_id} chars={len(final_text)}")
+            )
+            logger.info(
+                "handle_start: chat-only done session_id=%s chars=%s",
+                session_id,
+                len(final_text),
+            )
             return
 
         if DEPLOY_TOOL and not DEPLOY_CHAT:

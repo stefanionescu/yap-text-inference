@@ -16,28 +16,38 @@ logger = logging.getLogger(__name__)
 def count_tokens_chat(text: str) -> int:
     """Return token count using the chat model tokenizer."""
     n = get_chat_tokenizer().count(text)
-    logger.info(f"tokens.chat.count: len_chars={len(text)} tokens={n}")
+    logger.debug("tokens.chat.count: len_chars=%s tokens=%s", len(text), n)
     return n
 
 
 def count_tokens_tool(text: str) -> int:
     """Return token count using the tool model tokenizer."""
     n = get_tool_tokenizer().count(text)
-    logger.info(f"tokens.tool.count: len_chars={len(text)} tokens={n}")
+    logger.debug("tokens.tool.count: len_chars=%s tokens=%s", len(text), n)
     return n
 
 
 def trim_text_to_token_limit_chat(text: str, max_tokens: int, keep: str = "end") -> str:
     """Trim text using the chat model tokenizer (exact)."""
     out = get_chat_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
-    logger.info(f"tokens.chat.trim_text: out_len={len(out)} max_tokens={max_tokens} keep={keep}")
+    logger.debug(
+        "tokens.chat.trim_text: out_len=%s max_tokens=%s keep=%s",
+        len(out),
+        max_tokens,
+        keep,
+    )
     return out
 
 
 def trim_text_to_token_limit_tool(text: str, max_tokens: int, keep: str = "end") -> str:
     """Trim text using the tool model tokenizer (exact)."""
     out = get_tool_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
-    logger.info(f"tokens.tool.trim_text: out_len={len(out)} max_tokens={max_tokens} keep={keep}")
+    logger.debug(
+        "tokens.tool.trim_text: out_len=%s max_tokens=%s keep=%s",
+        len(out),
+        max_tokens,
+        keep,
+    )
     return out
 
 
@@ -46,7 +56,7 @@ def trim_history_for_tool_sharing(history_text: str, tool_history_tokens: int) -
     if not history_text.strip():
         return ""
     out = trim_history_preserve_messages_tool(history_text, tool_history_tokens)
-    logger.info(
+    logger.debug(
         "tokens.tool.trim_history_for_tool: in_len=%s out_len=%s max_tokens=%s",
         len(history_text),
         len(out),
@@ -116,7 +126,7 @@ def trim_history_preserve_messages_chat(history_text: str, max_tokens: int) -> s
         count_fn=count_tokens_chat,
         trim_fn=trim_text_to_token_limit_chat,
     )
-    logger.info(
+    logger.debug(
         "tokens.chat.trim_history_preserve: in_len=%s out_len=%s max_tokens=%s",
         len(history_text),
         len(out),
@@ -132,7 +142,7 @@ def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> s
         count_fn=count_tokens_tool,
         trim_fn=trim_text_to_token_limit_tool,
     )
-    logger.info(
+    logger.debug(
         "tokens.tool.trim_history_preserve: in_len=%s out_len=%s max_tokens=%s",
         len(history_text),
         len(out),

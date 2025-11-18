@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import asyncio
+import contextlib
 
 # Ensure V1 engine path before importing vLLM
 os.environ.setdefault("VLLM_USE_V1", "1")
@@ -30,6 +31,27 @@ _tool_engine: AsyncLLMEngine | None = None
 _ENGINE_CONSTRUCTION_LOCK = asyncio.Lock()
 
 
+@contextlib.contextmanager
+def _awq_offline_mode():
+    """Temporarily force offline flags for local AWQ model loading."""
+    original_offline = os.environ.get("HF_HUB_OFFLINE")
+    original_transformers_offline = os.environ.get("TRANSFORMERS_OFFLINE")
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    try:
+        yield
+    finally:
+        if original_offline is not None:
+            os.environ["HF_HUB_OFFLINE"] = original_offline
+        else:
+            os.environ.pop("HF_HUB_OFFLINE", None)
+
+        if original_transformers_offline is not None:
+            os.environ["TRANSFORMERS_OFFLINE"] = original_transformers_offline
+        else:
+            os.environ.pop("TRANSFORMERS_OFFLINE", None)
+
+
 def _build_engines() -> tuple[AsyncLLMEngine | None, AsyncLLMEngine | None]:
     tool = None
     chat = None
@@ -51,30 +73,10 @@ def _create_engine_with_awq_handling(engine_args):
     is_local_awq = getattr(engine_args, '_is_local_awq', False)
     
     if is_local_awq:
-        # Store original values
-        original_offline = os.environ.get("HF_HUB_OFFLINE")
-        original_transformers_offline = os.environ.get("TRANSFORMERS_OFFLINE")
-        
-        # Set offline mode for local AWQ models
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
-        
-        try:
-            # Remove the internal flag before passing to vLLM
-            if hasattr(engine_args, '_is_local_awq'):
-                delattr(engine_args, '_is_local_awq')
+        if hasattr(engine_args, '_is_local_awq'):
+            delattr(engine_args, '_is_local_awq')
+        with _awq_offline_mode():
             engine = AsyncLLMEngine.from_engine_args(engine_args)
-        finally:
-            # Restore original values
-            if original_offline is not None:
-                os.environ["HF_HUB_OFFLINE"] = original_offline
-            else:
-                os.environ.pop("HF_HUB_OFFLINE", None)
-                
-            if original_transformers_offline is not None:
-                os.environ["TRANSFORMERS_OFFLINE"] = original_transformers_offline
-            else:
-                os.environ.pop("TRANSFORMERS_OFFLINE", None)
     else:
         # Normal model loading - let HF download and cache as usual
         engine = AsyncLLMEngine.from_engine_args(engine_args)

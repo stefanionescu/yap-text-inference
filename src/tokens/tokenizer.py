@@ -34,84 +34,25 @@ class FastTokenizer:
         self.tok: Tokenizer | None = None
         self._hf_tok = None  # transformers tokenizer (fast or slow)
 
-        is_local = False
-        try:
-            is_local = os.path.exists(path_or_repo)
-        except Exception:
-            is_local = False
+        is_local, tokenizer_json_path, awq_metadata_model = self._inspect_path(path_or_repo)
 
-        tokenizer_json_path = os.path.join(path_or_repo, "tokenizer.json") if is_local else None
-
-        # Detect AWQ output directory to optionally use original source model's tokenizer
-        awq_metadata_model: str | None = None
-        if is_local:
-            meta_path = Path(path_or_repo) / "awq_metadata.json"
-            if meta_path.is_file():
-                try:
-                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-                    candidate = (meta.get("source_model") or "").strip()
-                    if candidate:
-                        awq_metadata_model = candidate
-                except Exception:
-                    awq_metadata_model = None
-
-        if is_local and tokenizer_json_path and os.path.isfile(tokenizer_json_path):
-            # Fast path: local folder with tokenizer.json — load directly from file
-            # Using from_file avoids any Hugging Face Hub repo-id validation for local paths
-            self.tok = Tokenizer.from_file(tokenizer_json_path)
-            logger.info(f"tokenizer: loaded local tokenizer.json at {tokenizer_json_path}")
+        if tokenizer_json_path and self._load_local_tokenizer(tokenizer_json_path):
             return
 
-        # Fallback: rely on Transformers. Prefer fast; fallback to slow if needed.
+        load_target, use_local_only = self._resolve_transformer_target(
+            path_or_repo,
+            is_local,
+            tokenizer_json_path,
+            awq_metadata_model,
+        )
         try:
-            from transformers import AutoTokenizer  # lazy import
-        except Exception as exc:  # pragma: no cover - transformers is a hard dep in this project
-            raise RuntimeError(f"Transformers is required for tokenizer fallback: {exc}") from exc
-
-        # Strategy:
-        # - If this is a local AWQ dir, force local-only loading to avoid Hub calls.
-        # - If local loading fails (missing tokenizer files), try original source model from metadata.
-        # - Else, use provided identifier as-is.
-
-        load_target = path_or_repo
-        use_local_only = is_local
-
-        # If AWQ metadata is present, prefer using the original source model for tokenizer
-        # when the local dir lacks tokenizer files.
-        if is_local and not (tokenizer_json_path and os.path.isfile(tokenizer_json_path)):
-            if awq_metadata_model:
-                load_target = awq_metadata_model
-                use_local_only = False  # allow Hub for the original model tokenizer
-
-        # Helper to attempt loading with a given setting; prefer fast
-        def _try_load(target: str, local_only: bool):
-            # Transformers honors local_files_only to avoid any Hub calls
-            try:
-                return AutoTokenizer.from_pretrained(
-                    target,
-                    use_fast=True,
-                    trust_remote_code=True,
-                    local_files_only=local_only,
-                )
-            except Exception:
-                return AutoTokenizer.from_pretrained(
-                    target,
-                    use_fast=False,
-                    trust_remote_code=True,
-                    local_files_only=local_only,
-                )
-
-        try:
-            self._hf_tok = _try_load(load_target, use_local_only)
-            logger.info(f"tokenizer: loaded transformers tokenizer target={load_target} local_only={use_local_only}")
-            return
+            self._hf_tok = self._load_transformers_tokenizer(load_target, use_local_only)
         except Exception:
-            # Final fallback: if we tried metadata and failed, try the original path without Hub
             if load_target != path_or_repo and is_local:
-                self._hf_tok = _try_load(path_or_repo, local_only=True)
-                logger.info(f"tokenizer: fallback load transformers local path={path_or_repo}")
-                return
-            raise
+                self._hf_tok = self._load_transformers_tokenizer(path_or_repo, True)
+                logger.info("tokenizer: fallback load transformers local path=%s", path_or_repo)
+            else:
+                raise
 
     def count(self, text: str) -> int:
         if not text:
@@ -167,6 +108,83 @@ class FastTokenizer:
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
             )
+
+    @staticmethod
+    def _inspect_path(path_or_repo: str) -> tuple[bool, str | None, str | None]:
+        try:
+            is_local = os.path.exists(path_or_repo)
+        except Exception:
+            is_local = False
+
+        tokenizer_json_path = (
+            os.path.join(path_or_repo, "tokenizer.json") if is_local else None
+        )
+
+        awq_metadata_model: str | None = None
+        if is_local:
+            meta_path = Path(path_or_repo) / "awq_metadata.json"
+            if meta_path.is_file():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                    candidate = (meta.get("source_model") or "").strip()
+                    if candidate:
+                        awq_metadata_model = candidate
+                except Exception:
+                    awq_metadata_model = None
+        return is_local, tokenizer_json_path, awq_metadata_model
+
+    def _load_local_tokenizer(self, tokenizer_json_path: str) -> bool:
+        if not os.path.isfile(tokenizer_json_path):
+            return False
+        self.tok = Tokenizer.from_file(tokenizer_json_path)
+        logger.info("tokenizer: loaded local tokenizer.json at %s", tokenizer_json_path)
+        return True
+
+    def _resolve_transformer_target(
+        self,
+        path_or_repo: str,
+        is_local: bool,
+        tokenizer_json_path: str | None,
+        awq_metadata_model: str | None,
+    ) -> tuple[str, bool]:
+        if not is_local:
+            return path_or_repo, False
+
+        if tokenizer_json_path and os.path.isfile(tokenizer_json_path):
+            # Local tokenizer handled earlier.
+            return path_or_repo, True
+
+        if awq_metadata_model:
+            # Use source model tokenizer when AWQ metadata is present.
+            return awq_metadata_model, False
+
+        return path_or_repo, True
+
+    def _load_transformers_tokenizer(self, target: str, local_only: bool):
+        try:
+            from transformers import AutoTokenizer  # lazy import
+        except Exception as exc:  # pragma: no cover
+            raise RuntimeError(f"Transformers is required for tokenizer fallback: {exc}") from exc
+
+        def _try_load(use_fast: bool):
+            return AutoTokenizer.from_pretrained(
+                target,
+                use_fast=use_fast,
+                trust_remote_code=True,
+                local_files_only=local_only,
+            )
+
+        try:
+            tokenizer = _try_load(True)
+        except Exception:
+            tokenizer = _try_load(False)
+
+        logger.info(
+            "tokenizer: loaded transformers tokenizer target=%s local_only=%s",
+            target,
+            local_only,
+        )
+        return tokenizer
 
 
 _chat_tok: FastTokenizer | None = None

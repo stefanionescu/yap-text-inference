@@ -2,18 +2,23 @@
 
 import asyncio
 import logging
-import json
 import uuid
 from fastapi import WebSocket
 
-from .tool_runner import run_toolcall
 from .tool_parser import parse_tool_result
 from .chat_streamer import run_chat_stream
-from ..engines import get_chat_engine, get_tool_engine
+from ..engines import get_chat_engine
 from ..handlers.session_handler import session_handler
 from ..config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
 from ..config import CHECK_SCREEN_PREFIX
-from .executor_utils import send_toolcall, flush_and_send, cancel_task
+from .executor_utils import (
+    abort_tool_request,
+    cancel_task,
+    flush_and_send,
+    launch_tool_request,
+    send_toolcall,
+    stream_chat_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,14 +51,12 @@ async def run_concurrent_execution(
     )
     
     # Start both tool and chat coroutines concurrently
-    tool_req_id = f"tool-{uuid.uuid4()}"
     chat_req_id = f"chat-{uuid.uuid4()}"
     
-    session_handler.set_tool_request(session_id, tool_req_id)
     session_handler.set_active_request(session_id, chat_req_id)  # chat gets active req id for cancellation
     
     # Start tool model with shared history for KV cache efficiency
-    tool_coro = run_toolcall(session_id, user_utt, history_text, request_id=tool_req_id, mark_active=False)
+    tool_req_id, tool_coro = launch_tool_request(session_id, user_utt, history_text)
     logger.info(f"concurrent_exec: tool start req_id={tool_req_id}")
     
     # Start chat model  
@@ -82,13 +85,7 @@ async def run_concurrent_execution(
             else:
                 tool_result = await asyncio.wait_for(tool_coro, timeout=tool_hard_timeout_ms / 1000.0)
         except asyncio.TimeoutError:
-            try:
-                if session_handler.session_tool_req.get(session_id):
-                    await (await get_tool_engine()).abort_request(
-                        session_handler.session_tool_req.get(session_id, "")
-                    )
-            except Exception:
-                pass
+            await abort_tool_request(session_id)
             tool_result = {"cancelled": True}
         finally:
             tool_decision_ready = True
@@ -202,20 +199,16 @@ async def run_concurrent_execution(
                 new_chat_req_id,
             )
 
-            # Stream from the new chat stream
-            final_text = ""
-            async for chunk in new_chat_stream:
-                await ws.send_text(json.dumps({"type": "token", "text": chunk}))
-                final_text += chunk
-
-            # Send final text
-            await ws.send_text(json.dumps({
-                "type": "final",
-                "normalized_text": final_text
-            }))
-            await ws.send_text(json.dumps({"type": "done", "usage": {}}))
-            session_handler.append_history_turn(session_id, modified_user_utt, final_text)
-            logger.info(f"concurrent_exec: done after tool yes (CHECK SCREEN) chars={len(final_text)}")
+            final_text = await stream_chat_response(
+                ws,
+                new_chat_stream,
+                session_id,
+                modified_user_utt,
+            )
+            logger.info(
+                "concurrent_exec: done after tool yes (CHECK SCREEN) chars=%s",
+                len(final_text),
+            )
             return
         
         # Tool says NO: flush buffered chat text and continue streaming
@@ -228,36 +221,32 @@ async def run_concurrent_execution(
             logger.info(f"concurrent_exec: flushed buffered chat len={len(chat_buffer)}")
         
         # Continue streaming the rest of chat output
-        final_text = chat_buffer
-
-        # If we had an in-flight next-chunk task when the tool decision arrived, await it now to
-        # consume the first chunk and clear the generator's running state before continuing.
+        first_chunk: str | None = None
         if 'pending_next_chunk_task' in locals() and pending_next_chunk_task:
             try:
                 first_chunk = await pending_next_chunk_task
-                if first_chunk:
-                    await ws.send_text(json.dumps({"type": "token", "text": first_chunk}))
-                    final_text += first_chunk
             except (asyncio.CancelledError, StopAsyncIteration):
-                pass
+                first_chunk = None
             except Exception:
                 logger.exception("concurrent_exec: error awaiting pending first chunk")
             finally:
                 pending_next_chunk_task = None
 
-        # Continue consuming from the same iterator we used above
-        async for chunk in aiter:
-            await ws.send_text(json.dumps({"type": "token", "text": chunk}))
-            final_text += chunk
-        
-        # Send final text
-        await ws.send_text(json.dumps({
-            "type": "final", 
-            "normalized_text": final_text
-        }))
-        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
-        session_handler.append_history_turn(session_id, user_utt, final_text)
-        logger.info(f"concurrent_exec: done after tool no chars={len(final_text)}")
+        async def _remaining_stream():
+            if first_chunk:
+                yield first_chunk
+            async for chunk in aiter:
+                yield chunk
+
+        final_text = await stream_chat_response(
+            ws,
+            _remaining_stream(),
+            session_id,
+            user_utt,
+            initial_text=chat_buffer,
+            initial_text_already_sent=True,
+        )
+        logger.info("concurrent_exec: done after tool no chars=%s", len(final_text))
     
     except Exception:
         # Clean up on any error
@@ -265,12 +254,6 @@ async def run_concurrent_execution(
             await (await get_chat_engine()).abort_request(chat_req_id)
         except Exception:
             pass
-        try:
-            if session_handler.session_tool_req.get(session_id):
-                await (await get_tool_engine()).abort_request(
-                    session_handler.session_tool_req.get(session_id, "")
-                )
-        except Exception:
-            pass
+        await abort_tool_request(session_id)
         logger.exception("concurrent_exec: error")
         raise

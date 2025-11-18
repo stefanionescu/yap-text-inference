@@ -1,13 +1,11 @@
 """Warm persona message handler split from message_handlers for modularity."""
 
 import json
-import uuid
 from fastapi import WebSocket
-from vllm.sampling_params import SamplingParams
 
-from ..engines import get_chat_engine
 from ..config import DEPLOY_CHAT
 from ..utils.sanitize import sanitize_prompt
+from .warm_utils import warm_chat_segment
 
 
 async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
@@ -34,22 +32,11 @@ async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
         return
 
     warm_prompt = f"<|persona|>\n{static_prefix.strip()}\n<|assistant|>\n"
-    params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
-    req_id = f"warm-p-{uuid.uuid4()}"
-
-    stream = (await get_chat_engine()).generate(
+    await warm_chat_segment(
+        ws,
         prompt=warm_prompt,
-        sampling_params=params,
-        request_id=req_id,
-        priority=1,
+        segment="persona_static",
+        byte_count=len(static_prefix),
     )
-    async for _ in stream:
-        break
-
-    await ws.send_text(json.dumps({
-        "type": "warmed",
-        "segment": "persona_static",
-        "bytes": len(static_prefix)
-    }))
 
 
