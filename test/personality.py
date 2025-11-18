@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import contextlib
 import json
 import os
 import sys
@@ -13,9 +12,10 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+from test.common.message import iter_messages
+from test.common.ws import send_client_end, with_api_key
 from test.config import (
     DEFAULT_SERVER_WS_URL,
-    DEFAULT_TEXT_API_KEY,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     PERSONA_SWITCH_REPLIES,
@@ -29,28 +29,11 @@ from test.config import (
 from test.prompts.toolcall import TOOLCALL_PROMPT
 
 
-def get_api_key() -> str:
-    return DEFAULT_TEXT_API_KEY
-
-
-def build_ws_url(base: str, api_key: str) -> str:
-    if not api_key:
-        return base
-    sep = '&' if ('?' in base) else '?'
-    return f"{base}{sep}api_key={api_key}"
-
-
-async def _send_client_end(ws) -> None:
-    with contextlib.suppress(Exception):
-        await ws.send(json.dumps({"type": "end"}))
-
-
 async def recv_until_done(ws) -> Tuple[str, List[dict]]:
     tokens = []
     final_text = ""
     toolcalls: List[dict] = []
-    while True:
-        msg = json.loads(await ws.receive()) if hasattr(ws, 'receive') else json.loads(await ws.recv())
+    async for msg in iter_messages(ws):
         t = msg.get("type")
         if t == "token":
             tokens.append(msg.get("text", ""))
@@ -101,8 +84,7 @@ async def send_update_chat_prompt(ws, session_id: str, assistant_gender: str, pe
 
 
 async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
-    api_key = get_api_key()
-    url = build_ws_url(ws_url, api_key)
+    url = with_api_key(ws_url)
     session_id = f"sess-{uuid.uuid4()}"
 
     history_text = ""
@@ -138,7 +120,7 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
                 else:
                     raise RuntimeError(f"update_chat_prompt failed: {ack}")
         finally:
-            await _send_client_end(ws)
+            await send_client_end(ws)
 
 
 def main() -> None:

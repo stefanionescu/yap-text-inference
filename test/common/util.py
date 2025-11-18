@@ -1,11 +1,37 @@
 from __future__ import annotations
 
-from typing import List
+import random
+from typing import List, Sequence
 
 
-def choose_message(words: List[str], fallback: str) -> str:
+def choose_message(
+    words: List[str],
+    fallback: str,
+    *,
+    defaults: Sequence[str] | None = None,
+    rng: random.Random | None = None,
+) -> str:
+    """
+    Select a message based on user-provided tokens or fallbacks.
+
+    Args:
+        words: Tokens captured from CLI/args.
+        fallback: Default string used when no tokens/defaults are available.
+        defaults: Optional sequence of canned messages to sample from.
+        rng: Optional random generator to make deterministic choices in tests.
+    """
     if words:
-        return " ".join(words).strip()
+        candidate = " ".join(words).strip()
+        if candidate:
+            return candidate
+
+    if defaults:
+        chooser = rng or random
+        return chooser.choice(list(defaults))
+
     return fallback
+
+
+__all__ = ["choose_message"]
 
 

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
+import logging
 import os
 import sys
-import uuid
 import time
-import websockets
+import uuid
+from dataclasses import dataclass, field
 from typing import Any, Dict
+
+import websockets
 
 # Add test directory to path for imports
 _test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,17 +25,88 @@ from config import (
     DEFAULT_TEXT_API_KEY,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
+    WARMUP_DEFAULT_MESSAGES,
+    WARMUP_FALLBACK_MESSAGE,
 )
+from common.message import iter_messages
+from common.prompt import select_chat_prompt
 from common.regex import contains_complete_sentence, has_at_least_n_words
-from common.ws import with_api_key
-from .messages import choose_message
-from prompts.chat import FIRST_PROMPT, SECOND_PROMPT
+from common.util import choose_message
+from common.ws import send_client_end, with_api_key
 from prompts.toolcall import TOOLCALL_PROMPT
 
+logger = logging.getLogger(__name__)
 
-async def _send_client_end(ws) -> None:
-    with contextlib.suppress(Exception):
-        await ws.send(json.dumps({"type": "end"}))
+
+def _round(value: float | None) -> float | None:
+    return round(value, 2) if value is not None else None
+
+
+@dataclass
+class StreamTracker:
+    sent_ts: float = field(default_factory=time.perf_counter)
+    final_text: str = ""
+    ack_seen: bool = False
+    first_token_ts: float | None = None
+    first_sentence_ts: float | None = None
+    first_3_words_ts: float | None = None
+    toolcall_ttfb_ms: float | None = None
+    chunks: int = 0
+
+    def _ms_since_sent(self, timestamp: float | None) -> float | None:
+        if timestamp is None:
+            return None
+        return (timestamp - self.sent_ts) * 1000.0
+
+    def record_toolcall(self) -> float | None:
+        now = time.perf_counter()
+        self.toolcall_ttfb_ms = self._ms_since_sent(now)
+        return self.toolcall_ttfb_ms
+
+    def record_token(self, chunk: str) -> Dict[str, float | None]:
+        metrics: Dict[str, float | None] = {}
+        if not chunk:
+            return metrics
+
+        if self.first_token_ts is None:
+            self.first_token_ts = time.perf_counter()
+            metrics["chat_ttfb_ms"] = self._ms_since_sent(self.first_token_ts)
+
+        self.final_text += chunk
+        if self.first_3_words_ts is None and has_at_least_n_words(self.final_text, 3):
+            self.first_3_words_ts = time.perf_counter()
+            metrics["time_to_first_3_words_ms"] = self._ms_since_sent(self.first_3_words_ts)
+
+        if self.first_sentence_ts is None and contains_complete_sentence(self.final_text):
+            self.first_sentence_ts = time.perf_counter()
+            metrics["time_to_first_complete_sentence_ms"] = self._ms_since_sent(self.first_sentence_ts)
+
+        self.chunks += 1
+        return metrics
+
+    def finalize_metrics(self, cancelled: bool) -> Dict[str, Any]:
+        done_ts = time.perf_counter()
+        ttfb_ms = self._ms_since_sent(self.first_token_ts)
+        stream_ms = None
+        if self.first_token_ts is not None:
+            stream_ms = (done_ts - self.first_token_ts) * 1000.0
+        total_ms = (done_ts - self.sent_ts) * 1000.0
+        return {
+            "type": "metrics",
+            "ok": not cancelled,
+            "ttfb_ms": _round(ttfb_ms),
+            "ttfb_chat_ms": _round(ttfb_ms),
+            "ttfb_toolcall_ms": _round(self.toolcall_ttfb_ms),
+            "total_ms": _round(total_ms),
+            "stream_ms": _round(stream_ms),
+            "time_to_first_complete_sentence_ms": _round(self._ms_since_sent(self.first_sentence_ts)),
+            "time_to_first_3_words_ms": _round(self._ms_since_sent(self.first_3_words_ts)),
+            "chunks": self.chunks,
+            "chars": len(self.final_text),
+        }
+
+    def final_text_payload(self) -> Dict[str, Any]:
+        return {"type": "final_text", "text": self.final_text}
 
 
 async def run_once(args) -> None:
@@ -43,19 +116,39 @@ async def run_once(args) -> None:
     personality = args.personality or os.getenv("PERSONALITY", DEFAULT_PERSONALITY)
 
     ws_url_with_auth = with_api_key(server_ws_url)
-
-    user_msg = choose_message(args.message)
+    user_msg = choose_message(
+        args.message,
+        fallback=WARMUP_FALLBACK_MESSAGE,
+        defaults=WARMUP_DEFAULT_MESSAGES,
+    )
     session_id = str(uuid.uuid4())
-    
-    # Select chat prompt based on gender (server normalizes to 'female' or 'male')
-    gender_normalized = assistant_gender.lower().strip()
-    if gender_normalized == "female":
-        chat_prompt = FIRST_PROMPT
-    else:
-        chat_prompt = SECOND_PROMPT  # Default to male/Mark prompt
-    
-    # Build start payload - tool_prompt is optional (only required if DEPLOY_TOOL=True)
-    start_payload: Dict[str, Any] = {
+    chat_prompt = select_chat_prompt(assistant_gender)
+    start_payload = _build_start_payload(session_id, assistant_gender, personality, chat_prompt, user_msg)
+
+    logger.info("Connecting to %s (with API key auth)", server_ws_url)
+    async with websockets.connect(
+        ws_url_with_auth,
+        max_queue=None,
+        ping_interval=DEFAULT_WS_PING_INTERVAL,
+        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+    ) as ws:
+        tracker = StreamTracker()
+        recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
+        try:
+            await ws.send(json.dumps(start_payload))
+            await _stream_session(ws, tracker, recv_timeout, api_key)
+        finally:
+            await send_client_end(ws)
+
+
+def _build_start_payload(
+    session_id: str,
+    assistant_gender: str,
+    personality: str,
+    chat_prompt: str,
+    user_msg: str,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
         "assistant_gender": assistant_gender,
@@ -63,129 +156,100 @@ async def run_once(args) -> None:
         "chat_prompt": chat_prompt,
         "history_text": "",
         "user_utterance": user_msg,
+        "tool_prompt": TOOLCALL_PROMPT,
     }
-    
-    # Include tool_prompt if available (server will validate if DEPLOY_TOOL=True)
-    # This allows the test to work with both chat-only and chat+tool deployments
-    start_payload["tool_prompt"] = TOOLCALL_PROMPT
+    return payload
 
-    print(f"Connecting to {server_ws_url} (with API key auth) …")
-    async with websockets.connect(
-        ws_url_with_auth,
-        max_queue=None,
-        ping_interval=DEFAULT_WS_PING_INTERVAL,
-        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
-    ) as ws:
-        try:
-            await ws.send(json.dumps(start_payload))
 
-            final_text = ""
-            ack_seen = False
-            recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
-            first_token_ts: float | None = None
-            first_sentence_ts: float | None = None
-            first_3_words_ts: float | None = None
-            toolcall_ttfb_ms: float | None = None
-            sent_ts: float = time.perf_counter()
-            chunks = 0
-            while True:
-                try:
-                    raw = await asyncio.wait_for(ws.recv(), timeout=recv_timeout)
-                except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
-                    break
-                except asyncio.TimeoutError:
-                    print("[ERROR] recv timeout")
-                    break
+async def _stream_session(ws, tracker: StreamTracker, recv_timeout: float, api_key: str) -> None:
+    try:
+        async for msg in iter_messages(ws, timeout=recv_timeout):
+            if not _process_message(msg, tracker, api_key):
+                break
+    except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
+        logger.warning("Connection closed by server")
+    except asyncio.TimeoutError:
+        logger.error("recv timeout after %.1fs", recv_timeout)
+    if not tracker.ack_seen:
+        logger.warning("no ACK(start) received from server")
 
-                try:
-                    msg = json.loads(raw)
-                except Exception:
-                    print(raw)
-                    continue
 
-                t = msg.get("type")
-                if t == "ack" and msg.get("for") == "start":
-                    ack_seen = True
-                    now = msg.get("now")
-                    gender = msg.get("assistant_gender")
-                    personality = msg.get("personality")
-                    print(f"ACK start → now='{now}' gender={gender} personality={personality}")
-                    continue
+def _process_message(msg: Dict[str, Any], tracker: StreamTracker, api_key: str) -> bool:
+    t = msg.get("type")
+    if t == "ack":
+        return _handle_ack(msg, tracker)
+    if t == "toolcall":
+        _handle_toolcall(msg, tracker)
+        return True
+    if t == "token":
+        _handle_token(msg, tracker)
+        return True
+    if t == "final":
+        _handle_final(msg, tracker)
+        return True
+    if t == "done":
+        _handle_done(msg, tracker)
+        return False
+    if t == "error":
+        _handle_error(msg, api_key)
+        return False
+    return True
 
-                if t == "ack" and msg.get("for") == "set_persona":
-                    print(f"ACK set_persona → {json.dumps(msg, ensure_ascii=False)}")
-                    continue
 
-                if t == "toolcall":
-                    toolcall_ttfb_ms = (time.perf_counter() - sent_ts) * 1000.0
-                    print(f"TOOLCALL status={msg.get('status')} raw={msg.get('raw')}")
-                    print(f"TOOLCALL ttfb_ms={round(toolcall_ttfb_ms, 2)}")
-                    continue
+def _handle_ack(msg: Dict[str, Any], tracker: StreamTracker) -> bool:
+    ack_for = msg.get("for")
+    if ack_for == "start":
+        tracker.ack_seen = True
+        now = msg.get("now")
+        gender = msg.get("assistant_gender")
+        persona = msg.get("personality")
+        logger.info("ACK start → now='%s' gender=%s personality=%s", now, gender, persona)
+    elif ack_for == "set_persona":
+        logger.info("ACK set_persona → %s", json.dumps(msg, ensure_ascii=False))
+    return True
 
-                if t == "token":
-                    if first_token_ts is None:
-                        first_token_ts = time.perf_counter()
-                        chat_ttfb_ms = (first_token_ts - sent_ts) * 1000.0
-                        print(f"CHAT ttfb_ms={round(chat_ttfb_ms, 2)}")
-                    chunk = msg.get("text", "")
-                    final_text += chunk
-                    if first_3_words_ts is None and has_at_least_n_words(final_text, 3):
-                        first_3_words_ts = time.perf_counter()
-                        first_3_words_ms = (first_3_words_ts - sent_ts) * 1000.0
-                        print(f"CHAT time_to_first_3_words_ms={round(first_3_words_ms, 2)}")
-                    if first_sentence_ts is None and contains_complete_sentence(final_text):
-                        first_sentence_ts = time.perf_counter()
-                        ttfs_ms = (first_sentence_ts - sent_ts) * 1000.0
-                        print(f"CHAT time_to_first_complete_sentence_ms={round(ttfs_ms, 2)}")
-                    chunks += 1
-                    continue
 
-                if t == "final":
-                    if first_token_ts is None:
-                        first_token_ts = time.perf_counter()
-                    normalized = msg.get("normalized_text", final_text)
-                    if normalized:
-                        final_text = normalized
-                    continue
+def _handle_toolcall(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+    status = msg.get("status")
+    logger.info("TOOLCALL status=%s raw=%s", status, msg.get("raw"))
+    ttfb_ms = tracker.record_toolcall()
+    if ttfb_ms is not None:
+        logger.info("TOOLCALL ttfb_ms=%.2f", ttfb_ms)
 
-                if t == "done":
-                    done_ts = time.perf_counter()
-                    cancelled = bool(msg.get("cancelled"))
-                    ttfb_ms = None if first_token_ts is None else (first_token_ts - sent_ts) * 1000.0
-                    total_ms = (done_ts - sent_ts) * 1000.0
-                    stream_ms = None if first_token_ts is None else (done_ts - first_token_ts) * 1000.0
-                    print(json.dumps({
-                        "type": "metrics",
-                        "ok": not cancelled,
-                        "ttfb_ms": round(ttfb_ms, 2) if ttfb_ms is not None else None,
-                        "ttfb_chat_ms": round(ttfb_ms, 2) if ttfb_ms is not None else None,
-                        "ttfb_toolcall_ms": round(toolcall_ttfb_ms, 2) if toolcall_ttfb_ms is not None else None,
-                        "total_ms": round(total_ms, 2),
-                        "stream_ms": round(stream_ms, 2) if stream_ms is not None else None,
-                        "time_to_first_complete_sentence_ms": round((first_sentence_ts - sent_ts) * 1000.0, 2) if first_sentence_ts is not None else None,
-                        "time_to_first_3_words_ms": round((first_3_words_ts - sent_ts) * 1000.0, 2) if first_3_words_ts is not None else None,
-                        "chunks": chunks,
-                        "chars": len(final_text),
-                    }, ensure_ascii=False))
-                    print(json.dumps({
-                        "type": "final_text",
-                        "text": final_text,
-                    }, ensure_ascii=False))
-                    break
 
-                if t == "error":
-                    error_code = msg.get("error_code", "")
-                    error_message = msg.get("message", "unknown error")
-                    print(f"[ERROR] {error_code}: {error_message}")
-                    if error_code == "authentication_failed":
-                        print(f"[HINT] Check your TEXT_API_KEY environment variable (currently: '{api_key}')")
-                    elif error_code == "server_at_capacity":
-                        print("[HINT] Server is at maximum connection capacity. Try again later.")
-                    break
+def _handle_token(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+    chunk = msg.get("text", "")
+    metrics = tracker.record_token(chunk)
+    chat_ttfb = metrics.get("chat_ttfb_ms")
+    if chat_ttfb is not None:
+        logger.info("CHAT ttfb_ms=%.2f", chat_ttfb)
+    first_3 = metrics.get("time_to_first_3_words_ms")
+    if first_3 is not None:
+        logger.info("CHAT time_to_first_3_words_ms=%.2f", first_3)
+    first_sentence = metrics.get("time_to_first_complete_sentence_ms")
+    if first_sentence is not None:
+        logger.info("CHAT time_to_first_complete_sentence_ms=%.2f", first_sentence)
 
-            if not ack_seen:
-                print("[WARN] no ACK(start) received from server")
-        finally:
-            await _send_client_end(ws)
+
+def _handle_final(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+    normalized = msg.get("normalized_text") or tracker.final_text
+    if normalized:
+        tracker.final_text = normalized
+
+
+def _handle_done(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+    cancelled = bool(msg.get("cancelled"))
+    logger.info(json.dumps(tracker.finalize_metrics(cancelled), ensure_ascii=False))
+    logger.info(json.dumps(tracker.final_text_payload(), ensure_ascii=False))
+
+
+def _handle_error(msg: Dict[str, Any], api_key: str) -> None:
+    error_code = msg.get("error_code", "")
+    error_message = msg.get("message", "unknown error")
+    logger.error("Server error %s: %s", error_code, error_message)
+    if error_code == "authentication_failed":
+        logger.info("HINT: Check your TEXT_API_KEY environment variable (currently: '%s')", api_key)
+    elif error_code == "server_at_capacity":
+        logger.info("HINT: Server is at maximum connection capacity. Try again later.")
 
 

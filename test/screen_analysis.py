@@ -16,8 +16,8 @@ Env:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
+import logging
 import os
 import sys
 import uuid
@@ -28,34 +28,72 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+from test.common.message import iter_messages
+from test.common.ws import send_client_end, with_api_key
 from test.config import (
     DEFAULT_ASSISTANT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
-    DEFAULT_TEXT_API_KEY,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     SCREEN_ANALYSIS_ANALYSIS_TEXT,
     SCREEN_ANALYSIS_USER_UTTERANCE,
 )
 
-
-def _with_api_key(url: str) -> str:
-    key = DEFAULT_TEXT_API_KEY
-    return f"{url}&api_key={key}" if "?" in url else f"{url}?api_key={key}"
+logger = logging.getLogger(__name__)
 
 
-async def _send_client_end(ws) -> None:
-    with contextlib.suppress(Exception):
-        await ws.send(json.dumps({"type": "end"}))
+async def _consume_initial_response(ws) -> tuple[bool, str]:
+    saw_tool_yes = False
+    short_text = ""
+    async for msg in iter_messages(ws):
+        t = msg.get("type")
+
+        if t == "ack":
+            continue
+        if t == "toolcall":
+            status = (msg.get("status") or "").lower()
+            logger.info("TOOLCALL: %s", msg)
+            if status != "yes":
+                raise RuntimeError(f"Expected toolcall 'yes', got '{status}'")
+            saw_tool_yes = True
+            continue
+        if t == "token":
+            short_text += msg.get("text", "")
+            continue
+        if t == "final":
+            if msg.get("normalized_text"):
+                short_text = msg["normalized_text"]
+            continue
+        if t == "done":
+            break
+        if t == "error":
+            raise RuntimeError(msg)
+    return saw_tool_yes, short_text
+
+
+async def _consume_followup(ws) -> str:
+    final_text = ""
+    async for msg in iter_messages(ws):
+        t = msg.get("type")
+        if t == "token":
+            final_text += msg.get("text", "")
+            continue
+        if t == "final":
+            if msg.get("normalized_text"):
+                final_text = msg["normalized_text"]
+            continue
+        if t == "done":
+            break
+        if t == "error":
+            raise RuntimeError(msg)
+    return final_text
 
 
 async def run_once() -> None:
-    ws_url = _with_api_key(DEFAULT_SERVER_WS_URL)
-
+    ws_url = with_api_key(DEFAULT_SERVER_WS_URL)
     session_id = str(uuid.uuid4())
 
-    # Message intended to trigger screenshot decision
     start_payload = {
         "type": "start",
         "session_id": session_id,
@@ -72,85 +110,26 @@ async def run_once() -> None:
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
     ) as ws:
         try:
-        await ws.send(json.dumps(start_payload))
+            await ws.send(json.dumps(start_payload))
+            saw_tool_yes, short_text = await _consume_initial_response(ws)
+            logger.info("First reply: %s", short_text)
+            if not saw_tool_yes:
+                raise RuntimeError("Did not receive toolcall 'yes'")
 
-        saw_tool_yes = False
-        short_text = ""
-
-        # Phase 1: observe toolcall & first answer
-        while True:
-            raw = await ws.recv()
-            try:
-                msg = json.loads(raw)
-            except Exception:
-                continue
-            t = msg.get("type")
-
-            if t == "ack":
-                continue
-
-            if t == "toolcall":
-                print("TOOLCALL:", msg)
-                status = (msg.get("status") or "").lower()
-                if status != "yes":
-                    raise RuntimeError(f"Expected toolcall 'yes', got '{status}'")
-                saw_tool_yes = True
-                continue
-
-            if t == "token":
-                piece = msg.get("text", "")
-                short_text += piece
-                continue
-
-            if t == "final":
-                if msg.get("normalized_text"):
-                    short_text = msg["normalized_text"]
-                continue
-
-            if t == "done":
-                break
-
-            if t == "error":
-                raise RuntimeError(msg)
-
-        print("First reply:", short_text)
-        if not saw_tool_yes:
-            raise RuntimeError("Did not receive toolcall 'yes'")
-
-        # Phase 2: send followup with fake analysis
-        followup_payload = {
-            "type": "followup",
-            "analysis_text": SCREEN_ANALYSIS_ANALYSIS_TEXT,
-            "history_text": "",
-        }
-        await ws.send(json.dumps(followup_payload))
-
-        final2 = ""
-        while True:
-            raw = await ws.recv()
-            try:
-                msg = json.loads(raw)
-            except Exception:
-                continue
-            t = msg.get("type")
-            if t == "token":
-                final2 += msg.get("text", "")
-                continue
-            if t == "final":
-                if msg.get("normalized_text"):
-                    final2 = msg["normalized_text"]
-                continue
-            if t == "done":
-                break
-            if t == "error":
-                raise RuntimeError(msg)
-
-        print("PHASE2 FOLLOWUP FINAL (trunc):", final2[:240])
+            followup_payload = {
+                "type": "followup",
+                "analysis_text": SCREEN_ANALYSIS_ANALYSIS_TEXT,
+                "history_text": "",
+            }
+            await ws.send(json.dumps(followup_payload))
+            final_followup = await _consume_followup(ws)
+            logger.info("PHASE2 FOLLOWUP FINAL (trunc): %s", final_followup[:240])
         finally:
-            await _send_client_end(ws)
+            await send_client_end(ws)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(run_once())
 
 

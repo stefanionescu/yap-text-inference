@@ -30,7 +30,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
-import re
 import sys
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -45,19 +44,6 @@ from test.config import (
     BENCHMARK_DEFAULT_REQUESTS,
     BENCHMARK_DEFAULT_TIMEOUT_SEC,
 )
-
-
-_SENTENCE_END_RE = re.compile(r"[.!?](?:[\"”')\]]+)?(?:\s|$)")
-
-
-def _contains_complete_sentence(text: str) -> bool:
-    return _SENTENCE_END_RE.search(text) is not None
-
-
-def _has_at_least_n_words(text: str, n: int) -> bool:
-    # Whitespace-delimited token count; counts punctuation-attached tokens as words
-    return len(text.strip().split()) >= n
-
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Benchmark Yap Text Inference WS server")

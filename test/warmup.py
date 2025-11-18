@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 
 
 def _parse_args() -> argparse.Namespace:
@@ -60,6 +61,7 @@ async def _run_once(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
     try:
         asyncio.run(_run_once(args))
