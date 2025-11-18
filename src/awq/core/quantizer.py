@@ -3,8 +3,8 @@
 import inspect
 import json
 import os
-from datetime import datetime
-from typing import Any, Dict, Iterable, Optional
+from typing import Any
+from collections.abc import Iterable
 import time
 
 from ..adapters import (
@@ -18,7 +18,7 @@ from .calibration import CalibrationConfig, prepare_tokenizer_for_calibration
 
 
 # Global flag for advanced quantization support detection
-_ADVANCED_QUANTIZE_SUPPORTED: Optional[bool] = None
+_ADVANCED_QUANTIZE_SUPPORTED: bool | None = None
 
 
 def _quantize_supports_kwargs(quantize_fn: Any, keys: Iterable[str]) -> bool:
@@ -29,7 +29,7 @@ def _quantize_supports_kwargs(quantize_fn: Any, keys: Iterable[str]) -> bool:
 
     try:
         sig = inspect.signature(quantize_fn)
-        for param_name, param in sig.parameters.items():
+        for _param_name, param in sig.parameters.items():
             if param.kind == param.VAR_KEYWORD:  # **kwargs
                 _ADVANCED_QUANTIZE_SUPPORTED = True
                 return True
@@ -91,7 +91,7 @@ class AWQQuantizer:
                 cache_dir = os.environ.get("HF_HOME")
 
                 print(f"[awq] Prefetching model from Hub: {model_path}")
-                last_err: Optional[Exception] = None
+                last_err: Exception | None = None
                 for attempt in range(1, 4):
                     try:
                         resolved_model_path = snapshot_download(
@@ -113,7 +113,8 @@ class AWQQuantizer:
                 if last_err is not None:
                     print(
                         "[awq] Quantization failed: could not download model from Hugging Face. "
-                        "Check network access, repository visibility, and set HF_TOKEN or HUGGINGFACE_HUB_TOKEN if needed."
+                        "Check network access, repository visibility, and set HF_TOKEN or "
+                        "HUGGINGFACE_HUB_TOKEN if needed."
                     )
                     return False
         except Exception as e:  # noqa: BLE001
@@ -203,7 +204,11 @@ class AWQQuantizer:
             quant_config=quant_config,
             target_seqlen=target_seqlen,
             toolcall_model=toolcall_model,
-            advanced_kwargs=advanced_kwargs if _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys()) else None
+            advanced_kwargs=(
+                advanced_kwargs
+                if _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys())
+                else None
+            )
         )
         
         print(f"[awq] Done: {output_dir}")
@@ -214,10 +219,10 @@ class AWQQuantizer:
         output_dir: str,
         model_path: str,
         awq_version: str,
-        quant_config: Dict,
+        quant_config: dict,
         target_seqlen: int,
         toolcall_model: bool,
-        advanced_kwargs: Optional[Dict] = None
+        advanced_kwargs: dict | None = None
     ) -> None:
         """Save metadata and generate README."""
         

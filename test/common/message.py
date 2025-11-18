@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import inspect
 import json
-from typing import Any, Awaitable, Callable, Dict, Mapping
+from typing import Any
+from collections.abc import Awaitable, Callable, Mapping
 
 from .ws import recv_raw
 
@@ -18,7 +19,7 @@ class MessageParseError(RuntimeError):
     """Raised when a websocket frame cannot be parsed into JSON."""
 
 
-def parse_message(raw: str) -> Dict[str, Any]:
+def parse_message(raw: str) -> dict[str, Any]:
     try:
         return json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -45,10 +46,10 @@ async def iter_messages(ws, *, timeout: float | None = None, ignore_invalid: boo
 
 
 async def dispatch_message(
-    msg: Dict[str, Any],
-    handlers: Mapping[str, Callable[[Dict[str, Any]], Awaitable[Any] | Any]],
+    msg: dict[str, Any],
+    handlers: Mapping[str, Callable[[dict[str, Any]], Awaitable[Any] | Any]],
     *,
-    default: Callable[[Dict[str, Any]], Awaitable[Any] | Any] | None = None,
+    default: Callable[[dict[str, Any]], Awaitable[Any] | Any] | None = None,
 ) -> Any:
     """
     Dispatch a websocket message to a handler based on its `type` field.

@@ -7,13 +7,13 @@ template/license selection in config.
 import json
 import os
 from textwrap import dedent
-from typing import Dict, Any
+from typing import Any
 
 from ..adapters.awq_toolcall_adapter import is_toolcall_model
 from ...config.templates import resolve_template_name, compute_license_info
 
 
-def _parse_quant_summary(quant_summary: str) -> Dict[str, Any]:
+def _parse_quant_summary(quant_summary: str) -> dict[str, Any]:
     try:
         return json.loads(quant_summary) if quant_summary.strip().startswith('{') else {}
     except json.JSONDecodeError:
@@ -51,7 +51,7 @@ def generate_readme(
     model_path: str,
     awq_version: str,
     quant_summary: str,
-    metadata: Dict[str, Any],
+    metadata: dict[str, Any],
     calib_section: str,
     out_dir: str
 ) -> str:
@@ -109,7 +109,7 @@ def generate_readme(
 
     # Try to use template, fallback to basic if not found
     try:
-        with open(template_path, "r", encoding="utf-8") as f:
+        with open(template_path, encoding="utf-8") as f:
             template = f.read()
         return template.format(**template_vars)
     except FileNotFoundError:

@@ -1,8 +1,7 @@
 """Authentication utilities for API key validation."""
 
 import logging
-from typing import Optional
-from fastapi import HTTPException, Security, Depends
+from fastapi import HTTPException, Security
 from fastapi.security.api_key import APIKeyQuery, APIKeyHeader
 from fastapi import WebSocket
 
@@ -28,8 +27,8 @@ def validate_api_key(provided_key: str) -> bool:
 
 
 async def get_api_key(
-    api_key_query: Optional[str] = Security(api_key_query),
-    api_key_header: Optional[str] = Security(api_key_header),
+    api_key_query: str | None = Security(api_key_query),
+    api_key_header: str | None = Security(api_key_header),
 ) -> str:
     """FastAPI dependency to extract and validate API key from request.
     
@@ -63,7 +62,7 @@ async def get_api_key(
     return provided_key
 
 
-def extract_websocket_api_key(websocket: WebSocket) -> Optional[str]:
+def extract_websocket_api_key(websocket: WebSocket) -> str | None:
     """Extract API key from WebSocket connection.
     
     Args:

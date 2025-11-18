@@ -1,11 +1,10 @@
 """Validation utilities for input normalization and checks."""
 
-from typing import Optional
 import re
 from ..config import PERSONALITY_MAX_LEN
 
 
-def normalize_gender(val: Optional[str]) -> Optional[str]:
+def normalize_gender(val: str | None) -> str | None:
     """Normalize gender input to standardized values ('female'|'male')."""
     if val is None:
         return None
@@ -17,7 +16,7 @@ def normalize_gender(val: Optional[str]) -> Optional[str]:
     return None
 
 
-def is_gender_empty_or_null(val: Optional[str]) -> bool:
+def is_gender_empty_or_null(val: str | None) -> bool:
     """Check if gender is empty or null (before normalization)."""
     if val is None:
         return True
@@ -29,7 +28,7 @@ def is_gender_empty_or_null(val: Optional[str]) -> bool:
 _LETTERS_ONLY_RE = re.compile(r"^[A-Za-z]+$")
 
 
-def normalize_personality(val: Optional[str]) -> Optional[str]:
+def normalize_personality(val: str | None) -> str | None:
     """Normalize personality: letters-only, length-limited, lowercased.
 
     Returns lowercase personality or None if invalid.
@@ -46,7 +45,7 @@ def normalize_personality(val: Optional[str]) -> Optional[str]:
     return v.lower()
 
 
-def is_personality_empty_or_null(val: Optional[str]) -> bool:
+def is_personality_empty_or_null(val: str | None) -> bool:
     """Check if personality is empty or null (before normalization)."""
     if val is None:
         return True
@@ -55,7 +54,7 @@ def is_personality_empty_or_null(val: Optional[str]) -> bool:
     return False
 
 
-def validate_personality(personality: Optional[str]) -> bool:
+def validate_personality(personality: str | None) -> bool:
     return normalize_personality(personality) is not None
 
 

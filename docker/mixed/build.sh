@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC2034  # sourced helper scripts rely on ROOT_DIR
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Docker configuration
@@ -145,11 +146,11 @@ log_success "Image pushed successfully to Docker Hub!"
 log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "Usage:"
-log_info "docker run -d --gpus all --name yap-base \\\" 
-log_info "  -e CHAT_MODEL=your-org/float-or-gptq-chat \\\" 
-log_info "  -e TOOL_MODEL=your-org/float-or-gptq-tool \\\" 
-log_info "  -e TEXT_API_KEY=yap_token \\\" 
-log_info "  -p 8000:8000 \\\" 
+log_info "docker run -d --gpus all --name yap-base \\"
+log_info "  -e CHAT_MODEL=your-org/float-or-gptq-chat \\"
+log_info "  -e TOOL_MODEL=your-org/float-or-gptq-tool \\"
+log_info "  -e TEXT_API_KEY=yap_token \\"
+log_info "  -p 8000:8000 \\"
 log_info "  ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "Health: curl http://localhost:8000/healthz"

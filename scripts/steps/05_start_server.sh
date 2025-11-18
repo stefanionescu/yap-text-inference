@@ -80,5 +80,5 @@ echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 log_info "Server started: PID=$(cat "${ROOT_DIR}/server.pid")"
 log_info "Health:  curl -s http://127.0.0.1:8000/healthz"
 log_info "All logs: tail -f ${ROOT_DIR}/server.log"
-log_info "Stop:    kill -TERM -$(cat ${ROOT_DIR}/server.pid)  # negative PID kills session"
+log_info "Stop:    kill -TERM -$(cat "${ROOT_DIR}/server.pid")  # negative PID kills session"
 

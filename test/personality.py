@@ -4,7 +4,8 @@ import json
 import os
 import sys
 import uuid
-from typing import List, Tuple
+from dataclasses import dataclass, field
+from collections.abc import Sequence
 
 import websockets
 
@@ -29,66 +30,111 @@ from test.config import (
 from test.prompts.toolcall import TOOLCALL_PROMPT
 
 
-async def recv_until_done(ws) -> Tuple[str, List[dict]]:
-    tokens = []
+@dataclass(frozen=True)
+class PersonaVariant:
+    assistant_gender: str
+    personality: str
+    chat_prompt: str
+
+
+@dataclass
+class PersonaSession:
+    session_id: str
+    history: str = ""
+    reply_index: int = 0
+    replies: Sequence[str] = field(default_factory=lambda: PERSONA_SWITCH_REPLIES)
+
+    def next_user_prompt(self) -> str:
+        if not self.replies:
+            raise RuntimeError("PERSONA_SWITCH_REPLIES is empty; cannot produce user prompts.")
+        prompt = self.replies[self.reply_index % len(self.replies)]
+        self.reply_index += 1
+        return prompt
+
+    def append_exchange(self, user_text: str, assistant_text: str) -> None:
+        transcript = "\n".join(
+            chunk for chunk in (self.history, f"User: {user_text}", f"Assistant: {assistant_text}") if chunk
+        )
+        self.history = transcript.strip()
+
+
+async def _collect_response(ws) -> str:
     final_text = ""
-    toolcalls: List[dict] = []
     async for msg in iter_messages(ws):
         t = msg.get("type")
         if t == "token":
-            tokens.append(msg.get("text", ""))
-        elif t == "toolcall":
-            toolcalls.append(msg)
-        elif t == "final":
-            final_text = msg.get("normalized_text", "")
-        elif t == "done":
-            break
-        elif t == "error":
+            final_text += msg.get("text", "")
+            continue
+        if t == "final":
+            if msg.get("normalized_text"):
+                final_text = msg["normalized_text"]
+            continue
+        if t == "done":
+            return final_text
+        if t == "error":
             raise RuntimeError(f"server error: {msg}")
-    return final_text, toolcalls
+    raise RuntimeError("WebSocket closed before receiving 'done'")
 
 
-async def send_start(ws, session_id: str, assistant_gender: str, personality: str, chat_prompt: str, tool_prompt: str, history_text: str, user_text: str) -> str:
-    msg = {
+async def _send_start_request(ws, session: PersonaSession, variant: PersonaVariant, user_text: str) -> str:
+    payload = {
         "type": "start",
-        "session_id": session_id,
-        "assistant_gender": assistant_gender,
-        "personality": personality,
-        "chat_prompt": chat_prompt,
-        "tool_prompt": tool_prompt,
-        "history_text": history_text,
+        "session_id": session.session_id,
+        "assistant_gender": variant.assistant_gender,
+        "personality": variant.personality,
+        "chat_prompt": variant.chat_prompt,
+        "tool_prompt": TOOLCALL_PROMPT,
+        "history_text": session.history,
         "user_utterance": user_text,
     }
-    await (ws.send(json.dumps(msg)) if hasattr(ws, 'send') else ws.send(json.dumps(msg)))
-    final_text, _ = await recv_until_done(ws)
-    return final_text
+    await ws.send(json.dumps(payload))
+    return await _collect_response(ws)
 
 
-async def send_update_chat_prompt(ws, session_id: str, assistant_gender: str, personality: str, chat_prompt: str, history_text: str) -> dict:
-    msg = {
+async def _wait_for_chat_prompt_ack(ws) -> dict:
+    async for msg in iter_messages(ws):
+        if msg.get("type") == "ack" and msg.get("for") == "chat_prompt":
+            return msg
+        if msg.get("type") == "error":
+            return msg
+    raise RuntimeError("WebSocket closed before receiving chat_prompt ack")
+
+
+async def _send_persona_update(ws, session: PersonaSession, variant: PersonaVariant) -> None:
+    payload = {
         "type": "chat_prompt",
-        "session_id": session_id,
-        "assistant_gender": assistant_gender,
-        "personality": personality,
-        "chat_prompt": chat_prompt,
-        "history_text": history_text,
+        "session_id": session.session_id,
+        "assistant_gender": variant.assistant_gender,
+        "personality": variant.personality,
+        "chat_prompt": variant.chat_prompt,
+        "history_text": session.history,
     }
-    await ws.send(json.dumps(msg))
-    # Wait for a single ack/error
-    while True:
-        ack = json.loads(await ws.recv())
-        if ack.get("type") == "ack" and ack.get("for") == "chat_prompt":
-            return ack
-        if ack.get("type") == "error":
-            return ack
+    await ws.send(json.dumps(payload))
+    ack = await _wait_for_chat_prompt_ack(ws)
+    if not (ack.get("type") == "ack" and ack.get("ok") and ack.get("code") in (200, 204)):
+        raise RuntimeError(f"update_chat_prompt failed: {ack}")
+
+
+async def _run_initial_exchange(ws, session: PersonaSession, variant: PersonaVariant) -> None:
+    opener = session.next_user_prompt()
+    assistant_text = await _send_start_request(ws, session, variant, opener)
+    session.append_exchange(opener, assistant_text)
+
+
+async def _run_switch_sequence(ws, session: PersonaSession, variant: PersonaVariant) -> None:
+    await _send_persona_update(ws, session, variant)
+    for _ in range(PERSONALITY_REPLIES_PER_SWITCH):
+        user_text = session.next_user_prompt()
+        assistant_text = await _send_start_request(ws, session, variant, user_text)
+        session.append_exchange(user_text, assistant_text)
 
 
 async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
     url = with_api_key(ws_url)
-    session_id = f"sess-{uuid.uuid4()}"
-
-    history_text = ""
-    reply_idx = 0
+    session = PersonaSession(session_id=f"sess-{uuid.uuid4()}")
+    variants: list[PersonaVariant] = [PersonaVariant(*variant) for variant in PERSONA_VARIANTS]
+    if not variants:
+        raise RuntimeError("PERSONA_VARIANTS is empty; nothing to test.")
 
     async with websockets.connect(
         url,
@@ -96,29 +142,11 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
     ) as ws:
         try:
-            # Initial start with first variant and a simple opener
-            variants = PERSONA_VARIANTS
-            g0, p0, c0 = variants[0]
-            opener = PERSONA_SWITCH_REPLIES[reply_idx % len(PERSONA_SWITCH_REPLIES)]
-            reply_idx += 1
-            final0 = await send_start(ws, session_id, g0, p0, c0, TOOLCALL_PROMPT, history_text, opener)
-            history_text = f"User: {opener}\nAssistant: {final0}".strip()
-
+            await _run_initial_exchange(ws, session, variants[0])
             for i in range(switches):
                 await asyncio.sleep(delay_s)
-                g, p, c = variants[(i + 1) % len(variants)]
-
-                ack = await send_update_chat_prompt(ws, session_id, g, p, c, history_text)
-                # If no change (204), still proceed to send replies
-                if ack.get("type") == "ack" and ack.get("ok") and ack.get("code") in (200, 204):
-                    # Send configured number of replies after each update
-                    for _ in range(PERSONALITY_REPLIES_PER_SWITCH):
-                        user_text = PERSONA_SWITCH_REPLIES[reply_idx % len(PERSONA_SWITCH_REPLIES)]
-                        reply_idx += 1
-                        final_text = await send_start(ws, session_id, g, p, c, TOOLCALL_PROMPT, history_text, user_text)
-                        history_text = (history_text + f"\nUser: {user_text}\nAssistant: {final_text}").strip()
-                else:
-                    raise RuntimeError(f"update_chat_prompt failed: {ack}")
+                variant = variants[(i + 1) % len(variants)]
+                await _run_switch_sequence(ws, session, variant)
         finally:
             await send_client_end(ws)
 

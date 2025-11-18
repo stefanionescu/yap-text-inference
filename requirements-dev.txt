@@ -1,0 +1,4 @@
+# Linting / formatting dependencies
+ruff==0.6.9
+shellcheck-py==0.11.0.1
+

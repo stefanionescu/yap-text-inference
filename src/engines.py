@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import asyncio
-from typing import Tuple
 
 # Ensure V1 engine path before importing vLLM
 os.environ.setdefault("VLLM_USE_V1", "1")
@@ -31,7 +30,7 @@ _tool_engine: AsyncLLMEngine | None = None
 _ENGINE_CONSTRUCTION_LOCK = asyncio.Lock()
 
 
-def _build_engines() -> Tuple[AsyncLLMEngine | None, AsyncLLMEngine | None]:
+def _build_engines() -> tuple[AsyncLLMEngine | None, AsyncLLMEngine | None]:
     tool = None
     chat = None
     
@@ -124,11 +123,26 @@ def _best_effort_clear_engine_caches(engine: AsyncLLMEngine) -> None:
                 candidates.append(obj)
 
         for obj in candidates:
-            for attr in ("prefix_cache", "_prefix_cache", "cache", "_cache", "cache_engine", "kv_cache", "kv_cache_manager"):
+            for attr in (
+                "prefix_cache",
+                "_prefix_cache",
+                "cache",
+                "_cache",
+                "cache_engine",
+                "kv_cache",
+                "kv_cache_manager",
+            ):
                 cache_obj = getattr(obj, attr, None)
                 if cache_obj is None:
                     continue
-                for method_name in ("reset", "clear", "clear_all", "reset_cache", "free_all", "evict_all"):
+                for method_name in (
+                    "reset",
+                    "clear",
+                    "clear_all",
+                    "reset_cache",
+                    "free_all",
+                    "evict_all",
+                ):
                     method = getattr(cache_obj, method_name, None)
                     if callable(method):
                         try:

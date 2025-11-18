@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-from typing import Optional
 from fastapi import WebSocket
 
 
@@ -23,7 +22,7 @@ async def flush_and_send(ws: WebSocket, buffer_text: str) -> None:
     await ws.send_text(json.dumps({"type": "token", "text": buffer_text}))
 
 
-async def cancel_task(task: Optional[asyncio.Task]) -> None:
+async def cancel_task(task: asyncio.Task | None) -> None:
     if not task:
         return
     if task.done():

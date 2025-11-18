@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 AWQ_DIR="${ROOT_DIR}/models"
+# shellcheck disable=SC2034  # referenced by sourced AWQ helpers
 CHAT_AWQ_DIR="${AWQ_DIR}/chat_awq"
+# shellcheck disable=SC2034  # referenced by sourced AWQ helpers
 TOOL_AWQ_DIR="${AWQ_DIR}/tool_awq"
 mkdir -p "${AWQ_DIR}"
 

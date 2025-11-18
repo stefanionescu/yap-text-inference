@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional, Type
+from typing import Any
 
 TOOLCALL_MODEL_MARKERS = (
     "madeagents/hammer",
@@ -15,7 +15,7 @@ TOOLCALL_MODEL_MARKERS = (
 _TOOLCALL_DEFAULT_TOTAL_LEN = 3010  # Fallback if env vars are missing
 
 
-def _read_int_env(name: str) -> Optional[int]:
+def _read_int_env(name: str) -> int | None:
     value = os.environ.get(name)
     if value is None:
         return None
@@ -56,8 +56,8 @@ def apply_toolcall_awq_adapters(target_seqlen: int) -> None:
     _apply_toolcall_quantizer_patch(target_seqlen)
 
 
-def _iter_catcher_classes(quantizer_module: Any) -> list[Type[Any]]:
-    classes: list[Type[Any]] = []
+def _iter_catcher_classes(quantizer_module: Any) -> list[type[Any]]:
+    classes: list[type[Any]] = []
     for attr_name in dir(quantizer_module):
         if "catch" not in attr_name.lower():
             continue
@@ -86,11 +86,11 @@ def _apply_toolcall_catcher_patch() -> None:
         original_init = catcher_cls.__init__
         original_getattr = getattr(catcher_cls, "__getattr__", None)
 
-        def patched_init(self, module, *args, **kwargs):  # type: ignore[override]
-            original_init(self, module, *args, **kwargs)
+        def patched_init(self, module, *args, _orig_init=original_init, **kwargs):  # type: ignore[override]
+            _orig_init(self, module, *args, **kwargs)
             object.__setattr__(self, "_toolcall_wrapped_module", module)
             if hasattr(module, "attention_type"):
-                object.__setattr__(self, "attention_type", getattr(module, "attention_type"))
+                object.__setattr__(self, "attention_type", module.attention_type)
 
         def patched_getattr(self, name, _orig_getattr=original_getattr):  # type: ignore[override]
             if name == "_toolcall_wrapped_module":
@@ -119,7 +119,7 @@ def _apply_toolcall_catcher_patch() -> None:
 
         catcher_cls.__init__ = patched_init  # type: ignore[assignment]
         catcher_cls.__getattr__ = patched_getattr  # type: ignore[assignment]
-        setattr(catcher_cls, "_toolcall_attribute_proxy_patch", True)
+        catcher_cls._toolcall_attribute_proxy_patch = True
         print(f"[awq] Applied Toolcall-specific catcher patch ({catcher_cls.__name__})")
 
 
@@ -146,7 +146,7 @@ def _apply_toolcall_qwen_patch() -> None:
                         attention_type = layer_types[idx]
                     except Exception:
                         attention_type = "full_attention"
-                    setattr(decoder_layer, "attention_type", attention_type)
+                    decoder_layer.attention_type = attention_type
         except Exception:
             pass
         return original_forward(self, *args, **kwargs)
@@ -156,7 +156,7 @@ def _apply_toolcall_qwen_patch() -> None:
     print("[awq] Applied Toolcall-specific Qwen2 attention patch")
 
 
-def _truncate_sequence_like(obj: Any, max_len: Optional[int]) -> Any:
+def _truncate_sequence_like(obj: Any, max_len: int | None) -> Any:
     if max_len is None:
         return obj
 
@@ -170,7 +170,7 @@ def _truncate_sequence_like(obj: Any, max_len: Optional[int]) -> Any:
     except Exception:
         pass
 
-    if isinstance(obj, (list, tuple)) and len(obj) > max_len:
+    if isinstance(obj, list | tuple) and len(obj) > max_len:
         return obj[:max_len]
 
     return obj
@@ -179,12 +179,12 @@ def _truncate_sequence_like(obj: Any, max_len: Optional[int]) -> Any:
 def _apply_toolcall_quantizer_patch(target_seqlen: int) -> None:
     try:
         from awq.quantize import quantizer  # type: ignore
-        AwqQuantizer = getattr(quantizer, "AwqQuantizer")
+        AwqQuantizer = quantizer.AwqQuantizer
     except Exception as exc:
         print(f"[awq] Toolcall patch skipped: unable to import AwqQuantizer ({exc})")
         return
 
-    setattr(AwqQuantizer, "_toolcall_default_target_seqlen", int(target_seqlen))
+    AwqQuantizer._toolcall_default_target_seqlen = int(target_seqlen)
 
     if getattr(AwqQuantizer, "_toolcall_truncate_patch", False):
         return
@@ -197,9 +197,9 @@ def _apply_toolcall_quantizer_patch(target_seqlen: int) -> None:
             "_toolcall_target_seqlen",
             getattr(AwqQuantizer, "_toolcall_default_target_seqlen", None),
         )
-        setattr(self, "_toolcall_target_seqlen", target_len)
+        self._toolcall_target_seqlen = target_len
 
-        original_forward = getattr(self.model, "forward")
+        original_forward = self.model.forward
 
         if target_len is not None:
 
@@ -219,11 +219,11 @@ def _apply_toolcall_quantizer_patch(target_seqlen: int) -> None:
             def wrapped_forward(*fargs, **fkwargs):  # type: ignore[override]
                 return original_forward(*fargs, **fkwargs)
 
-        setattr(self.model, "forward", wrapped_forward)
+        self.model.forward = wrapped_forward
         try:
             result = original_init_quant(self, *args, **kwargs)
         finally:
-            setattr(self.model, "forward", original_forward)
+            self.model.forward = original_forward
 
         return result
 

@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from typing import Dict, Any
+from typing import Any
 from fastapi import WebSocket
 
 from ..config import (
@@ -35,11 +35,15 @@ from ..execution.tool_parser import parse_tool_result
 logger = logging.getLogger(__name__)
 
 
-async def handle_start_message(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
+async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
     """Handle 'start' message type."""
     logger.info(
-        f"handle_start: session_id={session_id} gender_in={msg.get('assistant_gender')} personality_in={msg.get('personality')} "
-        f"hist_len={len(msg.get('history_text',''))} user_len={len(msg.get('user_utterance',''))}"
+        "handle_start: session_id=%s gender_in=%s personality_in=%s hist_len=%s user_len=%s",
+        session_id,
+        msg.get("assistant_gender"),
+        msg.get("personality"),
+        len(msg.get("history_text", "")),
+        len(msg.get("user_utterance", "")),
     )
     session_config = session_handler.initialize_session(session_id)
 

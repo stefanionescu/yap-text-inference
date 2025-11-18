@@ -46,7 +46,12 @@ def trim_history_for_tool_sharing(history_text: str, tool_history_tokens: int) -
     if not history_text.strip():
         return ""
     out = trim_history_preserve_messages_tool(history_text, tool_history_tokens)
-    logger.info(f"tokens.tool.trim_history_for_tool: in_len={len(history_text)} out_len={len(out)} max_tokens={tool_history_tokens}")
+    logger.info(
+        "tokens.tool.trim_history_for_tool: in_len=%s out_len=%s max_tokens=%s",
+        len(history_text),
+        len(out),
+        tool_history_tokens,
+    )
     return out
 
 
@@ -111,7 +116,12 @@ def trim_history_preserve_messages_chat(history_text: str, max_tokens: int) -> s
         count_fn=count_tokens_chat,
         trim_fn=trim_text_to_token_limit_chat,
     )
-    logger.info(f"tokens.chat.trim_history_preserve: in_len={len(history_text)} out_len={len(out)} max_tokens={max_tokens}")
+    logger.info(
+        "tokens.chat.trim_history_preserve: in_len=%s out_len=%s max_tokens=%s",
+        len(history_text),
+        len(out),
+        max_tokens,
+    )
     return out
 
 
@@ -122,7 +132,12 @@ def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> s
         count_fn=count_tokens_tool,
         trim_fn=trim_text_to_token_limit_tool,
     )
-    logger.info(f"tokens.tool.trim_history_preserve: in_len={len(history_text)} out_len={len(out)} max_tokens={max_tokens}")
+    logger.info(
+        "tokens.tool.trim_history_preserve: in_len=%s out_len=%s max_tokens=%s",
+        len(history_text),
+        len(out),
+        max_tokens,
+    )
     return out
 
 

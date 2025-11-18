@@ -8,7 +8,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     from huggingface_hub import HfApi
@@ -17,7 +17,7 @@ except Exception as exc:  # pragma: no cover - import error path
     sys.exit(1)
 
 
-def _load_metadata(folder: Path) -> Dict[str, Any]:
+def _load_metadata(folder: Path) -> dict[str, Any]:
     meta_path = folder / "awq_metadata.json"
     if not meta_path.exists():
         return {}
@@ -28,7 +28,7 @@ def _load_metadata(folder: Path) -> Dict[str, Any]:
         return {}
 
 
-def _resolve_token(cli_token: Optional[str]) -> str:
+def _resolve_token(cli_token: str | None) -> str:
     candidates = [
         cli_token,
         os.getenv("HF_TOKEN"),
@@ -48,7 +48,13 @@ def main() -> int:
     parser.add_argument("--branch", default="main", help="Repository branch to push to (default: main)")
     parser.add_argument("--commit-message", default=None, help="Custom commit message")
     parser.add_argument("--private", action="store_true", help="Create the repo as private if it does not exist")
-    parser.add_argument("--no-create", action="store_false", dest="allow_create", default=True, help="Disable repo creation")
+    parser.add_argument(
+        "--no-create",
+        action="store_false",
+        dest="allow_create",
+        default=True,
+        help="Disable repo creation",
+    )
 
     args = parser.parse_args()
 

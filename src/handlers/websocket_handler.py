@@ -3,8 +3,6 @@
 import contextlib
 import json
 import logging
-from typing import Optional
-
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..auth import authenticate_websocket
@@ -73,16 +71,23 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     """
     # Check API key authentication first
     is_authenticated = await authenticate_websocket(ws)
-    lifecycle: Optional[WebSocketLifecycle] = None
+    lifecycle: WebSocketLifecycle | None = None
     
     if not is_authenticated:
         # Authentication failed - send error and close
         await ws.accept()  # Need to accept to send error message
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "authentication_failed",
-            "message": "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header.",
-        }))
+        await ws.send_text(
+            json.dumps(
+                {
+                    "type": "error",
+                    "error_code": "authentication_failed",
+                    "message": (
+                        "Authentication required. Provide valid API key via 'api_key' "
+                        "query parameter or 'X-API-Key' header."
+                    ),
+                }
+            )
+        )
         await ws.close(code=WS_CLOSE_UNAUTHORIZED_CODE)
         return
     
@@ -93,18 +98,26 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         # Server at capacity - send error and close connection
         capacity_info = connection_handler.get_capacity_info()
         await ws.accept()  # Need to accept to send error message
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "server_at_capacity", 
-            "message": f"Server is at capacity. Active connections: {capacity_info['active']}/{capacity_info['max']}. Please try again later.",
-            "capacity": capacity_info
-        }))
+        await ws.send_text(
+            json.dumps(
+                {
+                    "type": "error",
+                    "error_code": "server_at_capacity",
+                    "message": (
+                        "Server is at capacity. Active connections: "
+                        f"{capacity_info['active']}/{capacity_info['max']}. "
+                        "Please try again later."
+                    ),
+                    "capacity": capacity_info,
+                }
+            )
+        )
         await ws.close(code=WS_CLOSE_BUSY_CODE)
         return
     
     # Connection accepted - proceed normally
     await ws.accept()
-    session_id: Optional[str] = None
+    session_id: str | None = None
     lifecycle = WebSocketLifecycle(ws)
     lifecycle.start()
     
@@ -152,7 +165,13 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 break
 
             if msg_type == "start":
-                logger.info(f"WS recv: start session_id={msg.get('session_id')} gender={msg.get('assistant_gender')} len(history)={len(msg.get('history_text',''))} len(user)={len(msg.get('user_utterance',''))}")
+                logger.info(
+                    "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
+                    msg.get("session_id"),
+                    msg.get("assistant_gender"),
+                    len(msg.get("history_text", "")),
+                    len(msg.get("user_utterance", "")),
+                )
                 # Cancel previous session if exists
                 if session_id and session_id in session_handler.session_tasks:
                     session_handler.cancel_session_requests(session_id)
@@ -213,7 +232,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 await clear_all_engine_caches_on_disconnect()
 
 
-async def _cleanup_session(session_id: Optional[str]) -> None:
+async def _cleanup_session(session_id: str | None) -> None:
     """Clean up session resources on disconnect.
     
     Args:
@@ -228,19 +247,19 @@ async def _cleanup_session(session_id: Optional[str]) -> None:
     
     # Abort active chat request (only if chat is deployed)
     if DEPLOY_CHAT:
-    try:
-        if req_info["active"]:
-            await (await get_chat_engine()).abort_request(req_info["active"])
-    except Exception:
-        pass
+        try:
+            if req_info["active"]:
+                await (await get_chat_engine()).abort_request(req_info["active"])
+        except Exception:
+            pass
     
     # Abort tool request if exists (only if tool is deployed)
     if DEPLOY_TOOL:
-    try:
-        if req_info["tool"]:
-            await (await get_tool_engine()).abort_request(req_info["tool"])
-    except Exception:
-        pass
+        try:
+            if req_info["tool"]:
+                await (await get_tool_engine()).abort_request(req_info["tool"])
+        except Exception:
+            pass
 
     # Drop session state after cleanup
     session_handler.clear_session_state(session_id)

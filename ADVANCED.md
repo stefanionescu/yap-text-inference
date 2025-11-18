@@ -2,6 +2,25 @@
 
 This document covers advanced operations, configuration, and deep-dive details.
 
+## Contents
+
+- [Security Configuration](#security-configuration)
+  - [API Key Setup](#api-key-setup)
+  - [Connection Limiting (Deployment/Quantization-Aware)](#connection-limiting-deploymentquantization-aware)
+  - [Authentication Coverage](#authentication-coverage)
+- [Log Rotation](#log-rotation)
+- [API — WebSocket `/ws`](#api--websocket-ws)
+  - [Connection Lifecycle](#connection-lifecycle)
+  - [Authentication Methods](#authentication-methods)
+  - [Connection Limit Handling](#connection-limit-handling)
+  - [Messages You Send](#messages-you-send)
+  - [What You Receive](#what-you-receive)
+  - [Barge-In and Cancellation](#barge-in-and-cancellation)
+- [Quantization Notes](#quantization-notes)
+  - [Pushing AWQ Exports to Hugging Face](#pushing-awq-exports-to-hugging-face)
+- [Persona and History Behavior](#persona-and-history-behavior)
+- [GPU Memory Fractions](#gpu-memory-fractions)
+
 ## Security Configuration
 
 ### API Key Setup

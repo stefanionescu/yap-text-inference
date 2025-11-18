@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Dict, Any
+from typing import Any
 from fastapi import WebSocket
 
 from ..handlers.session_handler import session_handler
@@ -20,7 +20,7 @@ from ..tokens import trim_text_to_token_limit_chat
 logger = logging.getLogger(__name__)
 
 
-async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
+async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
     """Handle 'followup' message to continue with chat-only using analysis.
 
     Required fields:
@@ -53,7 +53,14 @@ async def handle_followup_message(ws: WebSocket, msg: Dict[str, Any], session_id
     static_prefix = cfg.get("chat_prompt") or ""
     runtime_text = ""
     if not static_prefix:
-        await ws.send_text(json.dumps({"type": "error", "message": "chat_prompt must be set in session (send in start)"}))
+        await ws.send_text(
+            json.dumps(
+                {
+                    "type": "error",
+                    "message": "chat_prompt must be set in session (send in start)",
+                }
+            )
+        )
         return
 
     # Synthesize the follow-up prompt for the chat model

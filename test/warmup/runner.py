@@ -8,7 +8,7 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 import websockets
 
@@ -63,8 +63,8 @@ class StreamTracker:
         self.toolcall_ttfb_ms = self._ms_since_sent(now)
         return self.toolcall_ttfb_ms
 
-    def record_token(self, chunk: str) -> Dict[str, float | None]:
-        metrics: Dict[str, float | None] = {}
+    def record_token(self, chunk: str) -> dict[str, float | None]:
+        metrics: dict[str, float | None] = {}
         if not chunk:
             return metrics
 
@@ -84,7 +84,7 @@ class StreamTracker:
         self.chunks += 1
         return metrics
 
-    def finalize_metrics(self, cancelled: bool) -> Dict[str, Any]:
+    def finalize_metrics(self, cancelled: bool) -> dict[str, Any]:
         done_ts = time.perf_counter()
         ttfb_ms = self._ms_since_sent(self.first_token_ts)
         stream_ms = None
@@ -105,7 +105,7 @@ class StreamTracker:
             "chars": len(self.final_text),
         }
 
-    def final_text_payload(self) -> Dict[str, Any]:
+    def final_text_payload(self) -> dict[str, Any]:
         return {"type": "final_text", "text": self.final_text}
 
 
@@ -147,8 +147,8 @@ def _build_start_payload(
     personality: str,
     chat_prompt: str,
     user_msg: str,
-) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
         "assistant_gender": assistant_gender,
@@ -174,7 +174,7 @@ async def _stream_session(ws, tracker: StreamTracker, recv_timeout: float, api_k
         logger.warning("no ACK(start) received from server")
 
 
-def _process_message(msg: Dict[str, Any], tracker: StreamTracker, api_key: str) -> bool:
+def _process_message(msg: dict[str, Any], tracker: StreamTracker, api_key: str) -> bool:
     t = msg.get("type")
     if t == "ack":
         return _handle_ack(msg, tracker)
@@ -196,7 +196,7 @@ def _process_message(msg: Dict[str, Any], tracker: StreamTracker, api_key: str) 
     return True
 
 
-def _handle_ack(msg: Dict[str, Any], tracker: StreamTracker) -> bool:
+def _handle_ack(msg: dict[str, Any], tracker: StreamTracker) -> bool:
     ack_for = msg.get("for")
     if ack_for == "start":
         tracker.ack_seen = True
@@ -209,7 +209,7 @@ def _handle_ack(msg: Dict[str, Any], tracker: StreamTracker) -> bool:
     return True
 
 
-def _handle_toolcall(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker) -> None:
     status = msg.get("status")
     logger.info("TOOLCALL status=%s raw=%s", status, msg.get("raw"))
     ttfb_ms = tracker.record_toolcall()
@@ -217,7 +217,7 @@ def _handle_toolcall(msg: Dict[str, Any], tracker: StreamTracker) -> None:
         logger.info("TOOLCALL ttfb_ms=%.2f", ttfb_ms)
 
 
-def _handle_token(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_token(msg: dict[str, Any], tracker: StreamTracker) -> None:
     chunk = msg.get("text", "")
     metrics = tracker.record_token(chunk)
     chat_ttfb = metrics.get("chat_ttfb_ms")
@@ -231,19 +231,19 @@ def _handle_token(msg: Dict[str, Any], tracker: StreamTracker) -> None:
         logger.info("CHAT time_to_first_complete_sentence_ms=%.2f", first_sentence)
 
 
-def _handle_final(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_final(msg: dict[str, Any], tracker: StreamTracker) -> None:
     normalized = msg.get("normalized_text") or tracker.final_text
     if normalized:
         tracker.final_text = normalized
 
 
-def _handle_done(msg: Dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_done(msg: dict[str, Any], tracker: StreamTracker) -> None:
     cancelled = bool(msg.get("cancelled"))
     logger.info(json.dumps(tracker.finalize_metrics(cancelled), ensure_ascii=False))
     logger.info(json.dumps(tracker.final_text_payload(), ensure_ascii=False))
 
 
-def _handle_error(msg: Dict[str, Any], api_key: str) -> None:
+def _handle_error(msg: dict[str, Any], api_key: str) -> None:
     error_code = msg.get("error_code", "")
     error_message = msg.get("message", "unknown error")
     logger.error("Server error %s: %s", error_code, error_message)

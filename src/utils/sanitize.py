@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Optional
 
 try:
     from ftfy import fix_text
@@ -26,7 +25,7 @@ _CTRL_RE = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
 _BIDI_RE = re.compile(r"[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C]")
 
 
-def sanitize_prompt(raw: Optional[str], max_chars: int = 200_000) -> str:
+def sanitize_prompt(raw: str | None, max_chars: int = 200_000) -> str:
     """Sanitize user-provided prompt text.
 
     - Ensures type is string and non-empty after trimming

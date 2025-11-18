@@ -7,6 +7,16 @@ Embed-first image that downloads models at build time and runs them as-is. Suppo
 - Chat-only / Tool-only / Both
 - Mixed quant (e.g., chat=AWQ, tool=float)
 
+## Contents
+
+- [Build](#build)
+- [Tagging and Variants](#tagging-and-variants)
+- [Run](#run)
+  - [Run (both embedded)](#run-both-embedded)
+  - [Run with overrides](#run-with-overrides)
+- [Concurrency](#concurrency)
+- [Health](#health)
+
 ### Build
 
 Models are embedded at build time. The container does not download or quantize models at runtime.
