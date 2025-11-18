@@ -3,41 +3,34 @@ import asyncio
 import contextlib
 import json
 import os
+import sys
 import uuid
 from typing import List, Tuple
 
 import websockets
 
-from test.prompts.chat import FIRST_PROMPT, SECOND_PROMPT
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from test.config import (
+    DEFAULT_SERVER_WS_URL,
+    DEFAULT_TEXT_API_KEY,
+    DEFAULT_WS_PING_INTERVAL,
+    DEFAULT_WS_PING_TIMEOUT,
+    PERSONA_SWITCH_REPLIES,
+    PERSONA_VARIANTS,
+    PERSONALITY_REPLIES_PER_SWITCH,
+    PERSONALITY_SWITCH_DEFAULT,
+    PERSONALITY_SWITCH_DELAY_SECONDS,
+    PERSONALITY_SWITCH_MAX,
+    PERSONALITY_SWITCH_MIN,
+)
 from test.prompts.toolcall import TOOLCALL_PROMPT
 
 
-MOCK_REPLIES: List[str] = [
-    "Hey there, how are you?",
-    "What are you up to right now?",
-    "Tell me something interesting about yourself.",
-    "Do you prefer mornings or nights?",
-    "What's your current vibe?",
-    "Give me your take on this week.",
-    "What would you do on a free day?",
-    "Are you more spontaneous or a planner?",
-    "What's a hot take you stand by?",
-    "What annoys you the most?",
-    "What do you think about road trips?",
-    "What's your idea of fun?",
-    "What was the last thing that made you laugh?",
-    "What topic do you always have an opinion on?",
-    "What's overrated right now?",
-    "What's underrated right now?",
-    "Describe your perfect evening in 5 words.",
-    "What's your favorite guilty pleasure?",
-    "What's something you refuse to do?",
-    "What's your dream weekend like?",
-]
-
-
 def get_api_key() -> str:
-    return os.getenv("TEXT_API_KEY", "")
+    return DEFAULT_TEXT_API_KEY
 
 
 def build_ws_url(base: str, api_key: str) -> str:
@@ -112,20 +105,19 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
     url = build_ws_url(ws_url, api_key)
     session_id = f"sess-{uuid.uuid4()}"
 
-    # Cycle between two prompts/genders/personalities
-    variants = [
-        ("female", "flirty", FIRST_PROMPT),
-        ("male", "flirty", SECOND_PROMPT),
-    ]
-
     history_text = ""
     reply_idx = 0
 
-    async with websockets.connect(url, ping_interval=20, ping_timeout=20) as ws:
+    async with websockets.connect(
+        url,
+        ping_interval=DEFAULT_WS_PING_INTERVAL,
+        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+    ) as ws:
         try:
             # Initial start with first variant and a simple opener
+            variants = PERSONA_VARIANTS
             g0, p0, c0 = variants[0]
-            opener = MOCK_REPLIES[reply_idx % len(MOCK_REPLIES)]
+            opener = PERSONA_SWITCH_REPLIES[reply_idx % len(PERSONA_SWITCH_REPLIES)]
             reply_idx += 1
             final0 = await send_start(ws, session_id, g0, p0, c0, TOOLCALL_PROMPT, history_text, opener)
             history_text = f"User: {opener}\nAssistant: {final0}".strip()
@@ -137,9 +129,9 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
                 ack = await send_update_chat_prompt(ws, session_id, g, p, c, history_text)
                 # If no change (204), still proceed to send replies
                 if ack.get("type") == "ack" and ack.get("ok") and ack.get("code") in (200, 204):
-                    # Send two replies after each update
-                    for _ in range(2):
-                        user_text = MOCK_REPLIES[reply_idx % len(MOCK_REPLIES)]
+                    # Send configured number of replies after each update
+                    for _ in range(PERSONALITY_REPLIES_PER_SWITCH):
+                        user_text = PERSONA_SWITCH_REPLIES[reply_idx % len(PERSONA_SWITCH_REPLIES)]
                         reply_idx += 1
                         final_text = await send_start(ws, session_id, g, p, c, TOOLCALL_PROMPT, history_text, user_text)
                         history_text = (history_text + f"\nUser: {user_text}\nAssistant: {final_text}").strip()
@@ -151,12 +143,30 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Personality switch WS test")
-    parser.add_argument("--ws", dest="ws", default="ws://localhost:8000/ws", help="WebSocket URL (default: ws://localhost:8000/ws)")
-    parser.add_argument("--switches", dest="switches", type=int, default=4, help="Number of chat prompt switches (1-10), default 4")
-    parser.add_argument("--delay", dest="delay", type=int, default=10, help="Seconds between switches (default 10)")
+    parser.add_argument(
+        "--ws",
+        dest="ws",
+        default=DEFAULT_SERVER_WS_URL,
+        help=f"WebSocket URL (default: {DEFAULT_SERVER_WS_URL})",
+    )
+    parser.add_argument(
+        "--switches",
+        dest="switches",
+        type=int,
+        default=PERSONALITY_SWITCH_DEFAULT,
+        help=f"Number of chat prompt switches ({PERSONALITY_SWITCH_MIN}-{PERSONALITY_SWITCH_MAX}), "
+        f"default {PERSONALITY_SWITCH_DEFAULT}",
+    )
+    parser.add_argument(
+        "--delay",
+        dest="delay",
+        type=int,
+        default=PERSONALITY_SWITCH_DELAY_SECONDS,
+        help=f"Seconds between switches (default {PERSONALITY_SWITCH_DELAY_SECONDS})",
+    )
     args = parser.parse_args()
 
-    switches = max(1, min(10, args.switches))
+    switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
     asyncio.run(run_test(args.ws, switches, args.delay))
 
 

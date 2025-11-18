@@ -31,6 +31,20 @@ import argparse
 import asyncio
 import os
 import re
+import sys
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from test.config import (
+    DEFAULT_ASSISTANT_GENDER,
+    DEFAULT_PERSONALITY,
+    DEFAULT_SERVER_WS_URL,
+    BENCHMARK_DEFAULT_CONCURRENCY,
+    BENCHMARK_DEFAULT_REQUESTS,
+    BENCHMARK_DEFAULT_TIMEOUT_SEC,
+)
 
 
 _SENTENCE_END_RE = re.compile(r"[.!?](?:[\"”')\]]+)?(?:\s|$)")
@@ -48,13 +62,30 @@ def _has_at_least_n_words(text: str, n: int) -> bool:
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Benchmark Yap Text Inference WS server")
     p.add_argument("message", nargs="*", help="optional user message for all requests")
-    p.add_argument("--requests", "-n", type=int, default=16, help="total number of requests")
-    p.add_argument("--concurrency", "-c", type=int, default=8, help="max in-flight requests")
-    p.add_argument("--timeout", type=float, default=120.0, help="per-request total timeout (s)")
+    p.add_argument(
+        "--requests",
+        "-n",
+        type=int,
+        default=BENCHMARK_DEFAULT_REQUESTS,
+        help="total number of requests",
+    )
+    p.add_argument(
+        "--concurrency",
+        "-c",
+        type=int,
+        default=BENCHMARK_DEFAULT_CONCURRENCY,
+        help="max in-flight requests",
+    )
+    p.add_argument(
+        "--timeout",
+        type=float,
+        default=BENCHMARK_DEFAULT_TIMEOUT_SEC,
+        help="per-request total timeout (s)",
+    )
     p.add_argument(
         "--url",
-        default=os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws"),
-        help="WebSocket URL (default env SERVER_WS_URL or ws://127.0.0.1:8000/ws)",
+        default=os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL),
+        help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     p.add_argument(
         "--assistant-gender",
@@ -62,7 +93,7 @@ def _parse_args() -> argparse.Namespace:
         "-g",
         dest="assistant_gender",
         choices=["female", "male", "woman", "man"],
-        default=os.getenv("ASSISTANT_GENDER", "female"),
+        default=os.getenv("ASSISTANT_GENDER", DEFAULT_ASSISTANT_GENDER),
         help="assistant gender (normalized by server)",
     )
     p.add_argument(
@@ -70,7 +101,7 @@ def _parse_args() -> argparse.Namespace:
         "--style",
         "-s",
         dest="personality",
-        default=os.getenv("PERSONALITY", "flirty"),
+        default=os.getenv("PERSONALITY", DEFAULT_PERSONALITY),
         help="personality (e.g., wholesome, savage, flirty)",
     )
     return p.parse_args()

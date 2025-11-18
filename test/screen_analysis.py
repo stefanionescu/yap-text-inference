@@ -19,19 +19,29 @@ import asyncio
 import contextlib
 import json
 import os
+import sys
 import uuid
 
 import websockets
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-ANALYSIS_TEXT = (
-    "The screenshot shows a calendar with two meetings at 10:00 and 14:00, "
-    "plus a reminder to email Alex."
+from test.config import (
+    DEFAULT_ASSISTANT_GENDER,
+    DEFAULT_PERSONALITY,
+    DEFAULT_SERVER_WS_URL,
+    DEFAULT_TEXT_API_KEY,
+    DEFAULT_WS_PING_INTERVAL,
+    DEFAULT_WS_PING_TIMEOUT,
+    SCREEN_ANALYSIS_ANALYSIS_TEXT,
+    SCREEN_ANALYSIS_USER_UTTERANCE,
 )
 
 
-def _with_api_key(url: str, env: str = "TEXT_API_KEY", default_key: str = "yap_token") -> str:
-    key = os.getenv(env, default_key)
+def _with_api_key(url: str) -> str:
+    key = DEFAULT_TEXT_API_KEY
     return f"{url}&api_key={key}" if "?" in url else f"{url}?api_key={key}"
 
 
@@ -41,8 +51,7 @@ async def _send_client_end(ws) -> None:
 
 
 async def run_once() -> None:
-    url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
-    ws_url = _with_api_key(url)
+    ws_url = _with_api_key(DEFAULT_SERVER_WS_URL)
 
     session_id = str(uuid.uuid4())
 
@@ -50,13 +59,18 @@ async def run_once() -> None:
     start_payload = {
         "type": "start",
         "session_id": session_id,
-        "assistant_gender": "female",
-        "personality": "flirty",
+        "assistant_gender": DEFAULT_ASSISTANT_GENDER,
+        "personality": DEFAULT_PERSONALITY,
         "history_text": "",
-        "user_utterance": "look at this — what do you think?",
+        "user_utterance": SCREEN_ANALYSIS_USER_UTTERANCE,
     }
 
-    async with websockets.connect(ws_url, max_queue=None) as ws:
+    async with websockets.connect(
+        ws_url,
+        max_queue=None,
+        ping_interval=DEFAULT_WS_PING_INTERVAL,
+        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+    ) as ws:
         try:
         await ws.send(json.dumps(start_payload))
 
@@ -106,7 +120,7 @@ async def run_once() -> None:
         # Phase 2: send followup with fake analysis
         followup_payload = {
             "type": "followup",
-            "analysis_text": ANALYSIS_TEXT,
+            "analysis_text": SCREEN_ANALYSIS_ANALYSIS_TEXT,
             "history_text": "",
         }
         await ws.send(json.dumps(followup_payload))

@@ -21,6 +21,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
+from config import BENCHMARK_FALLBACK_MESSAGE  # noqa: E402
 from prompts.chat import FIRST_PROMPT, SECOND_PROMPT  # noqa: E402
 from prompts.toolcall import TOOLCALL_PROMPT  # noqa: E402
 
@@ -124,7 +125,7 @@ async def run_benchmark(args) -> None:
     url: str = args.url
     gender: str = args.assistant_gender
     style: str = args.personality
-    message: str = choose_message(args.message, fallback="who was Columbus?")
+    message: str = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
 
     requests = max(1, int(args.requests))
     concurrency = max(1, min(int(args.concurrency), requests))
