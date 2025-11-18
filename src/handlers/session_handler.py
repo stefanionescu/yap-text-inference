@@ -212,3 +212,45 @@ class SessionHandler:
 session_handler = SessionHandler()
 
 
+async def abort_session_requests(
+    session_id: str | None,
+    *,
+    clear_state: bool = False,
+) -> dict[str, str]:
+    """Cancel tracked session requests and best-effort abort engine work.
+
+    Args:
+        session_id: Session identifier or None.
+        clear_state: Whether to drop stored session state after aborting.
+
+    Returns:
+        Dict with request ids for 'active' chat and 'tool'.
+    """
+    if not session_id:
+        return {"active": "", "tool": ""}
+
+    session_handler.cancel_session_requests(session_id)
+    req_info = session_handler.cleanup_session_requests(session_id)
+
+    if DEPLOY_CHAT and req_info.get("active"):
+        try:
+            from ..engines import get_chat_engine  # local import to avoid cycles
+
+            await (await get_chat_engine()).abort_request(req_info["active"])
+        except Exception:  # noqa: BLE001 - best effort
+            pass
+
+    if DEPLOY_TOOL and req_info.get("tool"):
+        try:
+            from ..engines import get_tool_engine  # local import to avoid cycles
+
+            await (await get_tool_engine()).abort_request(req_info["tool"])
+        except Exception:  # noqa: BLE001 - best effort
+            pass
+
+    if clear_state:
+        session_handler.clear_session_state(session_id)
+
+    return req_info
+
+

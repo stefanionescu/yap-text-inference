@@ -62,5 +62,3 @@ async def stream_with_timeout(
                 return
 
         yield out
-
-

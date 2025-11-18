@@ -190,7 +190,7 @@ python3 test/warmup.py --gender male --style flirty "hello there"
 # Test sequential mode (default)
 python3 test/warmup.py "write a simple hello world function"
 
-# Test concurrent mode (restart server first)
+# Test concurrent mode
 # Terminal 1: Start server with concurrent mode (auto → FP8)
 bash scripts/stop.sh  # Stop previous deployment
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b

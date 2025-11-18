@@ -15,13 +15,6 @@ from vllm.sampling_params import SamplingParams
 
 from ..handlers.session_handler import session_handler
 from ..config import DEPLOY_CHAT
-from ..utils.validation import (
-    normalize_gender,
-    is_gender_empty_or_null,
-    normalize_personality,
-    is_personality_empty_or_null,
-)
-from ..utils.sanitize import sanitize_prompt
 from ..tokens import (
     count_tokens_chat,
     trim_history_preserve_messages_chat,
@@ -29,9 +22,29 @@ from ..tokens import (
 from ..config import (
     HISTORY_MAX_TOKENS,
     CHAT_PROMPT_MAX_TOKENS,
-    PERSONALITY_MAX_LEN,
 )
 from ..engines import get_chat_engine
+from .validators import (
+    ValidationError,
+    require_prompt,
+    sanitize_prompt_with_limit,
+    validate_required_gender,
+    validate_required_personality,
+)
+
+_ERROR_CODE_MAP = {
+    "chat_prompt_too_long": 413,
+}
+
+
+async def _send_ack_error(ws: WebSocket, err: ValidationError) -> None:
+    await ws.send_text(json.dumps({
+        "type": "ack",
+        "for": "chat_prompt",
+        "ok": False,
+        "code": _ERROR_CODE_MAP.get(err.error_code, 400),
+        "message": err.message,
+    }))
 
 
 async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
@@ -66,45 +79,11 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     history_text = session_handler.get_history_text(session_id)
 
     # Validate gender and personality first
-    if is_gender_empty_or_null(raw_gender):
-        await ws.send_text(json.dumps({
-            "type": "ack",
-            "for": "chat_prompt",
-            "ok": False,
-            "code": 400,
-            "message": "assistant_gender is required and cannot be empty"
-        }))
-        return
-    g = normalize_gender(raw_gender)
-    if g is None:
-        await ws.send_text(json.dumps({
-            "type": "ack",
-            "for": "chat_prompt",
-            "ok": False,
-            "code": 400,
-            "message": "assistant_gender must be 'female' or 'male'"
-        }))
-        return
-
-    if is_personality_empty_or_null(raw_personality):
-        await ws.send_text(json.dumps({
-            "type": "ack",
-            "for": "chat_prompt",
-            "ok": False,
-            "code": 400,
-            "message": "personality is required and cannot be empty"
-        }))
-        return
-
-    norm_personality = normalize_personality(raw_personality)
-    if norm_personality is None:
-        await ws.send_text(json.dumps({
-            "type": "ack",
-            "for": "chat_prompt",
-            "ok": False,
-            "code": 400,
-            "message": f"personality must be letters-only and lower than or equal to {PERSONALITY_MAX_LEN} characters"
-        }))
+    try:
+        g = validate_required_gender(raw_gender)
+        norm_personality = validate_required_personality(raw_personality)
+    except ValidationError as err:
+        await _send_ack_error(ws, err)
         return
 
     # Must change at least one of gender or personality
@@ -120,25 +99,21 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
 
     # Sanitize and length-check prompt
     try:
-        chat_prompt = sanitize_prompt(raw_prompt)
-    except Exception as e:
-        await ws.send_text(json.dumps({
-            "type": "ack",
-            "for": "chat_prompt",
-            "ok": False,
-            "code": 400,
-            "message": str(e)
-        }))
-        return
-
-    if count_tokens_chat(chat_prompt) > CHAT_PROMPT_MAX_TOKENS:
-        await ws.send_text(json.dumps({
-            "type": "ack",
-            "for": "chat_prompt",
-            "ok": False,
-            "code": 413,
-            "message": f"chat_prompt exceeds token limit ({CHAT_PROMPT_MAX_TOKENS})"
-        }))
+        base_prompt = require_prompt(
+            raw_prompt,
+            error_code="invalid_chat_prompt",
+            message="chat_prompt is required",
+        )
+        chat_prompt = sanitize_prompt_with_limit(
+            base_prompt,
+            field_label="chat_prompt",
+            invalid_error_code="invalid_chat_prompt",
+            too_long_error_code="chat_prompt_too_long",
+            max_tokens=CHAT_PROMPT_MAX_TOKENS,
+            count_tokens_fn=count_tokens_chat,
+        )
+    except ValidationError as err:
+        await _send_ack_error(ws, err)
         return
 
     # Update session state

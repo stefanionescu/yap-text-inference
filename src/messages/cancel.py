@@ -3,32 +3,13 @@
 import json
 from fastapi import WebSocket
 
-from ..engines import get_chat_engine, get_tool_engine
-from ..config import DEPLOY_CHAT, DEPLOY_TOOL
-from ..handlers.session_handler import session_handler
+from ..handlers.session_handler import abort_session_requests
 
 
 async def handle_cancel_message(ws: WebSocket, session_id: str, request_id: str | None = None) -> None:
     """Handle 'cancel' message type."""
     if session_id:
-        session_handler.cancel_session_requests(session_id)
-        req_info = session_handler.cleanup_session_requests(session_id)
-
-        # Abort active chat request (only if chat is deployed)
-        if DEPLOY_CHAT:
-            try:
-                if req_info["active"]:
-                    await (await get_chat_engine()).abort_request(req_info["active"])
-            except Exception:
-                pass
-
-        # Abort tool request if exists (only if tool is deployed)
-        if DEPLOY_TOOL:
-            try:
-                if req_info["tool"]:
-                    await (await get_tool_engine()).abort_request(req_info["tool"])
-            except Exception:
-                pass
+        await abort_session_requests(session_id, clear_state=False)
 
     payload = {"type": "done", "cancelled": True}
     if request_id:

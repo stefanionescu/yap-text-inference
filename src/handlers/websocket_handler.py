@@ -14,7 +14,7 @@ from ..config.websocket import (
     WS_CANCEL_SENTINEL,
     WS_END_SENTINEL,
 )
-from ..engines import get_chat_engine, get_tool_engine, clear_all_engine_caches_on_disconnect
+from ..engines import clear_all_engine_caches_on_disconnect
 from ..messages.cancel import handle_cancel_message
 from ..messages.chat_prompt import handle_chat_prompt
 from ..messages.followup import handle_followup_message
@@ -22,7 +22,7 @@ from ..messages.start import handle_start_message
 from ..messages.warm_history import handle_warm_history_message
 from ..messages.warm_persona import handle_warm_persona_message
 from .connection_handler import connection_handler
-from .session_handler import session_handler
+from .session_handler import abort_session_requests, session_handler
 from .ws_lifecycle import WebSocketLifecycle
 
 logger = logging.getLogger(__name__)
@@ -63,65 +63,113 @@ def _parse_client_message(raw: str) -> dict:
     return data
 
 
+_SESSION_MESSAGE_HANDLERS = {
+    "followup": handle_followup_message,
+    "chat_prompt": handle_chat_prompt,
+}
+
+_PAYLOAD_ONLY_HANDLERS = {
+    "warm_persona": handle_warm_persona_message,
+    "warm_history": handle_warm_history_message,
+}
+
+
+async def _send_error(
+    ws: WebSocket,
+    *,
+    error_code: str,
+    message: str,
+    extra: dict | None = None,
+) -> None:
+    payload = {
+        "type": "error",
+        "error_code": error_code,
+        "message": message,
+    }
+    if extra:
+        payload.update(extra)
+    await ws.send_text(json.dumps(payload))
+
+
+async def _reject_connection(
+    ws: WebSocket,
+    *,
+    error_code: str,
+    message: str,
+    close_code: int,
+    extra: dict | None = None,
+) -> None:
+    await ws.accept()
+    await _send_error(ws, error_code=error_code, message=message, extra=extra)
+    await ws.close(code=close_code)
+
+
+async def _handle_start_command(
+    ws: WebSocket,
+    msg: dict,
+    current_session_id: str | None,
+) -> str | None:
+    session_id = msg.get("session_id")
+    if not session_id:
+        await _send_error(
+            ws,
+            error_code="missing_session_id",
+            message="start message must include 'session_id'.",
+        )
+        return current_session_id
+
+    if current_session_id and current_session_id in session_handler.session_tasks:
+        session_handler.cancel_session_requests(current_session_id)
+
+    await handle_start_message(ws, msg, session_id)
+    logger.info("WS start scheduled for session_id=%s", session_id)
+    return session_id
+
+
 async def handle_websocket_connection(ws: WebSocket) -> None:
     """Handle WebSocket connection and route messages to appropriate handlers.
     
     Args:
         ws: WebSocket connection
     """
-    # Check API key authentication first
-    is_authenticated = await authenticate_websocket(ws)
     lifecycle: WebSocketLifecycle | None = None
-    
-    if not is_authenticated:
-        # Authentication failed - send error and close
-        await ws.accept()  # Need to accept to send error message
-        await ws.send_text(
-            json.dumps(
-                {
-                    "type": "error",
-                    "error_code": "authentication_failed",
-                    "message": (
-                        "Authentication required. Provide valid API key via 'api_key' "
-                        "query parameter or 'X-API-Key' header."
-                    ),
-                }
-            )
+
+    if not await authenticate_websocket(ws):
+        await _reject_connection(
+            ws,
+            error_code="authentication_failed",
+            message=(
+                "Authentication required. Provide valid API key via 'api_key' "
+                "query parameter or 'X-API-Key' header."
+            ),
+            close_code=WS_CLOSE_UNAUTHORIZED_CODE,
         )
-        await ws.close(code=WS_CLOSE_UNAUTHORIZED_CODE)
         return
-    
-    # Check connection limit after authentication
-    can_connect = await connection_handler.connect(ws)
-    
-    if not can_connect:
-        # Server at capacity - send error and close connection
+
+    if not await connection_handler.connect(ws):
         capacity_info = connection_handler.get_capacity_info()
-        await ws.accept()  # Need to accept to send error message
-        await ws.send_text(
-            json.dumps(
-                {
-                    "type": "error",
-                    "error_code": "server_at_capacity",
-                    "message": (
-                        "Server is at capacity. Active connections: "
-                        f"{capacity_info['active']}/{capacity_info['max']}. "
-                        "Please try again later."
-                    ),
-                    "capacity": capacity_info,
-                }
-            )
+        await _reject_connection(
+            ws,
+            error_code="server_at_capacity",
+            message=(
+                "Server is at capacity. "
+                f"Active connections: {capacity_info['active']}/{capacity_info['max']}. "
+                "Please try again later."
+            ),
+            close_code=WS_CLOSE_BUSY_CODE,
+            extra={"capacity": capacity_info},
         )
-        await ws.close(code=WS_CLOSE_BUSY_CODE)
         return
-    
-    # Connection accepted - proceed normally
+
     await ws.accept()
     session_id: str | None = None
     lifecycle = WebSocketLifecycle(ws)
     lifecycle.start()
-    
-    logger.info(f"WebSocket connection accepted. Active: {connection_handler.get_connection_count()}")
+
+    logger.info(
+        "WebSocket connection accepted. Active: %s",
+        connection_handler.get_connection_count(),
+    )
 
     try:
         while True:
@@ -129,27 +177,15 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             try:
                 msg = _parse_client_message(raw_msg)
             except ValueError as exc:
-                await ws.send_text(
-                    json.dumps(
-                        {
-                            "type": "error",
-                            "error_code": "invalid_message",
-                            "message": str(exc),
-                        }
-                    )
+                await _send_error(
+                    ws,
+                    error_code="invalid_message",
+                    message=str(exc),
                 )
                 continue
+
             lifecycle.touch()
-
-            msg_type = (msg.get("type") or "").strip().lower()
-
-            if not msg_type:
-                await ws.send_text(json.dumps({
-                    "type": "error",
-                    "error_code": "invalid_message",
-                    "message": "Missing 'type' field in message."
-                }))
-                continue
+            msg_type = msg.get("type")
 
             if msg_type == "ping":
                 await ws.send_text(json.dumps({"type": "pong"}))
@@ -159,8 +195,12 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 continue
 
             if msg_type == "end":
-                logger.info(f"WS recv: end session_id={session_id}")
-                await ws.send_text(json.dumps({"type": "connection_closed", "reason": "client_request"}))
+                logger.info("WS recv: end session_id=%s", session_id)
+                await ws.send_text(
+                    json.dumps(
+                        {"type": "connection_closed", "reason": "client_request"}
+                    )
+                )
                 await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
                 break
 
@@ -172,61 +212,45 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                     len(msg.get("history_text", "")),
                     len(msg.get("user_utterance", "")),
                 )
-                # Cancel previous session if exists
-                if session_id and session_id in session_handler.session_tasks:
-                    session_handler.cancel_session_requests(session_id)
+                session_id = await _handle_start_command(ws, msg, session_id)
+                continue
 
-                session_id = msg["session_id"]
-                await handle_start_message(ws, msg, session_id)
-                logger.info(f"WS start scheduled for session_id={session_id}")
-
-            elif msg_type == "cancel":
-                logger.info(f"WS recv: cancel session_id={session_id}")
+            if msg_type == "cancel":
+                logger.info("WS recv: cancel session_id=%s", session_id)
                 await handle_cancel_message(ws, session_id, msg.get("request_id"))
+                continue
 
-            elif msg_type == "warm_persona":
-                logger.info("WS recv: warm_persona")
-                await handle_warm_persona_message(ws, msg)
+            handler = _PAYLOAD_ONLY_HANDLERS.get(msg_type)
+            if handler:
+                logger.info("WS recv: %s", msg_type)
+                await handler(ws, msg)
+                continue
 
-            elif msg_type == "warm_history":
-                logger.info("WS recv: warm_history")
-                await handle_warm_history_message(ws, msg)
+            session_handler_fn = _SESSION_MESSAGE_HANDLERS.get(msg_type)
+            if session_handler_fn:
+                logger.info("WS recv: %s session_id=%s", msg_type, session_id)
+                await session_handler_fn(ws, msg, session_id)
+                continue
 
-            elif msg_type == "followup":
-                logger.info("WS recv: followup")
-                await handle_followup_message(ws, msg, session_id)
-
-            elif msg_type == "chat_prompt":
-                logger.info("WS recv: chat_prompt")
-                await handle_chat_prompt(ws, msg, session_id)
-
-            else:
-                await ws.send_text(json.dumps({
-                    "type": "error", 
-                    "message": "unknown msg type"
-                }))
-
+            await _send_error(
+                ws,
+                error_code="unknown_message_type",
+                message=f"Message type '{msg_type}' is not supported.",
+            )
     except WebSocketDisconnect:
         pass
-    except Exception as e:
+    except Exception as exc:  # noqa: BLE001
         logger.exception("WebSocket error")
-        try:
-            await ws.send_text(json.dumps({
-                "type": "error", 
-                "message": str(e)
-            }))
-        except Exception:
-            # Connection might already be closed
-            pass
+        with contextlib.suppress(Exception):
+            await _send_error(ws, error_code="internal_error", message=str(exc))
     finally:
         if lifecycle is not None:
             with contextlib.suppress(Exception):
                 await lifecycle.stop()
         await _cleanup_session(session_id)
-        # Always remove connection from manager when done
         await connection_handler.disconnect(ws)
         remaining = connection_handler.get_connection_count()
-        logger.info(f"WebSocket connection closed. Active: {remaining}")
+        logger.info("WebSocket connection closed. Active: %s", remaining)
         if remaining == 0:
             with contextlib.suppress(Exception):
                 await clear_all_engine_caches_on_disconnect()
@@ -238,28 +262,4 @@ async def _cleanup_session(session_id: str | None) -> None:
     Args:
         session_id: Session identifier to clean up
     """
-    if not session_id:
-        return
-        
-    # Cancel requests and get request IDs for cleanup
-    session_handler.cancel_session_requests(session_id)
-    req_info = session_handler.cleanup_session_requests(session_id)
-    
-    # Abort active chat request (only if chat is deployed)
-    if DEPLOY_CHAT:
-        try:
-            if req_info["active"]:
-                await (await get_chat_engine()).abort_request(req_info["active"])
-        except Exception:
-            pass
-    
-    # Abort tool request if exists (only if tool is deployed)
-    if DEPLOY_TOOL:
-        try:
-            if req_info["tool"]:
-                await (await get_tool_engine()).abort_request(req_info["tool"])
-        except Exception:
-            pass
-
-    # Drop session state after cleanup
-    session_handler.clear_session_state(session_id)
+    await abort_session_requests(session_id, clear_state=True)
