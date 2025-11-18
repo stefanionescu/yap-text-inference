@@ -1,6 +1,11 @@
 """Session handler for WebSocket connections."""
 
+from __future__ import annotations
+
 import asyncio
+import os
+import time
+from dataclasses import dataclass, field
 from typing import Any
 
 from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
@@ -8,50 +13,59 @@ from ..tokens import count_tokens_chat, trim_history_preserve_messages_chat
 from ..utils.time_utils import format_session_timestamp
 
 
+SESSION_IDLE_TTL_SECONDS = int(os.getenv("SESSION_IDLE_TTL_SECONDS", "1800"))
+
+
+@dataclass
+class SessionState:
+    """Container for all mutable session-scoped data."""
+
+    session_id: str
+    meta: dict[str, Any]
+    history: str = ""
+    task: asyncio.Task | None = None
+    active_request_id: str | None = None
+    tool_request_id: str | None = None
+    created_at: float = field(default_factory=time.monotonic)
+    last_access: float = field(default_factory=time.monotonic)
+
+    def touch(self) -> None:
+        self.last_access = time.monotonic()
+
+
 class SessionHandler:
-    """Handles session metadata and lifecycle."""
+    """Handles session metadata, request tracking, and lifecycle."""
 
-    def __init__(self):
-        # Per-session metadata: timestamp string and persona/model config
-        self.session_meta: dict[str, dict[str, Any]] = {}
+    CANCELLED_SENTINEL = "__CANCELLED__"
 
-        # Rolling history per session (server-managed)
-        self.session_history: dict[str, str] = {}
+    def __init__(self, idle_ttl_seconds: int = SESSION_IDLE_TTL_SECONDS):
+        self._sessions: dict[str, SessionState] = {}
+        self._idle_ttl_seconds = idle_ttl_seconds
 
-        # Track active session tasks/requests
-        self.session_tasks: dict[str, asyncio.Task] = {}
-        self.session_active_req: dict[str, str] = {}
-
-        # Track in-flight tool req ids (when tool router runs in parallel with chat)
-        self.session_tool_req: dict[str, str] = {}
-
+    # ------------------------------------------------------------------ #
+    # Session metadata / lifecycle
+    # ------------------------------------------------------------------ #
     def initialize_session(self, session_id: str) -> dict[str, Any]:
-        """Initialize session metadata if it doesn't exist.
+        """Ensure a session state exists and return its metadata."""
+        self._evict_idle_sessions()
+        state = self._sessions.get(session_id)
+        if state:
+            state.touch()
+            return state.meta
 
-        Args:
-            session_id: Unique session identifier
-
-        Returns:
-            Session metadata dict
-        """
-        if session_id not in self.session_meta:
-            now_str = format_session_timestamp()
-
-            self.session_meta[session_id] = {
-                "now_str": now_str,
-                # defaults that can be overridden on start
-                "chat_gender": None,
-                "chat_personality": None,
-                "chat_prompt": None,
-                "tool_prompt": None,
-                # expose models (handy for client logs) - only include if deployed
-                "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
-                "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
-            }
-
-        self.session_history.setdefault(session_id, "")
-
-        return self.session_meta[session_id]
+        now_str = format_session_timestamp()
+        meta = {
+            "now_str": now_str,
+            "chat_gender": None,
+            "chat_personality": None,
+            "chat_prompt": None,
+            "tool_prompt": None,
+            "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
+            "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
+        }
+        new_state = SessionState(session_id=session_id, meta=meta)
+        self._sessions[session_id] = new_state
+        return meta
 
     def update_session_config(
         self,
@@ -61,140 +75,172 @@ class SessionHandler:
         chat_prompt: str | None = None,
         tool_prompt: str | None = None,
     ) -> dict[str, Any]:
-        """Update session configuration.
+        """Update mutable persona configuration for a session."""
+        meta = self.initialize_session(session_id)
+        state = self._sessions[session_id]
+        state.touch()
 
-        Args:
-            session_id: Session identifier
-            chat_gender: 'female' or 'male'
-            chat_personality: validated personality string
-            chat_prompt: Raw chat prompt provided by client
-            tool_prompt: Raw tool prompt provided by client
-
-        Returns:
-            Dict of changed fields
-        """
-        if session_id not in self.session_meta:
-            self.initialize_session(session_id)
-
-        changed = {}
-
+        changed: dict[str, Any] = {}
         if chat_gender is not None:
-            self.session_meta[session_id]["chat_gender"] = chat_gender
+            meta["chat_gender"] = chat_gender
             changed["chat_gender"] = chat_gender
 
         if chat_personality is not None:
             cpers = chat_personality or None
             if isinstance(cpers, str):
                 cpers = cpers.lower()
-            self.session_meta[session_id]["chat_personality"] = cpers
+            meta["chat_personality"] = cpers
             changed["chat_personality"] = cpers
 
         if chat_prompt is not None:
-            # explicit None/empty clears the prompt
             cp = chat_prompt or None
-            self.session_meta[session_id]["chat_prompt"] = cp
+            meta["chat_prompt"] = cp
             changed["chat_prompt"] = bool(cp)
 
         if tool_prompt is not None:
             tp = tool_prompt or None
-            self.session_meta[session_id]["tool_prompt"] = tp
+            meta["tool_prompt"] = tp
             changed["tool_prompt"] = bool(tp)
 
         return changed
 
     def get_session_config(self, session_id: str) -> dict[str, Any]:
-        """Get current session configuration.
-
-        Args:
-            session_id: Session identifier
-
-        Returns:
-            Session configuration dict
-        """
-        if session_id not in self.session_meta:
+        """Return a copy of the current session configuration."""
+        state = self._sessions.get(session_id)
+        if not state:
             return {}
-        return self.session_meta[session_id].copy()
+        state.touch()
+        return state.meta.copy()
 
-    def set_active_request(self, session_id: str, request_id: str) -> None:
-        """Set the active request ID for a session.
+    def clear_session_state(self, session_id: str) -> None:
+        """Drop all in-memory data for a session."""
+        state = self._sessions.pop(session_id, None)
+        if state and state.task and not state.task.done():
+            state.task.cancel()
 
-        Args:
-            session_id: Session identifier
-            request_id: Request identifier
-        """
-        self.session_active_req[session_id] = request_id
-
-    def set_tool_request(self, session_id: str, request_id: str) -> None:
-        """Set the tool request ID for a session.
-
-        Args:
-            session_id: Session identifier
-            request_id: Tool request identifier
-        """
-        self.session_tool_req[session_id] = request_id
-
-    def cancel_session_requests(self, session_id: str) -> None:
-        """Cancel all requests for a session.
-
-        Args:
-            session_id: Session identifier
-        """
-        self.session_active_req[session_id] = "CANCELLED"
-
-        # Cancel session task
-        task = self.session_tasks.get(session_id)
-        if task:
-            task.cancel()
-
-    def cleanup_session_requests(self, session_id: str) -> dict[str, str]:
-        """Clean up session request tracking and return request IDs.
-
-        Args:
-            session_id: Session identifier
-
-        Returns:
-            Dict with 'active' and 'tool' request IDs
-        """
-        active_req = self.session_active_req.get(session_id, "")
-        tool_req = self.session_tool_req.pop(session_id, "")
-
-        return {"active": active_req, "tool": tool_req}
-
+    # ------------------------------------------------------------------ #
+    # History helpers
+    # ------------------------------------------------------------------ #
     def get_history_text(self, session_id: str) -> str:
-        """Return the server-tracked history for the session."""
-        return self.session_history.get(session_id, "")
+        state = self._sessions.get(session_id)
+        if not state:
+            return ""
+        state.touch()
+        return state.history
 
     def set_history_text(self, session_id: str, history_text: str) -> str:
-        """Set (and trim) the server-tracked history for the session."""
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
         normalized = self._normalize_history(history_text)
-        self.session_history[session_id] = normalized
+        state.history = normalized
+        state.touch()
         return normalized
 
     def append_history_turn(self, session_id: str, user_utt: str, assistant_text: str) -> str:
-        """Append a formatted user/assistant turn to the stored history."""
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
         turn = self._format_turn(user_utt, assistant_text)
         if not turn:
-            return self.session_history.get(session_id, "")
+            return state.history
 
-        existing = self.session_history.get(session_id, "")
-        combined = f"{existing}\n\n{turn}".strip() if existing.strip() else turn
+        combined = f"{state.history}\n\n{turn}".strip() if state.history.strip() else turn
         normalized = self._normalize_history(combined)
-        self.session_history[session_id] = normalized
+        state.history = normalized
+        state.touch()
         return normalized
 
-    def clear_session_state(self, session_id: str) -> None:
-        """Clear all stored state for a session."""
-        self.session_meta.pop(session_id, None)
-        self.session_tasks.pop(session_id, None)
-        self.session_active_req.pop(session_id, None)
-        self.session_tool_req.pop(session_id, None)
-        self.session_history.pop(session_id, None)
+    # ------------------------------------------------------------------ #
+    # Request/task tracking
+    # ------------------------------------------------------------------ #
+    def set_active_request(self, session_id: str, request_id: str) -> None:
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+        state.active_request_id = request_id
+        state.touch()
 
+    def set_tool_request(self, session_id: str, request_id: str) -> None:
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+        state.tool_request_id = request_id
+        state.touch()
+
+    def get_tool_request_id(self, session_id: str) -> str:
+        state = self._sessions.get(session_id)
+        return state.tool_request_id or "" if state else ""
+
+    def clear_tool_request_id(self, session_id: str) -> None:
+        state = self._sessions.get(session_id)
+        if state:
+            state.tool_request_id = None
+
+    def is_request_cancelled(self, session_id: str, request_id: str) -> bool:
+        state = self._sessions.get(session_id)
+        if not state:
+            return True
+        active = state.active_request_id
+        if active == self.CANCELLED_SENTINEL:
+            return True
+        if not active:
+            return False
+        return active != request_id
+
+    def track_task(self, session_id: str, task: asyncio.Task) -> None:
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+        state.task = task
+        state.touch()
+
+        def _clear_task(completed: asyncio.Task) -> None:
+            current = self._sessions.get(session_id)
+            if current and current.task is completed:
+                current.task = None
+                current.touch()
+
+        task.add_done_callback(_clear_task)
+
+    def has_running_task(self, session_id: str) -> bool:
+        state = self._sessions.get(session_id)
+        return bool(state and state.task and not state.task.done())
+
+    def cancel_session_requests(self, session_id: str) -> None:
+        state = self._sessions.get(session_id)
+        if not state:
+            return
+        state.active_request_id = self.CANCELLED_SENTINEL
+        if state.task and not state.task.done():
+            state.task.cancel()
+
+    def cleanup_session_requests(self, session_id: str) -> dict[str, str]:
+        state = self._sessions.get(session_id)
+        if not state:
+            return {"active": "", "tool": ""}
+        active_req = (
+            state.active_request_id
+            if state.active_request_id not in (None, self.CANCELLED_SENTINEL)
+            else ""
+        )
+        tool_req = state.tool_request_id or ""
+        state.active_request_id = None
+        state.tool_request_id = None
+        return {"active": active_req, "tool": tool_req}
+
+    # ------------------------------------------------------------------ #
+    # Internal helpers
+    # ------------------------------------------------------------------ #
     def _normalize_history(self, history_text: str) -> str:
         text = (history_text or "").strip()
         if not text:
             return ""
-        # Only trim history if chat model is deployed (history trimming uses chat tokenizer)
         if DEPLOY_CHAT and count_tokens_chat(text) > HISTORY_MAX_TOKENS:
             text = trim_history_preserve_messages_chat(text, HISTORY_MAX_TOKENS)
         return text
@@ -207,6 +253,18 @@ class SessionHandler:
             return ""
         return f"User: {user}\nAssistant: {assistant}".strip()
 
+    def _evict_idle_sessions(self) -> None:
+        if self._idle_ttl_seconds <= 0:
+            return
+        cutoff = time.monotonic() - self._idle_ttl_seconds
+        expired = [
+            session_id
+            for session_id, state in self._sessions.items()
+            if state.last_access < cutoff and (not state.task or state.task.done())
+        ]
+        for session_id in expired:
+            self.clear_session_state(session_id)
+
 
 # Global session handler instance
 session_handler = SessionHandler()
@@ -217,15 +275,7 @@ async def abort_session_requests(
     *,
     clear_state: bool = False,
 ) -> dict[str, str]:
-    """Cancel tracked session requests and best-effort abort engine work.
-
-    Args:
-        session_id: Session identifier or None.
-        clear_state: Whether to drop stored session state after aborting.
-
-    Returns:
-        Dict with request ids for 'active' chat and 'tool'.
-    """
+    """Cancel tracked session requests and best-effort abort engine work."""
     if not session_id:
         return {"active": "", "tool": ""}
 

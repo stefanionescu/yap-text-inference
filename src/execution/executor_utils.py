@@ -57,7 +57,7 @@ def launch_tool_request(
 
 async def abort_tool_request(session_id: str) -> None:
     """Best-effort abort of an in-flight tool request for the session."""
-    req_id = session_handler.session_tool_req.get(session_id)
+    req_id = session_handler.get_tool_request_id(session_id)
     if not req_id:
         return
     with contextlib.suppress(Exception):

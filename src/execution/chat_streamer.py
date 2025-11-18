@@ -1,10 +1,9 @@
 """Chat streaming logic for real-time text generation."""
 
-import asyncio
-import time
+from __future__ import annotations
+
 import uuid
 from collections.abc import AsyncGenerator
-import logging
 
 from vllm.sampling_params import SamplingParams
 
@@ -12,9 +11,6 @@ from ..engines import get_chat_engine
 from ..persona import build_chat_prompt_with_prefix
 from ..config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ..handlers.session_handler import session_handler
-
-logger = logging.getLogger(__name__)
-
 from ..config.sampling import (
     CHAT_TEMPERATURE,
     CHAT_TOP_P,
@@ -24,7 +20,7 @@ from ..config.sampling import (
     CHAT_STOP,
 )
 from ..config.timeouts import GEN_TIMEOUT_S
-from .streaming_utils import stream_with_timeout
+from .llm_stream import LLMStream, LLMStreamConfig
 
 
 async def run_chat_stream(
@@ -35,19 +31,7 @@ async def run_chat_stream(
     user_utt: str,
     request_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Stream chat generation with optional micro-coalescing.
-    
-    Args:
-        session_id: Session identifier
-        static_prefix: Static persona prefix
-        runtime_text: Runtime persona text
-        history_text: Conversation history
-        user_utt: User utterance
-        request_id: Optional request ID
-        
-    Yields:
-        Text chunks from chat generation
-    """
+    """Stream chat generation with optional micro-coalescing."""
     req_id = request_id or f"chat-{uuid.uuid4()}"
     session_handler.set_active_request(session_id, req_id)
 
@@ -60,96 +44,20 @@ async def run_chat_stream(
         max_tokens=CHAT_MAX_OUT,
         stop=CHAT_STOP,
     )
-
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
-    # Realtime mode: emit ASAP. Optional micro-coalescer if STREAM_FLUSH_MS>0
-    last_text = ""
-    ttfb_logged = False
-    t_start = time.perf_counter()
-    flush_ms = float(STREAM_FLUSH_MS)
-    gen_timeout_s = float(GEN_TIMEOUT_S)
-    logger.info(
-        f"chat_stream: start session_id={session_id} req_id={req_id} max_out={params.max_tokens} "
-        f"flush_ms={flush_ms} gen_timeout_s={gen_timeout_s}"
-    )
-    
-    buf = []
-    last_flush = time.perf_counter()
-
-    async def _iter_stream():
-        """Internal generator for chat output with timeout/cancel handling."""
-        async for out in stream_with_timeout(
-            get_engine=get_chat_engine,
+    stream = LLMStream(
+        LLMStreamConfig(
+            name="chat",
+            session_id=session_id,
+            request_id=req_id,
             prompt=prompt,
             sampling_params=params,
-            request_id=req_id,
+            engine_getter=get_chat_engine,
+            timeout_s=float(GEN_TIMEOUT_S),
             priority=0,
-            timeout_s=gen_timeout_s,
-            cancel_check=lambda: session_handler.session_active_req.get(session_id) != req_id,
-        ):
-            yield out
-
-    try:
-        aiter = _iter_stream().__aiter__()
-        while True:
-            try:
-                out = await aiter.__anext__()
-            except StopAsyncIteration:
-                break
-
-            # Check if request was cancelled
-            if session_handler.session_active_req.get(session_id) != req_id:
-                await (await get_chat_engine()).abort_request(req_id)
-                return
-
-            if not out.outputs:
-                continue
-
-            full_text = out.outputs[0].text
-            delta = full_text[len(last_text):]
-            if not delta:
-                continue
-
-            last_text = full_text
-
-            if flush_ms <= 0:
-                # Pure realtime: send immediately
-                yield delta
-            else:
-                # Buffer mode: accumulate and flush periodically
-                buf.append(delta)
-                now = time.perf_counter()
-                if (now - last_flush) * 1000.0 >= flush_ms:
-                    yield "".join(buf)
-                    buf.clear()
-                    last_flush = now
-                    logger.info(f"chat_stream: flushed coalesced chunk session_id={session_id} req_id={req_id}")
-
-            # Log TTFB once after first delta
-            if not ttfb_logged:
-                ttfb_ms = (time.perf_counter() - t_start) * 1000.0
-                logger.info(f"chat_stream: first token session_id={session_id} req_id={req_id} ttfb_ms={ttfb_ms:.1f}")
-                ttfb_logged = True
-
-    except asyncio.TimeoutError:
-        logger.info(f"chat_stream: timeout session_id={session_id} req_id={req_id}")
-        return
-
-    # Flush any tail if coalescer was on
-    if flush_ms > 0 and buf:
-        tail = "".join(buf)
-        yield tail
-        logger.info(
-            "chat_stream: flushed tail session_id=%s req_id=%s len=%s",
-            session_id,
-            req_id,
-            len(tail),
+            flush_ms=float(STREAM_FLUSH_MS),
+            cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
         )
-    elapsed_ms = (time.perf_counter() - t_start) * 1000.0
-    logger.info(
-        "chat_stream: end session_id=%s req_id=%s total_len=%s ms=%.1f",
-        session_id,
-        req_id,
-        len(last_text),
-        elapsed_ms,
     )
+    async for chunk in stream:
+        yield chunk

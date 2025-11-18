@@ -72,17 +72,21 @@ CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "CHECK SCREEN:").strip()
 SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "SCREEN CHECKED:").strip()
 
 
-# Validate required configuration
-if DEPLOY_CHAT and not CHAT_MODEL:
-    raise ValueError("CHAT_MODEL environment variable is required when deploying chat (DEPLOY_MODELS=both|chat)")
-if DEPLOY_TOOL and not TOOL_MODEL:
-    raise ValueError("TOOL_MODEL environment variable is required when deploying tool (DEPLOY_MODELS=both|tool)")
-if not QUANTIZATION:
-    raise ValueError("QUANTIZATION environment variable is required")
-if QUANTIZATION not in ["fp8", "gptq", "gptq_marlin", "awq"]:
-    raise ValueError(
-        f"QUANTIZATION must be 'fp8', 'gptq', 'gptq_marlin', or 'awq', got: {QUANTIZATION}"
-    )
+def validate_env() -> None:
+    """Validate required configuration once during startup."""
+    errors: list[str] = []
+    if DEPLOY_CHAT and not CHAT_MODEL:
+        errors.append("CHAT_MODEL is required when DEPLOY_MODELS is 'both' or 'chat'")
+    if DEPLOY_TOOL and not TOOL_MODEL:
+        errors.append("TOOL_MODEL is required when DEPLOY_MODELS is 'both' or 'tool'")
+    if not QUANTIZATION:
+        errors.append("QUANTIZATION environment variable is required")
+    elif QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq"}:
+        errors.append(
+            "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', or 'awq'"
+        )
+    if errors:
+        raise ValueError("; ".join(errors))
 
 
 __all__ = [
@@ -100,6 +104,7 @@ __all__ = [
     # prefixes
     "CHECK_SCREEN_PREFIX",
     "SCREEN_CHECKED_PREFIX",
+    "validate_env",
 ]
 
 
