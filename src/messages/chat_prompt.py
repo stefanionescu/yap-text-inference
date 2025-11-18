@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Dict, Any
+from typing import Any
 from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
@@ -34,7 +34,7 @@ from ..config import (
 from ..engines import get_chat_engine
 
 
-async def handle_chat_prompt(ws: WebSocket, msg: Dict[str, Any], session_id: str) -> None:
+async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
     if not DEPLOY_CHAT:
         await ws.send_text(json.dumps({
             "type": "ack",

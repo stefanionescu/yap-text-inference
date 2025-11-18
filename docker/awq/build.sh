@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC2034  # sourced helper scripts rely on ROOT_DIR
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Docker configuration
@@ -112,8 +113,14 @@ log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "Usage:"
 log_info ""
-log_info "docker run -d --gpus all --name yap-server \\\nlog_info "  -e AWQ_CHAT_MODEL=your-org/chat-awq \\\nlog_info "  -e AWQ_TOOL_MODEL=your-org/tool-awq \\\nlog_info "  -e YAP_TEXT_API_KEY=yap_token \\" 
-log_info "  -e CHAT_GPU_FRAC=0.70 \\\nlog_info "  -e TOOL_GPU_FRAC=0.20 \\\nlog_info "  -p 8000:8000 \\\nlog_info "  ${FULL_IMAGE_NAME}"
+log_info "docker run -d --gpus all --name yap-server \\"
+log_info "  -e AWQ_CHAT_MODEL=your-org/chat-awq \\"
+log_info "  -e AWQ_TOOL_MODEL=your-org/tool-awq \\"
+log_info "  -e YAP_TEXT_API_KEY=yap_token \\"
+log_info "  -e CHAT_GPU_FRAC=0.70 \\"
+log_info "  -e TOOL_GPU_FRAC=0.20 \\"
+log_info "  -p 8000:8000 \\"
+log_info "  ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "Health: curl http://localhost:8000/healthz"
 log_success "Build process completed!"

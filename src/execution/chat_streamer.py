@@ -1,10 +1,9 @@
 """Chat streaming logic for real-time text generation."""
 
 import asyncio
-import os
 import time
 import uuid
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
 import logging
 
 from vllm.sampling_params import SamplingParams
@@ -34,7 +33,7 @@ async def run_chat_stream(
     runtime_text: str,
     history_text: str,
     user_utt: str,
-    request_id: Optional[str] = None,
+    request_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream chat generation with optional micro-coalescing.
     
@@ -138,6 +137,19 @@ async def run_chat_stream(
 
     # Flush any tail if coalescer was on
     if flush_ms > 0 and buf:
-        yield "".join(buf)
-        logger.info(f"chat_stream: flushed tail session_id={session_id} req_id={req_id} len={len(''.join(buf))}")
-    logger.info(f"chat_stream: end session_id={session_id} req_id={req_id} total_len={len(last_text)} ms={(time.perf_counter()-t_start)*1000.0:.1f}")
+        tail = "".join(buf)
+        yield tail
+        logger.info(
+            "chat_stream: flushed tail session_id=%s req_id=%s len=%s",
+            session_id,
+            req_id,
+            len(tail),
+        )
+    elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+    logger.info(
+        "chat_stream: end session_id=%s req_id=%s total_len=%s ms=%.1f",
+        session_id,
+        req_id,
+        len(last_text),
+        elapsed_ms,
+    )

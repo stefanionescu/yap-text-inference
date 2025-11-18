@@ -4,7 +4,7 @@ import asyncio
 import uuid
 import time
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
 
 from vllm.sampling_params import SamplingParams
 
@@ -32,9 +32,9 @@ async def run_toolcall(
     session_id: str,
     user_utt: str,
     history_text: str = "",
-    request_id: Optional[str] = None,
+    request_id: str | None = None,
     mark_active: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute a tool call with timeout handling and KV cache sharing.
     
     Args:

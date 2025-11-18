@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from typing import Set
 
 from fastapi import WebSocket
 
@@ -22,7 +21,7 @@ class ConnectionHandler:
     ):
         self.max_connections = max_connections
         self.acquire_timeout = acquire_timeout
-        self.active_connections: Set[WebSocket] = set()
+        self.active_connections: set[WebSocket] = set()
         self._lock = asyncio.Lock()
         self._semaphore = asyncio.Semaphore(max_connections)
 
@@ -38,22 +37,22 @@ class ConnectionHandler:
         try:
             await asyncio.wait_for(self._semaphore.acquire(), timeout=self.acquire_timeout)
         except asyncio.TimeoutError:
-                logger.warning(
+            logger.warning(
                 "Connection rejected: at capacity (%s/%s)",
                 len(self.active_connections),
                 self.max_connections,
-                )
-                return False
+            )
+            return False
 
         try:
             async with self._lock:
-            self.active_connections.add(websocket)
-            logger.info(
+                self.active_connections.add(websocket)
+                logger.info(
                     "Connection accepted: %s/%s active",
                     len(self.active_connections),
                     self.max_connections,
-            )
-            return True
+                )
+                return True
         except Exception:
             self._semaphore.release()
             raise

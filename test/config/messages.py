@@ -12,12 +12,22 @@ WARMUP_DEFAULT_MESSAGES = [
     "compliment me in a hot way",
     "who was Alexander Hamilton?",
     "life sucks in Lewisham, fuck this",
-    "FREESTYLE MODE: A gorgeous brunette in a tight white tee smirks confidently from the driver’s seat, flaunting her curves and teasing with bold energy.",
-    "FREESTYLE MODE: A woman dressed in white is squatting confidently on a Jenga tower placed on a patio table, wearing heels and sunglasses.",
+    (
+        "FREESTYLE MODE: A gorgeous brunette in a tight white tee smirks "
+        "confidently from the driver’s seat, flaunting her curves and teasing "
+        "with bold energy."
+    ),
+    (
+        "FREESTYLE MODE: A woman dressed in white is squatting confidently on a "
+        "Jenga tower placed on a patio table, wearing heels and sunglasses."
+    ),
     "which apps do you work best with?",
     "damn I wanna fap to a goat",
     "FREESTYLE MODE: Big ass girl in doggy-style waiting to be rammed by massive black cock",
-    "FREESTYLE MODE: A stunning woman in a matching blue workout set poses confidently on a rooftop, showing off her toned glutes and slim waist.",
+    (
+        "FREESTYLE MODE: A stunning woman in a matching blue workout set poses "
+        "confidently on a rooftop, showing off her toned glutes and slim waist."
+    ),
     "thinking of leaving my boyfriend with a text message",
     "what's the numerology for a capricorn?",
     "do you think Trump really got elected or were the elections rigged?",
@@ -37,7 +47,10 @@ WARMUP_DEFAULT_MESSAGES = [
     "6 foot of pics",
     "1000 meters",
     "what's up with all the people bitching about poverty? the world is so rich and better off vs 100 years ago",
-    "what's up with all the people bitching about poverty? the world is so rich and better off vs one hundred years ago. anyway check this out",
+    (
+        "what's up with all the people bitching about poverty? the world is so "
+        "rich and better off vs one hundred years ago. anyway check this out"
+    ),
 ]
 
 PERSONA_SWITCH_REPLIES = [

@@ -6,7 +6,7 @@ import os
 import sys
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import websockets
 
@@ -26,13 +26,13 @@ from config import BENCHMARK_FALLBACK_MESSAGE  # noqa: E402
 from prompts.toolcall import TOOLCALL_PROMPT  # noqa: E402
 
 
-async def _one_request(url: str, gender: str, style: str, message: str, timeout_s: float) -> Dict[str, Any]:
-    async def _session() -> Dict[str, Any]:
+async def _one_request(url: str, gender: str, style: str, message: str, timeout_s: float) -> dict[str, Any]:
+    async def _session() -> dict[str, Any]:
         auth_url = with_api_key(url)
 
         session_id = str(uuid.uuid4())
         chat_prompt = select_chat_prompt(gender)
-        start_payload: Dict[str, Any] = {
+        start_payload: dict[str, Any] = {
             "type": "start",
             "session_id": session_id,
             "assistant_gender": gender,
@@ -44,10 +44,10 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
         }
 
         t_sent = time.perf_counter()
-        ttfb_toolcall_ms: Optional[float] = None
-        ttfb_chat_ms: Optional[float] = None
-        first_sentence_ms: Optional[float] = None
-        first_3_words_ms: Optional[float] = None
+        ttfb_toolcall_ms: float | None = None
+        ttfb_chat_ms: float | None = None
+        first_sentence_ms: float | None = None
+        first_3_words_ms: float | None = None
         final_text = ""
 
         async with websockets.connect(auth_url, max_queue=None) as ws:
@@ -102,8 +102,8 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
         return {"ok": False, "error": str(e)}
 
 
-async def _worker(num: int, url: str, gender: str, style: str, message: str, timeout_s: float) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
+async def _worker(num: int, url: str, gender: str, style: str, message: str, timeout_s: float) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
     for _ in range(num):
         out.append(await _one_request(url, gender, style, message, timeout_s))
     return out
@@ -126,7 +126,7 @@ async def run_benchmark(args) -> None:
         if counts[i] > 0
     ]
     nested = await asyncio.gather(*tasks)
-    results: List[Dict[str, Any]] = [item for sub in nested for item in sub]
+    results: list[dict[str, Any]] = [item for sub in nested for item in sub]
 
     print_report(url, requests, concurrency, results)
 

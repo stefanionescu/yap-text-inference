@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     from config import DEFAULT_TEXT_API_KEY
@@ -9,7 +9,7 @@ except ModuleNotFoundError:
     from test.config import DEFAULT_TEXT_API_KEY
 
 
-def percentile(values: List[float], frac: float, minus_one: bool = False) -> float:
+def percentile(values: list[float], frac: float, minus_one: bool = False) -> float:
     if not values:
         return 0.0
     vals = sorted(values)
@@ -29,7 +29,7 @@ def _is_capacity_error(message: str | None) -> bool:
     return "server_at_capacity" in msg or "1013" in msg
 
 
-def print_report(url: str, requests: int, concurrency: int, results: List[Dict[str, Any]]) -> None:
+def print_report(url: str, requests: int, concurrency: int, results: list[dict[str, Any]]) -> None:
     ok = [r for r in results if r.get("ok")]
     errs = [r for r in results if not r.get("ok")]
     tool_ttfb = [r["ttfb_toolcall_ms"] for r in ok if r.get("ttfb_toolcall_ms") is not None]

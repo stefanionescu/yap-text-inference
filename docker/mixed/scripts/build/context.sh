@@ -2,8 +2,7 @@
 
 prepare_build_context() {
   TMP_BUILD_DIR="$(mktemp -d -t yap-base-build-XXXXXX)"
-  cleanup() { rm -rf "${TMP_BUILD_DIR}" 2>/dev/null || true; }
-  trap cleanup EXIT
+  trap 'rm -rf "${TMP_BUILD_DIR}" 2>/dev/null || true' EXIT
 
   cp -a "${DOCKERFILE}" "${TMP_BUILD_DIR}/Dockerfile"
   cp -a "${SCRIPT_DIR}/scripts" "${TMP_BUILD_DIR}/scripts"

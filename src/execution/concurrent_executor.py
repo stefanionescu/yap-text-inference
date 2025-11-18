@@ -1,10 +1,8 @@
 """Concurrent execution: tool and chat models run in parallel."""
 
 import asyncio
-import contextlib
 import logging
 import json
-import os
 import uuid
 from fastapi import WebSocket
 
@@ -41,7 +39,10 @@ async def run_concurrent_execution(
     tool_hard_timeout_ms = float(TOOL_HARD_TIMEOUT_MS)
     prebuffer_max_chars = int(PREBUFFER_MAX_CHARS)
     logger.info(
-        f"concurrent_exec: session_id={session_id} tool_timeout_ms={tool_hard_timeout_ms} prebuffer={prebuffer_max_chars}"
+        "concurrent_exec: session_id=%s tool_timeout_ms=%s prebuffer=%s",
+        session_id,
+        tool_hard_timeout_ms,
+        prebuffer_max_chars,
     )
     
     # Start both tool and chat coroutines concurrently
@@ -150,7 +151,11 @@ async def run_concurrent_execution(
         # Parse tool decision
         raw_field, is_tool = parse_tool_result(tool_result)
         _txt = (tool_result or {}).get("text") if tool_result else None
-        logger.info(f"concurrent_exec: tool_result is_tool={is_tool} text_len={(len(_txt) if isinstance(_txt, str) else 0)}")
+        logger.info(
+            "concurrent_exec: tool_result is_tool=%s text_len=%s",
+            is_tool,
+            len(_txt) if isinstance(_txt, str) else 0,
+        )
         
         # Cleanup tool req id tracking (no longer in-flight)
         try:
@@ -162,7 +167,9 @@ async def run_concurrent_execution(
             # Tool detected: cancel first chat stream, ignore buffered tokens, start new chat stream
             # Best-effort: cancel any in-flight next-chunk and wait for cancellation to settle
             try:
-                if 'pending_next_chunk_task' in locals() and pending_next_chunk_task and not pending_next_chunk_task.done():
+                pending_exists = "pending_next_chunk_task" in locals()
+                pending_active = pending_next_chunk_task and not pending_next_chunk_task.done()
+                if pending_exists and pending_active:
                     await cancel_task(pending_next_chunk_task)
             except Exception:
                 pass
@@ -190,7 +197,9 @@ async def run_concurrent_execution(
                 request_id=new_chat_req_id,
             )
             logger.info(
-                f"concurrent_exec: new chat stream after tool yes (prefix={CHECK_SCREEN_PREFIX}) req_id={new_chat_req_id}"
+                "concurrent_exec: new chat stream after tool yes (prefix=%s) req_id=%s",
+                CHECK_SCREEN_PREFIX,
+                new_chat_req_id,
             )
 
             # Stream from the new chat stream
@@ -250,7 +259,7 @@ async def run_concurrent_execution(
         session_handler.append_history_turn(session_id, user_utt, final_text)
         logger.info(f"concurrent_exec: done after tool no chars={len(final_text)}")
     
-    except Exception as e:
+    except Exception:
         # Clean up on any error
         try:
             await (await get_chat_engine()).abort_request(chat_req_id)

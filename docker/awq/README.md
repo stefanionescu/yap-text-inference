@@ -6,6 +6,33 @@ This Docker setup provides a containerized deployment of Yap's text inference AP
 - **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - AWQ quantized Impish Nemo 12B
 - **Tool**: [yapwithai/hammer-2.1-3b-awq](https://huggingface.co/yapwithai/hammer-2.1-3b-awq) - AWQ quantized Hammer 2.1 3B
 
+## Contents
+
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Basic Usage](#basic-usage)
+- [Environment Variables](#environment-variables)
+  - [Required](#required)
+  - [Optional](#optional)
+- [Build and Deploy](#build-and-deploy)
+  - [Building the Image](#building-the-image)
+  - [Running the Container](#running-the-container)
+- [Monitoring and Health Checks](#monitoring-and-health-checks)
+  - [Health Check](#health-check)
+  - [Server Status (requires API key)](#server-status-requires-api-key)
+  - [View Logs](#view-logs)
+  - [Container Stats](#container-stats)
+- [Advanced Configuration](#advanced-configuration)
+  - [Resource Limits](#resource-limits)
+  - [Persistent Cache Volumes](#persistent-cache-volumes)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Debug Mode](#debug-mode)
+- [Updates and Maintenance](#updates-and-maintenance)
+  - [Update Container](#update-container)
+  - [Clean Up](#clean-up)
+- [API Usage](#api-usage)
+
 ## Quick Start
 
 ### Prerequisites

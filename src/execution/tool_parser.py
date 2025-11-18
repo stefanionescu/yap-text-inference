@@ -1,10 +1,10 @@
 """Tool result parsing utilities."""
 
 import json
-from typing import Tuple, Any, Optional
+from typing import Any
 
 
-def parse_tool_result(tool_result: Optional[dict]) -> Tuple[Any, bool]:
+def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
     """Parse tool result into raw field and boolean decision.
     
     Args:

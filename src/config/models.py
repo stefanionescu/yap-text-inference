@@ -1,12 +1,11 @@
 """Model allowlists and validation helpers, including AWQ support."""
 
 import os
-from typing import Optional, List
 
 from .env import QUANTIZATION
 
 
-ALLOWED_CHAT_MODELS: List[str] = [
+ALLOWED_CHAT_MODELS: list[str] = [
     "kyx0r/Neona-12B",
     "SicariusSicariiStuff/Impish_Nemo_12B",
     "SicariusSicariiStuff/Impish_Magic_24B",
@@ -25,7 +24,7 @@ ALLOWED_CHAT_MODELS: List[str] = [
     "yapwithai/impish-12b-awq",
 ]
 
-ALLOWED_TOOL_MODELS: List[str] = [
+ALLOWED_TOOL_MODELS: list[str] = [
     "MadeAgents/Hammer2.1-1.5b",
     "MadeAgents/Hammer2.1-3b",
     # Pre-quantized AWQ models
@@ -33,7 +32,7 @@ ALLOWED_TOOL_MODELS: List[str] = [
 ]
 
 
-def _is_local_model_path(value: Optional[str]) -> bool:
+def _is_local_model_path(value: str | None) -> bool:
     if not value:
         return False
     try:
@@ -42,7 +41,7 @@ def _is_local_model_path(value: Optional[str]) -> bool:
         return False
 
 
-def _is_awq_model(value: Optional[str]) -> bool:
+def _is_awq_model(value: str | None) -> bool:
     """Check if model name suggests it's a pre-quantized AWQ model."""
     if not value:
         return False

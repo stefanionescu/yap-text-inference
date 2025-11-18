@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import json
 import os
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 try:
     from config import DEFAULT_TEXT_API_KEY

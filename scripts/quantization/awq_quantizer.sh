@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC2034  # sourced helpers rely on ROOT_DIR
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 
@@ -11,6 +12,7 @@ source "${LIB_Q}/push.sh"
 source "${LIB_Q}/ops.sh"
 
 # If not using AWQ, do nothing and stay silent (no logs)
+# shellcheck disable=SC2317  # pattern handles sourced vs executed scripts
 if [ "${QUANTIZATION:-}" != "awq" ]; then
   return 0 2>/dev/null || exit 0
 fi

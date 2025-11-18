@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncGenerator, Awaitable, Callable, Optional
+from typing import Any
+from collections.abc import AsyncGenerator, Awaitable, Callable
 
 
-CancelCheck = Optional[Callable[[], bool | Awaitable[bool]]]
+CancelCheck = Callable[[], bool | Awaitable[bool]] | None
 
 
 async def stream_with_timeout(

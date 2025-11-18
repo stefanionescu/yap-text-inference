@@ -43,6 +43,7 @@ restart_generic_restart_if_needed() {
   fi
 
   # Non-AWQ path
+  # shellcheck disable=SC2153  # DEPLOY_MODE is set by the caller via env
   local SELECTED_DEPLOY="${DEPLOY_MODE}"
   if [ -z "${SELECTED_DEPLOY}" ] || ! [[ "${SELECTED_DEPLOY}" =~ ^(both|chat|tool)$ ]]; then
     SELECTED_DEPLOY="${DEPLOY_MODELS:-${LAST_DEPLOY:-both}}"

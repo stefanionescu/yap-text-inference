@@ -4,12 +4,11 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 _CHAT_DEFAULT_TOTAL_LEN = 5360
 
 
-def _read_int_env(name: str) -> Optional[int]:
+def _read_int_env(name: str) -> int | None:
     value = os.environ.get(name)
     if value is None:
         return None

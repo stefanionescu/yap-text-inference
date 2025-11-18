@@ -1,7 +1,7 @@
 """Session handler for WebSocket connections."""
 
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
 from ..tokens import count_tokens_chat, trim_history_preserve_messages_chat
@@ -13,19 +13,19 @@ class SessionHandler:
 
     def __init__(self):
         # Per-session metadata: timestamp string and persona/model config
-        self.session_meta: Dict[str, Dict[str, Any]] = {}
+        self.session_meta: dict[str, dict[str, Any]] = {}
 
         # Rolling history per session (server-managed)
-        self.session_history: Dict[str, str] = {}
+        self.session_history: dict[str, str] = {}
 
         # Track active session tasks/requests
-        self.session_tasks: Dict[str, asyncio.Task] = {}
-        self.session_active_req: Dict[str, str] = {}
+        self.session_tasks: dict[str, asyncio.Task] = {}
+        self.session_active_req: dict[str, str] = {}
 
         # Track in-flight tool req ids (when tool router runs in parallel with chat)
-        self.session_tool_req: Dict[str, str] = {}
+        self.session_tool_req: dict[str, str] = {}
 
-    def initialize_session(self, session_id: str) -> Dict[str, Any]:
+    def initialize_session(self, session_id: str) -> dict[str, Any]:
         """Initialize session metadata if it doesn't exist.
 
         Args:
@@ -56,11 +56,11 @@ class SessionHandler:
     def update_session_config(
         self,
         session_id: str,
-        chat_gender: Optional[str] = None,
-        chat_personality: Optional[str] = None,
-        chat_prompt: Optional[str] = None,
-        tool_prompt: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        chat_gender: str | None = None,
+        chat_personality: str | None = None,
+        chat_prompt: str | None = None,
+        tool_prompt: str | None = None,
+    ) -> dict[str, Any]:
         """Update session configuration.
 
         Args:
@@ -102,7 +102,7 @@ class SessionHandler:
 
         return changed
 
-    def get_session_config(self, session_id: str) -> Dict[str, Any]:
+    def get_session_config(self, session_id: str) -> dict[str, Any]:
         """Get current session configuration.
 
         Args:
@@ -146,7 +146,7 @@ class SessionHandler:
         if task:
             task.cancel()
 
-    def cleanup_session_requests(self, session_id: str) -> Dict[str, str]:
+    def cleanup_session_requests(self, session_id: str) -> dict[str, str]:
         """Clean up session request tracking and return request IDs.
 
         Args:

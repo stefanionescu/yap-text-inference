@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 from threading import Lock
 import logging
-from typing import Optional
 
 from tokenizers import Tokenizer
 
@@ -32,7 +31,7 @@ class FastTokenizer:
         """
 
         self._lock = Lock()
-        self.tok: Optional[Tokenizer] = None
+        self.tok: Tokenizer | None = None
         self._hf_tok = None  # transformers tokenizer (fast or slow)
 
         is_local = False
@@ -44,7 +43,7 @@ class FastTokenizer:
         tokenizer_json_path = os.path.join(path_or_repo, "tokenizer.json") if is_local else None
 
         # Detect AWQ output directory to optionally use original source model's tokenizer
-        awq_metadata_model: Optional[str] = None
+        awq_metadata_model: str | None = None
         if is_local:
             meta_path = Path(path_or_repo) / "awq_metadata.json"
             if meta_path.is_file():
@@ -67,7 +66,7 @@ class FastTokenizer:
         try:
             from transformers import AutoTokenizer  # lazy import
         except Exception as exc:  # pragma: no cover - transformers is a hard dep in this project
-            raise RuntimeError(f"Transformers is required for tokenizer fallback: {exc}")
+            raise RuntimeError(f"Transformers is required for tokenizer fallback: {exc}") from exc
 
         # Strategy:
         # - If this is a local AWQ dir, force local-only loading to avoid Hub calls.
@@ -126,7 +125,12 @@ class FastTokenizer:
                 ids = self._hf_tok.encode(text, add_special_tokens=False)  # type: ignore[attr-defined]
             except AttributeError:
                 # Some tokenizers prefer the __call__ API
-                enc = self._hf_tok(text, add_special_tokens=False, return_attention_mask=False, return_token_type_ids=False)  # type: ignore[call-arg]
+                enc = self._hf_tok(  # type: ignore[call-arg]
+                    text,
+                    add_special_tokens=False,
+                    return_attention_mask=False,
+                    return_token_type_ids=False,
+                )
                 ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
             return len(ids)
 
@@ -146,18 +150,27 @@ class FastTokenizer:
             try:
                 ids = self._hf_tok.encode(text, add_special_tokens=False)  # type: ignore[attr-defined]
             except AttributeError:
-                enc = self._hf_tok(text, add_special_tokens=False, return_attention_mask=False, return_token_type_ids=False)  # type: ignore[call-arg]
+                enc = self._hf_tok(  # type: ignore[call-arg]
+                    text,
+                    add_special_tokens=False,
+                    return_attention_mask=False,
+                    return_token_type_ids=False,
+                )
                 ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
 
             if len(ids) <= max_tokens:
                 return text
             kept = ids[:max_tokens] if keep == "start" else ids[-max_tokens:]
             # Decode without injecting special tokens or cleaning spaces
-            return self._hf_tok.decode(kept, skip_special_tokens=True, clean_up_tokenization_spaces=False)  # type: ignore[attr-defined]
+            return self._hf_tok.decode(  # type: ignore[attr-defined]
+                kept,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )
 
 
-_chat_tok: Optional[FastTokenizer] = None
-_tool_tok: Optional[FastTokenizer] = None
+_chat_tok: FastTokenizer | None = None
+_tool_tok: FastTokenizer | None = None
 _chat_tok_lock = Lock()
 _tool_tok_lock = Lock()
 

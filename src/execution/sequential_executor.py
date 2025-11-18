@@ -1,6 +1,7 @@
 """Sequential execution: tool-first, then chat streaming."""
 
 import asyncio
+import json
 import logging
 import uuid
 from fastapi import WebSocket

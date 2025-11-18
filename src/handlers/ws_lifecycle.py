@@ -6,7 +6,6 @@ import asyncio
 import contextlib
 import logging
 import time
-from typing import Optional
 
 from fastapi import WebSocket
 
@@ -25,9 +24,9 @@ class WebSocketLifecycle:
     def __init__(
         self,
         websocket: WebSocket,
-        idle_timeout_s: Optional[float] = None,
-        watchdog_tick_s: Optional[float] = None,
-        idle_close_code: Optional[int] = None,
+        idle_timeout_s: float | None = None,
+        watchdog_tick_s: float | None = None,
+        idle_close_code: int | None = None,
     ):
         self._ws = websocket
         self._idle_timeout_s = float(idle_timeout_s or WS_IDLE_TIMEOUT_S)

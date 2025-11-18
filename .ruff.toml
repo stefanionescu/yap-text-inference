@@ -1,0 +1,30 @@
+line-length = 120
+target-version = "py310"
+extend-exclude = [
+    "__pycache__",
+    ".venv",
+    "build",
+    "dist",
+]
+
+[lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+]
+ignore = [
+    "E203", # whitespace before ':', conflicts with Black-style slicing
+    "E402", # allow module-level imports that rely on env priming
+]
+fixable = ["ALL"]
+
+[lint.per-file-ignores]
+"test/prompts/*.py" = ["E501"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import random
-from typing import List, Sequence
+from collections.abc import Sequence
 
 
 def choose_message(
-    words: List[str],
+    words: list[str],
     fallback: str,
     *,
     defaults: Sequence[str] | None = None,

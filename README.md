@@ -6,6 +6,31 @@ A single-process, GPU-accelerated text inference server optimized for low TTFT a
 - Both engines together by default; chat-only/tool-only are supported in host scripts and Docker (mixed image)
 - FastAPI + WebSocket streaming
 
+## Contents
+
+- [Key Features](#key-features)
+- [WebSocket Protocol Highlights](#websocket-protocol-highlights)
+- [Quickstart](#quickstart)
+- [Linting](#linting)
+- [Docker Deployment](#docker-deployment)
+- [Quantization Modes (AWQ)](#quantization-modes-awq)
+  - [Option 1: Local Quantization (Quantizes on First Run)](#option-1-local-quantization-quantizes-on-first-run)
+  - [Option 2: Pre-Quantized AWQ Models (Hugging Face)](#option-2-pre-quantized-awq-models-hugging-face)
+- [Warmup Test Client](#warmup-test-client)
+  - [Basic Usage](#basic-usage)
+  - [With a Custom Message](#with-a-custom-message)
+  - [With Gender/Style Flags](#with-genderstyle-flags)
+  - [Testing Concurrent vs. Sequential Modes](#testing-concurrent-vs-sequential-modes)
+  - [Environment Overrides](#environment-overrides)
+  - [What It Prints](#what-it-prints)
+- [Benchmark Client](#benchmark-client)
+- [Viewing Logs](#viewing-logs)
+- [Stopping and Restarting](#stopping-and-restarting)
+  - [Stop Script Behavior (Deep Clean)](#stop-script-behavior-deep-clean)
+- [Health Check](#health-check)
+- [Server Status and Capacity](#server-status-and-capacity)
+- [Advanced Usage and Tips](#advanced-usage-and-tips)
+
 ## Key Features
 - Tool-call-first detection. Toolcall signal is sent when detected, then (when chat is deployed) chat tokens always stream regardless.
 - Persona/history segmented prompts with prefix caching for KV reuse.
@@ -64,6 +89,19 @@ This will:
 - Launch `uvicorn src.server:app --port 8000`
 - Always runs in background with auto-detached process isolation
 - Auto-tails logs (Ctrl+C stops tail only)
+
+## Linting
+
+Create/activate a virtualenv, install runtime + dev deps, then run the integrated lint script:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+bash scripts/lint.sh
+```
+
+`scripts/lint.sh` runs Ruff across `src` and `test`, then ShellCheck over every tracked `*.sh`, exiting non-zero if anything fails.
 
 ## Docker Deployment
 
