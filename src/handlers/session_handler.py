@@ -6,15 +6,23 @@ import asyncio
 import copy
 import os
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
 from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
-from ..tokens import count_tokens_chat, trim_history_preserve_messages_chat
+from ..tokens import count_tokens_chat
 from ..utils.time_utils import format_session_timestamp
 
 
 SESSION_IDLE_TTL_SECONDS = int(os.getenv("SESSION_IDLE_TTL_SECONDS", "1800"))
+
+
+@dataclass
+class HistoryTurn:
+    turn_id: str
+    user: str
+    assistant: str
 
 
 @dataclass
@@ -23,12 +31,13 @@ class SessionState:
 
     session_id: str
     meta: dict[str, Any]
-    history: str = ""
+    history_turns: list[HistoryTurn] = field(default_factory=list)
     task: asyncio.Task | None = None
     active_request_id: str | None = None
     tool_request_id: str | None = None
     created_at: float = field(default_factory=time.monotonic)
     last_access: float = field(default_factory=time.monotonic)
+    chat_prompt_last_update_at: float = 0.0
 
     def touch(self) -> None:
         self.last_access = time.monotonic()
@@ -116,6 +125,22 @@ class SessionHandler:
 
         return changed
 
+    def get_chat_prompt_last_update_at(self, session_id: str) -> float:
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+        state.touch()
+        return float(state.chat_prompt_last_update_at or 0.0)
+
+    def set_chat_prompt_last_update_at(self, session_id: str, timestamp: float) -> None:
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+        state.chat_prompt_last_update_at = timestamp
+        state.touch()
+
     def get_session_config(self, session_id: str) -> dict[str, Any]:
         """Return a copy of the current session configuration."""
         state = self._sessions.get(session_id)
@@ -138,32 +163,65 @@ class SessionHandler:
         if not state:
             return ""
         state.touch()
-        return state.history
+        self._trim_history_turns(state)
+        return self._render_history(state.history_turns)
 
     def set_history_text(self, session_id: str, history_text: str) -> str:
         state = self._sessions.get(session_id)
         if not state:
             self.initialize_session(session_id)
             state = self._sessions[session_id]
-        normalized = self._normalize_history(history_text)
-        state.history = normalized
+        state.history_turns = self._parse_history_text(history_text)
+        self._trim_history_turns(state)
         state.touch()
-        return normalized
+        return self._render_history(state.history_turns)
 
-    def append_history_turn(self, session_id: str, user_utt: str, assistant_text: str) -> str:
+    def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
         state = self._sessions.get(session_id)
         if not state:
             self.initialize_session(session_id)
             state = self._sessions[session_id]
-        turn = self._format_turn(user_utt, assistant_text)
-        if not turn:
-            return state.history
+        user = (user_utt or "").strip()
+        if not user:
+            return None
 
-        combined = f"{state.history}\n\n{turn}".strip() if state.history.strip() else turn
-        normalized = self._normalize_history(combined)
-        state.history = normalized
+        turn_id = uuid.uuid4().hex
+        state.history_turns.append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
+        self._trim_history_turns(state)
         state.touch()
-        return normalized
+        return turn_id
+
+    def append_history_turn(
+        self,
+        session_id: str,
+        user_utt: str,
+        assistant_text: str,
+        *,
+        turn_id: str | None = None,
+    ) -> str:
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+        user = (user_utt or "").strip()
+        assistant = (assistant_text or "").strip()
+
+        target_turn: HistoryTurn | None = None
+        if turn_id:
+            target_turn = next((turn for turn in state.history_turns if turn.turn_id == turn_id), None)
+
+        if target_turn:
+            if assistant:
+                target_turn.assistant = assistant
+        else:
+            if not user and not assistant:
+                return self._render_history(state.history_turns)
+            fallback_turn = HistoryTurn(turn_id=uuid.uuid4().hex, user=user, assistant=assistant)
+            state.history_turns.append(fallback_turn)
+
+        self._trim_history_turns(state)
+        state.touch()
+        return self._render_history(state.history_turns)
 
     # ------------------------------------------------------------------ #
     # Request/task tracking
@@ -249,21 +307,81 @@ class SessionHandler:
     # ------------------------------------------------------------------ #
     # Internal helpers
     # ------------------------------------------------------------------ #
-    def _normalize_history(self, history_text: str) -> str:
+    def _render_history(self, turns: list[HistoryTurn]) -> str:
+        if not turns:
+            return ""
+        chunks: list[str] = []
+        for turn in turns:
+            lines: list[str] = []
+            user_text = (turn.user or "").strip()
+            assistant_text = (turn.assistant or "").strip()
+            lines.append(f"User: {user_text}")
+            if assistant_text:
+                lines.append(f"Assistant: {assistant_text}")
+            chunk = "\n".join(lines).strip()
+            if chunk:
+                chunks.append(chunk)
+        return "\n\n".join(chunks)
+
+    def _parse_history_text(self, history_text: str) -> list[HistoryTurn]:
         text = (history_text or "").strip()
         if not text:
-            return ""
-        if DEPLOY_CHAT and count_tokens_chat(text) > HISTORY_MAX_TOKENS:
-            text = trim_history_preserve_messages_chat(text, HISTORY_MAX_TOKENS)
-        return text
+            return []
 
-    @staticmethod
-    def _format_turn(user_utt: str, assistant_text: str) -> str:
-        user = (user_utt or "").strip()
-        assistant = (assistant_text or "").strip()
-        if not user and not assistant:
-            return ""
-        return f"User: {user}\nAssistant: {assistant}".strip()
+        turns: list[HistoryTurn] = []
+        current_user: list[str] = []
+        current_assistant: list[str] = []
+        mode: str | None = None
+
+        def _flush() -> None:
+            nonlocal current_user, current_assistant, mode
+            if not current_user and not current_assistant:
+                return
+            user_text = "\n".join(current_user).strip()
+            assistant_text = "\n".join(current_assistant).strip()
+            turns.append(HistoryTurn(turn_id=uuid.uuid4().hex, user=user_text, assistant=assistant_text))
+            current_user = []
+            current_assistant = []
+            mode = None
+
+        for line in text.splitlines():
+            if line.startswith("User:"):
+                _flush()
+                current_user = [line[len("User:"):].lstrip()]
+                current_assistant = []
+                mode = "user"
+            elif line.startswith("Assistant:"):
+                current_assistant = [line[len("Assistant:"):].lstrip()]
+                mode = "assistant"
+            else:
+                if mode == "assistant":
+                    current_assistant.append(line)
+                elif mode == "user":
+                    current_user.append(line)
+                elif line.strip():
+                    current_user.append(line)
+                    mode = "user"
+
+        _flush()
+        return turns
+
+    def _trim_history_turns(self, state: SessionState) -> None:
+        if not state.history_turns or not DEPLOY_CHAT:
+            return
+
+        rendered = self._render_history(state.history_turns)
+        if not rendered:
+            state.history_turns = []
+            return
+
+        tokens = count_tokens_chat(rendered)
+        if tokens <= HISTORY_MAX_TOKENS:
+            return
+
+        while state.history_turns and tokens > HISTORY_MAX_TOKENS:
+            state.history_turns.pop(0)
+            rendered = self._render_history(state.history_turns)
+            tokens = count_tokens_chat(rendered) if rendered else 0
 
     def _evict_idle_sessions(self) -> None:
         if self._idle_ttl_seconds <= 0:

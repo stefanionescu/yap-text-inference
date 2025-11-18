@@ -72,10 +72,13 @@ async def stream_chat_response(
     *,
     initial_text: str = "",
     initial_text_already_sent: bool = True,
+    history_user_utt: str | None = None,
+    history_turn_id: str | None = None,
 ) -> str:
     """Stream chat chunks, emit final/done messages, and record history."""
     final_text = initial_text
     text_visible = bool(initial_text) and initial_text_already_sent
+    history_user = history_user_utt if history_user_utt is not None else user_utt
 
     try:
         if initial_text and not initial_text_already_sent:
@@ -94,9 +97,19 @@ async def stream_chat_response(
         await ws.send_text(json.dumps({"type": "done", "usage": {}}))
     except asyncio.CancelledError:
         if text_visible:
-            session_handler.append_history_turn(session_id, user_utt, final_text)
+            session_handler.append_history_turn(
+                session_id,
+                history_user,
+                final_text,
+                turn_id=history_turn_id,
+            )
         raise
 
-    session_handler.append_history_turn(session_id, user_utt, final_text)
+    session_handler.append_history_turn(
+        session_id,
+        history_user,
+        final_text,
+        turn_id=history_turn_id,
+    )
     return final_text
 

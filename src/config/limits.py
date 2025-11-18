@@ -39,6 +39,9 @@ STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "2400"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
 
+# Persona update pacing
+CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS = float(os.getenv("CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS", "30"))
+
 # Tool model specific limits
 TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1200"))  # Half of chat history for KV sharing
 TOOL_SYSTEM_TOKENS = int(os.getenv("TOOL_SYSTEM_TOKENS", "1450"))  # System prompt + tool response
@@ -117,6 +120,7 @@ __all__ = [
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
     "USER_UTT_MAX_TOKENS",
+    "CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS",
     "TOOL_HISTORY_TOKENS",
     "TOOL_SYSTEM_TOKENS",
     "EXACT_TOKEN_TRIM",
