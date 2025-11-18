@@ -53,6 +53,7 @@ class ConcurrentCoordinator:
         tool_coro: Awaitable[dict],
         tool_timeout_s: float,
         prebuffer_max_chars: int,
+        sampling_overrides: dict[str, float | int] | None = None,
     ):
         self.ws = ws
         self.session_id = session_id
@@ -65,6 +66,7 @@ class ConcurrentCoordinator:
         self.tool_coro = tool_coro
         self.tool_timeout_s = tool_timeout_s
         self.prebuffer_limit = max(prebuffer_max_chars, 0)
+        self.sampling_overrides = sampling_overrides
 
         self._chat_iter = chat_stream.__aiter__()
         self._pending_chunk_task: asyncio.Task | None = None
@@ -182,6 +184,7 @@ class ConcurrentCoordinator:
             self.history_text,
             modified_user_utt,
             request_id=new_chat_req_id,
+            sampling_overrides=self.sampling_overrides,
         )
         final_text = await stream_chat_response(
             self.ws,
@@ -251,6 +254,8 @@ async def run_concurrent_execution(
     runtime_text: str,
     history_text: str,
     user_utt: str,
+    *,
+    sampling_overrides: dict[str, float | int] | None = None,
 ) -> None:
     """Execute concurrent tool and chat workflow with buffering."""
     tool_hard_timeout_ms = float(TOOL_HARD_TIMEOUT_MS)
@@ -276,6 +281,7 @@ async def run_concurrent_execution(
         history_text,
         user_utt,
         request_id=chat_req_id,
+        sampling_overrides=sampling_overrides,
     )
     logger.info("concurrent_exec: chat start req_id=%s", chat_req_id)
 
@@ -291,6 +297,7 @@ async def run_concurrent_execution(
         tool_coro=tool_coro,
         tool_timeout_s=tool_timeout_s,
         prebuffer_max_chars=prebuffer_max_chars,
+        sampling_overrides=sampling_overrides,
     )
 
     try:

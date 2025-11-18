@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import os
 import time
 from dataclasses import dataclass, field
@@ -60,6 +61,7 @@ class SessionHandler:
             "chat_personality": None,
             "chat_prompt": None,
             "tool_prompt": None,
+            "chat_sampling": None,
             "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
             "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
         }
@@ -74,6 +76,7 @@ class SessionHandler:
         chat_personality: str | None = None,
         chat_prompt: str | None = None,
         tool_prompt: str | None = None,
+        chat_sampling: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Update mutable persona configuration for a session."""
         meta = self.initialize_session(session_id)
@@ -102,6 +105,15 @@ class SessionHandler:
             meta["tool_prompt"] = tp
             changed["tool_prompt"] = bool(tp)
 
+        if chat_sampling is not None:
+            sampling = chat_sampling or None
+            if isinstance(sampling, dict):
+                sampling_copy = sampling.copy()
+            else:
+                sampling_copy = None
+            meta["chat_sampling"] = sampling_copy
+            changed["chat_sampling"] = sampling_copy.copy() if isinstance(sampling_copy, dict) else None
+
         return changed
 
     def get_session_config(self, session_id: str) -> dict[str, Any]:
@@ -110,7 +122,7 @@ class SessionHandler:
         if not state:
             return {}
         state.touch()
-        return state.meta.copy()
+        return copy.deepcopy(state.meta)
 
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""

@@ -1,4 +1,4 @@
-"""Start message handler split from message_handlers for modularity."""
+"""Start message handler."""
 
 from __future__ import annotations
 
@@ -17,6 +17,20 @@ from ..config import (
     DEPLOY_TOOL,
     CHAT_PROMPT_MAX_TOKENS,
     TOOL_PROMPT_MAX_TOKENS,
+    CHAT_TEMPERATURE_MIN,
+    CHAT_TEMPERATURE_MAX,
+    CHAT_TOP_P_MIN,
+    CHAT_TOP_P_MAX,
+    CHAT_TOP_K_MIN,
+    CHAT_TOP_K_MAX,
+    CHAT_MIN_P_MIN,
+    CHAT_MIN_P_MAX,
+    CHAT_REPEAT_PENALTY_MIN,
+    CHAT_REPEAT_PENALTY_MAX,
+    CHAT_PRESENCE_PENALTY_MIN,
+    CHAT_PRESENCE_PENALTY_MAX,
+    CHAT_FREQUENCY_PENALTY_MIN,
+    CHAT_FREQUENCY_PENALTY_MAX,
 )
 from ..tokens import (
     count_tokens_chat,
@@ -42,6 +56,16 @@ from .validators import (
 
 logger = logging.getLogger(__name__)
 
+_SAMPLING_FIELDS: tuple[tuple[str, type, float | int, float | int, str, str], ...] = (
+    ("temperature", float, CHAT_TEMPERATURE_MIN, CHAT_TEMPERATURE_MAX, "invalid_temperature", "temperature_out_of_range"),
+    ("top_p", float, CHAT_TOP_P_MIN, CHAT_TOP_P_MAX, "invalid_top_p", "top_p_out_of_range"),
+    ("top_k", int, CHAT_TOP_K_MIN, CHAT_TOP_K_MAX, "invalid_top_k", "top_k_out_of_range"),
+    ("min_p", float, CHAT_MIN_P_MIN, CHAT_MIN_P_MAX, "invalid_min_p", "min_p_out_of_range"),
+    ("repeat_penalty", float, CHAT_REPEAT_PENALTY_MIN, CHAT_REPEAT_PENALTY_MAX, "invalid_repeat_penalty", "repeat_penalty_out_of_range"),
+    ("presence_penalty", float, CHAT_PRESENCE_PENALTY_MIN, CHAT_PRESENCE_PENALTY_MAX, "invalid_presence_penalty", "presence_penalty_out_of_range"),
+    ("frequency_penalty", float, CHAT_FREQUENCY_PENALTY_MIN, CHAT_FREQUENCY_PENALTY_MAX, "invalid_frequency_penalty", "frequency_penalty_out_of_range"),
+)
+
 
 async def _close_with_validation_error(ws: WebSocket, err: ValidationError) -> None:
     await ws.send_text(json.dumps({
@@ -60,6 +84,7 @@ class StartPlan:
     runtime_text: str
     history_text: str
     user_utt: str
+    sampling_overrides: dict[str, float | int] | None = None
 
 
 async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
@@ -77,9 +102,14 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     try:
         gender, personality = _validate_persona(msg)
         chat_prompt, tool_prompt = _extract_prompts(msg)
+        sampling_overrides = _extract_sampling_overrides(msg)
     except ValidationError as err:
         await _close_with_validation_error(ws, err)
         return
+
+    sampling_payload = None
+    if DEPLOY_CHAT:
+        sampling_payload = sampling_overrides if sampling_overrides else {}
 
     session_handler.update_session_config(
         session_id,
@@ -87,6 +117,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         chat_personality=personality,
         chat_prompt=chat_prompt,
         tool_prompt=tool_prompt,
+        chat_sampling=sampling_payload,
     )
 
     updated_config = session_handler.get_session_config(session_id)
@@ -104,6 +135,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         runtime_text=runtime_text,
         history_text=history_text,
         user_utt=user_utt,
+        sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
     )
 
     task = asyncio.create_task(_dispatch_execution(ws, plan))
@@ -171,6 +203,75 @@ def _trim_user_utterance(user_utt: str) -> str:
     return user_utt or ""
 
 
+def _extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int]:
+    if not DEPLOY_CHAT:
+        return {}
+
+    overrides: dict[str, float | int] = {}
+    sampling_block = msg.get("sampling") or msg.get("sampling_params") or {}
+    if sampling_block and not isinstance(sampling_block, dict):
+        raise ValidationError("invalid_sampling_payload", "sampling must be an object")
+
+    for field, caster, minimum, maximum, invalid_code, range_code in _SAMPLING_FIELDS:
+        raw_value = None
+        if isinstance(sampling_block, dict):
+            raw_value = sampling_block.get(field)
+        if raw_value is None:
+            raw_value = msg.get(field)
+        if raw_value is None:
+            continue
+
+        try:
+            normalized = _coerce_sampling_value(raw_value, caster)
+        except (TypeError, ValueError):
+            raise ValidationError(invalid_code, f"{field} must be a valid {caster.__name__}") from None
+
+        if not (minimum <= normalized <= maximum):
+            raise ValidationError(
+                range_code,
+                f"{field} must be between {minimum} and {maximum}",
+            )
+        overrides[field] = normalized
+
+    return overrides
+
+
+def _coerce_sampling_value(value: Any, caster: type) -> float | int:
+    if caster is int:
+        return _coerce_int(value)
+    return _coerce_float(value)
+
+
+def _coerce_float(value: Any) -> float:
+    if isinstance(value, bool):
+        raise TypeError("bool not allowed")
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("empty string")
+        return float(stripped)
+    raise TypeError("unsupported type")
+
+
+def _coerce_int(value: Any) -> int:
+    if isinstance(value, bool):
+        raise TypeError("bool not allowed")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError("non-integer float")
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("empty string")
+        return int(stripped)
+    raise TypeError("unsupported type")
+
+
 def _build_ack_payload(
     session_id: str,
     base_config: dict[str, Any],
@@ -199,6 +300,7 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
                 plan.runtime_text,
                 plan.history_text,
                 plan.user_utt,
+                sampling_overrides=plan.sampling_overrides,
             )
         else:
             logger.info("handle_start: sequential execution session_id=%s", plan.session_id)
@@ -209,6 +311,7 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
                 plan.runtime_text,
                 plan.history_text,
                 plan.user_utt,
+                sampling_overrides=plan.sampling_overrides,
             )
         return
 
@@ -222,6 +325,7 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
                 plan.runtime_text,
                 plan.history_text,
                 plan.user_utt,
+                sampling_overrides=plan.sampling_overrides,
             ),
             plan.session_id,
             plan.user_utt,
@@ -241,5 +345,3 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
         await ws.send_text(json.dumps({"type": "final", "normalized_text": ""}))
         await ws.send_text(json.dumps({"type": "done", "usage": {}}))
         logger.info("handle_start: tool-only done session_id=%s is_tool=%s", plan.session_id, is_tool)
-
-

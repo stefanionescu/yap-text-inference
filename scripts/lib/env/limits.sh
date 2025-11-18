@@ -5,7 +5,7 @@
 apply_limits_and_timeouts() {
   # Context and output limits
   export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5160}
-  export CHAT_MAX_OUT=${CHAT_MAX_OUT:-200}
+  export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
   export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
   # Tool model max context length (Toolcall). 3000 allows for 1450 system + 350 user + 1200 history tokens
   export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3000}

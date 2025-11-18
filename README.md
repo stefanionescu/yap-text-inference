@@ -35,6 +35,7 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 - Tool-call-first detection. Toolcall signal is sent when detected, then (when chat is deployed) chat tokens always stream regardless.
 - Persona/history segmented prompts with prefix caching for KV reuse.
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
+- Built-in logit bias that permanently suppresses banned phrases/emoticons (e.g., `*winks*`, `Oh honey`, `:)`). You can override via `CHAT_LOGIT_BIAS_FILE` if needed.
 - Interrupts/barge-in via cancel or a new start, plus explicit heartbeats and idle enforcement (150 s default).
 - Concurrent connection limiting to protect GPU resources (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both)
 - API key authentication for secure access (configurable, default: "yap_token")
@@ -42,6 +43,8 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 ## WebSocket Protocol Highlights
 
 - **Start**: `{"type":"start", ...}` begins/queues a turn. Sending another `start` automatically cancels the previous turn for that session (barge-in).
+- **Sampling overrides (optional)**: Include a `sampling` object inside the `start` payload to override chat decoding knobs per session, for example:
+  `{"type":"start", "...": "...", "sampling":{"temperature":0.8,"top_p":0.85}}`. Supported keys are `temperature` (0.2–1.2), `top_p` (0.6–1.0), `top_k` (10–60), `min_p` (0.0–0.20), `repeat_penalty` (1.0–1.3), `presence_penalty` (0–0.15), and `frequency_penalty` (0–0.15). Any omitted key falls back to the server defaults in `src/config/sampling.py`.
 - **Cancel**: `{"type":"cancel"}` (or the literal sentinel `__CANCEL__`) immediately stops both chat and tool engines. The server replies with `{"type":"done","cancelled":true}` (echoing `request_id` when provided).
 - **Client end**: `{"type":"end"}` (or the sentinel `__END__`) requests a clean shutdown. The server responds with `{"type":"connection_closed","reason":"client_request"}` before closing with code `1000`.
 - **Heartbeat**: `{"type":"ping"}` keeps the socket active during long pauses. The server answers with `{"type":"pong"}`; receiving `{"type":"pong"}` from clients is treated as a no-op. Every ping/ack resets the idle timer.

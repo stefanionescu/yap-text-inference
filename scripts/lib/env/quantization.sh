@@ -17,7 +17,7 @@ apply_quantization_defaults() {
           export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-512}
           export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-256}
           export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-          export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-200}
+          export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
           export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
           export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
           export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}

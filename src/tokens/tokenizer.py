@@ -111,6 +111,25 @@ class FastTokenizer:
                 clean_up_tokenization_spaces=False,
             )
 
+    def encode_ids(self, text: str) -> list[int]:
+        """Return token ids for the provided text without special tokens."""
+        if not text:
+            return []
+        with self._lock:
+            if self.tok is not None:
+                return self.tok.encode(text).ids
+            try:
+                ids = self._hf_tok.encode(text, add_special_tokens=False)  # type: ignore[attr-defined]
+            except AttributeError:
+                enc = self._hf_tok(  # type: ignore[call-arg]
+                    text,
+                    add_special_tokens=False,
+                    return_attention_mask=False,
+                    return_token_type_ids=False,
+                )
+                ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
+            return list(ids)
+
     def _inspect_source(self, path_or_repo: str) -> TokenizerSource:
         try:
             is_local = os.path.exists(path_or_repo)
