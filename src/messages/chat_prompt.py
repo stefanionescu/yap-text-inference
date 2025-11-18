@@ -73,7 +73,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         return
 
     # Required fields
-    raw_gender = msg.get("assistant_gender")
+    raw_gender = msg.get("gender")
     raw_personality = msg.get("personality")
     raw_prompt = msg.get("chat_prompt") or msg.get("persona_text")
     history_text = session_handler.get_history_text(session_id)
@@ -152,7 +152,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         "ok": True,
         "code": 200,
         "message": "updated",
-        "assistant_gender": g,
+        "gender": g,
         "personality": norm_personality,
     }))
 

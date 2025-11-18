@@ -101,7 +101,7 @@ Start a turn
   "session_id": "<stable-per-user uuid>",
   "persona_text": "...optional full persona...",
   "persona_style": "savage|flirty|...",
-  "assistant_gender": "woman|man",
+  "gender": "woman|man",
   "user_identity": "woman|man|non-binary",
   "history_text": "...prior transcript...",
   "user_utterance": "hey—open spotify and queue my mix"

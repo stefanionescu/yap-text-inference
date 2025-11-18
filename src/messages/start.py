@@ -92,7 +92,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     logger.info(
         "handle_start: session_id=%s gender_in=%s personality_in=%s hist_len=%s user_len=%s",
         session_id,
-        msg.get("assistant_gender"),
+        msg.get("gender"),
         msg.get("personality"),
         len(msg.get("history_text", "")),
         len(msg.get("user_utterance", "")),
@@ -143,7 +143,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
 
 
 def _validate_persona(msg: dict[str, Any]) -> tuple[str, str]:
-    gender = validate_required_gender(msg.get("assistant_gender"))
+    gender = validate_required_gender(msg.get("gender"))
     personality = validate_required_personality(msg.get("personality"))
     return gender, personality
 
@@ -283,7 +283,7 @@ def _build_ack_payload(
         "ok": True,
         "session_id": session_id,
         "now": base_config.get("now_str"),
-        "assistant_gender": updated_config.get("chat_gender"),
+        "gender": updated_config.get("chat_gender"),
         "personality": updated_config.get("chat_personality"),
         "chat_prompt": bool(updated_config.get("chat_prompt")),
     }

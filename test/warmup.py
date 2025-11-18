@@ -19,7 +19,7 @@ Usage:
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
   TEXT_API_KEY=yap_token (or your custom API key)
-  ASSISTANT_GENDER=female|male
+  GENDER=female|male
   PERSONALITY=flirty
 
 Note: API key authentication is required. The client will automatically
@@ -37,12 +37,11 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument("message", nargs="*", help="optional user message")
     parser.add_argument(
-        "--assistant-gender",
         "--gender",
         "-g",
-        dest="assistant_gender",
+        dest="gender",
         choices=["female", "male", "woman", "man"],
-        help="assistant gender (normalized by server)",
+        help="gender (normalized by server)",
     )
     parser.add_argument(
         "--personality",

@@ -31,7 +31,7 @@ if _REPO_ROOT not in sys.path:
 from test.common.message import iter_messages
 from test.common.ws import send_client_end, with_api_key
 from test.config import (
-    DEFAULT_ASSISTANT_GENDER,
+    DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
@@ -97,7 +97,7 @@ async def run_once() -> None:
     start_payload = {
         "type": "start",
         "session_id": session_id,
-        "assistant_gender": DEFAULT_ASSISTANT_GENDER,
+        "gender": DEFAULT_GENDER,
         "personality": DEFAULT_PERSONALITY,
         "history_text": "",
         "user_utterance": SCREEN_ANALYSIS_USER_UTTERANCE,

@@ -57,6 +57,7 @@ from .env import (
     CHAT_QUANTIZATION,
     TOOL_QUANTIZATION,
 )  # late import to avoid cycles
+from .quantization import is_lowbit_quantization
 
 
 def _selected_quantization(is_chat: bool) -> str | None:
@@ -66,21 +67,21 @@ def _selected_quantization(is_chat: bool) -> str | None:
     return TOOL_QUANTIZATION or ("awq" if QUANTIZATION == "awq" else None)
 
 
-awq_enabled = (
-    (DEPLOY_CHAT and _selected_quantization(True) == "awq")
-    or (DEPLOY_TOOL and _selected_quantization(False) == "awq")
+lowbit_enabled = (
+    (DEPLOY_CHAT and is_lowbit_quantization(_selected_quantization(True)))
+    or (DEPLOY_TOOL and is_lowbit_quantization(_selected_quantization(False)))
 )
 
-if awq_enabled:
-    # Higher capacity when AWQ is used
+if lowbit_enabled:
+    # Higher capacity when lower-bit quantization (AWQ/GPTQ) is used
     if DEPLOY_TOOL and not DEPLOY_CHAT:
-        default_max = "64"  # tool-only (AWQ)
+        default_max = "64"  # tool-only (lowbit)
     elif DEPLOY_CHAT and not DEPLOY_TOOL:
-        default_max = "40"  # chat-only (AWQ)
+        default_max = "40"  # chat-only (lowbit)
     else:
-        default_max = "26"  # both models (AWQ)
+        default_max = "26"  # both models (lowbit)
 else:
-    # Default capacities for non-AWQ deployments
+    # Default capacities for non-lowbit deployments
     if DEPLOY_TOOL and not DEPLOY_CHAT:
         default_max = "32"  # tool-only
     elif DEPLOY_CHAT and not DEPLOY_TOOL:

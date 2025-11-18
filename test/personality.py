@@ -32,7 +32,7 @@ from test.prompts.toolcall import TOOLCALL_PROMPT
 
 @dataclass(frozen=True)
 class PersonaVariant:
-    assistant_gender: str
+    gender: str
     personality: str
     chat_prompt: str
 
@@ -80,7 +80,7 @@ async def _send_start_request(ws, session: PersonaSession, variant: PersonaVaria
     payload = {
         "type": "start",
         "session_id": session.session_id,
-        "assistant_gender": variant.assistant_gender,
+        "gender": variant.gender,
         "personality": variant.personality,
         "chat_prompt": variant.chat_prompt,
         "tool_prompt": TOOLCALL_PROMPT,
@@ -90,7 +90,7 @@ async def _send_start_request(ws, session: PersonaSession, variant: PersonaVaria
     await ws.send(json.dumps(payload))
     reply = await _collect_response(ws)
     print(
-        f"[persona={variant.personality} gender={variant.assistant_gender}] "
+        f"[persona={variant.personality} gender={variant.gender}] "
         f"user: {user_text!r} -> assistant: {reply!r}"
     )
     return reply
@@ -109,7 +109,7 @@ async def _send_persona_update(ws, session: PersonaSession, variant: PersonaVari
     payload = {
         "type": "chat_prompt",
         "session_id": session.session_id,
-        "assistant_gender": variant.assistant_gender,
+        "gender": variant.gender,
         "personality": variant.personality,
         "chat_prompt": variant.chat_prompt,
         "history_text": session.history,

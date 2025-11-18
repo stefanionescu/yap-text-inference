@@ -18,7 +18,7 @@ if _test_dir not in sys.path:
     sys.path.insert(0, _test_dir)
 
 from config import (
-    DEFAULT_ASSISTANT_GENDER,
+    DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
@@ -112,7 +112,7 @@ class StreamTracker:
 async def run_once(args) -> None:
     server_ws_url = os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
     api_key = DEFAULT_TEXT_API_KEY
-    assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", DEFAULT_ASSISTANT_GENDER)
+    gender = args.gender or os.getenv("GENDER", DEFAULT_GENDER)
     personality = args.personality or os.getenv("PERSONALITY", DEFAULT_PERSONALITY)
 
     ws_url_with_auth = with_api_key(server_ws_url)
@@ -122,8 +122,8 @@ async def run_once(args) -> None:
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
     session_id = str(uuid.uuid4())
-    chat_prompt = select_chat_prompt(assistant_gender)
-    start_payload = _build_start_payload(session_id, assistant_gender, personality, chat_prompt, user_msg)
+    chat_prompt = select_chat_prompt(gender)
+    start_payload = _build_start_payload(session_id, gender, personality, chat_prompt, user_msg)
 
     logger.info("Connecting to %s (with API key auth)", server_ws_url)
     async with websockets.connect(
@@ -143,7 +143,7 @@ async def run_once(args) -> None:
 
 def _build_start_payload(
     session_id: str,
-    assistant_gender: str,
+    gender: str,
     personality: str,
     chat_prompt: str,
     user_msg: str,
@@ -151,7 +151,7 @@ def _build_start_payload(
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
-        "assistant_gender": assistant_gender,
+        "gender": gender,
         "personality": personality,
         "chat_prompt": chat_prompt,
         "history_text": "",
@@ -201,7 +201,7 @@ def _handle_ack(msg: dict[str, Any], tracker: StreamTracker) -> bool:
     if ack_for == "start":
         tracker.ack_seen = True
         now = msg.get("now")
-        gender = msg.get("assistant_gender")
+        gender = msg.get("gender")
         persona = msg.get("personality")
         logger.info("ACK start → now='%s' gender=%s personality=%s", now, gender, persona)
     elif ack_for == "set_persona":
