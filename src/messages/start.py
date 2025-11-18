@@ -84,6 +84,7 @@ class StartPlan:
     runtime_text: str
     history_text: str
     user_utt: str
+    history_turn_id: str | None = None
     sampling_overrides: dict[str, float | int] | None = None
 
 
@@ -125,6 +126,8 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     runtime_text = ""
     history_text = _resolve_history(session_id, msg)
     user_utt = _trim_user_utterance(msg.get("user_utterance", ""))
+    history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
+    history_text = session_handler.get_history_text(session_id)
 
     await ws.send_text(json.dumps(_build_ack_payload(session_id, session_config, updated_config)))
     logger.info("handle_start: ack sent session_id=%s", session_id)
@@ -135,6 +138,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         runtime_text=runtime_text,
         history_text=history_text,
         user_utt=user_utt,
+        history_turn_id=history_turn_id,
         sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
     )
 
@@ -300,6 +304,7 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
                 plan.runtime_text,
                 plan.history_text,
                 plan.user_utt,
+                history_turn_id=plan.history_turn_id,
                 sampling_overrides=plan.sampling_overrides,
             )
         else:
@@ -311,6 +316,7 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
                 plan.runtime_text,
                 plan.history_text,
                 plan.user_utt,
+                history_turn_id=plan.history_turn_id,
                 sampling_overrides=plan.sampling_overrides,
             )
         return
@@ -329,6 +335,8 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
             ),
             plan.session_id,
             plan.user_utt,
+            history_turn_id=plan.history_turn_id,
+            history_user_utt=plan.user_utt,
         )
         logger.info("handle_start: chat-only done session_id=%s chars=%s", plan.session_id, len(final_text))
         return

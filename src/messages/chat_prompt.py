@@ -8,6 +8,8 @@ warm to seed prefix caching with the new prompt + history.
 from __future__ import annotations
 
 import json
+import math
+import time
 import uuid
 from typing import Any
 from fastapi import WebSocket
@@ -22,6 +24,7 @@ from ..tokens import (
 from ..config import (
     HISTORY_MAX_TOKENS,
     CHAT_PROMPT_MAX_TOKENS,
+    CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS,
 )
 from ..engines import get_chat_engine
 from .validators import (
@@ -34,6 +37,7 @@ from .validators import (
 
 _ERROR_CODE_MAP = {
     "chat_prompt_too_long": 413,
+    "chat_prompt_update_rate_limited": 429,
 }
 
 
@@ -77,6 +81,22 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     raw_personality = msg.get("personality")
     raw_prompt = msg.get("chat_prompt") or msg.get("persona_text")
     history_text = session_handler.get_history_text(session_id)
+
+    # Cooldown enforcement
+    cooldown_s = max(0.0, CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS)
+    if cooldown_s:
+        last_update_at = session_handler.get_chat_prompt_last_update_at(session_id)
+        if last_update_at:
+            elapsed = time.monotonic() - last_update_at
+            remaining = cooldown_s - elapsed
+            if remaining > 0:
+                retry_in = int(max(1, math.ceil(remaining)))
+                message = (
+                    f"chat_prompt can be updated at most once every {int(cooldown_s)} seconds; "
+                    f"retry in {retry_in} seconds"
+                )
+                await _send_ack_error(ws, ValidationError("chat_prompt_update_rate_limited", message))
+                return
 
     # Validate gender and personality first
     try:
@@ -123,6 +143,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         chat_personality=norm_personality,
         chat_prompt=chat_prompt,
     )
+    session_handler.set_chat_prompt_last_update_at(session_id, time.monotonic())
 
     # Trim history (chat tokenizer) and warm the new prefix (prompt + history)
     if count_tokens_chat(history_text) > HISTORY_MAX_TOKENS:

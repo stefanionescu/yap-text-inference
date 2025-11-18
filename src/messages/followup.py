@@ -66,6 +66,8 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     # Synthesize the follow-up prompt for the chat model
     prefixed = f"{SCREEN_CHECKED_PREFIX} {analysis_text}".strip()
     user_utt = trim_text_to_token_limit_chat(prefixed, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+    history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
+    history_text = session_handler.get_history_text(session_id)
 
     final_text = ""
     sampling_overrides = cfg.get("chat_sampling")
@@ -83,6 +85,6 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
 
     await ws.send_text(json.dumps({"type": "final", "normalized_text": final_text}))
     await ws.send_text(json.dumps({"type": "done", "usage": {}}))
-    session_handler.append_history_turn(session_id, user_utt, final_text)
+    session_handler.append_history_turn(session_id, user_utt, final_text, turn_id=history_turn_id)
 
 

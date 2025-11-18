@@ -54,6 +54,7 @@ class ConcurrentCoordinator:
         tool_timeout_s: float,
         prebuffer_max_chars: int,
         sampling_overrides: dict[str, float | int] | None = None,
+        history_turn_id: str | None = None,
     ):
         self.ws = ws
         self.session_id = session_id
@@ -67,6 +68,7 @@ class ConcurrentCoordinator:
         self.tool_timeout_s = tool_timeout_s
         self.prebuffer_limit = max(prebuffer_max_chars, 0)
         self.sampling_overrides = sampling_overrides
+        self.history_turn_id = history_turn_id
 
         self._chat_iter = chat_stream.__aiter__()
         self._pending_chunk_task: asyncio.Task | None = None
@@ -191,6 +193,8 @@ class ConcurrentCoordinator:
             new_chat_stream,
             self.session_id,
             modified_user_utt,
+            history_turn_id=self.history_turn_id,
+            history_user_utt=self.user_utt,
         )
         logger.info(
             "concurrent_exec: done after tool yes session_id=%s chars=%s",
@@ -227,6 +231,8 @@ class ConcurrentCoordinator:
             self.user_utt,
             initial_text=buffered,
             initial_text_already_sent=bool(buffered),
+            history_turn_id=self.history_turn_id,
+            history_user_utt=self.user_utt,
         )
         logger.info("concurrent_exec: done after tool no session_id=%s chars=%s", self.session_id, len(final_text))
 
@@ -255,6 +261,7 @@ async def run_concurrent_execution(
     history_text: str,
     user_utt: str,
     *,
+    history_turn_id: str | None = None,
     sampling_overrides: dict[str, float | int] | None = None,
 ) -> None:
     """Execute concurrent tool and chat workflow with buffering."""
@@ -282,6 +289,7 @@ async def run_concurrent_execution(
         user_utt,
         request_id=chat_req_id,
         sampling_overrides=sampling_overrides,
+        history_turn_id=history_turn_id,
     )
     logger.info("concurrent_exec: chat start req_id=%s", chat_req_id)
 
