@@ -1,8 +1,14 @@
 """Concurrent execution: tool and chat models run in parallel."""
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import logging
 import uuid
+from dataclasses import dataclass
+from typing import Awaitable
+
 from fastapi import WebSocket
 
 from .tool_parser import parse_tool_result
@@ -23,6 +29,221 @@ from .executor_utils import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ToolDecision:
+    raw_field: object
+    is_tool: bool
+    payload: dict | None
+
+
+class ConcurrentCoordinator:
+    """Coordinates concurrent tool routing and chat pre-buffering."""
+
+    def __init__(
+        self,
+        *,
+        ws: WebSocket,
+        session_id: str,
+        static_prefix: str,
+        runtime_text: str,
+        history_text: str,
+        user_utt: str,
+        chat_req_id: str,
+        chat_stream,
+        tool_coro: Awaitable[dict],
+        tool_timeout_s: float,
+        prebuffer_max_chars: int,
+    ):
+        self.ws = ws
+        self.session_id = session_id
+        self.static_prefix = static_prefix
+        self.runtime_text = runtime_text
+        self.history_text = history_text
+        self.user_utt = user_utt
+        self.chat_req_id = chat_req_id
+        self.chat_stream = chat_stream
+        self.tool_coro = tool_coro
+        self.tool_timeout_s = tool_timeout_s
+        self.prebuffer_limit = max(prebuffer_max_chars, 0)
+
+        self._chat_iter = chat_stream.__aiter__()
+        self._pending_chunk_task: asyncio.Task | None = None
+        self._chat_finished = False
+        self._buffer = ""
+        self._tool_task = asyncio.create_task(self._collect_tool_result())
+
+    async def run(self) -> None:
+        try:
+            decision = await self._await_tool_decision()
+            session_handler.clear_tool_request_id(self.session_id)
+            if decision.is_tool:
+                await self._handle_tool_yes(decision.raw_field)
+            else:
+                await self._handle_tool_no(decision.raw_field)
+        finally:
+            await self._shutdown_pending_chunk()
+
+    async def _await_tool_decision(self) -> ToolDecision:
+        while True:
+            self._ensure_chunk_task()
+            wait_set = {self._tool_task}
+            if self._pending_chunk_task:
+                wait_set.add(self._pending_chunk_task)
+
+            done, _ = await asyncio.wait(wait_set, return_when=asyncio.FIRST_COMPLETED)
+
+            if self._pending_chunk_task and self._pending_chunk_task in done:
+                chunk = await self._consume_pending_chunk()
+                if chunk:
+                    await self._maybe_flush_prebuffer(chunk)
+                if self._chat_finished and self._tool_task.done():
+                    break
+                if not self._tool_task.done():
+                    continue
+
+            if self._tool_task in done:
+                break
+
+        tool_result = await self._tool_task
+        raw_field, is_tool = parse_tool_result(tool_result)
+        text_len = len((tool_result or {}).get("text") or "")
+        logger.info(
+            "concurrent_exec: tool decision session_id=%s is_tool=%s text_len=%s",
+            self.session_id,
+            is_tool,
+            text_len,
+        )
+        return ToolDecision(raw_field=raw_field, is_tool=is_tool, payload=tool_result)
+
+    async def _collect_tool_result(self) -> dict | None:
+        try:
+            if self.tool_timeout_s < 0:
+                return await self.tool_coro
+            return await asyncio.wait_for(self.tool_coro, timeout=self.tool_timeout_s)
+        except asyncio.TimeoutError:
+            await abort_tool_request(self.session_id)
+            logger.info("concurrent_exec: tool timeout session_id=%s", self.session_id)
+            return {"cancelled": True}
+
+    def _ensure_chunk_task(self) -> None:
+        if self._chat_finished or (self._pending_chunk_task and not self._pending_chunk_task.done()):
+            return
+        self._pending_chunk_task = asyncio.create_task(self._chat_iter.__anext__())
+
+    async def _consume_pending_chunk(self) -> str | None:
+        if not self._pending_chunk_task:
+            return None
+        task = self._pending_chunk_task
+        self._pending_chunk_task = None
+        try:
+            return await task
+        except StopAsyncIteration:
+            self._chat_finished = True
+            return None
+        except asyncio.CancelledError:
+            return None
+
+    async def _maybe_flush_prebuffer(self, chunk: str) -> None:
+        self._buffer += chunk
+        if self.prebuffer_limit <= 0:
+            await flush_and_send(self.ws, self._buffer)
+            logger.info(
+                "concurrent_exec: flushed prebuffer session_id=%s len=%s",
+                self.session_id,
+                len(self._buffer),
+            )
+            self._buffer = ""
+            return
+        if len(self._buffer) < self.prebuffer_limit:
+            return
+        await flush_and_send(self.ws, self._buffer)
+        logger.info(
+            "concurrent_exec: flushed prebuffer session_id=%s len=%s",
+            self.session_id,
+            len(self._buffer),
+        )
+        self._buffer = ""
+
+    async def _handle_tool_yes(self, raw_field: object) -> None:
+        await send_toolcall(self.ws, "yes", raw_field)
+        logger.info("concurrent_exec: sent toolcall yes")
+        await self._shutdown_pending_chunk()
+        with contextlib.suppress(Exception):
+            await (await get_chat_engine()).abort_request(self.chat_req_id)
+
+        new_chat_req_id = f"chat-{uuid.uuid4()}"
+        session_handler.set_active_request(self.session_id, new_chat_req_id)
+        modified_user_utt = f"{CHECK_SCREEN_PREFIX} {self.user_utt}".strip()
+
+        new_chat_stream = run_chat_stream(
+            self.session_id,
+            self.static_prefix,
+            self.runtime_text,
+            self.history_text,
+            modified_user_utt,
+            request_id=new_chat_req_id,
+        )
+        final_text = await stream_chat_response(
+            self.ws,
+            new_chat_stream,
+            self.session_id,
+            modified_user_utt,
+        )
+        logger.info(
+            "concurrent_exec: done after tool yes session_id=%s chars=%s",
+            self.session_id,
+            len(final_text),
+        )
+
+    async def _handle_tool_no(self, raw_field: object) -> None:
+        await send_toolcall(self.ws, "no", raw_field)
+        logger.info("concurrent_exec: sent toolcall no")
+
+        buffered = self._buffer
+        if buffered:
+            await flush_and_send(self.ws, buffered)
+            logger.info(
+                "concurrent_exec: flushed buffered chat session_id=%s len=%s",
+                self.session_id,
+                len(buffered),
+            )
+            self._buffer = ""
+
+        first_chunk = await self._drain_pending_chunk()
+
+        async def _remaining_stream():
+            if first_chunk:
+                yield first_chunk
+            async for chunk in self._chat_iter:
+                yield chunk
+
+        final_text = await stream_chat_response(
+            self.ws,
+            _remaining_stream(),
+            self.session_id,
+            self.user_utt,
+            initial_text=buffered,
+            initial_text_already_sent=bool(buffered),
+        )
+        logger.info("concurrent_exec: done after tool no session_id=%s chars=%s", self.session_id, len(final_text))
+
+    async def _drain_pending_chunk(self) -> str | None:
+        if not self._pending_chunk_task:
+            return None
+        try:
+            return await self._pending_chunk_task
+        except (asyncio.CancelledError, StopAsyncIteration):
+            return None
+        finally:
+            self._pending_chunk_task = None
+
+    async def _shutdown_pending_chunk(self) -> None:
+        if not self._pending_chunk_task:
+            return
+        await cancel_task(self._pending_chunk_task)
+        self._pending_chunk_task = None
+
+
 async def run_concurrent_execution(
     ws: WebSocket,
     session_id: str,
@@ -31,35 +252,23 @@ async def run_concurrent_execution(
     history_text: str,
     user_utt: str,
 ) -> None:
-    """Execute concurrent tool and chat workflow with buffering.
-    
-    Args:
-        ws: WebSocket connection
-        session_id: Session identifier
-        static_prefix: Static persona prefix
-        runtime_text: Runtime persona text
-        history_text: Conversation history
-        user_utt: User utterance
-    """
+    """Execute concurrent tool and chat workflow with buffering."""
     tool_hard_timeout_ms = float(TOOL_HARD_TIMEOUT_MS)
     prebuffer_max_chars = int(PREBUFFER_MAX_CHARS)
+    tool_timeout_s = tool_hard_timeout_ms / 1000.0 if tool_hard_timeout_ms >= 0 else -1.0
     logger.info(
         "concurrent_exec: session_id=%s tool_timeout_ms=%s prebuffer=%s",
         session_id,
         tool_hard_timeout_ms,
         prebuffer_max_chars,
     )
-    
-    # Start both tool and chat coroutines concurrently
+
     chat_req_id = f"chat-{uuid.uuid4()}"
-    
-    session_handler.set_active_request(session_id, chat_req_id)  # chat gets active req id for cancellation
-    
-    # Start tool model with shared history for KV cache efficiency
+    session_handler.set_active_request(session_id, chat_req_id)
+
     tool_req_id, tool_coro = launch_tool_request(session_id, user_utt, history_text)
-    logger.info(f"concurrent_exec: tool start req_id={tool_req_id}")
-    
-    # Start chat model  
+    logger.info("concurrent_exec: tool start req_id=%s", tool_req_id)
+
     chat_stream = run_chat_stream(
         session_id,
         static_prefix,
@@ -68,192 +277,27 @@ async def run_concurrent_execution(
         user_utt,
         request_id=chat_req_id,
     )
-    logger.info(f"concurrent_exec: chat start req_id={chat_req_id}")
-    
-    # Buffer to accumulate chat tokens while waiting for tool decision
-    chat_buffer = ""
-    tool_decision_ready = False
-    tool_result = None
+    logger.info("concurrent_exec: chat start req_id=%s", chat_req_id)
 
-    # Create task for tool result collection
-    async def collect_tool_result():
-        """Collect tool result with timeout handling."""
-        nonlocal tool_result, tool_decision_ready
-        try:
-            if tool_hard_timeout_ms < 0:
-                tool_result = await tool_coro
-            else:
-                tool_result = await asyncio.wait_for(tool_coro, timeout=tool_hard_timeout_ms / 1000.0)
-        except asyncio.TimeoutError:
-            await abort_tool_request(session_id)
-            tool_result = {"cancelled": True}
-        finally:
-            tool_decision_ready = True
-
-    # Start tool collection task
-    tool_task = asyncio.create_task(collect_tool_result())
+    coordinator = ConcurrentCoordinator(
+        ws=ws,
+        session_id=session_id,
+        static_prefix=static_prefix,
+        runtime_text=runtime_text,
+        history_text=history_text,
+        user_utt=user_utt,
+        chat_req_id=chat_req_id,
+        chat_stream=chat_stream,
+        tool_coro=tool_coro,
+        tool_timeout_s=tool_timeout_s,
+        prebuffer_max_chars=prebuffer_max_chars,
+    )
 
     try:
-        # Consume chat stream while also reacting immediately if tool decision arrives first
-        aiter = chat_stream.__aiter__()
-        pending_next_chunk_task = None
-       
-        while True:
-            # Create a task to await the next chat chunk
-            next_chunk_task = asyncio.create_task(aiter.__anext__())
-            pending_next_chunk_task = next_chunk_task
-
-            done, pending = await asyncio.wait({tool_task, next_chunk_task}, return_when=asyncio.FIRST_COMPLETED)
-
-            if next_chunk_task in done:
-                try:
-                    chunk = next_chunk_task.result()
-                except StopAsyncIteration:
-                    # Chat stream finished before producing any new chunk
-                    # Ensure tool task completed so we can proceed
-                    if not tool_task.done():
-                        await tool_task
-                    logger.info("concurrent_exec: chat stream ended before tool decision")
-                    break
-
-                if tool_decision_ready:
-                    # Tool decision arrived: capture this first chunk then break to process decision
-                    chat_buffer += chunk
-                    logger.info(f"concurrent_exec: tool decision ready; first chat chunk len={len(chunk)}")
-                    break
-
-                chat_buffer += chunk
-                if len(chat_buffer) >= prebuffer_max_chars:
-                    await flush_and_send(ws, chat_buffer)
-                    logger.info(f"concurrent_exec: flushed prebuffer len={len(chat_buffer)}")
-                    chat_buffer = ""
-
-                # Continue loop to fetch next chunk (tool decision not ready yet)
-                continue
-            
-            # Note: Do not clear pending_next_chunk_task here. If the tool decision arrives first,
-            # we must preserve the in-flight next-chunk task to await/cancel it after the decision.
-
-            # Tool task completed first
-            if tool_task in done:
-                tool_decision_ready = True
-                # Do not cancel the in-flight next_chunk_task here; we'll handle it after parsing the decision
-                logger.info("concurrent_exec: tool decision arrived before first chat chunk")
-                break
-
-        # Ensure tool task completes
-        if not tool_decision_ready:
-            await tool_task
-        
-        # Parse tool decision
-        raw_field, is_tool = parse_tool_result(tool_result)
-        _txt = (tool_result or {}).get("text") if tool_result else None
-        logger.info(
-            "concurrent_exec: tool_result is_tool=%s text_len=%s",
-            is_tool,
-            len(_txt) if isinstance(_txt, str) else 0,
-        )
-        
-        # Cleanup tool req id tracking (no longer in-flight)
-        try:
-            session_handler.session_tool_req.pop(session_id, None)
-        except Exception:
-            pass
-        
-        if is_tool:
-            # Tool detected: cancel first chat stream, ignore buffered tokens, start new chat stream
-            # Best-effort: cancel any in-flight next-chunk and wait for cancellation to settle
-            try:
-                pending_exists = "pending_next_chunk_task" in locals()
-                pending_active = pending_next_chunk_task and not pending_next_chunk_task.done()
-                if pending_exists and pending_active:
-                    await cancel_task(pending_next_chunk_task)
-            except Exception:
-                pass
-            try:
-                await (await get_chat_engine()).abort_request(chat_req_id)
-            except Exception:
-                pass
-
-            # Send toolcall response
-            await send_toolcall(ws, "yes", raw_field)
-            logger.info("concurrent_exec: sent toolcall yes")
-
-            # Start new chat stream with CHECK SCREEN prefix
-            new_chat_req_id = f"chat-{uuid.uuid4()}"
-            session_handler.set_active_request(session_id, new_chat_req_id)
-
-            modified_user_utt = f"{CHECK_SCREEN_PREFIX} {user_utt}".strip()
-
-            new_chat_stream = run_chat_stream(
-                session_id,
-                static_prefix,
-                runtime_text,
-                history_text,
-                modified_user_utt,
-                request_id=new_chat_req_id,
-            )
-            logger.info(
-                "concurrent_exec: new chat stream after tool yes (prefix=%s) req_id=%s",
-                CHECK_SCREEN_PREFIX,
-                new_chat_req_id,
-            )
-
-            final_text = await stream_chat_response(
-                ws,
-                new_chat_stream,
-                session_id,
-                modified_user_utt,
-            )
-            logger.info(
-                "concurrent_exec: done after tool yes (CHECK SCREEN) chars=%s",
-                len(final_text),
-            )
-            return
-        
-        # Tool says NO: flush buffered chat text and continue streaming
-        await send_toolcall(ws, "no", raw_field)
-        logger.info("concurrent_exec: sent toolcall no")
-        
-        # Flush any buffered chat text
-        if chat_buffer:
-            await flush_and_send(ws, chat_buffer)
-            logger.info(f"concurrent_exec: flushed buffered chat len={len(chat_buffer)}")
-        
-        # Continue streaming the rest of chat output
-        first_chunk: str | None = None
-        if 'pending_next_chunk_task' in locals() and pending_next_chunk_task:
-            try:
-                first_chunk = await pending_next_chunk_task
-            except (asyncio.CancelledError, StopAsyncIteration):
-                first_chunk = None
-            except Exception:
-                logger.exception("concurrent_exec: error awaiting pending first chunk")
-            finally:
-                pending_next_chunk_task = None
-
-        async def _remaining_stream():
-            if first_chunk:
-                yield first_chunk
-            async for chunk in aiter:
-                yield chunk
-
-        final_text = await stream_chat_response(
-            ws,
-            _remaining_stream(),
-            session_id,
-            user_utt,
-            initial_text=chat_buffer,
-            initial_text_already_sent=True,
-        )
-        logger.info("concurrent_exec: done after tool no chars=%s", len(final_text))
-    
+        await coordinator.run()
     except Exception:
-        # Clean up on any error
-        try:
+        with contextlib.suppress(Exception):
             await (await get_chat_engine()).abort_request(chat_req_id)
-        except Exception:
-            pass
         await abort_tool_request(session_id)
         logger.exception("concurrent_exec: error")
         raise

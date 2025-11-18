@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
 
 CancelCheck = Callable[[], bool | Awaitable[bool]] | None
+
+
+class StreamCancelledError(Exception):
+    """Raised when a cooperative cancel check requests termination."""
 
 
 async def stream_with_timeout(
@@ -19,11 +24,7 @@ async def stream_with_timeout(
     timeout_s: float,
     cancel_check: CancelCheck = None,
 ) -> AsyncGenerator[Any, None]:
-    """Yield engine stream outputs with a hard timeout and optional cancel check.
-
-    The caller is responsible for interpreting outputs and building text deltas.
-    Aborts the request on timeout or when the cancel_check returns True.
-    """
+    """Yield engine stream outputs with a hard timeout and optional cancellation."""
     engine = await get_engine()
     stream = engine.generate(
         prompt=prompt,
@@ -31,34 +32,33 @@ async def stream_with_timeout(
         request_id=request_id,
         priority=priority,
     )
+    cancel_checker = _CancelChecker(cancel_check)
 
-    deadline = asyncio.get_event_loop().time() + timeout_s
-    aiter = stream.__aiter__()
+    try:
+        async with asyncio.timeout(timeout_s):
+            async for out in stream:
+                if await cancel_checker.triggered():
+                    await _abort_request(engine, request_id)
+                    raise StreamCancelledError()
+                yield out
+    except asyncio.TimeoutError:
+        await _abort_request(engine, request_id)
+        raise
 
-    while True:
-        remaining = deadline - asyncio.get_event_loop().time()
-        if remaining <= 0:
-            try:
-                await engine.abort_request(request_id)
-            except Exception:
-                pass
-            raise asyncio.TimeoutError()
 
-        try:
-            out = await asyncio.wait_for(aiter.__anext__(), timeout=remaining)
-        except StopAsyncIteration:
-            break
+async def _abort_request(engine: Any, request_id: str) -> None:
+    with contextlib.suppress(Exception):
+        await engine.abort_request(request_id)
 
-        # Optional cooperative cancel
-        if cancel_check is not None:
-            check = cancel_check()
-            if asyncio.iscoroutine(check):
-                check = await check  # type: ignore[assignment]
-            if check:
-                try:
-                    await engine.abort_request(request_id)
-                except Exception:
-                    pass
-                return
 
-        yield out
+class _CancelChecker:
+    def __init__(self, cancel_check: CancelCheck):
+        self._check = cancel_check
+
+    async def triggered(self) -> bool:
+        if self._check is None:
+            return False
+        result = self._check()
+        if asyncio.iscoroutine(result):
+            result = await result
+        return bool(result)

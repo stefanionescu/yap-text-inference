@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import uuid
 from fastapi import WebSocket
 
 from .tool_parser import parse_tool_result
@@ -59,10 +60,7 @@ async def run_sequential_execution(
     raw_field, is_tool = parse_tool_result(tool_res)
 
     # Cleanup tool req id tracking (no longer in-flight)
-    try:
-        session_handler.session_tool_req.pop(session_id, None)
-    except Exception:
-        pass
+    session_handler.clear_tool_request_id(session_id)
 
     if is_tool:
         # Tool detected: send toolcall response but continue with chat (CHECK SCREEN)

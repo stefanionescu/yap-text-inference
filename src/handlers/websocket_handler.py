@@ -118,7 +118,7 @@ async def _handle_start_command(
         )
         return current_session_id
 
-    if current_session_id and current_session_id in session_handler.session_tasks:
+    if current_session_id and session_handler.has_running_task(current_session_id):
         session_handler.cancel_session_requests(current_session_id)
 
     await handle_start_message(ws, msg, session_id)
@@ -133,19 +133,19 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         ws: WebSocket connection
     """
     lifecycle: WebSocketLifecycle | None = None
-
+    
     if not await authenticate_websocket(ws):
         await _reject_connection(
             ws,
             error_code="authentication_failed",
             message=(
-                "Authentication required. Provide valid API key via 'api_key' "
-                "query parameter or 'X-API-Key' header."
-            ),
+                        "Authentication required. Provide valid API key via 'api_key' "
+                        "query parameter or 'X-API-Key' header."
+                    ),
             close_code=WS_CLOSE_UNAUTHORIZED_CODE,
         )
         return
-
+    
     if not await connection_handler.connect(ws):
         capacity_info = connection_handler.get_capacity_info()
         await _reject_connection(
@@ -154,18 +154,18 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             message=(
                 "Server is at capacity. "
                 f"Active connections: {capacity_info['active']}/{capacity_info['max']}. "
-                "Please try again later."
-            ),
+                        "Please try again later."
+                    ),
             close_code=WS_CLOSE_BUSY_CODE,
             extra={"capacity": capacity_info},
         )
         return
-
+    
     await ws.accept()
     session_id: str | None = None
     lifecycle = WebSocketLifecycle(ws)
     lifecycle.start()
-
+    
     logger.info(
         "WebSocket connection accepted. Active: %s",
         connection_handler.get_connection_count(),
