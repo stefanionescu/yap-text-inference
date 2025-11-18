@@ -15,6 +15,15 @@ _test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _test_dir not in sys.path:
     sys.path.insert(0, _test_dir)
 
+from config import (
+    DEFAULT_ASSISTANT_GENDER,
+    DEFAULT_PERSONALITY,
+    DEFAULT_RECV_TIMEOUT_SEC,
+    DEFAULT_SERVER_WS_URL,
+    DEFAULT_TEXT_API_KEY,
+    DEFAULT_WS_PING_INTERVAL,
+    DEFAULT_WS_PING_TIMEOUT,
+)
 from common.regex import contains_complete_sentence, has_at_least_n_words
 from common.ws import with_api_key
 from .messages import choose_message
@@ -28,10 +37,10 @@ async def _send_client_end(ws) -> None:
 
 
 async def run_once(args) -> None:
-    server_ws_url = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
-    api_key = os.getenv("TEXT_API_KEY", "yap_token")
-    assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", "female")
-    personality = args.personality or os.getenv("PERSONALITY", "flirty")
+    server_ws_url = os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
+    api_key = DEFAULT_TEXT_API_KEY
+    assistant_gender = args.assistant_gender or os.getenv("ASSISTANT_GENDER", DEFAULT_ASSISTANT_GENDER)
+    personality = args.personality or os.getenv("PERSONALITY", DEFAULT_PERSONALITY)
 
     ws_url_with_auth = with_api_key(server_ws_url)
 
@@ -61,13 +70,18 @@ async def run_once(args) -> None:
     start_payload["tool_prompt"] = TOOLCALL_PROMPT
 
     print(f"Connecting to {server_ws_url} (with API key auth) …")
-    async with websockets.connect(ws_url_with_auth, max_queue=None) as ws:
+    async with websockets.connect(
+        ws_url_with_auth,
+        max_queue=None,
+        ping_interval=DEFAULT_WS_PING_INTERVAL,
+        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+    ) as ws:
         try:
             await ws.send(json.dumps(start_payload))
 
             final_text = ""
             ack_seen = False
-            recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", "60"))
+            recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
             first_token_ts: float | None = None
             first_sentence_ts: float | None = None
             first_3_words_ts: float | None = None
