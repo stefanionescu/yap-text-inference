@@ -17,11 +17,12 @@ from test.common.message import iter_messages
 from test.common.rate import SlidingWindowPacer
 from test.common.ws import send_client_end, with_api_key
 from test.config import (
+    CONVERSATION_HISTORY_PROMPTS,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
-    PERSONA_SWITCH_REPLIES,
     PERSONA_VARIANTS,
+    PERSONALITY_NAME_CHECK_PROMPT,
     PERSONALITY_REPLIES_PER_SWITCH,
     PERSONALITY_SWITCH_DEFAULT,
     PERSONALITY_SWITCH_DELAY_SECONDS,
@@ -49,14 +50,17 @@ class PersonaVariant:
 class PersonaSession:
     session_id: str
     history: str = ""
-    reply_index: int = 0
-    replies: Sequence[str] = field(default_factory=lambda: PERSONA_SWITCH_REPLIES)
+    prompt_index: int = 0
+    prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_PROMPTS))
 
-    def next_user_prompt(self) -> str:
-        if not self.replies:
-            raise RuntimeError("PERSONA_SWITCH_REPLIES is empty; cannot produce user prompts.")
-        prompt = self.replies[self.reply_index % len(self.replies)]
-        self.reply_index += 1
+    def has_remaining_prompts(self) -> bool:
+        return self.prompt_index < len(self.prompts)
+
+    def next_script_prompt(self) -> str:
+        if not self.has_remaining_prompts():
+            raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; cannot produce user prompts.")
+        prompt = self.prompts[self.prompt_index]
+        self.prompt_index += 1
         return prompt
 
     def append_exchange(self, user_text: str, assistant_text: str) -> None:
@@ -148,6 +152,24 @@ async def _send_persona_update(
         raise RuntimeError(f"update_chat_prompt failed: {ack}")
 
 
+async def _send_user_exchange(
+    ws,
+    session: PersonaSession,
+    variant: PersonaVariant,
+    user_text: str,
+    *,
+    message_pacer: SlidingWindowPacer | None = None,
+) -> None:
+    assistant_text = await _send_start_request(
+        ws,
+        session,
+        variant,
+        user_text,
+        message_pacer=message_pacer,
+    )
+    session.append_exchange(user_text, assistant_text)
+
+
 async def _run_initial_exchange(
     ws,
     session: PersonaSession,
@@ -155,15 +177,14 @@ async def _run_initial_exchange(
     *,
     message_pacer: SlidingWindowPacer | None = None,
 ) -> None:
-    opener = session.next_user_prompt()
-    assistant_text = await _send_start_request(
+    opener = session.next_script_prompt()
+    await _send_user_exchange(
         ws,
         session,
         variant,
         opener,
         message_pacer=message_pacer,
     )
-    session.append_exchange(opener, assistant_text)
 
 
 async def _run_switch_sequence(
@@ -174,6 +195,8 @@ async def _run_switch_sequence(
     persona_pacer: SlidingWindowPacer | None = None,
     message_pacer: SlidingWindowPacer | None = None,
 ) -> None:
+    if not session.has_remaining_prompts():
+        return
     await _send_persona_update(
         ws,
         session,
@@ -181,21 +204,50 @@ async def _run_switch_sequence(
         persona_pacer=persona_pacer,
         message_pacer=message_pacer,
     )
+    await _send_user_exchange(
+        ws,
+        session,
+        variant,
+        PERSONALITY_NAME_CHECK_PROMPT,
+        message_pacer=message_pacer,
+    )
     for _ in range(PERSONALITY_REPLIES_PER_SWITCH):
-        user_text = session.next_user_prompt()
-        assistant_text = await _send_start_request(
+        if not session.has_remaining_prompts():
+            break
+        user_text = session.next_script_prompt()
+        await _send_user_exchange(
             ws,
             session,
             variant,
             user_text,
             message_pacer=message_pacer,
         )
-        session.append_exchange(user_text, assistant_text)
+
+
+async def _run_remaining_sequence(
+    ws,
+    session: PersonaSession,
+    variant: PersonaVariant,
+    *,
+    message_pacer: SlidingWindowPacer | None = None,
+) -> None:
+    while session.has_remaining_prompts():
+        user_text = session.next_script_prompt()
+        await _send_user_exchange(
+            ws,
+            session,
+            variant,
+            user_text,
+            message_pacer=message_pacer,
+        )
 
 
 async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
     url = with_api_key(ws_url)
-    session = PersonaSession(session_id=f"sess-{uuid.uuid4()}")
+    prompt_sequence = tuple(CONVERSATION_HISTORY_PROMPTS)
+    if not prompt_sequence:
+        raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; nothing to test.")
+    session = PersonaSession(session_id=f"sess-{uuid.uuid4()}", prompts=prompt_sequence)
     variants: list[PersonaVariant] = [PersonaVariant(*variant) for variant in PERSONA_VARIANTS]
     if not variants:
         raise RuntimeError("PERSONA_VARIANTS is empty; nothing to test.")
@@ -209,20 +261,31 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
     ) as ws:
         try:
+            current_variant_idx = 0
             await _run_initial_exchange(
                 ws,
                 session,
-                variants[0],
+                variants[current_variant_idx],
                 message_pacer=message_pacer,
             )
-            for i in range(switches):
+            for _ in range(switches):
+                if not session.has_remaining_prompts():
+                    break
                 await asyncio.sleep(delay_s)
-                variant = variants[(i + 1) % len(variants)]
+                current_variant_idx = (current_variant_idx + 1) % len(variants)
+                variant = variants[current_variant_idx]
                 await _run_switch_sequence(
                     ws,
                     session,
                     variant,
                     persona_pacer=persona_pacer,
+                    message_pacer=message_pacer,
+                )
+            if session.has_remaining_prompts():
+                await _run_remaining_sequence(
+                    ws,
+                    session,
+                    variants[current_variant_idx],
                     message_pacer=message_pacer,
                 )
         finally:

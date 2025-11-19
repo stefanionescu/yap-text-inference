@@ -3,7 +3,7 @@
 import os
 
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))  # 1800 persona + 3000 history + 350 user + 10 tool reply
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user + 1200 history
@@ -26,9 +26,8 @@ CHAT_FREQUENCY_PENALTY_MIN = float(os.getenv("CHAT_FREQUENCY_PENALTY_MIN", "0.0"
 CHAT_FREQUENCY_PENALTY_MAX = float(os.getenv("CHAT_FREQUENCY_PENALTY_MAX", "0.15"))
 
 # Max tokens allowed for incoming prompts (provided by clients)
-# Defaults per request: 1800 for both chat and tool prompts
 CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1800"))
-TOOL_PROMPT_MAX_TOKENS = int(os.getenv("TOOL_PROMPT_MAX_TOKENS", "1800"))
+TOOL_PROMPT_MAX_TOKENS = int(os.getenv("TOOL_PROMPT_MAX_TOKENS", "1450"))
 
 # Personality validation
 PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
@@ -37,7 +36,7 @@ PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
 # History and user limits (approximate tokens)
-HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "2400"))
+HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
 
 # Persona update pacing (rolling window)
@@ -53,9 +52,8 @@ WS_CANCEL_WINDOW_SECONDS = float(os.getenv(
 ))
 WS_MAX_CANCELS_PER_WINDOW = int(os.getenv("WS_MAX_CANCELS_PER_WINDOW", str(WS_MAX_MESSAGES_PER_WINDOW)))
 
-# Tool model specific limits
-TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1200"))  # Half of chat history for KV sharing
-TOOL_SYSTEM_TOKENS = int(os.getenv("TOOL_SYSTEM_TOKENS", "1450"))  # System prompt + tool response
+# Tool model history limit
+TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1200"))  # Tool model context allocation
 
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
 EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
@@ -111,7 +109,6 @@ __all__ = [
     "WS_CANCEL_WINDOW_SECONDS",
     "WS_MAX_CANCELS_PER_WINDOW",
     "TOOL_HISTORY_TOKENS",
-    "TOOL_SYSTEM_TOKENS",
     "EXACT_TOKEN_TRIM",
     "CONCURRENT_MODEL_CALL",
     "MAX_CONCURRENT_CONNECTIONS",

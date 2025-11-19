@@ -63,6 +63,7 @@ _DEFAULT_LOGIT_BIAS = {
     "what's really on your mind?": -100.0,
     "Now let's talk about": -100.0,
     "~": -100.0,
+    " - ": -100,
 }
 
 

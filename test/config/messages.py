@@ -53,28 +53,7 @@ WARMUP_DEFAULT_MESSAGES = [
     ),
 ]
 
-PERSONA_SWITCH_REPLIES = [
-    "Hey there, how are you?",
-    "What are you up to right now?",
-    "Tell me something interesting about yourself.",
-    "Do you prefer mornings or nights?",
-    "What's your current vibe?",
-    "Give me your take on this week.",
-    "What would you do on a free day?",
-    "Are you more spontaneous or a planner?",
-    "What's a hot take you stand by?",
-    "What annoys you the most?",
-    "What do you think about road trips?",
-    "What's your idea of fun?",
-    "What was the last thing that made you laugh?",
-    "What topic do you always have an opinion on?",
-    "What's overrated right now?",
-    "What's underrated right now?",
-    "Describe your perfect evening in 5 words.",
-    "What's your favorite guilty pleasure?",
-    "What's something you refuse to do?",
-    "What's your dream weekend like?",
-]
+PERSONALITY_NAME_CHECK_PROMPT = "Sorry what is your name now? I forgot."
 
 CONVERSATION_HISTORY_PROMPTS = [
     "Math pop quiz: what's 27 + 36? I'm double checking the mental math I bragged about to my brother.",
@@ -97,7 +76,7 @@ SCREEN_ANALYSIS_ANALYSIS_TEXT = (
 
 __all__ = [
     "WARMUP_DEFAULT_MESSAGES",
-    "PERSONA_SWITCH_REPLIES",
+    "PERSONALITY_NAME_CHECK_PROMPT",
     "SCREEN_ANALYSIS_USER_UTTERANCE",
     "SCREEN_ANALYSIS_ANALYSIS_TEXT",
     "CONVERSATION_HISTORY_PROMPTS",
