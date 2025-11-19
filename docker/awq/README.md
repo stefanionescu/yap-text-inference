@@ -50,7 +50,7 @@ DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat ./build.sh  # tag :chat
 DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool ./build.sh  # tag :tool
 
 # Run (deploy both models)
-TEXT_API_KEY=yap_token \
+TEXT_API_KEY=your_secret_key \
 DEPLOY_MODELS=both \
 AWQ_CHAT_MODEL=your-org/chat-awq \
 AWQ_TOOL_MODEL=your-org/tool-awq \
@@ -87,7 +87,7 @@ docker run -d --gpus all --name yap-tool \
 - If `DEPLOY_MODELS=both`: `AWQ_CHAT_MODEL` and `AWQ_TOOL_MODEL`
 
 ### Optional
-- `TEXT_API_KEY` (default: `yap_token`)
+- `TEXT_API_KEY` (required, no default - must be set)
 - `CHAT_GPU_FRAC` (default: `0.70`)
 - `TOOL_GPU_FRAC` (default: `0.20`)
 
@@ -120,7 +120,7 @@ docker run -d --gpus all --name yap-server \
   -e DEPLOY_MODELS=both \
   -e AWQ_CHAT_MODEL=your-org/chat-awq \
   -e AWQ_TOOL_MODEL=your-org/tool-awq \
-  -e TEXT_API_KEY=yap_token \
+  -e TEXT_API_KEY=your_secret_key \
   -e CHAT_GPU_FRAC=0.70 \
   -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \

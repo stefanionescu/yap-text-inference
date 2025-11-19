@@ -22,7 +22,6 @@ from config import (
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
-    DEFAULT_TEXT_API_KEY,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     WARMUP_DEFAULT_MESSAGES,
@@ -111,7 +110,9 @@ class StreamTracker:
 
 async def run_once(args) -> None:
     server_ws_url = os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
-    api_key = DEFAULT_TEXT_API_KEY
+    api_key = os.getenv("TEXT_API_KEY")
+    if not api_key:
+        raise ValueError("TEXT_API_KEY environment variable is required and must be set before running tests")
     gender = args.gender or os.getenv("GENDER", DEFAULT_GENDER)
     personality = args.personality or os.getenv("PERSONALITY", DEFAULT_PERSONALITY)
 

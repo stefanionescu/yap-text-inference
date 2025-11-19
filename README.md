@@ -37,8 +37,8 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 - FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
 - Built-in logit bias that permanently suppresses banned phrases/emoticons (e.g., `*winks*`, `Oh honey`, `:)`). You can override via `CHAT_LOGIT_BIAS_FILE` if needed.
 - Interrupts/barge-in via cancel or a new start, plus explicit heartbeats and idle enforcement (150 s default).
-- Concurrent connection limiting to protect GPU resources (deployment/quantization-aware: non-AWQ → 32 tool-only / 24 chat-only / 16 both; AWQ → 64 tool-only / 40 chat-only / 26 both)
-- API key authentication for secure access (configurable, default: "yap_token")
+- Concurrent connection limiting via a global semaphore (capacity is explicitly configured through the `MAX_CONCURRENT_CONNECTIONS` environment variable so you can match your hardware profile)
+- API key authentication for secure access (required, must be set via TEXT_API_KEY environment variable)
 
 ## WebSocket Protocol Highlights
 
@@ -54,6 +54,18 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 - **Done frame contract**: Every turn ends with `{"type":"done","usage":{...}}` when it succeeds, or `{"type":"done","cancelled":true}` when it’s interrupted (explicit cancel or barge-in).
 
 ## Quickstart
+
+### Required Environment Variables
+
+Set the compulsory environment variables before invoking any host script:
+
+```bash
+export TEXT_API_KEY="my_super_secret_key_2024"    # Required for every API call
+export HF_TOKEN="hf_your_api_token"               # Required even for private/gated HF repos
+export MAX_CONCURRENT_CONNECTIONS=32              # Required capacity guard (pick a value for your GPU)
+```
+
+`HUGGINGFACE_HUB_TOKEN` is also accepted and will be mirrored into `HF_TOKEN` automatically.
 
 1) Install deps and start the server
 
@@ -116,13 +128,17 @@ DOCKER_USERNAME=youruser docker/awq/build.sh
 docker run -d --gpus all --name yap-awq \
   -e AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
   -e AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
-  -e TEXT_API_KEY=yap_token \
+  -e TEXT_API_KEY=your_secret_key \
+  -e HF_TOKEN=hf_your_api_token \
+  -e MAX_CONCURRENT_CONNECTIONS=32 \
   -p 8000:8000 youruser/yap-text-inference-awq:latest
 
 # Base (float/GPTQ, pre-quantized AWQ, or runtime AWQ)
 DOCKER_USERNAME=youruser DEPLOY_MODELS=both CHAT_MODEL=org/chat TOOL_MODEL=org/tool docker/mixed/build.sh  # builds :both-fp8
 docker run -d --gpus all --name yap-mixed \
-  -e TEXT_API_KEY=yap_token \
+  -e TEXT_API_KEY=your_secret_key \
+  -e HF_TOKEN=hf_your_api_token \
+  -e MAX_CONCURRENT_CONNECTIONS=32 \
   -p 8000:8000 youruser/yap-text-inference-mixed:both-fp8
 ```
 
@@ -307,14 +323,11 @@ curl -s http://127.0.0.1:8000/healthz
 ## Server Status and Capacity
 
 ```bash
-# With default API key
-curl -H "X-API-Key: yap_token" http://127.0.0.1:8000/status
-
-# With custom API key
-curl -H "X-API-Key: your_custom_key" http://127.0.0.1:8000/status
+# With API key (required)
+curl -H "X-API-Key: your_api_key" http://127.0.0.1:8000/status
 
 # Via query parameter
-curl "http://127.0.0.1:8000/status?api_key=yap_token"
+curl "http://127.0.0.1:8000/status?api_key=your_api_key"
 ```
 
 Returns server status and connection capacity information, including current active connections and limits.

@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
+source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/restart/args.sh"
 source "${SCRIPT_DIR}/lib/restart/generic.sh"
 source "${SCRIPT_DIR}/lib/restart/awq.sh"
@@ -12,15 +13,7 @@ source "${SCRIPT_DIR}/lib/restart/launch.sh"
 
 log_info "Quick restart using existing models and dependencies"
 
-ensure_text_api_key() {
-  if [ -z "${TEXT_API_KEY:-}" ]; then
-    log_warn "TEXT_API_KEY not set; defaulting to 'yap_token'"
-    TEXT_API_KEY="yap_token"
-  fi
-  export TEXT_API_KEY
-}
-
-ensure_text_api_key
+ensure_required_env_vars
 
 usage() {
   echo "Usage:"
@@ -44,11 +37,15 @@ usage() {
   echo "  • Skips GPU check, dependency install, and quantization"
   echo "  • Works with both local and HuggingFace AWQ models"
   echo ""
-  echo "Environment variables:"
+  echo "Required environment variables:"
+  echo "  TEXT_API_KEY='secret'             - API key (all requests require it)"
+  echo "  HF_TOKEN='hf_xxx'                 - Hugging Face access token"
+  echo "  MAX_CONCURRENT_CONNECTIONS=<int>  - Capacity guard limit"
+  echo ""
+  echo "Optional environment variables:"
   echo "  AWQ_CHAT_MODEL=repo        - HuggingFace AWQ chat model"
   echo "  AWQ_TOOL_MODEL=repo        - HuggingFace AWQ tool model"
   echo "  CONCURRENT_MODEL_CALL=0|1  - Model calling mode (default: 1)"
-  echo "  TEXT_API_KEY                     - API key (default: yap_token)"
   echo ""
   echo "Examples:"
   echo "  $0                         # Restart both (local or HF)"

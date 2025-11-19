@@ -52,47 +52,19 @@ EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
 # Concurrent toolcall mode: if True, run chat and tool models concurrently (default: True)
 CONCURRENT_MODEL_CALL = os.getenv("CONCURRENT_MODEL_CALL", "1") == "1"
 
-# Maximum concurrent WebSocket connections (deployment-aware and quantization-aware)
-from .env import (
-    DEPLOY_CHAT,
-    DEPLOY_TOOL,
-    QUANTIZATION,
-    CHAT_QUANTIZATION,
-    TOOL_QUANTIZATION,
-)  # late import to avoid cycles
-from .quantization import is_lowbit_quantization
-
-
-def _selected_quantization(is_chat: bool) -> str | None:
-    if is_chat:
-        return CHAT_QUANTIZATION or QUANTIZATION
-    # Tool engine defaults to AWQ only when global QUANTIZATION=='awq'
-    return TOOL_QUANTIZATION or ("awq" if QUANTIZATION == "awq" else None)
-
-
-lowbit_enabled = (
-    (DEPLOY_CHAT and is_lowbit_quantization(_selected_quantization(True)))
-    or (DEPLOY_TOOL and is_lowbit_quantization(_selected_quantization(False)))
-)
-
-if lowbit_enabled:
-    # Higher capacity when lower-bit quantization (AWQ/GPTQ) is used
-    if DEPLOY_TOOL and not DEPLOY_CHAT:
-        default_max = "64"  # tool-only (lowbit)
-    elif DEPLOY_CHAT and not DEPLOY_TOOL:
-        default_max = "40"  # chat-only (lowbit)
-    else:
-        default_max = "26"  # both models (lowbit)
-else:
-    # Default capacities for non-lowbit deployments
-    if DEPLOY_TOOL and not DEPLOY_CHAT:
-        default_max = "32"  # tool-only
-    elif DEPLOY_CHAT and not DEPLOY_TOOL:
-        default_max = "20"  # chat-only
-    else:
-        default_max = "16"  # both models
-
-MAX_CONCURRENT_CONNECTIONS = int(os.getenv("MAX_CONCURRENT_CONNECTIONS", default_max))
+# Maximum concurrent WebSocket connections (must be provided explicitly)
+_max_concurrent_raw = os.getenv("MAX_CONCURRENT_CONNECTIONS")
+if _max_concurrent_raw is None:
+    raise RuntimeError(
+        "MAX_CONCURRENT_CONNECTIONS environment variable is required. "
+        "Set it before starting the server."
+    )
+try:
+    MAX_CONCURRENT_CONNECTIONS = int(_max_concurrent_raw)
+except ValueError as exc:
+    raise ValueError(
+        f"MAX_CONCURRENT_CONNECTIONS must be an integer, got '{_max_concurrent_raw}'."
+    ) from exc
 
 
 __all__ = [

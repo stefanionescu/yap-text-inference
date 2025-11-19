@@ -23,21 +23,30 @@ This document covers advanced operations, configuration, and deep-dive details.
 
 ## Security Configuration
 
+### Required Environment Variables
+
+Set these before running `scripts/main.sh`, `scripts/restart.sh`, or any host utility:
+
+```bash
+export TEXT_API_KEY="my_super_secret_key_2024"  # Required for every request
+export HF_TOKEN="hf_your_api_token"             # Required to access HF models
+export MAX_CONCURRENT_CONNECTIONS=50            # Required capacity guard (choose per hardware)
+```
+
+`HUGGINGFACE_HUB_TOKEN` can be set instead of `HF_TOKEN`; the host scripts automatically mirror it.
+
 ### API Key Setup
 
 ```bash
-# Use default API key (yap_token)
-python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
-
-# Set custom API key before starting server
+# TEXT_API_KEY is required and must be set before starting the server
 export TEXT_API_KEY="my_super_secret_key_2024"
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 ```
 
-### Connection Limiting (Deployment/Quantization-Aware)
+### Connection Limiting (Manual Capacity Selection)
 
 ```bash
-# Set custom connection limit (defaults vary by mode)
+# Set the connection limit explicitly (no automatic defaults)
 export MAX_CONCURRENT_CONNECTIONS=50
 python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
 ```
@@ -79,11 +88,11 @@ The server maintains persistent WebSocket connections with session-based user as
 ### Authentication Methods
 ```javascript
 // Via query parameter (recommended for WebSocket)
-const ws = new WebSocket('ws://server:8000/ws?api_key=yap_token');
+const ws = new WebSocket('ws://server:8000/ws?api_key=your_api_key');
 
 // Via header (if supported by client)
 const ws = new WebSocket('ws://server:8000/ws', [], {
-  headers: { 'X-API-Key': 'yap_token' }
+  headers: { 'X-API-Key': 'your_api_key' }
 });
 ```
 

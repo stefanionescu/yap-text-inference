@@ -1,6 +1,5 @@
 from .env import (
     DEFAULT_SERVER_WS_URL,
-    DEFAULT_TEXT_API_KEY,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
@@ -29,7 +28,6 @@ from .defaults import (
 
 __all__ = [
     "DEFAULT_SERVER_WS_URL",
-    "DEFAULT_TEXT_API_KEY",
     "DEFAULT_GENDER",
     "DEFAULT_PERSONALITY",
     "DEFAULT_RECV_TIMEOUT_SEC",
