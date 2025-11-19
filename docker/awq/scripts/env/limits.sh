@@ -7,8 +7,14 @@ export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
 export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3000}
 
 # GPU memory fractions (weights + KV). Use fractions only.
-export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
-export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
+# Adjust based on deployment mode: single model gets 90%, both models split memory
+if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
+  export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
+  export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
+else
+  export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
+  export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}
+fi
 
 # vLLM toggles
 export VLLM_USE_V1=${VLLM_USE_V1:-1}

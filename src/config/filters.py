@@ -48,6 +48,12 @@ EMOTICON_PATTERN = re.compile(
     r")"
 )
 
+FREESTYLE_PREFIX_PATTERN = re.compile(r"^\s*(freestyle mode\.?)\s*", re.IGNORECASE)
+ELLIPSIS_PATTERN = re.compile(r"…[ \t]*")
+NEWLINE_TOKEN_PATTERN = re.compile(r"\s*(?:\\n|/n|\r?\n)+\s*")
+FREESTYLE_TARGET_PREFIXES: tuple[str, ...] = ("freestyle mode", "freestyle mode.")
+TRAILING_STREAM_UNSTABLE_CHARS = set(" \t\r\n/\\")
+
 __all__ = [
     "CODE_BLOCK_PATTERN",
     "INLINE_CODE_PATTERN",
@@ -61,5 +67,10 @@ __all__ = [
     "BACKSLASH_ESCAPE_PATTERN",
     "EMOJI_PATTERN",
     "EMOTICON_PATTERN",
+    "FREESTYLE_PREFIX_PATTERN",
+    "ELLIPSIS_PATTERN",
+    "NEWLINE_TOKEN_PATTERN",
+    "FREESTYLE_TARGET_PREFIXES",
+    "TRAILING_STREAM_UNSTABLE_CHARS",
 ]
 
