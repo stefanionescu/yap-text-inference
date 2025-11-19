@@ -54,7 +54,7 @@ NEWLINE_TOKEN_PATTERN = re.compile(r"\s*(?:\\n|/n|\r?\n)+\s*")
 FREESTYLE_TARGET_PREFIXES: tuple[str, ...] = ("freestyle mode", "freestyle mode.")
 TRAILING_STREAM_UNSTABLE_CHARS = set(" \t\r\n/\\")
 ESCAPED_QUOTE_PATTERN = re.compile(r'\\(["\'])')
-DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s")
+DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s*")
 EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 
 __all__ = [
