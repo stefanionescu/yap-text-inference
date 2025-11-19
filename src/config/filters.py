@@ -55,6 +55,7 @@ FREESTYLE_TARGET_PREFIXES: tuple[str, ...] = ("freestyle mode", "freestyle mode.
 TRAILING_STREAM_UNSTABLE_CHARS = set(" \t\r\n/\\")
 ESCAPED_QUOTE_PATTERN = re.compile(r'\\(["\'])')
 DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s")
+EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 
 __all__ = [
     "CODE_BLOCK_PATTERN",
@@ -76,5 +77,6 @@ __all__ = [
     "TRAILING_STREAM_UNSTABLE_CHARS",
     "ESCAPED_QUOTE_PATTERN",
     "DOUBLE_DOT_SPACE_PATTERN",
+    "EXAGGERATED_OH_PATTERN",
 ]
 
