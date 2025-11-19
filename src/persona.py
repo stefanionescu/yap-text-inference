@@ -2,8 +2,20 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+from typing import List, Sequence, Tuple
 
-def build_toolcall_prompt_with_history(base_prompt: str, user_utt: str, history_text: str = "") -> str:
+from .config import CHAT_MODEL
+from .config.chat_prompt import ChatPromptFormat, get_prompt_format_for_model
+
+_DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+
+def build_toolcall_prompt_with_history(
+    base_prompt: str,
+    user_utt: str,
+    history_text: str = "",
+) -> str:
     """Build Toolcall prompt with optional history context for KV cache sharing."""
     prompt_parts = [base_prompt.strip()]
     if history_text.strip():
@@ -12,11 +24,145 @@ def build_toolcall_prompt_with_history(base_prompt: str, user_utt: str, history_
     return "\n\n".join(prompt_parts) + "\n"
 
 
-def build_chat_prompt_with_prefix(static_prefix: str, runtime_text: str, history_text: str, user_utt: str) -> str:
+def build_chat_prompt_with_prefix(
+    static_prefix: str,
+    runtime_text: str,
+    history_text: str,
+    user_utt: str,
+) -> str:
+    """Build the chat prompt that is fed into the chat model."""
+    prompt_format = _active_prompt_format()
+    history_turns = _parse_history(history_text)
+    system_prompt = _compose_system_prompt(static_prefix, runtime_text)
+    if prompt_format is ChatPromptFormat.CHATML:
+        return _build_chatml_prompt(system_prompt, history_turns, user_utt)
+    return _build_llama3_prompt(system_prompt, history_turns, user_utt)
+
+
+def build_chat_warm_prompt(
+    static_prefix: str,
+    runtime_text: str,
+    history_text: str,
+) -> str:
+    """Build a prompt that primes persona + history without a fresh user query."""
+    prompt_format = _active_prompt_format()
+    history_turns = _parse_history(history_text)
+    system_prompt = _compose_system_prompt(static_prefix, runtime_text)
+    if prompt_format is ChatPromptFormat.CHATML:
+        return _build_chatml_prompt(system_prompt, history_turns, user_utt=None)
+    return _build_llama3_prompt(system_prompt, history_turns, user_utt=None)
+
+
+def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
+    parts = [segment.strip() for segment in (static_prefix, runtime_text) if segment and segment.strip()]
+    if parts:
+        return "\n\n".join(parts)
+    return _DEFAULT_SYSTEM_PROMPT
+
+
+def _parse_history(history_text: str) -> List[Tuple[str, str]]:
+    text = (history_text or "").strip()
+    if not text:
+        return []
+
+    turns: List[Tuple[str, str]] = []
+    current_user: List[str] = []
+    current_assistant: List[str] = []
+    mode: str | None = None
+
+    def _flush() -> None:
+        nonlocal current_user, current_assistant, mode
+        if not current_user and not current_assistant:
+            return
+        user_text = "\n".join(current_user).strip()
+        assistant_text = "\n".join(current_assistant).strip()
+        turns.append((user_text, assistant_text))
+        current_user = []
+        current_assistant = []
+        mode = None
+
+    for line in text.splitlines():
+        if line.startswith("User:"):
+            _flush()
+            current_user = [line[len("User:"):].lstrip()]
+            current_assistant = []
+            mode = "user"
+        elif line.startswith("Assistant:"):
+            current_assistant = [line[len("Assistant:"):].lstrip()]
+            mode = "assistant"
+        else:
+            if mode == "assistant":
+                current_assistant.append(line)
+            elif mode == "user":
+                current_user.append(line)
+            elif line.strip():
+                current_user.append(line)
+                mode = "user"
+
+    _flush()
+    return [turn for turn in turns if any(turn)]
+
+
+def _build_chatml_prompt(
+    system_prompt: str,
+    history_turns: Sequence[Tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    lines: List[str] = ["<|im_start|>system", system_prompt, "<|im_end|>"]
+
+    for user_text, assistant_text in history_turns:
+        if user_text:
+            lines.extend(("<|im_start|>user", user_text, "<|im_end|>"))
+        if assistant_text:
+            lines.extend(("<|im_start|>assistant", assistant_text, "<|im_end|>"))
+
+    if user_utt is not None:
+        lines.extend(("<|im_start|>user", user_utt.strip(), "<|im_end|>"))
+
+    lines.append("<|im_start|>assistant")
+    return "\n".join(lines)
+
+
+def _build_llama3_prompt(
+    system_prompt: str,
+    history_turns: Sequence[Tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    parts: List[str] = ["<|begin_of_text|>", _llama3_block("system", system_prompt)]
+
+    for user_text, assistant_text in history_turns:
+        if user_text:
+            parts.append(_llama3_block("user", user_text))
+        if assistant_text:
+            parts.append(_llama3_block("assistant", assistant_text))
+
+    if user_utt is not None:
+        parts.append(_llama3_block("user", user_utt.strip()))
+
+    parts.append(_llama3_header_only("assistant"))
+    return "".join(parts)
+
+
+def _llama3_block(role: str, content: str) -> str:
     return (
-        f"<|persona|>\n{static_prefix.strip()}\n"
-        f"<|history|>\n{history_text.strip()}\n"
-        f"<|runtime|>\n{runtime_text.strip()}\n"
-        f"<|user|>\n{user_utt.strip()}\n<|assistant|>\n"
+        f"<|start_header_id|>{role}<|end_header_id|>\n"
+        f"{content.strip() if content else ''}<|eot_id|>"
     )
+
+
+def _llama3_header_only(role: str) -> str:
+    return f"<|start_header_id|>{role}<|end_header_id|>\n"
+
+
+@lru_cache(maxsize=1)
+def _active_prompt_format() -> ChatPromptFormat:
+    return get_prompt_format_for_model(CHAT_MODEL)
+
+
+__all__ = [
+    "build_chat_prompt_with_prefix",
+    "build_chat_warm_prompt",
+    "build_toolcall_prompt_with_history",
+]
+
 

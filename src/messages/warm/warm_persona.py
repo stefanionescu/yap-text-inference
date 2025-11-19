@@ -4,6 +4,7 @@ import json
 from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT
+from ...persona import build_chat_warm_prompt
 from ...utils.sanitize import sanitize_prompt
 from .warm_utils import warm_chat_segment
 
@@ -31,7 +32,7 @@ async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
         await ws.send_text(json.dumps({"type": "error", "message": str(e)}))
         return
 
-    warm_prompt = f"<|persona|>\n{static_prefix.strip()}\n<|assistant|>\n"
+    warm_prompt = build_chat_warm_prompt(static_prefix, "", "")
     await warm_chat_segment(
         ws,
         prompt=warm_prompt,
