@@ -8,8 +8,8 @@ import os
 
 
 # --- Chat sampling ---
-CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "1.00"))
-CHAT_TOP_P = float(os.getenv("CHAT_TOP_P", "0.70"))
+CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.9"))
+CHAT_TOP_P = float(os.getenv("CHAT_TOP_P", "0.80"))
 CHAT_TOP_K = int(os.getenv("CHAT_TOP_K", "40"))
 CHAT_MIN_P = float(os.getenv("CHAT_MIN_P", "0.05"))
 CHAT_REPEAT_PENALTY = float(os.getenv("CHAT_REPEAT_PENALTY", "1.05"))

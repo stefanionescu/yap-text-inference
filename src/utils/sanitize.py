@@ -26,6 +26,7 @@ from ..config.filters import (
     NEWLINE_TOKEN_PATTERN,
     TABLE_BORDER_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
+    EXAGGERATED_OH_PATTERN,
 )
 from ..config.limits import PROMPT_SANITIZE_MAX_CHARS
 
@@ -106,6 +107,7 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
     cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("... ", cleaned)
     cleaned = ESCAPED_QUOTE_PATTERN.sub(lambda match: match.group(1), cleaned)
+    cleaned = EXAGGERATED_OH_PATTERN.sub(_normalize_exaggerated_oh, cleaned)
     return _ensure_leading_capital(cleaned)
 
 
@@ -184,6 +186,16 @@ def _ensure_leading_capital(text: str) -> str:
                 return f"{text[:idx]}{char.upper()}{text[idx + 1:]}"
             break
     return text
+
+
+def _normalize_exaggerated_oh(match: re.Match[str]) -> str:
+    text = match.group(0)
+    o_count = sum(1 for char in text if char.lower() == "o")
+    h_count = sum(1 for char in text if char.lower() == "h")
+    if o_count <= 2 and h_count <= 1:
+        return text
+    replacement = "Ooh" if text[0].isupper() else "ooh"
+    return replacement
 
 
 def _strip_markdown(text: str) -> str:
