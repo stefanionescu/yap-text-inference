@@ -5,6 +5,7 @@ from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
 from ...tokens import count_tokens_chat, trim_history_preserve_messages_chat
+from ...persona import build_chat_warm_prompt
 from .warm_utils import warm_chat_segment
 
 
@@ -24,7 +25,7 @@ async def handle_warm_history_message(ws: WebSocket, msg: dict) -> None:
             HISTORY_MAX_TOKENS,
         )
 
-    warm_prompt = f"<|history|>\n{history_text.strip()}\n<|assistant|>\n"
+    warm_prompt = build_chat_warm_prompt("", "", history_text)
     await warm_chat_segment(
         ws,
         prompt=warm_prompt,

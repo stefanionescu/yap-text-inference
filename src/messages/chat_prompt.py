@@ -27,6 +27,7 @@ from ..config import (
     CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
 )
 from ..engines import get_chat_engine
+from ..persona import build_chat_warm_prompt
 from .validators import (
     ValidationError,
     require_prompt,
@@ -148,11 +149,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         history_text = trim_history_preserve_messages_chat(history_text, HISTORY_MAX_TOKENS)
         session_handler.set_history_text(session_id, history_text)
 
-    warm_prompt = (
-        f"<|persona|>\n{chat_prompt.strip()}\n"
-        f"<|history|>\n{history_text.strip()}\n"
-        f"<|assistant|>\n"
-    )
+    warm_prompt = build_chat_warm_prompt(chat_prompt, "", history_text)
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
     req_id = f"warm-update-{uuid.uuid4()}"
 
