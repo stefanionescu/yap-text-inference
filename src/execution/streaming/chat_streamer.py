@@ -11,6 +11,7 @@ from ...engines import get_chat_engine
 from ...persona import build_chat_prompt_with_prefix
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...handlers.session_handler import session_handler
+from ...utils.sanitize import StreamingSanitizer
 from functools import lru_cache
 
 from ...config.sampling import (
@@ -81,8 +82,25 @@ async def run_chat_stream(
             cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
         )
     )
-    async for chunk in stream:
-        yield chunk
+
+    sanitizer = StreamingSanitizer()
+
+    async def _sanitized_iter() -> AsyncGenerator[str, None]:
+        normal_completion = False
+        try:
+            async for chunk in stream:
+                clean = sanitizer.push(chunk)
+                if clean:
+                    yield clean
+            normal_completion = True
+        finally:
+            if not normal_completion:
+                return
+        tail = sanitizer.flush()
+        if tail:
+            yield tail
+
+    return _sanitized_iter()
 
 
 @lru_cache(maxsize=1)

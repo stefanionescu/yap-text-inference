@@ -22,6 +22,8 @@ CHAT_STOP = [
     "  |",
     "<|im_end|>",
     "|im_end|>",
+    "<|assistant|>",
+    "<|user|>",
     " ‍♀️",
     " ‍♂️",
     "<|end|>",

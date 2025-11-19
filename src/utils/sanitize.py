@@ -10,15 +10,20 @@ from ..config.filters import (
     BACKSLASH_ESCAPE_PATTERN,
     BLOCKQUOTE_PATTERN,
     CODE_BLOCK_PATTERN,
+    ELLIPSIS_PATTERN,
     EMOJI_PATTERN,
     EMOTICON_PATTERN,
+    FREESTYLE_PREFIX_PATTERN,
+    FREESTYLE_TARGET_PREFIXES,
     HEADING_PATTERN,
     HTML_TAG_PATTERN,
     IMAGE_PATTERN,
     INLINE_CODE_PATTERN,
     LINK_PATTERN,
     LIST_MARKER_PATTERN,
+    NEWLINE_TOKEN_PATTERN,
     TABLE_BORDER_PATTERN,
+    TRAILING_STREAM_UNSTABLE_CHARS,
 )
 
 try:
@@ -89,6 +94,83 @@ def sanitize_llm_output(
     return _normalize_whitespace(cleaned)
 
 
+def sanitize_stream_text(text: str) -> str:
+    """Apply lightweight sanitization suitable for live streaming."""
+    if not text:
+        return ""
+    cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1)
+    cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
+    cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
+    return cleaned
+
+
+class StreamingSanitizer:
+    """Stateful sanitizer that emits stable chunks for streaming."""
+
+    def __init__(self) -> None:
+        self._raw: str = ""
+        self._emitted_len: int = 0
+        self._last_sanitized: str = ""
+
+    def push(self, chunk: str) -> str:
+        """Process a new raw chunk and return the sanitized delta."""
+        if not chunk:
+            return ""
+        self._raw += chunk
+        sanitized = self._sanitize()
+        if _is_prefix_pending(self._raw):
+            return ""
+        stable_len = _stable_length(sanitized)
+        if stable_len <= self._emitted_len:
+            return ""
+        delta = sanitized[self._emitted_len:stable_len]
+        self._emitted_len = stable_len
+        return delta
+
+    def flush(self) -> str:
+        """Return any remaining buffered sanitized text."""
+        if not self._raw:
+            return ""
+        sanitized = self._last_sanitized or self._sanitize()
+        if _is_prefix_pending(self._raw):
+            return ""
+        if len(sanitized) <= self._emitted_len:
+            return ""
+        tail = sanitized[self._emitted_len:]
+        self._emitted_len = len(sanitized)
+        return tail
+
+    @property
+    def full_text(self) -> str:
+        """Return the fully sanitized text accumulated so far."""
+        return self._last_sanitized or self._sanitize()
+
+    def _sanitize(self) -> str:
+        sanitized = sanitize_stream_text(self._raw)
+        self._last_sanitized = sanitized
+        return sanitized
+
+
+def _is_prefix_pending(raw_text: str) -> bool:
+    stripped = raw_text.lstrip()
+    if not stripped:
+        return True
+    lowered = stripped.lower()
+    for target in FREESTYLE_TARGET_PREFIXES:
+        if lowered.startswith(target):
+            return False
+        if len(lowered) < len(target) and target.startswith(lowered):
+            return True
+    return False
+
+
+def _stable_length(text: str) -> int:
+    idx = len(text)
+    while idx > 0 and text[idx - 1] in TRAILING_STREAM_UNSTABLE_CHARS:
+        idx -= 1
+    return idx
+
+
 def _strip_markdown(text: str) -> str:
     """Convert Markdown-like text into plain text."""
     text = CODE_BLOCK_PATTERN.sub(" ", text)
@@ -123,4 +205,9 @@ def _normalize_whitespace(text: str) -> str:
     return text.strip()
 
 
-__all__ = ["sanitize_prompt", "sanitize_llm_output"]
+__all__ = [
+    "sanitize_prompt",
+    "sanitize_llm_output",
+    "sanitize_stream_text",
+    "StreamingSanitizer",
+]
