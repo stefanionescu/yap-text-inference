@@ -86,10 +86,28 @@ PY
 }
 
 detect_max_conn() {
-  "${PY_BIN}" - <<'PY'
-from src.config import MAX_CONCURRENT_CONNECTIONS
+  # First check environment variable directly
+  if [[ -n "${MAX_CONCURRENT_CONNECTIONS:-}" ]]; then
+    echo "${MAX_CONCURRENT_CONNECTIONS}"
+    return 0
+  fi
+  
+  # Fallback: try to read from Python config (requires env var to be set for Python too)
+  local py_output
+  if py_output="$("${PY_BIN}" -c "
+import sys
+import os
+sys.path.insert(0, '${ROOT_DIR}')
+from src.config.limits import MAX_CONCURRENT_CONNECTIONS
 print(MAX_CONCURRENT_CONNECTIONS)
-PY
+" 2>/dev/null)"; then
+    if [[ -n "${py_output}" && "${py_output}" =~ ^[0-9]+$ ]]; then
+      echo "${py_output}"
+      return 0
+    fi
+  fi
+  
+  return 1
 }
 
 run_py_tool() {
@@ -109,15 +127,19 @@ fi
 
 log "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
 
-if ! max_conn="$(detect_max_conn 2>/dev/null)"; then
+if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
 fi
 if [[ -z "${max_conn}" || "${max_conn}" =~ [^0-9] ]]; then
+  log "WARNING: MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to 8"
   max_conn=8
 fi
 if (( max_conn <= 0 )); then
+  log "WARNING: MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to 8"
   max_conn=8
 fi
+
+log "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
 
 ok=1
 
