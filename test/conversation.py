@@ -36,6 +36,7 @@ if _REPO_ROOT not in sys.path:
 
 from test.common.message import iter_messages
 from test.common.prompt import select_chat_prompt
+from test.common.rate import SlidingWindowPacer
 from test.common.regex import contains_complete_sentence, has_at_least_n_words
 from test.common.ws import send_client_end, with_api_key
 from test.config import (
@@ -47,9 +48,14 @@ from test.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
+from test.config.env import get_float_env, get_int_env
 from test.prompts.toolcall import TOOLCALL_PROMPT
 
 logger = logging.getLogger(__name__)
+
+
+MESSAGE_WINDOW_SECONDS = get_float_env("WS_MESSAGE_WINDOW_SECONDS", 60.0)
+MESSAGE_MAX_PER_WINDOW = get_int_env("WS_MAX_MESSAGES_PER_WINDOW", 20)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -249,6 +255,8 @@ async def run_conversation(
     )
 
     logger.info("Connecting to %s (session=%s)", ws_url, session.session_id)
+    message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
+
     async with websockets.connect(
         ws_url_with_auth,
         max_queue=None,
@@ -261,6 +269,7 @@ async def run_conversation(
                 payload = _build_start_payload(session, user_text)
                 logger.info("---- Exchange %02d ----", idx)
                 logger.info("User → %r", user_text)
+                await message_pacer.wait_turn()
                 await ws.send(json.dumps(payload))
                 assistant_text = await _stream_exchange(ws, tracker, recv_timeout, idx)
                 session.append_exchange(user_text, assistant_text)
