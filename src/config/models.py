@@ -15,7 +15,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Eximius_Persona_5B",
     "SicariusSicariiStuff/Impish_LLAMA_4B",
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
-    "w4r10ck/SOLAR-10.7B-Instruct-v1.0-uncensored",
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
