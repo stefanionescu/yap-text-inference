@@ -10,9 +10,11 @@ from ..config.filters import (
     BACKSLASH_ESCAPE_PATTERN,
     BLOCKQUOTE_PATTERN,
     CODE_BLOCK_PATTERN,
+    DOUBLE_DOT_SPACE_PATTERN,
     ELLIPSIS_PATTERN,
     EMOJI_PATTERN,
     EMOTICON_PATTERN,
+    ESCAPED_QUOTE_PATTERN,
     FREESTYLE_PREFIX_PATTERN,
     FREESTYLE_TARGET_PREFIXES,
     HEADING_PATTERN,
@@ -102,7 +104,9 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1)
     cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
-    return cleaned
+    cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("... ", cleaned)
+    cleaned = ESCAPED_QUOTE_PATTERN.sub(lambda match: match.group(1), cleaned)
+    return _ensure_leading_capital(cleaned)
 
 
 class StreamingSanitizer:
@@ -170,6 +174,16 @@ def _stable_length(text: str) -> int:
     while idx > 0 and text[idx - 1] in TRAILING_STREAM_UNSTABLE_CHARS:
         idx -= 1
     return idx
+
+
+def _ensure_leading_capital(text: str) -> str:
+    """Ensure the first alphabetic character is uppercase."""
+    for idx, char in enumerate(text):
+        if char.isalpha():
+            if char.islower():
+                return f"{text[:idx]}{char.upper()}{text[idx + 1:]}"
+            break
+    return text
 
 
 def _strip_markdown(text: str) -> str:

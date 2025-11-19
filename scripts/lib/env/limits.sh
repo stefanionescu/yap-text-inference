@@ -31,12 +31,12 @@ apply_limits_and_timeouts() {
   export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-1}
 
   # Token limits (approx)
-  export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-2400}
+  export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
   export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
 
   # Tool model specific token limits
   export TOOL_HISTORY_TOKENS=${TOOL_HISTORY_TOKENS:-1200}  # Tool model context allocation
-  export TOOL_SYSTEM_TOKENS=${TOOL_SYSTEM_TOKENS:-1450}   # System prompt + response space
+  export TOOL_PROMPT_MAX_TOKENS=${TOOL_PROMPT_MAX_TOKENS:-1450}   # System prompt + response space
 }
 
 
