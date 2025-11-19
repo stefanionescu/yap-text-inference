@@ -84,23 +84,19 @@ async def run_chat_stream(
     )
 
     sanitizer = StreamingSanitizer()
-
-    async def _sanitized_iter() -> AsyncGenerator[str, None]:
-        normal_completion = False
-        try:
-            async for chunk in stream:
-                clean = sanitizer.push(chunk)
-                if clean:
-                    yield clean
-            normal_completion = True
-        finally:
-            if not normal_completion:
-                return
-        tail = sanitizer.flush()
-        if tail:
-            yield tail
-
-    return _sanitized_iter()
+    normal_completion = False
+    try:
+        async for chunk in stream:
+            clean = sanitizer.push(chunk)
+            if clean:
+                yield clean
+        normal_completion = True
+    finally:
+        if not normal_completion:
+            return
+    tail = sanitizer.flush()
+    if tail:
+        yield tail
 
 
 @lru_cache(maxsize=1)
