@@ -25,6 +25,7 @@ from ..config.filters import (
     TABLE_BORDER_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
 )
+from ..config.limits import PROMPT_SANITIZE_MAX_CHARS
 
 try:
     from ftfy import fix_text  # type: ignore[import-not-found]
@@ -37,7 +38,7 @@ _CTRL_RE = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
 _BIDI_RE = re.compile(r"[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C]")
 
 
-def sanitize_prompt(raw: str | None, max_chars: int = 200_000) -> str:
+def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS) -> str:
     """Sanitize user-provided prompt text.
 
     - Ensures type is string and non-empty after trimming

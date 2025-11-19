@@ -3,9 +3,16 @@
 import contextlib
 import json
 import logging
+import math
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..auth import authenticate_websocket
+from ..config import (
+    WS_CANCEL_WINDOW_SECONDS,
+    WS_MAX_CANCELS_PER_WINDOW,
+    WS_MAX_MESSAGES_PER_WINDOW,
+    WS_MESSAGE_WINDOW_SECONDS,
+)
 from ..config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
@@ -20,6 +27,7 @@ from ..messages.followup import handle_followup_message
 from ..messages.start import handle_start_message
 from ..messages.warm.warm_history import handle_warm_history_message
 from ..messages.warm.warm_persona import handle_warm_persona_message
+from ..utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
 from .connection_handler import connection_handler
 from .session_handler import abort_session_requests, session_handler
 from .ws_lifecycle import WebSocketLifecycle
@@ -162,6 +170,14 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     
     await ws.accept()
     session_id: str | None = None
+    message_limiter = SlidingWindowRateLimiter(
+        limit=WS_MAX_MESSAGES_PER_WINDOW,
+        window_seconds=WS_MESSAGE_WINDOW_SECONDS,
+    )
+    cancel_limiter = SlidingWindowRateLimiter(
+        limit=WS_MAX_CANCELS_PER_WINDOW,
+        window_seconds=WS_CANCEL_WINDOW_SECONDS,
+    )
     lifecycle = WebSocketLifecycle(ws)
     lifecycle.start()
     
@@ -185,6 +201,32 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
 
             lifecycle.touch()
             msg_type = msg.get("type")
+
+            limiter: SlidingWindowRateLimiter | None = None
+            if msg_type == "cancel":
+                limiter = cancel_limiter
+            elif msg_type not in {"ping", "pong", "end"}:
+                limiter = message_limiter
+
+            if limiter:
+                try:
+                    limiter.consume()
+                except RateLimitError as err:
+                    retry_in = int(max(1, math.ceil(err.retry_in))) if err.retry_in > 0 else 1
+                    limit_desc = limiter.limit
+                    window_desc = int(limiter.window_seconds)
+                    label = "cancel" if msg_type == "cancel" else "message"
+                    message = (
+                        f"{label} rate limit: at most {limit_desc} per {window_desc} seconds; "
+                        f"retry in {retry_in} seconds"
+                    )
+                    await _send_error(
+                        ws,
+                        error_code=f"{label}_rate_limited",
+                        message=message,
+                        extra={"retry_in": retry_in},
+                    )
+                    continue
 
             if msg_type == "ping":
                 await ws.send_text(json.dumps({"type": "pong"}))

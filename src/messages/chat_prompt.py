@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import math
-import time
 import uuid
 from typing import Any
 from fastapi import WebSocket
@@ -24,7 +23,8 @@ from ..tokens import (
 from ..config import (
     HISTORY_MAX_TOKENS,
     CHAT_PROMPT_MAX_TOKENS,
-    CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS,
+    CHAT_PROMPT_UPDATE_MAX_PER_WINDOW,
+    CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
 )
 from ..engines import get_chat_engine
 from .validators import (
@@ -82,22 +82,6 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     raw_prompt = msg.get("chat_prompt") or msg.get("persona_text")
     history_text = session_handler.get_history_text(session_id)
 
-    # Cooldown enforcement
-    cooldown_s = max(0.0, CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS)
-    if cooldown_s:
-        last_update_at = session_handler.get_chat_prompt_last_update_at(session_id)
-        if last_update_at:
-            elapsed = time.monotonic() - last_update_at
-            remaining = cooldown_s - elapsed
-            if remaining > 0:
-                retry_in = int(max(1, math.ceil(remaining)))
-                message = (
-                    f"chat_prompt can be updated at most once every {int(cooldown_s)} seconds; "
-                    f"retry in {retry_in} seconds"
-                )
-                await _send_ack_error(ws, ValidationError("chat_prompt_update_rate_limited", message))
-                return
-
     # Validate gender and personality first
     try:
         g = validate_required_gender(raw_gender)
@@ -136,6 +120,22 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         await _send_ack_error(ws, err)
         return
 
+    # Rolling-window rate limit
+    retry_seconds = session_handler.consume_chat_prompt_update(
+        session_id,
+        limit=CHAT_PROMPT_UPDATE_MAX_PER_WINDOW,
+        window_seconds=CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
+    )
+    if retry_seconds > 0:
+        retry_in = int(max(1, math.ceil(retry_seconds)))
+        window_desc = int(CHAT_PROMPT_UPDATE_WINDOW_SECONDS)
+        message = (
+            f"chat_prompt can be updated at most {CHAT_PROMPT_UPDATE_MAX_PER_WINDOW} times "
+            f"every {window_desc} seconds; retry in {retry_in} seconds"
+        )
+        await _send_ack_error(ws, ValidationError("chat_prompt_update_rate_limited", message))
+        return
+
     # Update session state
     session_handler.update_session_config(
         session_id,
@@ -143,8 +143,6 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         chat_personality=norm_personality,
         chat_prompt=chat_prompt,
     )
-    session_handler.set_chat_prompt_last_update_at(session_id, time.monotonic())
-
     # Trim history (chat tokenizer) and warm the new prefix (prompt + history)
     if count_tokens_chat(history_text) > HISTORY_MAX_TOKENS:
         history_text = trim_history_preserve_messages_chat(history_text, HISTORY_MAX_TOKENS)

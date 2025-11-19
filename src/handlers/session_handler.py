@@ -12,6 +12,7 @@ from typing import Any
 
 from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
 from ..tokens import count_tokens_chat
+from ..utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
 from ..utils.sanitize import sanitize_llm_output
 from ..utils.time import format_session_timestamp
 
@@ -39,6 +40,7 @@ class SessionState:
     created_at: float = field(default_factory=time.monotonic)
     last_access: float = field(default_factory=time.monotonic)
     chat_prompt_last_update_at: float = 0.0
+    chat_prompt_rate_limiter: SlidingWindowRateLimiter | None = None
 
     def touch(self) -> None:
         self.last_access = time.monotonic()
@@ -141,6 +143,41 @@ class SessionHandler:
             state = self._sessions[session_id]
         state.chat_prompt_last_update_at = timestamp
         state.touch()
+
+    def consume_chat_prompt_update(
+        self,
+        session_id: str,
+        *,
+        limit: int,
+        window_seconds: float,
+    ) -> float:
+        """Record a chat prompt update attempt if within the rolling window limit.
+
+        Returns:
+            float: 0 if allowed, otherwise the number of seconds until the next slot frees.
+        """
+        state = self._sessions.get(session_id)
+        if not state:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+
+        state.touch()
+        limiter = state.chat_prompt_rate_limiter
+        if (
+            limiter is None
+            or limiter.limit != limit
+            or limiter.window_seconds != window_seconds
+        ):
+            limiter = SlidingWindowRateLimiter(limit=limit, window_seconds=window_seconds)
+            state.chat_prompt_rate_limiter = limiter
+
+        try:
+            limiter.consume()
+        except RateLimitError as err:
+            return err.retry_in
+
+        state.chat_prompt_last_update_at = time.monotonic()
+        return 0.0
 
     def get_session_config(self, session_id: str) -> dict[str, Any]:
         """Return a copy of the current session configuration."""

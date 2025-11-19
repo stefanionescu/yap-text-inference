@@ -7,6 +7,7 @@ CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
 TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user + 1200 history
+PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 4)))
 
 # Chat sampling override limits (optional client-provided values)
 CHAT_TEMPERATURE_MIN = float(os.getenv("CHAT_TEMPERATURE_MIN", "0.2"))
@@ -39,8 +40,18 @@ STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "2400"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
 
-# Persona update pacing
-CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS = float(os.getenv("CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS", "30"))
+# Persona update pacing (rolling window)
+CHAT_PROMPT_UPDATE_WINDOW_SECONDS = float(os.getenv("CHAT_PROMPT_UPDATE_WINDOW_SECONDS", "60"))
+CHAT_PROMPT_UPDATE_MAX_PER_WINDOW = int(os.getenv("CHAT_PROMPT_UPDATE_MAX_PER_WINDOW", "4"))
+
+# WebSocket message/cancel rate limits (rolling window)
+WS_MESSAGE_WINDOW_SECONDS = float(os.getenv("WS_MESSAGE_WINDOW_SECONDS", "60"))
+WS_MAX_MESSAGES_PER_WINDOW = int(os.getenv("WS_MAX_MESSAGES_PER_WINDOW", "20"))
+WS_CANCEL_WINDOW_SECONDS = float(os.getenv(
+    "WS_CANCEL_WINDOW_SECONDS",
+    str(WS_MESSAGE_WINDOW_SECONDS),
+))
+WS_MAX_CANCELS_PER_WINDOW = int(os.getenv("WS_MAX_CANCELS_PER_WINDOW", str(WS_MAX_MESSAGES_PER_WINDOW)))
 
 # Tool model specific limits
 TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1200"))  # Half of chat history for KV sharing
@@ -72,6 +83,7 @@ __all__ = [
     "CHAT_MAX_OUT",
     "TOOL_MAX_OUT",
     "TOOL_MAX_LEN",
+    "PROMPT_SANITIZE_MAX_CHARS",
     "CHAT_TEMPERATURE_MIN",
     "CHAT_TEMPERATURE_MAX",
     "CHAT_TOP_P_MIN",
@@ -92,7 +104,12 @@ __all__ = [
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
     "USER_UTT_MAX_TOKENS",
-    "CHAT_PROMPT_UPDATE_COOLDOWN_SECONDS",
+    "CHAT_PROMPT_UPDATE_WINDOW_SECONDS",
+    "CHAT_PROMPT_UPDATE_MAX_PER_WINDOW",
+    "WS_MESSAGE_WINDOW_SECONDS",
+    "WS_MAX_MESSAGES_PER_WINDOW",
+    "WS_CANCEL_WINDOW_SECONDS",
+    "WS_MAX_CANCELS_PER_WINDOW",
     "TOOL_HISTORY_TOKENS",
     "TOOL_SYSTEM_TOKENS",
     "EXACT_TOKEN_TRIM",
