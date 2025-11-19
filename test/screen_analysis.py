@@ -10,7 +10,7 @@ Flow:
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
-  TEXT_API_KEY=yap_token
+  TEXT_API_KEY=your_api_key (required, no default)
 """
 
 from __future__ import annotations

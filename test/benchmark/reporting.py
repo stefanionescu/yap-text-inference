@@ -3,11 +3,6 @@ from __future__ import annotations
 import os
 from typing import Any
 
-try:
-    from config import DEFAULT_TEXT_API_KEY
-except ModuleNotFoundError:
-    from test.config import DEFAULT_TEXT_API_KEY
-
 
 def percentile(values: list[float], frac: float, minus_one: bool = False) -> float:
     if not values:
@@ -61,8 +56,11 @@ def print_report(url: str, requests: int, concurrency: int, results: list[dict[s
         print(f"example_error={emsg}")
 
         if "authentication_failed" in emsg:
-            api_key = os.getenv("TEXT_API_KEY", DEFAULT_TEXT_API_KEY)
-            print(f"hint: Check TEXT_API_KEY environment variable (currently: '{api_key}')")
+            api_key = os.getenv("TEXT_API_KEY")
+            if api_key:
+                print(f"hint: Check TEXT_API_KEY environment variable (currently: '{api_key}')")
+            else:
+                print("hint: TEXT_API_KEY environment variable is required and must be set")
         elif "server_at_capacity" in emsg:
             print("hint: Server at capacity. Reduce concurrency (-c) or try again later.")
 

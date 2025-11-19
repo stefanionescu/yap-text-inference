@@ -5,18 +5,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 source "${SCRIPT_DIR}/lib/common/log.sh"
+source "${SCRIPT_DIR}/lib/common/params.sh"
 
 log_info "Starting Yap Text Inference Server"
 
-ensure_text_api_key() {
-  if [ -z "${TEXT_API_KEY:-}" ]; then
-    log_warn "TEXT_API_KEY not set; defaulting to 'yap_token'"
-    TEXT_API_KEY="yap_token"
-  fi
-  export TEXT_API_KEY
-}
-
-ensure_text_api_key
+ensure_required_env_vars
 
 # Usage function
 usage() {
@@ -55,6 +48,11 @@ usage() {
   echo "Tool model options:"
   echo "  MadeAgents/Hammer2.1-1.5b"
   echo "  MadeAgents/Hammer2.1-3b"
+  echo ""
+  echo "Required environment variables:"
+  echo "  TEXT_API_KEY='secret'             - API authentication key"
+  echo "  HF_TOKEN='hf_xxx'                 - Hugging Face access token"
+  echo "  MAX_CONCURRENT_CONNECTIONS=<int>  - Capacity guard limit"
   echo ""
   echo "Environment options:"
   echo "  CONCURRENT_MODEL_CALL=1       - Enable concurrent model calls (default: 0=sequential)"

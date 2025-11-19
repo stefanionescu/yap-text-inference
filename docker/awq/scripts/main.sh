@@ -19,7 +19,7 @@ usage() {
   echo "  If DEPLOY_MODELS=both  -> AWQ_CHAT_MODEL and AWQ_TOOL_MODEL required"
   echo ""
   echo "Optional Environment Variables:"
-  echo "  TEXT_API_KEY                     - API key for authentication (default: yap_token)"
+  echo "  TEXT_API_KEY                     - API key for authentication (required, no default)"
   echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model (default: 0.70)"
   echo "  TOOL_GPU_FRAC                   - GPU memory fraction for tool model (default: 0.20)"
   echo ""
@@ -61,7 +61,11 @@ log_info "Chat model: ${CHAT_MODEL:-none}"
 log_info "Tool model: ${TOOL_MODEL:-none}"
 log_info "Concurrent calls: ${CONCURRENT_MODEL_CALL}"
 log_info "GPU: ${DETECTED_GPU_NAME:-unknown}"
-log_info "API Key: ${TEXT_API_KEY:-yap_token}"
+if [ -z "${TEXT_API_KEY:-}" ]; then
+  log_error "TEXT_API_KEY environment variable is required and must be set"
+  exit 1
+fi
+log_info "API Key: ${TEXT_API_KEY}"
 log_info "=========================================="
 log_info ""
 
