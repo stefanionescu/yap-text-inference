@@ -249,6 +249,43 @@ RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey 
   - Metrics: `{ "type": "metrics", "ttfb_ms": ..., "total_ms": ..., "stream_ms": ..., "chunks": ..., "chars": ... }`
   - Final text: `{ "type": "final_text", "text": "..." }`
 
+## Additional Test Clients
+
+All WebSocket test clients require `TEXT_API_KEY` in the environment (same key you use for prod). The commands below assume the server is already running locally on `ws://127.0.0.1:8000/ws`; override the URL with `--ws` if needed.
+
+### Personality Switch Test
+
+Exercises persona updates, ensuring chat prompt swaps and history stitching behave correctly.
+
+```bash
+TEXT_API_KEY=your_api_key python3 test/personality.py \
+  --ws ws://127.0.0.1:8000/ws \
+  --switches 3 \
+  --delay 2
+```
+
+`PERSONA_VARIANTS`, reply lists, and switch counts live in `test/config`.
+
+### Conversation History Test
+
+Streams a fixed 10-turn conversation (same persona throughout) to verify bounded-history eviction and KV-cache reuse while logging TTFB/first-word metrics for every exchange.
+
+```bash
+TEXT_API_KEY=your_api_key python3 test/conversation.py --ws ws://127.0.0.1:8000/ws
+```
+
+Prompts are sourced from `CONVERSATION_HISTORY_PROMPTS` in `test/config/messages.py`.
+
+### Screen Analysis / Toolcall Test
+
+Runs the end-to-end toolcall → follow-up flow used for screen analysis, asserting the first turn triggers `toolcall == YES` and that the follow-up response streams successfully.
+
+```bash
+TEXT_API_KEY=your_api_key python3 test/screen_analysis.py
+```
+
+Override defaults via `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` environment variables when needed.
+
 ## Benchmark Client
 
 Run concurrent sessions and report p50/p95 latencies:
