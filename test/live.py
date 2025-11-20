@@ -44,7 +44,7 @@ from test.live import (
     PersonaRegistry,
     LiveServerError,
 )
-from test.live.cli import interactive_loop
+from test.live.cli import interactive_loop, print_help
 
 logger = logging.getLogger("live")
 
@@ -97,6 +97,9 @@ async def _run(args: argparse.Namespace) -> None:
         sampling=args.sampling or None,
     )
 
+    # Print interactive banner before any assistant output
+    print_help(registry.available_names(), persona.name)
+
     ws_url = with_api_key(args.server, api_key=args.api_key)
     try:
         async with websockets.connect(
@@ -108,7 +111,7 @@ async def _run(args: argparse.Namespace) -> None:
             client = LiveClient(ws, session, args.recv_timeout)
             try:
                 await client.send_initial_message(initial_message)
-                await interactive_loop(client, registry)
+                await interactive_loop(client, registry, show_banner=False)
             finally:
                 await client.close()
     except asyncio.TimeoutError:
