@@ -7,15 +7,21 @@ import os
 from collections.abc import Awaitable, Callable
 
 
-def with_api_key(url: str, api_key_env: str = "TEXT_API_KEY", default_key: str | None = None) -> str:
+def with_api_key(
+    url: str,
+    api_key_env: str = "TEXT_API_KEY",
+    default_key: str | None = None,
+    *,
+    api_key: str | None = None,
+) -> str:
     """Append API key as a query parameter to the WebSocket URL.
 
     This keeps client code consistent across tools; it does not validate the key.
     """
-    api_key = os.getenv(api_key_env) or default_key
-    if not api_key:
+    resolved_key = api_key or os.getenv(api_key_env) or default_key
+    if not resolved_key:
         raise ValueError(f"{api_key_env} environment variable is required and must be set")
-    return f"{url}&api_key={api_key}" if "?" in url else f"{url}?api_key={api_key}"
+    return f"{url}&api_key={resolved_key}" if "?" in url else f"{url}?api_key={resolved_key}"
 
 
 async def send_client_end(ws) -> None:

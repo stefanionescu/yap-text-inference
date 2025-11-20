@@ -109,14 +109,14 @@ class StreamTracker:
 
 
 async def run_once(args) -> None:
-    server_ws_url = os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
-    api_key = os.getenv("TEXT_API_KEY")
+    server_ws_url = args.server or os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
+    api_key = args.api_key or os.getenv("TEXT_API_KEY")
     if not api_key:
         raise ValueError("TEXT_API_KEY environment variable is required and must be set before running tests")
     gender = args.gender or os.getenv("GENDER", DEFAULT_GENDER)
     personality = args.personality or os.getenv("PERSONALITY", DEFAULT_PERSONALITY)
 
-    ws_url_with_auth = with_api_key(server_ws_url)
+    ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
     user_msg = choose_message(
         args.message,
         fallback=WARMUP_FALLBACK_MESSAGE,

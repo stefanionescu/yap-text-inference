@@ -31,22 +31,28 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
+import sys
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from test.common.cli import add_connection_args
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=True)
+    add_connection_args(parser)
     parser.add_argument("message", nargs="*", help="optional user message")
     parser.add_argument(
         "--gender",
-        "-g",
         dest="gender",
         choices=["female", "male", "woman", "man"],
         help="gender (normalized by server)",
     )
     parser.add_argument(
         "--personality",
-        "--style",
-        "-s",
         dest="personality",
         help="personality (e.g., wholesome, savage, playful)",
     )

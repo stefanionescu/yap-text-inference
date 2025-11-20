@@ -12,7 +12,7 @@ remain stable under bounded-history constraints. Each exchange logs:
 
 Usage:
     python3 test/conversation.py
-    python3 test/conversation.py --ws ws://127.0.0.1:8000/ws
+    python3 test/conversation.py --server ws://127.0.0.1:8000/ws
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+from test.common.cli import add_connection_args
 from test.common.message import iter_messages
 from test.common.prompt import select_chat_prompt
 from test.common.rate import SlidingWindowPacer
@@ -60,11 +61,9 @@ MESSAGE_MAX_PER_WINDOW = get_int_env("WS_MAX_MESSAGES_PER_WINDOW", 20)
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Conversation history regression test")
-    parser.add_argument(
-        "--ws",
-        dest="ws",
-        default=DEFAULT_SERVER_WS_URL,
-        help=f"WebSocket URL (default: {DEFAULT_SERVER_WS_URL})",
+    add_connection_args(
+        parser,
+        server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     parser.add_argument(
         "--gender",
@@ -237,6 +236,7 @@ async def _stream_exchange(ws, tracker: StreamTracker, recv_timeout: float, exch
 
 async def run_conversation(
     ws_url: str,
+    api_key: str | None,
     prompts: Sequence[str],
     gender: str,
     personality: str,
@@ -245,7 +245,7 @@ async def run_conversation(
     if not prompts:
         raise ValueError("Conversation prompt list is empty; nothing to send.")
 
-    ws_url_with_auth = with_api_key(ws_url)
+    ws_url_with_auth = with_api_key(ws_url, api_key=api_key)
     chat_prompt = select_chat_prompt(gender)
     session = ConversationSession(
         session_id=f"sess-{uuid.uuid4()}",
@@ -286,7 +286,8 @@ def main() -> None:
     try:
         asyncio.run(
             run_conversation(
-                ws_url=args.ws,
+                ws_url=args.server,
+                api_key=args.api_key,
                 prompts=CONVERSATION_HISTORY_PROMPTS,
                 gender=gender,
                 personality=personality,
