@@ -92,11 +92,11 @@ async def run_chat_stream(
                 yield clean
         normal_completion = True
     finally:
-        if not normal_completion:
-            return
-    tail = sanitizer.flush()
-    if tail:
-        yield tail
+        pass  # Cleanup if needed, but don't return or yield here
+    if normal_completion:
+        tail = sanitizer.flush()
+        if tail:
+            yield tail
 
 
 @lru_cache(maxsize=1)

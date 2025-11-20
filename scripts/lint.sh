@@ -26,7 +26,11 @@ RUFF_ARGS=("$@")
 
 if (( ${#PYTHON_TARGETS[@]} )); then
     echo "➤ Running Ruff on: ${PYTHON_TARGETS[*]}"
-    ruff check "${PYTHON_TARGETS[@]}" "${RUFF_ARGS[@]}"
+    if (( ${#RUFF_ARGS[@]} )); then
+        ruff check "${PYTHON_TARGETS[@]}" "${RUFF_ARGS[@]}"
+    else
+        ruff check "${PYTHON_TARGETS[@]}"
+    fi
 else
     echo "No Python sources found to lint."
 fi

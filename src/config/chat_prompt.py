@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from enum import Enum
-from typing import Dict
 
 from .models import ALLOWED_CHAT_MODELS
 
@@ -29,8 +28,8 @@ _MISTRAL_MODELS = {
 }
 
 
-def _build_prompt_map() -> Dict[str, ChatPromptFormat]:
-    prompt_map: Dict[str, ChatPromptFormat] = {
+def _build_prompt_map() -> dict[str, ChatPromptFormat]:
+    prompt_map: dict[str, ChatPromptFormat] = {
         model: ChatPromptFormat.CHATML for model in ALLOWED_CHAT_MODELS
     }
     missing = _LLAMA3_MODELS.difference(prompt_map)
@@ -52,7 +51,7 @@ def _build_prompt_map() -> Dict[str, ChatPromptFormat]:
     return prompt_map
 
 
-MODEL_PROMPT_FORMAT: Dict[str, ChatPromptFormat] = _build_prompt_map()
+MODEL_PROMPT_FORMAT: dict[str, ChatPromptFormat] = _build_prompt_map()
 
 
 def _normalize(value: str | None) -> str:

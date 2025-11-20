@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import collections
 import time
-from typing import Callable, Deque
+from collections.abc import Callable
 
 TimeFn = Callable[[], float]
 
@@ -39,7 +39,7 @@ class SlidingWindowRateLimiter:
         self.limit = max(0, int(limit))
         self.window_seconds = max(0.0, float(window_seconds))
         self._now = now_fn or time.monotonic
-        self._events: Deque[float] = collections.deque()
+        self._events: collections.deque[float] = collections.deque()
         self._enabled = self.limit > 0 and self.window_seconds > 0
 
     def consume(self) -> None:
