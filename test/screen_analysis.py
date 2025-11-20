@@ -15,6 +15,7 @@ Env:
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import logging
@@ -28,6 +29,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+from test.common.cli import add_connection_args
 from test.common.message import iter_messages
 from test.common.ws import send_client_end, with_api_key
 from test.config import (
@@ -90,8 +92,17 @@ async def _consume_followup(ws) -> str:
     return final_text
 
 
-async def run_once() -> None:
-    ws_url = with_api_key(DEFAULT_SERVER_WS_URL)
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Screen analysis follow-up regression test")
+    add_connection_args(
+        parser,
+        server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
+    )
+    return parser.parse_args()
+
+
+async def run_once(server: str, api_key: str | None) -> None:
+    ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
 
     start_payload = {
@@ -130,6 +141,7 @@ async def run_once() -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(run_once())
+    args = _parse_args()
+    asyncio.run(run_once(args.server, args.api_key))
 
 

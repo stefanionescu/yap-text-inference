@@ -7,12 +7,13 @@ import uuid
 from dataclasses import dataclass, field
 from collections.abc import Sequence
 
-import websockets
+import websockets  # type: ignore[import-not-found]
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+from test.common.cli import add_connection_args
 from test.common.message import iter_messages
 from test.common.rate import SlidingWindowPacer
 from test.common.ws import send_client_end, with_api_key
@@ -242,8 +243,8 @@ async def _run_remaining_sequence(
         )
 
 
-async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
-    url = with_api_key(ws_url)
+async def run_test(ws_url: str, api_key: str | None, switches: int, delay_s: int) -> None:
+    url = with_api_key(ws_url, api_key=api_key)
     prompt_sequence = tuple(CONVERSATION_HISTORY_PROMPTS)
     if not prompt_sequence:
         raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; nothing to test.")
@@ -294,11 +295,9 @@ async def run_test(ws_url: str, switches: int, delay_s: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Personality switch WS test")
-    parser.add_argument(
-        "--ws",
-        dest="ws",
-        default=DEFAULT_SERVER_WS_URL,
-        help=f"WebSocket URL (default: {DEFAULT_SERVER_WS_URL})",
+    add_connection_args(
+        parser,
+        server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     parser.add_argument(
         "--switches",
@@ -318,7 +317,7 @@ def main() -> None:
     args = parser.parse_args()
 
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
-    asyncio.run(run_test(args.ws, switches, args.delay))
+    asyncio.run(run_test(args.server, args.api_key, switches, args.delay))
 
 
 if __name__ == "__main__":

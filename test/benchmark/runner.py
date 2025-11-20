@@ -26,9 +26,16 @@ from config import BENCHMARK_FALLBACK_MESSAGE  # noqa: E402
 from prompts.toolcall import TOOLCALL_PROMPT  # noqa: E402
 
 
-async def _one_request(url: str, gender: str, style: str, message: str, timeout_s: float) -> dict[str, Any]:
+async def _one_request(
+    url: str,
+    api_key: str | None,
+    gender: str,
+    style: str,
+    message: str,
+    timeout_s: float,
+) -> dict[str, Any]:
     async def _session() -> dict[str, Any]:
-        auth_url = with_api_key(url)
+        auth_url = with_api_key(url, api_key=api_key)
 
         session_id = str(uuid.uuid4())
         chat_prompt = select_chat_prompt(gender)
@@ -102,15 +109,24 @@ async def _one_request(url: str, gender: str, style: str, message: str, timeout_
         return {"ok": False, "error": str(e)}
 
 
-async def _worker(num: int, url: str, gender: str, style: str, message: str, timeout_s: float) -> list[dict[str, Any]]:
+async def _worker(
+    num: int,
+    url: str,
+    api_key: str | None,
+    gender: str,
+    style: str,
+    message: str,
+    timeout_s: float,
+) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for _ in range(num):
-        out.append(await _one_request(url, gender, style, message, timeout_s))
+        out.append(await _one_request(url, api_key, gender, style, message, timeout_s))
     return out
 
 
 async def run_benchmark(args) -> None:
-    url: str = args.url
+    url: str = args.server
+    api_key: str | None = args.api_key
     gender: str = args.gender
     style: str = args.personality
     message: str = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
@@ -121,7 +137,7 @@ async def run_benchmark(args) -> None:
     counts = [base + (1 if i < rem else 0) for i in range(concurrency)]
 
     tasks = [
-        asyncio.create_task(_worker(counts[i], url, gender, style, message, float(args.timeout)))
+        asyncio.create_task(_worker(counts[i], url, api_key, gender, style, message, float(args.timeout)))
         for i in range(concurrency)
         if counts[i] > 0
     ]
