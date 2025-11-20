@@ -46,6 +46,21 @@ class LiveClient:
         self._stats_enabled = bool(enabled)
         return self._stats_enabled
 
+    @property
+    def is_connected(self) -> bool:
+        return not getattr(self.ws, "closed", True)
+
+    @property
+    def close_code(self) -> int | None:
+        return getattr(self.ws, "close_code", None)
+
+    @property
+    def close_reason(self) -> str | None:
+        return getattr(self.ws, "close_reason", None)
+
+    async def wait_closed(self) -> None:
+        await self.ws.wait_closed()
+
     async def change_persona(self, persona: PersonaDefinition) -> None:
         payload = self.session.build_persona_payload(persona)
         logger.info(

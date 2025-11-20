@@ -14,6 +14,7 @@ class ChatPromptFormat(str, Enum):
 
     CHATML = "chatml"
     LLAMA3_INSTRUCT = "llama3_instruct"
+    MISTRAL_INSTRUCT = "mistral_instruct"
 
 
 _LLAMA3_MODELS = {
@@ -21,6 +22,10 @@ _LLAMA3_MODELS = {
     "SicariusSicariiStuff/Impish_Mind_8B",
     "SicariusSicariiStuff/Eximius_Persona_5B",
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
+}
+
+_MISTRAL_MODELS = {
+    "TheDrummer/Cydonia-Redux-22B-v1.1",
 }
 
 
@@ -36,6 +41,14 @@ def _build_prompt_map() -> Dict[str, ChatPromptFormat]:
         )
     for name in _LLAMA3_MODELS:
         prompt_map[name] = ChatPromptFormat.LLAMA3_INSTRUCT
+    missing_mistral = _MISTRAL_MODELS.difference(prompt_map)
+    if missing_mistral:
+        raise RuntimeError(
+            "Chat prompt routing misconfigured; the following mistral models are not in "
+            f"ALLOWED_CHAT_MODELS: {sorted(missing_mistral)}"
+        )
+    for name in _MISTRAL_MODELS:
+        prompt_map[name] = ChatPromptFormat.MISTRAL_INSTRUCT
     return prompt_map
 
 

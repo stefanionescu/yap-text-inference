@@ -36,7 +36,9 @@ def build_chat_prompt_with_prefix(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt)
-    return _build_llama3_prompt(system_prompt, history_turns, user_utt)
+    if prompt_format is ChatPromptFormat.LLAMA3_INSTRUCT:
+        return _build_llama3_prompt(system_prompt, history_turns, user_utt)
+    return _build_mistral_prompt(system_prompt, history_turns, user_utt)
 
 
 def build_chat_warm_prompt(
@@ -50,7 +52,9 @@ def build_chat_warm_prompt(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt=None)
-    return _build_llama3_prompt(system_prompt, history_turns, user_utt=None)
+    if prompt_format is ChatPromptFormat.LLAMA3_INSTRUCT:
+        return _build_llama3_prompt(system_prompt, history_turns, user_utt=None)
+    return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
 
 
 def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
@@ -140,6 +144,44 @@ def _build_llama3_prompt(
         parts.append(_llama3_block("user", user_utt.strip()))
 
     parts.append(_llama3_header_only("assistant"))
+    return "".join(parts)
+
+
+def _build_mistral_prompt(
+    system_prompt: str,
+    history_turns: Sequence[Tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    system_text = system_prompt.strip() or _DEFAULT_SYSTEM_PROMPT
+    parts: List[str] = []
+    is_first_block = True
+
+    def _format_user_block(content: str | None, include_system: bool) -> str:
+        sys_prefix = ""
+        if include_system and system_text:
+            sys_prefix = f"<<SYS>>\n{system_text}\n<</SYS>>\n\n"
+        user_text = (content or "").strip()
+        return f"<s>[INST] {sys_prefix}{user_text} [/INST]"
+
+    def _append_assistant_block(content: str | None) -> None:
+        assistant_text = (content or "").strip()
+        if assistant_text:
+            parts.append(f"{assistant_text} </s>")
+        else:
+            parts.append("</s>")
+
+    for user_text, assistant_text in history_turns:
+        if not user_text and not assistant_text:
+            continue
+        parts.append(_format_user_block(user_text, include_system=is_first_block))
+        is_first_block = False
+        _append_assistant_block(assistant_text)
+
+    if user_utt is not None:
+        parts.append(_format_user_block(user_utt, include_system=is_first_block))
+    elif not parts:
+        parts.append(_format_user_block("", include_system=True))
+
     return "".join(parts)
 
 
