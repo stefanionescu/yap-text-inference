@@ -34,7 +34,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args
+from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
 from test.common.message import iter_messages
 from test.common.prompt import select_chat_prompt
 from test.common.rate import SlidingWindowPacer
@@ -65,6 +65,7 @@ def _parse_args() -> argparse.Namespace:
         parser,
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
+    add_sampling_args(parser)
     parser.add_argument(
         "--gender",
         dest="gender",
@@ -82,7 +83,9 @@ def _parse_args() -> argparse.Namespace:
         default=DEFAULT_RECV_TIMEOUT_SEC,
         help=f"Receive timeout in seconds (default: {DEFAULT_RECV_TIMEOUT_SEC})",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.sampling = build_sampling_payload(args)
+    return args
 
 
 def _round(value: float | None) -> float | None:
@@ -159,6 +162,7 @@ class ConversationSession:
     personality: str
     chat_prompt: str
     history: str = ""
+    sampling: dict[str, float | int] | None = None
 
     def append_exchange(self, user_text: str, assistant_text: str) -> None:
         transcript = "\n".join(
@@ -168,7 +172,7 @@ class ConversationSession:
 
 
 def _build_start_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "type": "start",
         "session_id": session.session_id,
         "gender": session.gender,
@@ -178,6 +182,9 @@ def _build_start_payload(session: ConversationSession, user_text: str) -> dict[s
         "user_utterance": user_text,
         "tool_prompt": TOOLCALL_PROMPT,
     }
+    if session.sampling:
+        payload["sampling"] = session.sampling
+    return payload
 
 
 async def _stream_exchange(ws, tracker: StreamTracker, recv_timeout: float, exchange_idx: int) -> str:
@@ -241,6 +248,7 @@ async def run_conversation(
     gender: str,
     personality: str,
     recv_timeout: float,
+    sampling: dict[str, float | int] | None,
 ) -> None:
     if not prompts:
         raise ValueError("Conversation prompt list is empty; nothing to send.")
@@ -252,6 +260,7 @@ async def run_conversation(
         gender=gender,
         personality=personality,
         chat_prompt=chat_prompt,
+        sampling=sampling,
     )
 
     logger.info("Connecting to %s (session=%s)", ws_url, session.session_id)
@@ -292,6 +301,7 @@ def main() -> None:
                 gender=gender,
                 personality=personality,
                 recv_timeout=args.recv_timeout,
+                sampling=args.sampling or None,
             )
         )
     except KeyboardInterrupt:

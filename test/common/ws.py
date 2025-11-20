@@ -5,6 +5,31 @@ import contextlib
 import json
 import os
 from collections.abc import Awaitable, Callable
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+
+DEFAULT_WS_PATH = "/ws"
+_HTTP_TO_WS = {"http": "ws", "https": "wss"}
+
+
+def _ensure_path_and_scheme(url: str, default_path: str) -> tuple[str, str, str, str, str]:
+    parts = urlsplit(url)
+    scheme = parts.scheme or "ws"
+    netloc = parts.netloc
+    path = parts.path or ""
+
+    # Handle inputs like "localhost:8000" (missing scheme)
+    if not netloc and parts.path and ":" in parts.path:
+        netloc = parts.path
+        path = ""
+
+    scheme = _HTTP_TO_WS.get(scheme, scheme)
+
+    normalized_path = path
+    if not normalized_path or normalized_path.strip("/") == "":
+        normalized_path = default_path if default_path.startswith("/") else f"/{default_path}"
+
+    return scheme, netloc, normalized_path, parts.query, parts.fragment
 
 
 def with_api_key(
@@ -13,15 +38,26 @@ def with_api_key(
     default_key: str | None = None,
     *,
     api_key: str | None = None,
+    default_path: str = DEFAULT_WS_PATH,
 ) -> str:
     """Append API key as a query parameter to the WebSocket URL.
 
-    This keeps client code consistent across tools; it does not validate the key.
+    This keeps client code consistent across tools; it normalizes the path
+    so callers can pass either the base origin or the full `/ws` endpoint.
     """
     resolved_key = api_key or os.getenv(api_key_env) or default_key
     if not resolved_key:
         raise ValueError(f"{api_key_env} environment variable is required and must be set")
-    return f"{url}&api_key={resolved_key}" if "?" in url else f"{url}?api_key={resolved_key}"
+
+    scheme, netloc, path, query, fragment = _ensure_path_and_scheme(url, default_path)
+    if not netloc:
+        raise ValueError(f"Invalid WebSocket URL '{url}'. Expected format ws(s)://host[:port][{default_path}]")
+
+    query_items = [(key, value) for key, value in parse_qsl(query, keep_blank_values=True) if key.lower() != "api_key"]
+    query_items.append(("api_key", resolved_key))
+    encoded_query = urlencode(query_items, doseq=True)
+
+    return urlunsplit((scheme, netloc, path, encoded_query, fragment))
 
 
 async def send_client_end(ws) -> None:

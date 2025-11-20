@@ -13,9 +13,10 @@ class LiveSession:
     session_id: str
     persona: PersonaDefinition
     history: str = ""
+    sampling: dict[str, float | int] | None = None
 
     def build_start_payload(self, user_text: str) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "type": "start",
             "session_id": self.session_id,
             "gender": self.persona.gender,
@@ -25,6 +26,9 @@ class LiveSession:
             "user_utterance": user_text,
             "tool_prompt": TOOLCALL_PROMPT,
         }
+        if self.sampling:
+            payload["sampling"] = self.sampling
+        return payload
 
     def build_persona_payload(self, persona: PersonaDefinition) -> dict[str, Any]:
         return {

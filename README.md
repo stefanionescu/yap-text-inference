@@ -16,6 +16,7 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 - [Quantization Modes (AWQ)](#quantization-modes-awq)
   - [Option 1: Local Quantization (Quantizes on First Run)](#option-1-local-quantization-quantizes-on-first-run)
   - [Option 2: Pre-Quantized AWQ Models (Hugging Face)](#option-2-pre-quantized-awq-models-hugging-face)
+- [Local Test Dependencies](#local-test-dependencies)
 - [Warmup Test Client](#warmup-test-client)
   - [Basic Usage](#basic-usage)
   - [With a Custom Message](#with-a-custom-message)
@@ -178,6 +179,18 @@ AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-a
 AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq
 ```
 
+## Local Test Dependencies
+
+If you just want to run the WebSocket test clients (warmup, live, conversation, etc.) on a laptop or CPU-only machine, don’t install the GPU-heavy `requirements.txt`. Instead:
+
+```bash
+python3 -m venv .venv-local
+source .venv-local/bin/activate
+pip install -r requirements-local.txt
+```
+
+This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) without pulling CUDA wheels, so macOS users can run `python3 test/live.py ...` without errors. Use the full `requirements.txt` only when you need to run the actual inference server.
+
 ## Warmup Test Client
 
 Activate the virtualenv created by the setup scripts:
@@ -250,9 +263,27 @@ RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey 
   - Metrics: `{ "type": "metrics", "ttfb_ms": ..., "total_ms": ..., "stream_ms": ..., "chunks": ..., "chars": ... }`
   - Final text: `{ "type": "final_text", "text": "..." }`
 
-## Additional Test Clients
+All WebSocket helper clients automatically append `/ws` (when it’s missing) and the API key query parameter to whatever origin you provide.
 
-All WebSocket test clients require `TEXT_API_KEY` in the environment (same key you use for prod). The commands below assume the server is already running locally on `ws://127.0.0.1:8000/ws`; override the URL with `--ws` if needed.
+All of the CLI test clients share the same sampling override flags: `--temperature`, `--top-p`, `--top-k`, and `--repeat-penalty`. Each flag maps directly to the server’s chat defaults (temperature=`1.0`, top-p=`0.80`, top-k=`40`, repeat-penalty=`1.05`). Omit them to stick with the server configuration; specify any subset to experiment with decoding behavior on a per-run basis.
+
+### Interactive Live Client
+
+Streams a real-time conversation you can steer from the CLI, hot-reloading persona definitions from `test/prompts/live.py`. If you omit `--server`, the client falls back to `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`). When you do provide `--server`, you can point at either the full `/ws` endpoint or just the origin (`ws://host:port`); the client automatically appends `/ws` and your API key.
+
+```bash
+TEXT_API_KEY=your_api_key python3 test/live.py \
+  --server ws://127.0.0.1:8000 \
+  --persona default_live_persona
+```
+
+Flags:
+
+- `--server`: target WebSocket URL (defaults to `SERVER_WS_URL`; accepts origins without `/ws`)
+- `--api-key`: override `TEXT_API_KEY` env for the session
+- `--persona/-p`: persona key from `test/prompts/live.py` (defaults to `anna_flirty`)
+- `--recv-timeout`: receive timeout in seconds (default `DEFAULT_RECV_TIMEOUT_SEC`)
+- positional arguments: optional opener message; falls back to warmup defaults otherwise
 
 ### Personality Switch Test
 
@@ -260,7 +291,7 @@ Exercises persona updates, ensuring chat prompt swaps and history stitching beha
 
 ```bash
 TEXT_API_KEY=your_api_key python3 test/personality.py \
-  --ws ws://127.0.0.1:8000/ws \
+  --server ws://127.0.0.1:8000 \
   --switches 3 \
   --delay 2
 ```
@@ -272,7 +303,7 @@ TEXT_API_KEY=your_api_key python3 test/personality.py \
 Streams a fixed 10-turn conversation (same persona throughout) to verify bounded-history eviction and KV-cache reuse while logging TTFB/first-word metrics for every exchange.
 
 ```bash
-TEXT_API_KEY=your_api_key python3 test/conversation.py --ws ws://127.0.0.1:8000/ws
+TEXT_API_KEY=your_api_key python3 test/conversation.py --server ws://127.0.0.1:8000
 ```
 
 Prompts are sourced from `CONVERSATION_HISTORY_PROMPTS` in `test/config/messages.py`.

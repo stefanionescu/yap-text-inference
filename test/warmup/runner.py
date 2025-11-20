@@ -115,6 +115,7 @@ async def run_once(args) -> None:
         raise ValueError("TEXT_API_KEY environment variable is required and must be set before running tests")
     gender = args.gender or os.getenv("GENDER", DEFAULT_GENDER)
     personality = args.personality or os.getenv("PERSONALITY", DEFAULT_PERSONALITY)
+    sampling_overrides = getattr(args, "sampling", None) or None
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
     user_msg = choose_message(
@@ -124,7 +125,9 @@ async def run_once(args) -> None:
     )
     session_id = str(uuid.uuid4())
     chat_prompt = select_chat_prompt(gender)
-    start_payload = _build_start_payload(session_id, gender, personality, chat_prompt, user_msg)
+    start_payload = _build_start_payload(
+        session_id, gender, personality, chat_prompt, user_msg, sampling_overrides
+    )
 
     logger.info("Connecting to %s (with API key auth)", server_ws_url)
     async with websockets.connect(
@@ -148,6 +151,7 @@ def _build_start_payload(
     personality: str,
     chat_prompt: str,
     user_msg: str,
+    sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "type": "start",
@@ -159,6 +163,8 @@ def _build_start_payload(
         "user_utterance": user_msg,
         "tool_prompt": TOOLCALL_PROMPT,
     }
+    if sampling:
+        payload["sampling"] = sampling
     return payload
 
 
