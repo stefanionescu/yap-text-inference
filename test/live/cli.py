@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import signal
 from dataclasses import dataclass
 from typing import Callable
 
 from .client import LiveClient
-from .errors import LiveClientError, LiveInputClosed
+from .errors import LiveClientError, LiveConnectionClosed, LiveInputClosed
 from .personas import PersonaRegistry
 
 logger = logging.getLogger("live")
@@ -23,14 +24,20 @@ class InteractiveRunner:
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
         sigint_installed = False
+        disconnect_task: asyncio.Task | None = None
         try:
             loop.add_signal_handler(signal.SIGINT, self._handle_sigint)
             sigint_installed = True
         except (NotImplementedError, RuntimeError):
             logger.warning("Signal handlers unavailable; Ctrl+C may be noisy")
         try:
+            disconnect_task = asyncio.create_task(self._watch_disconnect())
             await self._loop()
         finally:
+            if disconnect_task:
+                disconnect_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await disconnect_task
             if sigint_installed:
                 loop.remove_signal_handler(signal.SIGINT)
 
@@ -54,7 +61,11 @@ class InteractiveRunner:
                     break
                 continue
 
-            await self.client.send_user_message(line)
+            try:
+                await self.client.send_user_message(line)
+            except LiveConnectionClosed:
+                logger.warning("Connection closed; exiting interactive mode.")
+                break
 
     async def _read_line(self) -> str:
         loop = asyncio.get_running_loop()
@@ -80,6 +91,22 @@ class InteractiveRunner:
 
     def _print_banner(self) -> None:
         _print_help(self.registry.available_names(), self.client.session.persona.name)
+
+    async def _watch_disconnect(self) -> None:
+        try:
+            await self.client.wait_closed()
+        except asyncio.CancelledError:
+            return
+        if self._closing:
+            return
+        self._closing = True
+        logger.warning(
+            "Server closed the connection (code=%s reason=%s); exiting.",
+            self.client.close_code,
+            self.client.close_reason,
+        )
+        if self.stdin_task:
+            self.stdin_task.cancel()
 
 
 async def interactive_loop(client: LiveClient, registry: PersonaRegistry) -> None:

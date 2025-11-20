@@ -250,7 +250,7 @@ The pipeline writes `awq_metadata.json` and `README.md` into each quantized fold
 
 ## Persona and History Behavior
 
-- Chat prompts are rendered in ChatML or Llama-3 Instruct format based on the selected chat model (see `src/config/chat_prompt.py`)
+- Chat prompts are rendered in ChatML, Mistral Instruct, or Llama-3 Instruct format based on the selected chat model (see `src/config/chat_prompt.py`)
 - Prefix caching reuses any repeated spans within the process. If you swap persona but keep the history bytes identical, history KV stays hot.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
 

@@ -39,8 +39,10 @@ from test.config import (
 from test.live import (
     DEFAULT_PERSONA_NAME,
     LiveClient,
+    LiveConnectionClosed,
     LiveSession,
     PersonaRegistry,
+    LiveServerError,
 )
 from test.live.cli import interactive_loop
 
@@ -123,6 +125,8 @@ async def _run(args: argparse.Namespace) -> None:
             raise SystemExit(1) from exc
         logger.error("Server error: %s", exc)
         raise SystemExit(1) from exc
+    except LiveConnectionClosed as exc:
+        logger.warning("Connection closed: %s", exc)
     except Exception:
         logger.exception("Unexpected error while running live client")
 

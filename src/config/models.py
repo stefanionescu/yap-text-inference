@@ -8,6 +8,7 @@ from .env import QUANTIZATION
 ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
     "kyx0r/Neona-12B",
+    "Epiculous/Violet_Twilight-v0.2",
     "SicariusSicariiStuff/Impish_Nemo_12B",
     "SicariusSicariiStuff/Impish_Magic_24B",
     "SicariusSicariiStuff/Wingless_Imp_8B",
@@ -15,6 +16,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Eximius_Persona_5B",
     "SicariusSicariiStuff/Impish_LLAMA_4B",
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
+    "TheDrummer/Cydonia-Redux-22B-v1.1",
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
