@@ -102,7 +102,7 @@ def sanitize_stream_text(text: str) -> str:
     """Apply lightweight sanitization suitable for live streaming."""
     if not text:
         return ""
-    cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1)
+    cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1).lstrip()
     cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
     cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("... ", cleaned)

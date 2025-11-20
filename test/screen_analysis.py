@@ -29,7 +29,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args
+from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
 from test.common.message import iter_messages
 from test.common.ws import send_client_end, with_api_key
 from test.config import (
@@ -98,10 +98,13 @@ def _parse_args() -> argparse.Namespace:
         parser,
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
-    return parser.parse_args()
+    add_sampling_args(parser)
+    args = parser.parse_args()
+    args.sampling = build_sampling_payload(args)
+    return args
 
 
-async def run_once(server: str, api_key: str | None) -> None:
+async def run_once(server: str, api_key: str | None, sampling: dict[str, float | int] | None) -> None:
     ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
 
@@ -113,6 +116,8 @@ async def run_once(server: str, api_key: str | None) -> None:
         "history_text": "",
         "user_utterance": SCREEN_ANALYSIS_USER_UTTERANCE,
     }
+    if sampling:
+        start_payload["sampling"] = sampling
 
     async with websockets.connect(
         ws_url,
@@ -142,6 +147,6 @@ async def run_once(server: str, api_key: str | None) -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     args = _parse_args()
-    asyncio.run(run_once(args.server, args.api_key))
+    asyncio.run(run_once(args.server, args.api_key, args.sampling or None))
 
 

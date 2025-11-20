@@ -38,13 +38,14 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args
+from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=True)
     add_connection_args(parser)
     parser.add_argument("message", nargs="*", help="optional user message")
+    add_sampling_args(parser)
     parser.add_argument(
         "--gender",
         dest="gender",
@@ -56,7 +57,9 @@ def _parse_args() -> argparse.Namespace:
         dest="personality",
         help="personality (e.g., wholesome, savage, playful)",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.sampling = build_sampling_payload(args)
+    return args
 
 
 async def _run_once(args: argparse.Namespace) -> None:

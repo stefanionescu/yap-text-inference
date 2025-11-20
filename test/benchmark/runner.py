@@ -33,6 +33,7 @@ async def _one_request(
     style: str,
     message: str,
     timeout_s: float,
+    sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
     async def _session() -> dict[str, Any]:
         auth_url = with_api_key(url, api_key=api_key)
@@ -49,6 +50,8 @@ async def _one_request(
             "history_text": "",
             "user_utterance": message,
         }
+        if sampling:
+            start_payload["sampling"] = sampling
 
         t_sent = time.perf_counter()
         ttfb_toolcall_ms: float | None = None
@@ -117,10 +120,11 @@ async def _worker(
     style: str,
     message: str,
     timeout_s: float,
+    sampling: dict[str, float | int] | None,
 ) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for _ in range(num):
-        out.append(await _one_request(url, api_key, gender, style, message, timeout_s))
+        out.append(await _one_request(url, api_key, gender, style, message, timeout_s, sampling))
     return out
 
 
@@ -130,6 +134,7 @@ async def run_benchmark(args) -> None:
     gender: str = args.gender
     style: str = args.personality
     message: str = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
+    sampling: dict[str, float | int] | None = getattr(args, "sampling", None) or None
 
     requests = max(1, int(args.requests))
     concurrency = max(1, min(int(args.concurrency), requests))
@@ -137,7 +142,9 @@ async def run_benchmark(args) -> None:
     counts = [base + (1 if i < rem else 0) for i in range(concurrency)]
 
     tasks = [
-        asyncio.create_task(_worker(counts[i], url, api_key, gender, style, message, float(args.timeout)))
+        asyncio.create_task(
+            _worker(counts[i], url, api_key, gender, style, message, float(args.timeout), sampling)
+        )
         for i in range(concurrency)
         if counts[i] > 0
     ]

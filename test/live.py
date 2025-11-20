@@ -25,7 +25,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args
+from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
 from test.common.util import choose_message
 from test.common.ws import with_api_key
 from test.config import (
@@ -53,6 +53,7 @@ def _parse_args() -> argparse.Namespace:
         parser,
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
+    add_sampling_args(parser)
     parser.add_argument(
         "message",
         nargs="*",
@@ -72,7 +73,9 @@ def _parse_args() -> argparse.Namespace:
         default=DEFAULT_RECV_TIMEOUT_SEC,
         help=f"Receive timeout in seconds (default: {DEFAULT_RECV_TIMEOUT_SEC})",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.sampling = build_sampling_payload(args)
+    return args
 
 
 async def _run(args: argparse.Namespace) -> None:
@@ -82,19 +85,17 @@ async def _run(args: argparse.Namespace) -> None:
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
 
-    initial_message = choose_message(
-        args.message,
-        fallback=WARMUP_FALLBACK_MESSAGE,
-        defaults=WARMUP_DEFAULT_MESSAGES,
+    initial_message = (
+        " ".join(args.message).strip() if args.message else "Hey!"
     )
 
     session = LiveSession(
         session_id=f"live-{uuid.uuid4()}",
         persona=persona,
+        sampling=args.sampling or None,
     )
 
     ws_url = with_api_key(args.server, api_key=args.api_key)
-    logger.info("Connecting to %s", args.server)
     try:
         async with websockets.connect(
             ws_url,
@@ -108,17 +109,19 @@ async def _run(args: argparse.Namespace) -> None:
                 await interactive_loop(client, registry)
             finally:
                 await client.close()
+    except asyncio.TimeoutError:
+        logger.error("Timed out while connecting to %s", args.server)
+        raise SystemExit(1)
     except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK):
         logger.warning("Server closed the connection. Exiting.")
+    except Exception:
+        logger.exception("Unexpected error while running live client")
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
-    try:
-        asyncio.run(_run(args))
-    except KeyboardInterrupt:
-        logger.info("Interrupted by user")
+    asyncio.run(_run(args))
 
 
 if __name__ == "__main__":

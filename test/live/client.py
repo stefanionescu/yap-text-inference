@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 from typing import Any
@@ -24,9 +25,9 @@ class LiveClient:
         self.session = session
         self.recv_timeout = recv_timeout
         self._closed = False
+        self._stats_enabled = False
 
     async def send_initial_message(self, text: str) -> str:
-        logger.info("Opening session %s with persona '%s'", self.session.session_id, self.session.persona.name)
         return await self.send_user_message(text)
 
     async def send_user_message(self, text: str) -> str:
@@ -36,8 +37,15 @@ class LiveClient:
         await self._send_json(payload)
         response = await self._stream_response(tracker)
         self.session.append_exchange(text, response)
-        logger.info("Assistant ← %s", response)
         return response
+
+    @property
+    def stats_logging_enabled(self) -> bool:
+        return self._stats_enabled
+
+    def set_stats_logging(self, enabled: bool) -> bool:
+        self._stats_enabled = bool(enabled)
+        return self._stats_enabled
 
     async def change_persona(self, persona: PersonaDefinition) -> None:
         payload = self.session.build_persona_payload(persona)
@@ -77,7 +85,17 @@ class LiveClient:
             return
         self._closed = True
         logger.info("Sending end-of-session signal to server")
-        await send_client_end(self.ws)
+        try:
+            await send_client_end(self.ws)
+        except asyncio.CancelledError:
+            # Preserve cancellation but still attempt to close the socket.
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to send client end frame: %s", exc)
+
+        with contextlib.suppress(Exception):
+            await self.ws.close(code=1000)
+            await asyncio.wait_for(self.ws.wait_closed(), timeout=3.0)
 
     async def _send_json(self, payload: dict[str, Any]) -> None:
         try:
@@ -87,18 +105,12 @@ class LiveClient:
 
     async def _stream_response(self, tracker: StreamTracker) -> str:
         printed_header = False
+        pending_chat_ttfb: float | None = None
         try:
             async for msg in iter_messages(self.ws, timeout=self.recv_timeout):
                 msg_type = msg.get("type")
                 if msg_type == "ack":
                     tracker.ack_seen = True
-                    logger.info(
-                        "ACK(%s) gender=%s personality=%s code=%s",
-                        msg.get("for"),
-                        msg.get("gender"),
-                        msg.get("personality"),
-                        msg.get("code"),
-                    )
                     continue
                 if msg_type == "toolcall":
                     ttfb = tracker.record_toolcall()
@@ -112,19 +124,29 @@ class LiveClient:
                         printed_header = True
                     print(chunk, end="", flush=True)
                     chat_ttfb = metrics.get("chat_ttfb_ms")
-                    if chat_ttfb is not None:
-                        logger.info("CHAT ttfb_ms=%.2f", chat_ttfb)
+                    if chat_ttfb is not None and pending_chat_ttfb is None:
+                        pending_chat_ttfb = chat_ttfb
                     continue
                 if msg_type == "final":
                     normalized = msg.get("normalized_text")
                     if normalized:
                         tracker.final_text = normalized
                     continue
+                if msg_type == "connection_closed":
+                    reason = msg.get("reason") or "server_request"
+                    logger.info("Server signaled connection_closed reason=%s", reason)
+                    return tracker.final_text
                 if msg_type == "done":
                     if printed_header:
                         print()
                     cancelled = bool(msg.get("cancelled"))
-                    logger.info("metrics: %s", json.dumps(tracker.finalize_metrics(cancelled), ensure_ascii=False))
+                    if pending_chat_ttfb is not None and self._stats_enabled:
+                        logger.info("CHAT ttfb_ms=%.2f", pending_chat_ttfb)
+                    if self._stats_enabled:
+                        logger.info(
+                            "metrics: %s",
+                            json.dumps(tracker.finalize_metrics(cancelled), ensure_ascii=False),
+                        )
                     return tracker.final_text
                 if msg_type == "error":
                     _log_server_error(msg)
@@ -132,8 +154,9 @@ class LiveClient:
                 logger.debug("Ignoring message type=%s payload=%s", msg_type, msg)
         except asyncio.TimeoutError as exc:
             raise LiveClientError(f"recv timeout after {self.recv_timeout:.1f}s") from exc
-        except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
-            raise LiveConnectionClosed("WebSocket closed while streaming response") from exc
+        except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK):
+            logger.info("Server closed the WebSocket")
+            return tracker.final_text
         raise LiveClientError("WebSocket closed before receiving 'done'")
 
     async def _wait_for_chat_prompt_ack(self) -> dict[str, Any]:

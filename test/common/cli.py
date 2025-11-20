@@ -1,8 +1,16 @@
 from __future__ import annotations
 
 import os
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
+from collections.abc import Mapping
+from typing import Any
 
+from src.config.sampling import (
+    CHAT_REPEAT_PENALTY,
+    CHAT_TEMPERATURE,
+    CHAT_TOP_K,
+    CHAT_TOP_P,
+)
 from test.config import DEFAULT_SERVER_WS_URL
 
 
@@ -34,5 +42,44 @@ def add_connection_args(
         )
 
 
-__all__ = ["add_connection_args"]
+def add_sampling_args(parser: ArgumentParser) -> None:
+    """Register standard sampling override knobs shared across test clients."""
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        help=f"Sampling temperature override (default server value: {CHAT_TEMPERATURE})",
+    )
+    parser.add_argument(
+        "--top-p",
+        type=float,
+        dest="top_p",
+        help=f"Nucleus sampling probability (default server value: {CHAT_TOP_P})",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        dest="top_k",
+        help=f"Top-k sampling cap (default server value: {CHAT_TOP_K})",
+    )
+    parser.add_argument(
+        "--repeat-penalty",
+        type=float,
+        dest="repeat_penalty",
+        help=f"Repetition penalty (default server value: {CHAT_REPEAT_PENALTY})",
+    )
+
+
+def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, float | int]:
+    """Extract CLI sampling overrides into the payload format expected by the server."""
+    if not isinstance(args, Mapping):
+        args = vars(args)
+    payload: dict[str, float | int] = {}
+    for field in ("temperature", "top_p", "top_k", "repeat_penalty"):
+        value = args.get(field)
+        if value is not None:
+            payload[field] = value
+    return payload
+
+
+__all__ = ["add_connection_args", "add_sampling_args", "build_sampling_payload"]
 

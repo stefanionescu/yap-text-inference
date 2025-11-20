@@ -13,7 +13,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args
+from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
 from test.common.message import iter_messages
 from test.common.rate import SlidingWindowPacer
 from test.common.ws import send_client_end, with_api_key
@@ -53,6 +53,7 @@ class PersonaSession:
     history: str = ""
     prompt_index: int = 0
     prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_PROMPTS))
+    sampling: dict[str, float | int] | None = None
 
     def has_remaining_prompts(self) -> bool:
         return self.prompt_index < len(self.prompts)
@@ -107,6 +108,8 @@ async def _send_start_request(
         "history_text": session.history,
         "user_utterance": user_text,
     }
+    if session.sampling:
+        payload["sampling"] = session.sampling
     if message_pacer:
         await message_pacer.wait_turn()
     await ws.send(json.dumps(payload))
@@ -243,12 +246,22 @@ async def _run_remaining_sequence(
         )
 
 
-async def run_test(ws_url: str, api_key: str | None, switches: int, delay_s: int) -> None:
+async def run_test(
+    ws_url: str,
+    api_key: str | None,
+    switches: int,
+    delay_s: int,
+    sampling: dict[str, float | int] | None,
+) -> None:
     url = with_api_key(ws_url, api_key=api_key)
     prompt_sequence = tuple(CONVERSATION_HISTORY_PROMPTS)
     if not prompt_sequence:
         raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; nothing to test.")
-    session = PersonaSession(session_id=f"sess-{uuid.uuid4()}", prompts=prompt_sequence)
+    session = PersonaSession(
+        session_id=f"sess-{uuid.uuid4()}",
+        prompts=prompt_sequence,
+        sampling=sampling,
+    )
     variants: list[PersonaVariant] = [PersonaVariant(*variant) for variant in PERSONA_VARIANTS]
     if not variants:
         raise RuntimeError("PERSONA_VARIANTS is empty; nothing to test.")
@@ -299,6 +312,7 @@ def main() -> None:
         parser,
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
+    add_sampling_args(parser)
     parser.add_argument(
         "--switches",
         dest="switches",
@@ -315,9 +329,10 @@ def main() -> None:
         help=f"Seconds between switches (default {PERSONALITY_SWITCH_DELAY_SECONDS})",
     )
     args = parser.parse_args()
+    args.sampling = build_sampling_payload(args)
 
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
-    asyncio.run(run_test(args.server, args.api_key, switches, args.delay))
+    asyncio.run(run_test(args.server, args.api_key, switches, args.delay, args.sampling or None))
 
 
 if __name__ == "__main__":

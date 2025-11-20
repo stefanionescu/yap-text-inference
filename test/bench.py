@@ -36,7 +36,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args
+from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
 from test.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -52,6 +52,7 @@ def _parse_args() -> argparse.Namespace:
         p,
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
+    add_sampling_args(p)
     p.add_argument("message", nargs="*", help="optional user message for all requests")
     p.add_argument(
         "--requests",
@@ -86,7 +87,9 @@ def _parse_args() -> argparse.Namespace:
         default=os.getenv("PERSONALITY", DEFAULT_PERSONALITY),
         help="personality (e.g., wholesome, savage, flirty)",
     )
-    return p.parse_args()
+    args = p.parse_args()
+    args.sampling = build_sampling_payload(args)
+    return args
 
 
 def main() -> None:
