@@ -34,7 +34,7 @@ class LiveClient:
         payload = self.session.build_start_payload(text)
         tracker = StreamTracker()
         await self._send_json(payload)
-        response = await self._stream_response(tracker)
+        response = await self._stream_response(tracker, print_user_prompt=False)
         self.session.append_exchange(text, response)
         return response
 
@@ -101,7 +101,12 @@ class LiveClient:
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
             raise LiveConnectionClosed("WebSocket closed while sending payload") from exc
 
-    async def _stream_response(self, tracker: StreamTracker) -> str:
+    async def _stream_response(
+        self,
+        tracker: StreamTracker,
+        *,
+        print_user_prompt: bool = True,
+    ) -> str:
         printed_header = False
         pending_chat_ttfb: float | None = None
         try:
@@ -135,7 +140,7 @@ class LiveClient:
                     logger.info("Server signaled connection_closed reason=%s", reason)
                     return tracker.final_text
                 if msg_type == "done":
-                    if printed_header:
+                    if printed_header and print_user_prompt:
                         print("\nyou >", end=" ", flush=True)
                     cancelled = bool(msg.get("cancelled"))
                     if pending_chat_ttfb is not None and self._stats_enabled:
@@ -148,7 +153,7 @@ class LiveClient:
                     return tracker.final_text
                 if msg_type == "error":
                     _log_server_error(msg)
-                    raise LiveServerError(msg.get("message", "server error"))
+                    raise LiveServerError(msg.get("message", "server error"), code=msg.get("error_code"))
                 logger.debug("Ignoring message type=%s payload=%s", msg_type, msg)
         except asyncio.TimeoutError as exc:
             raise LiveClientError(f"recv timeout after {self.recv_timeout:.1f}s") from exc
