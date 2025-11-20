@@ -60,7 +60,7 @@ class InteractiveRunner:
         loop = asyncio.get_running_loop()
         if self.stdin_task:
             self.stdin_task.cancel()
-        self.stdin_task = loop.create_task(_ainput("live> "))
+        self.stdin_task = loop.create_task(_ainput("you > "))
         try:
             line = await self.stdin_task
         except asyncio.CancelledError as exc:

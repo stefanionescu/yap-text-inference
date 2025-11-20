@@ -12,9 +12,11 @@ from ..config.filters import (
     CODE_BLOCK_PATTERN,
     DOUBLE_DOT_SPACE_PATTERN,
     ELLIPSIS_PATTERN,
+    ELLIPSIS_TRAILING_DOT_PATTERN,
     EMOJI_PATTERN,
     EMOTICON_PATTERN,
     ESCAPED_QUOTE_PATTERN,
+    EXAGGERATED_OH_PATTERN,
     FREESTYLE_PREFIX_PATTERN,
     FREESTYLE_TARGET_PREFIXES,
     HEADING_PATTERN,
@@ -26,7 +28,7 @@ from ..config.filters import (
     NEWLINE_TOKEN_PATTERN,
     TABLE_BORDER_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
-    EXAGGERATED_OH_PATTERN,
+    EMOTICON_SMILE_PATTERN,
 )
 from ..config.limits import PROMPT_SANITIZE_MAX_CHARS
 
@@ -102,12 +104,16 @@ def sanitize_stream_text(text: str) -> str:
     """Apply lightweight sanitization suitable for live streaming."""
     if not text:
         return ""
-    cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1).lstrip()
+    cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1)
+    if cleaned != text:
+        cleaned = cleaned.lstrip(": ").lstrip()
     cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
-    cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("... ", cleaned)
+    cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("...", cleaned)
+    cleaned = ELLIPSIS_TRAILING_DOT_PATTERN.sub("...", cleaned)
     cleaned = ESCAPED_QUOTE_PATTERN.sub(lambda match: match.group(1), cleaned)
     cleaned = EXAGGERATED_OH_PATTERN.sub(_normalize_exaggerated_oh, cleaned)
+    cleaned = EMOTICON_SMILE_PATTERN.sub(" ", cleaned)
     return _ensure_leading_capital(cleaned)
 
 
