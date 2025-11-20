@@ -26,7 +26,8 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 import websockets  # type: ignore[import-not-found]
 

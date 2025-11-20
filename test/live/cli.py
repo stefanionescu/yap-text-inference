@@ -5,7 +5,7 @@ import contextlib
 import logging
 import signal
 from dataclasses import dataclass
-from typing import Callable
+from collections.abc import Callable
 
 from .client import LiveClient
 from .errors import LiveClientError, LiveConnectionClosed, LiveInputClosed

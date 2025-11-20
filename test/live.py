@@ -26,15 +26,12 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from test.common.util import choose_message
 from test.common.ws import with_api_key
 from test.config import (
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
-    WARMUP_DEFAULT_MESSAGES,
-    WARMUP_FALLBACK_MESSAGE,
 )
 from test.live import (
     DEFAULT_PERSONA_NAME,
@@ -116,7 +113,7 @@ async def _run(args: argparse.Namespace) -> None:
                 await client.close()
     except asyncio.TimeoutError:
         logger.error("Timed out while connecting to %s", args.server)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK):
         logger.warning("Server closed the connection. Exiting.")
     except LiveServerError as exc:

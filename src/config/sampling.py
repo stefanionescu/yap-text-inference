@@ -80,7 +80,7 @@ def _build_logit_bias_map(raw_map: dict[str, float]) -> dict[str, float]:
         return raw_map
     try:
         import json
-        with open(env_path, "r", encoding="utf-8") as infile:
+        with open(env_path, encoding="utf-8") as infile:
             loaded = json.load(infile)
         if not isinstance(loaded, dict):
             raise ValueError("CHAT_LOGIT_BIAS_FILE must contain a JSON object")

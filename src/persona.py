@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import List, Sequence, Tuple
+from collections.abc import Sequence
 
 from .config import CHAT_MODEL
 from .config.chat_prompt import ChatPromptFormat, get_prompt_format_for_model
@@ -64,14 +64,14 @@ def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
     return _DEFAULT_SYSTEM_PROMPT
 
 
-def _parse_history(history_text: str) -> List[Tuple[str, str]]:
+def _parse_history(history_text: str) -> list[tuple[str, str]]:
     text = (history_text or "").strip()
     if not text:
         return []
 
-    turns: List[Tuple[str, str]] = []
-    current_user: List[str] = []
-    current_assistant: List[str] = []
+    turns: list[tuple[str, str]] = []
+    current_user: list[str] = []
+    current_assistant: list[str] = []
     mode: str | None = None
 
     def _flush() -> None:
@@ -109,10 +109,10 @@ def _parse_history(history_text: str) -> List[Tuple[str, str]]:
 
 def _build_chatml_prompt(
     system_prompt: str,
-    history_turns: Sequence[Tuple[str, str]],
+    history_turns: Sequence[tuple[str, str]],
     user_utt: str | None,
 ) -> str:
-    lines: List[str] = ["<|im_start|>system", system_prompt, "<|im_end|>"]
+    lines: list[str] = ["<|im_start|>system", system_prompt, "<|im_end|>"]
 
     for user_text, assistant_text in history_turns:
         if user_text:
@@ -129,10 +129,10 @@ def _build_chatml_prompt(
 
 def _build_llama3_prompt(
     system_prompt: str,
-    history_turns: Sequence[Tuple[str, str]],
+    history_turns: Sequence[tuple[str, str]],
     user_utt: str | None,
 ) -> str:
-    parts: List[str] = ["<|begin_of_text|>", _llama3_block("system", system_prompt)]
+    parts: list[str] = ["<|begin_of_text|>", _llama3_block("system", system_prompt)]
 
     for user_text, assistant_text in history_turns:
         if user_text:
@@ -149,11 +149,11 @@ def _build_llama3_prompt(
 
 def _build_mistral_prompt(
     system_prompt: str,
-    history_turns: Sequence[Tuple[str, str]],
+    history_turns: Sequence[tuple[str, str]],
     user_utt: str | None,
 ) -> str:
     system_text = system_prompt.strip() or _DEFAULT_SYSTEM_PROMPT
-    parts: List[str] = []
+    parts: list[str] = []
     is_first_block = True
 
     def _format_user_block(content: str | None, include_system: bool) -> str:

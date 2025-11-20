@@ -57,13 +57,41 @@ from .validators import (
 logger = logging.getLogger(__name__)
 
 _SAMPLING_FIELDS: tuple[tuple[str, type, float | int, float | int, str, str], ...] = (
-    ("temperature", float, CHAT_TEMPERATURE_MIN, CHAT_TEMPERATURE_MAX, "invalid_temperature", "temperature_out_of_range"),
+    (
+        "temperature",
+        float,
+        CHAT_TEMPERATURE_MIN,
+        CHAT_TEMPERATURE_MAX,
+        "invalid_temperature",
+        "temperature_out_of_range",
+    ),
     ("top_p", float, CHAT_TOP_P_MIN, CHAT_TOP_P_MAX, "invalid_top_p", "top_p_out_of_range"),
     ("top_k", int, CHAT_TOP_K_MIN, CHAT_TOP_K_MAX, "invalid_top_k", "top_k_out_of_range"),
     ("min_p", float, CHAT_MIN_P_MIN, CHAT_MIN_P_MAX, "invalid_min_p", "min_p_out_of_range"),
-    ("repeat_penalty", float, CHAT_REPEAT_PENALTY_MIN, CHAT_REPEAT_PENALTY_MAX, "invalid_repeat_penalty", "repeat_penalty_out_of_range"),
-    ("presence_penalty", float, CHAT_PRESENCE_PENALTY_MIN, CHAT_PRESENCE_PENALTY_MAX, "invalid_presence_penalty", "presence_penalty_out_of_range"),
-    ("frequency_penalty", float, CHAT_FREQUENCY_PENALTY_MIN, CHAT_FREQUENCY_PENALTY_MAX, "invalid_frequency_penalty", "frequency_penalty_out_of_range"),
+    (
+        "repeat_penalty",
+        float,
+        CHAT_REPEAT_PENALTY_MIN,
+        CHAT_REPEAT_PENALTY_MAX,
+        "invalid_repeat_penalty",
+        "repeat_penalty_out_of_range",
+    ),
+    (
+        "presence_penalty",
+        float,
+        CHAT_PRESENCE_PENALTY_MIN,
+        CHAT_PRESENCE_PENALTY_MAX,
+        "invalid_presence_penalty",
+        "presence_penalty_out_of_range",
+    ),
+    (
+        "frequency_penalty",
+        float,
+        CHAT_FREQUENCY_PENALTY_MIN,
+        CHAT_FREQUENCY_PENALTY_MAX,
+        "invalid_frequency_penalty",
+        "frequency_penalty_out_of_range",
+    ),
 )
 
 
@@ -249,7 +277,7 @@ def _coerce_sampling_value(value: Any, caster: type) -> float | int:
 def _coerce_float(value: Any) -> float:
     if isinstance(value, bool):
         raise TypeError("bool not allowed")
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
     if isinstance(value, str):
         stripped = value.strip()
