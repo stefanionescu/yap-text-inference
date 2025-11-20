@@ -140,8 +140,10 @@ class LiveClient:
                     logger.info("Server signaled connection_closed reason=%s", reason)
                     return tracker.final_text
                 if msg_type == "done":
-                    if printed_header and print_user_prompt:
-                        print("\nyou >", end=" ", flush=True)
+                    if printed_header:
+                        print()
+                    if print_user_prompt:
+                        print("you >", end=" ", flush=True)
                     cancelled = bool(msg.get("cancelled"))
                     if pending_chat_ttfb is not None and self._stats_enabled:
                         logger.info("CHAT ttfb_ms=%.2f", pending_chat_ttfb)
@@ -159,6 +161,7 @@ class LiveClient:
             raise LiveClientError(f"recv timeout after {self.recv_timeout:.1f}s") from exc
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK):
             logger.info("Server closed the WebSocket")
+            asyncio.create_task(self.close())
             return tracker.final_text
         raise LiveClientError("WebSocket closed before receiving 'done'")
 
