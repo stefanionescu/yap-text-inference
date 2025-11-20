@@ -33,7 +33,6 @@ class LiveClient:
     async def send_user_message(self, text: str) -> str:
         payload = self.session.build_start_payload(text)
         tracker = StreamTracker()
-        logger.info("User → %s", text)
         await self._send_json(payload)
         response = await self._stream_response(tracker)
         self.session.append_exchange(text, response)
@@ -84,7 +83,6 @@ class LiveClient:
         if self._closed:
             return
         self._closed = True
-        logger.info("Sending end-of-session signal to server")
         try:
             await send_client_end(self.ws)
         except asyncio.CancelledError:
@@ -138,7 +136,7 @@ class LiveClient:
                     return tracker.final_text
                 if msg_type == "done":
                     if printed_header:
-                        print()
+                        print("\nyou >", end=" ", flush=True)
                     cancelled = bool(msg.get("cancelled"))
                     if pending_chat_ttfb is not None and self._stats_enabled:
                         logger.info("CHAT ttfb_ms=%.2f", pending_chat_ttfb)

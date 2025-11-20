@@ -5,13 +5,13 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping
 from typing import Any
 
-from src.config.sampling import (
-    CHAT_REPEAT_PENALTY,
-    CHAT_TEMPERATURE,
-    CHAT_TOP_K,
-    CHAT_TOP_P,
+from test.config import (
+    DEFAULT_SERVER_WS_URL,
+    CHAT_REPEAT_PENALTY_DEFAULT,
+    CHAT_TEMPERATURE_DEFAULT,
+    CHAT_TOP_K_DEFAULT,
+    CHAT_TOP_P_DEFAULT,
 )
-from test.config import DEFAULT_SERVER_WS_URL
 
 
 def add_connection_args(
@@ -47,25 +47,25 @@ def add_sampling_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--temperature",
         type=float,
-        help=f"Sampling temperature override (default server value: {CHAT_TEMPERATURE})",
+        help=f"Sampling temperature override (default server value: {CHAT_TEMPERATURE_DEFAULT})",
     )
     parser.add_argument(
         "--top-p",
         type=float,
         dest="top_p",
-        help=f"Nucleus sampling probability (default server value: {CHAT_TOP_P})",
+        help=f"Nucleus sampling probability (default server value: {CHAT_TOP_P_DEFAULT})",
     )
     parser.add_argument(
         "--top-k",
         type=int,
         dest="top_k",
-        help=f"Top-k sampling cap (default server value: {CHAT_TOP_K})",
+        help=f"Top-k sampling cap (default server value: {CHAT_TOP_K_DEFAULT})",
     )
     parser.add_argument(
         "--repeat-penalty",
         type=float,
         dest="repeat_penalty",
-        help=f"Repetition penalty (default server value: {CHAT_REPEAT_PENALTY})",
+        help=f"Repetition penalty (default server value: {CHAT_REPEAT_PENALTY_DEFAULT})",
     )
 
 

@@ -56,6 +56,8 @@ TRAILING_STREAM_UNSTABLE_CHARS = set(" \t\r\n/\\")
 ESCAPED_QUOTE_PATTERN = re.compile(r'\\(["\'])')
 DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s*")
 EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
+ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
+EMOTICON_SMILE_PATTERN = re.compile(r"[ \t]*[:;][\)-Dd\*][ \t]*")
 
 __all__ = [
     "CODE_BLOCK_PATTERN",
@@ -78,5 +80,6 @@ __all__ = [
     "ESCAPED_QUOTE_PATTERN",
     "DOUBLE_DOT_SPACE_PATTERN",
     "EXAGGERATED_OH_PATTERN",
+    "ELLIPSIS_TRAILING_DOT_PATTERN",
 ]
 
