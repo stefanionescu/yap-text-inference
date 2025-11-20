@@ -29,7 +29,10 @@ CHAT_STOP = [
     "<|end|>",
     "</s>",
     "User ",
-    "Assistant "
+    "User:",
+    "Assistant:",
+    "\nUser",
+    "\nAssistant",
 ]
 
 

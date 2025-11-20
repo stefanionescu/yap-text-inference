@@ -18,6 +18,7 @@ logger = logging.getLogger("live")
 class InteractiveRunner:
     client: LiveClient
     registry: PersonaRegistry
+    show_banner: bool = True
     stdin_task: asyncio.Task[str] | None = None
     _closing: bool = False
 
@@ -25,16 +26,33 @@ class InteractiveRunner:
         loop = asyncio.get_running_loop()
         sigint_installed = False
         disconnect_task: asyncio.Task | None = None
+        loop_task: asyncio.Task | None = None
         try:
             loop.add_signal_handler(signal.SIGINT, self._handle_sigint)
             sigint_installed = True
         except (NotImplementedError, RuntimeError):
             logger.warning("Signal handlers unavailable; Ctrl+C may be noisy")
         try:
+            loop_task = asyncio.create_task(self._loop())
             disconnect_task = asyncio.create_task(self._watch_disconnect())
-            await self._loop()
+            done, pending = await asyncio.wait(
+                {loop_task, disconnect_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if disconnect_task in done:
+                loop_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, LiveInputClosed, LiveConnectionClosed):
+                    await loop_task
+            else:
+                disconnect_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await disconnect_task
         finally:
-            if disconnect_task:
+            if loop_task and not loop_task.done():
+                loop_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await loop_task
+            if disconnect_task and not disconnect_task.done():
                 disconnect_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await disconnect_task
@@ -42,12 +60,16 @@ class InteractiveRunner:
                 loop.remove_signal_handler(signal.SIGINT)
 
     async def _loop(self) -> None:
-        self._print_banner()
+        if self.show_banner:
+            self._print_banner()
         while True:
             try:
                 line = await self._read_line()
             except LiveInputClosed as exc:
-                logger.info("%s", exc)
+                if not self._closing:
+                    logger.info("%s", exc)
+                else:
+                    logger.debug("stdin closed while shutting down: %s", exc)
                 break
             except LiveClientError as exc:
                 logger.error("send failed: %s", exc)
@@ -90,7 +112,7 @@ class InteractiveRunner:
         asyncio.create_task(self.client.close())
 
     def _print_banner(self) -> None:
-        _print_help(self.registry.available_names(), self.client.session.persona.name)
+        print_help(self.registry.available_names(), self.client.session.persona.name)
 
     async def _watch_disconnect(self) -> None:
         try:
@@ -109,8 +131,13 @@ class InteractiveRunner:
             self.stdin_task.cancel()
 
 
-async def interactive_loop(client: LiveClient, registry: PersonaRegistry) -> None:
-    runner = InteractiveRunner(client, registry)
+async def interactive_loop(
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    show_banner: bool = True,
+) -> None:
+    runner = InteractiveRunner(client, registry, show_banner=show_banner)
     await runner.run()
 
 
@@ -120,7 +147,7 @@ async def _handle_command(command_line: str, client: LiveClient, registry: Perso
     cmd = command.lower()
 
     if cmd in {"help", "?"}:
-        _print_help(registry.available_names(), client.session.persona.name, verbose=True)
+        print_help(registry.available_names(), client.session.persona.name, verbose=True)
         return False
     if cmd in {"list", "personas"}:
         names = registry.available_names()
@@ -188,7 +215,7 @@ async def _ainput(prompt: str) -> str:
         raise LiveInputClosed("keyboard interrupt") from exc
 
 
-def _print_help(names: list[str], current: str, verbose: bool = False) -> None:
+def print_help(names: list[str], current: str, verbose: bool = False) -> None:
     if verbose:
         print(
             "\nCommands:\n"
@@ -238,6 +265,6 @@ def _resolve_toggle(arg: str, current: bool) -> bool:
     raise ValueError("invalid toggle value")
 
 
-__all__ = ["interactive_loop"]
+__all__ = ["interactive_loop", "print_help"]
 
 

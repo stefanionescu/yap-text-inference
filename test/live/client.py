@@ -157,6 +157,7 @@ class LiveClient:
                 if msg_type == "done":
                     if printed_header:
                         print()
+                        print()
                     if print_user_prompt:
                         print("you >", end=" ", flush=True)
                     cancelled = bool(msg.get("cancelled"))
