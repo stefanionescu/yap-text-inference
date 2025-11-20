@@ -114,6 +114,15 @@ async def _run(args: argparse.Namespace) -> None:
         raise SystemExit(1)
     except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK):
         logger.warning("Server closed the connection. Exiting.")
+    except LiveServerError as exc:
+        if exc.code == "authentication_failed":
+            logger.error(
+                "Authentication failed: server rejected the provided API key. "
+                "Double-check `--api-key` or `TEXT_API_KEY`."
+            )
+            raise SystemExit(1) from exc
+        logger.error("Server error: %s", exc)
+        raise SystemExit(1) from exc
     except Exception:
         logger.exception("Unexpected error while running live client")
 
