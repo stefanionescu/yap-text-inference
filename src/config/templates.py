@@ -17,6 +17,16 @@ _MISTRAL_RESEARCH_LICENSE = {
     "license_link": "https://mistral.ai/licenses/MRL-0.1.md",
 }
 
+_QWEN_LICENSE_MODELS = {
+    "Sao10K/14B-Qwen2.5-Kunou-v1",
+}
+
+_QWEN_LICENSE = {
+    "license": "other",
+    "license_name": "qwen",
+    "license_link": "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct/blob/main/LICENSE",
+}
+
 
 def resolve_template_name(is_tool: bool) -> str:
     return TOOL_TEMPLATE_NAME if is_tool else CHAT_TEMPLATE_NAME
@@ -38,6 +48,16 @@ def _license_link_for(model_path: str, is_hf_model: bool) -> str:
     return f"https://huggingface.co/{model_path}/blob/main/LICENSE"
 
 
+def _is_qwen_license_model(model_path: str) -> bool:
+    normalized = (model_path or "").strip()
+    if not normalized:
+        return False
+    for target in _QWEN_LICENSE_MODELS:
+        if normalized == target or normalized.endswith(target):
+            return True
+    return False
+
+
 def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> dict[str, str]:
     """Return license info dict with keys: license, license_name, license_link."""
     if is_tool:
@@ -55,6 +75,9 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
 
     if _is_mistral_research_model(model_path):
         return _MISTRAL_RESEARCH_LICENSE.copy()
+
+    if _is_qwen_license_model(model_path):
+        return _QWEN_LICENSE.copy()
 
     # Chat models default to Apache 2.0
     return {
