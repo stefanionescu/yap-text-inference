@@ -9,6 +9,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
     "kyx0r/Neona-12B",
     "Epiculous/Violet_Twilight-v0.2",
+    "Sao10K/14B-Qwen2.5-Kunou-v1",
     "SicariusSicariiStuff/Impish_Nemo_12B",
     "SicariusSicariiStuff/Impish_Magic_24B",
     "SicariusSicariiStuff/Wingless_Imp_8B",
