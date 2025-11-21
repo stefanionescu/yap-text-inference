@@ -61,7 +61,11 @@ class FastTokenizer:
             return 0
         with self._lock:
             if self.tok is not None:
-                return self.tok.encode(text).num_tokens
+                enc = self.tok.encode(text)
+                try:
+                    return enc.n_tokens  # type: ignore[attr-defined]
+                except AttributeError:
+                    return len(enc.ids)
             # transformers fallback (fast or slow)
             try:
                 # Avoid adding special tokens to mirror Tokenizer behavior
