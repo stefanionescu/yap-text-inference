@@ -225,7 +225,7 @@ python3 test/warmup.py "write a simple hello world function"
 
 # Test concurrent mode
 # Terminal 1: Start server with concurrent mode (auto → FP8)
-bash scripts/stop.sh  # Stop previous deployment
+NUKE_ALL=1 bash scripts/stop.sh  # Stop previous deployment
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
 # Terminal 2: Test the same query (after server is ready)
@@ -233,7 +233,7 @@ python3 test/warmup.py "write a simple hello world function"
 
 # Test the roleplay-optimized model
 # Terminal 1: Start server with Wingless_Imp_8B (auto → FP8)
-bash scripts/stop.sh  # Stop previous deployment
+NUKE_ALL=1 bash scripts/stop.sh  # Stop previous deployment
 bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
 
 # Terminal 2: Test creative/roleplay query (after server is ready)

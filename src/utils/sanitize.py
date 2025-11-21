@@ -111,6 +111,8 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
     cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("...", cleaned)
     cleaned = ELLIPSIS_TRAILING_DOT_PATTERN.sub("...", cleaned)
+    cleaned = cleaned.replace("’", "'")
+    cleaned = re.sub(r"\s+([',?!])", r"\1", cleaned)
     cleaned = ESCAPED_QUOTE_PATTERN.sub(lambda match: match.group(1), cleaned)
     cleaned = EXAGGERATED_OH_PATTERN.sub(_normalize_exaggerated_oh, cleaned)
     cleaned = EMOTICON_SMILE_PATTERN.sub(" ", cleaned)
