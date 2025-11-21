@@ -26,7 +26,6 @@ _LLAMA3_MODELS = {
 _MISTRAL_MODELS = {
     "TheDrummer/Cydonia-Redux-22B-v1.1",
     "TheDrummer/Cydonia-24B-v4.1",
-    "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
 }
 
 

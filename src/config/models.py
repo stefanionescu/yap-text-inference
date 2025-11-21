@@ -19,7 +19,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
     "TheDrummer/Cydonia-Redux-22B-v1.1",
     "TheDrummer/Cydonia-24B-v4.1",
-    "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
