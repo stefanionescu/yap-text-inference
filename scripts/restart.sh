@@ -5,7 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
-source "${SCRIPT_DIR}/lib/common/model_guard.sh"
 source "${SCRIPT_DIR}/lib/restart/args.sh"
 source "${SCRIPT_DIR}/lib/restart/generic.sh"
 source "${SCRIPT_DIR}/lib/restart/awq.sh"
@@ -78,16 +77,6 @@ if [ "${USING_LOCAL_MODELS}" = "0" ] && [ "${USING_HF_MODELS}" = "0" ]; then
   log_error "2. Set HuggingFace AWQ models:"
   log_error "   AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq $0 ${DEPLOY_MODE}"
   exit 1
-fi
-
-# Fail fast if using Hugging Face models that are not allowlisted
-if [ "${USING_HF_MODELS}" = "1" ]; then
-  if { [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; } && [ -n "${AWQ_CHAT_MODEL:-}" ]; then
-    ensure_model_allowed "chat" "${AWQ_CHAT_MODEL}"
-  fi
-  if { [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; } && [ -n "${AWQ_TOOL_MODEL:-}" ]; then
-    ensure_model_allowed "tool" "${AWQ_TOOL_MODEL}"
-  fi
 fi
 
 # Check if venv exists (only required for local models or first run)
