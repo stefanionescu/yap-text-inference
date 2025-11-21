@@ -43,18 +43,19 @@ LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
   echo "KV_DTYPE=${KV_DTYPE:-}";
 } > "${LAST_ENV_FILE}" 2>/dev/null || true
 
-# Resolve uvicorn launcher robustly (prefer venv, then PATH, then python -m)
+# Resolve uvicorn launcher robustly (prefer venv python -m, then venv binary, then system)
 CMD_ARGS=("src.server:app" "--host" "0.0.0.0" "--port" "8000" "--workers" "1")
 
-if [ -x "${ROOT_DIR}/.venv/bin/uvicorn" ]; then
-  CMD=("${ROOT_DIR}/.venv/bin/uvicorn" "${CMD_ARGS[@]}")
-elif command -v uvicorn >/dev/null 2>&1; then
-  CMD=("$(command -v uvicorn)" "${CMD_ARGS[@]}")
-elif [ -x "${ROOT_DIR}/.venv/bin/python" ] && "${ROOT_DIR}/.venv/bin/python" - <<'PY' >/dev/null 2>&1
+if [ -x "${ROOT_DIR}/.venv/bin/python" ] && "${ROOT_DIR}/.venv/bin/python" - <<'PY' >/dev/null 2>&1
 import uvicorn
 PY
 then
+  # Prefer venv python -m uvicorn to ensure correct Python interpreter
   CMD=("${ROOT_DIR}/.venv/bin/python" "-m" "uvicorn" "${CMD_ARGS[@]}")
+elif [ -x "${ROOT_DIR}/.venv/bin/uvicorn" ]; then
+  CMD=("${ROOT_DIR}/.venv/bin/uvicorn" "${CMD_ARGS[@]}")
+elif command -v uvicorn >/dev/null 2>&1; then
+  CMD=("$(command -v uvicorn)" "${CMD_ARGS[@]}")
 elif command -v python3 >/dev/null 2>&1 && python3 - <<'PY' >/dev/null 2>&1
 import uvicorn
 PY
