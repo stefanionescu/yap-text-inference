@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
+source "${SCRIPT_DIR}/lib/common/model_guard.sh"
 
 log_info "Starting Yap Text Inference Server"
 
@@ -215,6 +216,14 @@ case "${DEPLOY_MODE_SELECTED:-both}" in
     export DEPLOY_MODELS=both
     ;;
 esac
+
+# Fail fast if selected models are not in the allowlist (unless local paths)
+if [ -n "${CHAT_MODEL_NAME}" ]; then
+  ensure_model_allowed "chat" "${CHAT_MODEL_NAME}"
+fi
+if [ -n "${TOOL_MODEL_NAME}" ]; then
+  ensure_model_allowed "tool" "${TOOL_MODEL_NAME}"
+fi
 
 # Determine QUANTIZATION
 case "${QUANT_TYPE}" in
