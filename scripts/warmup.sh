@@ -56,9 +56,6 @@ PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export PYTHONPATH
 
 wait_for_ready() {
-  local timeout_s=1200
-  local start_ts
-  start_ts=$(date +%s)
   while true; do
     if "${PY_BIN}" - "${HEALTH_URLS[@]}" <<'PY' >/dev/null 2>&1; then
 import sys
@@ -77,9 +74,6 @@ def check(urls):
 raise SystemExit(0 if check(sys.argv[1:]) else 1)
 PY
       return 0
-    fi
-    if (( $(date +%s) - start_ts >= timeout_s )); then
-      return 1
     fi
     sleep 2
   done
@@ -119,11 +113,7 @@ run_py_tool() {
 }
 
 log "Warmup: waiting for server readiness on ${SERVER_ADDR}..."
-if ! wait_for_ready; then
-  log "ERROR: Server not ready within timeout."
-  rm -f "${DONE_FILE}"
-  exit 0
-fi
+wait_for_ready
 
 log "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
 
