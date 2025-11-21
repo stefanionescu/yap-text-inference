@@ -8,17 +8,22 @@ from .env import QUANTIZATION
 ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
     "kyx0r/Neona-12B",
-    "Epiculous/Violet_Twilight-v0.2",
+    "Epiculous/Violet_Twilight-v0.2", # weird personality and hard to steer
     "Sao10K/14B-Qwen2.5-Kunou-v1",
-    "SicariusSicariiStuff/Impish_Nemo_12B",
+    "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it
     "SicariusSicariiStuff/Impish_Magic_24B",
     "SicariusSicariiStuff/Wingless_Imp_8B",
     "SicariusSicariiStuff/Impish_Mind_8B",
     "SicariusSicariiStuff/Eximius_Persona_5B",
     "SicariusSicariiStuff/Impish_LLAMA_4B",
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
-    "TheDrummer/Cydonia-Redux-22B-v1.1",
-    "TheDrummer/Cydonia-24B-v4.1",
+    "TheDrummer/Cydonia-Redux-22B-v1.1", # sassy/pessimistic, hard to steer
+    "TheDrummer/Cydonia-24B-v4.1", # unintelligible/stupid
+    "FlareRebellion/WeirdCompound-v1.7-24b",
+    "dphn/Dolphin-Mistral-24B-Venice-Edition",
+    "dphn/dolphin-2.9.3-mistral-nemo-12b",
+    "FallenMerick/MN-Violet-Lotus-12B",
+    "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
