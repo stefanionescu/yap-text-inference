@@ -11,6 +11,7 @@ source "${SCRIPT_DIR}/lib/restart/reconfigure.sh"
 source "${SCRIPT_DIR}/lib/restart/awq.sh"
 source "${SCRIPT_DIR}/lib/restart/env.sh"
 source "${SCRIPT_DIR}/lib/restart/launch.sh"
+source "${SCRIPT_DIR}/lib/quant/push.sh"
 
 log_info "Restart manager ready (reuse caches or reconfigure models)"
 
@@ -39,6 +40,7 @@ Key flags:
   --install-deps        Reinstall dependencies inside .venv before restart
   --reset-models        Delete cached models/HF data and redeploy new models
   --keep-models         Reuse existing AWQ caches (default)
+  --push-awq            Upload cached AWQ exports to Hugging Face before relaunch
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
   --chat-quant <val>    Override chat/base quantization (fp8|gptq|gptq_marlin|awq)
@@ -84,6 +86,7 @@ fi
 restart_generic_restart_if_needed
 
 restart_detect_awq_models "${DEPLOY_MODE}"
+restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
 if [ "${USING_LOCAL_MODELS}" = "0" ] && [ "${USING_HF_MODELS}" = "0" ]; then
@@ -148,4 +151,5 @@ NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 restart_setup_env_for_awq "${DEPLOY_MODE}"
 
 restart_apply_defaults_and_deps
+restart_push_cached_awq_models "${DEPLOY_MODE}"
 restart_start_server_background
