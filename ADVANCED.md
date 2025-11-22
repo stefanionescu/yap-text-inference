@@ -222,7 +222,18 @@ Notes for AWQ:
 
 ### Pushing AWQ Exports to Hugging Face
 
-When `QUANTIZATION=awq`, the deployment pipeline can upload the freshly quantized folders to the Hugging Face Hub. Uploads are opt-in and controlled via environment variables:
+When `QUANTIZATION=awq`, the deployment pipeline can upload the freshly quantized folders to the Hugging Face Hub. Uploads are opt-in and controlled via environment variables shared by both the full deployer (`scripts/main.sh`) and the restart helper (`scripts/restart.sh --push-awq ...`).
+
+**Required when `HF_AWQ_PUSH=1`:**
+- `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
+- `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat/both are deployed
+- `HF_AWQ_TOOL_REPO` pointing to your tool AWQ repo whenever tool/both are deployed
+
+**Optional tuning (defaults shown below):**
+- `HF_AWQ_BRANCH` – upload branch (default `main`)
+- `HF_AWQ_PRIVATE` – create repo as private (`1`) or public (`0`)
+- `HF_AWQ_ALLOW_CREATE` – auto-create repo (`1`) or require it to exist (`0`)
+- `HF_AWQ_COMMIT_MSG_CHAT` / `HF_AWQ_COMMIT_MSG_TOOL` – commit message overrides
 
 ```bash
 export HF_AWQ_PUSH=1                           # enable uploads (quits early if token/repos missing)
@@ -238,6 +249,9 @@ export HF_AWQ_COMMIT_MSG_TOOL="Upload Hammer AWQ build"
 
 # now run the usual launcher
 scripts/main.sh awq <chat_model> <tool_model>
+
+# re-upload cached AWQ exports during a restart (no full redeploy needed)
+bash scripts/restart.sh --push-awq [deploy_mode] [--reset-models]
 ```
 
 The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.

@@ -14,6 +14,7 @@ restart_parse_args() {
   RECONFIG_TOOL_QUANTIZATION="${RECONFIG_TOOL_QUANTIZATION:-}"
   RECONFIG_AWQ_CHAT_MODEL="${RECONFIG_AWQ_CHAT_MODEL:-}"
   RECONFIG_AWQ_TOOL_MODEL="${RECONFIG_AWQ_TOOL_MODEL:-}"
+  HF_AWQ_PUSH="${HF_AWQ_PUSH:-0}"
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -101,6 +102,14 @@ restart_parse_args() {
         RECONFIG_AWQ_TOOL_MODEL="${1#*=}"
         shift
         ;;
+      --push-awq)
+        HF_AWQ_PUSH=1
+        shift
+        ;;
+      --no-push-awq)
+        HF_AWQ_PUSH=0
+        shift
+        ;;
       --help|-h)
         return 2
         ;;
@@ -116,6 +125,7 @@ restart_parse_args() {
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
   export RECONFIG_CHAT_QUANTIZATION RECONFIG_TOOL_QUANTIZATION
   export RECONFIG_AWQ_CHAT_MODEL RECONFIG_AWQ_TOOL_MODEL
+  export HF_AWQ_PUSH
   return 0
 }
 

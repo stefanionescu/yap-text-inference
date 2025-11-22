@@ -17,15 +17,15 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
     "TheDrummer/Cydonia-Redux-22B-v1.1", # unintelligible/stupid 
     "TheDrummer/Cydonia-24B-v4.1", # sassy/pessimistic, hard to steer
-    "TheDrummer/Skyfall-31B-v4", # 
-    "TheDrummer/Skyfall-36B-v2", # 
+    "TheDrummer/Skyfall-31B-v4", # stupid even at lower temperatures
+    "TheDrummer/Skyfall-36B-v2", # might be decent but gotta have a super strong system prompt
     "dphn/Dolphin-Mistral-24B-Venice-Edition", # stupid, repetitive, ignores instructions at 4bit. did not test 8bit, it's too big for L40S
-    "dphn/dolphin-2.9.3-mistral-nemo-12b", # 
-    "FallenMerick/MN-Violet-Lotus-12B",
+    "dphn/dolphin-2.9.3-mistral-nemo-12b", # adds random characters at the beginning of the response and uses 3rd person to describe itself
+    "FallenMerick/MN-Violet-Lotus-12B", # stupid and hallucinates a ton
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0", # I like the reply length/chatty format but it just ignores instructions or maybe the prompt needs to be massaged
-    "mistralai/Mixtral-8x7B-v0.1",
+    "mistralai/Mixtral-8x7B-v0.1", # 
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "TheDrummer/Magidonia-24B-v4.2.0",
+    "TheDrummer/Magidonia-24B-v4.2.0", # 
     "TheDrummer/Snowpiercer-15B-v3",
     "TheDrummer/Theia-21B-v2",
     "concedo/Beepo-22B",

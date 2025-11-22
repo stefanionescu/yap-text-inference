@@ -91,4 +91,67 @@ restart_setup_env_for_awq() {
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
 }
 
+restart_validate_awq_push_prereqs() {
+  local DEPLOY_MODE="$1"
+  if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
+    return
+  fi
+  if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
+    log_info "HF_AWQ_PUSH=1 but restart is using Hugging Face AWQ models; uploads will be skipped."
+    return
+  fi
+
+  if [ -z "${HF_TOKEN:-}" ]; then
+    log_error "HF_AWQ_PUSH=1 requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set before restart."
+    exit 1
+  fi
+
+  local NEED_CHAT=0 NEED_TOOL=0
+  case "${DEPLOY_MODE}" in
+    both) NEED_CHAT=1; NEED_TOOL=1 ;;
+    chat) NEED_CHAT=1 ;;
+    tool) NEED_TOOL=1 ;;
+  esac
+
+  if [ "${NEED_CHAT}" = "1" ]; then
+    if [ -z "${HF_AWQ_CHAT_REPO:-}" ] || [[ "${HF_AWQ_CHAT_REPO}" == your-org/* ]]; then
+      log_error "HF_AWQ_PUSH=1 requires HF_AWQ_CHAT_REPO to point to your Hugging Face chat repo."
+      exit 1
+    fi
+  fi
+
+  if [ "${NEED_TOOL}" = "1" ]; then
+    if [ -z "${HF_AWQ_TOOL_REPO:-}" ] || [[ "${HF_AWQ_TOOL_REPO}" == your-org/* ]]; then
+      log_error "HF_AWQ_PUSH=1 requires HF_AWQ_TOOL_REPO to point to your Hugging Face tool repo."
+      exit 1
+    fi
+  fi
+}
+
+restart_push_cached_awq_models() {
+  local DEPLOY_MODE="$1"
+  if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
+    return
+  fi
+  if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
+    log_info "HF_AWQ_PUSH=1 but restart is using Hugging Face AWQ models; skipping upload."
+    return
+  fi
+
+  log_info "Uploading cached AWQ artifacts to Hugging Face (restart)"
+  local pushed=0
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
+    push_awq_to_hf "${CHAT_AWQ_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
+    pushed=1
+  fi
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
+    push_awq_to_hf "${TOOL_AWQ_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
+    pushed=1
+  fi
+
+  if [ "${pushed}" != "1" ]; then
+    log_info "No local AWQ artifacts matched deploy mode '${DEPLOY_MODE}'; nothing to upload."
+  fi
+}
+
 
