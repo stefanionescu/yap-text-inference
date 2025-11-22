@@ -130,7 +130,29 @@ class AWQQuantizer:
         )
         
         toolcall_model = is_toolcall_model(model_path)
-        tokenizer = AutoTokenizer.from_pretrained(resolved_model_path, trust_remote_code=True, use_fast=False)
+
+        tokenizer = None
+        tokenizer_error: Exception | None = None
+        for use_fast in (False, True):
+            mode = "slow" if not use_fast else "fast"
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(
+                    resolved_model_path,
+                    trust_remote_code=True,
+                    use_fast=use_fast,
+                )
+                if use_fast and tokenizer_error is not None:
+                    print(
+                        "[awq] Loaded fast tokenizer after slow tokenizer failed "
+                        f"({tokenizer_error})"
+                    )
+                break
+            except Exception as err:  # noqa: BLE001
+                tokenizer_error = err
+                print(f"[awq] Failed to load {mode} tokenizer: {err}")
+        if tokenizer is None:
+            print("[awq] Quantization failed: unable to load tokenizer (see errors above)")
+            return False
         
         # Compute calibration sequence length
         if toolcall_model:

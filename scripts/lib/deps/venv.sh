@@ -3,14 +3,22 @@
 # Virtual environment helpers
 
 ensure_virtualenv() {
-  if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    log_info "Creating virtual environment at ${ROOT_DIR}/.venv"
+  local venv_path="${ROOT_DIR}/.venv"
+  local venv_python="${venv_path}/bin/python"
+
+  if [ -d "${venv_path}" ] && [ ! -x "${venv_python}" ]; then
+    log_warn "Existing virtualenv missing python binary; recreating ${venv_path}"
+    rm -rf "${venv_path}"
+  fi
+
+  if [ ! -d "${venv_path}" ]; then
+    log_info "Creating virtual environment at ${venv_path}"
     PY_BIN="python3"
     if ! command -v ${PY_BIN} >/dev/null 2>&1; then
       PY_BIN="python"
     fi
 
-    if ! ${PY_BIN} -m venv "${ROOT_DIR}/.venv" >/dev/null 2>&1; then
+    if ! ${PY_BIN} -m venv "${venv_path}" >/dev/null 2>&1; then
       log_warn "python venv failed (ensurepip missing?). Trying virtualenv."
       if ! ${PY_BIN} -m pip --version >/dev/null 2>&1; then
         log_warn "pip is not available; attempting to bootstrap pip."
@@ -46,9 +54,9 @@ ensure_virtualenv() {
       if command -v virtualenv >/dev/null 2>&1 || ${PY_BIN} -m virtualenv --version >/dev/null 2>&1; then
         log_info "Creating venv with virtualenv"
         if ${PY_BIN} -m virtualenv --version >/dev/null 2>&1; then
-          ${PY_BIN} -m virtualenv "${ROOT_DIR}/.venv"
+          ${PY_BIN} -m virtualenv "${venv_path}"
         else
-          virtualenv -p "${PY_BIN}" "${ROOT_DIR}/.venv"
+          virtualenv -p "${PY_BIN}" "${venv_path}"
         fi
       else
         log_err "Failed to create a virtual environment. Install python3-venv or virtualenv and retry."
@@ -59,9 +67,16 @@ ensure_virtualenv() {
 }
 
 ensure_pip_in_venv() {
-  if ! "${ROOT_DIR}/.venv/bin/python" -m pip --version >/dev/null 2>&1; then
+  local venv_python="${ROOT_DIR}/.venv/bin/python"
+
+  if [ ! -x "${venv_python}" ]; then
+    log_err "Virtual environment missing python binary; run ensure_virtualenv first."
+    return 1
+  fi
+
+  if ! "${venv_python}" -m pip --version >/dev/null 2>&1; then
     log_warn "pip missing in virtual environment; bootstrapping pip."
-    if ! "${ROOT_DIR}/.venv/bin/python" -m ensurepip --upgrade >/dev/null 2>&1; then
+    if ! "${venv_python}" -m ensurepip --upgrade >/dev/null 2>&1; then
       TMP_PIP="${ROOT_DIR}/.get-pip.py"
       if command -v curl >/dev/null 2>&1; then
         curl -fsSL -o "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
@@ -69,14 +84,14 @@ ensure_pip_in_venv() {
         wget -qO "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
       fi
       if [ -f "${TMP_PIP}" ]; then
-        "${ROOT_DIR}/.venv/bin/python" "${TMP_PIP}" || true
+        "${venv_python}" "${TMP_PIP}" || true
         rm -f "${TMP_PIP}" || true
       fi
     fi
   fi
 
-  if "${ROOT_DIR}/.venv/bin/python" -m pip --version >/dev/null 2>&1; then
-    "${ROOT_DIR}/.venv/bin/python" -m pip install --upgrade pip
+  if "${venv_python}" -m pip --version >/dev/null 2>&1; then
+    "${venv_python}" -m pip install --upgrade pip
   else
     log_err "pip is not available in the virtual environment; please install python3-venv or virtualenv and retry."
     return 1
