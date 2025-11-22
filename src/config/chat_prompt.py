@@ -29,6 +29,7 @@ _MISTRAL_MODELS = {
     "TheDrummer/Cydonia-Redux-22B-v1.1",
     "TheDrummer/Cydonia-24B-v4.1",
     "TheDrummer/Skyfall-36B-v2",
+    "TheDrummer/Skyfall-31B-v4",
     "TheDrummer/Magidonia-24B-v4.2.0",
     "dphn/Dolphin-Mistral-24B-Venice-Edition",
     "dphn/dolphin-2.9.3-mistral-nemo-12b",
