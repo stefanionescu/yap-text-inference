@@ -25,7 +25,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0", # I like the reply length/chatty format but it just ignores instructions or maybe the prompt needs to be massaged
     "mistralai/Mixtral-8x7B-v0.1", # 
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "TheDrummer/Magidonia-24B-v4.2.0", # 
+    "TheDrummer/Magidonia-24B-v4.2.0", # weird personality, not flirty even when I tell it to be like that
     "TheDrummer/Snowpiercer-15B-v3",
     "TheDrummer/Theia-21B-v2",
     "concedo/Beepo-22B",
