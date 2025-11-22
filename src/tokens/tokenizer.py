@@ -134,6 +134,11 @@ class FastTokenizer:
                 ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
             return list(ids)
 
+    def get_transformers_tokenizer(self):
+        """Return the underlying transformers tokenizer if available, None otherwise."""
+        with self._lock:
+            return self._hf_tok
+
     def _inspect_source(self, path_or_repo: str) -> TokenizerSource:
         try:
             is_local = os.path.exists(path_or_repo)

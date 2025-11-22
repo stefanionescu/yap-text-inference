@@ -40,16 +40,11 @@ awq_quantize_tool_if_needed() {
     export TOOL_MODEL="${out_dir}"
     export TOOL_QUANTIZATION=awq
     push_awq_to_hf "${out_dir}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
-  else
-    log_warn "AWQ quantization failed for tool model; falling back to auto-detected quant (float)"
-    unset TOOL_QUANTIZATION
-    if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
-      log_warn "AWQ_FAIL_HARD=1 set; aborting"
-      exit 1
-    else
-      log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
-    fi
+    return 0
   fi
+
+  log_error "AWQ quantization failed for tool model (${TOOL_MODEL}); aborting deployment."
+  return 1
 }
 
 awq_quantize_chat_if_needed() {
@@ -72,16 +67,11 @@ awq_quantize_chat_if_needed() {
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq
     push_awq_to_hf "${out_dir}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
-  else
-    log_warn "AWQ quantization failed for chat model; falling back to auto-detected quant"
-    unset CHAT_QUANTIZATION
-    if [ "${AWQ_FAIL_HARD:-0}" = "1" ]; then
-      log_warn "AWQ_FAIL_HARD=1 set; aborting"
-      exit 1
-    else
-      log_warn "NOTE: Deployment will continue with fallback quantization, not AWQ as requested"
-    fi
+    return 0
   fi
+
+  log_error "AWQ quantization failed for chat model (${CHAT_MODEL}); aborting deployment."
+  return 1
 }
 
 awq_handle_tool_prequant_or_quantize() {

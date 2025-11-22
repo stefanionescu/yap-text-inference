@@ -191,7 +191,7 @@ restart_clear_model_artifacts() {
   )
   for path in "${paths[@]}"; do
     if [ -n "${path}" ] && [ -e "${path}" ]; then
-      log_info "  Removing ${path}"
+      log_info "Removing ${path}"
       rm -rf "${path}" || true
     fi
   done
@@ -288,20 +288,20 @@ restart_reconfigure_models() {
   fi
 
   log_info "Restart mode: reconfigure (models reset, deps preserved)"
-  log_info "  Deploy mode: ${DEPLOY_MODELS}"
+  log_info "Deploy mode: ${DEPLOY_MODELS}"
   if [ "${deploy_chat}" = "1" ]; then
-    log_info "  Chat model: ${CHAT_MODEL}"
+    log_info "Chat model: ${CHAT_MODEL}"
     if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-      log_info "    Chat quantization override: ${CHAT_QUANTIZATION}"
+      log_info "Chat quantization override: ${CHAT_QUANTIZATION}"
     fi
   fi
   if [ "${deploy_tool}" = "1" ]; then
-    log_info "  Tool model: ${TOOL_MODEL}"
+    log_info "Tool model: ${TOOL_MODEL}"
     if [ -n "${TOOL_QUANTIZATION:-}" ]; then
-      log_info "    Tool quantization override: ${TOOL_QUANTIZATION}"
+      log_info "Tool quantization override: ${TOOL_QUANTIZATION}"
     fi
   fi
-  log_info "  Base quantization: ${QUANTIZATION}"
+  log_info "Base quantization: ${QUANTIZATION}"
 
   log_info "Stopping server before redeploy (preserving .venv)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
@@ -326,5 +326,3 @@ restart_reconfigure_models() {
 
   restart_start_server_background
 }
-
-
