@@ -26,7 +26,7 @@ _LLAMA3_MODELS = {
 _MISTRAL_MODELS = {
     "TheDrummer/Cydonia-Redux-22B-v1.1",
     "TheDrummer/Cydonia-24B-v4.1",
-    "FlareRebellion/WeirdCompound-v1.7-24b",
+    "TheDrummer/Skyfall-36B-v2",
     "dphn/Dolphin-Mistral-24B-Venice-Edition",
     "FallenMerick/MN-Violet-Lotus-12B",
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
