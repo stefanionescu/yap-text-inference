@@ -11,13 +11,32 @@ source "${LIB_Q}/env.sh"
 source "${LIB_Q}/push.sh"
 source "${LIB_Q}/ops.sh"
 
-# If not using AWQ, do nothing and stay silent (no logs)
+# Determine which engines requested AWQ
+AWQ_TARGET_CHAT=0
+AWQ_TARGET_TOOL=0
+if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
+  if [ "${CHAT_QUANTIZATION:-}" = "awq" ]; then
+    AWQ_TARGET_CHAT=1
+  elif [ -z "${CHAT_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; then
+    AWQ_TARGET_CHAT=1
+  fi
+fi
+if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
+  if [ "${TOOL_QUANTIZATION:-}" = "awq" ]; then
+    AWQ_TARGET_TOOL=1
+  elif [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; then
+    AWQ_TARGET_TOOL=1
+  fi
+fi
+export AWQ_TARGET_CHAT AWQ_TARGET_TOOL
+
+# If neither engine needs AWQ work, exit quietly
 # shellcheck disable=SC2317  # pattern handles sourced vs executed scripts
-if [ "${QUANTIZATION:-}" != "awq" ]; then
+if [ "${AWQ_TARGET_CHAT}" = "0" ] && [ "${AWQ_TARGET_TOOL}" = "0" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-log_info "Running AWQ quantization process"
+log_info "Running AWQ quantization process (chat=${AWQ_TARGET_CHAT}, tool=${AWQ_TARGET_TOOL})"
 awq_setup_hf_env
 
 awq_should_use_prequant
@@ -25,26 +44,24 @@ if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
   log_info "Using pre-quantized AWQ models from Hugging Face (when available)"
 fi
 
-# Main quantization logic (QUANTIZATION=awq guaranteed by early guard)
-if [ "${QUANTIZATION}" = "awq" ]; then
-  awq_ensure_cache_dir
+# Main quantization logic
+awq_ensure_cache_dir
 
-  if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
-    # Pre-quantized models when provided, otherwise quantize locally
-    if [ "${DEPLOY_TOOL}" = "1" ]; then
-      awq_handle_tool_prequant_or_quantize
-    fi
-    if [ "${DEPLOY_CHAT}" = "1" ]; then
-      awq_handle_chat_prequant_or_quantize
-    fi
-  else
-    log_info "Starting local AWQ quantization process"
-    if [ "${DEPLOY_TOOL}" = "1" ]; then
-      awq_quantize_tool_if_needed
-    fi
-    if [ "${DEPLOY_CHAT}" = "1" ]; then
-      awq_quantize_chat_if_needed
-    fi
+if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
+  # Pre-quantized models when provided, otherwise quantize locally
+  if [ "${AWQ_TARGET_TOOL}" = "1" ]; then
+    awq_handle_tool_prequant_or_quantize
+  fi
+  if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
+    awq_handle_chat_prequant_or_quantize
+  fi
+else
+  log_info "Starting local AWQ quantization process"
+  if [ "${AWQ_TARGET_TOOL}" = "1" ]; then
+    awq_quantize_tool_if_needed
+  fi
+  if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
+    awq_quantize_chat_if_needed
   fi
 fi
 

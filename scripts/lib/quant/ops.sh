@@ -7,14 +7,22 @@ awq_ensure_cache_dir() {
 }
 
 awq_should_use_prequant() {
-  # Sets USE_PREQUANT_AWQ=1 if QUANTIZATION=awq and both (or either) AWQ_* models set
-  local use=0
-  if [ "${QUANTIZATION:-}" = "awq" ]; then
-    if [ -n "${AWQ_CHAT_MODEL:-}" ] || [ -n "${AWQ_TOOL_MODEL:-}" ]; then
-      use=1
-    fi
+  local need_chat="${AWQ_TARGET_CHAT:-0}"
+  local need_tool="${AWQ_TARGET_TOOL:-0}"
+  local use=0 chat_use=0 tool_use=0
+
+  if [ "${need_chat}" = "1" ] && [ -n "${AWQ_CHAT_MODEL:-}" ]; then
+    chat_use=1
+    use=1
   fi
+  if [ "${need_tool}" = "1" ] && [ -n "${AWQ_TOOL_MODEL:-}" ]; then
+    tool_use=1
+    use=1
+  fi
+
   export USE_PREQUANT_AWQ=${use}
+  export USE_PREQUANT_AWQ_CHAT=${chat_use}
+  export USE_PREQUANT_AWQ_TOOL=${tool_use}
 }
 
 awq_quantize_tool_if_needed() {
