@@ -9,7 +9,6 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 ## Contents
 
 - [Key Features](#key-features)
-- [WebSocket Protocol Highlights](#websocket-protocol-highlights)
 - [Quickstart](#quickstart)
 - [Linting](#linting)
 - [Docker Deployment](#docker-deployment)
@@ -25,7 +24,6 @@ A text inference server optimized for low TTFT and steady text streaming. It can
   - [Environment Overrides](#environment-overrides)
   - [What It Prints](#what-it-prints)
 - [Benchmark Client](#benchmark-client)
-- [Viewing Logs](#viewing-logs)
 - [Stopping and Restarting](#stopping-and-restarting)
   - [Stop Script Behavior (Deep Clean)](#stop-script-behavior-deep-clean)
 - [Health Check](#health-check)
@@ -40,20 +38,6 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 - Interrupts/barge-in via cancel or a new start, plus explicit heartbeats and idle enforcement (150 s default).
 - Concurrent connection limiting via a global semaphore (capacity is explicitly configured through the `MAX_CONCURRENT_CONNECTIONS` environment variable so you can match your hardware profile)
 - API key authentication for secure access (required, must be set via TEXT_API_KEY environment variable)
-
-## WebSocket Protocol Highlights
-
-- **Start**: `{"type":"start", ...}` begins/queues a turn. Sending another `start` automatically cancels the previous turn for that session (barge-in).
-- **Sampling overrides (optional)**: Include a `sampling` object inside the `start` payload to override chat decoding knobs per session, for example:
-  `{"type":"start", "...": "...", "sampling":{"temperature":0.8,"top_p":0.85}}`. Supported keys are `temperature` (0.2–1.2), `top_p` (0.6–1.0), `top_k` (10–60), `min_p` (0.0–0.20), `repeat_penalty` (1.0–1.3), `presence_penalty` (0–0.15), and `frequency_penalty` (0–0.15). Any omitted key falls back to the server defaults in `src/config/sampling.py`.
-- **Cancel**: `{"type":"cancel"}` (or the literal sentinel `__CANCEL__`) immediately stops both chat and tool engines. The server replies with `{"type":"done","cancelled":true}` (echoing `request_id` when provided).
-- **Client end**: `{"type":"end"}` (or the sentinel `__END__`) requests a clean shutdown. The server responds with `{"type":"connection_closed","reason":"client_request"}` before closing with code `1000`.
-- **Heartbeat**: `{"type":"ping"}` keeps the socket active during long pauses. The server answers with `{"type":"pong"}`; receiving `{"type":"pong"}` from clients is treated as a no-op. Every ping/ack resets the idle timer.
-- **Idle timeout**: Connections with no activity for 150 s (configurable via `WS_IDLE_TIMEOUT_S`) are closed with code `4000`. Send periodic pings or requests to stay connected longer.
-- **Sentinel shortcuts**: The default `WS_END_SENTINEL="__END__"` / `WS_CANCEL_SENTINEL="__CANCEL__"` are accepted as raw text frames for clients that can’t emit JSON.
-- **Rate limits**: Rolling-window quotas for both general messages and cancel messages are enforced per connection, while persona updates are limited per session. Tune the behavior via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS`, `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS`, and `CHAT_PROMPT_UPDATE_MAX_PER_WINDOW` / `CHAT_PROMPT_UPDATE_WINDOW_SECONDS` (see `src/config/limits.py` for defaults).
-- **Capacity guard**: Admissions are gated by a global semaphore (configurable via `MAX_CONCURRENT_CONNECTIONS` and `WS_HANDSHAKE_ACQUIRE_TIMEOUT_S`). When the server returns `server_at_capacity`, retry with backoff.
-- **Done frame contract**: Every turn ends with `{"type":"done","usage":{...}}` when it succeeds, or `{"type":"done","cancelled":true}` when it’s interrupted (explicit cancel or barge-in).
 
 ## Quickstart
 
@@ -337,17 +321,6 @@ Override URL and timeout:
 ```bash
 python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
-
-## Viewing Logs
-
-All deployment and server logs are unified in a single `server.log` file.
-
-```bash
-# All logs (deployment + server activity)
-tail -f server.log
-```
-
-Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tail without stopping the deployment.
 
 ## Stopping and Restarting
 
