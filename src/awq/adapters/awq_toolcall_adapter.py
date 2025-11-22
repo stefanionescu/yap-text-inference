@@ -50,9 +50,14 @@ def compute_toolcall_calibration_seqlen(requested: int) -> int:
     return max(requested, _TOOLCALL_DEFAULT_TOTAL_LEN)
 
 
-def apply_toolcall_awq_adapters(target_seqlen: int) -> None:
+def apply_awq_compatibility_patches() -> None:
+    """Ensure common AWQ patches are applied for all models."""
     _apply_toolcall_catcher_patch()
     _apply_toolcall_qwen_patch()
+
+
+def apply_toolcall_awq_adapters(target_seqlen: int) -> None:
+    apply_awq_compatibility_patches()
     _apply_toolcall_quantizer_patch(target_seqlen)
 
 
@@ -233,6 +238,7 @@ def _apply_toolcall_quantizer_patch(target_seqlen: int) -> None:
 
 
 __all__ = [
+    "apply_awq_compatibility_patches",
     "apply_toolcall_awq_adapters",
     "compute_toolcall_calibration_seqlen",
     "is_toolcall_model",

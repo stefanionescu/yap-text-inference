@@ -8,6 +8,7 @@ from collections.abc import Iterable
 import time
 
 from ..adapters import (
+    apply_awq_compatibility_patches,
     apply_toolcall_awq_adapters,
     compute_chat_calibration_seqlen,
     compute_toolcall_calibration_seqlen,
@@ -72,6 +73,7 @@ class AWQQuantizer:
             return False
             
         awq_version = getattr(awq_pkg, "__version__", "unknown")
+        apply_awq_compatibility_patches()
         
         # Build quantization config
         quant_config = {
