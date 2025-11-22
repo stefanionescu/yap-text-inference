@@ -32,7 +32,6 @@ _MISTRAL_MODELS = {
     "TheDrummer/Skyfall-31B-v4",
     "TheDrummer/Magidonia-24B-v4.2.0",
     "dphn/Dolphin-Mistral-24B-Venice-Edition",
-    "dphn/dolphin-2.9.3-mistral-nemo-12b",
     "FallenMerick/MN-Violet-Lotus-12B",
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
     "concedo/Beepo-22B",
