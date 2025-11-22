@@ -17,13 +17,14 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Eximius_Persona_5B",
     "SicariusSicariiStuff/Impish_LLAMA_4B",
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
-    "TheDrummer/Cydonia-Redux-22B-v1.1", # sassy/pessimistic, hard to steer
-    "TheDrummer/Cydonia-24B-v4.1", # unintelligible/stupid
-    "FlareRebellion/WeirdCompound-v1.7-24b",
-    "dphn/Dolphin-Mistral-24B-Venice-Edition",
+    "TheDrummer/Cydonia-Redux-22B-v1.1", # unintelligible/stupid 
+    "TheDrummer/Cydonia-24B-v4.1", # sassy/pessimistic, hard to steer
+    "TheDrummer/Skyfall-36B-v2",
+    "dphn/Dolphin-Mistral-24B-Venice-Edition", # stupid, repetitive, ignores instructions at 4bit. did not test 8bit, it's too big for L40S
     "dphn/dolphin-2.9.3-mistral-nemo-12b",
     "FallenMerick/MN-Violet-Lotus-12B",
-    "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
+    "ReadyArt/Broken-Tutu-24B-Unslop-v2.0", # I like the reply length/chatty format but it just ignores instructions or maybe the prompt needs to be massaged
+    "trashpanda-org/QwQ-32B-Snowdrop-v0",
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",

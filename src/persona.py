@@ -152,34 +152,34 @@ def _build_mistral_prompt(
     history_turns: Sequence[tuple[str, str]],
     user_utt: str | None,
 ) -> str:
+    """Render prompts using the mistral-common instruct template (V7)."""
     system_text = system_prompt.strip() or _DEFAULT_SYSTEM_PROMPT
     parts: list[str] = []
-    is_first_block = True
+    has_turn = False
 
     def _format_user_block(content: str | None, include_system: bool) -> str:
-        sys_prefix = ""
-        if include_system and system_text:
-            sys_prefix = f"<<SYS>>\n{system_text}\n<</SYS>>\n\n"
         user_text = (content or "").strip()
-        return f"<s>[INST] {sys_prefix}{user_text} [/INST]"
+        prefix = "<s>" if include_system else ""
+        sys_segment = f"[SYSTEM_PROMPT]{system_text}[/SYSTEM_PROMPT]" if include_system else ""
+        return f"{prefix}{sys_segment}[INST]{user_text}[/INST]"
 
     def _append_assistant_block(content: str | None) -> None:
         assistant_text = (content or "").strip()
         if assistant_text:
-            parts.append(f"{assistant_text} </s>")
-        else:
-            parts.append("</s>")
+            parts.append(assistant_text)
+        parts.append("</s>")
 
     for user_text, assistant_text in history_turns:
         if not user_text and not assistant_text:
             continue
-        parts.append(_format_user_block(user_text, include_system=is_first_block))
-        is_first_block = False
-        _append_assistant_block(assistant_text)
+        parts.append(_format_user_block(user_text, include_system=not has_turn))
+        has_turn = True
+        if assistant_text:
+            _append_assistant_block(assistant_text)
 
     if user_utt is not None:
-        parts.append(_format_user_block(user_utt, include_system=is_first_block))
-    elif not parts:
+        parts.append(_format_user_block(user_utt, include_system=not has_turn))
+    elif not has_turn:
         parts.append(_format_user_block("", include_system=True))
 
     return "".join(parts)

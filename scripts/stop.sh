@@ -87,13 +87,13 @@ fi
 # 2) Remove virtual env(s) by default (unless NUKE_ALL=0)
 if [ "${NUKE_ALL}" != "0" ]; then
   for VENV_DIR in "${ROOT_DIR}/.venv" "${ROOT_DIR}/venv" "${ROOT_DIR}/env" "${ROOT_DIR}/.env"; do
-    [ -d "$VENV_DIR" ] && { log_info "Removing venv $VENV_DIR"; rm -rf "$VENV_DIR"; }
+    [ -d "$VENV_DIR" ] && { log_info "Removing venv $VENV_DIR"; rm -rf "$VENV_DIR" || true; }
   done
 else
   log_info "NUKE_ALL=0: preserving virtualenv(s)"
 fi
 
-# 5) Clear Hugging Face caches and config by default (unless NUKE_ALL=0)
+# 3) Clear Hugging Face caches and config by default (unless NUKE_ALL=0)
 if [ "${NUKE_ALL}" != "0" ]; then
   HF_DIRS=(
     "${HF_HOME:-}"
@@ -114,7 +114,7 @@ else
   log_info "NUKE_ALL=0: preserving HF caches/config"
 fi
 
-# 6) vLLM / kernel / compiler caches
+# 4) vLLM / kernel / compiler caches
 CACHE_DIRS=(
   "$HOME/.cache/vllm" "/root/.cache/vllm"
   "$HOME/.cache/flashinfer" "/root/.cache/flashinfer"
@@ -127,7 +127,7 @@ for d in "${CACHE_DIRS[@]}"; do
   [ -d "$d" ] && { log_info "Removing cache at $d"; rm -rf "$d" || true; }
 done
 
-# 7) Torch + pip caches (purge by default unless NUKE_ALL=0)
+# 5) Torch + pip caches (purge by default unless NUKE_ALL=0)
 if [ "${NUKE_ALL}" != "0" ]; then
   # Pip caches
   if command -v python >/dev/null 2>&1; then
@@ -149,17 +149,17 @@ for TORCH_CACHE in "$HOME/.cache/torch" "/root/.cache/torch"; do
   [ -d "$TORCH_CACHE" ] && { log_info "Removing torch cache at $TORCH_CACHE"; rm -rf "$TORCH_CACHE" || true; }
 done
 
-# 8) NVIDIA PTX JIT cache
+# 6) NVIDIA PTX JIT cache
 for NV_CACHE in "$HOME/.nv/ComputeCache" "/root/.nv/ComputeCache"; do
   [ -d "$NV_CACHE" ] && { log_info "Removing NVIDIA ComputeCache at $NV_CACHE"; rm -rf "$NV_CACHE" || true; }
 done
 
-# 9) Project __pycache__ / pytest
+# 7) Project __pycache__ / pytest
 log_info "Removing __pycache__ and .pytest_cache in repo"
 find "${ROOT_DIR}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
 
-# 10) Temp directories
+# 8) Temp directories
 rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* /tmp/pip-* /tmp/pip-build-* /tmp/pip-modern-metadata-* /tmp/uvicorn* 2>/dev/null || true
 
 # Remove runtime state directory
@@ -168,7 +168,7 @@ if [ -d "${ROOT_DIR}/.run" ]; then
   rm -rf "${ROOT_DIR}/.run" || true
 fi
 
-# 11) Nuke entire home caches by default (heavy-handed; unless NUKE_ALL=0)
+# 9) Nuke entire home caches by default (heavy-handed; unless NUKE_ALL=0)
 if [ "${NUKE_ALL}" != "0" ]; then
   for C in "$HOME/.cache" "/root/.cache"; do
     [ -d "$C" ] && { log_warn "Removing $C"; rm -rf "$C" || true; }
@@ -181,7 +181,7 @@ else
   log_info "NUKE_ALL=0: preserving home caches"
 fi
 
-# 12) Clean server artifacts
+# 10) Clean server artifacts
 rm -f "${ROOT_DIR}/server.log" "${ROOT_DIR}/server.pid" "${ROOT_DIR}/.server.log.trim" || true
 
 log_info "Done. Repo preserved. Jupyter/console/container remain running."
