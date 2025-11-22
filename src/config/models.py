@@ -19,6 +19,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
     "TheDrummer/Cydonia-Redux-22B-v1.1", # unintelligible/stupid 
     "TheDrummer/Cydonia-24B-v4.1", # sassy/pessimistic, hard to steer
+    "TheDrummer/Skyfall-31B-v4",
     "TheDrummer/Skyfall-36B-v2",
     "dphn/Dolphin-Mistral-24B-Venice-Edition", # stupid, repetitive, ignores instructions at 4bit. did not test 8bit, it's too big for L40S
     "dphn/dolphin-2.9.3-mistral-nemo-12b",
