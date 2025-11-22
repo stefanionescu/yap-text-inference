@@ -7,52 +7,64 @@ source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/restart/args.sh"
 source "${SCRIPT_DIR}/lib/restart/generic.sh"
+source "${SCRIPT_DIR}/lib/restart/reconfigure.sh"
 source "${SCRIPT_DIR}/lib/restart/awq.sh"
 source "${SCRIPT_DIR}/lib/restart/env.sh"
 source "${SCRIPT_DIR}/lib/restart/launch.sh"
 
-log_info "Quick restart using existing models and dependencies"
+log_info "Restart manager ready (reuse caches or reconfigure models)"
 
 ensure_required_env_vars
 
 usage() {
-  echo "Usage:"
-  echo "  $0 [deploy_mode] [--install-deps]    - Restart using existing AWQ models"
-  echo ""
-  echo "Deploy modes:"
-  echo "  both (default)  - Use both chat and tool AWQ models"
-  echo "  chat            - Use only chat AWQ model"  
-  echo "  tool            - Use only tool AWQ model"
-  echo ""
-  echo "Flags:"
-  echo "  --install-deps   - Reinstall/ensure Python deps before starting (default: off)"
-  echo ""
-  echo "AWQ Model Sources (auto-detected):"
-  echo "  • Local models: Uses .awq/ directory (created by full deployment)"
-  echo "  • HF models: Uses AWQ_CHAT_MODEL/AWQ_TOOL_MODEL environment variables"
-  echo ""
-  echo "This script:"
-  echo "  • Stops the server (light clean - preserves models/deps)"
-  echo "  • Starts server directly using existing AWQ models"
-  echo "  • Skips GPU check, dependency install, and quantization"
-  echo "  • Works with both local and HuggingFace AWQ models"
-  echo ""
-  echo "Required environment variables:"
-  echo "  TEXT_API_KEY='secret'             - API key (all requests require it)"
-  echo "  HF_TOKEN='hf_xxx'                 - Hugging Face access token"
-  echo "  MAX_CONCURRENT_CONNECTIONS=<int>  - Capacity guard limit"
-  echo ""
-  echo "Optional environment variables:"
-  echo "  AWQ_CHAT_MODEL=repo        - HuggingFace AWQ chat model"
-  echo "  AWQ_TOOL_MODEL=repo        - HuggingFace AWQ tool model"
-  echo "  CONCURRENT_MODEL_CALL=0|1  - Model calling mode (default: 1)"
-  echo ""
-  echo "Examples:"
-  echo "  $0                         # Restart both (local or HF)"
-  echo "  $0 chat                    # Restart chat-only"
-  echo "  AWQ_CHAT_MODEL=yapwithai/impish-12b-awq $0 chat"
-  echo "  CONCURRENT_MODEL_CALL=0 $0 # Restart sequential mode"
-  echo "  $0 both --install-deps    # Force reinstall deps before start"
+  cat <<'USAGE'
+Usage:
+  restart.sh [deploy_mode] [--install-deps] [--keep-models]
+      Quick restart that reuses existing AWQ caches (default behavior).
+
+  restart.sh --reset-models --deploy-mode both \
+             --chat-model <repo_or_path> --tool-model <repo_or_path> \
+             [--chat-quant fp8|gptq|gptq_marlin|awq] \
+             [--tool-quant <value>] \
+             [--awq-chat-model <repo>] [--awq-tool-model <repo>] \
+             [--install-deps]
+      Reconfigure which models/quantization are deployed without reinstalling deps.
+
+Deploy modes:
+  both (default)  - Deploy chat + tool engines
+  chat            - Deploy chat-only
+  tool            - Deploy tool-only
+
+Key flags:
+  --install-deps        Reinstall dependencies inside .venv before restart
+  --reset-models        Delete cached models/HF data and redeploy new models
+  --keep-models         Reuse existing AWQ caches (default)
+  --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
+  --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
+  --chat-quant <val>    Override chat/base quantization (fp8|gptq|gptq_marlin|awq)
+  --tool-quant <val>    Override tool quantization (fp8|gptq|gptq_marlin|awq)
+  --awq-chat-model / --awq-tool-model
+                        Use pre-quantized AWQ repos when awq is requested
+
+This script always:
+  • Stops the server
+  • Preserves the repository and container
+  • Keeps dependencies unless --install-deps or stop.sh removes them
+
+Required environment variables:
+  TEXT_API_KEY, HF_TOKEN (or HUGGINGFACE_HUB_TOKEN), MAX_CONCURRENT_CONNECTIONS
+
+Examples:
+  bash scripts/restart.sh                  # Reuse existing AWQ caches (both)
+  bash scripts/restart.sh chat             # Chat-only AWQ restart
+  bash scripts/restart.sh both --install-deps
+  bash scripts/restart.sh --reset-models \
+       --deploy-mode both \
+       --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
+       --tool-model MadeAgents/Hammer2.1-3b \
+       --chat-quant fp8 \
+       --tool-quant awq
+USAGE
   exit 1
 }
 
@@ -62,6 +74,11 @@ if ! restart_parse_args "$@"; then
 fi
 case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
 export INSTALL_DEPS DEPLOY_MODE
+
+if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
+  restart_reconfigure_models
+  exit 0
+fi
 
 # Generic path may start and tail the server; if not applicable, it returns
 restart_generic_restart_if_needed

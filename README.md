@@ -363,9 +363,18 @@ bash scripts/restart.sh [both|chat|tool]
 # Restart and reinstall dependencies (e.g., refresh venv)
 bash scripts/restart.sh both --install-deps
 
+# Reset models/quantization without reinstalling deps
+bash scripts/restart.sh --reset-models --deploy-mode both \
+  --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
+  --tool-model MadeAgents/Hammer2.1-3b \
+  --chat-quant fp8 \
+  --tool-quant awq
+
 # Full stop and restart cycle
 bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
 ```
+
+Caches are wiped by default during model resets; they are only preserved automatically when the requested models *and* quantization match the previous deployment.
 
 ### Stop Script Behavior (Deep Clean)
 

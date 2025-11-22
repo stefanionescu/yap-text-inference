@@ -25,6 +25,10 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "FallenMerick/MN-Violet-Lotus-12B",
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0", # I like the reply length/chatty format but it just ignores instructions or maybe the prompt needs to be massaged
     "trashpanda-org/QwQ-32B-Snowdrop-v0",
+    "TheDrummer/Snowpiercer-15B-v3",
+    "TheDrummer/Theia-21B-v2",
+    "anthracite-org/magnum-v1-32b",
+    "anthracite-org/magnum-v4-27b",
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
