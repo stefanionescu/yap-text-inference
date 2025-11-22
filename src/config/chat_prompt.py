@@ -36,7 +36,6 @@ _MISTRAL_MODELS = {
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
     "concedo/Beepo-22B",
     "OddTheGreat/Mechanism_24B_V.1",
-    "mistralai/Mixtral-8x7B-v0.1",
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
 }
