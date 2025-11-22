@@ -2,6 +2,7 @@
 
 from .awq_chat_adapter import compute_chat_calibration_seqlen
 from .awq_toolcall_adapter import (
+    apply_awq_compatibility_patches,
     apply_toolcall_awq_adapters,
     compute_toolcall_calibration_seqlen,
     is_toolcall_model,
@@ -9,6 +10,7 @@ from .awq_toolcall_adapter import (
 
 __all__ = [
     "compute_chat_calibration_seqlen",
+    "apply_awq_compatibility_patches",
     "apply_toolcall_awq_adapters", 
     "compute_toolcall_calibration_seqlen",
     "is_toolcall_model",

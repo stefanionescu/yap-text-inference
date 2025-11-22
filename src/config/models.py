@@ -23,13 +23,13 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "dphn/dolphin-2.9.3-mistral-nemo-12b", # adds random characters at the beginning of the response and uses 3rd person to describe itself
     "FallenMerick/MN-Violet-Lotus-12B", # stupid and hallucinates a ton
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0", # I like the reply length/chatty format but it just ignores instructions or maybe the prompt needs to be massaged
-    "mistralai/Mixtral-8x7B-v0.1", # 
-    "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "mistralai/Mixtral-8x7B-v0.1", # good assistant, useless for RP
+    "mistralai/Mixtral-8x7B-Instruct-v0.1", # suprisingly dumb
     "TheDrummer/Magidonia-24B-v4.2.0", # weird personality, not flirty even when I tell it to be like that
-    "TheDrummer/Snowpiercer-15B-v3",
-    "TheDrummer/Theia-21B-v2",
-    "concedo/Beepo-22B",
-    "zetasepic/Qwen2.5-32B-Instruct-abliterated-v2",
+    "TheDrummer/Snowpiercer-15B-v3", # kinda stupid and horrible at temp > 0.6
+    "TheDrummer/Theia-21B-v2", # 2
+    "concedo/Beepo-22B", # 1
+    "zetasepic/Qwen2.5-32B-Instruct-abliterated-v2", # 3
     "OddTheGreat/Mechanism_24B_V.1",
     "zai-org/glm-4-9b-chat-hf",
     "zai-org/GLM-4-32B-Base-0414",
