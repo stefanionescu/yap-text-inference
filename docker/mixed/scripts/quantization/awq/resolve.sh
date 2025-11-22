@@ -16,7 +16,8 @@ if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
       if OUT=$(quantize_model "tool" "${TOOL_MODEL}" "${TOOL_AWQ_DIR}" "${HF_AWQ_COMMIT_MSG_TOOL:-}" "${HF_AWQ_TOOL_REPO:-}"); then
         export TOOL_MODEL="${OUT}"; export TOOL_QUANTIZATION=awq
       else
-        log_warn "AWQ quantization failed for tool model; keeping original"
+        log_error "AWQ quantization failed for tool model (${TOOL_MODEL}); aborting."
+        exit 1
       fi
     fi
   fi
@@ -30,7 +31,8 @@ if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
       if OUT=$(quantize_model "chat" "${CHAT_MODEL}" "${CHAT_AWQ_DIR}" "${HF_AWQ_COMMIT_MSG_CHAT:-}" "${HF_AWQ_CHAT_REPO:-}"); then
         export CHAT_MODEL="${OUT}"; export CHAT_QUANTIZATION=awq
       else
-        log_warn "AWQ quantization failed for chat model; keeping original"
+        log_error "AWQ quantization failed for chat model (${CHAT_MODEL}); aborting."
+        exit 1
       fi
     fi
   fi
@@ -40,7 +42,8 @@ else
     if OUT=$(quantize_model "tool" "${TOOL_MODEL}" "${TOOL_AWQ_DIR}" "${HF_AWQ_COMMIT_MSG_TOOL:-}" "${HF_AWQ_TOOL_REPO:-}"); then
       export TOOL_MODEL="${OUT}"; export TOOL_QUANTIZATION=awq
     else
-      log_warn "AWQ quantization failed for tool model; keeping original"
+      log_error "AWQ quantization failed for tool model (${TOOL_MODEL}); aborting."
+      exit 1
     fi
   fi
   if [ "${DEPLOY_CHAT}" = "1" ]; then
@@ -50,7 +53,8 @@ else
     if OUT=$(quantize_model "chat" "${CHAT_MODEL}" "${CHAT_AWQ_DIR}" "${HF_AWQ_COMMIT_MSG_CHAT:-}" "${HF_AWQ_CHAT_REPO:-}"); then
       export CHAT_MODEL="${OUT}"; export CHAT_QUANTIZATION=awq
     else
-      log_warn "AWQ quantization failed for chat model; keeping original"
+      log_error "AWQ quantization failed for chat model (${CHAT_MODEL}); aborting."
+      exit 1
     fi
   fi
 fi

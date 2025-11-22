@@ -10,10 +10,10 @@ restart_generic_restart_if_needed() {
   LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
 
   if [ -f "${SERVER_LOG}" ]; then
-    LAST_QUANT=$(grep -E "  Quantization: " "${SERVER_LOG}" | tail -n1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
-    LAST_DEPLOY=$(grep -E "  Deploy mode: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Deploy mode: ([^ ]+).*/\1/' || true)
-    LAST_CHAT=$(grep -E "  Chat model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Chat model: *(.*)/\1/' || true)
-    LAST_TOOL=$(grep -E "  Tool model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Tool model: *(.*)/\1/' || true)
+    LAST_QUANT=$(grep -E "Quantization: " "${SERVER_LOG}" | tail -n1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
+    LAST_DEPLOY=$(grep -E "Deploy mode: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Deploy mode: ([^ ]+).*/\1/' || true)
+    LAST_CHAT=$(grep -E "Chat model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Chat model: *(.*)/\1/' || true)
+    LAST_TOOL=$(grep -E "Tool model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Tool model: *(.*)/\1/' || true)
     if [ -z "${LAST_CHAT}" ] || [ "${LAST_CHAT}" = "(none)" ]; then
       LAST_CHAT=$(grep -E "DEPLOY_MODELS=.* CHAT=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*CHAT=([^ ]*).*/\1/' || true)
     fi

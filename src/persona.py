@@ -7,9 +7,7 @@ from collections.abc import Sequence
 
 from .config import CHAT_MODEL
 from .config.chat_prompt import ChatPromptFormat, get_prompt_format_for_model
-
-_DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
-
+from .tokens.tokenizer import get_chat_tokenizer
 
 def build_toolcall_prompt_with_history(
     base_prompt: str,
@@ -38,6 +36,10 @@ def build_chat_prompt_with_prefix(
         return _build_chatml_prompt(system_prompt, history_turns, user_utt)
     if prompt_format is ChatPromptFormat.LLAMA3_INSTRUCT:
         return _build_llama3_prompt(system_prompt, history_turns, user_utt)
+    if prompt_format is ChatPromptFormat.GLM:
+        return _build_glm_prompt(system_prompt, history_turns, user_utt)
+    if prompt_format is ChatPromptFormat.DANCHAT2:
+        return _build_danchat2_prompt(system_prompt, history_turns, user_utt)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt)
 
 
@@ -54,14 +56,16 @@ def build_chat_warm_prompt(
         return _build_chatml_prompt(system_prompt, history_turns, user_utt=None)
     if prompt_format is ChatPromptFormat.LLAMA3_INSTRUCT:
         return _build_llama3_prompt(system_prompt, history_turns, user_utt=None)
+    if prompt_format is ChatPromptFormat.GLM:
+        return _build_glm_prompt(system_prompt, history_turns, user_utt=None)
+    if prompt_format is ChatPromptFormat.DANCHAT2:
+        return _build_danchat2_prompt(system_prompt, history_turns, user_utt=None)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
 
 
 def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
     parts = [segment.strip() for segment in (static_prefix, runtime_text) if segment and segment.strip()]
-    if parts:
-        return "\n\n".join(parts)
-    return _DEFAULT_SYSTEM_PROMPT
+    return "\n\n".join(parts)
 
 
 def _parse_history(history_text: str) -> list[tuple[str, str]]:
@@ -153,14 +157,16 @@ def _build_mistral_prompt(
     user_utt: str | None,
 ) -> str:
     """Render prompts using the mistral-common instruct template (V7)."""
-    system_text = system_prompt.strip() or _DEFAULT_SYSTEM_PROMPT
+    system_text = system_prompt.strip()
     parts: list[str] = []
     has_turn = False
 
     def _format_user_block(content: str | None, include_system: bool) -> str:
         user_text = (content or "").strip()
         prefix = "<s>" if include_system else ""
-        sys_segment = f"[SYSTEM_PROMPT]{system_text}[/SYSTEM_PROMPT]" if include_system else ""
+        sys_segment = (
+            f"[SYSTEM_PROMPT]{system_text}[/SYSTEM_PROMPT]" if include_system and system_text else ""
+        )
         return f"{prefix}{sys_segment}[INST]{user_text}[/INST]"
 
     def _append_assistant_block(content: str | None) -> None:
@@ -194,6 +200,94 @@ def _llama3_block(role: str, content: str) -> str:
 
 def _llama3_header_only(role: str) -> str:
     return f"<|start_header_id|>{role}<|end_header_id|>\n"
+
+
+def _build_glm_prompt(
+    system_prompt: str,
+    history_turns: Sequence[tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    """Build GLM prompt using tokenizer.apply_chat_template with message list format."""
+    tokenizer_wrapper = get_chat_tokenizer()
+    transformers_tok = tokenizer_wrapper.get_transformers_tokenizer()
+    
+    if transformers_tok is None:
+        raise RuntimeError(
+            "GLM format requires transformers tokenizer, but it is not available. "
+            "This may occur if the tokenizer failed to load."
+        )
+    
+    # Build message list in GLM format
+    messages: list[dict[str, str]] = []
+    
+    # Add system message if present
+    system_text = system_prompt.strip()
+    if system_text:
+        messages.append({"role": "system", "content": system_text})
+    
+    # Add history turns
+    for user_text, assistant_text in history_turns:
+        if user_text:
+            messages.append({"role": "user", "content": user_text})
+        if assistant_text:
+            messages.append({"role": "assistant", "content": assistant_text})
+    
+    # Add current user utterance if present
+    if user_utt is not None:
+        messages.append({"role": "user", "content": user_utt.strip()})
+    
+    # Use apply_chat_template to format the messages
+    if not hasattr(transformers_tok, "apply_chat_template"):
+        raise RuntimeError(
+            "GLM-4 format requires tokenizer with apply_chat_template method. "
+            "Ensure transformers>=4.46.0 is installed."
+        )
+    
+    try:
+        prompt_str = transformers_tok.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        # apply_chat_template may return a string or list, ensure we get a string
+        if isinstance(prompt_str, list):
+            prompt_str = "".join(prompt_str)
+        return prompt_str if isinstance(prompt_str, str) else str(prompt_str)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to apply GLM chat template: {exc}. "
+            "Ensure transformers>=4.46.0 is installed and the tokenizer supports apply_chat_template."
+        ) from exc
+
+
+def _build_danchat2_prompt(
+    system_prompt: str,
+    history_turns: Sequence[tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    """Build DanChat-2 prompt format: <|system|>...<|endoftext|><|user|>...<|endoftext|><|assistant|>...<|endoftext|>"""
+    parts: list[str] = []
+    
+    # System message
+    system_text = system_prompt.strip()
+    if system_text:
+        parts.append(f"<|system|>{system_text}<|endoftext|>")
+    
+    # History turns
+    for user_text, assistant_text in history_turns:
+        if user_text:
+            parts.append(f"<|user|>{user_text.strip()}<|endoftext|>")
+        if assistant_text:
+            parts.append(f"<|assistant|>{assistant_text.strip()}<|endoftext|>")
+    
+    # Current user utterance
+    if user_utt is not None:
+        parts.append(f"<|user|>{user_utt.strip()}<|endoftext|>")
+    
+    # Start assistant response (no endoftext yet, since we're generating)
+    parts.append("<|assistant|>")
+    
+    return "".join(parts)
 
 
 @lru_cache(maxsize=1)

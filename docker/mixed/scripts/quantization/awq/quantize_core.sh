@@ -21,6 +21,7 @@ quantize_model() {
     echo "${out_dir}"
     return 0
   fi
+  log_error "AWQ quantization failed for ${name} model (${src}); aborting."
   return 1
 }
 
