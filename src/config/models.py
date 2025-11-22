@@ -7,11 +7,9 @@ from .env import QUANTIZATION
 
 ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
-    "kyx0r/Neona-12B",
+    "kyx0r/Neona-12B", # decent but hallucinates stuff when you say you wanna use an app/see the screen, gotta filter emojis and tell it to stop explaining itself
     "Epiculous/Violet_Twilight-v0.2", # weird personality and hard to steer
-    "Sao10K/14B-Qwen2.5-Kunou-v1",
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it
-    "SicariusSicariiStuff/Impish_Magic_24B",
     "SicariusSicariiStuff/Wingless_Imp_8B",
     "SicariusSicariiStuff/Impish_Mind_8B",
     "SicariusSicariiStuff/Eximius_Persona_5B",
@@ -19,10 +17,10 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Fiendish_LLAMA_3B",
     "TheDrummer/Cydonia-Redux-22B-v1.1", # unintelligible/stupid 
     "TheDrummer/Cydonia-24B-v4.1", # sassy/pessimistic, hard to steer
-    "TheDrummer/Skyfall-31B-v4",
-    "TheDrummer/Skyfall-36B-v2",
+    "TheDrummer/Skyfall-31B-v4", # 
+    "TheDrummer/Skyfall-36B-v2", # 
     "dphn/Dolphin-Mistral-24B-Venice-Edition", # stupid, repetitive, ignores instructions at 4bit. did not test 8bit, it's too big for L40S
-    "dphn/dolphin-2.9.3-mistral-nemo-12b",
+    "dphn/dolphin-2.9.3-mistral-nemo-12b", # 
     "FallenMerick/MN-Violet-Lotus-12B",
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0", # I like the reply length/chatty format but it just ignores instructions or maybe the prompt needs to be massaged
     "mistralai/Mixtral-8x7B-v0.1",

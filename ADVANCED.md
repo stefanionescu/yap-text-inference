@@ -4,10 +4,7 @@ This document covers advanced operations, configuration, and deep-dive details.
 
 ## Contents
 
-- [Security Configuration](#security-configuration)
-  - [API Key Setup](#api-key-setup)
-  - [Connection Limiting (Deployment/Quantization-Aware)](#connection-limiting-deploymentquantization-aware)
-  - [Authentication Coverage](#authentication-coverage)
+- [Authentication Coverage](#authentication-coverage)
 - [Log Rotation](#log-rotation)
 - [API — WebSocket `/ws`](#api--websocket-ws)
   - [Connection Lifecycle](#connection-lifecycle)
@@ -21,37 +18,7 @@ This document covers advanced operations, configuration, and deep-dive details.
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
 
-## Security Configuration
-
-### Required Environment Variables
-
-Set these before running `scripts/main.sh`, `scripts/restart.sh`, or any host utility:
-
-```bash
-export TEXT_API_KEY="my_super_secret_key_2024"  # Required for every request
-export HF_TOKEN="hf_your_api_token"             # Required to access HF models
-export MAX_CONCURRENT_CONNECTIONS=50            # Required capacity guard (choose per hardware)
-```
-
-`HUGGINGFACE_HUB_TOKEN` can be set instead of `HF_TOKEN`; the host scripts automatically mirror it.
-
-### API Key Setup
-
-```bash
-# TEXT_API_KEY is required and must be set before starting the server
-export TEXT_API_KEY="my_super_secret_key_2024"
-python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
-```
-
-### Connection Limiting (Manual Capacity Selection)
-
-```bash
-# Set the connection limit explicitly (no automatic defaults)
-export MAX_CONCURRENT_CONNECTIONS=50
-python -m uvicorn src.server:app --host 0.0.0.0 --port 8000
-```
-
-### Authentication Coverage
+## Authentication Coverage
 
 - `/healthz` – No authentication required
 - `/status` – Requires API key

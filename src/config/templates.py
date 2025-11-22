@@ -18,7 +18,7 @@ _MISTRAL_RESEARCH_LICENSE = {
 }
 
 _QWEN_LICENSE_MODELS = {
-    "Sao10K/14B-Qwen2.5-Kunou-v1",
+    
 }
 
 _QWEN_LICENSE = {
