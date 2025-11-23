@@ -57,10 +57,47 @@ def _normalize(value: str | None) -> str:
     return (value or "").strip()
 
 
+def _strip_suffix_insensitive(value: str, suffix: str) -> str | None:
+    lowered = value.lower()
+    if lowered.endswith(suffix):
+        return value[: len(value) - len(suffix)]
+    return None
+
+
+def _strip_marker_insensitive(value: str, marker: str) -> str | None:
+    lowered = value.lower()
+    idx = lowered.find(marker)
+    if idx != -1:
+        return value[:idx]
+    return None
+
+
+def _generate_aliases(value: str | None) -> list[str]:
+    normalized = _normalize(value)
+    if not normalized:
+        return []
+    aliases: list[str] = []
+    seen: set[str] = set()
+
+    def _add(candidate: str | None) -> None:
+        candidate = (candidate or "").strip()
+        if candidate and candidate not in seen:
+            aliases.append(candidate)
+            seen.add(candidate)
+
+    _add(normalized)
+    _add(_strip_suffix_insensitive(normalized, "-awq"))
+    _add(_strip_suffix_insensitive(normalized, "_awq"))
+    _add(_strip_marker_insensitive(normalized, "_gptq"))
+    _add(_strip_marker_insensitive(normalized, "-gptq"))
+    return aliases
+
+
 def _lookup_model_identifier(model_name: str | None) -> tuple[str | None, ChatPromptFormat | None]:
-    for candidate in (_normalize(model_name), _normalize(os.getenv("CHAT_MODEL_NAME"))):
-        if not candidate:
-            continue
+    candidates = []
+    candidates.extend(_generate_aliases(model_name))
+    candidates.extend(_generate_aliases(os.getenv("CHAT_MODEL_NAME")))
+    for candidate in candidates:
         fmt = MODEL_PROMPT_FORMAT.get(candidate)
         if fmt:
             return candidate, fmt
