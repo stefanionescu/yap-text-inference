@@ -22,7 +22,10 @@ A text inference server optimized for low TTFT and steady text streaming. It can
   - [With Gender/Style Flags](#with-genderstyle-flags)
   - [Testing Concurrent vs. Sequential Modes](#testing-concurrent-vs-sequential-modes)
   - [Environment Overrides](#environment-overrides)
-  - [What It Prints](#what-it-prints)
+- [Interactive Live Client](#interactive-live-client)
+- [Personality Switch Test](#personality-switch-test)
+- [Conversation History Test](#conversation-history-test)
+- [Screen Analysis / Toolcall Test](#screen-analysis--toolcall-test)
 - [Benchmark Client](#benchmark-client)
 - [Stopping and Restarting](#stopping-and-restarting)
   - [Stop Script Behavior (Deep Clean)](#stop-script-behavior-deep-clean)
@@ -240,18 +243,7 @@ SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 test/warmup.py
 RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey there"
 ```
 
-### What It Prints
-
-- An ACK line confirming session time and effective `gender`/`persona_style`.
-- Two JSON lines when streaming completes:
-  - Metrics: `{ "type": "metrics", "ttfb_ms": ..., "total_ms": ..., "stream_ms": ..., "chunks": ..., "chars": ... }`
-  - Final text: `{ "type": "final_text", "text": "..." }`
-
-All WebSocket helper clients automatically append `/ws` (when it’s missing) and the API key query parameter to whatever origin you provide.
-
-All of the CLI test clients share the same sampling override flags: `--temperature`, `--top-p`, `--top-k`, and `--repeat-penalty`. Each flag maps directly to the server’s chat defaults (temperature=`1.0`, top-p=`0.80`, top-k=`40`, repeat-penalty=`1.05`). Omit them to stick with the server configuration; specify any subset to experiment with decoding behavior on a per-run basis.
-
-### Interactive Live Client
+## Interactive Live Client
 
 Streams a real-time conversation you can steer from the CLI, hot-reloading persona definitions from `test/prompts/live.py`. If you omit `--server`, the client falls back to `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`). When you do provide `--server`, you can point at either the full `/ws` endpoint or just the origin (`ws://host:port`); the client automatically appends `/ws` and your API key.
 
@@ -269,7 +261,7 @@ Flags:
 - `--recv-timeout`: receive timeout in seconds (default `DEFAULT_RECV_TIMEOUT_SEC`)
 - positional arguments: optional opener message; falls back to warmup defaults otherwise
 
-### Personality Switch Test
+## Personality Switch Test
 
 Exercises persona updates, ensuring chat prompt swaps and history stitching behave correctly.
 
@@ -282,7 +274,7 @@ TEXT_API_KEY=your_api_key python3 test/personality.py \
 
 `PERSONA_VARIANTS`, reply lists, and switch counts live in `test/config`.
 
-### Conversation History Test
+## Conversation History Test
 
 Streams a fixed 10-turn conversation (same persona throughout) to verify bounded-history eviction and KV-cache reuse while logging TTFB/first-word metrics for every exchange.
 
