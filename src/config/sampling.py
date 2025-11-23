@@ -35,6 +35,8 @@ CHAT_STOP = [
     "\nAssistant",
     "[SYSTEM_PROMPT]",
     "[/SYSTEM_PROMPT]",
+    " [",
+    "["
 ]
 
 

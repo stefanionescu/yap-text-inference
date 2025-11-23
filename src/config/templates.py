@@ -8,6 +8,8 @@ CHAT_TEMPLATE_NAME = "awq_chat_template.md"
 TOOL_TEMPLATE_NAME = "awq_tool_template.md"
 
 _MISTRAL_RESEARCH_MODELS = {
+    "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+    "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
 }
 
 _MISTRAL_RESEARCH_LICENSE = {

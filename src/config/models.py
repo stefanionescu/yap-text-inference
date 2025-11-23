@@ -14,6 +14,14 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "zai-org/GLM-4-32B-0414", # BROKEN: not supported by AutoAWQ
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond", # Actually pretty good, gotta iron out some details tho
     "allura-org/Qwen2.5-32b-RP-Ink", # REALLY good but yaps too much, might wanna use a length penalty or a really tight prompt
+    "deepseek-ai/deepseek-llm-67b-chat", 
+    "deepseek-ai/DeepSeek-V2-Lite-Chat", 
+    "cerebras/GLM-4.5-Air-REAP-82B-A12B", 
+    "mistralai/Mistral-Small-3.1-24B-Instruct-2503", 
+    "mistralai/Mistral-Small-3.2-24B-Instruct-2506", 
+    "google/gemma-3-27b-it", 
+    "huihui-ai/QwQ-32B-abliterated",
+    "huihui-ai/Qwen3-30B-A3B-abliterated", 
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
