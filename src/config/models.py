@@ -13,15 +13,12 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "allura-org/Qwen2.5-32b-RP-Ink", # yaps way too much and hallucinates
 
     "TheDrummer/Rocinante-12B-v1.1",
-    "dreamgen/opus-v1-34b", # 1
-    "anthracite-org/magnum-v3-34b", # 3
-    "anthracite-org/magnum-v4-27b",
-    "anthracite-org/magnum-v4-22b", # 2
-    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
+    "anthracite-org/magnum-v4-27b", # 2
+    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # 3
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v1-32b",
     "anthracite-org/magnum-v2-32b",
-    "djuna/magnum-v2-32b-chatml",
+    "djuna/magnum-v2-32b-chatml", # 1
     "intervitens/mini-magnum-12b-v1.1",
     "anthracite-org/magnum-v4-72b",
     "anthracite-org/magnum-v4-12b",

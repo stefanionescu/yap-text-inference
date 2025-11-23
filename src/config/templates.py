@@ -10,7 +10,6 @@ TOOL_TEMPLATE_NAME = "awq_tool_template.md"
 
 _MISTRAL_RESEARCH_MODELS = {
     "TheDrummer/Skyfall-36B-v2",
-    "anthracite-org/magnum-v4-22b",
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
 }
@@ -21,19 +20,8 @@ _MISTRAL_RESEARCH_LICENSE = {
     "license_link": "",
 }
 
-_DREAMGEN_LICENSE_MODELS = {
-    "dreamgen/opus-v1-34b",
-}
-
-_DREAMGEN_LICENSE = {
-    "license": "cc-by-nc-nd-4.0",
-    "license_name": "CC BY-NC-ND 4.0",
-    "license_link": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
-}
-
 _QWEN_LICENSE_MODELS = {
     "anthracite-org/magnum-v1-32b",
-    "anthracite-org/magnum-v3-34b",
 }
 
 _QWEN_LICENSE = {
@@ -64,15 +52,6 @@ def _license_link_for(model_path: str, is_hf_model: bool) -> str:
 
 
 def _is_qwen_license_model(model_path: str) -> bool:
-def _is_dreamgen_license_model(model_path: str) -> bool:
-    normalized = (model_path or "").strip()
-    if not normalized:
-        return False
-    for target in _DREAMGEN_LICENSE_MODELS:
-        if normalized == target or normalized.endswith(target):
-            return True
-    return False
-
     normalized = (model_path or "").strip()
     if not normalized:
         return False
@@ -105,9 +84,6 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
 
     if _is_qwen_license_model(model_path):
         return _QWEN_LICENSE.copy()
-
-    if _is_dreamgen_license_model(model_path):
-        return _DREAMGEN_LICENSE.copy()
 
     # Chat models default to Apache 2.0
     return {
