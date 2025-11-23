@@ -13,10 +13,13 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "allura-org/Qwen2.5-32b-RP-Ink", # REALLY good but yaps too much, might wanna use a length penalty or a really tight prompt
     "deepseek-ai/deepseek-llm-67b-chat", 
 
-    "TheDrummer/Valkyrie-49B-v2", # 2
     "TheDrummer/Rocinante-12B-v1.1",
     "dreamgen/opus-v1-34b", # 1
     "anthracite-org/magnum-v3-34b", # 3
+    "anthracite-org/magnum-v4-27b",
+    "anthracite-org/magnum-v4-22b",
+    "dreamgen/lucid-v1-nemo",
+
 
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
