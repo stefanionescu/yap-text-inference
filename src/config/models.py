@@ -30,14 +30,14 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "TheDrummer/Theia-21B-v2", # I'm shocked and really impressed, might be a good model
     "concedo/Beepo-22B", # stupid
     "zetasepic/Qwen2.5-32B-Instruct-abliterated-v2", # unintelligible and dumb
-    "OddTheGreat/Mechanism_24B_V.1", # yaps too mcuch and is sorta unstable at high temp
+    "OddTheGreat/Mechanism_24B_V.1", # yaps too much and is sorta unstable at high temp
     "zai-org/glm-4-9b-chat-hf", # BROKEN: might get back later
     "zai-org/GLM-4-32B-Base-0414", # BROKEN: not supported by AutoAWQ
     "zai-org/GLM-4-32B-0414", # BROKEN: not supported by AutoAWQ
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond", # Actually pretty good, gotta iron out some details tho
-    "EVA-UNIT-01/EVA-Qwen2.5-32B-v0.1", # 2
-    "allura-org/Qwen2.5-32b-RP-Ink", # 1
-    "PocketDoc/Dans-PersonalityEngine-V1.3.0-24b",
+    "EVA-UNIT-01/EVA-Qwen2.5-32B-v0.1", # has its moments of genius but generally silly/doesn't stick to the sys prompt
+    "allura-org/Qwen2.5-32b-RP-Ink", # REALLY good but yaps too much, might wanna use a length penalty or a really tight prompt
+    "PocketDoc/Dans-PersonalityEngine-V1.3.0-24b", # crap that hallucinates even at 0.6 temp
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
