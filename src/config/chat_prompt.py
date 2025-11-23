@@ -13,19 +13,11 @@ class ChatPromptFormat(str, Enum):
 
     CHATML = "chatml"
     MISTRAL_INSTRUCT = "mistral_instruct"
-    GLM = "glm"
 
 
 _MISTRAL_MODELS = {
     "TheDrummer/Skyfall-36B-v2",
 }
-
-_GLM_MODELS = {
-    "zai-org/GLM-4-32B-Base-0414",
-    "zai-org/GLM-4-32B-0414",
-    "cerebras/GLM-4.5-Air-REAP-82B-A12B",
-}
-
 
 def _build_prompt_map() -> dict[str, ChatPromptFormat]:
     prompt_map: dict[str, ChatPromptFormat] = {
@@ -39,14 +31,6 @@ def _build_prompt_map() -> dict[str, ChatPromptFormat]:
         )
     for name in _MISTRAL_MODELS:
         prompt_map[name] = ChatPromptFormat.MISTRAL_INSTRUCT
-    missing_glm = _GLM_MODELS.difference(prompt_map)
-    if missing_glm:
-        raise RuntimeError(
-            "Chat prompt routing misconfigured; the following GLM models are not in "
-            f"ALLOWED_CHAT_MODELS: {sorted(missing_glm)}"
-        )
-    for name in _GLM_MODELS:
-        prompt_map[name] = ChatPromptFormat.GLM
     return prompt_map
 
 

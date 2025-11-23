@@ -7,7 +7,6 @@ from collections.abc import Sequence
 
 from .config import CHAT_MODEL
 from .config.chat_prompt import ChatPromptFormat, get_prompt_format_for_model
-from .tokens.tokenizer import get_chat_tokenizer
 
 def build_toolcall_prompt_with_history(
     base_prompt: str,
@@ -34,8 +33,6 @@ def build_chat_prompt_with_prefix(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt)
-    if prompt_format is ChatPromptFormat.GLM:
-        return _build_glm_prompt(system_prompt, history_turns, user_utt)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt)
 
 
@@ -50,8 +47,6 @@ def build_chat_warm_prompt(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt=None)
-    if prompt_format is ChatPromptFormat.GLM:
-        return _build_glm_prompt(system_prompt, history_turns, user_utt=None)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
 
 
@@ -161,64 +156,6 @@ def _build_mistral_prompt(
         parts.append(_format_user_block("", include_system=True))
 
     return "".join(parts)
-
-
-def _build_glm_prompt(
-    system_prompt: str,
-    history_turns: Sequence[tuple[str, str]],
-    user_utt: str | None,
-) -> str:
-    """Build GLM prompt using tokenizer.apply_chat_template with message list format."""
-    tokenizer_wrapper = get_chat_tokenizer()
-    transformers_tok = tokenizer_wrapper.get_transformers_tokenizer()
-    
-    if transformers_tok is None:
-        raise RuntimeError(
-            "GLM format requires transformers tokenizer, but it is not available. "
-            "This may occur if the tokenizer failed to load."
-        )
-    
-    # Build message list in GLM format
-    messages: list[dict[str, str]] = []
-    
-    # Add system message if present
-    system_text = system_prompt.strip()
-    if system_text:
-        messages.append({"role": "system", "content": system_text})
-    
-    # Add history turns
-    for user_text, assistant_text in history_turns:
-        if user_text:
-            messages.append({"role": "user", "content": user_text})
-        if assistant_text:
-            messages.append({"role": "assistant", "content": assistant_text})
-    
-    # Add current user utterance if present
-    if user_utt is not None:
-        messages.append({"role": "user", "content": user_utt.strip()})
-    
-    # Use apply_chat_template to format the messages
-    if not hasattr(transformers_tok, "apply_chat_template"):
-        raise RuntimeError(
-            "GLM-4 format requires tokenizer with apply_chat_template method. "
-            "Ensure transformers>=4.46.0 is installed."
-        )
-    
-    try:
-        prompt_str = transformers_tok.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-        )
-        # apply_chat_template may return a string or list, ensure we get a string
-        if isinstance(prompt_str, list):
-            prompt_str = "".join(prompt_str)
-        return prompt_str if isinstance(prompt_str, str) else str(prompt_str)
-    except Exception as exc:
-        raise RuntimeError(
-            f"Failed to apply GLM chat template: {exc}. "
-            "Ensure transformers>=4.46.0 is installed and the tokenizer supports apply_chat_template."
-        ) from exc
 
 
 @lru_cache(maxsize=1)
