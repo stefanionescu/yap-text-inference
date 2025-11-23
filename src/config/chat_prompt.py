@@ -13,6 +13,7 @@ class ChatPromptFormat(str, Enum):
 
     CHATML = "chatml"
     MISTRAL_INSTRUCT = "mistral_instruct"
+    DREAMGEN_CHAT = "dreamgen_chat"
 
 
 _MISTRAL_MODELS = {
@@ -20,20 +21,40 @@ _MISTRAL_MODELS = {
     "anthracite-org/magnum-v4-22b",
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
+    "intervitens/mini-magnum-12b-v1.1",
 }
 
-def _build_prompt_map() -> dict[str, ChatPromptFormat]:
-    prompt_map: dict[str, ChatPromptFormat] = {
-        model: ChatPromptFormat.CHATML for model in ALLOWED_CHAT_MODELS
-    }
-    missing_mistral = _MISTRAL_MODELS.difference(prompt_map)
-    if missing_mistral:
+_DREAMGEN_MODELS = {
+    "dreamgen/opus-v1-34b",
+}
+
+def _validate_models(
+    target_models: set[str],
+    allowed_models: set[str],
+    label: str,
+) -> None:
+    missing = target_models.difference(allowed_models)
+    if missing:
         raise RuntimeError(
-            "Chat prompt routing misconfigured; the following mistral models are not in "
-            f"ALLOWED_CHAT_MODELS: {sorted(missing_mistral)}"
+            "Chat prompt routing misconfigured; the following "
+            f"{label} models are not in ALLOWED_CHAT_MODELS: {sorted(missing)}"
         )
+
+
+def _build_prompt_map() -> dict[str, ChatPromptFormat]:
+    allowed = set(ALLOWED_CHAT_MODELS)
+    prompt_map: dict[str, ChatPromptFormat] = {
+        model: ChatPromptFormat.CHATML for model in allowed
+    }
+
+    _validate_models(_MISTRAL_MODELS, allowed, "mistral")
     for name in _MISTRAL_MODELS:
         prompt_map[name] = ChatPromptFormat.MISTRAL_INSTRUCT
+
+    _validate_models(_DREAMGEN_MODELS, allowed, "dreamgen")
+    for name in _DREAMGEN_MODELS:
+        prompt_map[name] = ChatPromptFormat.DREAMGEN_CHAT
+
     return prompt_map
 
 
