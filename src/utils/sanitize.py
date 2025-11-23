@@ -28,7 +28,6 @@ from ..config.filters import (
     NEWLINE_TOKEN_PATTERN,
     TABLE_BORDER_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
-    EMOTICON_SMILE_PATTERN,
 )
 from ..config.limits import PROMPT_SANITIZE_MAX_CHARS
 
@@ -86,7 +85,6 @@ def sanitize_llm_output(
     text: str | None,
     *,
     strip_markdown: bool = True,
-    strip_emojis: bool = True,
 ) -> str:
     """Normalize assistant output while keeping semantics intact."""
     if not text:
@@ -95,8 +93,6 @@ def sanitize_llm_output(
     cleaned = text
     if strip_markdown:
         cleaned = _strip_markdown(cleaned)
-    if strip_emojis:
-        cleaned = _strip_emojis(cleaned)
     return _normalize_whitespace(cleaned)
 
 
@@ -115,7 +111,7 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = re.sub(r"\s+([',?!])", r"\1", cleaned)
     cleaned = ESCAPED_QUOTE_PATTERN.sub(lambda match: match.group(1), cleaned)
     cleaned = EXAGGERATED_OH_PATTERN.sub(_normalize_exaggerated_oh, cleaned)
-    cleaned = EMOTICON_SMILE_PATTERN.sub(" ", cleaned)
+    cleaned = _strip_emoji_like_tokens(cleaned)
     return _ensure_leading_capital(cleaned)
 
 
@@ -225,10 +221,14 @@ def _strip_markdown(text: str) -> str:
     return html.unescape(text)
 
 
-def _strip_emojis(text: str) -> str:
-    """Remove unicode emojis and common ASCII emoticons."""
-    text = EMOJI_PATTERN.sub("", text)
-    return EMOTICON_PATTERN.sub("", text)
+def _strip_emoji_like_tokens(text: str) -> str:
+    """Remove unicode emojis and ASCII emoticons while collapsing spacing."""
+    if not text:
+        return ""
+    text = EMOJI_PATTERN.sub(" ", text)
+    text = EMOTICON_PATTERN.sub(" ", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text
 
 
 def _normalize_whitespace(text: str) -> str:

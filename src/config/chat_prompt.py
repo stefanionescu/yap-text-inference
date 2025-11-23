@@ -12,42 +12,18 @@ class ChatPromptFormat(str, Enum):
     """Enumerates the supported chat prompt templates."""
 
     CHATML = "chatml"
-    LLAMA3_INSTRUCT = "llama3_instruct"
     MISTRAL_INSTRUCT = "mistral_instruct"
     GLM = "glm"
-    DANCHAT2 = "danchat2"
 
-
-_LLAMA3_MODELS = {
-    "SicariusSicariiStuff/Wingless_Imp_8B",
-    "SicariusSicariiStuff/Impish_Mind_8B",
-    "SicariusSicariiStuff/Eximius_Persona_5B",
-    "SicariusSicariiStuff/Fiendish_LLAMA_3B",
-}
 
 _MISTRAL_MODELS = {
-    "TheDrummer/Cydonia-Redux-22B-v1.1",
-    "TheDrummer/Cydonia-24B-v4.1",
     "TheDrummer/Skyfall-36B-v2",
-    "TheDrummer/Skyfall-31B-v4",
-    "TheDrummer/Magidonia-24B-v4.2.0",
-    "dphn/Dolphin-Mistral-24B-Venice-Edition",
-    "FallenMerick/MN-Violet-Lotus-12B",
-    "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
-    "concedo/Beepo-22B",
-    "OddTheGreat/Mechanism_24B_V.1",
-    "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
 }
 
 _GLM_MODELS = {
-    "zai-org/glm-4-9b-chat-hf",
     "zai-org/GLM-4-32B-Base-0414",
     "zai-org/GLM-4-32B-0414",
-}
-
-_DANCHAT2_MODELS = {
-    "PocketDoc/Dans-PersonalityEngine-V1.3.0-24b",
 }
 
 
@@ -55,14 +31,6 @@ def _build_prompt_map() -> dict[str, ChatPromptFormat]:
     prompt_map: dict[str, ChatPromptFormat] = {
         model: ChatPromptFormat.CHATML for model in ALLOWED_CHAT_MODELS
     }
-    missing = _LLAMA3_MODELS.difference(prompt_map)
-    if missing:
-        raise RuntimeError(
-            "Chat prompt routing misconfigured; the following llama-3 models are not in "
-            f"ALLOWED_CHAT_MODELS: {sorted(missing)}"
-        )
-    for name in _LLAMA3_MODELS:
-        prompt_map[name] = ChatPromptFormat.LLAMA3_INSTRUCT
     missing_mistral = _MISTRAL_MODELS.difference(prompt_map)
     if missing_mistral:
         raise RuntimeError(
@@ -79,14 +47,6 @@ def _build_prompt_map() -> dict[str, ChatPromptFormat]:
         )
     for name in _GLM_MODELS:
         prompt_map[name] = ChatPromptFormat.GLM
-    missing_danchat2 = _DANCHAT2_MODELS.difference(prompt_map)
-    if missing_danchat2:
-        raise RuntimeError(
-            "Chat prompt routing misconfigured; the following DanChat-2 models are not in "
-            f"ALLOWED_CHAT_MODELS: {sorted(missing_danchat2)}"
-        )
-    for name in _DANCHAT2_MODELS:
-        prompt_map[name] = ChatPromptFormat.DANCHAT2
     return prompt_map
 
 

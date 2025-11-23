@@ -34,12 +34,8 @@ def build_chat_prompt_with_prefix(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt)
-    if prompt_format is ChatPromptFormat.LLAMA3_INSTRUCT:
-        return _build_llama3_prompt(system_prompt, history_turns, user_utt)
     if prompt_format is ChatPromptFormat.GLM:
         return _build_glm_prompt(system_prompt, history_turns, user_utt)
-    if prompt_format is ChatPromptFormat.DANCHAT2:
-        return _build_danchat2_prompt(system_prompt, history_turns, user_utt)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt)
 
 
@@ -54,12 +50,8 @@ def build_chat_warm_prompt(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt=None)
-    if prompt_format is ChatPromptFormat.LLAMA3_INSTRUCT:
-        return _build_llama3_prompt(system_prompt, history_turns, user_utt=None)
     if prompt_format is ChatPromptFormat.GLM:
         return _build_glm_prompt(system_prompt, history_turns, user_utt=None)
-    if prompt_format is ChatPromptFormat.DANCHAT2:
-        return _build_danchat2_prompt(system_prompt, history_turns, user_utt=None)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
 
 
@@ -131,26 +123,6 @@ def _build_chatml_prompt(
     return "\n".join(lines)
 
 
-def _build_llama3_prompt(
-    system_prompt: str,
-    history_turns: Sequence[tuple[str, str]],
-    user_utt: str | None,
-) -> str:
-    parts: list[str] = ["<|begin_of_text|>", _llama3_block("system", system_prompt)]
-
-    for user_text, assistant_text in history_turns:
-        if user_text:
-            parts.append(_llama3_block("user", user_text))
-        if assistant_text:
-            parts.append(_llama3_block("assistant", assistant_text))
-
-    if user_utt is not None:
-        parts.append(_llama3_block("user", user_utt.strip()))
-
-    parts.append(_llama3_header_only("assistant"))
-    return "".join(parts)
-
-
 def _build_mistral_prompt(
     system_prompt: str,
     history_turns: Sequence[tuple[str, str]],
@@ -189,17 +161,6 @@ def _build_mistral_prompt(
         parts.append(_format_user_block("", include_system=True))
 
     return "".join(parts)
-
-
-def _llama3_block(role: str, content: str) -> str:
-    return (
-        f"<|start_header_id|>{role}<|end_header_id|>\n"
-        f"{content.strip() if content else ''}<|eot_id|>"
-    )
-
-
-def _llama3_header_only(role: str) -> str:
-    return f"<|start_header_id|>{role}<|end_header_id|>\n"
 
 
 def _build_glm_prompt(
@@ -258,36 +219,6 @@ def _build_glm_prompt(
             f"Failed to apply GLM chat template: {exc}. "
             "Ensure transformers>=4.46.0 is installed and the tokenizer supports apply_chat_template."
         ) from exc
-
-
-def _build_danchat2_prompt(
-    system_prompt: str,
-    history_turns: Sequence[tuple[str, str]],
-    user_utt: str | None,
-) -> str:
-    """Build DanChat-2 prompt format: <|system|>...<|endoftext|><|user|>...<|endoftext|><|assistant|>...<|endoftext|>"""
-    parts: list[str] = []
-    
-    # System message
-    system_text = system_prompt.strip()
-    if system_text:
-        parts.append(f"<|system|>{system_text}<|endoftext|>")
-    
-    # History turns
-    for user_text, assistant_text in history_turns:
-        if user_text:
-            parts.append(f"<|user|>{user_text.strip()}<|endoftext|>")
-        if assistant_text:
-            parts.append(f"<|assistant|>{assistant_text.strip()}<|endoftext|>")
-    
-    # Current user utterance
-    if user_utt is not None:
-        parts.append(f"<|user|>{user_utt.strip()}<|endoftext|>")
-    
-    # Start assistant response (no endoftext yet, since we're generating)
-    parts.append("<|assistant|>")
-    
-    return "".join(parts)
 
 
 @lru_cache(maxsize=1)

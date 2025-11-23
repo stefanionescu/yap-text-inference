@@ -8,7 +8,6 @@ CHAT_TEMPLATE_NAME = "awq_chat_template.md"
 TOOL_TEMPLATE_NAME = "awq_tool_template.md"
 
 _MISTRAL_RESEARCH_MODELS = {
-    "TheDrummer/Cydonia-Redux-22B-v1.1",
 }
 
 _MISTRAL_RESEARCH_LICENSE = {
