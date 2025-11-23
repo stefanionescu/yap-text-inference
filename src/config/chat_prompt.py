@@ -17,6 +17,9 @@ class ChatPromptFormat(str, Enum):
 
 _MISTRAL_MODELS = {
     "TheDrummer/Skyfall-36B-v2",
+    "anthracite-org/magnum-v4-22b",
+    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
+    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
 }
 
 def _build_prompt_map() -> dict[str, ChatPromptFormat]:

@@ -9,15 +9,19 @@ ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it
     "TheDrummer/Skyfall-36B-v2", # yaps too much and is kinda dumb
-    "TheDrummer/Theia-21B-v2", # I'm shocked and really impressed, might be a good model
-    "allura-org/Qwen2.5-32b-RP-Ink", # REALLY good but yaps too much, might wanna use a length penalty or a really tight prompt
+    "TheDrummer/Theia-21B-v2", # mid intelligence, not really worth it
+    "allura-org/Qwen2.5-32b-RP-Ink", # yaps way too much and hallucinates
 
     "TheDrummer/Rocinante-12B-v1.1",
     "dreamgen/opus-v1-34b", # 1
     "anthracite-org/magnum-v3-34b", # 3
     "anthracite-org/magnum-v4-27b",
     "anthracite-org/magnum-v4-22b", # 2
+    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
+    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
+    "anthracite-org/magnum-v1-32b",
     "djuna/magnum-v2-32b-chatml",
+    "anthracite-org/magnum-v4-72b",
 
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
