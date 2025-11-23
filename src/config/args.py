@@ -57,7 +57,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         enforce_eager=False,
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
-        enable_prefix_caching=True,  # Always enable prefix caching for performance
+        # Always enable prefix caching for performance
+        enable_prefix_caching=True,
         # Weight quantization (None => float weights)
         quantization=inference_quant,
         dtype=dtype_value,
