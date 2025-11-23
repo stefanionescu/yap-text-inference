@@ -19,11 +19,14 @@ class ChatPromptFormat(str, Enum):
 _MISTRAL_MODELS = {
     "TheDrummer/Skyfall-36B-v2",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
+    "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+    "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
 }
 
 _GLM_MODELS = {
     "zai-org/GLM-4-32B-Base-0414",
     "zai-org/GLM-4-32B-0414",
+    "cerebras/GLM-4.5-Air-REAP-82B-A12B",
 }
 
 
