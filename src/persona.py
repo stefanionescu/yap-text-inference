@@ -33,7 +33,9 @@ def build_chat_prompt_with_prefix(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt)
-    return _build_mistral_prompt(system_prompt, history_turns, user_utt)
+    if prompt_format is ChatPromptFormat.MISTRAL_INSTRUCT:
+        return _build_mistral_prompt(system_prompt, history_turns, user_utt)
+    return _build_dreamgen_prompt(system_prompt, history_turns, user_utt)
 
 
 def build_chat_warm_prompt(
@@ -47,7 +49,9 @@ def build_chat_warm_prompt(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt=None)
-    return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
+    if prompt_format is ChatPromptFormat.MISTRAL_INSTRUCT:
+        return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
+    return _build_dreamgen_prompt(system_prompt, history_turns, user_utt=None)
 
 
 def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
@@ -156,6 +160,31 @@ def _build_mistral_prompt(
         parts.append(_format_user_block("", include_system=True))
 
     return "".join(parts)
+
+
+def _build_dreamgen_prompt(
+    system_prompt: str,
+    history_turns: Sequence[tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    """Render prompts for DreamGen's ChatML extension with `text` role replies."""
+    lines: list[str] = ["<|im_start|>system", system_prompt.strip(), "<|im_end|>"]
+
+    def _append_block(role: str, content: str | None) -> None:
+        text = (content or "").strip()
+        if not text:
+            return
+        lines.extend((f"<|im_start|>{role}", text, "<|im_end|>"))
+
+    for user_text, assistant_text in history_turns:
+        _append_block("user", user_text)
+        _append_block("text", assistant_text)
+
+    if user_utt is not None:
+        _append_block("user", user_utt)
+
+    lines.append("<|im_start|>text")
+    return "\n".join(lines)
 
 
 @lru_cache(maxsize=1)

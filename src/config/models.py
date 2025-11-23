@@ -20,8 +20,11 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v1-32b",
+    "anthracite-org/magnum-v2-32b",
     "djuna/magnum-v2-32b-chatml",
+    "intervitens/mini-magnum-12b-v1.1",
     "anthracite-org/magnum-v4-72b",
+    "anthracite-org/magnum-v4-12b",
 
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
