@@ -21,7 +21,10 @@ _MISTRAL_RESEARCH_LICENSE = {
     "license_link": "",
 }
 
-_QWEN_LICENSE_MODELS = {}
+_QWEN_LICENSE_MODELS = {
+    "anthracite-org/magnum-v1-32b",
+    "anthracite-org/magnum-v3-34b",
+}
 
 _QWEN_LICENSE = {
     "license": "other",
