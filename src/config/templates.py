@@ -8,9 +8,20 @@ CHAT_TEMPLATE_NAME = "awq_chat_template.md"
 TOOL_TEMPLATE_NAME = "awq_tool_template.md"
 
 
-_QWEN_LICENSE_MODELS = {
-    
+_MISTRAL_RESEARCH_MODELS = {
+    "TheDrummer/Skyfall-36B-v2",
+    "anthracite-org/magnum-v4-22b",
+    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
+    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
 }
+
+_MISTRAL_RESEARCH_LICENSE = {
+    "license": "mistral-research",
+    "license_name": "Mistral Research",
+    "license_link": "",
+}
+
+_QWEN_LICENSE_MODELS = {}
 
 _QWEN_LICENSE = {
     "license": "other",
@@ -65,7 +76,10 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
         }
 
     if _is_mistral_research_model(model_path):
-        return _MISTRAL_RESEARCH_LICENSE.copy()
+        license_info = _MISTRAL_RESEARCH_LICENSE.copy()
+        if not license_info.get("license_link"):
+            license_info["license_link"] = _license_link_for(model_path, is_hf_model)
+        return license_info
 
     if _is_qwen_license_model(model_path):
         return _QWEN_LICENSE.copy()

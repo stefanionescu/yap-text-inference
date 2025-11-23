@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import builtins
 import os
+import sys
 from typing import Any
 
 TOOLCALL_MODEL_MARKERS = (
@@ -61,15 +63,108 @@ def apply_toolcall_awq_adapters(target_seqlen: int) -> None:
     _apply_toolcall_quantizer_patch(target_seqlen)
 
 
-def _iter_catcher_classes(quantizer_module: Any) -> list[type[Any]]:
+_AWQ_MODULE_PREFIXES = ("awq.", "autoawq.")
+
+
+def _iter_catcher_classes(initial_module: Any | None) -> list[type[Any]]:
     classes: list[type[Any]] = []
-    for attr_name in dir(quantizer_module):
-        if "catch" not in attr_name.lower():
+    seen: set[type[Any]] = set()
+    modules: list[Any] = []
+
+    if initial_module is not None:
+        modules.append(initial_module)
+
+    for module in list(sys.modules.values()):
+        module_name = getattr(module, "__name__", "")
+        if module_name.startswith(_AWQ_MODULE_PREFIXES):
+            modules.append(module)
+
+    for module in modules:
+        if module is None:
             continue
-        attr_value = getattr(quantizer_module, attr_name, None)
-        if isinstance(attr_value, type):
-            classes.append(attr_value)
+        for attr_name in dir(module):
+            if "catch" not in attr_name.lower():
+                continue
+            attr_value = getattr(module, attr_name, None)
+            if isinstance(attr_value, type) and attr_value not in seen:
+                classes.append(attr_value)
+                seen.add(attr_value)
+
     return classes
+
+
+def _patch_catcher_class(catcher_cls: type[Any]) -> bool:
+    if getattr(catcher_cls, "_toolcall_attribute_proxy_patch", False):
+        return False
+
+    original_init = catcher_cls.__init__
+    original_getattr = getattr(catcher_cls, "__getattr__", None)
+
+    def patched_init(self, module, *args, _orig_init=original_init, **kwargs):  # type: ignore[override]
+        _orig_init(self, module, *args, **kwargs)
+        object.__setattr__(self, "_toolcall_wrapped_module", module)
+        if hasattr(module, "attention_type"):
+            object.__setattr__(self, "attention_type", module.attention_type)
+
+    def patched_getattr(self, name, _orig_getattr=original_getattr):  # type: ignore[override]
+        if name == "_toolcall_wrapped_module":
+            raise AttributeError(name)
+
+        if _orig_getattr is not None:
+            try:
+                return _orig_getattr(self, name)  # type: ignore[misc]
+            except AttributeError:
+                pass
+
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            pass
+
+        try:
+            wrapped = object.__getattribute__(self, "_toolcall_wrapped_module")
+        except AttributeError:
+            raise AttributeError(name) from None
+
+        try:
+            return getattr(wrapped, name)
+        except AttributeError:
+            raise AttributeError(name) from None
+
+    catcher_cls.__init__ = patched_init  # type: ignore[assignment]
+    catcher_cls.__getattr__ = patched_getattr  # type: ignore[assignment]
+    catcher_cls._toolcall_attribute_proxy_patch = True
+    print(
+        "[awq] Applied Toolcall-specific catcher patch "
+        f"({catcher_cls.__module__}.{catcher_cls.__name__})"
+    )
+    return True
+
+
+def _install_dynamic_catcher_patch() -> None:
+    if getattr(_install_dynamic_catcher_patch, "_installed", False):
+        return
+
+    original_build_class = builtins.__build_class__
+
+    def patched_build_class(func, name, *args, **kwargs):  # type: ignore[override]
+        cls = original_build_class(func, name, *args, **kwargs)
+        try:
+            module_name = getattr(cls, "__module__", "")
+        except Exception:
+            module_name = ""
+        if (
+            isinstance(cls, type)
+            and name
+            and "catch" in name.lower()
+            and module_name.startswith(_AWQ_MODULE_PREFIXES)
+        ):
+            _patch_catcher_class(cls)
+        return cls
+
+    builtins.__build_class__ = patched_build_class  # type: ignore[assignment]
+    setattr(_install_dynamic_catcher_patch, "_installed", True)
+    print("[awq] Toolcall catcher patch will attach dynamically during AutoAWQ quantization")
 
 
 def _apply_toolcall_catcher_patch() -> None:
@@ -80,52 +175,13 @@ def _apply_toolcall_catcher_patch() -> None:
         return
 
     catcher_classes = _iter_catcher_classes(quantizer)
-    if not catcher_classes:
-        print("[awq] Toolcall patch skipped: AutoAWQ catcher helper not found")
-        return
-
+    patched_any = False
     for catcher_cls in catcher_classes:
-        if getattr(catcher_cls, "_toolcall_attribute_proxy_patch", False):
-            continue
+        patched_any = _patch_catcher_class(catcher_cls) or patched_any
 
-        original_init = catcher_cls.__init__
-        original_getattr = getattr(catcher_cls, "__getattr__", None)
-
-        def patched_init(self, module, *args, _orig_init=original_init, **kwargs):  # type: ignore[override]
-            _orig_init(self, module, *args, **kwargs)
-            object.__setattr__(self, "_toolcall_wrapped_module", module)
-            if hasattr(module, "attention_type"):
-                object.__setattr__(self, "attention_type", module.attention_type)
-
-        def patched_getattr(self, name, _orig_getattr=original_getattr):  # type: ignore[override]
-            if name == "_toolcall_wrapped_module":
-                raise AttributeError(name)
-
-            if _orig_getattr is not None:
-                try:
-                    return _orig_getattr(self, name)  # type: ignore[misc]
-                except AttributeError:
-                    pass
-
-            try:
-                return object.__getattribute__(self, name)
-            except AttributeError:
-                pass
-
-            try:
-                wrapped = object.__getattribute__(self, "_toolcall_wrapped_module")
-            except AttributeError:
-                raise AttributeError(name) from None
-
-            try:
-                return getattr(wrapped, name)
-            except AttributeError:
-                raise AttributeError(name) from None
-
-        catcher_cls.__init__ = patched_init  # type: ignore[assignment]
-        catcher_cls.__getattr__ = patched_getattr  # type: ignore[assignment]
-        catcher_cls._toolcall_attribute_proxy_patch = True
-        print(f"[awq] Applied Toolcall-specific catcher patch ({catcher_cls.__name__})")
+    if not patched_any:
+        print("[awq] Toolcall catcher helper not found; enabling dynamic patch hook")
+        _install_dynamic_catcher_patch()
 
 
 def _apply_toolcall_qwen_patch() -> None:
