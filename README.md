@@ -335,6 +335,12 @@ bash scripts/restart.sh --reset-models --deploy-mode both \
   --chat-quant fp8 \
   --tool-quant awq
 
+# Auto-detect pre-quantized repos (AWQ/GPTQ) during reset
+bash scripts/restart.sh --reset-models --deploy-mode chat \
+  --chat-model dreamgen/opus-v1-34b-awq
+bash scripts/restart.sh --reset-models --deploy-mode tool \
+  --tool-model SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
+
 # Full stop and restart cycle
 bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
 ```
