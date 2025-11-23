@@ -16,14 +16,67 @@ _restart_resolve_deploy_mode() {
   esac
 }
 
+_restart_is_gptq_model() {
+  local value="${1:-}"
+  if [ -z "${value}" ]; then
+    return 1
+  fi
+  local lowered="${value,,}"
+  [[ "${lowered}" == *"gptq"* ]]
+}
+
+_restart_is_awq_model() {
+  local value="${1:-}"
+  if [ -z "${value}" ]; then
+    return 1
+  fi
+  local lowered="${value,,}"
+  [[ "${lowered}" == *"awq"* ]]
+}
+
 _restart_autodetect_quantization() {
   local chat_model="$1"
   local chat_enabled="$2"
-  if [ "${chat_enabled}" = "1" ] && [[ "${chat_model}" == *GPTQ* ]]; then
-    echo "gptq_marlin"
-  else
-    echo "fp8"
+  local tool_model="$3"
+  local tool_enabled="$4"
+
+  if [ "${chat_enabled}" = "1" ] && _restart_is_awq_model "${chat_model}"; then
+    echo "awq"
+    return
   fi
+  if [ "${tool_enabled}" = "1" ] && _restart_is_awq_model "${tool_model}"; then
+    echo "awq"
+    return
+  fi
+  if [ "${chat_enabled}" = "1" ] && _restart_is_gptq_model "${chat_model}"; then
+    echo "gptq_marlin"
+    return
+  fi
+  if [ "${tool_enabled}" = "1" ] && _restart_is_gptq_model "${tool_model}"; then
+    echo "gptq_marlin"
+    return
+  fi
+  echo "fp8"
+}
+
+_restart_maybe_assign_awq_repo() {
+  local role="$1"
+  local model="$2"
+  if ! _restart_is_awq_model "${model}"; then
+    return
+  fi
+  case "${role}" in
+    chat)
+      if [ -z "${RECONFIG_AWQ_CHAT_MODEL:-}" ] && [ -z "${AWQ_CHAT_MODEL:-}" ]; then
+        export AWQ_CHAT_MODEL="${model}"
+      fi
+      ;;
+    tool)
+      if [ -z "${RECONFIG_AWQ_TOOL_MODEL:-}" ] && [ -z "${AWQ_TOOL_MODEL:-}" ]; then
+        export AWQ_TOOL_MODEL="${model}"
+      fi
+      ;;
+  esac
 }
 
 _restart_validate_quantization() {
@@ -229,6 +282,7 @@ restart_reconfigure_models() {
   if [ "${deploy_chat}" = "1" ]; then
     export CHAT_MODEL="${chat_model}"
     export CHAT_MODEL_NAME="${chat_model}"
+    _restart_maybe_assign_awq_repo "chat" "${chat_model}"
   else
     unset CHAT_MODEL CHAT_MODEL_NAME
   fi
@@ -236,6 +290,7 @@ restart_reconfigure_models() {
   if [ "${deploy_tool}" = "1" ]; then
     export TOOL_MODEL="${tool_model}"
     export TOOL_MODEL_NAME="${tool_model}"
+    _restart_maybe_assign_awq_repo "tool" "${tool_model}"
   else
     unset TOOL_MODEL TOOL_MODEL_NAME
   fi
@@ -256,7 +311,7 @@ restart_reconfigure_models() {
     fi
   fi
   if [ -z "${quantization}" ]; then
-    quantization="$(_restart_autodetect_quantization "${chat_model}" "${deploy_chat}")"
+    quantization="$(_restart_autodetect_quantization "${chat_model}" "${deploy_chat}" "${tool_model}" "${deploy_tool}")"
   fi
   if ! _restart_validate_quantization "${quantization}"; then
     exit 1

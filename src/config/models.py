@@ -8,21 +8,26 @@ from .env import QUANTIZATION
 ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it
-    "TheDrummer/Skyfall-36B-v2", # 3 might be decent but gotta have a super strong system prompt
+    "TheDrummer/Skyfall-36B-v2", # yaps too much and is kinda dumb
     "TheDrummer/Theia-21B-v2", # I'm shocked and really impressed, might be a good model
     "zai-org/GLM-4-32B-Base-0414", # BROKEN: not supported by AutoAWQ
     "zai-org/GLM-4-32B-0414", # BROKEN: not supported by AutoAWQ
-    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond", # Actually pretty good, gotta iron out some details tho
     "allura-org/Qwen2.5-32b-RP-Ink", # REALLY good but yaps too much, might wanna use a length penalty or a really tight prompt
     "deepseek-ai/deepseek-llm-67b-chat", 
     "cerebras/GLM-4.5-Air-REAP-82B-A12B",
-    "Phr00t/Phr00tyMix-v2-32B",
-    "Phr00t/Phr00tyMix-v4-32B", # 1
-    "huihui-ai/QwQ-32B-abliterated", # 2
+
+    "dphn/dolphin-2.9.3-Yi-1.5-34B-32k",
+    "TheDrummer/Valkyrie-49B-v2",
+    "TheDrummer/Rocinante-12B-v1.1",
+    "dreamgen/opus-v1-34b",
+
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
+    "ISTA-DASLab/gemma-3-27b-it-GPTQ-4b-128g",
+    "shuyuej/gemma-2-27b-it-GPTQ",
+
     # Pre-quantized AWQ models
     "yapwithai/impish-12b-awq",
 ]
