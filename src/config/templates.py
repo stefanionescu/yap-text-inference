@@ -16,7 +16,7 @@ _MISTRAL_RESEARCH_MODELS = {
 _MISTRAL_RESEARCH_LICENSE = {
     "license": "mistral-research",
     "license_name": "Mistral Research",
-    "license_link": "",
+    "license_link": "LICENSE",
 }
 
 _QWEN_LICENSE_MODELS = {
@@ -46,7 +46,7 @@ def _is_mistral_research_model(model_path: str) -> bool:
 
 def _license_link_for(model_path: str, is_hf_model: bool) -> str:
     if not is_hf_model:
-        return ""
+        return "LICENSE"
     return f"https://huggingface.co/{model_path}/blob/main/LICENSE"
 
 
@@ -77,7 +77,7 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
 
     if _is_mistral_research_model(model_path):
         license_info = _MISTRAL_RESEARCH_LICENSE.copy()
-        if not license_info.get("license_link"):
+        if license_info.get("license_link") == "LICENSE" and is_hf_model:
             license_info["license_link"] = _license_link_for(model_path, is_hf_model)
         return license_info
 
@@ -88,7 +88,7 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
     return {
         "license": "apache-2.0",
         "license_name": "Apache 2.0",
-        "license_link": "",
+        "license_link": "LICENSE",
     }
 
 

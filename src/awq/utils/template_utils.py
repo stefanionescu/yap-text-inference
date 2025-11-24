@@ -6,7 +6,6 @@ template/license selection in config.
 
 import json
 import os
-import re
 from textwrap import dedent
 from typing import Any
 
@@ -155,12 +154,6 @@ def generate_readme(
     try:
         with open(template_path, encoding="utf-8") as f:
             template = f.read()
-        
-        # Handle empty license_link by removing that line from YAML frontmatter
-        if not template_vars.get("license_link"):
-            # Remove the license_link line from YAML frontmatter
-            template = re.sub(r'^license_link:.*\n', '', template, flags=re.MULTILINE)
-        
         return template.format(**template_vars)
     except FileNotFoundError:
         print(f"[awq] Warning: Template {template_name} not found, using basic README")
