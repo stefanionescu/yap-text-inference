@@ -15,20 +15,30 @@ pipeline_tag: text-generation
 
 # {model_name} — AWQ {w_bit}-bit (Tool Calling)
 
-Compact tool-calling model quantized with AWQ, based on {source_model_link}.
+This tool-oriented model was quantized with [LLM Compressor](https://github.com/vllm-project/llm-compressor) using `{awq_version}` from {source_model_link}. The weights are ready for `vllm` deployment with tool-calling prompts.
 
-## Details
-- Precision: {w_bit}-bit weights, group size {q_group_size}
-- AWQ version: `{awq_version}`
+## Quantization Overview
+- Pipeline: {pipeline_name}
+- Compressor version: {llmcompressor_version}
+- Scheme: {quant_scheme}
+- Weights: {w_bit}-bit (group size {q_group_size}, zero-point {quant_zero_point})
+- Targets: {quant_targets}
+- Ignored modules: {quant_ignore}
 
-### Quantization config
+## Calibration Data
+- Requested dataset: {calibration_dataset_requested}
+- Effective dataset: {calibration_dataset_effective}
+- Samples: {calibration_samples}
+- Max sequence length: {calibration_seq_len}
+- Profiled model type: {calibration_model_type}
+
+### llmcompressor recipe
 ```json
 {quant_summary}
 ```
 
-### Calibration
+### Calibration notes
 {calib_section}
 
 ## License
-- {license_name}
-{license_link}
+This quantization inherits {license_name}. {license_link}
