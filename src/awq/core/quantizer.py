@@ -123,7 +123,7 @@ class AWQQuantizer:
             return False
 
         load_kwargs: dict[str, Any] = {
-            "torch_dtype": torch.bfloat16,
+            "dtype": torch.bfloat16,
             "trust_remote_code": True,
             "device_map": None,
         }

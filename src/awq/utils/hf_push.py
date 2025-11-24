@@ -23,6 +23,29 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 from src.config.awq import AWQ_MODEL_MARKERS
+from src.awq.utils.template_utils import generate_readme
+
+
+def _regenerate_readme(folder: Path, metadata: dict[str, Any]) -> None:
+    """Regenerate README.md to ensure valid HF metadata."""
+    source_model = (metadata.get("source_model") or "").strip() or "unknown"
+    awq_version = metadata.get("awq_version") or "llmcompressor==unknown"
+    quant_config = metadata.get("quantization_config") or {}
+    quant_summary = json.dumps(quant_config, indent=2)
+    calib_section = "- Regenerated during HF push"
+    
+    readme_contents = generate_readme(
+        model_path=source_model,
+        awq_version=awq_version,
+        quant_summary=quant_summary,
+        metadata=metadata,
+        calib_section=calib_section,
+        out_dir=str(folder),
+    )
+    
+    readme_path = folder / "README.md"
+    readme_path.write_text(readme_contents, encoding="utf-8")
+    print(f"[hf-push] Regenerated {readme_path}")
 
 
 def _load_metadata(folder: Path) -> dict[str, Any]:
@@ -113,6 +136,9 @@ def main() -> int:
         )
 
     commit_message = args.commit_message or f"Upload AWQ weights for {source_model}"
+
+    # Regenerate README.md to ensure valid HF metadata
+    _regenerate_readme(src_dir, metadata)
 
     api = HfApi(token=token)
     if args.allow_create:
