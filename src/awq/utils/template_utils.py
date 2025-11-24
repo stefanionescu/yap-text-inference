@@ -76,15 +76,6 @@ def generate_readme(
     # Get quantization details
     quant_config = _parse_quant_summary(quant_summary)
     w_bit = quant_config.get('w_bit', 4)
-    q_group_size = quant_config.get('q_group_size', 128)
-
-    # Generate model size estimates
-    original_size_gb = metadata.get('original_size_gb', 'Unknown')
-    quantized_size_gb = metadata.get('quantized_size_gb', 'Unknown')
-    memory_reduction = 100 // w_bit if w_bit > 0 else 25
-
-    # Original author for attribution
-    original_author = model_path.split('/')[0] if '/' in model_path else 'the original authors'
 
     # License info from centralized config
     license_info = compute_license_info(model_path, is_tool=is_tool, is_hf_model=is_hf_model)

@@ -35,8 +35,8 @@ restart_detect_awq_models() {
 
   if [ -d "${AWQ_CACHE_DIR}" ]; then
     local LOCAL_CHAT_OK=0 LOCAL_TOOL_OK=0
-    if [ -f "${CHAT_AWQ_DIR}/awq_config.json" ] || [ -f "${CHAT_AWQ_DIR}/.awq_ok" ]; then LOCAL_CHAT_OK=1; fi
-    if [ -f "${TOOL_AWQ_DIR}/awq_config.json" ] || [ -f "${TOOL_AWQ_DIR}/.awq_ok" ]; then LOCAL_TOOL_OK=1; fi
+    if [ -f "${CHAT_AWQ_DIR}/.awq_ok" ] || [ -f "${CHAT_AWQ_DIR}/awq_metadata.json" ] || [ -f "${CHAT_AWQ_DIR}/awq_config.json" ]; then LOCAL_CHAT_OK=1; fi
+    if [ -f "${TOOL_AWQ_DIR}/.awq_ok" ] || [ -f "${TOOL_AWQ_DIR}/awq_metadata.json" ] || [ -f "${TOOL_AWQ_DIR}/awq_config.json" ]; then LOCAL_TOOL_OK=1; fi
     case "${DEPLOY_MODE}" in
       both) [ "${LOCAL_CHAT_OK}" = "1" ] && [ "${LOCAL_TOOL_OK}" = "1" ] && USING_LOCAL_MODELS=1 ;;
       chat) [ "${LOCAL_CHAT_OK}" = "1" ] && USING_LOCAL_MODELS=1 ;;

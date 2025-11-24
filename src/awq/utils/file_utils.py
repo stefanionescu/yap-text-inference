@@ -12,14 +12,11 @@ def file_exists(path: str) -> bool:
 
 
 def is_awq_dir(path: str) -> bool:
-    """Check if a directory contains AWQ quantized model files."""
-    # Heuristics: common files saved by AutoAWQ
+    """Check if a directory looks like an AWQ export."""
     candidates = [
-        os.path.join(path, "awq_config.json"),
+        os.path.join(path, ".awq_ok"),
+        os.path.join(path, "awq_metadata.json"),
+        os.path.join(path, "quantization_config.json"),
         os.path.join(path, "quant_config.json"),
-        os.path.join(path, "model.safetensors"),
     ]
-    for cand in candidates:
-        if file_exists(cand):
-            return True
-    return False
+    return any(file_exists(cand) for cand in candidates)

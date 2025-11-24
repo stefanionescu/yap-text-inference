@@ -27,7 +27,7 @@ awq_should_use_prequant() {
 
 awq_quantize_tool_if_needed() {
   local out_dir="${AWQ_CACHE_DIR}/tool_awq"
-  if [ -f "${out_dir}/awq_config.json" ] || [ -f "${out_dir}/.awq_ok" ]; then
+  if [ -f "${out_dir}/.awq_ok" ] || [ -f "${out_dir}/awq_metadata.json" ] || [ -f "${out_dir}/awq_config.json" ]; then
     log_info "Using existing AWQ tool model at ${out_dir}"
     export TOOL_MODEL="${out_dir}"
     export TOOL_QUANTIZATION=awq
@@ -54,7 +54,7 @@ awq_quantize_chat_if_needed() {
     exit 1
   fi
 
-  if [ -f "${out_dir}/awq_config.json" ] || [ -f "${out_dir}/.awq_ok" ]; then
+  if [ -f "${out_dir}/.awq_ok" ] || [ -f "${out_dir}/awq_metadata.json" ] || [ -f "${out_dir}/awq_config.json" ]; then
     log_info "Using existing AWQ chat model at ${out_dir}"
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq

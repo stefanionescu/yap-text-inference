@@ -1,242 +1,189 @@
-"""Core AWQ quantization logic."""
+"""Core AWQ quantization logic powered by llmcompressor."""
 
-import inspect
 import json
 import os
-from typing import Any
-from collections.abc import Iterable
 import time
+from typing import Any
 
 from ..adapters import (
     apply_awq_compatibility_patches,
-    apply_toolcall_awq_adapters,
     compute_chat_calibration_seqlen,
     compute_toolcall_calibration_seqlen,
     is_toolcall_model,
 )
 from ..utils import resolve_calibration_seqlen, generate_readme, is_awq_dir
-from .calibration import CalibrationConfig, prepare_tokenizer_for_calibration
-
-
-# Global flag for advanced quantization support detection
-_ADVANCED_QUANTIZE_SUPPORTED: bool | None = None
-
-
-def _quantize_supports_kwargs(quantize_fn: Any, keys: Iterable[str]) -> bool:
-    """Check if the quantize function supports the given keyword arguments."""
-    global _ADVANCED_QUANTIZE_SUPPORTED
-    if _ADVANCED_QUANTIZE_SUPPORTED is not None:
-        return _ADVANCED_QUANTIZE_SUPPORTED
-
-    try:
-        sig = inspect.signature(quantize_fn)
-        for _param_name, param in sig.parameters.items():
-            if param.kind == param.VAR_KEYWORD:  # **kwargs
-                _ADVANCED_QUANTIZE_SUPPORTED = True
-                return True
-
-        _ADVANCED_QUANTIZE_SUPPORTED = all(key in sig.parameters for key in keys)
-        return _ADVANCED_QUANTIZE_SUPPORTED
-    except Exception:
-        _ADVANCED_QUANTIZE_SUPPORTED = False
-        return False
+from .calibration import CalibrationConfig
 
 
 class AWQQuantizer:
-    """AWQ quantization manager."""
-    
+    """AWQ quantization manager backed by llmcompressor."""
+
     def __init__(self, config: CalibrationConfig):
         self.config = config
-        
+
     def quantize_model(
-        self, 
-        model_path: str, 
+        self,
+        model_path: str,
         output_dir: str,
-        force: bool = False
+        force: bool = False,
     ) -> bool:
-        """Quantize a model using AWQ."""
-        
-        # Check if already quantized
+        """Quantize a model using llmcompressor's AWQ pipeline."""
+
         if not force and is_awq_dir(output_dir):
             print(f"[awq] Using existing quantized model at {output_dir}")
             return True
-            
+
         os.makedirs(output_dir, exist_ok=True)
-        
-        # Import dependencies
+
         try:
-            import awq as awq_pkg  # type: ignore
-            from awq import AutoAWQForCausalLM  # type: ignore
-            from transformers import AutoTokenizer  # type: ignore
-        except Exception as e:
-            print(f"[awq] Failed to import AutoAWQ/transformers: {e}")
+            import llmcompressor  # type: ignore
+            from llmcompressor import oneshot  # type: ignore
+            from llmcompressor.modifiers.awq import AWQModifier  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to import llmcompressor: {exc}")
             return False
-            
-        awq_version = getattr(awq_pkg, "__version__", "unknown")
+
         apply_awq_compatibility_patches()
-        
-        # Build quantization config
+        compressor_version = getattr(llmcompressor, "__version__", "unknown")
+
         quant_config = {
+            "scheme": f"W{self.config.w_bit}A16",
             "zero_point": self.config.zero_point,
             "q_group_size": self.config.q_group_size,
             "w_bit": self.config.w_bit,
             "version": self.config.version,
+            "targets": "Linear",
+            "ignore": ["lm_head"],
         }
-        
-        # Resolve remote HF repo to a local snapshot first for robustness
-        resolved_model_path = model_path
-        try:
-            if not os.path.isdir(model_path) and "/" in model_path:
-                from huggingface_hub import snapshot_download  # lazy import
 
-                token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
-                cache_dir = os.environ.get("HF_HOME")
-
-                print(f"[awq] Prefetching model from Hub: {model_path}")
-                last_err: Exception | None = None
-                for attempt in range(1, 4):
-                    try:
-                        resolved_model_path = snapshot_download(
-                            repo_id=model_path,
-                            token=token,
-                            local_files_only=False,
-                            resume_download=True,
-                            cache_dir=cache_dir,
-                        )
-                        last_err = None
-                        break
-                    except Exception as dl_err:  # noqa: BLE001
-                        last_err = dl_err
-                        backoff = min(2 ** attempt, 5)
-                        print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
-                        if attempt < 3:
-                            print(f"[awq] Retrying in {backoff}s…")
-                            time.sleep(backoff)
-                if last_err is not None:
-                    print(
-                        "[awq] Quantization failed: could not download model from Hugging Face. "
-                        "Check network access, repository visibility, and set HF_TOKEN or "
-                        "HUGGINGFACE_HUB_TOKEN if needed."
-                    )
-                    return False
-        except Exception as e:  # noqa: BLE001
-            print(f"[awq] Prefetch step encountered an unexpected error: {e}")
+        resolved_model_path = self._prefetch_model(model_path)
+        if resolved_model_path is None:
             return False
 
-        print(f"[awq] Loading float model: {resolved_model_path}")
-        model = AutoAWQForCausalLM.from_pretrained(
-            resolved_model_path,
-            trust_remote_code=True,
-            low_cpu_mem_usage=True,
-            use_cache=False,
-        )
-        
+        model_config = self._load_model_config(resolved_model_path)
         toolcall_model = is_toolcall_model(model_path)
 
-        tokenizer = None
-        tokenizer_error: Exception | None = None
-        for use_fast in (False, True):
-            mode = "slow" if not use_fast else "fast"
-            try:
-                tokenizer = AutoTokenizer.from_pretrained(
-                    resolved_model_path,
-                    trust_remote_code=True,
-                    use_fast=use_fast,
-                )
-                if use_fast and tokenizer_error is not None:
-                    print(
-                        "[awq] Loaded fast tokenizer after slow tokenizer failed "
-                        f"({tokenizer_error})"
-                    )
-                break
-            except Exception as err:  # noqa: BLE001
-                tokenizer_error = err
-                print(f"[awq] Failed to load {mode} tokenizer: {err}")
-        if tokenizer is None:
-            print("[awq] Quantization failed: unable to load tokenizer (see errors above)")
-            return False
-        
-        # Compute calibration sequence length
         if toolcall_model:
             requested_seqlen = compute_toolcall_calibration_seqlen(self.config.seqlen)
-            apply_toolcall_awq_adapters(resolve_calibration_seqlen(requested_seqlen, model))
         else:
             requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
-            
-        target_seqlen = resolve_calibration_seqlen(requested_seqlen, model)
-        prepare_tokenizer_for_calibration(tokenizer, target_seqlen)
-        
+
+        target_seqlen = resolve_calibration_seqlen(requested_seqlen, model_config)
         model_type = "Toolcall" if toolcall_model else "Chat"
         if target_seqlen != requested_seqlen:
             print(f"[awq] {model_type} model calibration seqlen adjusted to {target_seqlen}")
         else:
             print(f"[awq] {model_type} model calibration seqlen = {target_seqlen}")
-            
-        print(f"[awq] Quantizing with config: {json.dumps(quant_config)}")
-        
-        # Prepare quantization arguments
-        quant_kwargs = {
-            "tokenizer": tokenizer,
-            "quant_config": quant_config,
-        }
-        
-        advanced_kwargs = {
-            "calib_dataset": self.config.dataset,
-            "nsamples": self.config.nsamples,
-            "seqlen": target_seqlen,
-        }
-        
-        # Check if advanced quantization is supported
-        supports_advanced = _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys())
-        if supports_advanced:
-            quant_kwargs.update(advanced_kwargs)
-            
+
+        recipe = [
+            AWQModifier(
+                scheme=quant_config["scheme"],
+                targets=quant_config["targets"],
+                ignore=quant_config["ignore"],
+            )
+        ]
+
+        print(f"[awq] Quantizing with llmcompressor {compressor_version}")
+        print(f"[awq] Quantization config: {json.dumps(quant_config)}")
+        print(
+            "[awq] Running oneshot() with dataset="
+            f"{self.config.dataset}, nsamples={self.config.nsamples}, "
+            f"max_seq_length={target_seqlen}"
+        )
+
         try:
-            model.quantize(**quant_kwargs)
-        except TypeError as err:
-            if supports_advanced and "calib_dataset" in str(err):
-                print("[awq] AutoAWQ quantize() rejected calib_dataset/nsamples/seqlen; retrying with defaults")
-                global _ADVANCED_QUANTIZE_SUPPORTED
-                _ADVANCED_QUANTIZE_SUPPORTED = False
-                supports_advanced = False
-                quant_kwargs = {
-                    "tokenizer": tokenizer,
-                    "quant_config": quant_config,
-                }
-                try:
-                    model.quantize(**quant_kwargs)
-                except Exception as final_err:
-                    print(f"[awq] Quantization failed: {final_err}")
-                    return False
-            else:
-                print(f"[awq] Quantization failed: {err}")
-                return False
-        except Exception as e:
-            print(f"[awq] Quantization failed: {e}")
+            oneshot(
+                model=resolved_model_path,
+                dataset=self.config.dataset,
+                recipe=recipe,
+                output_dir=output_dir,
+                max_seq_length=target_seqlen,
+                num_calibration_samples=self.config.nsamples,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Quantization failed via llmcompressor: {exc}")
             return False
 
-        # Save the quantized model
-        print(f"[awq] Saving quantized model to: {output_dir}")
-        model.save_quantized(output_dir)
-        tokenizer.save_pretrained(output_dir)
-        
-        # Generate metadata and README
+        advanced_kwargs = {
+            "dataset": self.config.dataset,
+            "num_calibration_samples": self.config.nsamples,
+            "max_seq_length": target_seqlen,
+            "model_type": model_type,
+        }
+
         self._save_metadata(
             output_dir=output_dir,
             model_path=model_path,
-            awq_version=awq_version,
+            awq_version=f"llmcompressor=={compressor_version}",
             quant_config=quant_config,
             target_seqlen=target_seqlen,
             toolcall_model=toolcall_model,
-            advanced_kwargs=(
-                advanced_kwargs
-                if _quantize_supports_kwargs(model.quantize, advanced_kwargs.keys())
-                else None
-            )
+            advanced_kwargs=advanced_kwargs,
         )
-        
+
         print(f"[awq] Done: {output_dir}")
         return True
+
+    def _prefetch_model(self, model_path: str) -> str | None:
+        """Resolve remote HF repos to a local snapshot for robustness."""
+
+        resolved_model_path = model_path
+        if os.path.isdir(model_path) or "/" not in model_path:
+            return resolved_model_path
+
+        try:
+            from huggingface_hub import snapshot_download  # lazy import
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to import huggingface_hub for snapshot download: {exc}")
+            return None
+
+        token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
+        cache_dir = os.environ.get("HF_HOME")
+
+        print(f"[awq] Prefetching model from Hub: {model_path}")
+        last_err: Exception | None = None
+        for attempt in range(1, 4):
+            try:
+                resolved_model_path = snapshot_download(
+                    repo_id=model_path,
+                    token=token,
+                    local_files_only=False,
+                    resume_download=True,
+                    cache_dir=cache_dir,
+                )
+                last_err = None
+                break
+            except Exception as dl_err:  # noqa: BLE001
+                last_err = dl_err
+                backoff = min(2 ** attempt, 5)
+                print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
+                if attempt < 3:
+                    print(f"[awq] Retrying in {backoff}s…")
+                    time.sleep(backoff)
+
+        if last_err is not None:
+            print(
+                "[awq] Quantization failed: could not download model from Hugging Face. "
+                "Check network access, repository visibility, and set HF_TOKEN or "
+                "HUGGINGFACE_HUB_TOKEN if needed."
+            )
+            return None
+
+        return resolved_model_path
+
+    def _load_model_config(self, model_path: str) -> Any | None:
+        """Best-effort load of model config for seqlen validation."""
+
+        try:
+            from transformers import AutoConfig  # type: ignore
+        except Exception:
+            return None
+
+        try:
+            return AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Warning: unable to load config for {model_path}: {exc}")
+            return None
         
     def _save_metadata(
         self,
@@ -246,11 +193,10 @@ class AWQQuantizer:
         quant_config: dict,
         target_seqlen: int,
         toolcall_model: bool,
-        advanced_kwargs: dict | None = None
+        advanced_kwargs: dict | None = None,
     ) -> None:
         """Save metadata and generate README."""
-        
-        # Save metadata
+
         metadata = {
             "source_model": model_path,
             "awq_version": awq_version,
@@ -259,30 +205,29 @@ class AWQQuantizer:
             "is_toolcall_model": toolcall_model,
             "pipeline": "yap-text-inference",
         }
-        
+
         if advanced_kwargs:
             metadata["calibration_config"] = advanced_kwargs
-            
-        # Save metadata file
+
         meta_path = os.path.join(output_dir, "awq_metadata.json")
         try:
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"[awq] Warning: failed to write metadata ({exc})")
-            
-        # Generate calibration section for README
+
         if advanced_kwargs:
-            calib_section = f"""### Advanced Calibration
-            
-- **Dataset**: {advanced_kwargs.get('calib_dataset', 'Unknown')}
-- **Samples**: {advanced_kwargs.get('nsamples', 'Unknown')}  
-- **Sequence Length**: {advanced_kwargs.get('seqlen', 'Unknown')}
-- **Model Type**: {'Toolcall (Tool)' if toolcall_model else 'Chat'}"""
+            calib_section = f"""### Calibration
+
+- **Dataset**: {advanced_kwargs.get('dataset', 'Unknown')}
+- **Samples**: {advanced_kwargs.get('num_calibration_samples', 'Unknown')}
+- **Sequence Length**: {advanced_kwargs.get('max_seq_length', 'Unknown')}
+- **Model Type**: {'Toolcall (Tool)' if toolcall_model else 'Chat'}
+- **Compressor**: {awq_version}
+"""
         else:
-            calib_section = "- Calibration: AutoAWQ default pipeline"
-            
-        # Generate README
+            calib_section = "- Calibration: llmcompressor default pipeline"
+
         quant_summary = json.dumps(quant_config, indent=2)
         readme_contents = generate_readme(
             model_path=model_path,
@@ -290,18 +235,16 @@ class AWQQuantizer:
             quant_summary=quant_summary,
             metadata=metadata,
             calib_section=calib_section,
-            out_dir=output_dir
+            out_dir=output_dir,
         )
-        
-        # Save README
+
         readme_path = os.path.join(output_dir, "README.md")
         try:
             with open(readme_path, "w", encoding="utf-8") as f:
                 f.write(readme_contents)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"[awq] Warning: failed to write README ({exc})")
-            
-        # Create completion marker
+
         marker = os.path.join(output_dir, ".awq_ok")
         try:
             with open(marker, "w", encoding="utf-8") as f:
