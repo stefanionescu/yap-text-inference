@@ -7,6 +7,8 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
+source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
+source "${SCRIPT_DIR}/lib/runtime/pipeline.sh"
 
 log_info "Starting Yap Text Inference Server"
 
@@ -14,81 +16,6 @@ ensure_required_env_vars
 
 # Stop any existing warmup processes before starting deployment
 stop_existing_warmup_processes "${ROOT_DIR}"
-
-SERVER_PID_FILE="${ROOT_DIR}/server.pid"
-LAST_CONFIG_FILE="${ROOT_DIR}/.run/last_config.env"
-
-# Returns PID if the server is live; cleans stale pid files, returns non-zero otherwise.
-get_running_server_pid() {
-  if [ -f "${SERVER_PID_FILE}" ]; then
-    local existing_pid
-    existing_pid="$(cat "${SERVER_PID_FILE}" 2>/dev/null || true)"
-    if [ -n "${existing_pid}" ] && ps -p "${existing_pid}" >/dev/null 2>&1; then
-      printf '%s' "${existing_pid}"
-      return 0
-    fi
-    log_warn "Found stale server.pid entry; removing ${SERVER_PID_FILE}"
-    rm -f "${SERVER_PID_FILE}" || true
-  fi
-  return 1
-}
-
-# Helper to read a key=value entry from the last config snapshot.
-read_last_config_value() {
-  local key="$1"
-  if [ -f "${LAST_CONFIG_FILE}" ]; then
-    local line
-    line="$(grep -E "^${key}=" "${LAST_CONFIG_FILE}" 2>/dev/null || true)"
-    if [ -n "${line}" ]; then
-      echo "${line#*=}"
-    fi
-  fi
-}
-
-# Stop the running server before redeploying. Preserves caches when config is unchanged.
-stop_running_server_if_needed() {
-  local desired_deploy_mode="$1"
-  local desired_chat_model="$2"
-  local desired_tool_model="$3"
-  local desired_quantization="$4"
-  local desired_awq_chat="$5"
-  local desired_awq_tool="$6"
-
-  local running_pid
-  if ! running_pid="$(get_running_server_pid)"; then
-    return 0
-  fi
-
-  log_warn "Server already running (PID=${running_pid}). Evaluating restart strategy..."
-
-  local last_deploy_mode last_chat_model last_tool_model last_quantization last_awq_chat last_awq_tool
-  last_deploy_mode="$(read_last_config_value "DEPLOY_MODELS")"
-  last_chat_model="$(read_last_config_value "CHAT_MODEL")"
-  last_tool_model="$(read_last_config_value "TOOL_MODEL")"
-  last_quantization="$(read_last_config_value "QUANTIZATION")"
-  last_awq_chat="$(read_last_config_value "AWQ_CHAT_MODEL")"
-  last_awq_tool="$(read_last_config_value "AWQ_TOOL_MODEL")"
-
-  local configs_match=0
-  if [ -n "${last_deploy_mode:-}" ]; then
-    if [ "${desired_deploy_mode:-}" = "${last_deploy_mode:-}" ] &&
-       [ "${desired_chat_model:-}" = "${last_chat_model:-}" ] &&
-       [ "${desired_tool_model:-}" = "${last_tool_model:-}" ] &&
-       [ "${desired_quantization:-}" = "${last_quantization:-}" ] &&
-       [ "${desired_awq_chat:-}" = "${last_awq_chat:-}" ] &&
-       [ "${desired_awq_tool:-}" = "${last_awq_tool:-}" ]; then
-      configs_match=1
-    fi
-  fi
-
-  if [ "${configs_match}" -eq 1 ]; then
-    log_info "Existing server uses the requested models/quantization; stopping without clearing caches."
-    NUKE_ALL=0 bash "${SCRIPT_DIR}/stop.sh"
-  else
-    log_info "Requested configuration differs from running server; performing full reset before redeploy."
-    NUKE_ALL=1 bash "${SCRIPT_DIR}/stop.sh"
-  fi
-}
 
 # Usage function
 usage() {
@@ -333,7 +260,9 @@ DESIRED_AWQ_CHAT_MODEL="${AWQ_CHAT_MODEL:-}"
 DESIRED_AWQ_TOOL_MODEL="${AWQ_TOOL_MODEL:-}"
 
 # If the server is already running, decide whether to keep caches or reset.
-stop_running_server_if_needed \
+runtime_guard_stop_server_if_needed \
+  "${SCRIPT_DIR}" \
+  "${ROOT_DIR}" \
   "${DESIRED_DEPLOY_MODE}" \
   "${DESIRED_CHAT_MODEL}" \
   "${DESIRED_TOOL_MODEL}" \
@@ -370,43 +299,13 @@ DEPLOYMENT_CMD="
   echo '[INFO] $(date -Iseconds) Use scripts/stop.sh to stop the server'
 "
 
-# Create directories for runtime files  
-mkdir -p "${ROOT_DIR}/.run"
-
 # Export all environment variables for the background process
 export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL CONCURRENT_MODEL_CALL
 export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
 export AWQ_CHAT_MODEL AWQ_TOOL_MODEL  # Pre-quantized AWQ model URLs
 
-# Rotate log if it exists and is too large - use unified server.log for everything
-SERVER_LOG="${ROOT_DIR}/server.log"
-if [ -f "$SERVER_LOG" ]; then
-  MAX_KEEP_BYTES=$((100 * 1024 * 1024))  # 100MB
-  SIZE=$(wc -c <"$SERVER_LOG" 2>/dev/null || echo 0)
-  if [ "$SIZE" -gt "$MAX_KEEP_BYTES" ]; then
-    OFFSET=$((SIZE - MAX_KEEP_BYTES))
-    TMP_FILE="${ROOT_DIR}/.server.log.trim"
-    if tail -c "$MAX_KEEP_BYTES" "$SERVER_LOG" > "$TMP_FILE" 2>/dev/null; then
-      mv "$TMP_FILE" "$SERVER_LOG" 2>/dev/null || true
-      echo "[INFO] $(date -Iseconds) Trimmed server.log to latest 100MB (removed ${OFFSET} bytes)" >> "$SERVER_LOG"
-    fi
-  fi
-fi
-
-# Run deployment in background with proper process isolation
-log_info "Starting deployment pipeline in background..."
-setsid nohup bash -lc "$DEPLOYMENT_CMD" </dev/null > "$SERVER_LOG" 2>&1 &
-
-# Store background process ID
-BG_PID=$!
-echo "$BG_PID" > "${ROOT_DIR}/.run/deployment.pid"
-
-log_info "Deployment started (PID: $BG_PID)"
-log_info "All logs (deployment + server): server.log" 
-log_info "To stop: bash scripts/stop.sh"
-echo ""
-log_info "Following all logs (Ctrl+C detaches, deployment continues)..."
-
-# Tail logs with graceful handling
-touch "$SERVER_LOG" || true
-exec tail -n +1 -F "$SERVER_LOG"
+runtime_pipeline_run_background \
+  "${ROOT_DIR}" \
+  "${DEPLOYMENT_CMD}" \
+  "1" \
+  "Starting deployment pipeline in background..."

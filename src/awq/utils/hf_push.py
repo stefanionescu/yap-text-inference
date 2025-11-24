@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Utility to push AWQ quantized model folders to Hugging Face Hub."""
+"""Utility to push AWQ quantized model folders to HuggingFace."""
 
 from __future__ import annotations
 
@@ -15,6 +15,9 @@ try:
 except Exception as exc:  # pragma: no cover - import error path
     print(f"[hf-push] huggingface_hub is required: {exc}", file=sys.stderr)
     sys.exit(1)
+
+
+from src.config.awq import AWQ_MODEL_MARKERS
 
 
 def _load_metadata(folder: Path) -> dict[str, Any]:
@@ -38,6 +41,30 @@ def _resolve_token(cli_token: str | None) -> str:
         if candidate:
             return candidate
     raise SystemExit("[hf-push] Hugging Face token not provided. Set HF_AWQ_TOKEN or pass --token.")
+
+
+def _looks_like_remote_repo(value: str) -> bool:
+    """Best-effort check to distinguish HF repos from local paths."""
+    if not value or "/" not in value:
+        return False
+    try:
+        return not Path(value).exists()
+    except OSError:
+        return True
+
+
+def _classify_prequantized_source(value: str | None) -> str | None:
+    """Return 'awq' or 'gptq' when the source already looks pre-quantized."""
+    if not value:
+        return None
+    if not _looks_like_remote_repo(value):
+        return None
+    lowered = value.lower()
+    if any(marker in lowered for marker in AWQ_MODEL_MARKERS):
+        return "awq"
+    if "gptq" in lowered:
+        return "gptq"
+    return None
 
 
 def main() -> int:
@@ -71,7 +98,14 @@ def main() -> int:
     token = _resolve_token(args.token)
 
     metadata = _load_metadata(src_dir)
-    source_model = metadata.get("source_model") or "unknown"
+    source_model = (metadata.get("source_model") or "").strip() or "unknown"
+
+    prequant_kind = _classify_prequantized_source(source_model)
+    if prequant_kind:
+        raise SystemExit(
+            f"[hf-push] Source model '{source_model}' is already a pre-quantized "
+            f"{prequant_kind.upper()} repo. Refusing to upload duplicate weights."
+        )
 
     commit_message = args.commit_message or f"Upload AWQ weights for {source_model}"
 
