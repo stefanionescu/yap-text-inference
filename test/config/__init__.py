@@ -29,7 +29,6 @@ from .defaults import (
     CHAT_TOP_P_DEFAULT,
     CHAT_TOP_K_DEFAULT,
     CHAT_REPEAT_PENALTY_DEFAULT,
-    CHAT_LENGTH_PENALTY_DEFAULT,
 )
 
 __all__ = [
@@ -59,6 +58,5 @@ __all__ = [
     "CHAT_TOP_P_DEFAULT",
     "CHAT_TOP_K_DEFAULT",
     "CHAT_REPEAT_PENALTY_DEFAULT",
-    "CHAT_LENGTH_PENALTY_DEFAULT",
 ]
 

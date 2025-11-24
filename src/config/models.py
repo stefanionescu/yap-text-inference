@@ -17,16 +17,12 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # 3
     "djuna/magnum-v2-32b-chatml", # 1
-    "intervitens/mini-magnum-12b-v1.1", # 2
     "anthracite-org/magnum-v4-72b", # Great on OpenRouter but too big even after 4bit quant
 
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
-
-    # Pre-quantized AWQ models
-    "yapwithai/impish-12b-awq",
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [

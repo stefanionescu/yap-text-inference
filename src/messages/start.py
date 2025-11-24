@@ -31,8 +31,6 @@ from ..config import (
     CHAT_PRESENCE_PENALTY_MAX,
     CHAT_FREQUENCY_PENALTY_MIN,
     CHAT_FREQUENCY_PENALTY_MAX,
-    CHAT_LENGTH_PENALTY_MIN,
-    CHAT_LENGTH_PENALTY_MAX,
 )
 from ..tokens import (
     count_tokens_chat,
@@ -93,14 +91,6 @@ _SAMPLING_FIELDS: tuple[tuple[str, type, float | int, float | int, str, str], ..
         CHAT_FREQUENCY_PENALTY_MAX,
         "invalid_frequency_penalty",
         "frequency_penalty_out_of_range",
-    ),
-    (
-        "length_penalty",
-        float,
-        CHAT_LENGTH_PENALTY_MIN,
-        CHAT_LENGTH_PENALTY_MAX,
-        "invalid_length_penalty",
-        "length_penalty_out_of_range",
     ),
 )
 
