@@ -111,11 +111,18 @@ if [ -f "${LAST_ENV_FILE}" ]; then
   fi
   
   # If AWQ_CHAT_MODEL/AWQ_TOOL_MODEL aren't set but CHAT_MODEL/TOOL_MODEL look like AWQ HF repos, use them
-  if [ -z "${AWQ_CHAT_MODEL:-}" ] && [ -n "${CHAT_MODEL:-}" ] && [[ "${CHAT_MODEL}" == *"/"* ]] && [[ "${CHAT_MODEL}" == *"awq"* ]]; then
-    export AWQ_CHAT_MODEL="${CHAT_MODEL}"
+  # Check case-insensitively for "awq" in the model name
+  if [ -z "${AWQ_CHAT_MODEL:-}" ] && [ -n "${CHAT_MODEL:-}" ] && [[ "${CHAT_MODEL}" == *"/"* ]]; then
+    local chat_model_lower="${CHAT_MODEL,,}"
+    if [[ "${chat_model_lower}" == *"awq"* ]]; then
+      export AWQ_CHAT_MODEL="${CHAT_MODEL}"
+    fi
   fi
-  if [ -z "${AWQ_TOOL_MODEL:-}" ] && [ -n "${TOOL_MODEL:-}" ] && [[ "${TOOL_MODEL}" == *"/"* ]] && [[ "${TOOL_MODEL}" == *"awq"* ]]; then
-    export AWQ_TOOL_MODEL="${TOOL_MODEL}"
+  if [ -z "${AWQ_TOOL_MODEL:-}" ] && [ -n "${TOOL_MODEL:-}" ] && [[ "${TOOL_MODEL}" == *"/"* ]]; then
+    local tool_model_lower="${TOOL_MODEL,,}"
+    if [[ "${tool_model_lower}" == *"awq"* ]]; then
+      export AWQ_TOOL_MODEL="${TOOL_MODEL}"
+    fi
   fi
 fi
 
