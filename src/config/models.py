@@ -18,7 +18,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
 
     "TheDrummer/Rocinante-12B-v1.1", # mid intelligence, good if you need to downgrade quality temporarily
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # good, need further tests
-    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond", # 3
+    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much (good for general RP tho)
     "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting (good for general RP tho)
     "anthracite-org/magnum-v4-72b", # amazing on OpenRouter but too big on L40S even after 4bit quant
