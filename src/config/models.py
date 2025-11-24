@@ -13,12 +13,12 @@ _BLOCKED_MODEL_KEYWORDS = ("gemma", "kimi")
 
 ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
-    "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it; sorta decent at temp <=0.6
-    "TheDrummer/Theia-21B-v2", # 3 mid intelligence, overall meh but good if you start to be poor and need to keep running inference
+    "SicariusSicariiStuff/Impish_Nemo_12B", # 1 unstable once it gets past 0.8 temp, not like the model card describes it; sorta decent at temp <=0.6
+    "TheDrummer/Theia-21B-v2", # mid intelligence, overall meh but good if you start to be poor and need to keep running inference
 
     "TheDrummer/Rocinante-12B-v1.1", # mid intelligence, good if you need to downgrade quality temporarily
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # good, need further tests
-    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond", # 1
+    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much (good for general RP tho)
     "djuna/magnum-v2-32b-chatml", # 2 yaps too much but might fix with prompting (good for general RP tho)
     "anthracite-org/magnum-v4-72b", # amazing on OpenRouter but too big on L40S even after 4bit quant
