@@ -53,7 +53,7 @@ install_llmcompressor_without_deps() {
     return
   fi
 
-  if TARGET_VERSION="${version}" "${ROOT_DIR}/.venv/bin/python" - <<'PY'; then
+  if TARGET_VERSION="${version}" "${ROOT_DIR}/.venv/bin/python" - <<'PY'
 import os
 import sys
 try:
