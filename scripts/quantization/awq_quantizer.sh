@@ -11,11 +11,6 @@ source "${LIB_Q}/env.sh"
 source "${LIB_Q}/push.sh"
 source "${LIB_Q}/ops.sh"
 
-_awq_quant_fail() {
-  log_error "AWQ quantization pipeline failed; aborting."
-  return 1 2>/dev/null || exit 1
-}
-
 # Determine which engines requested AWQ
 AWQ_TARGET_CHAT=0
 AWQ_TARGET_TOOL=0
@@ -53,20 +48,31 @@ fi
 awq_ensure_cache_dir
 
 if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
-  # Pre-quantized models when provided, otherwise quantize locally
   if [ "${AWQ_TARGET_TOOL}" = "1" ]; then
-    awq_handle_tool_prequant_or_quantize || _awq_quant_fail
+    if ! awq_handle_tool_prequant_or_quantize; then
+      log_error "AWQ quantization pipeline failed while preparing tool model; aborting."
+      exit 1
+    fi
   fi
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
-    awq_handle_chat_prequant_or_quantize || _awq_quant_fail
+    if ! awq_handle_chat_prequant_or_quantize; then
+      log_error "AWQ quantization pipeline failed while preparing chat model; aborting."
+      exit 1
+    fi
   fi
 else
   log_info "Starting local AWQ quantization process"
   if [ "${AWQ_TARGET_TOOL}" = "1" ]; then
-    awq_quantize_tool_if_needed || _awq_quant_fail
+    if ! awq_quantize_tool_if_needed; then
+      log_error "AWQ quantization pipeline failed while quantizing tool model; aborting."
+      exit 1
+    fi
   fi
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
-    awq_quantize_chat_if_needed || _awq_quant_fail
+    if ! awq_quantize_chat_if_needed; then
+      log_error "AWQ quantization pipeline failed while quantizing chat model; aborting."
+      exit 1
+    fi
   fi
 fi
 
