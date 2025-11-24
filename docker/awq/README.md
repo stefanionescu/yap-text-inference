@@ -1,6 +1,7 @@
 # Yap Text Inference Docker Setup (AWQ)
 
-This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**.
+This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**.  
+All artifacts are produced with [`llmcompressor`](https://github.com/vllm-project/llm-compressor) and ship as **W4A16 compressed-tensor exports**, so vLLM automatically selects the Marlin kernels (you will see `quantization=compressed-tensors` in the server logs even though `QUANTIZATION=awq` is configured).
 
 **Default Models:**
 - **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - AWQ quantized Impish Nemo 12B
@@ -81,17 +82,17 @@ docker run -d --gpus all --name yap-tool \
 ## Environment Variables
 
 ### Required
+- `TEXT_API_KEY` – API key handed to the server
 - `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
 - If `DEPLOY_MODELS=chat`: `AWQ_CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
 - If `DEPLOY_MODELS=tool`: `AWQ_TOOL_MODEL` (default: `yapwithai/hammer-2.1-3b-awq`)
 - If `DEPLOY_MODELS=both`: `AWQ_CHAT_MODEL` and `AWQ_TOOL_MODEL`
 
 ### Optional
-- `TEXT_API_KEY` (required, no default - must be set)
 - `CHAT_GPU_FRAC` (default: `0.70`)
 - `TOOL_GPU_FRAC` (default: `0.20`)
 
-Engine/attention backend are auto-selected; no manual configuration required.
+Engine/attention backend and the precise quantization backend are auto-selected; when pointing at a local AWQ export the container now prints which compressed-tensor metadata it detected (scheme, group size, zero-point).
 
 Note: This AWQ image now supports chat-only, tool-only, or both.
 
