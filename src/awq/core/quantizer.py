@@ -14,6 +14,40 @@ from ..adapters import (
 from ..utils import resolve_calibration_seqlen, generate_readme, is_awq_dir
 from .calibration import CalibrationConfig
 
+_DEFAULT_DATASET = "open_platypus"
+_DATASET_ALIASES = {
+    "open-platypus": "open_platypus",
+    "openplatypus": "open_platypus",
+    "wikitext2": "wikitext",
+    "wiki_text": "wikitext",
+}
+_DATASET_FALLBACKS = {
+    "pileval": _DEFAULT_DATASET,
+    "pile_val": _DEFAULT_DATASET,
+    "pile": _DEFAULT_DATASET,
+}
+
+
+def _dataset_key(name: str | None) -> str:
+    raw = (name or "").strip()
+    if not raw:
+        return _DEFAULT_DATASET
+    return raw.lower().replace("-", "_").replace(" ", "_")
+
+
+def _canonicalize_dataset_name(name: str | None) -> str:
+    key = _dataset_key(name)
+    return _DATASET_ALIASES.get(key, key or _DEFAULT_DATASET)
+
+
+def _dataset_fallback(name: str) -> str | None:
+    return _DATASET_FALLBACKS.get(_dataset_key(name))
+
+
+def _is_dataset_registration_error(exc: Exception) -> bool:
+    message = str(exc)
+    return "Unable to find" in message and "TextGenerationDataset" in message
+
 
 class AWQQuantizer:
     """AWQ quantization manager backed by llmcompressor."""
@@ -83,33 +117,65 @@ class AWQQuantizer:
             )
         ]
 
+        requested_dataset = self.config.dataset or _DEFAULT_DATASET
+        dataset = _canonicalize_dataset_name(requested_dataset)
+        if dataset != _dataset_key(requested_dataset):
+            print(f"[awq] Dataset alias detected: '{requested_dataset}' -> '{dataset}'")
+        dataset_info: dict[str, str] = {
+            "requested": requested_dataset,
+            "effective": dataset,
+        }
+
         print(f"[awq] Quantizing with llmcompressor {compressor_version}")
         print(f"[awq] Quantization config: {json.dumps(quant_config)}")
         print(
             "[awq] Running oneshot() with dataset="
-            f"{self.config.dataset}, nsamples={self.config.nsamples}, "
+            f"{dataset_info['effective']}, nsamples={self.config.nsamples}, "
             f"max_seq_length={target_seqlen}"
         )
 
-        try:
+        def _run_oneshot(dataset_name: str) -> None:
             oneshot(
                 model=resolved_model_path,
-                dataset=self.config.dataset,
+                dataset=dataset_name,
                 recipe=recipe,
                 output_dir=output_dir,
                 max_seq_length=target_seqlen,
                 num_calibration_samples=self.config.nsamples,
             )
+
+        try:
+            _run_oneshot(dataset_info["effective"])
         except Exception as exc:  # noqa: BLE001
-            print(f"[awq] Quantization failed via llmcompressor: {exc}")
-            return False
+            fallback_dataset = None
+            if _is_dataset_registration_error(exc):
+                fallback_dataset = _dataset_fallback(dataset_info["effective"])
+            if fallback_dataset and fallback_dataset != dataset_info["effective"]:
+                print(
+                    "[awq] Dataset "
+                    f"'{dataset_info['effective']}' unavailable; retrying with "
+                    f"'{fallback_dataset}'"
+                )
+                dataset_info["fallback_from"] = dataset_info["effective"]
+                dataset_info["effective"] = fallback_dataset
+                try:
+                    _run_oneshot(fallback_dataset)
+                except Exception as final_exc:  # noqa: BLE001
+                    print(f"[awq] Quantization failed via llmcompressor after fallback: {final_exc}")
+                    return False
+            else:
+                print(f"[awq] Quantization failed via llmcompressor: {exc}")
+                return False
 
         advanced_kwargs = {
-            "dataset": self.config.dataset,
+            "dataset": dataset_info["effective"],
+            "requested_dataset": dataset_info["requested"],
             "num_calibration_samples": self.config.nsamples,
             "max_seq_length": target_seqlen,
             "model_type": model_type,
         }
+        if "fallback_from" in dataset_info:
+            advanced_kwargs["dataset_fallback_from"] = dataset_info["fallback_from"]
 
         self._save_metadata(
             output_dir=output_dir,
@@ -118,6 +184,7 @@ class AWQQuantizer:
             quant_config=quant_config,
             target_seqlen=target_seqlen,
             toolcall_model=toolcall_model,
+            dataset_info=dataset_info,
             advanced_kwargs=advanced_kwargs,
         )
 
@@ -193,6 +260,7 @@ class AWQQuantizer:
         quant_config: dict,
         target_seqlen: int,
         toolcall_model: bool,
+        dataset_info: dict[str, str] | None = None,
         advanced_kwargs: dict | None = None,
     ) -> None:
         """Save metadata and generate README."""
@@ -206,6 +274,9 @@ class AWQQuantizer:
             "pipeline": "yap-text-inference",
         }
 
+        if dataset_info:
+            metadata["calibration_dataset"] = dataset_info
+
         if advanced_kwargs:
             metadata["calibration_config"] = advanced_kwargs
 
@@ -217,9 +288,13 @@ class AWQQuantizer:
             print(f"[awq] Warning: failed to write metadata ({exc})")
 
         if advanced_kwargs:
+            dataset_desc = advanced_kwargs.get("dataset", "Unknown")
+            fallback_from = advanced_kwargs.get("dataset_fallback_from")
+            if fallback_from:
+                dataset_desc = f"{dataset_desc} (fallback from {fallback_from})"
             calib_section = f"""### Calibration
 
-- **Dataset**: {advanced_kwargs.get('dataset', 'Unknown')}
+- **Dataset**: {dataset_desc}
 - **Samples**: {advanced_kwargs.get('num_calibration_samples', 'Unknown')}
 - **Sequence Length**: {advanced_kwargs.get('max_seq_length', 'Unknown')}
 - **Model Type**: {'Toolcall (Tool)' if toolcall_model else 'Chat'}
