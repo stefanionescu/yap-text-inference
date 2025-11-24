@@ -51,24 +51,24 @@ def _is_dataset_registration_error(exc: Exception) -> bool:
 
 class AWQQuantizer:
     """AWQ quantization manager backed by llmcompressor."""
-
+    
     def __init__(self, config: CalibrationConfig):
         self.config = config
-
+        
     def quantize_model(
-        self,
-        model_path: str,
+        self, 
+        model_path: str, 
         output_dir: str,
         force: bool = False,
     ) -> bool:
         """Quantize a model using llmcompressor's AWQ pipeline."""
-
+        
         if not force and is_awq_dir(output_dir):
             print(f"[awq] Using existing quantized model at {output_dir}")
             return True
-
+            
         os.makedirs(output_dir, exist_ok=True)
-
+        
         try:
             import llmcompressor  # type: ignore
             from llmcompressor import oneshot  # type: ignore
@@ -76,10 +76,10 @@ class AWQQuantizer:
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Failed to import llmcompressor: {exc}")
             return False
-
+            
         apply_awq_compatibility_patches()
         compressor_version = getattr(llmcompressor, "__version__", "unknown")
-
+        
         quant_config = {
             "scheme": f"W{self.config.w_bit}A16",
             "zero_point": self.config.zero_point,
@@ -199,41 +199,41 @@ class AWQQuantizer:
             return resolved_model_path
 
         try:
-            from huggingface_hub import snapshot_download  # lazy import
+                from huggingface_hub import snapshot_download  # lazy import
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Failed to import huggingface_hub for snapshot download: {exc}")
             return None
 
-        token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
-        cache_dir = os.environ.get("HF_HOME")
+                token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
+                cache_dir = os.environ.get("HF_HOME")
 
-        print(f"[awq] Prefetching model from Hub: {model_path}")
-        last_err: Exception | None = None
-        for attempt in range(1, 4):
-            try:
-                resolved_model_path = snapshot_download(
-                    repo_id=model_path,
-                    token=token,
-                    local_files_only=False,
-                    resume_download=True,
-                    cache_dir=cache_dir,
-                )
-                last_err = None
-                break
-            except Exception as dl_err:  # noqa: BLE001
-                last_err = dl_err
-                backoff = min(2 ** attempt, 5)
-                print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
-                if attempt < 3:
-                    print(f"[awq] Retrying in {backoff}s…")
-                    time.sleep(backoff)
+                print(f"[awq] Prefetching model from Hub: {model_path}")
+                last_err: Exception | None = None
+                for attempt in range(1, 4):
+                    try:
+                        resolved_model_path = snapshot_download(
+                            repo_id=model_path,
+                            token=token,
+                            local_files_only=False,
+                            resume_download=True,
+                            cache_dir=cache_dir,
+                        )
+                        last_err = None
+                        break
+                    except Exception as dl_err:  # noqa: BLE001
+                        last_err = dl_err
+                        backoff = min(2 ** attempt, 5)
+                        print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
+                        if attempt < 3:
+                            print(f"[awq] Retrying in {backoff}s…")
+                            time.sleep(backoff)
 
-        if last_err is not None:
-            print(
-                "[awq] Quantization failed: could not download model from Hugging Face. "
-                "Check network access, repository visibility, and set HF_TOKEN or "
-                "HUGGINGFACE_HUB_TOKEN if needed."
-            )
+                if last_err is not None:
+                    print(
+                        "[awq] Quantization failed: could not download model from Hugging Face. "
+                        "Check network access, repository visibility, and set HF_TOKEN or "
+                        "HUGGINGFACE_HUB_TOKEN if needed."
+                    )
             return None
 
         return resolved_model_path
@@ -264,7 +264,7 @@ class AWQQuantizer:
         advanced_kwargs: dict | None = None,
     ) -> None:
         """Save metadata and generate README."""
-
+        
         metadata = {
             "source_model": model_path,
             "awq_version": awq_version,
@@ -273,27 +273,27 @@ class AWQQuantizer:
             "is_toolcall_model": toolcall_model,
             "pipeline": "yap-text-inference",
         }
-
+        
         if dataset_info:
             metadata["calibration_dataset"] = dataset_info
 
         if advanced_kwargs:
             metadata["calibration_config"] = advanced_kwargs
-
+            
         meta_path = os.path.join(output_dir, "awq_metadata.json")
         try:
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Warning: failed to write metadata ({exc})")
-
+            
         if advanced_kwargs:
             dataset_desc = advanced_kwargs.get("dataset", "Unknown")
             fallback_from = advanced_kwargs.get("dataset_fallback_from")
             if fallback_from:
                 dataset_desc = f"{dataset_desc} (fallback from {fallback_from})"
             calib_section = f"""### Calibration
-
+            
 - **Dataset**: {dataset_desc}
 - **Samples**: {advanced_kwargs.get('num_calibration_samples', 'Unknown')}
 - **Sequence Length**: {advanced_kwargs.get('max_seq_length', 'Unknown')}
@@ -302,7 +302,7 @@ class AWQQuantizer:
 """
         else:
             calib_section = "- Calibration: llmcompressor default pipeline"
-
+            
         quant_summary = json.dumps(quant_config, indent=2)
         readme_contents = generate_readme(
             model_path=model_path,
@@ -312,14 +312,14 @@ class AWQQuantizer:
             calib_section=calib_section,
             out_dir=output_dir,
         )
-
+        
         readme_path = os.path.join(output_dir, "README.md")
         try:
             with open(readme_path, "w", encoding="utf-8") as f:
                 f.write(readme_contents)
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Warning: failed to write README ({exc})")
-
+            
         marker = os.path.join(output_dir, ".awq_ok")
         try:
             with open(marker, "w", encoding="utf-8") as f:

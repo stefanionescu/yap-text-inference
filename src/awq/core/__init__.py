@@ -5,5 +5,5 @@ from .calibration import CalibrationConfig
 
 __all__ = [
     "AWQQuantizer",
-    "CalibrationConfig",
+    "CalibrationConfig", 
 ]
