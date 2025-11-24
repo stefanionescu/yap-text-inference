@@ -14,8 +14,8 @@ _MISTRAL_RESEARCH_MODELS = {
 }
 
 _MISTRAL_RESEARCH_LICENSE = {
-    "license": "mistral-research",
-    "license_name": "Mistral Research",
+    "license": "other",
+    "license_name": "other",
     "license_link": "LICENSE",
 }
 
@@ -25,7 +25,7 @@ _QWEN_LICENSE_MODELS = {
 
 _QWEN_LICENSE = {
     "license": "other",
-    "license_name": "qwen",
+    "license_name": "other",
     "license_link": "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct/blob/main/LICENSE",
 }
 
@@ -66,12 +66,12 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
         if "Hammer2.1-1.5b" in model_path:
             return {
                 "license": "cc-by-nc-4.0",
-                "license_name": "CC BY-NC 4.0",
+                "license_name": "cc-by-nc-4.0",
                 "license_link": _license_link_for(model_path, is_hf_model),
             }
         return {
             "license": "other",
-            "license_name": "qwen-research",
+            "license_name": "other",
             "license_link": _license_link_for(model_path, is_hf_model),
         }
 
@@ -87,7 +87,7 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
     # Chat models default to Apache 2.0
     return {
         "license": "apache-2.0",
-        "license_name": "Apache 2.0",
+        "license_name": "apache-2.0",
         "license_link": "LICENSE",
     }
 
