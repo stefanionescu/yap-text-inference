@@ -14,7 +14,7 @@ A vLLM text inference server optimized for low TTFT. It can run:
 - [Docker Deployment](#docker-deployment)
 - [Quantization](#quantization)
   - [Option 1: Local Quantization (Quantizes on First Run)](#option-1-local-quantization-quantizes-on-first-run)
-  - [Option 2: Pre-Quantized Models](#option-2-pre-quantized-models-awq--gptq--w4a16)
+  - [Option 2: Pre-Quantized Models](#option-2-pre-quantized-models)
 - [Local Test Dependencies](#local-test-dependencies)
 - [Warmup Test Client](#warmup-test-client)
   - [Basic Usage](#basic-usage)
@@ -51,7 +51,7 @@ Set the compulsory environment variables before invoking any host script:
 ```bash
 export TEXT_API_KEY="my_super_secret_key_2024"    # Required for every API call
 export HF_TOKEN="hf_your_api_token"               # Required even for private/gated HF repos
-export MAX_CONCURRENT_CONNECTIONS=32              # Required capacity guard (pick a value for your GPU)
+export MAX_CONCURRENT_CONNECTIONS=20              # Required capacity guard (pick a value for your GPU)
 ```
 
 `HUGGINGFACE_HUB_TOKEN` is also accepted and will be mirrored into `HF_TOKEN` automatically.

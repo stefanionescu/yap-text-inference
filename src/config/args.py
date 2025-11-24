@@ -209,6 +209,17 @@ def _requires_fla_runtime(model_identifier: str) -> bool:
     return "kimi-linear" in ident or "kimi_linear" in ident
 
 
+def _needs_memory_optimization(model_identifier: str) -> bool:
+    """Return True for models that need reduced max_num_seqs to avoid OOM."""
+    ident = (model_identifier or "").lower()
+    if not ident:
+        return False
+    # Gemma models often OOM during warmup with default max_num_seqs
+    if "gemma" in ident:
+        return True
+    return False
+
+
 def _ensure_fla_runtime_available(model_identifier: str) -> None:
     """Raise a helpful error if fla-core is missing when required."""
     has_fla = importlib.util.find_spec("fla") is not None
@@ -255,6 +266,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
     model_origin = _resolve_model_origin(model)
     needs_bfloat16 = _requires_bfloat16(model_origin)
+    needs_memory_opt = _needs_memory_optimization(model_origin)
     if _requires_fla_runtime(model_origin):
         _ensure_fla_runtime_available(model_origin)
 
@@ -283,6 +295,18 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
     )
+
+    # Memory optimization for models prone to OOM (e.g., Gemma)
+    # Lower max_num_seqs to reduce memory pressure during warmup
+    if needs_memory_opt:
+        # Allow override via env var, otherwise use conservative default
+        # Check engine-specific var first, then global, then default to 64
+        env_key = "MAX_NUM_SEQS_CHAT" if is_chat else "MAX_NUM_SEQS_TOOL"
+        max_num_seqs = int(os.getenv(env_key) or os.getenv("MAX_NUM_SEQS", "64"))
+        kwargs["max_num_seqs"] = max_num_seqs
+        # Slightly reduce GPU memory utilization for Gemma if not already lowered
+        if gpu_frac > 0.85:
+            kwargs["gpu_memory_utilization"] = min(gpu_frac, 0.85)
 
     # Special handling for local AWQ models to avoid Hugging Face repo ID validation
     if raw_quant == "awq" and _is_local_model_path(model):
