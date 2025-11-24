@@ -16,7 +16,6 @@ class ChatPromptFormat(str, Enum):
 
 
 _MISTRAL_MODELS = {
-    "TheDrummer/Skyfall-36B-v2",
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "intervitens/mini-magnum-12b-v1.1",
