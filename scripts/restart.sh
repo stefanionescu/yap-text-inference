@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
+source "${SCRIPT_DIR}/lib/common/warmup.sh"
 source "${SCRIPT_DIR}/lib/restart/args.sh"
 source "${SCRIPT_DIR}/lib/restart/generic.sh"
 source "${SCRIPT_DIR}/lib/restart/reconfigure.sh"
@@ -16,6 +17,9 @@ source "${SCRIPT_DIR}/lib/quant/push.sh"
 log_info "Restart manager ready (reuse caches or reconfigure models)"
 
 ensure_required_env_vars
+
+# Stop any existing warmup processes before restarting
+stop_existing_warmup_processes "${ROOT_DIR}"
 
 usage() {
   cat <<'USAGE'
