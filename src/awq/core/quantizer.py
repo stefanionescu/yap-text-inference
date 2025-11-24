@@ -124,12 +124,18 @@ class AWQQuantizer:
 
         model = None
         try:
-            model = AutoModelForCausalLM.from_pretrained(
-                resolved_model_path,
-                dtype=torch.bfloat16,
-                trust_remote_code=True,
-                device_map=None,  # Let llmcompressor handle device placement
-            )
+            load_kwargs: dict[str, Any] = {
+                "dtype": torch.bfloat16,
+                "trust_remote_code": True,
+                "device_map": None,  # Let llmcompressor handle device placement
+            }
+            # Qwen models need eager attention for AWQ calibration (SDPA breaks forward hooks)
+            if model_config is not None:
+                model_type = getattr(model_config, "model_type", "")
+                if model_type.startswith("qwen"):
+                    load_kwargs["attn_implementation"] = "eager"
+                    print("[awq] Using eager attention for Qwen model")
+            model = AutoModelForCausalLM.from_pretrained(resolved_model_path, **load_kwargs)
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Failed to load model: {exc}")
             return False
