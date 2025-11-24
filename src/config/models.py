@@ -10,9 +10,14 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it
     "TheDrummer/Theia-21B-v2", # mid intelligence, overall meh
 
+    "sam-paech/gemma-3-27b-it-antislop",
+    "anthracite-org/magnum-v4-27b",
+    "soob3123/amoral-gemma3-27B-v2",
+    "google/gemma-3-27b-it",
+    "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
+
     "TheDrummer/Rocinante-12B-v1.1",
-    "moonshotai/Kimi-Linear-48B-A3B-Instruct", # Need TRT
-    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct", # Need TRT
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # Good, need further tests
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much
