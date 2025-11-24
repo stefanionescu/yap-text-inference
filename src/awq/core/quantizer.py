@@ -53,6 +53,7 @@ class AWQQuantizer:
             import llmcompressor  # type: ignore
             from llmcompressor import oneshot  # type: ignore
             from llmcompressor.modifiers.awq import AWQModifier  # type: ignore
+            from llmcompressor.modeling import replace_modules_for_calibration  # type: ignore
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Failed to import llmcompressor: {exc}")
             return False
@@ -75,6 +76,14 @@ class AWQQuantizer:
             return False
 
         model_config = self._load_model_config(resolved_model_path)
+        hf_model_type = getattr(model_config, "model_type", "") if model_config is not None else ""
+        is_qwen_model = hf_model_type.startswith("qwen")
+        if is_qwen_model:
+            if quant_config["q_group_size"] != 32:
+                quant_config["q_group_size"] = 32
+            quant_config["ignore"] = self._qwen_ignore_patterns()
+            quant_config["recipe"] = "qwen_awq"
+            print("[awq] Enabling Qwen-specific AWQ recipe (duo_scaling, group_size=32)")
         toolcall_model = is_toolcall_model(model_path)
 
         if toolcall_model:
@@ -83,19 +92,17 @@ class AWQQuantizer:
             requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
 
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model_config)
-        model_type = "Toolcall" if toolcall_model else "Chat"
+        calibration_kind = "Toolcall" if toolcall_model else "Chat"
         if target_seqlen != requested_seqlen:
-            print(f"[awq] {model_type} model calibration seqlen adjusted to {target_seqlen}")
+            print(f"[awq] {calibration_kind} model calibration seqlen adjusted to {target_seqlen}")
         else:
-            print(f"[awq] {model_type} model calibration seqlen = {target_seqlen}")
+            print(f"[awq] {calibration_kind} model calibration seqlen = {target_seqlen}")
 
-        recipe = [
-            AWQModifier(
-                scheme=quant_config["scheme"],
-                targets=quant_config["targets"],
-                ignore=quant_config["ignore"],
-            )
-        ]
+        recipe = self._build_awq_recipe(
+            quant_config=quant_config,
+            awq_modifier_cls=AWQModifier,
+            is_qwen_model=is_qwen_model,
+        )
 
         requested_dataset = self.config.dataset or AWQ_DEFAULT_DATASET
         dataset = canonicalize_dataset_name(requested_dataset)
@@ -128,11 +135,9 @@ class AWQQuantizer:
             "device_map": None,
         }
         # Qwen models need eager attention for AWQ calibration (SDPA breaks forward hooks)
-        if model_config is not None:
-            model_type = getattr(model_config, "model_type", "")
-            if model_type.startswith("qwen"):
-                load_kwargs["attn_implementation"] = "eager"
-                print("[awq] Using eager attention for Qwen model")
+        if is_qwen_model:
+            load_kwargs["attn_implementation"] = "eager"
+            print("[awq] Using eager attention for Qwen model")
 
         model = None
         try:
@@ -140,6 +145,9 @@ class AWQQuantizer:
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Failed to load model: {exc}")
             return False
+
+        if is_qwen_model:
+            model = self._prepare_qwen_model(model, replace_modules_for_calibration)
 
         def _run_oneshot(dataset_name: str, loaded_model: Any) -> None:
             oneshot(
@@ -188,8 +196,10 @@ class AWQQuantizer:
             "requested_dataset": dataset_info["requested"],
             "num_calibration_samples": self.config.nsamples,
             "max_seq_length": target_seqlen,
-            "model_type": model_type,
+            "model_type": calibration_kind,
         }
+        if hf_model_type:
+            advanced_kwargs["hf_model_type"] = hf_model_type
         if "fallback_from" in dataset_info:
             advanced_kwargs["dataset_fallback_from"] = dataset_info["fallback_from"]
 
@@ -210,6 +220,80 @@ class AWQQuantizer:
 
         print(f"[awq] Done: {output_dir}")
         return True
+
+    def _build_awq_recipe(
+        self,
+        quant_config: dict[str, Any],
+        awq_modifier_cls: Any,
+        is_qwen_model: bool,
+    ) -> list[Any]:
+        """Construct the AWQ recipe, injecting Qwen overrides when needed."""
+
+        if not is_qwen_model:
+            return [
+                awq_modifier_cls(
+                    scheme=quant_config["scheme"],
+                    targets=quant_config["targets"],
+                    ignore=quant_config["ignore"],
+                )
+            ]
+
+        weights_cfg = {
+            "num_bits": quant_config["w_bit"],
+            "type": "int",
+            "symmetric": True,
+            "group_size": quant_config["q_group_size"],
+            "strategy": "group",
+            "dynamic": False,
+            "actorder": None,
+            "observer": "mse",
+        }
+
+        return [
+            awq_modifier_cls(
+                targets=["Linear"],
+                ignore=quant_config["ignore"],
+                duo_scaling=True,
+                config_groups={
+                    "group_0": {
+                        "targets": ["Linear"],
+                        "weights": weights_cfg,
+                    }
+                },
+            )
+        ]
+
+    def _prepare_qwen_model(self, model: Any, replace_fn: Any) -> Any:
+        """Apply the official Qwen calibration module swaps when available."""
+
+        if replace_fn is None:
+            print(
+                "[awq] Warning: unable to apply Qwen calibration swaps; "
+                "replace_modules_for_calibration missing"
+            )
+            return model
+
+        try:
+            print("[awq] Applying Qwen calibration module replacements")
+            return replace_fn(model)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Warning: failed to prepare Qwen model for calibration ({exc})")
+            return model
+
+    @staticmethod
+    def _qwen_ignore_patterns() -> list[str]:
+        """Return the ignore list recommended by the official Qwen AWQ recipe."""
+
+        return [
+            "re:.*embed_tokens",
+            "re:.*input_layernorm$",
+            "re:.*mlp[.]gate$",
+            "re:.*post_attention_layernorm$",
+            "re:.*norm$",
+            "re:model[.]visual.*",
+            "re:visual.*",
+            "lm_head",
+        ]
 
     def _prefetch_model(self, model_path: str) -> str | None:
         """Resolve remote HF repos to a local snapshot for robustness."""

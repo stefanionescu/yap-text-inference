@@ -135,7 +135,7 @@ See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, ima
 
 ## Quantization
 
-4-bit mode (AWQ via llmcompressor + vLLM).
+4-bit mode AWQ/W4A16 via llmcompressor + vLLM.
 
 ### Option 1: Local Quantization (Quantizes on First Run)
 
