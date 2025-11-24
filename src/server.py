@@ -10,8 +10,6 @@ import time
 # Ensure V1 engine flag is set before importing any vLLM modules in this process
 os.environ.setdefault("VLLM_USE_V1", "1")
 os.environ.setdefault("ENFORCE_EAGER", "0")
-# Disable tokenizers parallelism to avoid fork warnings (process forks via setsid)
-os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 from fastapi import FastAPI, WebSocket, Depends
 from fastapi.responses import ORJSONResponse

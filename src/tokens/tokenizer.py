@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 
+# Disable tokenizers parallelism before importing tokenizers (prevents fork warnings)
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from tokenizers import Tokenizer
 
 from ..config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
