@@ -29,10 +29,6 @@ Compact tool-calling model quantized with AWQ, based on {source_model_link}.
 ### Calibration
 {calib_section}
 
-## Notes
-- Designed for function/tool calling; keep temperatures low for consistent JSON.
-- Target runtime & hardware: intended for vLLM on NVIDIA L40S. Not a TensorRT-LLM/TensorRT quant.
-
 ## License
 - {license_name}
 {license_link}
