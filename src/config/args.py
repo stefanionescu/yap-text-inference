@@ -13,6 +13,11 @@ from .env import (
     CHAT_QUANTIZATION,
     TOOL_QUANTIZATION,
 )
+from .awq import (
+    model_needs_memory_optimization,
+    model_requires_bfloat16,
+    model_requires_fla_runtime,
+)
 from .quantization import is_lowbit_quantization
 from .models import _is_local_model_path
 
@@ -189,37 +194,6 @@ def _resolve_model_origin(model_path: str) -> str:
     return model_path
 
 
-def _requires_bfloat16(model_identifier: str) -> bool:
-    """Return True when the model architecture mandates bfloat16 activations."""
-    ident = (model_identifier or "").lower()
-    if not ident:
-        return False
-    if "gemma-3" in ident or "gemma3" in ident:
-        return True
-    if "kimi-linear" in ident or "kimi_linear" in ident:
-        return True
-    return False
-
-
-def _requires_fla_runtime(model_identifier: str) -> bool:
-    """Detect models that need the flash-linear-attention runtime."""
-    ident = (model_identifier or "").lower()
-    if not ident:
-        return False
-    return "kimi-linear" in ident or "kimi_linear" in ident
-
-
-def _needs_memory_optimization(model_identifier: str) -> bool:
-    """Return True for models that need reduced max_num_seqs to avoid OOM."""
-    ident = (model_identifier or "").lower()
-    if not ident:
-        return False
-    # Gemma models often OOM during warmup with default max_num_seqs
-    if "gemma" in ident:
-        return True
-    return False
-
-
 def _ensure_fla_runtime_available(model_identifier: str) -> None:
     """Raise a helpful error if fla-core is missing when required."""
     has_fla = importlib.util.find_spec("fla") is not None
@@ -265,9 +239,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
             _log_detected_quantization(model, detected_quant, quant_payload)
 
     model_origin = _resolve_model_origin(model)
-    needs_bfloat16 = _requires_bfloat16(model_origin)
-    needs_memory_opt = _needs_memory_optimization(model_origin)
-    needs_mla = _requires_fla_runtime(model_origin)  # MLA = Multi-Head Latent Attention
+    needs_bfloat16 = model_requires_bfloat16(model_origin)
+    needs_memory_opt = model_needs_memory_optimization(model_origin)
+    needs_mla = model_requires_fla_runtime(model_origin)  # MLA = Multi-Head Latent Attention
     if needs_mla:
         _ensure_fla_runtime_available(model_origin)
         # MLA models don't work with XFORMERS or FLASHINFER backends

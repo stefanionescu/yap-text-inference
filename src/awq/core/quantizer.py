@@ -13,35 +13,13 @@ from ..adapters import (
 )
 from ..utils import resolve_calibration_seqlen, generate_readme, is_awq_dir
 from .calibration import CalibrationConfig
-
-_DEFAULT_DATASET = "open_platypus"
-_DATASET_ALIASES = {
-    "open-platypus": "open_platypus",
-    "openplatypus": "open_platypus",
-    "wikitext2": "wikitext",
-    "wiki_text": "wikitext",
-}
-_DATASET_FALLBACKS = {
-    "pileval": _DEFAULT_DATASET,
-    "pile_val": _DEFAULT_DATASET,
-    "pile": _DEFAULT_DATASET,
-}
-
-
-def _dataset_key(name: str | None) -> str:
-    raw = (name or "").strip()
-    if not raw:
-        return _DEFAULT_DATASET
-    return raw.lower().replace("-", "_").replace(" ", "_")
-
-
-def _canonicalize_dataset_name(name: str | None) -> str:
-    key = _dataset_key(name)
-    return _DATASET_ALIASES.get(key, key or _DEFAULT_DATASET)
-
-
-def _dataset_fallback(name: str) -> str | None:
-    return _DATASET_FALLBACKS.get(_dataset_key(name))
+from src.config.awq import (
+    AWQ_DEFAULT_DATASET,
+    canonicalize_dataset_name,
+    dataset_fallback,
+    dataset_key,
+    get_model_profile,
+)
 
 
 def _is_dataset_registration_error(exc: Exception) -> bool:
@@ -117,9 +95,9 @@ class AWQQuantizer:
             )
         ]
 
-        requested_dataset = self.config.dataset or _DEFAULT_DATASET
-        dataset = _canonicalize_dataset_name(requested_dataset)
-        if dataset != _dataset_key(requested_dataset):
+        requested_dataset = self.config.dataset or AWQ_DEFAULT_DATASET
+        dataset = canonicalize_dataset_name(requested_dataset)
+        if dataset != dataset_key(requested_dataset):
             print(f"[awq] Dataset alias detected: '{requested_dataset}' -> '{dataset}'")
         dataset_info: dict[str, str] = {
             "requested": requested_dataset,
@@ -149,7 +127,7 @@ class AWQQuantizer:
         except Exception as exc:  # noqa: BLE001
             fallback_dataset = None
             if _is_dataset_registration_error(exc):
-                fallback_dataset = _dataset_fallback(dataset_info["effective"])
+                fallback_dataset = dataset_fallback(dataset_info["effective"])
             if fallback_dataset and fallback_dataset != dataset_info["effective"]:
                 print(
                     "[awq] Dataset "
@@ -167,7 +145,7 @@ class AWQQuantizer:
                 print(f"[awq] Quantization failed via llmcompressor: {exc}")
                 return False
 
-        advanced_kwargs = {
+        advanced_kwargs: dict[str, Any] = {
             "dataset": dataset_info["effective"],
             "requested_dataset": dataset_info["requested"],
             "num_calibration_samples": self.config.nsamples,
@@ -176,6 +154,10 @@ class AWQQuantizer:
         }
         if "fallback_from" in dataset_info:
             advanced_kwargs["dataset_fallback_from"] = dataset_info["fallback_from"]
+
+        profile = get_model_profile(model_path)
+        if profile:
+            advanced_kwargs["model_profile"] = profile.name
 
         self._save_metadata(
             output_dir=output_dir,
