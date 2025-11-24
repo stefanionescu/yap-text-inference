@@ -5,14 +5,14 @@ import json
 import os
 from typing import Any, Tuple
 
-from vllm.engine.arg_utils import AsyncEngineArgs
-
 from .env import (
     KV_DTYPE,
     QUANTIZATION,
     CHAT_QUANTIZATION,
     TOOL_QUANTIZATION,
 )
+
+from vllm.engine.arg_utils import AsyncEngineArgs
 from .awq import (
     model_needs_memory_optimization,
     model_requires_bfloat16,
