@@ -5,7 +5,7 @@
 FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 AS builder
 
 # Allow overriding FlashInfer version at build time
-ARG FLASHINFER_VERSION_SPEC=">=0.2.3,<0.3.2"
+ARG FLASHINFER_VERSION_SPEC="==0.5.2"
 ARG LLMCOMPRESSOR_VERSION="0.8.1"
 ENV FLASHINFER_VERSION_SPEC=${FLASHINFER_VERSION_SPEC}
 ENV LLMCOMPRESSOR_VERSION=${LLMCOMPRESSOR_VERSION}
@@ -51,13 +51,13 @@ RUN set -eux; \
     TORCH_MAJMIN="$(python -c 'import sys, torch; ver=torch.__version__.split("+",1)[0]; p=ver.split("."); print(p[0]+"."+p[1])' 2>/dev/null || true)"; \
     if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then \
         FI_IDX="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"; \
-        FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:->=0.2.3,<0.3.2}"; \
+        FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.2}"; \
         echo "[INFO] Installing ${FI_PKG} from ${FI_IDX}"; \
         pip install --no-cache-dir --prefer-binary --extra-index-url "${FI_IDX}" "${FI_PKG}" || \
         (echo "[WARN] FlashInfer install via extra index failed, falling back to PyPI" && pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true); \
     else \
         echo "[WARN] Torch/CUDA not detected at build-time; attempting PyPI install for FlashInfer with version spec"; \
-        FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:->=0.2.3,<0.3.2}"; \
+        FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.2}"; \
         pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true; \
     fi; \
     if [ -n "${LLMCOMPRESSOR_VERSION:-}" ]; then \
