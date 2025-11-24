@@ -277,10 +277,12 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
             os.environ.pop("VLLM_ATTENTION_BACKEND", None)
 
     dtype_value = "auto"
-    if needs_bfloat16:
-        dtype_value = "bfloat16"
-    elif inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
+    # For quantized models, prefer fp16 even if model normally requires bfloat16
+    # (quantized weights don't need bfloat16 precision, and Marlin performs better with fp16 on SM < 9.0)
+    if inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
         dtype_value = "float16"
+    elif needs_bfloat16:
+        dtype_value = "bfloat16"
 
     # Build kwargs for V1 engine.
     kwargs = dict(
