@@ -47,8 +47,28 @@ fi
 
 log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
-log_info "  Chat model: ${CHAT_MODEL:-}"
-log_info "  Tool model: ${TOOL_MODEL:-}"
-log_info "  Quantization: ${QUANTIZATION}"
+if [ -n "${QUANTIZATION:-}" ]; then
+  log_info "  Global quantization: ${QUANTIZATION}"
+fi
+if [ "${DEPLOY_CHAT}" = "1" ]; then
+  log_info "  Chat model: ${CHAT_MODEL:-<unset>}"
+  if [ -n "${CHAT_QUANTIZATION:-}" ]; then
+    log_info "  Chat quantization: ${CHAT_QUANTIZATION}"
+  elif [ -n "${QUANTIZATION:-}" ]; then
+    log_info "  Chat quantization: ${QUANTIZATION} (inherited)"
+  else
+    log_info "  Chat quantization: <unset>"
+  fi
+fi
+if [ "${DEPLOY_TOOL}" = "1" ]; then
+  log_info "  Tool model: ${TOOL_MODEL:-<unset>}"
+  if [ -n "${TOOL_QUANTIZATION:-}" ]; then
+    log_info "  Tool quantization: ${TOOL_QUANTIZATION}"
+  elif [ -n "${QUANTIZATION:-}" ]; then
+    log_info "  Tool quantization: ${QUANTIZATION} (inherited)"
+  else
+    log_info "  Tool quantization: <unset>"
+  fi
+fi
 log_info "  KV dtype: ${KV_DTYPE}"
 log_info "  Model calls: ${CONCURRENT_STATUS}"

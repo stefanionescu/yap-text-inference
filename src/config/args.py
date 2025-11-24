@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any
+from typing import Any, Tuple
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
@@ -65,10 +65,44 @@ def _extract_quantization_method(payload: Any) -> str | None:
     return None
 
 
-def _detect_local_quantization_backend(model_path: str) -> str | None:
+def _extract_quant_config(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    config = payload.get("quantization_config")
+    if isinstance(config, dict):
+        return config
+    return payload if isinstance(payload, dict) else {}
+
+
+def _log_detected_quantization(model_path: str, method: str, payload: dict[str, Any]) -> None:
+    quant_cfg = _extract_quant_config(payload)
+    w_bit = quant_cfg.get("w_bit")
+    q_group = quant_cfg.get("q_group_size")
+    scheme = quant_cfg.get("scheme")
+    zero_point = quant_cfg.get("zero_point")
+    version = quant_cfg.get("version")
+
+    details = []
+    if scheme:
+        details.append(f"scheme={scheme}")
+    if w_bit is not None:
+        details.append(f"w_bit={w_bit}")
+    if q_group is not None:
+        details.append(f"q_group_size={q_group}")
+    if zero_point is not None:
+        zero_status = "enabled" if bool(zero_point) else "disabled"
+        details.append(f"zero_point={zero_status}")
+    if version:
+        details.append(f"awq_version={version}")
+
+    detail_str = ", ".join(details) if details else "no metadata found"
+    print(f"[config] Detected {method} quantization for {model_path}: {detail_str}")
+
+
+def _detect_local_quantization_backend(model_path: str) -> Tuple[str | None, dict[str, Any]]:
     """Inspect local model files to detect the quantization backend."""
     if not _is_local_model_path(model_path):
-        return None
+        return None, {}
 
     for filename in _QUANT_CONFIG_CANDIDATES:
         candidate = os.path.join(model_path, filename)
@@ -81,8 +115,8 @@ def _detect_local_quantization_backend(model_path: str) -> str | None:
             continue
         quant_method = _extract_quantization_method(payload)
         if quant_method:
-            return quant_method
-    return None
+            return quant_method, payload if isinstance(payload, dict) else {}
+    return None, {}
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
@@ -113,11 +147,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     inference_quant = raw_quant
     if raw_quant == "awq":
         inference_quant = "awq_marlin"
-        detected_quant = _detect_local_quantization_backend(model)
+        detected_quant, quant_payload = _detect_local_quantization_backend(model)
         if detected_quant:
             inference_quant = detected_quant
-            if detected_quant == "compressed-tensors":
-                print(f"[config] Detected compressed-tensors quantization metadata in {model}")
+            _log_detected_quantization(model, detected_quant, quant_payload)
 
     dtype_value = "auto"
     if inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
