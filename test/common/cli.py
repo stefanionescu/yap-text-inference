@@ -7,6 +7,7 @@ from typing import Any
 
 from test.config import (
     DEFAULT_SERVER_WS_URL,
+    CHAT_LENGTH_PENALTY_DEFAULT,
     CHAT_REPEAT_PENALTY_DEFAULT,
     CHAT_TEMPERATURE_DEFAULT,
     CHAT_TOP_K_DEFAULT,
@@ -67,6 +68,13 @@ def add_sampling_args(parser: ArgumentParser) -> None:
         dest="repeat_penalty",
         help=f"Repetition penalty (default server value: {CHAT_REPEAT_PENALTY_DEFAULT})",
     )
+    parser.add_argument(
+        "--length-penalty",
+        type=float,
+        dest="length_penalty",
+        help=f"Length penalty (default server value: {CHAT_LENGTH_PENALTY_DEFAULT}). "
+        f"Values < 1.0 penalize longer sequences (shorter responses).",
+    )
 
 
 def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, float | int]:
@@ -74,7 +82,7 @@ def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, flo
     if not isinstance(args, Mapping):
         args = vars(args)
     payload: dict[str, float | int] = {}
-    for field in ("temperature", "top_p", "top_k", "repeat_penalty"):
+    for field in ("temperature", "top_p", "top_k", "repeat_penalty", "length_penalty"):
         value = args.get(field)
         if value is not None:
             payload[field] = value

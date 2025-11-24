@@ -9,7 +9,6 @@ TOOL_TEMPLATE_NAME = "awq_tool_template.md"
 
 
 _MISTRAL_RESEARCH_MODELS = {
-    "TheDrummer/Skyfall-36B-v2",
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
 }

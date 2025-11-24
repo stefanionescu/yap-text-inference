@@ -8,22 +8,18 @@ from .env import QUANTIZATION
 ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it
-    "TheDrummer/Skyfall-36B-v2", # yaps too much and is kinda dumb
     "TheDrummer/Theia-21B-v2", # mid intelligence, not really worth it
-    "allura-org/Qwen2.5-32b-RP-Ink", # yaps way too much and hallucinates
 
     "TheDrummer/Rocinante-12B-v1.1",
-    "sam-paech/gemma-3-27b-it-antislop",
-    "moonshotai/Kimi-Linear-48B-A3B-Instruct",
-    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
-    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # 3
+    "moonshotai/Kimi-Linear-48B-A3B-Instruct", # Need TRT
+    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct", # Need TRT
+    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # Good, need further tests
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v1-32b",
-    "anthracite-org/magnum-v2-32b",
+    "anthracite-org/magnum-v2-32b", # 3
     "djuna/magnum-v2-32b-chatml", # 1
-    "intervitens/mini-magnum-12b-v1.1",
-    "anthracite-org/magnum-v4-72b",
-    "anthracite-org/magnum-v4-12b",
+    "intervitens/mini-magnum-12b-v1.1", # 2
+    "anthracite-org/magnum-v4-72b", # Great on OpenRouter but too big even after 4bit quant
 
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",

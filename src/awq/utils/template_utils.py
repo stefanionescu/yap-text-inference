@@ -89,21 +89,12 @@ def generate_readme(
     # License info from centralized config
     license_info = compute_license_info(model_path, is_tool=is_tool, is_hf_model=is_hf_model)
 
-    # Template variables
+    # Template variables (only include what's actually used in the template)
     template_vars = {
         'model_name': model_name,
-        'repo_name': repo_name,
         'base_model': base_model,
         'source_model_link': source_model_link,
         'w_bit': w_bit,
-        'q_group_size': q_group_size,
-        'awq_version': awq_version,
-        'original_size_gb': original_size_gb,
-        'quantized_size_gb': quantized_size_gb,
-        'memory_reduction': memory_reduction,
-        'calib_section': calib_section,
-        'quant_summary': quant_summary,
-        'original_author': original_author,
         **license_info,
     }
 

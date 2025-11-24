@@ -15,6 +15,7 @@ CHAT_MIN_P = float(os.getenv("CHAT_MIN_P", "0.05"))
 CHAT_REPEAT_PENALTY = float(os.getenv("CHAT_REPEAT_PENALTY", "1.05"))
 CHAT_PRESENCE_PENALTY = float(os.getenv("CHAT_PRESENCE_PENALTY", "0.05"))
 CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0.05"))
+CHAT_LENGTH_PENALTY = float(os.getenv("CHAT_LENGTH_PENALTY", "1.0"))  # < 1.0 penalizes longer sequences
 
 # Extra STOP sequences used by chat model
 CHAT_STOP = [
@@ -35,8 +36,6 @@ CHAT_STOP = [
     "\nAssistant",
     "[SYSTEM_PROMPT]",
     "[/SYSTEM_PROMPT]",
-    " [",
-    "["
 ]
 
 
@@ -112,6 +111,7 @@ __all__ = [
     "CHAT_REPEAT_PENALTY",
     "CHAT_PRESENCE_PENALTY",
     "CHAT_FREQUENCY_PENALTY",
+    "CHAT_LENGTH_PENALTY",
     "CHAT_STOP",
     "CHAT_LOGIT_BIAS",
     "TOOL_TEMPERATURE",
