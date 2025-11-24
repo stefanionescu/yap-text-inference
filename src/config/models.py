@@ -14,9 +14,9 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "moonshotai/Kimi-Linear-48B-A3B-Instruct", # Need TRT
     "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct", # Need TRT
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # Good, need further tests
-    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond", # 1
-    "anthracite-org/magnum-v2-32b", # 3
-    "djuna/magnum-v2-32b-chatml", # yaps too much
+    "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
+    "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much
+    "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting
     "anthracite-org/magnum-v4-72b", # amazing on OpenRouter but too big even after 4bit quant
 
     # Pre-quantized GPTQ models
