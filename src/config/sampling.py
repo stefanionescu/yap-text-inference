@@ -8,13 +8,13 @@ import os
 
 
 # --- Chat sampling ---
-CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "1.0"))
-CHAT_TOP_P = float(os.getenv("CHAT_TOP_P", "0.80"))
-CHAT_TOP_K = int(os.getenv("CHAT_TOP_K", "40"))
-CHAT_MIN_P = float(os.getenv("CHAT_MIN_P", "0.05"))
-CHAT_REPEAT_PENALTY = float(os.getenv("CHAT_REPEAT_PENALTY", "1.05"))
-CHAT_PRESENCE_PENALTY = float(os.getenv("CHAT_PRESENCE_PENALTY", "0.05"))
-CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0.05"))
+CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.7"))
+CHAT_TOP_P = float(os.getenv("CHAT_TOP_P", "0.95"))
+CHAT_TOP_K = int(os.getenv("CHAT_TOP_K", "10"))
+CHAT_MIN_P = float(os.getenv("CHAT_MIN_P", "0"))
+CHAT_REPEAT_PENALTY = float(os.getenv("CHAT_REPEAT_PENALTY", "1.0"))
+CHAT_PRESENCE_PENALTY = float(os.getenv("CHAT_PRESENCE_PENALTY", "0"))
+CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 CHAT_LENGTH_PENALTY = float(os.getenv("CHAT_LENGTH_PENALTY", "1.0"))  # < 1.0 penalizes longer sequences
 
 # Extra STOP sequences used by chat model
