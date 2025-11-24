@@ -1,5 +1,6 @@
 """Engine args builder and related utilities for vLLM engines."""
 
+import importlib.util
 import json
 import os
 from typing import Any, Tuple
@@ -195,7 +196,28 @@ def _requires_bfloat16(model_identifier: str) -> bool:
         return False
     if "gemma-3" in ident or "gemma3" in ident:
         return True
+    if "kimi-linear" in ident or "kimi_linear" in ident:
+        return True
     return False
+
+
+def _requires_fla_runtime(model_identifier: str) -> bool:
+    """Detect models that need the flash-linear-attention runtime."""
+    ident = (model_identifier or "").lower()
+    if not ident:
+        return False
+    return "kimi-linear" in ident or "kimi_linear" in ident
+
+
+def _ensure_fla_runtime_available(model_identifier: str) -> None:
+    """Raise a helpful error if fla-core is missing when required."""
+    has_fla = importlib.util.find_spec("fla") is not None
+    if has_fla:
+        return
+    raise RuntimeError(
+        f"The model '{model_identifier}' requires the flash-linear-attention runtime.\n"
+        "Install fla-core>=0.4.0 (included in requirements.txt) before launching the server."
+    )
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
@@ -233,6 +255,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
     model_origin = _resolve_model_origin(model)
     needs_bfloat16 = _requires_bfloat16(model_origin)
+    if _requires_fla_runtime(model_origin):
+        _ensure_fla_runtime_available(model_origin)
 
     dtype_value = "auto"
     if needs_bfloat16:
