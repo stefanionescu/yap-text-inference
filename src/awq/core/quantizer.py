@@ -136,7 +136,7 @@ class AWQQuantizer:
                 max_seq_length=target_seqlen,
                 num_calibration_samples=self.config.nsamples,
                 trust_remote_code_model=True,
-                model_kwargs=model_kwargs,
+                **model_kwargs,
             )
 
         try:
