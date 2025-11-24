@@ -26,10 +26,11 @@ from .env import (
 from .models import (
     ALLOWED_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
-    _is_awq_model,
+    classify_prequantized_model,
     is_valid_model as _is_valid_model,
 )
 from .chat_prompt import ensure_prompt_format_available
+from .quantization import is_awq_model_name
 from .limits import (
     CHAT_MAX_LEN,
     CHAT_MAX_OUT,
@@ -80,22 +81,45 @@ from .websocket import (
 )
 
 
+# Quantization helpers for override warnings
+def _effective_quantization(model_type: str) -> str | None:
+    if model_type == "chat":
+        return (CHAT_QUANTIZATION or QUANTIZATION or "").lower()
+    tool_quant = (TOOL_QUANTIZATION or "").lower()
+    if tool_quant:
+        return tool_quant
+    return (QUANTIZATION or "").lower()
+
+
+def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
+    quant = _effective_quantization(model_type)
+    if not model or not quant:
+        return False
+    kind = classify_prequantized_model(model)
+    if not kind:
+        return False
+    if quant == "awq" and kind != "awq":
+        return False
+    if quant.startswith("gptq") and kind != "gptq":
+        return False
+    if kind not in {"awq", "gptq"}:
+        return False
+    print(f"[WARNING] Using pre-quantized {kind.upper()} {model_type} model not in approved list: {model}")
+    return True
+
+
 # Validate models with the same logic as before, raising on invalid
 if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALLOWED_CHAT_MODELS, "chat"):
-    if QUANTIZATION == "awq" and _is_awq_model(CHAT_MODEL):
-        print(f"[WARNING] Using AWQ model not in approved list: {CHAT_MODEL}")
-    else:
+    if not _allow_prequantized_override(CHAT_MODEL, "chat"):
         raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
 
 if DEPLOY_TOOL and not _is_valid_model(TOOL_MODEL, ALLOWED_TOOL_MODELS, "tool"):
-    if QUANTIZATION == "awq" and _is_awq_model(TOOL_MODEL):
-        print(f"[WARNING] Using AWQ model not in approved list: {TOOL_MODEL}")
-    else:
+    if not _allow_prequantized_override(TOOL_MODEL, "tool"):
         raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
 
 # Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
-if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and 
-    "GPTQ" in CHAT_MODEL and not _is_awq_model(CHAT_MODEL)):
+if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
+    "GPTQ" in CHAT_MODEL and not is_awq_model_name(CHAT_MODEL)):
     raise ValueError(
         "For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
         f"Got: {CHAT_MODEL}. Use a pre-quantized AWQ model or a float model instead."
