@@ -39,6 +39,8 @@ LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
   echo "DEPLOY_MODELS=${DEPLOY_MODELS:-}";
   echo "CHAT_MODEL=${CHAT_MODEL:-}";
   echo "TOOL_MODEL=${TOOL_MODEL:-}";
+  echo "AWQ_CHAT_MODEL=${AWQ_CHAT_MODEL:-}";
+  echo "AWQ_TOOL_MODEL=${AWQ_TOOL_MODEL:-}";
   echo "CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-}";
   echo "KV_DTYPE=${KV_DTYPE:-}";
 } > "${LAST_ENV_FILE}" 2>/dev/null || true
