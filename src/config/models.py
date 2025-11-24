@@ -13,7 +13,9 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "allura-org/Qwen2.5-32b-RP-Ink", # yaps way too much and hallucinates
 
     "TheDrummer/Rocinante-12B-v1.1",
-    "anthracite-org/magnum-v4-27b", # 2
+    "sam-paech/gemma-3-27b-it-antislop",
+    "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # 3
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v1-32b",
