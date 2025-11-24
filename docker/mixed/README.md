@@ -7,6 +7,8 @@ Embed-first image that downloads models at build time and runs them as-is. Suppo
 - Chat-only / Tool-only / Both
 - Mixed quant (e.g., chat=AWQ, tool=float)
 
+> ℹ️ AWQ artifacts are the same W4A16 compressed-tensor exports produced by `llmcompressor`. vLLM will report `quantization=compressed-tensors` at runtime while still honoring the AWQ configuration baked into the image.
+
 ## Contents
 
 - [Build](#build)
@@ -113,10 +115,19 @@ Runtime environment variables:
 
 AWQ push is not performed by the Mixed image (no runtime quantization).
 
+Always pass your API key when running the container:
+
+```bash
+docker run -d --gpus all --name yap \
+  -e TEXT_API_KEY=your_secret_key \
+  -p 8000:8000 yourusername/yap-text-inference-mixed:both-fp8
+```
+
 #### Run (both embedded)
 
 ```bash
 docker run -d --gpus all --name yap \
+  -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 yourusername/yap-text-inference-mixed:both-fp8
 ```
 
@@ -126,15 +137,17 @@ docker run -d --gpus all --name yap \
 # Chat only
 docker run -d --gpus all --name yap-chat \
   -e DEPLOY_MODELS=chat \
+  -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 yourusername/yap-text-inference-mixed:chat-fp8
 
 # Tool only
 docker run -d --gpus all --name yap-tool \
   -e DEPLOY_MODELS=tool \
+  -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 yourusername/yap-text-inference-mixed:tool-awq
 ```
 
-Quantization is automatically derived from embedded models (AWQ dirs -> `awq`; otherwise `fp8`).
+Quantization is automatically derived from embedded models (AWQ dirs -> `awq` → detected as compressed tensors; otherwise `fp8`). The server logs show the detected backend and llmcompressor metadata so you can confirm the baked combination.
 
 ### Concurrency
 

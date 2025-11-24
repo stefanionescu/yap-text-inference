@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-#!/usr/bin/env bash
-
 # Deployment selection: allow chat-only, tool-only, or both (default both)
 export DEPLOY_MODELS=${DEPLOY_MODELS:-both}
 case "${DEPLOY_MODELS}" in
@@ -31,6 +29,7 @@ if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then
   if [ "${DEPLOY_TOOL}" = "1" ]; then
     log_info "  Tool: ${AWQ_TOOL_MODEL:-none}"
   fi
+  log_info "  Runtime quantization: 4-bit W4A16 compressed tensors (llmcompressor exports autodetected by vLLM)"
 fi
 
 # Validate AWQ models for enabled engines when QUANTIZATION=awq
