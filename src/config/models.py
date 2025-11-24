@@ -10,13 +10,14 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it
     "TheDrummer/Theia-21B-v2", # mid intelligence, overall meh
 
+    "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
     "TheDrummer/Rocinante-12B-v1.1",
     "moonshotai/Kimi-Linear-48B-A3B-Instruct", # Need TRT
     "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct", # Need TRT
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # Good, need further tests
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # 3
-    "djuna/magnum-v2-32b-chatml", # 1
+    "djuna/magnum-v2-32b-chatml", # Yaps too much, maybe can change in TRT
     "anthracite-org/magnum-v4-72b", # Great on OpenRouter but too big even after 4bit quant
 
     # Pre-quantized GPTQ models
