@@ -272,6 +272,14 @@ RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey 
 
 Streams a real-time conversation you can steer from the CLI, hot-reloading persona definitions from `test/prompts/live.py`. If you omit `--server`, the client falls back to `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`). When you do provide `--server`, you can point at either the full `/ws` endpoint or just the origin (`ws://host:port`); the client automatically appends `/ws` and your API key.
 
+Activate the virtualenv created by the setup scripts:
+
+```bash
+source .venv/bin/activate
+```
+
+Then run:
+
 ```bash
 TEXT_API_KEY=your_api_key python3 test/live.py \
   --server ws://127.0.0.1:8000 \
@@ -290,6 +298,14 @@ Flags:
 
 Exercises persona updates, ensuring chat prompt swaps and history stitching behave correctly.
 
+Activate the virtualenv created by the setup scripts:
+
+```bash
+source .venv/bin/activate
+```
+
+Then run:
+
 ```bash
 TEXT_API_KEY=your_api_key python3 test/personality.py \
   --server ws://127.0.0.1:8000 \
@@ -302,6 +318,14 @@ TEXT_API_KEY=your_api_key python3 test/personality.py \
 ## Conversation History Test
 
 Streams a fixed 10-turn conversation (same persona throughout) to verify bounded-history eviction and KV-cache reuse while logging TTFB/first-word metrics for every exchange.
+
+Activate the virtualenv created by the setup scripts:
+
+```bash
+source .venv/bin/activate
+```
+
+Then run:
 
 ```bash
 TEXT_API_KEY=your_api_key python3 test/conversation.py --server ws://127.0.0.1:8000
@@ -321,7 +345,13 @@ Override defaults via `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` environment va
 
 ## Benchmark Client
 
-Run concurrent sessions and report p50/p95 latencies:
+Activate the virtualenv created by the setup scripts:
+
+```bash
+source .venv/bin/activate
+```
+
+Then, run concurrent sessions and report p50/p95 latencies:
 
 ```bash
 python3 test/bench.py -n 32 -c 8

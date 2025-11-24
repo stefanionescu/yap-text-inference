@@ -15,6 +15,9 @@ log_info "CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-1}"
 log_info "VLLM_USE_V1=${VLLM_USE_V1:-1} KV_DTYPE=${KV_DTYPE:-auto}"
 log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-auto}"
 
+# Set TOKENIZERS_PARALLELISM to avoid fork warnings
+export TOKENIZERS_PARALLELISM=false
+
 log_info "Starting uvicorn server..."
 if command -v uvicorn >/dev/null 2>&1; then
   exec uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1
