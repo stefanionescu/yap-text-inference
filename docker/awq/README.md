@@ -114,6 +114,8 @@ DOCKER_USERNAME=yourusername ./build.sh
 TAG=v1.0.0 ./build.sh
 ```
 
+> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it remains compatible with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... ./build.sh` if you need a different release, but keep the manual install pattern.
+
 ### Running the Container
 
 ```bash

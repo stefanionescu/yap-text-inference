@@ -35,6 +35,7 @@ ensure_pip_in_venv || exit 1
 
 filter_requirements_without_flashinfer
 install_requirements_without_flashinfer
+install_llmcompressor_without_deps
 
 install_flashinfer_if_applicable
 

@@ -6,7 +6,9 @@ FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 AS builder
 
 # Allow overriding FlashInfer version at build time
 ARG FLASHINFER_VERSION_SPEC=">=0.2.3,<0.3.2"
+ARG LLMCOMPRESSOR_VERSION="0.8.1"
 ENV FLASHINFER_VERSION_SPEC=${FLASHINFER_VERSION_SPEC}
+ENV LLMCOMPRESSOR_VERSION=${LLMCOMPRESSOR_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -43,7 +45,7 @@ COPY requirements.txt /tmp/requirements.txt
 RUN set -eux; \
     export PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PIP_PREFER_BINARY=1 FLASHINFER_ENABLE_AOT=1; \
     TMP_REQ=/tmp/requirements.no_flashinfer.txt; \
-    grep -v -E '^[[:space:]]*flashinfer-python([[:space:]]|$|==|>=|<=|~=|!=)' /tmp/requirements.txt > "${TMP_REQ}" || cp /tmp/requirements.txt "${TMP_REQ}" || true; \
+    grep -v -E '^[[:space:]]*(flashinfer-python|llmcompressor)([[:space:]]|$|==|>=|<=|~=|!=)' /tmp/requirements.txt > "${TMP_REQ}" || cp /tmp/requirements.txt "${TMP_REQ}" || true; \
     pip install --no-cache-dir -r "${TMP_REQ}"; \
     CUDA_NVVER="$(python -c 'import sys, torch; cu=(torch.version.cuda or "").strip(); sys.exit(1) if not cu else print(cu.replace(".", ""))' 2>/dev/null || true)"; \
     TORCH_MAJMIN="$(python -c 'import sys, torch; ver=torch.__version__.split("+",1)[0]; p=ver.split("."); print(p[0]+"."+p[1])' 2>/dev/null || true)"; \
@@ -57,6 +59,10 @@ RUN set -eux; \
         echo "[WARN] Torch/CUDA not detected at build-time; attempting PyPI install for FlashInfer with version spec"; \
         FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:->=0.2.3,<0.3.2}"; \
         pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true; \
+    fi; \
+    if [ -n "${LLMCOMPRESSOR_VERSION:-}" ]; then \
+        echo "[INFO] Installing llmcompressor==${LLMCOMPRESSOR_VERSION} without deps"; \
+        pip install --no-cache-dir --no-deps "llmcompressor==${LLMCOMPRESSOR_VERSION}"; \
     fi
 
 ARG CHAT_MODEL=""

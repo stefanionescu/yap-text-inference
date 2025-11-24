@@ -36,6 +36,8 @@ DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool TOOL_MODEL=org/tool docker/mixed
 DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool AWQ_TOOL_MODEL=org/tool-awq docker/mixed/build.sh                              # :tool-awq
 ```
 
+> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it can coexist with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... docker/mixed/build.sh` if you need a different release, but keep the manual install pattern.
+
 Important: specify exactly one source per engine (chat/tool). Do not set both `CHAT_MODEL` and `AWQ_CHAT_MODEL` for chat, nor both `TOOL_MODEL` and `AWQ_TOOL_MODEL` for tool.
 
 ### Tagging and Variants
