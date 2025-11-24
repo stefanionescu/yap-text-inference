@@ -32,14 +32,12 @@ def _regenerate_readme(folder: Path, metadata: dict[str, Any]) -> None:
     awq_version = metadata.get("awq_version") or "llmcompressor==unknown"
     quant_config = metadata.get("quantization_config") or {}
     quant_summary = json.dumps(quant_config, indent=2)
-    calib_section = "- Regenerated during HF push"
     
     readme_contents = generate_readme(
         model_path=source_model,
         awq_version=awq_version,
         quant_summary=quant_summary,
         metadata=metadata,
-        calib_section=calib_section,
         out_dir=str(folder),
     )
     

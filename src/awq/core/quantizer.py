@@ -307,29 +307,12 @@ class AWQQuantizer:
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Warning: failed to write metadata ({exc})")
             
-        if advanced_kwargs:
-            dataset_desc = advanced_kwargs.get("dataset", "Unknown")
-            fallback_from = advanced_kwargs.get("dataset_fallback_from")
-            if fallback_from:
-                dataset_desc = f"{dataset_desc} (fallback from {fallback_from})"
-            calib_section = f"""### Calibration
-            
-- **Dataset**: {dataset_desc}
-- **Samples**: {advanced_kwargs.get('num_calibration_samples', 'Unknown')}
-- **Sequence Length**: {advanced_kwargs.get('max_seq_length', 'Unknown')}
-- **Model Type**: {'Toolcall (Tool)' if toolcall_model else 'Chat'}
-- **Compressor**: {awq_version}
-"""
-        else:
-            calib_section = "- Calibration: llmcompressor default pipeline"
-            
         quant_summary = json.dumps(quant_config, indent=2)
         readme_contents = generate_readme(
             model_path=model_path,
             awq_version=awq_version,
             quant_summary=quant_summary,
             metadata=metadata,
-            calib_section=calib_section,
             out_dir=output_dir,
         )
         
