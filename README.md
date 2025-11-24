@@ -135,7 +135,7 @@ See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, ima
 
 ## Quantization Modes (AWQ)
 
-4-bit mode (AWQ via vLLM auto-AWQ).
+4-bit mode (AWQ via llmcompressor + vLLM).
 
 ### Option 1: Local Quantization (Quantizes on First Run)
 
@@ -146,6 +146,8 @@ bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2
 # With concurrent mode
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 ```
+
+Local quantization runs [`llmcompressor`](https://github.com/vllm-project/llm-compressor) `oneshot()` with the AWQ modifier (pinned at version 0.8.1). Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe.
 
 ### Option 2: Pre-Quantized AWQ Models (Hugging Face)
 

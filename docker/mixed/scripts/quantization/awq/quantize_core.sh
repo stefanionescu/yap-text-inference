@@ -9,7 +9,7 @@ mkdir -p "${AWQ_DIR}"
 
 quantize_model() {
   local name="$1"; local src="$2"; local out_dir="$3"; local commit_msg="$4"; local repo_var="$5"
-  if [ -d "${out_dir}" ] && { [ -f "${out_dir}/awq_config.json" ] || [ -f "${out_dir}/.awq_ok" ]; }; then
+  if [ -d "${out_dir}" ] && { [ -f "${out_dir}/.awq_ok" ] || [ -f "${out_dir}/awq_metadata.json" ] || [ -f "${out_dir}/awq_config.json" ]; }; then
     log_info "Using existing AWQ ${name} at ${out_dir}"
     echo "${out_dir}"
     return 0

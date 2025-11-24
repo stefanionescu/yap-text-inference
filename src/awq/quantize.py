@@ -15,7 +15,7 @@ from src.awq.core import AWQQuantizer, CalibrationConfig
 
 def main() -> int:
     """Main quantization entry point."""
-    parser = argparse.ArgumentParser(description="Quantize a model to 4-bit AWQ using AutoAWQ.")
+    parser = argparse.ArgumentParser(description="Quantize a model to 4-bit AWQ using llmcompressor.")
     parser.add_argument("--model", required=True, help="HF repo id or local path of the float model to quantize")
     parser.add_argument("--out", required=True, help="Output directory for the quantized model")
     parser.add_argument("--w-bit", type=int, default=4, help="Weight bit precision (default: 4)")
@@ -26,7 +26,7 @@ def main() -> int:
     parser.add_argument(
         "--calib-dataset",
         default=os.environ.get("AWQ_CALIB_DATASET", "pileval"),
-        help="Calibration dataset name supported by AutoAWQ (e.g., pileval, wikitext2)",
+        help="Calibration dataset handled by llmcompressor (e.g., pileval, open_platypus)",
     )
     parser.add_argument("--nsamples", type=int, default=int(os.environ.get("AWQ_NSAMPLES", "64")),
                        help="Number of calibration samples (default: 64)")

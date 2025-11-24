@@ -22,10 +22,10 @@ PRELOADED_TOOL_AWQ_DIR="/app/models/tool_awq"
 # Determine if pre-quantized AWQ dirs exist
 HAS_PRELOADED_AWQ_CHAT=0
 HAS_PRELOADED_AWQ_TOOL=0
-if [ -f "${PRELOADED_CHAT_AWQ_DIR}/awq_config.json" ] || [ -f "${PRELOADED_CHAT_AWQ_DIR}/.awq_ok" ]; then
+if [ -f "${PRELOADED_CHAT_AWQ_DIR}/.awq_ok" ] || [ -f "${PRELOADED_CHAT_AWQ_DIR}/awq_metadata.json" ] || [ -f "${PRELOADED_CHAT_AWQ_DIR}/awq_config.json" ]; then
   HAS_PRELOADED_AWQ_CHAT=1
 fi
-if [ -f "${PRELOADED_TOOL_AWQ_DIR}/awq_config.json" ] || [ -f "${PRELOADED_TOOL_AWQ_DIR}/.awq_ok" ]; then
+if [ -f "${PRELOADED_TOOL_AWQ_DIR}/.awq_ok" ] || [ -f "${PRELOADED_TOOL_AWQ_DIR}/awq_metadata.json" ] || [ -f "${PRELOADED_TOOL_AWQ_DIR}/awq_config.json" ]; then
   HAS_PRELOADED_AWQ_TOOL=1
 fi
 
