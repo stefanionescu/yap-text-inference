@@ -62,18 +62,29 @@ _restart_autodetect_quantization() {
 _restart_maybe_assign_awq_repo() {
   local role="$1"
   local model="$2"
-  if ! _restart_is_awq_model "${model}"; then
-    return
-  fi
   case "${role}" in
     chat)
-      if [ -z "${RECONFIG_AWQ_CHAT_MODEL:-}" ] && [ -z "${AWQ_CHAT_MODEL:-}" ]; then
+      # If explicitly set via --awq-chat-model, use it
+      if [ -n "${RECONFIG_AWQ_CHAT_MODEL:-}" ]; then
+        export AWQ_CHAT_MODEL="${RECONFIG_AWQ_CHAT_MODEL}"
+      # If model name contains "awq", treat as pre-quantized
+      elif _restart_is_awq_model "${model}"; then
         export AWQ_CHAT_MODEL="${model}"
+      # Otherwise, clear AWQ_CHAT_MODEL to force quantization
+      else
+        unset AWQ_CHAT_MODEL
       fi
       ;;
     tool)
-      if [ -z "${RECONFIG_AWQ_TOOL_MODEL:-}" ] && [ -z "${AWQ_TOOL_MODEL:-}" ]; then
+      # If explicitly set via --awq-tool-model, use it
+      if [ -n "${RECONFIG_AWQ_TOOL_MODEL:-}" ]; then
+        export AWQ_TOOL_MODEL="${RECONFIG_AWQ_TOOL_MODEL}"
+      # If model name contains "awq", treat as pre-quantized
+      elif _restart_is_awq_model "${model}"; then
         export AWQ_TOOL_MODEL="${model}"
+      # Otherwise, clear AWQ_TOOL_MODEL to force quantization
+      else
+        unset AWQ_TOOL_MODEL
       fi
       ;;
   esac
@@ -279,12 +290,15 @@ restart_reconfigure_models() {
     exit 1
   fi
 
+  # Clear AWQ model vars first to ensure clean state
+  unset AWQ_CHAT_MODEL AWQ_TOOL_MODEL
+
   if [ "${deploy_chat}" = "1" ]; then
     export CHAT_MODEL="${chat_model}"
     export CHAT_MODEL_NAME="${chat_model}"
     _restart_maybe_assign_awq_repo "chat" "${chat_model}"
   else
-    unset CHAT_MODEL CHAT_MODEL_NAME
+    unset CHAT_MODEL CHAT_MODEL_NAME AWQ_CHAT_MODEL
   fi
 
   if [ "${deploy_tool}" = "1" ]; then
@@ -292,7 +306,7 @@ restart_reconfigure_models() {
     export TOOL_MODEL_NAME="${tool_model}"
     _restart_maybe_assign_awq_repo "tool" "${tool_model}"
   else
-    unset TOOL_MODEL TOOL_MODEL_NAME
+    unset TOOL_MODEL TOOL_MODEL_NAME AWQ_TOOL_MODEL
   fi
 
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
@@ -333,13 +347,6 @@ restart_reconfigure_models() {
   local preserve_cache=0
   if _restart_can_preserve_cache "${deploy_chat}" "${deploy_tool}"; then
     preserve_cache=1
-  fi
-
-  if [ -n "${RECONFIG_AWQ_CHAT_MODEL:-}" ]; then
-    export AWQ_CHAT_MODEL="${RECONFIG_AWQ_CHAT_MODEL}"
-  fi
-  if [ -n "${RECONFIG_AWQ_TOOL_MODEL:-}" ]; then
-    export AWQ_TOOL_MODEL="${RECONFIG_AWQ_TOOL_MODEL}"
   fi
 
   log_info "Restart mode: reconfigure (models reset, deps preserved)"
