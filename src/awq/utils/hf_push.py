@@ -16,6 +16,11 @@ except Exception as exc:  # pragma: no cover - import error path
     print(f"[hf-push] huggingface_hub is required: {exc}", file=sys.stderr)
     sys.exit(1)
 
+# Add project root to path so we can import src modules
+_script_dir = Path(__file__).resolve().parent
+_project_root = _script_dir.parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 from src.config.awq import AWQ_MODEL_MARKERS
 

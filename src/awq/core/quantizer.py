@@ -114,33 +114,45 @@ class AWQQuantizer:
             f"max_seq_length={target_seqlen}"
         )
 
-        # Build model kwargs - let llmcompressor handle loading
+        # Load the model explicitly before quantization
         print(f"[awq] Loading model from {resolved_model_path}")
-        model_kwargs: dict[str, Any] = {
+        try:
+            from transformers import AutoModelForCausalLM  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to import transformers: {exc}")
+            return False
+
+        load_kwargs: dict[str, Any] = {
             "torch_dtype": torch.bfloat16,
             "trust_remote_code": True,
+            "device_map": None,
         }
         # Qwen models need eager attention for AWQ calibration (SDPA breaks forward hooks)
         if model_config is not None:
             model_type = getattr(model_config, "model_type", "")
             if model_type.startswith("qwen"):
-                model_kwargs["attn_implementation"] = "eager"
+                load_kwargs["attn_implementation"] = "eager"
                 print("[awq] Using eager attention for Qwen model")
 
-        def _run_oneshot(dataset_name: str) -> None:
+        model = None
+        try:
+            model = AutoModelForCausalLM.from_pretrained(resolved_model_path, **load_kwargs)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to load model: {exc}")
+            return False
+
+        def _run_oneshot(dataset_name: str, loaded_model: Any) -> None:
             oneshot(
-                model=resolved_model_path,
+                model=loaded_model,
                 dataset=dataset_name,
                 recipe=recipe,
                 output_dir=output_dir,
                 max_seq_length=target_seqlen,
                 num_calibration_samples=self.config.nsamples,
-                trust_remote_code_model=True,
-                **model_kwargs,
             )
 
         try:
-            _run_oneshot(dataset_info["effective"])
+            _run_oneshot(dataset_info["effective"], model)
         except Exception as exc:  # noqa: BLE001
             fallback_dataset = None
             if _is_dataset_registration_error(exc):
@@ -154,7 +166,7 @@ class AWQQuantizer:
                 dataset_info["fallback_from"] = dataset_info["effective"]
                 dataset_info["effective"] = fallback_dataset
                 try:
-                    _run_oneshot(fallback_dataset)
+                    _run_oneshot(fallback_dataset, model)
                 except Exception as final_exc:  # noqa: BLE001
                     print(f"[awq] Quantization failed via llmcompressor after fallback: {final_exc}")
                     return False
@@ -162,12 +174,14 @@ class AWQQuantizer:
                 print(f"[awq] Quantization failed via llmcompressor: {exc}")
                 return False
         finally:
-            # Clean up CUDA cache after quantization
-            try:
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            except Exception:
-                pass
+            # Clean up model memory
+            if model is not None:
+                try:
+                    del model
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except Exception:
+                    pass
 
         advanced_kwargs: dict[str, Any] = {
             "dataset": dataset_info["effective"],
