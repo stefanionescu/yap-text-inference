@@ -1,6 +1,6 @@
 ---
 license: {license}
-license_name: {license_name}
+license_name: {license}
 license_link: {license_link}
 base_model: {base_model}
 tags:
