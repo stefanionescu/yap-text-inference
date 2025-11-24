@@ -89,6 +89,36 @@ fi
 # Generic path may start and tail the server; if not applicable, it returns
 restart_generic_restart_if_needed
 
+# Load last config to restore AWQ_CHAT_MODEL/AWQ_TOOL_MODEL if they were set previously
+# This allows restart to work with remote prequantized models from previous runs
+LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
+if [ -f "${LAST_ENV_FILE}" ]; then
+  # Save current env vars to avoid overriding explicitly set values
+  SAVED_AWQ_CHAT_MODEL="${AWQ_CHAT_MODEL:-}"
+  SAVED_AWQ_TOOL_MODEL="${AWQ_TOOL_MODEL:-}"
+  SAVED_CHAT_MODEL="${CHAT_MODEL:-}"
+  SAVED_TOOL_MODEL="${TOOL_MODEL:-}"
+  
+  # shellcheck disable=SC1090
+  source "${LAST_ENV_FILE}" || true
+  
+  # Restore explicitly set env vars (user-set values take precedence)
+  if [ -n "${SAVED_AWQ_CHAT_MODEL}" ]; then
+    export AWQ_CHAT_MODEL="${SAVED_AWQ_CHAT_MODEL}"
+  fi
+  if [ -n "${SAVED_AWQ_TOOL_MODEL}" ]; then
+    export AWQ_TOOL_MODEL="${SAVED_AWQ_TOOL_MODEL}"
+  fi
+  
+  # If AWQ_CHAT_MODEL/AWQ_TOOL_MODEL aren't set but CHAT_MODEL/TOOL_MODEL look like AWQ HF repos, use them
+  if [ -z "${AWQ_CHAT_MODEL:-}" ] && [ -n "${CHAT_MODEL:-}" ] && [[ "${CHAT_MODEL}" == *"/"* ]] && [[ "${CHAT_MODEL}" == *"awq"* ]]; then
+    export AWQ_CHAT_MODEL="${CHAT_MODEL}"
+  fi
+  if [ -z "${AWQ_TOOL_MODEL:-}" ] && [ -n "${TOOL_MODEL:-}" ] && [[ "${TOOL_MODEL}" == *"/"* ]] && [[ "${TOOL_MODEL}" == *"awq"* ]]; then
+    export AWQ_TOOL_MODEL="${TOOL_MODEL}"
+  fi
+fi
+
 restart_detect_awq_models "${DEPLOY_MODE}"
 restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
