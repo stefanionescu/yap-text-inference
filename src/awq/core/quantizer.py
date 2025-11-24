@@ -199,41 +199,41 @@ class AWQQuantizer:
             return resolved_model_path
 
         try:
-                from huggingface_hub import snapshot_download  # lazy import
+            from huggingface_hub import snapshot_download  # lazy import
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Failed to import huggingface_hub for snapshot download: {exc}")
             return None
 
-                token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
-                cache_dir = os.environ.get("HF_HOME")
+        token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
+        cache_dir = os.environ.get("HF_HOME")
 
-                print(f"[awq] Prefetching model from Hub: {model_path}")
-                last_err: Exception | None = None
-                for attempt in range(1, 4):
-                    try:
-                        resolved_model_path = snapshot_download(
-                            repo_id=model_path,
-                            token=token,
-                            local_files_only=False,
-                            resume_download=True,
-                            cache_dir=cache_dir,
-                        )
-                        last_err = None
-                        break
-                    except Exception as dl_err:  # noqa: BLE001
-                        last_err = dl_err
-                        backoff = min(2 ** attempt, 5)
-                        print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
-                        if attempt < 3:
-                            print(f"[awq] Retrying in {backoff}s…")
-                            time.sleep(backoff)
+        print(f"[awq] Prefetching model from Hub: {model_path}")
+        last_err: Exception | None = None
+        for attempt in range(1, 4):
+            try:
+                resolved_model_path = snapshot_download(
+                    repo_id=model_path,
+                    token=token,
+                    local_files_only=False,
+                    resume_download=True,
+                    cache_dir=cache_dir,
+                )
+                last_err = None
+                break
+            except Exception as dl_err:  # noqa: BLE001
+                last_err = dl_err
+                backoff = min(2 ** attempt, 5)
+                print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
+                if attempt < 3:
+                    print(f"[awq] Retrying in {backoff}s…")
+                    time.sleep(backoff)
 
-                if last_err is not None:
-                    print(
-                        "[awq] Quantization failed: could not download model from Hugging Face. "
-                        "Check network access, repository visibility, and set HF_TOKEN or "
-                        "HUGGINGFACE_HUB_TOKEN if needed."
-                    )
+        if last_err is not None:
+            print(
+                "[awq] Quantization failed: could not download model from Hugging Face. "
+                "Check network access, repository visibility, and set HF_TOKEN or "
+                "HUGGINGFACE_HUB_TOKEN if needed."
+            )
             return None
 
         return resolved_model_path

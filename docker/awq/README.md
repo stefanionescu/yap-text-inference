@@ -92,7 +92,7 @@ docker run -d --gpus all --name yap-tool \
 - `CHAT_GPU_FRAC` (default: `0.70`)
 - `TOOL_GPU_FRAC` (default: `0.20`)
 
-Engine/attention backend and the precise quantization backend are auto-selected; when pointing at a local AWQ export the container now prints which compressed-tensor metadata it detected (scheme, group size, zero-point).
+Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports). Make sure `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` is set if you pull private repos.
 
 Note: This AWQ image now supports chat-only, tool-only, or both.
 
