@@ -22,6 +22,7 @@ _QUANT_CONFIG_CANDIDATES = (
     "quant_config.json",
     "awq_config.json",
 )
+_AWQ_METADATA_FILE = "awq_metadata.json"
 
 
 def _normalize_quantization_name(name: str | None) -> str | None:
@@ -34,6 +35,10 @@ def _normalize_quantization_name(name: str | None) -> str | None:
         "awq-marlin": "awq_marlin",
         "compressed-tensors": "compressed-tensors",
         "compressedtensors": "compressed-tensors",
+        "compressed_tensors": "compressed-tensors",
+        "compressed-tensor": "compressed-tensors",
+        "nvfp4": "compressed-tensors",
+        "autoround": "compressed-tensors",
     }
     return mapping.get(normalized)
 
@@ -61,8 +66,18 @@ def _extract_quantization_method(payload: Any) -> str | None:
         nested_value = _from_dict(nested)
         if nested_value:
             return nested_value
+        # Fallback: llmcompressor often stores quant info only in nested config
+        return _normalize_quantization_name(nested.get("quantization_method")) or "compressed-tensors"
 
     return None
+
+
+def _read_json_file(path: str) -> dict[str, Any] | None:
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return None
 
 
 def _extract_quant_config(payload: Any) -> dict[str, Any]:
@@ -108,15 +123,79 @@ def _detect_local_quantization_backend(model_path: str) -> Tuple[str | None, dic
         candidate = os.path.join(model_path, filename)
         if not os.path.isfile(candidate):
             continue
-        try:
-            with open(candidate, "r", encoding="utf-8") as fh:
-                payload = json.load(fh)
-        except Exception:
+        payload = _read_json_file(candidate)
+        if payload is None:
             continue
         quant_method = _extract_quantization_method(payload)
         if quant_method:
             return quant_method, payload if isinstance(payload, dict) else {}
     return None, {}
+
+
+def _detect_remote_quantization_backend(model_path: str) -> Tuple[str | None, dict[str, Any]]:
+    """Inspect remote Hugging Face repos for quantization metadata."""
+    if not model_path or "/" not in model_path or _is_local_model_path(model_path):
+        return None, {}
+    try:
+        from huggingface_hub import hf_hub_download  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        print(f"[config] Warning: huggingface_hub not available for remote quantization detection ({exc})")
+        return None, {}
+
+    token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
+    cache_dir = os.getenv("HF_HOME")
+
+    for filename in _QUANT_CONFIG_CANDIDATES:
+        try:
+            downloaded = hf_hub_download(
+                repo_id=model_path,
+                filename=filename,
+                token=token,
+                cache_dir=cache_dir,
+                local_files_only=False,
+                resume_download=True,
+            )
+        except Exception:
+            continue
+        payload = _read_json_file(downloaded)
+        if payload is None:
+            continue
+        quant_method = _extract_quantization_method(payload)
+        if quant_method:
+            return quant_method, payload
+    return None, {}
+
+
+def _detect_quantization_backend(model_path: str) -> Tuple[str | None, dict[str, Any]]:
+    """Attempt both local and remote detection for llmcompressor exports."""
+    method, payload = _detect_local_quantization_backend(model_path)
+    if method:
+        return method, payload
+    return _detect_remote_quantization_backend(model_path)
+
+
+def _resolve_model_origin(model_path: str) -> str:
+    """Best effort to determine the underlying HF repo for local AWQ exports."""
+    if not model_path:
+        return ""
+    if _is_local_model_path(model_path):
+        meta_path = os.path.join(model_path, _AWQ_METADATA_FILE)
+        payload = _read_json_file(meta_path)
+        if isinstance(payload, dict):
+            source = payload.get("source_model")
+            if isinstance(source, str) and source.strip():
+                return source.strip()
+    return model_path
+
+
+def _requires_bfloat16(model_identifier: str) -> bool:
+    """Return True when the model architecture mandates bfloat16 activations."""
+    ident = (model_identifier or "").lower()
+    if not ident:
+        return False
+    if "gemma-3" in ident or "gemma3" in ident:
+        return True
+    return False
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
@@ -147,13 +226,18 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     inference_quant = raw_quant
     if raw_quant == "awq":
         inference_quant = "awq_marlin"
-        detected_quant, quant_payload = _detect_local_quantization_backend(model)
+        detected_quant, quant_payload = _detect_quantization_backend(model)
         if detected_quant:
             inference_quant = detected_quant
             _log_detected_quantization(model, detected_quant, quant_payload)
 
+    model_origin = _resolve_model_origin(model)
+    needs_bfloat16 = _requires_bfloat16(model_origin)
+
     dtype_value = "auto"
-    if inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
+    if needs_bfloat16:
+        dtype_value = "bfloat16"
+    elif inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
         dtype_value = "float16"
 
     # Build kwargs for V1 engine.

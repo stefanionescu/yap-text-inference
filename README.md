@@ -168,6 +168,8 @@ AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-a
 AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq
 ```
 
+> **Note on llmcompressor exports:** Whether the model lives locally or on Hugging Face, the server now inspects `quantization_config.json` and automatically switches vLLM to the correct backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints produced by `llmcompressor`). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `AWQ_CHAT_MODEL` / `AWQ_TOOL_MODEL` at the repo IDs—no re-quantization step is needed.
+
 ## Local Test Dependencies
 
 If you just want to run the WebSocket test clients (warmup, live, conversation, etc.) on a laptop or CPU-only machine, don’t install the GPU-heavy `requirements.txt`. Instead:

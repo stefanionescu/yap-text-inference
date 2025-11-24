@@ -7,7 +7,7 @@ Embed-first image that downloads models at build time and runs them as-is. Suppo
 - Chat-only / Tool-only / Both
 - Mixed quant (e.g., chat=AWQ, tool=float)
 
-> ℹ️ AWQ artifacts are the same W4A16 compressed-tensor exports produced by `llmcompressor`. vLLM will report `quantization=compressed-tensors` at runtime while still honoring the AWQ configuration baked into the image.
+> ℹ️ AWQ artifacts are the same W4A16 compressed-tensor exports produced by `llmcompressor`. Whether the model lives inside the image or is mounted from Hugging Face, vLLM now auto-detects the `quantization_config.json` metadata and switches to `quantization=compressed-tensors` automatically (so long as `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` is provided for private repos).
 
 ## Contents
 
