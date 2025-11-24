@@ -28,8 +28,9 @@ def _render_fallback(template_vars: dict[str, Any]) -> str:
     return dedent(f"""
     # {template_vars['model_name']} — AWQ {template_vars['w_bit']}-bit
 
-    - Source model: {template_vars['source_model_link']}
-    - Compressor: `{template_vars['awq_version']}` (LLM Compressor)
+    This model was quantized with LLM Compressor from {template_vars['source_model_link']}.
+
+    - Compressor: `{template_vars['awq_version']}`
     - Scheme: {template_vars['quant_scheme']} | Targets: {template_vars['quant_targets']}
     - Precision: group size {template_vars['q_group_size']} | zero-point {template_vars['quant_zero_point']}
     - Dataset: {dataset_line}
@@ -39,9 +40,6 @@ def _render_fallback(template_vars: dict[str, Any]) -> str:
     ```json
     {template_vars['quant_summary']}
     ```
-
-    ## Calibration notes
-    {template_vars['calib_section']}
     """).strip() + "\n"
 
 
@@ -76,7 +74,6 @@ def generate_readme(
     awq_version: str,
     quant_summary: str,
     metadata: dict[str, Any],
-    calib_section: str,
     out_dir: str,
 ) -> str:
     """Generate a comprehensive README using templates."""
@@ -118,10 +115,7 @@ def generate_readme(
         or quant_config.get("max_seq_length")
         or "unknown"
     )
-    calibration_model_type = calib_config.get("model_type") or ("Toolcall" if is_tool else "Chat")
     calibration_samples = calibration_samples if calibration_samples is not None else "unknown"
-
-    pipeline_name = metadata.get("pipeline", "yap-text-inference")
     awq_version = awq_version or metadata.get("awq_version") or "llmcompressor==unknown"
     llmcompressor_version = _derive_llmcompressor_version(awq_version)
 
@@ -138,15 +132,12 @@ def generate_readme(
         'quant_ignore': quant_ignore,
         'quant_zero_point': quant_zero_point,
         'quant_summary': (quant_summary or "").strip() or "{}",
-        'calib_section': (calib_section or "").strip() or "- Calibration details unavailable.",
         'awq_version': awq_version,
         'llmcompressor_version': llmcompressor_version,
-        'pipeline_name': pipeline_name,
         'calibration_dataset_requested': dataset_requested,
         'calibration_dataset_effective': dataset_effective,
         'calibration_samples': calibration_samples,
         'calibration_seq_len': calibration_seq_len,
-        'calibration_model_type': calibration_model_type,
         **license_info,
     }
 
