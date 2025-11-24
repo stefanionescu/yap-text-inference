@@ -4,7 +4,7 @@
 # Requires: ROOT_DIR
 
 restart_start_server_background() {
-  local command_string="bash '${SCRIPT_DIR}/steps/05_start_server.sh'"
+  local command_string="bash '${ROOT_DIR}/scripts/steps/05_start_server.sh'"
   runtime_pipeline_run_background \
     "${ROOT_DIR}" \
     "${command_string}" \
