@@ -15,6 +15,81 @@ ensure_required_env_vars
 # Stop any existing warmup processes before starting deployment
 stop_existing_warmup_processes "${ROOT_DIR}"
 
+SERVER_PID_FILE="${ROOT_DIR}/server.pid"
+LAST_CONFIG_FILE="${ROOT_DIR}/.run/last_config.env"
+
+# Returns PID if the server is live; cleans stale pid files, returns non-zero otherwise.
+get_running_server_pid() {
+  if [ -f "${SERVER_PID_FILE}" ]; then
+    local existing_pid
+    existing_pid="$(cat "${SERVER_PID_FILE}" 2>/dev/null || true)"
+    if [ -n "${existing_pid}" ] && ps -p "${existing_pid}" >/dev/null 2>&1; then
+      printf '%s' "${existing_pid}"
+      return 0
+    fi
+    log_warn "Found stale server.pid entry; removing ${SERVER_PID_FILE}"
+    rm -f "${SERVER_PID_FILE}" || true
+  fi
+  return 1
+}
+
+# Helper to read a key=value entry from the last config snapshot.
+read_last_config_value() {
+  local key="$1"
+  if [ -f "${LAST_CONFIG_FILE}" ]; then
+    local line
+    line="$(grep -E "^${key}=" "${LAST_CONFIG_FILE}" 2>/dev/null || true)"
+    if [ -n "${line}" ]; then
+      echo "${line#*=}"
+    fi
+  fi
+}
+
+# Stop the running server before redeploying. Preserves caches when config is unchanged.
+stop_running_server_if_needed() {
+  local desired_deploy_mode="$1"
+  local desired_chat_model="$2"
+  local desired_tool_model="$3"
+  local desired_quantization="$4"
+  local desired_awq_chat="$5"
+  local desired_awq_tool="$6"
+
+  local running_pid
+  if ! running_pid="$(get_running_server_pid)"; then
+    return 0
+  fi
+
+  log_warn "Server already running (PID=${running_pid}). Evaluating restart strategy..."
+
+  local last_deploy_mode last_chat_model last_tool_model last_quantization last_awq_chat last_awq_tool
+  last_deploy_mode="$(read_last_config_value "DEPLOY_MODELS")"
+  last_chat_model="$(read_last_config_value "CHAT_MODEL")"
+  last_tool_model="$(read_last_config_value "TOOL_MODEL")"
+  last_quantization="$(read_last_config_value "QUANTIZATION")"
+  last_awq_chat="$(read_last_config_value "AWQ_CHAT_MODEL")"
+  last_awq_tool="$(read_last_config_value "AWQ_TOOL_MODEL")"
+
+  local configs_match=0
+  if [ -n "${last_deploy_mode:-}" ]; then
+    if [ "${desired_deploy_mode:-}" = "${last_deploy_mode:-}" ] &&
+       [ "${desired_chat_model:-}" = "${last_chat_model:-}" ] &&
+       [ "${desired_tool_model:-}" = "${last_tool_model:-}" ] &&
+       [ "${desired_quantization:-}" = "${last_quantization:-}" ] &&
+       [ "${desired_awq_chat:-}" = "${last_awq_chat:-}" ] &&
+       [ "${desired_awq_tool:-}" = "${last_awq_tool:-}" ]; then
+      configs_match=1
+    fi
+  fi
+
+  if [ "${configs_match}" -eq 1 ]; then
+    log_info "Existing server uses the requested models/quantization; stopping without clearing caches."
+    NUKE_ALL=0 bash "${SCRIPT_DIR}/stop.sh"
+  else
+    log_info "Requested configuration differs from running server; performing full reset before redeploy."
+    NUKE_ALL=1 bash "${SCRIPT_DIR}/stop.sh"
+  fi
+}
+
 # Usage function
 usage() {
   echo "Usage:"
@@ -248,6 +323,23 @@ fi
 if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
   export TOOL_MODEL="${TOOL_MODEL_NAME}"
 fi
+
+# Snapshot desired config for smart restart detection
+DESIRED_DEPLOY_MODE="${DEPLOY_MODELS:-both}"
+DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
+DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
+DESIRED_QUANTIZATION="${QUANTIZATION:-}"
+DESIRED_AWQ_CHAT_MODEL="${AWQ_CHAT_MODEL:-}"
+DESIRED_AWQ_TOOL_MODEL="${AWQ_TOOL_MODEL:-}"
+
+# If the server is already running, decide whether to keep caches or reset.
+stop_running_server_if_needed \
+  "${DESIRED_DEPLOY_MODE}" \
+  "${DESIRED_CHAT_MODEL}" \
+  "${DESIRED_TOOL_MODEL}" \
+  "${DESIRED_QUANTIZATION}" \
+  "${DESIRED_AWQ_CHAT_MODEL}" \
+  "${DESIRED_AWQ_TOOL_MODEL}"
 
 # Display configuration
 CONCURRENT_STATUS="concurrent (default)"

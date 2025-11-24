@@ -10,11 +10,11 @@ TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user 
 PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
 
 # Chat sampling override limits (optional client-provided values)
-CHAT_TEMPERATURE_MIN = float(os.getenv("CHAT_TEMPERATURE_MIN", "0.2"))
+CHAT_TEMPERATURE_MIN = float(os.getenv("CHAT_TEMPERATURE_MIN", "0"))
 CHAT_TEMPERATURE_MAX = float(os.getenv("CHAT_TEMPERATURE_MAX", "1.2"))
 CHAT_TOP_P_MIN = float(os.getenv("CHAT_TOP_P_MIN", "0.6"))
 CHAT_TOP_P_MAX = float(os.getenv("CHAT_TOP_P_MAX", "1.0"))
-CHAT_TOP_K_MIN = int(os.getenv("CHAT_TOP_K_MIN", "10"))
+CHAT_TOP_K_MIN = int(os.getenv("CHAT_TOP_K_MIN", "0"))
 CHAT_TOP_K_MAX = int(os.getenv("CHAT_TOP_K_MAX", "60"))
 CHAT_MIN_P_MIN = float(os.getenv("CHAT_MIN_P_MIN", "0.0"))
 CHAT_MIN_P_MAX = float(os.getenv("CHAT_MIN_P_MAX", "0.20"))
