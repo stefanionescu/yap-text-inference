@@ -1,6 +1,9 @@
 """Engine args builder and related utilities for vLLM engines."""
 
+import json
 import os
+from typing import Any
+
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 from .env import (
@@ -11,6 +14,75 @@ from .env import (
 )
 from .quantization import is_lowbit_quantization
 from .models import _is_local_model_path
+
+
+_QUANT_CONFIG_CANDIDATES = (
+    "config.json",
+    "quantization_config.json",
+    "quant_config.json",
+    "awq_config.json",
+)
+
+
+def _normalize_quantization_name(name: str | None) -> str | None:
+    """Normalize various quantization labels to vLLM's expected names."""
+    if not name:
+        return None
+    normalized = name.strip().lower().replace("_", "-")
+    mapping = {
+        "awq": "awq_marlin",
+        "awq-marlin": "awq_marlin",
+        "compressed-tensors": "compressed-tensors",
+        "compressedtensors": "compressed-tensors",
+    }
+    return mapping.get(normalized)
+
+
+def _extract_quantization_method(payload: Any) -> str | None:
+    """Extract the declared quantization method from a config payload."""
+    if not isinstance(payload, dict):
+        return None
+
+    def _from_dict(data: dict[str, Any]) -> str | None:
+        for key in ("quantization_method", "quant_method", "quantization"):
+            value = data.get(key)
+            if isinstance(value, str):
+                normalized = _normalize_quantization_name(value)
+                if normalized:
+                    return normalized
+        return None
+
+    direct = _from_dict(payload)
+    if direct:
+        return direct
+
+    nested = payload.get("quantization_config")
+    if isinstance(nested, dict):
+        nested_value = _from_dict(nested)
+        if nested_value:
+            return nested_value
+
+    return None
+
+
+def _detect_local_quantization_backend(model_path: str) -> str | None:
+    """Inspect local model files to detect the quantization backend."""
+    if not _is_local_model_path(model_path):
+        return None
+
+    for filename in _QUANT_CONFIG_CANDIDATES:
+        candidate = os.path.join(model_path, filename)
+        if not os.path.isfile(candidate):
+            continue
+        try:
+            with open(candidate, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except Exception:
+            continue
+        quant_method = _extract_quantization_method(payload)
+        if quant_method:
+            return quant_method
+    return None
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
@@ -41,9 +113,14 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     inference_quant = raw_quant
     if raw_quant == "awq":
         inference_quant = "awq_marlin"
+        detected_quant = _detect_local_quantization_backend(model)
+        if detected_quant:
+            inference_quant = detected_quant
+            if detected_quant == "compressed-tensors":
+                print(f"[config] Detected compressed-tensors quantization metadata in {model}")
 
     dtype_value = "auto"
-    if inference_quant in {"awq", "awq_marlin"}:
+    if inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
         dtype_value = "float16"
 
     # Build kwargs for V1 engine.

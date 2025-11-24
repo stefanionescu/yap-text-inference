@@ -47,8 +47,14 @@ The deployment system has built-in rotation for `server.log` which rotates at ~1
 All deployment and server logs are unified in a single `server.log` file.
 
 ```bash
-# All logs (deployment + server activity)
+# Follow logs in real-time (deployment + server activity)
 tail -f server.log
+
+# View the last N lines (e.g., last 200 lines)
+tail -n 200 server.log
+
+# View the first N lines (e.g., first 100 lines)
+head -n 100 server.log
 ```
 
 Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tail without stopping the deployment.

@@ -18,7 +18,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
 
     "TheDrummer/Rocinante-12B-v1.1",
-    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # Good, need further tests
+    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # good, need further tests
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much
     "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting
