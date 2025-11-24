@@ -6,10 +6,14 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
+source "${SCRIPT_DIR}/lib/common/warmup.sh"
 
 log_info "Starting Yap Text Inference Server"
 
 ensure_required_env_vars
+
+# Stop any existing warmup processes before starting deployment
+stop_existing_warmup_processes "${ROOT_DIR}"
 
 # Usage function
 usage() {
