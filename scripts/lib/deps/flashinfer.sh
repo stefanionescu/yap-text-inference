@@ -35,7 +35,7 @@ try:
     import torch
     ver = torch.__version__.split('+', 1)[0]
     parts = ver.split('.')
-    print(f"{parts[0]}.{parts[1]}")  # e.g., 2.7.1 -> 2.7
+    print(f"{parts[0]}.{parts[1]}")  # e.g., 2.9.0 -> 2.9
 except Exception:
     sys.exit(1)
 PY
