@@ -6,7 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class CalibrationConfig:
     """Configuration for AWQ calibration."""
-    dataset: str = "pileval"
+    dataset: str = "open_platypus"
     nsamples: int = 64
     seqlen: int = 2048
     w_bit: int = 4

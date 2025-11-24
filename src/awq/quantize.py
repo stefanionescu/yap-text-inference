@@ -25,8 +25,8 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="Re-quantize even if output looks already quantized")
     parser.add_argument(
         "--calib-dataset",
-        default=os.environ.get("AWQ_CALIB_DATASET", "pileval"),
-        help="Calibration dataset handled by llmcompressor (e.g., pileval, open_platypus)",
+        default=os.environ.get("AWQ_CALIB_DATASET", "open_platypus"),
+        help="Calibration dataset handled by llmcompressor (e.g., open_platypus, wikitext)",
     )
     parser.add_argument("--nsamples", type=int, default=int(os.environ.get("AWQ_NSAMPLES", "64")),
                        help="Number of calibration samples (default: 64)")
