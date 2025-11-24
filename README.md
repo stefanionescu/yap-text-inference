@@ -14,7 +14,7 @@ A vLLM text inference server optimized for low TTFT. It can run:
 - [Docker Deployment](#docker-deployment)
 - [Quantization](#quantization)
   - [Option 1: Local Quantization (Quantizes on First Run)](#option-1-local-quantization-quantizes-on-first-run)
-  - [Option 2: Pre-Quantized AWQ Models (Hugging Face)](#option-2-pre-quantized-awq-models-hugging-face)
+  - [Option 2: Pre-Quantized Models](#option-2-pre-quantized-models-awq--gptq--w4a16)
 - [Local Test Dependencies](#local-test-dependencies)
 - [Warmup Test Client](#warmup-test-client)
   - [Basic Usage](#basic-usage)
@@ -150,26 +150,46 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nem
 Local quantization runs [`llmcompressor`](https://github.com/vllm-project/llm-compressor) `oneshot()` with the AWQ modifier (pinned at version 0.8.1). Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`, with automatic fallback from `pileval` on older llmcompressor builds).  
 > To coexist with `vllm==0.11.2`/`torch==2.9.0`, the setup scripts install `llmcompressor` with `--no-deps`. If you manage the environment manually, mirror this behavior (`pip install llmcompressor==0.8.1 --no-deps`) after installing the base requirements.
 
-### Option 2: Pre-Quantized AWQ Models (Hugging Face)
+### Option 2: Pre-Quantized Models
+
+The server now auto-detects **any** pre-quantized repo whose name includes common markers:
+- `awq` or explicit W4A16 hints (`w4a16`, `nvfp4`, `compressed-tensors`, `autoround`)
+- `gptq` (including `gptq_marlin` exports)
+
+If the repo path advertises one of these markers, Yap skips runtime quantization and runs it directly—even if the model isn’t on the default allowlist. This matches the config enforcement logic described in `src/config/models.py`.
 
 ```bash
-# Use pre-quantized AWQ models (no quantization step, faster startup)
-AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/main.sh awq
+# Pre-quantized AWQ (chat + tool)
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
+AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
+bash scripts/main.sh awq
 
-# Chat-only with pre-quantized model
+# Chat-only AWQ
 AWQ_CHAT_MODEL=yapwithai/impish-12b-awq bash scripts/main.sh awq chat
 
-# Tool-only with pre-quantized model  
+# Tool-only AWQ
 AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/main.sh awq tool
 
-# With concurrent mode
-AWQ_CHAT_MODEL=yapwithai/impish-12b-awq AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq
+# AWQ with concurrent mode
+CONCURRENT_MODEL_CALL=1 \
+AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
+AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
+bash scripts/main.sh awq
 
-# Use your own pre-quantized AWQ models (auto-detected)
-AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq bash scripts/main.sh awq
+# Custom AWQ or W4A16 (auto-detected compressed tensors)
+AWQ_CHAT_MODEL=leon-se/gemma-3-27b-it-qat-W4A16-G128 \
+AWQ_TOOL_MODEL=your-org/tool-awq \
+bash scripts/main.sh awq
+
+# Pre-quantized GPTQ chat model (tool stays float)
+CONCURRENT_MODEL_CALL=1 \
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
+
+# GPTQ-only chat deployment
+bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
 ```
 
-> **Note on llmcompressor exports:** Whether the model lives locally or on Hugging Face, the server now inspects `quantization_config.json` and automatically switches vLLM to the correct backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints produced by `llmcompressor`). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `AWQ_CHAT_MODEL` / `AWQ_TOOL_MODEL` at the repo IDs—no re-quantization step is needed.
+> **Note on llmcompressor / W4A16 exports:** Whether the model lives locally or on Hugging Face, Yap inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `AWQ_CHAT_MODEL` / `AWQ_TOOL_MODEL` / regular `CHAT_MODEL` at the repo IDs—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime.
 
 ## Local Test Dependencies
 
