@@ -252,7 +252,6 @@ class AWQQuantizer:
         return [
             awq_modifier_cls(
                 ignore=quant_config["ignore"],
-                scheme=quant_config["scheme"],
                 duo_scaling=True,
                 config_groups={
                     "group_0": {
