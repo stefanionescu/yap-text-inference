@@ -267,8 +267,14 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     model_origin = _resolve_model_origin(model)
     needs_bfloat16 = _requires_bfloat16(model_origin)
     needs_memory_opt = _needs_memory_optimization(model_origin)
-    if _requires_fla_runtime(model_origin):
+    needs_mla = _requires_fla_runtime(model_origin)  # MLA = Multi-Head Latent Attention
+    if needs_mla:
         _ensure_fla_runtime_available(model_origin)
+        # FlashInfer doesn't support MLA, so force XFORMERS backend for Kimi models
+        # Temporarily override VLLM_ATTENTION_BACKEND for this engine creation
+        original_backend = os.getenv("VLLM_ATTENTION_BACKEND")
+        if (original_backend or "").upper() == "FLASHINFER":
+            os.environ["VLLM_ATTENTION_BACKEND"] = "XFORMERS"
 
     dtype_value = "auto"
     if needs_bfloat16:
