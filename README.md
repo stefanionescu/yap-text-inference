@@ -1,7 +1,7 @@
 # Yap Text Inference Server
 
-A text inference server optimized for low TTFT and steady text streaming. It can run:
-- vLLM chat engine with chat models ranging from 3B–24B
+A vLLM text inference server optimized for low TTFT. It can run:
+- Chat engine for roleplay
 - Engine for tool-call detection
 - Both engines together by default; chat-only/tool-only are supported in host scripts and Docker (mixed image)
 - FastAPI + WebSocket streaming
@@ -12,7 +12,7 @@ A text inference server optimized for low TTFT and steady text streaming. It can
 - [Quickstart](#quickstart)
 - [Linting](#linting)
 - [Docker Deployment](#docker-deployment)
-- [Quantization Modes (AWQ)](#quantization-modes-awq)
+- [Quantization](#quantization)
   - [Option 1: Local Quantization (Quantizes on First Run)](#option-1-local-quantization-quantizes-on-first-run)
   - [Option 2: Pre-Quantized AWQ Models (Hugging Face)](#option-2-pre-quantized-awq-models-hugging-face)
 - [Local Test Dependencies](#local-test-dependencies)
@@ -133,7 +133,7 @@ docker run -d --gpus all --name yap-mixed \
 
 See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, image behavior, and run options.
 
-## Quantization Modes (AWQ)
+## Quantization
 
 4-bit mode (AWQ via llmcompressor + vLLM).
 
