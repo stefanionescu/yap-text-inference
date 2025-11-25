@@ -11,6 +11,8 @@ DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
 # Enforce fixed image name for mixed stack
 IMAGE_NAME="yap-text-inference-mixed"
 
+source "${ROOT_DIR}/scripts/lib/common/model_detect.sh"
+
 # Determine tag from DEPLOY_MODELS and provided model types (AWQ vs float)
 DEPLOY_MODELS_VAL="${DEPLOY_MODELS:-both}"
 case "${DEPLOY_MODELS_VAL}" in
@@ -21,16 +23,20 @@ esac
 # Normalize presence of build-time sources
 CHAT_IS_AWQ=0; TOOL_IS_AWQ=0
 if [ "${DEPLOY_MODELS_VAL}" != "tool" ]; then
-  if [ -n "${AWQ_CHAT_MODEL:-}" ] && [ -n "${CHAT_MODEL:-}" ]; then
-    echo "[ERROR] Provide exactly one chat source: AWQ_CHAT_MODEL or CHAT_MODEL (not both)" >&2; exit 1
+  if [ -z "${CHAT_MODEL:-}" ]; then
+    echo "[ERROR] CHAT_MODEL must be provided when deploying chat/both" >&2; exit 1
   fi
-  if [ -n "${AWQ_CHAT_MODEL:-}" ]; then CHAT_IS_AWQ=1; fi
+  if model_detect_is_awq_name "${CHAT_MODEL}"; then
+    CHAT_IS_AWQ=1
+  fi
 fi
 if [ "${DEPLOY_MODELS_VAL}" != "chat" ]; then
-  if [ -n "${AWQ_TOOL_MODEL:-}" ] && [ -n "${TOOL_MODEL:-}" ]; then
-    echo "[ERROR] Provide exactly one tool source: AWQ_TOOL_MODEL or TOOL_MODEL (not both)" >&2; exit 1
+  if [ -z "${TOOL_MODEL:-}" ]; then
+    echo "[ERROR] TOOL_MODEL must be provided when deploying tool/both" >&2; exit 1
   fi
-  if [ -n "${AWQ_TOOL_MODEL:-}" ]; then TOOL_IS_AWQ=1; fi
+  if model_detect_is_awq_name "${TOOL_MODEL}"; then
+    TOOL_IS_AWQ=1
+  fi
 fi
 
 case "${DEPLOY_MODELS_VAL}" in
@@ -70,25 +76,21 @@ usage() {
   echo "Environment Variables:"
   echo "  DOCKER_USERNAME      - Docker Hub username (required)"
   echo "  DEPLOY_MODELS        - chat|tool|both (default: both)"
-  echo "  CHAT_MODEL           - Float chat repo (exclusive with AWQ_CHAT_MODEL when deploying chat)"
-  echo "  AWQ_CHAT_MODEL       - Pre-quantized AWQ chat repo (exclusive with CHAT_MODEL)"
-  echo "  TOOL_MODEL           - Float tool repo (exclusive with AWQ_TOOL_MODEL when deploying tool)"
-  echo "  AWQ_TOOL_MODEL       - Pre-quantized AWQ tool repo (exclusive with TOOL_MODEL)"
+  echo "  CHAT_MODEL           - Chat repo/path (float, GPTQ, AWQ, W4A16 supported)"
+  echo "  TOOL_MODEL           - Tool repo/path (float, GPTQ, AWQ, W4A16 supported)"
   echo "  PLATFORM             - Target platform (default: linux/amd64)"
   echo ""
   echo "Build-Time Args (passed via --build-arg):"
   echo "  DEPLOY_MODELS=both|chat|tool"
-  echo "  CHAT_MODEL           - Float/GPTQ chat repo (one source per engine)"
-  echo "  TOOL_MODEL           - Float/GPTQ tool repo (one source per engine)"
-  echo "  AWQ_CHAT_MODEL       - Pre-quantized AWQ chat repo (mutually exclusive with CHAT_MODEL)"
-  echo "  AWQ_TOOL_MODEL       - Pre-quantized AWQ tool repo (mutually exclusive with TOOL_MODEL)"
+  echo "  CHAT_MODEL           - Chat repo/path (one source per engine)"
+  echo "  TOOL_MODEL           - Tool repo/path (one source per engine)"
   echo "  HF_TOKEN             - HF token for gated/private repos"
   echo "  DEFAULT_CONCURRENT=0|1 - Baked default for CONCURRENT_MODEL_CALL (default 1)"
   echo ""
   echo "Examples:"
   echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=both CHAT_MODEL=org/chat TOOL_MODEL=org/tool ${0}   # -> :both-fp8"
-  echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=both AWQ_CHAT_MODEL=org/chat-awq AWQ_TOOL_MODEL=org/tool-awq ${0}   # -> :both-awq"
-  echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=chat AWQ_CHAT_MODEL=org/chat-awq ${0}   # -> :chat-awq"
+  echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=both CHAT_MODEL=org/chat-awq TOOL_MODEL=org/tool-awq ${0}   # -> :both-awq"
+  echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=chat CHAT_MODEL=org/chat-awq ${0}   # -> :chat-awq"
   echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=tool TOOL_MODEL=org/tool ${0}   # -> :tool-fp8"
   exit 0
 }
@@ -120,8 +122,6 @@ init_build_args
 append_arg DEPLOY_MODELS "${DEPLOY_MODELS:-}"
 append_arg CHAT_MODEL "${CHAT_MODEL:-}"
 append_arg TOOL_MODEL "${TOOL_MODEL:-}"
-append_arg AWQ_CHAT_MODEL "${AWQ_CHAT_MODEL:-}"
-append_arg AWQ_TOOL_MODEL "${AWQ_TOOL_MODEL:-}"
 append_arg HF_TOKEN "${HF_TOKEN:-}"
 append_arg DEFAULT_CONCURRENT "${DEFAULT_CONCURRENT:-}"
 

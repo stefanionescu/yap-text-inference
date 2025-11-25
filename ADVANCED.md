@@ -233,8 +233,8 @@ The defaults are defined in `src/config/limits.py`, but every limiter can be tun
 
 Notes for AWQ:
 - Local quantization: Provide a float chat model (e.g., `SicariusSicariiStuff/Impish_Nemo_12B`, `kyx0r/Neona-12B`, `SicariusSicariiStuff/Wingless_Imp_8B`, etc.) — do not pass a GPTQ repo
-- Pre-quantized models: Use `AWQ_CHAT_MODEL` and/or `AWQ_TOOL_MODEL` environment variables to specify HF repos with pre-quantized AWQ models
-- Smart detection: Any Hugging Face repo containing "awq" in the name will be automatically accepted when using AWQ quantization
+- Pre-quantized models: Point `CHAT_MODEL` / `TOOL_MODEL` at pre-quantized AWQ or W4A16 repos; Yap skips quantization automatically
+- Smart detection: Any repo name containing `awq`, `w4a16`, `nvfp4`, `compressed-tensors`, or `autoround` is treated as 4-bit and run directly
 - The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency (local mode)
 - AWQ requires additional wheels (installed automatically via `requirements.txt`)
 - Qwen2/Qwen3 and Mistral 3 checkpoints automatically fall back to AutoAWQ 0.2.9 when quantized because llmcompressor cannot reliably trace their hybrid forward graphs yet. Metadata/readmes flag the backend so downstream consumers know whether AutoAWQ or llmcompressor produced the export.

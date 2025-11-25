@@ -31,7 +31,6 @@ restart_detect_awq_models() {
   CHAT_AWQ_DIR="${AWQ_CACHE_DIR}/chat_awq"
   TOOL_AWQ_DIR="${AWQ_CACHE_DIR}/tool_awq"
   USING_LOCAL_MODELS=0
-  USING_HF_MODELS=0
 
   if [ -d "${AWQ_CACHE_DIR}" ]; then
     local LOCAL_CHAT_OK=0 LOCAL_TOOL_OK=0
@@ -43,17 +42,7 @@ restart_detect_awq_models() {
       tool) [ "${LOCAL_TOOL_OK}" = "1" ] && USING_LOCAL_MODELS=1 ;;
     esac
   fi
-
-  local HF_CHAT_OK=0 HF_TOOL_OK=0
-  if [ -n "${AWQ_CHAT_MODEL:-}" ]; then HF_CHAT_OK=1; fi
-  if [ -n "${AWQ_TOOL_MODEL:-}" ]; then HF_TOOL_OK=1; fi
-  case "${DEPLOY_MODE}" in
-    both) [ "${HF_CHAT_OK}" = "1" ] && [ "${HF_TOOL_OK}" = "1" ] && USING_HF_MODELS=1 ;;
-    chat) [ "${HF_CHAT_OK}" = "1" ] && USING_HF_MODELS=1 ;;
-    tool) [ "${HF_TOOL_OK}" = "1" ] && USING_HF_MODELS=1 ;;
-  esac
-
-  export AWQ_CACHE_DIR CHAT_AWQ_DIR TOOL_AWQ_DIR USING_LOCAL_MODELS USING_HF_MODELS
+  export AWQ_CACHE_DIR CHAT_AWQ_DIR TOOL_AWQ_DIR USING_LOCAL_MODELS
 }
 
 
@@ -61,31 +50,16 @@ restart_setup_env_for_awq() {
   local DEPLOY_MODE="$1"
   export QUANTIZATION=awq
   export DEPLOY_MODELS="${DEPLOY_MODE}"
-  if [ "${USING_LOCAL_MODELS}" = "1" ]; then
-    if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-      export CHAT_MODEL="${CHAT_AWQ_DIR}" CHAT_QUANTIZATION=awq
-      if [ -z "${CHAT_MODEL_NAME:-}" ]; then
-        CHAT_MODEL_NAME="$(_awq_read_source_model "${CHAT_AWQ_DIR}")"
-      fi
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
+    export CHAT_MODEL="${CHAT_AWQ_DIR}" CHAT_QUANTIZATION=awq
+    if [ -z "${CHAT_MODEL_NAME:-}" ]; then
+      CHAT_MODEL_NAME="$(_awq_read_source_model "${CHAT_AWQ_DIR}")"
     fi
-    if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-      export TOOL_MODEL="${TOOL_AWQ_DIR}" TOOL_QUANTIZATION=awq
-      if [ -z "${TOOL_MODEL_NAME:-}" ]; then
-        TOOL_MODEL_NAME="$(_awq_read_source_model "${TOOL_AWQ_DIR}")"
-      fi
-    fi
-  elif [ "${USING_HF_MODELS}" = "1" ]; then
-    if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-      export CHAT_MODEL="${AWQ_CHAT_MODEL}" CHAT_QUANTIZATION=awq
-      if [ -z "${CHAT_MODEL_NAME:-}" ]; then
-        CHAT_MODEL_NAME="${AWQ_CHAT_MODEL}"
-      fi
-    fi
-    if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-      export TOOL_MODEL="${AWQ_TOOL_MODEL}" TOOL_QUANTIZATION=awq
-      if [ -z "${TOOL_MODEL_NAME:-}" ]; then
-        TOOL_MODEL_NAME="${AWQ_TOOL_MODEL}"
-      fi
+  fi
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
+    export TOOL_MODEL="${TOOL_AWQ_DIR}" TOOL_QUANTIZATION=awq
+    if [ -z "${TOOL_MODEL_NAME:-}" ]; then
+      TOOL_MODEL_NAME="$(_awq_read_source_model "${TOOL_AWQ_DIR}")"
     fi
   fi
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
@@ -97,7 +71,7 @@ restart_validate_awq_push_prereqs() {
     return
   fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
-    log_info "HF_AWQ_PUSH=1 but restart is using Hugging Face AWQ models; uploads will be skipped."
+    log_info "HF_AWQ_PUSH=1 but no local AWQ artifacts detected; uploads will be skipped."
     return
   fi
 
@@ -134,7 +108,7 @@ restart_push_cached_awq_models() {
     return
   fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
-    log_info "HF_AWQ_PUSH=1 but restart is using Hugging Face AWQ models; skipping upload."
+    log_info "HF_AWQ_PUSH=1 but no local AWQ artifacts detected; skipping upload."
     return
   fi
 

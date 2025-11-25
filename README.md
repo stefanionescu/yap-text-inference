@@ -100,8 +100,8 @@ You can deploy the server in Docker using the stacks in `docker/awq` (pre-quanti
 # AWQ (pre-quantized models)
 DOCKER_USERNAME=youruser docker/awq/build.sh
 docker run -d --gpus all --name yap-awq \
-  -e AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
-  -e AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
+  -e CHAT_MODEL=yapwithai/impish-12b-awq \
+  -e TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_your_api_token \
   -e MAX_CONCURRENT_CONNECTIONS=32 \
@@ -146,36 +146,38 @@ If the repo path advertises one of these markers, Yap skips runtime quantization
 
 ```bash
 # Pre-quantized AWQ (chat + tool)
-AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
-AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
-bash scripts/main.sh awq
+bash scripts/main.sh \
+  yapwithai/impish-12b-awq \
+  yapwithai/hammer-2.1-3b-awq
 
 # Chat-only AWQ
-AWQ_CHAT_MODEL=yapwithai/impish-12b-awq bash scripts/main.sh awq chat
+bash scripts/main.sh chat yapwithai/impish-12b-awq
 
 # Tool-only AWQ
-AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq bash scripts/main.sh awq tool
+bash scripts/main.sh tool yapwithai/hammer-2.1-3b-awq
 
 # AWQ with concurrent mode
 CONCURRENT_MODEL_CALL=1 \
-AWQ_CHAT_MODEL=yapwithai/impish-12b-awq \
-AWQ_TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
-bash scripts/main.sh awq
+bash scripts/main.sh \
+  yapwithai/impish-12b-awq \
+  yapwithai/hammer-2.1-3b-awq
 
 # Custom AWQ or W4A16 (auto-detected compressed tensors)
-AWQ_CHAT_MODEL=leon-se/gemma-3-27b-it-qat-W4A16-G128 \
-AWQ_TOOL_MODEL=your-org/tool-awq \
-bash scripts/main.sh awq
+bash scripts/main.sh \
+  leon-se/gemma-3-27b-it-qat-W4A16-G128 \
+  your-org/tool-awq
 
 # Pre-quantized GPTQ chat model (tool stays float)
 CONCURRENT_MODEL_CALL=1 \
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
+bash scripts/main.sh \
+  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 \
+  MadeAgents/Hammer2.1-3b
 
 # GPTQ-only chat deployment
 bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
 ```
 
-> **Note on llmcompressor / W4A16 exports:** Whether the model lives locally or on Hugging Face, the code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `AWQ_CHAT_MODEL` / `AWQ_TOOL_MODEL` / regular `CHAT_MODEL` at the repo IDs—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime. Qwen-family and Mistral-3 exports are tagged as AutoAWQ in metadata so downstream consumers know which quantizer produced the checkpoint.
+> **Note on llmcompressor / W4A16 exports:** Whether the model lives locally or on Hugging Face, the code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `CHAT_MODEL` / `TOOL_MODEL` at the repo IDs—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime. Qwen-family and Mistral-3 exports are tagged as AutoAWQ in metadata so downstream consumers know which quantizer produced the checkpoint.
 
 ## Local Test Dependencies
 

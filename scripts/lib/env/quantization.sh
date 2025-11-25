@@ -4,7 +4,18 @@
 
 apply_quantization_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-}"
-  case "${QUANTIZATION}" in
+  local effective_quant="${QUANTIZATION:-}"
+  if [ -z "${effective_quant}" ] || [ "${effective_quant}" = "fp8" ]; then
+    if [ -n "${CHAT_QUANTIZATION:-}" ] && [ "${CHAT_QUANTIZATION}" != "fp8" ]; then
+      effective_quant="${CHAT_QUANTIZATION}"
+    elif [ -n "${TOOL_QUANTIZATION:-}" ] && [ "${TOOL_QUANTIZATION}" != "fp8" ]; then
+      effective_quant="${TOOL_QUANTIZATION}"
+    fi
+  fi
+  if [ -z "${effective_quant}" ]; then
+    effective_quant="fp8"
+  fi
+  case "${effective_quant}" in
     fp8)
       case "${gpu_name}" in
         *H100*|*L40S*|*L40*)

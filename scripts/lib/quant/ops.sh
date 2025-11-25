@@ -2,6 +2,9 @@
 
 # Core AWQ operations (selection and quantization helpers)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../common/model_detect.sh"
+
 awq_ensure_cache_dir() {
   mkdir -p "${AWQ_CACHE_DIR}"
 }
@@ -11,11 +14,11 @@ awq_should_use_prequant() {
   local need_tool="${AWQ_TARGET_TOOL:-0}"
   local use=0 chat_use=0 tool_use=0
 
-  if [ "${need_chat}" = "1" ] && [ -n "${AWQ_CHAT_MODEL:-}" ]; then
+  if [ "${need_chat}" = "1" ] && model_detect_is_prequant_awq "${CHAT_MODEL:-}"; then
     chat_use=1
     use=1
   fi
-  if [ "${need_tool}" = "1" ] && [ -n "${AWQ_TOOL_MODEL:-}" ]; then
+  if [ "${need_tool}" = "1" ] && model_detect_is_prequant_awq "${TOOL_MODEL:-}"; then
     tool_use=1
     use=1
   fi
@@ -75,23 +78,21 @@ awq_quantize_chat_if_needed() {
 }
 
 awq_handle_tool_prequant_or_quantize() {
-  if [ -n "${AWQ_TOOL_MODEL:-}" ]; then
-    log_info "Using pre-quantized AWQ tool model: ${AWQ_TOOL_MODEL}"
-    export TOOL_MODEL="${AWQ_TOOL_MODEL}"
+  if [ "${USE_PREQUANT_AWQ_TOOL:-0}" = "1" ]; then
+    log_info "Detected pre-quantized AWQ tool model; skipping quantization: ${TOOL_MODEL}"
     export TOOL_QUANTIZATION=awq
-  else
-    awq_quantize_tool_if_needed
+    return 0
   fi
+  awq_quantize_tool_if_needed
 }
 
 awq_handle_chat_prequant_or_quantize() {
-  if [ -n "${AWQ_CHAT_MODEL:-}" ]; then
-    log_info "Using pre-quantized AWQ chat model: ${AWQ_CHAT_MODEL}"
-    export CHAT_MODEL="${AWQ_CHAT_MODEL}"
+  if [ "${USE_PREQUANT_AWQ_CHAT:-0}" = "1" ]; then
+    log_info "Detected pre-quantized AWQ chat model; skipping quantization: ${CHAT_MODEL}"
     export CHAT_QUANTIZATION=awq
-  else
-    awq_quantize_chat_if_needed
+    return 0
   fi
+  awq_quantize_chat_if_needed
 }
 
 

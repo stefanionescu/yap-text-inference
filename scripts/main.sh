@@ -7,6 +7,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
+source "${SCRIPT_DIR}/lib/common/model_detect.sh"
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
 source "${SCRIPT_DIR}/lib/runtime/pipeline.sh"
 
@@ -31,10 +32,9 @@ usage() {
   echo "  • Use scripts/stop.sh to stop the deployment"
   echo ""
   echo "Quantization:"
-  echo "  Omit flag  → auto: GPTQ if chat model name contains 'GPTQ', else FP8"
-  echo "  awq        → explicit 4-bit AWQ (quantizes BOTH chat and tool on load)"
-  echo "             → or use pre-quantized AWQ models via AWQ_CHAT_MODEL/AWQ_TOOL_MODEL env vars"
-  echo "             → Smart detection: just use 'awq' when env vars are set (no dummy params!)"
+  echo "  Omit flag  → auto-detects GPTQ/AWQ/W4A16 hints in model names; otherwise FP8"
+  echo "  awq        → force 4-bit AWQ (quantizes BOTH chat and tool on load if needed)"
+  echo "             → pre-quantized AWQ/W4A16 repos are detected by name automatically"
   echo ""
   echo "Chat model options:"
   echo "  Float models (FP8 auto): SicariusSicariiStuff/Impish_Nemo_12B"
@@ -61,8 +61,6 @@ usage() {
   echo "Environment options:"
   echo "  CONCURRENT_MODEL_CALL=1       - Enable concurrent model calls (default: 0=sequential)"
   echo "  DEPLOY_MODELS=both|chat|tool  - Which models to deploy (default: both)"
-  echo "  AWQ_CHAT_MODEL=hf_repo        - Use pre-quantized AWQ chat model from HF (with awq flag)"
-  echo "  AWQ_TOOL_MODEL=hf_repo        - Use pre-quantized AWQ tool model from HF (with awq flag)"
   echo ""
   echo "Examples:"
   echo "  # Sequential mode (default)"
@@ -85,15 +83,6 @@ usage() {
   echo ""
   echo "  # 4-bit AWQ (quantize both chat and tool models on load)"
   echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
-  echo ""
-  echo "  # Use pre-quantized AWQ models from Hugging Face (no dummy params needed!)"
-  echo "  AWQ_CHAT_MODEL=your-org/chat-awq AWQ_TOOL_MODEL=your-org/tool-awq $0 awq"
-  echo ""
-  echo "  # Chat-only with pre-quantized AWQ"
-  echo "  AWQ_CHAT_MODEL=your-org/chat-awq $0 awq chat"
-  echo ""
-  echo "  # Tool-only with pre-quantized AWQ"
-  echo "  AWQ_TOOL_MODEL=your-org/tool-awq $0 awq tool"
   echo ""
   echo "  # Chat-only deployment"
   echo "  $0 chat SicariusSicariiStuff/Impish_Nemo_12B"
@@ -118,98 +107,71 @@ case "${1:-}" in
     QUANT_TYPE="$1"; shift ;;
 esac
 
-# Smart AWQ detection: if AWQ flag is set and pre-quantized models are available,
-# we can auto-populate model names and skip requiring dummy parameters
-USE_PREQUANT_AWQ_DETECTION=0
-USE_PREQUANT_AWQ_CHAT_ONLY=0
-USE_PREQUANT_AWQ_TOOL_ONLY=0
-
-if [ "${QUANT_TYPE}" = "awq" ]; then
-  if [ -n "${AWQ_CHAT_MODEL:-}" ] && [ -n "${AWQ_TOOL_MODEL:-}" ]; then
-    USE_PREQUANT_AWQ_DETECTION=1
-    log_info "Detected pre-quantized AWQ models (both chat & tool) - using smart parameter detection"
-  elif [ -n "${AWQ_CHAT_MODEL:-}" ]; then
-    USE_PREQUANT_AWQ_CHAT_ONLY=1
-    log_info "Detected pre-quantized AWQ chat model - enabling smart detection for chat-only deployment"
-  elif [ -n "${AWQ_TOOL_MODEL:-}" ]; then
-    USE_PREQUANT_AWQ_TOOL_ONLY=1
-    log_info "Detected pre-quantized AWQ tool model - enabling smart detection for tool-only deployment"
-  fi
-fi
-
 # Defaults that we may fill from args
 CHAT_MODEL_NAME=""
 TOOL_MODEL_NAME=""
 DEPLOY_MODE_SELECTED="${DEPLOY_MODELS:-}"
+if [ -z "${DEPLOY_MODE_SELECTED}" ]; then
+  DEPLOY_MODE_SELECTED="both"
+fi
+case "${DEPLOY_MODE_SELECTED}" in
+  both|chat|tool) ;;
+  *)
+    log_warn "Invalid DEPLOY_MODELS='${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
+    DEPLOY_MODE_SELECTED="both"
+    ;;
+esac
 
 case "${1:-}" in
-  chat)
-    DEPLOY_MODE_SELECTED="chat"
+  chat|tool|both)
+    DEPLOY_MODE_SELECTED="${1}"
     shift
-    if [ $# -lt 1 ] && [ "${USE_PREQUANT_AWQ_DETECTION}" = "0" ] && [ "${USE_PREQUANT_AWQ_CHAT_ONLY}" = "0" ]; then
+    ;;
+esac
+
+case "${DEPLOY_MODE_SELECTED}" in
+  chat)
+    if [ $# -lt 1 ]; then
       log_warn "Error: chat-only mode requires <chat_model>"
       usage
     fi
-    if [ "${USE_PREQUANT_AWQ_CHAT_ONLY}" = "1" ] && [ $# -eq 0 ]; then
-      CHAT_MODEL_NAME="${AWQ_CHAT_MODEL}"
-    else
-      CHAT_MODEL_NAME="${1:-}"; [ $# -gt 0 ] && shift
-    fi
+    CHAT_MODEL_NAME="${1}"; shift
     ;;
   tool)
-    DEPLOY_MODE_SELECTED="tool"
-    shift
-    if [ $# -lt 1 ] && [ "${USE_PREQUANT_AWQ_DETECTION}" = "0" ] && [ "${USE_PREQUANT_AWQ_TOOL_ONLY}" = "0" ]; then
+    if [ $# -lt 1 ]; then
       log_warn "Error: tool-only mode requires <tool_model>"
       usage
     fi
-    if [ "${USE_PREQUANT_AWQ_TOOL_ONLY}" = "1" ] && [ $# -eq 0 ]; then
-      TOOL_MODEL_NAME="${AWQ_TOOL_MODEL}"
-    else
-      TOOL_MODEL_NAME="${1:-}"; [ $# -gt 0 ] && shift
-    fi
+    TOOL_MODEL_NAME="${1}"; shift
     ;;
   both)
-    DEPLOY_MODE_SELECTED="both"
-    shift
-    if [ $# -lt 2 ] && [ "${USE_PREQUANT_AWQ_DETECTION}" = "0" ]; then
+    if [ $# -lt 2 ]; then
       log_warn "Error: both mode requires <chat_model> <tool_model>"
       usage
     fi
-    if [ "${USE_PREQUANT_AWQ_DETECTION}" = "1" ] && [ $# -eq 0 ]; then
-      CHAT_MODEL_NAME="${AWQ_CHAT_MODEL}"
-      TOOL_MODEL_NAME="${AWQ_TOOL_MODEL}"
-    else
-      CHAT_MODEL_NAME="${1:-}"; TOOL_MODEL_NAME="${2:-}"
-      [ $# -gt 0 ] && shift; [ $# -gt 0 ] && shift
-    fi
-    ;;
-  *)
-    # Handle smart AWQ detection case where no model names are needed
-    if [ "${USE_PREQUANT_AWQ_DETECTION}" = "1" ] && [ $# -eq 0 ]; then
-      # Use pre-quantized models from environment
-      CHAT_MODEL_NAME="${AWQ_CHAT_MODEL}"
-      TOOL_MODEL_NAME="${AWQ_TOOL_MODEL}"
-      DEPLOY_MODE_SELECTED="both"
-    else
-      # Backward-compatible form: <chat_model> <tool_model> [deploy_mode]
-      if [ $# -lt 2 ]; then
-        if [ "${USE_PREQUANT_AWQ_DETECTION}" = "1" ]; then
-          log_info "Using pre-quantized AWQ models from environment variables"
-          CHAT_MODEL_NAME="${AWQ_CHAT_MODEL}"
-          TOOL_MODEL_NAME="${AWQ_TOOL_MODEL}"
-          DEPLOY_MODE_SELECTED="both"
-        else
-          log_warn "Error: Must specify <chat_model> <tool_model> or use 'chat|tool' form"
-          usage
-        fi
-      else
-        CHAT_MODEL_NAME="$1"; TOOL_MODEL_NAME="$2"; shift 2
-        DEPLOY_MODE_SELECTED="${1:-${DEPLOY_MODE_SELECTED:-both}}"
-      fi
-    fi
+    CHAT_MODEL_NAME="${1}"
+    TOOL_MODEL_NAME="${2}"
+    shift 2
     ;;
 esac
+
+if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_MODEL_NAME}" ]; then
+  log_warn "Error: CHAT_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
+  usage
+fi
+if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ -z "${TOOL_MODEL_NAME}" ]; then
+  log_warn "Error: TOOL_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
+  usage
+fi
+
+if [ $# -gt 0 ]; then
+  case "${1}" in
+    chat|tool|both)
+      DEPLOY_MODE_SELECTED="${1}"
+      shift
+      ;;
+  esac
+fi
 
 # Normalize and validate deploy mode selection
 case "${DEPLOY_MODE_SELECTED:-both}" in
@@ -222,6 +184,16 @@ case "${DEPLOY_MODE_SELECTED:-both}" in
     ;;
 esac
 
+# Determine per-engine quantization hints
+CHAT_QUANT_HINT=""
+TOOL_QUANT_HINT=""
+if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
+  CHAT_QUANT_HINT="$(model_detect_quantization_hint "${CHAT_MODEL_NAME}")"
+fi
+if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ -z "${TOOL_QUANTIZATION:-}" ]; then
+  TOOL_QUANT_HINT="$(model_detect_quantization_hint "${TOOL_MODEL_NAME}")"
+fi
+
 # Determine QUANTIZATION
 case "${QUANT_TYPE}" in
   awq)
@@ -230,12 +202,24 @@ case "${QUANT_TYPE}" in
       log_warn "Error: For awq, provide a FLOAT chat model (not GPTQ)."
       usage
     fi
+    if [ "${DEPLOY_MODE_SELECTED}" != "tool" ]; then
+      export CHAT_QUANTIZATION=awq
+    fi
+    if [ "${DEPLOY_MODE_SELECTED}" != "chat" ]; then
+      export TOOL_QUANTIZATION=awq
+    fi
     ;;
   auto)
-    if [[ "${CHAT_MODEL_NAME}" == *GPTQ* ]]; then
-      export QUANTIZATION=gptq_marlin
-    else
-      export QUANTIZATION=fp8
+    export QUANTIZATION=fp8
+    if [ -n "${CHAT_QUANT_HINT}" ]; then
+      export QUANTIZATION="${CHAT_QUANT_HINT}"
+      export CHAT_QUANTIZATION="${CHAT_QUANT_HINT}"
+    fi
+    if [ -n "${TOOL_QUANT_HINT}" ]; then
+      export TOOL_QUANTIZATION="${TOOL_QUANT_HINT}"
+    elif [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ "${QUANTIZATION}" != "fp8" ]; then
+      # Prevent tool engine from inheriting low-bit quantization when only chat is quantized.
+      export TOOL_QUANTIZATION=fp8
     fi
     ;;
 esac
@@ -256,8 +240,8 @@ DESIRED_DEPLOY_MODE="${DEPLOY_MODELS:-both}"
 DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
 DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
 DESIRED_QUANTIZATION="${QUANTIZATION:-}"
-DESIRED_AWQ_CHAT_MODEL="${AWQ_CHAT_MODEL:-}"
-DESIRED_AWQ_TOOL_MODEL="${AWQ_TOOL_MODEL:-}"
+DESIRED_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
+DESIRED_TOOL_QUANT="${TOOL_QUANTIZATION:-}"
 
 # If the server is already running, decide whether to keep caches or reset.
 runtime_guard_stop_server_if_needed \
@@ -267,8 +251,8 @@ runtime_guard_stop_server_if_needed \
   "${DESIRED_CHAT_MODEL}" \
   "${DESIRED_TOOL_MODEL}" \
   "${DESIRED_QUANTIZATION}" \
-  "${DESIRED_AWQ_CHAT_MODEL}" \
-  "${DESIRED_AWQ_TOOL_MODEL}"
+  "${DESIRED_CHAT_QUANT}" \
+  "${DESIRED_TOOL_QUANT}"
 
 # Display configuration
 CONCURRENT_STATUS="concurrent (default)"
@@ -301,8 +285,8 @@ DEPLOYMENT_CMD="
 
 # Export all environment variables for the background process
 export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL CONCURRENT_MODEL_CALL
+export CHAT_QUANTIZATION TOOL_QUANTIZATION
 export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
-export AWQ_CHAT_MODEL AWQ_TOOL_MODEL  # Pre-quantized AWQ model URLs
 
 runtime_pipeline_run_background \
   "${ROOT_DIR}" \
