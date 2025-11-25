@@ -368,16 +368,11 @@ class AWQQuantizer:
         model_type = (getattr(model_config, "model_type", "") or "").lower()
         if model_type.startswith("qwen"):
             return True
-        if model_type == "mistral3":
-            return True
 
         if not model_type:
             normalized = normalize_model_id(model_identifier)
             qwen_markers = ("qwen3", "qwen2", "qwen")
-            mistral3_markers = ("mistral-3", "mistral3", "ms-3", "ms3")
             if any(marker in normalized for marker in qwen_markers):
-                return True
-            if any(marker in normalized for marker in mistral3_markers):
                 return True
 
         return False
