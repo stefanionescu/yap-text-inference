@@ -10,7 +10,6 @@ A vLLM text inference server optimized for low TTFT. It can run:
 
 - [Key Features](#key-features)
 - [Quickstart](#quickstart)
-- [Linting](#linting)
 - [Docker Deployment](#docker-deployment)
 - [Quantization](#quantization)
   - [Option 1: Local Quantization (Quantizes on First Run)](#option-1-local-quantization-quantizes-on-first-run)
@@ -30,7 +29,6 @@ A vLLM text inference server optimized for low TTFT. It can run:
 - [Stopping and Restarting](#stopping-and-restarting)
   - [Stop Script Behavior (Deep Clean)](#stop-script-behavior-deep-clean)
 - [Health Check](#health-check)
-- [Server Status and Capacity](#server-status-and-capacity)
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
@@ -93,19 +91,6 @@ This will:
 - Launch `uvicorn src.server:app --port 8000`
 - Always runs in background with auto-detached process isolation
 - Auto-tails logs (Ctrl+C stops tail only)
-
-## Linting
-
-Create/activate a virtualenv, install runtime + dev deps, then run the integrated lint script:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-bash scripts/lint.sh
-```
-
-`scripts/lint.sh` runs Ruff across `src` and `test`, then ShellCheck over every tracked `*.sh`, exiting non-zero if anything fails.
 
 ## Docker Deployment
 
@@ -424,18 +409,6 @@ NUKE_ALL=0 bash scripts/stop.sh
 ```bash
 curl -s http://127.0.0.1:8000/healthz
 ```
-
-## Server Status and Capacity
-
-```bash
-# With API key (required)
-curl -H "X-API-Key: your_api_key" http://127.0.0.1:8000/status
-
-# Via query parameter
-curl "http://127.0.0.1:8000/status?api_key=your_api_key"
-```
-
-Returns server status and connection capacity information, including current active connections and limits.
 
 ## Advanced Usage and Tips
 
