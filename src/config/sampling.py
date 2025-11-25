@@ -33,6 +33,8 @@ CHAT_STOP = [
     # Kimi / Kimi Linear format
     "<|im_user|>",
     "<|im_system|>",
+    "[EOS]",
+    "[EOT]",
     # General
     "[SYSTEM_PROMPT]",
     "[/SYSTEM_PROMPT]",
