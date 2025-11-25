@@ -204,8 +204,8 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         markers=("gemma-2", "gemma2", "gemma-27b", "gemma-9b"),
         requires_bfloat16=True,
         needs_memory_optimization=True,
-        # vLLM requires tie_word_embeddings=True for Gemma2, but some finetunes set it to False
-        config_overrides={"tie_word_embeddings": True},
+        # NOTE: Some Gemma2 finetunes have tie_word_embeddings=false which breaks vLLM's
+        # assertion but works fine otherwise. We don't override it here - see below.
     ),
     ModelProfile(
         name="gemma",
