@@ -20,7 +20,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting (good for general RP tho)
     "zerofata/MS3.2-PaintedFantasy-Visage-33B",
     
-    "TheDrummer/Big-Tiger-Gemma-27B-v1", # 1
+    "TheDrummer/Big-Tiger-Gemma-27B-v1",
     "TheDrummer/Tiger-Gemma-12B-v3",
     
     # Pre-quantized GPTQ models

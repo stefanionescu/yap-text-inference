@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 import torch
+
+# Suppress tokenizers parallelism warnings when forking during calibration
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from src.config.awq import (
     AWQ_DEFAULT_DATASET,
