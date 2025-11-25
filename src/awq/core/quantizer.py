@@ -114,6 +114,7 @@ class AWQQuantizer:
         target_seqlen: int,
         toolcall_model: bool,
     ) -> bool:
+        self._ensure_autoawq_dependencies()
         try:
             import awq  # type: ignore
             from awq import AutoAWQForCausalLM  # type: ignore
@@ -380,6 +381,23 @@ class AWQQuantizer:
                 return True
 
         return False
+
+    @staticmethod
+    def _ensure_autoawq_dependencies() -> None:
+        """Backfill legacy symbols expected by AutoAWQ on newer transformers builds."""
+
+        try:
+            from transformers import activations  # type: ignore
+            getattr(activations, "PytorchGELUTanh")
+        except Exception:
+            import torch.nn as nn
+            from transformers import activations  # type: ignore
+
+            class PytorchGELUTanh(nn.Module):  # type: ignore
+                def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
+                    return torch.nn.functional.gelu(hidden_states, approximate="tanh")
+
+            activations.PytorchGELUTanh = PytorchGELUTanh  # type: ignore[attr-defined]
 
     def _prefetch_model(self, model_path: str) -> str | None:
         """Resolve remote HF repos to a local snapshot for robustness."""
