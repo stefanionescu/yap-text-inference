@@ -31,13 +31,14 @@ ALLOWED_CHAT_MODELS: list[str] = [
     # Pre-quantized AWQ/W4A16 models
     "leon-se/gemma-3-27b-it-qat-W4A16-G128",
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
+    "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ",
 
     "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16",
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
     "yapwithai/thedrummer-theia-21B-v2-w4a16",
     "yapwithai/doctor-shotgun-ms3.2-24B-magnum-diamond-w4a16",
     "yapwithai/thedrummer-rocinante-12B-v1.1-w4a16",
-    "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # 2
+    "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # stupid, output is a bit messed up, ignores instructions
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
