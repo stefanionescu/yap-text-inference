@@ -222,6 +222,7 @@ Notes for AWQ:
 - Smart detection: Any Hugging Face repo containing "awq" in the name will be automatically accepted when using AWQ quantization
 - The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency (local mode)
 - AWQ requires additional wheels (installed automatically via `requirements.txt`)
+- Qwen2/Qwen3 and Mistral 3 checkpoints automatically fall back to AutoAWQ 0.2.9 when quantized because llmcompressor cannot reliably trace their hybrid forward graphs yet. Metadata/readmes flag the backend so downstream consumers know whether AutoAWQ or llmcompressor produced the export.
 - Auth for private/gated repos: Set `HUGGINGFACE_HUB_TOKEN` or `HF_TOKEN`
 - Cache location: This repo standardizes on `HF_HOME` (override with `export HF_HOME=/path/to/cache`)
 - Networking: For script-based deployments, HF transfer acceleration is disabled by default; opt in with `HF_HUB_ENABLE_HF_TRANSFER=1` when supported

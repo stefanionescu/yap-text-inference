@@ -1,10 +1,9 @@
-"""Core AWQ quantization logic powered by llmcompressor."""
+"""Core AWQ quantization logic (llmcompressor + AutoAWQ fallback)."""
 
 import json
 import os
 import time
 import traceback
-from contextlib import contextmanager
 from typing import Any
 
 import torch
@@ -23,6 +22,7 @@ from src.config.awq import (
     dataset_fallback,
     dataset_key,
     get_model_profile,
+    normalize_model_id,
 )
 
 
@@ -38,31 +38,20 @@ class AWQQuantizer:
         self.config = config
         
     def quantize_model(
-        self, 
-        model_path: str, 
+        self,
+        model_path: str,
         output_dir: str,
         force: bool = False,
     ) -> bool:
-        """Quantize a model using llmcompressor's AWQ pipeline."""
-        
+        """Quantize a model using llmcompressor or AutoAWQ (for Qwen)."""
+
         if not force and is_awq_dir(output_dir):
             print(f"[awq] Using existing quantized model at {output_dir}")
             return True
-            
+
         os.makedirs(output_dir, exist_ok=True)
-        
-        try:
-            import llmcompressor  # type: ignore
-            from llmcompressor import oneshot  # type: ignore
-            from llmcompressor.modifiers.awq import AWQModifier  # type: ignore
-            from llmcompressor.modeling import replace_modules_for_calibration  # type: ignore
-        except Exception as exc:  # noqa: BLE001
-            print(f"[awq] Failed to import llmcompressor: {exc}")
-            return False
-            
         apply_awq_compatibility_patches()
-        compressor_version = getattr(llmcompressor, "__version__", "unknown")
-        
+
         quant_config = {
             "scheme": f"W{self.config.w_bit}A16",
             "zero_point": self.config.zero_point,
@@ -79,21 +68,14 @@ class AWQQuantizer:
 
         model_config = self._load_model_config(resolved_model_path)
         hf_model_type = getattr(model_config, "model_type", "") if model_config is not None else ""
-        is_qwen_model = hf_model_type.startswith("qwen")
-        if is_qwen_model:
-            if quant_config["q_group_size"] != 32:
-                quant_config["q_group_size"] = 32
-            quant_config["ignore"] = self._qwen_ignore_patterns()
-            quant_config["recipe"] = "qwen_awq"
-            print("[awq] Enabling Qwen-specific AWQ recipe (duo_scaling, group_size=32)")
-            self._install_autowrap_debugger()
+        requires_autoawq = self._requires_autoawq_backend(model_config, model_path)
+
         toolcall_model = is_toolcall_model(model_path)
-
-        if toolcall_model:
-            requested_seqlen = compute_toolcall_calibration_seqlen(self.config.seqlen)
-        else:
-            requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
-
+        requested_seqlen = (
+            compute_toolcall_calibration_seqlen(self.config.seqlen)
+            if toolcall_model
+            else compute_chat_calibration_seqlen(self.config.seqlen)
+        )
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model_config)
         calibration_kind = "Toolcall" if toolcall_model else "Chat"
         if target_seqlen != requested_seqlen:
@@ -101,12 +83,157 @@ class AWQQuantizer:
         else:
             print(f"[awq] {calibration_kind} model calibration seqlen = {target_seqlen}")
 
-        recipe = self._build_awq_recipe(
+        if requires_autoawq:
+            return self._quantize_with_autoawq(
+                model_path=model_path,
+                resolved_model_path=resolved_model_path,
+                output_dir=output_dir,
+                quant_config=quant_config,
+                target_seqlen=target_seqlen,
+                toolcall_model=toolcall_model,
+            )
+
+        return self._quantize_with_llmcompressor(
+            model_path=model_path,
+            resolved_model_path=resolved_model_path,
+            output_dir=output_dir,
             quant_config=quant_config,
-            awq_modifier_cls=AWQModifier,
-            is_qwen_model=is_qwen_model,
+            target_seqlen=target_seqlen,
+            toolcall_model=toolcall_model,
+            hf_model_type=hf_model_type,
+            calibration_kind=calibration_kind,
         )
 
+    def _quantize_with_autoawq(
+        self,
+        *,
+        model_path: str,
+        resolved_model_path: str,
+        output_dir: str,
+        quant_config: dict[str, Any],
+        target_seqlen: int,
+        toolcall_model: bool,
+    ) -> bool:
+        try:
+            import awq  # type: ignore
+            from awq import AutoAWQForCausalLM  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to import AutoAWQ: {exc}")
+            return False
+
+        try:
+            from transformers import AutoTokenizer  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to import transformers: {exc}")
+            return False
+
+        autoawq_version = getattr(awq, "__version__", "unknown")
+        print(f"[awq] Quantizing with AutoAWQ {autoawq_version}")
+
+        autoawq_quant_config = {
+            "zero_point": bool(quant_config["zero_point"]),
+            "q_group_size": quant_config["q_group_size"],
+            "w_bit": quant_config["w_bit"],
+            "version": quant_config["version"],
+        }
+        print(f"[awq] AutoAWQ quant_config: {json.dumps(autoawq_quant_config)}")
+
+        device_map = "auto" if torch.cuda.is_available() else None
+        model = None
+        try:
+            model = AutoAWQForCausalLM.from_pretrained(
+                resolved_model_path,
+                trust_remote_code=True,
+                device_map=device_map,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to load model for AutoAWQ: {exc}")
+            return False
+
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(
+                resolved_model_path,
+                trust_remote_code=True,
+                use_fast=False,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to load tokenizer: {exc}")
+            return False
+
+        if tokenizer.pad_token is None and tokenizer.eos_token is not None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        try:
+            model.quantize(tokenizer, quant_config=autoawq_quant_config)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] AutoAWQ quantization failed: {exc}")
+            return False
+
+        try:
+            model.save_quantized(output_dir)
+            tokenizer.save_pretrained(output_dir)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to save AutoAWQ artifacts: {exc}")
+            return False
+        finally:
+            try:
+                del model
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+
+        dataset_info = {
+            "requested": "AutoAWQ builtin",
+            "effective": "AutoAWQ builtin",
+        }
+        advanced_kwargs: dict[str, Any] = {
+            "quantizer": "AutoAWQ",
+            "max_seq_length": target_seqlen,
+        }
+
+        profile = get_model_profile(model_path)
+        if profile:
+            advanced_kwargs["model_profile"] = profile.name
+
+        metadata_quant_config = dict(quant_config)
+        metadata_quant_config["backend"] = "autoawq"
+
+        self._save_metadata(
+            output_dir=output_dir,
+            model_path=model_path,
+            awq_version=f"autoawq=={autoawq_version}",
+            quant_config=metadata_quant_config,
+            target_seqlen=target_seqlen,
+            toolcall_model=toolcall_model,
+            dataset_info=dataset_info,
+            advanced_kwargs=advanced_kwargs,
+        )
+
+        print(f"[awq] Done: {output_dir}")
+        return True
+
+    def _quantize_with_llmcompressor(
+        self,
+        *,
+        model_path: str,
+        resolved_model_path: str,
+        output_dir: str,
+        quant_config: dict[str, Any],
+        target_seqlen: int,
+        toolcall_model: bool,
+        hf_model_type: str,
+        calibration_kind: str,
+    ) -> bool:
+        try:
+            import llmcompressor  # type: ignore
+            from llmcompressor import oneshot  # type: ignore
+            from llmcompressor.modifiers.awq import AWQModifier  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            print(f"[awq] Failed to import llmcompressor: {exc}")
+            return False
+
+        compressor_version = getattr(llmcompressor, "__version__", "unknown")
         requested_dataset = self.config.dataset or AWQ_DEFAULT_DATASET
         dataset = canonicalize_dataset_name(requested_dataset)
         if dataset != dataset_key(requested_dataset):
@@ -116,6 +243,14 @@ class AWQQuantizer:
             "effective": dataset,
         }
 
+        recipe = [
+            AWQModifier(
+                scheme=quant_config["scheme"],
+                targets=quant_config["targets"],
+                ignore=quant_config["ignore"],
+            )
+        ]
+
         print(f"[awq] Quantizing with llmcompressor {compressor_version}")
         print(f"[awq] Quantization config: {json.dumps(quant_config)}")
         print(
@@ -124,7 +259,6 @@ class AWQQuantizer:
             f"max_seq_length={target_seqlen}"
         )
 
-        # Load the model explicitly before quantization
         print(f"[awq] Loading model from {resolved_model_path}")
         try:
             from transformers import AutoModelForCausalLM  # type: ignore
@@ -137,10 +271,6 @@ class AWQQuantizer:
             "trust_remote_code": True,
             "device_map": None,
         }
-        # Qwen models need eager attention for AWQ calibration (SDPA breaks forward hooks)
-        if is_qwen_model:
-            load_kwargs["attn_implementation"] = "eager"
-            print("[awq] Using eager attention for Qwen model")
 
         model = None
         try:
@@ -148,9 +278,6 @@ class AWQQuantizer:
         except Exception as exc:  # noqa: BLE001
             print(f"[awq] Failed to load model: {exc}")
             return False
-
-        if is_qwen_model:
-            model = self._prepare_qwen_model(model, replace_modules_for_calibration)
 
         def _run_oneshot(dataset_name: str, loaded_model: Any) -> None:
             oneshot(
@@ -179,16 +306,12 @@ class AWQQuantizer:
                 try:
                     _run_oneshot(fallback_dataset, model)
                 except Exception as final_exc:  # noqa: BLE001
-                    self._log_llmcompressor_exception(
-                        final_exc,
-                        prefix="after fallback",
-                    )
+                    self._log_llmcompressor_exception(final_exc, prefix="after fallback")
                     return False
             else:
                 self._log_llmcompressor_exception(exc)
                 return False
         finally:
-            # Clean up model memory
             if model is not None:
                 try:
                     del model
@@ -213,11 +336,14 @@ class AWQQuantizer:
         if profile:
             advanced_kwargs["model_profile"] = profile.name
 
+        metadata_quant_config = dict(quant_config)
+        metadata_quant_config["backend"] = "llmcompressor"
+
         self._save_metadata(
             output_dir=output_dir,
             model_path=model_path,
             awq_version=f"llmcompressor=={compressor_version}",
-            quant_config=quant_config,
+            quant_config=metadata_quant_config,
             target_seqlen=target_seqlen,
             toolcall_model=toolcall_model,
             dataset_info=dataset_info,
@@ -235,114 +361,25 @@ class AWQQuantizer:
         print(f"[awq] Quantization failed via llmcompressor{scope}: {exc}")
         traceback.print_exception(type(exc), exc, exc.__traceback__)
 
-    def _build_awq_recipe(
-        self,
-        quant_config: dict[str, Any],
-        awq_modifier_cls: Any,
-        is_qwen_model: bool,
-    ) -> list[Any]:
-        """Construct the AWQ recipe, injecting Qwen overrides when needed."""
+    def _requires_autoawq_backend(self, model_config: Any | None, model_identifier: str) -> bool:
+        """Return True when this model must be quantized with AutoAWQ."""
 
-        if not is_qwen_model:
-            return [
-                awq_modifier_cls(
-                    scheme=quant_config["scheme"],
-                    targets=quant_config["targets"],
-                    ignore=quant_config["ignore"],
-                )
-            ]
+        model_type = (getattr(model_config, "model_type", "") or "").lower()
+        if model_type.startswith("qwen"):
+            return True
+        if model_type == "mistral3":
+            return True
 
-        weights_cfg = {
-            "num_bits": quant_config["w_bit"],
-            "type": "int",
-            "symmetric": True,
-            "group_size": quant_config["q_group_size"],
-            "strategy": "group",
-            "dynamic": False,
-            "actorder": None,
-            "observer": "mse",
-        }
+        if not model_type:
+            normalized = normalize_model_id(model_identifier)
+            qwen_markers = ("qwen3", "qwen2", "qwen")
+            mistral3_markers = ("mistral-3", "mistral3", "ms-3", "ms3")
+            if any(marker in normalized for marker in qwen_markers):
+                return True
+            if any(marker in normalized for marker in mistral3_markers):
+                return True
 
-        return [
-            awq_modifier_cls(
-                ignore=quant_config["ignore"],
-                duo_scaling=True,
-                config_groups={
-                    "group_0": {
-                        "targets": ["Linear"],
-                        "weights": weights_cfg,
-                    }
-                },
-            )
-        ]
-
-    def _prepare_qwen_model(self, model: Any, replace_fn: Any) -> Any:
-        """Apply the official Qwen calibration module swaps when available."""
-
-        if replace_fn is None:
-            print(
-                "[awq] Warning: unable to apply Qwen calibration swaps; "
-                "replace_modules_for_calibration missing"
-            )
-            return model
-
-        try:
-            print("[awq] Applying Qwen calibration module replacements")
-            return replace_fn(model)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[awq] Warning: failed to prepare Qwen model for calibration ({exc})")
-            return model
-
-    @staticmethod
-    def _qwen_ignore_patterns() -> list[str]:
-        """Return the ignore list recommended by the official Qwen AWQ recipe."""
-
-        return [
-            "re:.*embed_tokens",
-            "re:.*input_layernorm$",
-            "re:.*mlp[.]gate$",
-            "re:.*post_attention_layernorm$",
-            "re:.*norm$",
-            "re:model[.]visual.*",
-            "re:visual.*",
-            "lm_head",
-        ]
-
-    def _install_autowrap_debugger(self) -> None:
-        """Patch llmcompressor autowrap hooks to log the offending module on error."""
-
-        try:
-            from llmcompressor.pipelines.sequential import ast_helpers  # type: ignore
-        except Exception:
-            return
-
-        original = getattr(ast_helpers, "autowrap_forward", None)
-        if original is None:
-            return
-        if getattr(original, "_awq_debug_wrapped", False):
-            return
-
-        def debugging_autowrap_forward(module: Any, ignore: Any) -> Any:
-            module_cls = f"{module.__class__.__module__}.{module.__class__.__name__}"
-            module_id = getattr(module, "name", None) or getattr(module, "layer_idx", None)
-            inner_cm = original(module, ignore)
-
-            @contextmanager
-            def _cm():
-                try:
-                    with inner_cm:
-                        yield
-                except KeyError as exc:
-                    print(
-                        "[awq] autowrap_forward failed for "
-                        f"{module_cls} (id={module_id!r}): {exc}"
-                    )
-                    raise
-
-            return _cm()
-
-        debugging_autowrap_forward._awq_debug_wrapped = True  # type: ignore[attr-defined]
-        ast_helpers.autowrap_forward = debugging_autowrap_forward  # type: ignore[assignment]
+        return False
 
     def _prefetch_model(self, model_path: str) -> str | None:
         """Resolve remote HF repos to a local snapshot for robustness."""

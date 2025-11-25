@@ -28,15 +28,15 @@ def _render_fallback(template_vars: dict[str, Any]) -> str:
     return dedent(f"""
     # {template_vars['model_name']} — AWQ {template_vars['w_bit']}-bit
 
-    This model was quantized with LLM Compressor from {template_vars['source_model_link']}.
+    This model was quantized with [{template_vars['quantizer_name']}]({template_vars['quantizer_link']}) from {template_vars['source_model_link']}.
 
-    - Compressor: `{template_vars['awq_version']}`
+    - Quantizer version: `{template_vars['quantizer_version']}`
     - Scheme: {template_vars['quant_scheme']} | Targets: {template_vars['quant_targets']}
     - Precision: group size {template_vars['q_group_size']} | zero-point {template_vars['quant_zero_point']}
     - Dataset: {dataset_line}
     - Samples: {template_vars['calibration_samples']} | Max seq len: {template_vars['calibration_seq_len']}
 
-    ## llmcompressor recipe
+    ## {template_vars['quantizer_recipe_heading']}
     ```json
     {template_vars['quant_summary']}
     ```
@@ -61,12 +61,33 @@ def _format_zero_point(value: Any) -> str:
     return "unspecified"
 
 
-def _derive_llmcompressor_version(awq_version: str) -> str:
+def _derive_quantizer_version(awq_version: str) -> str:
     if not awq_version:
         return "unknown"
     if "==" in awq_version:
         return awq_version.split("==", 1)[1]
     return awq_version
+
+
+def _resolve_quantizer_fields(awq_version: str) -> dict[str, str]:
+    raw = (awq_version or "").strip().lower()
+    backend = raw.split("==", 1)[0] if raw else "llmcompressor"
+    version = _derive_quantizer_version(awq_version or backend)
+
+    if backend.startswith("autoawq"):
+        return {
+            "quantizer_name": "AutoAWQ",
+            "quantizer_link": "https://github.com/AutoAWQ/AutoAWQ",
+            "quantizer_version": version,
+            "quantizer_recipe_heading": "AutoAWQ config",
+        }
+
+    return {
+        "quantizer_name": "LLM Compressor",
+        "quantizer_link": "https://github.com/vllm-project/llm-compressor",
+        "quantizer_version": version,
+        "quantizer_recipe_heading": "llmcompressor recipe",
+    }
 
 
 def generate_readme(
@@ -117,7 +138,7 @@ def generate_readme(
     )
     calibration_samples = calibration_samples if calibration_samples is not None else "unknown"
     awq_version = awq_version or metadata.get("awq_version") or "llmcompressor==unknown"
-    llmcompressor_version = _derive_llmcompressor_version(awq_version)
+    quantizer_fields = _resolve_quantizer_fields(awq_version)
 
     license_info = compute_license_info(model_path, is_tool=is_tool, is_hf_model=is_hf_model)
 
@@ -133,11 +154,11 @@ def generate_readme(
         'quant_zero_point': quant_zero_point,
         'quant_summary': (quant_summary or "").strip() or "{}",
         'awq_version': awq_version,
-        'llmcompressor_version': llmcompressor_version,
         'calibration_dataset_requested': dataset_requested,
         'calibration_dataset_effective': dataset_effective,
         'calibration_samples': calibration_samples,
         'calibration_seq_len': calibration_seq_len,
+        **quantizer_fields,
         **license_info,
     }
 
