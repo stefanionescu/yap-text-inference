@@ -2,6 +2,9 @@
 
 # Helpers for restart.sh reconfigure mode (model/quant switches without reinstalling deps)
 
+RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${RESTART_LIB_DIR}/../common/model_detect.sh"
+
 _restart_resolve_deploy_mode() {
   local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-${DEPLOY_MODELS:-both}}}"
   candidate="${candidate,,}"
@@ -17,21 +20,11 @@ _restart_resolve_deploy_mode() {
 }
 
 _restart_is_gptq_model() {
-  local value="${1:-}"
-  if [ -z "${value}" ]; then
-    return 1
-  fi
-  local lowered="${value,,}"
-  [[ "${lowered}" == *"gptq"* ]]
+  model_detect_is_gptq_name "$1"
 }
 
 _restart_is_awq_model() {
-  local value="${1:-}"
-  if [ -z "${value}" ]; then
-    return 1
-  fi
-  local lowered="${value,,}"
-  [[ "${lowered}" == *"awq"* ]]
+  model_detect_is_awq_name "$1"
 }
 
 _restart_autodetect_quantization() {
@@ -40,54 +33,33 @@ _restart_autodetect_quantization() {
   local tool_model="$3"
   local tool_enabled="$4"
 
-  if [ "${chat_enabled}" = "1" ] && _restart_is_awq_model "${chat_model}"; then
-    echo "awq"
-    return
+  if [ "${chat_enabled}" = "1" ]; then
+    local chat_hint
+    chat_hint="$(model_detect_quantization_hint "${chat_model}")"
+    if [ "${chat_hint}" = "awq" ]; then
+      echo "awq"
+      return
+    fi
+    if [ "${chat_hint}" = "gptq_marlin" ]; then
+      echo "gptq_marlin"
+      return
+    fi
   fi
-  if [ "${tool_enabled}" = "1" ] && _restart_is_awq_model "${tool_model}"; then
-    echo "awq"
-    return
-  fi
-  if [ "${chat_enabled}" = "1" ] && _restart_is_gptq_model "${chat_model}"; then
-    echo "gptq_marlin"
-    return
-  fi
-  if [ "${tool_enabled}" = "1" ] && _restart_is_gptq_model "${tool_model}"; then
-    echo "gptq_marlin"
-    return
-  fi
-  echo "fp8"
-}
 
-_restart_maybe_assign_awq_repo() {
-  local role="$1"
-  local model="$2"
-  case "${role}" in
-    chat)
-      # If explicitly set via --awq-chat-model, use it
-      if [ -n "${RECONFIG_AWQ_CHAT_MODEL:-}" ]; then
-        export AWQ_CHAT_MODEL="${RECONFIG_AWQ_CHAT_MODEL}"
-      # If model name contains "awq", treat as pre-quantized
-      elif _restart_is_awq_model "${model}"; then
-        export AWQ_CHAT_MODEL="${model}"
-      # Otherwise, clear AWQ_CHAT_MODEL to force quantization
-      else
-        unset AWQ_CHAT_MODEL
-      fi
-      ;;
-    tool)
-      # If explicitly set via --awq-tool-model, use it
-      if [ -n "${RECONFIG_AWQ_TOOL_MODEL:-}" ]; then
-        export AWQ_TOOL_MODEL="${RECONFIG_AWQ_TOOL_MODEL}"
-      # If model name contains "awq", treat as pre-quantized
-      elif _restart_is_awq_model "${model}"; then
-        export AWQ_TOOL_MODEL="${model}"
-      # Otherwise, clear AWQ_TOOL_MODEL to force quantization
-      else
-        unset AWQ_TOOL_MODEL
-      fi
-      ;;
-  esac
+  if [ "${tool_enabled}" = "1" ]; then
+    local tool_hint
+    tool_hint="$(model_detect_quantization_hint "${tool_model}")"
+    if [ "${tool_hint}" = "awq" ]; then
+      echo "awq"
+      return
+    fi
+    if [ "${tool_hint}" = "gptq_marlin" ]; then
+      echo "gptq_marlin"
+      return
+    fi
+  fi
+
+  echo "fp8"
 }
 
 _restart_validate_quantization() {
@@ -290,28 +262,34 @@ restart_reconfigure_models() {
     exit 1
   fi
 
-  # Clear AWQ model vars first to ensure clean state
-  unset AWQ_CHAT_MODEL AWQ_TOOL_MODEL
-
   if [ "${deploy_chat}" = "1" ]; then
     export CHAT_MODEL="${chat_model}"
     export CHAT_MODEL_NAME="${chat_model}"
-    _restart_maybe_assign_awq_repo "chat" "${chat_model}"
   else
-    unset CHAT_MODEL CHAT_MODEL_NAME AWQ_CHAT_MODEL
+    unset CHAT_MODEL CHAT_MODEL_NAME
   fi
 
   if [ "${deploy_tool}" = "1" ]; then
     export TOOL_MODEL="${tool_model}"
     export TOOL_MODEL_NAME="${tool_model}"
-    _restart_maybe_assign_awq_repo "tool" "${tool_model}"
   else
-    unset TOOL_MODEL TOOL_MODEL_NAME AWQ_TOOL_MODEL
+    unset TOOL_MODEL TOOL_MODEL_NAME
   fi
 
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
   local tool_quant="${RECONFIG_TOOL_QUANTIZATION:-${TOOL_QUANTIZATION:-}}"
   local quantization="${QUANTIZATION:-}"
+  local chat_quant_from_hint=0
+
+  if [ "${deploy_chat}" = "1" ] && [ -z "${chat_quant}" ]; then
+    chat_quant="$(model_detect_quantization_hint "${chat_model}")"
+    if [ -n "${chat_quant}" ]; then
+      chat_quant_from_hint=1
+    fi
+  fi
+  if [ "${deploy_tool}" = "1" ] && [ -z "${tool_quant}" ]; then
+    tool_quant="$(model_detect_quantization_hint "${tool_model}")"
+  fi
 
   if [ -n "${chat_quant}" ]; then
     if ! _restart_validate_quantization "${chat_quant}"; then
@@ -329,6 +307,9 @@ restart_reconfigure_models() {
   fi
   if ! _restart_validate_quantization "${quantization}"; then
     exit 1
+  fi
+  if [ -z "${tool_quant}" ] && [ "${deploy_tool}" = "1" ] && [ "${chat_quant_from_hint}" = "1" ]; then
+    tool_quant="fp8"
   fi
   export QUANTIZATION="${quantization}"
 

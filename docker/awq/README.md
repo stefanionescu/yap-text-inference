@@ -53,13 +53,13 @@ DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool ./build.sh  # tag :tool
 # Run (deploy both models)
 TEXT_API_KEY=your_secret_key \
 DEPLOY_MODELS=both \
-AWQ_CHAT_MODEL=your-org/chat-awq \
-AWQ_TOOL_MODEL=your-org/tool-awq \
+CHAT_MODEL=your-org/chat-awq \
+TOOL_MODEL=your-org/tool-awq \
 CHAT_GPU_FRAC=0.70 \
 TOOL_GPU_FRAC=0.20 \
   docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY -e DEPLOY_MODELS \
-  -e AWQ_CHAT_MODEL -e AWQ_TOOL_MODEL \
+  -e CHAT_MODEL -e TOOL_MODEL \
   -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:both
@@ -67,14 +67,14 @@ TOOL_GPU_FRAC=0.20 \
 # Run (chat only)
 docker run -d --gpus all --name yap-chat \
   -e DEPLOY_MODELS=chat \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
+  -e CHAT_MODEL=your-org/chat-awq \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:chat
 
 # Run (tool only)
 docker run -d --gpus all --name yap-tool \
   -e DEPLOY_MODELS=tool \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -e TOOL_MODEL=your-org/tool-awq \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:tool
 ```
@@ -84,9 +84,9 @@ docker run -d --gpus all --name yap-tool \
 ### Required
 - `TEXT_API_KEY` – API key handed to the server
 - `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
-- If `DEPLOY_MODELS=chat`: `AWQ_CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
-- If `DEPLOY_MODELS=tool`: `AWQ_TOOL_MODEL` (default: `yapwithai/hammer-2.1-3b-awq`)
-- If `DEPLOY_MODELS=both`: `AWQ_CHAT_MODEL` and `AWQ_TOOL_MODEL`
+- If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
+- If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/hammer-2.1-3b-awq`)
+- If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
 
 ### Optional
 - `CHAT_GPU_FRAC` (default: `0.70`)
@@ -121,8 +121,8 @@ TAG=v1.0.0 ./build.sh
 ```bash
 docker run -d --gpus all --name yap-server \
   -e DEPLOY_MODELS=both \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -e CHAT_MODEL=your-org/chat-awq \
+  -e TOOL_MODEL=your-org/tool-awq \
   -e TEXT_API_KEY=your_secret_key \
   -e CHAT_GPU_FRAC=0.70 \
   -e TOOL_GPU_FRAC=0.20 \
@@ -163,8 +163,8 @@ docker run -d --gpus all --name yap-server \
   --memory=16g \
   --shm-size=2g \
   --ulimit memlock=-1:-1 \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -e CHAT_MODEL=your-org/chat-awq \
+  -e TOOL_MODEL=your-org/tool-awq \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:latest
 ```
@@ -174,8 +174,8 @@ docker run -d --gpus all --name yap-server \
 docker run -d --gpus all --name yap-server \
   -v yap-hf-cache:/app/.hf \
   -v yap-vllm-cache:/app/.vllm_cache \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -e CHAT_MODEL=your-org/chat-awq \
+  -e TOOL_MODEL=your-org/tool-awq \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:latest
 ```
@@ -205,8 +205,8 @@ docker run -d --gpus all --name yap-server \
 ### Debug Mode
 ```bash
 docker run -it --gpus all --rm \
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \
-  -e AWQ_TOOL_MODEL=your-org/tool-awq \
+  -e CHAT_MODEL=your-org/chat-awq \
+  -e TOOL_MODEL=your-org/tool-awq \
   yourusername/yap-text-inference-awq:latest \
   /bin/bash
 ```

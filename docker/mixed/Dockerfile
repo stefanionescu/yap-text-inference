@@ -67,8 +67,6 @@ RUN set -eux; \
 
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
-ARG AWQ_CHAT_MODEL=""
-ARG AWQ_TOOL_MODEL=""
 ARG HF_TOKEN=""
 ARG DEPLOY_MODELS=both
 
@@ -84,16 +82,17 @@ RUN mkdir -p /app/models /app/.hf
 RUN DEPLOY_MODELS=${DEPLOY_MODELS} \
     CHAT_MODEL="${CHAT_MODEL}" \
     TOOL_MODEL="${TOOL_MODEL}" \
-    AWQ_CHAT_MODEL="${AWQ_CHAT_MODEL}" \
-    AWQ_TOOL_MODEL="${AWQ_TOOL_MODEL}" \
     HF_TOKEN="${HF_TOKEN}" \
     python - <<'PY'
 import os
 from pathlib import Path
+import sys
 
 Path('/app/models').mkdir(parents=True, exist_ok=True)
 Path('/app/.hf').mkdir(parents=True, exist_ok=True)
 
+sys.path.insert(0, "/app")
+from src.config.quantization import classify_prequantized_model
 from huggingface_hub import snapshot_download
 from huggingface_hub.errors import HfHubHTTPError
 
@@ -116,28 +115,30 @@ def dl(repo_id: str, local_dir: str):
 deploy = (os.environ.get('DEPLOY_MODELS') or 'both').lower()
 chat = os.environ.get('CHAT_MODEL', '').strip()
 tool = os.environ.get('TOOL_MODEL', '').strip()
-awq_chat = os.environ.get('AWQ_CHAT_MODEL', '').strip()
-awq_tool = os.environ.get('AWQ_TOOL_MODEL', '').strip()
 
-# Enforce exactly one source per selected engine and require presence
-def require_exactly_one(name_a: str, name_b: str, engine: str):
-    if name_a and name_b:
-        raise SystemExit(f"Provide exactly one source for {engine}: not both AWQ and float/GPTQ")
-    if not (name_a or name_b):
-        raise SystemExit(f"Missing model for {engine}. Provide AWQ_{engine.upper()}_MODEL or {engine.upper()}_MODEL at build time.")
+def classify(repo_id: str) -> str:
+    if not repo_id:
+        return ""
+    return classify_prequantized_model(repo_id) or ""
+
+def ensure_present(value: str, engine: str) -> None:
+    if not value:
+        raise SystemExit(f"Missing model for {engine}. Provide {engine.upper()}_MODEL at build time.")
 
 if deploy in ('both', 'chat'):
-    require_exactly_one(awq_chat, chat, 'chat')
-    if awq_chat:
-        dl(awq_chat, '/app/models/chat_awq')
-    else:
-        dl(chat, '/app/models/chat')
+    ensure_present(chat, 'chat')
+    chat_kind = classify(chat)
+    target = '/app/models/chat_awq' if chat_kind == 'awq' else '/app/models/chat'
+    dl(chat, target)
+    if chat_kind == 'awq':
+        Path(target, '.awq_ok').write_text('preloaded\n', encoding='utf-8')
 if deploy in ('both', 'tool'):
-    require_exactly_one(awq_tool, tool, 'tool')
-    if awq_tool:
-        dl(awq_tool, '/app/models/tool_awq')
-    else:
-        dl(tool, '/app/models/tool')
+    ensure_present(tool, 'tool')
+    tool_kind = classify(tool)
+    target = '/app/models/tool_awq' if tool_kind == 'awq' else '/app/models/tool'
+    dl(tool, target)
+    if tool_kind == 'awq':
+        Path(target, '.awq_ok').write_text('preloaded\n', encoding='utf-8')
 PY
 
 

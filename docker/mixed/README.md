@@ -27,18 +27,18 @@ Quick build and push:
 
 ```bash
 DOCKER_USERNAME=yourusername DEPLOY_MODELS=both CHAT_MODEL=org/chat TOOL_MODEL=org/tool docker/mixed/build.sh                  # :both-fp8
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=both AWQ_CHAT_MODEL=org/chat-awq AWQ_TOOL_MODEL=org/tool-awq docker/mixed/build.sh  # :both-awq
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=both CHAT_MODEL=org/chat AWQ_TOOL_MODEL=org/tool-awq docker/mixed/build.sh          # :both-chat-fp8-tool-awq
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=both AWQ_CHAT_MODEL=org/chat-awq TOOL_MODEL=org/tool docker/mixed/build.sh          # :both-chat-awq-tool-fp8
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=both CHAT_MODEL=org/chat-awq TOOL_MODEL=org/tool-awq docker/mixed/build.sh          # :both-awq
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=both CHAT_MODEL=org/chat TOOL_MODEL=org/tool-awq docker/mixed/build.sh              # :both-chat-fp8-tool-awq
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=both CHAT_MODEL=org/chat-awq TOOL_MODEL=org/tool docker/mixed/build.sh              # :both-chat-awq-tool-fp8
 DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat CHAT_MODEL=org/chat docker/mixed/build.sh                                      # :chat-fp8
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat AWQ_CHAT_MODEL=org/chat-awq docker/mixed/build.sh                              # :chat-awq
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat CHAT_MODEL=org/chat-awq docker/mixed/build.sh                                  # :chat-awq
 DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool TOOL_MODEL=org/tool docker/mixed/build.sh                                      # :tool-fp8
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool AWQ_TOOL_MODEL=org/tool-awq docker/mixed/build.sh                              # :tool-awq
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool TOOL_MODEL=org/tool-awq docker/mixed/build.sh                                  # :tool-awq
 ```
 
 > **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it can coexist with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... docker/mixed/build.sh` if you need a different release, but keep the manual install pattern. AutoAWQ (`autoawq==0.2.9`) is also part of the base requirements so Qwen-family models can bypass llmcompressor automatically.
 
-Important: specify exactly one source per engine (chat/tool). Do not set both `CHAT_MODEL` and `AWQ_CHAT_MODEL` for chat, nor both `TOOL_MODEL` and `AWQ_TOOL_MODEL` for tool.
+Important: specify exactly one source per engine (chat/tool). Provide either a float/GPTQ repo or a pre-quantized AWQ/W4A16 repo for each engine; detection is automatic.
 
 ### Tagging and Variants
 
@@ -57,15 +57,15 @@ TOOL_MODEL=MadeAgents/Hammer2.1-3b \
 TAG=awq-both \
 DOCKER_USERNAME=yourusername \
 DEPLOY_MODELS=both \
-AWQ_CHAT_MODEL=your-org/chat-awq \
-AWQ_TOOL_MODEL=your-org/tool-awq \
+CHAT_MODEL=your-org/chat-awq \
+TOOL_MODEL=your-org/tool-awq \
   docker/mixed/build.sh
 
 # Mixed: chat=AWQ, tool=float
 TAG=awqchat-toolfloat \
 DOCKER_USERNAME=yourusername \
 DEPLOY_MODELS=both \
-AWQ_CHAT_MODEL=your-org/chat-awq \
+CHAT_MODEL=your-org/chat-awq \
 TOOL_MODEL=MadeAgents/Hammer2.1-3b \
   docker/mixed/build.sh
 

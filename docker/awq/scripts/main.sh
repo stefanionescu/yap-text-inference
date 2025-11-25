@@ -14,9 +14,9 @@ usage() {
   echo ""
   echo "Required Environment Variables (based on DEPLOY_MODELS):"
   echo "  DEPLOY_MODELS=both|chat|tool  (default: both)"
-  echo "  If DEPLOY_MODELS=chat  -> AWQ_CHAT_MODEL required"
-  echo "  If DEPLOY_MODELS=tool  -> AWQ_TOOL_MODEL required"
-  echo "  If DEPLOY_MODELS=both  -> AWQ_CHAT_MODEL and AWQ_TOOL_MODEL required"
+  echo "  If DEPLOY_MODELS=chat  -> CHAT_MODEL required (pre-quantized AWQ/W4A16 repo)"
+  echo "  If DEPLOY_MODELS=tool  -> TOOL_MODEL required (pre-quantized AWQ/W4A16 repo)"
+  echo "  If DEPLOY_MODELS=both  -> CHAT_MODEL and TOOL_MODEL required"
   echo ""
   echo "Optional Environment Variables:"
   echo "  TEXT_API_KEY                     - API key for authentication (required, no default)"
@@ -27,18 +27,18 @@ usage() {
   echo "  # Both models"
   echo "  docker run --gpus all -d \\
   -e DEPLOY_MODELS=both \\
-  -e AWQ_CHAT_MODEL=your-org/chat-awq \\
-  -e AWQ_TOOL_MODEL=your-org/tool-awq IMAGE"
+  -e CHAT_MODEL=your-org/chat-awq \\
+  -e TOOL_MODEL=your-org/tool-awq IMAGE"
   echo ""
   echo "  # Chat only"
   echo "  docker run --gpus all -d \\
   -e DEPLOY_MODELS=chat \\
-  -e AWQ_CHAT_MODEL=your-org/chat-awq IMAGE"
+  -e CHAT_MODEL=your-org/chat-awq IMAGE"
   echo ""
   echo "  # Tool only"
   echo "  docker run --gpus all -d \\
   -e DEPLOY_MODELS=tool \\
-  -e AWQ_TOOL_MODEL=your-org/tool-awq IMAGE"
+  -e TOOL_MODEL=your-org/tool-awq IMAGE"
   echo ""
   echo "Health check: curl http://localhost:8000/healthz"
   exit 0

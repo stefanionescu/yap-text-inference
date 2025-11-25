@@ -50,17 +50,17 @@ runtime_guard_configs_match() {
   local desired_chat="$2"
   local desired_tool="$3"
   local desired_quant="$4"
-  local desired_awq_chat="$5"
-  local desired_awq_tool="$6"
+  local desired_chat_quant="$5"
+  local desired_tool_quant="$6"
   local root_dir="${7:-${ROOT_DIR:-}}"
 
-  local last_deploy last_chat last_tool last_quant last_awq_chat last_awq_tool
+  local last_deploy last_chat last_tool last_quant last_chat_quant last_tool_quant
   last_deploy="$(runtime_guard_read_last_config_value "DEPLOY_MODELS" "${root_dir}")"
   last_chat="$(runtime_guard_read_last_config_value "CHAT_MODEL" "${root_dir}")"
   last_tool="$(runtime_guard_read_last_config_value "TOOL_MODEL" "${root_dir}")"
   last_quant="$(runtime_guard_read_last_config_value "QUANTIZATION" "${root_dir}")"
-  last_awq_chat="$(runtime_guard_read_last_config_value "AWQ_CHAT_MODEL" "${root_dir}")"
-  last_awq_tool="$(runtime_guard_read_last_config_value "AWQ_TOOL_MODEL" "${root_dir}")"
+  last_chat_quant="$(runtime_guard_read_last_config_value "CHAT_QUANTIZATION" "${root_dir}")"
+  last_tool_quant="$(runtime_guard_read_last_config_value "TOOL_QUANTIZATION" "${root_dir}")"
 
   if [ -z "${last_deploy:-}" ]; then
     return 1
@@ -70,8 +70,8 @@ runtime_guard_configs_match() {
      [ "${desired_chat:-}" = "${last_chat:-}" ] &&
      [ "${desired_tool:-}" = "${last_tool:-}" ] &&
      [ "${desired_quant:-}" = "${last_quant:-}" ] &&
-     [ "${desired_awq_chat:-}" = "${last_awq_chat:-}" ] &&
-     [ "${desired_awq_tool:-}" = "${last_awq_tool:-}" ]; then
+     [ "${desired_chat_quant:-}" = "${last_chat_quant:-}" ] &&
+     [ "${desired_tool_quant:-}" = "${last_tool_quant:-}" ]; then
     return 0
   fi
   return 1
@@ -84,8 +84,8 @@ runtime_guard_stop_server_if_needed() {
   local desired_chat="$1"; shift
   local desired_tool="$1"; shift
   local desired_quant="$1"; shift
-  local desired_awq_chat="$1"; shift
-  local desired_awq_tool="$1"
+  local desired_chat_quant="$1"; shift
+  local desired_tool_quant="$1"
 
   local running_pid
   if ! running_pid="$(runtime_guard_get_running_server_pid "${root_dir}")"; then
@@ -98,8 +98,8 @@ runtime_guard_stop_server_if_needed() {
        "${desired_chat}" \
        "${desired_tool}" \
        "${desired_quant}" \
-       "${desired_awq_chat}" \
-       "${desired_awq_tool}" \
+       "${desired_chat_quant}" \
+       "${desired_tool_quant}" \
        "${root_dir}"
   then
     log_info "Existing server matches requested config; stopping without clearing caches."
@@ -121,8 +121,8 @@ runtime_guard_write_snapshot() {
     echo "DEPLOY_MODELS=${DEPLOY_MODELS:-}"
     echo "CHAT_MODEL=${CHAT_MODEL:-}"
     echo "TOOL_MODEL=${TOOL_MODEL:-}"
-    echo "AWQ_CHAT_MODEL=${AWQ_CHAT_MODEL:-}"
-    echo "AWQ_TOOL_MODEL=${AWQ_TOOL_MODEL:-}"
+    echo "CHAT_QUANTIZATION=${CHAT_QUANTIZATION:-}"
+    echo "TOOL_QUANTIZATION=${TOOL_QUANTIZATION:-}"
     echo "CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-}"
     echo "KV_DTYPE=${KV_DTYPE:-}"
   } > "${env_file}" 2>/dev/null || true
