@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .limits import CHAT_MAX_LEN, CHAT_MAX_OUT, TOOL_MAX_LEN, TOOL_MAX_OUT
+from .models import ALLOWED_TOOL_MODELS
 
 
 def _read_int_env(name: str) -> int | None:
@@ -122,11 +123,34 @@ AWQ_MODEL_MARKERS: tuple[str, ...] = (
 
 # ----------------------- Toolcall markers ------------------------- #
 
-_DEFAULT_TOOLCALL_MARKERS: tuple[str, ...] = (
-    "madeagents/hammer",
-    "hammer2.1",
-    "hammer_model",
-)
+
+def normalize_model_id(model_id: str | None) -> str:
+    """Canonicalize model identifiers for substring comparisons."""
+    return (model_id or "").strip().lower()
+
+
+def _derive_toolcall_markers() -> tuple[str, ...]:
+    """Build default tool markers directly from the allowed tool models."""
+    candidates: list[str] = []
+    for model in ALLOWED_TOOL_MODELS:
+        normalized = normalize_model_id(model)
+        if not normalized:
+            continue
+        candidates.append(normalized)
+        # Also include the last path segment for robustness with local dirs.
+        tail = normalized.rsplit("/", 1)[-1]
+        if tail and tail != normalized:
+            candidates.append(tail)
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for marker in candidates:
+        if marker and marker not in seen:
+            deduped.append(marker)
+            seen.add(marker)
+    return tuple(deduped)
+
+
+_DEFAULT_TOOLCALL_MARKERS: tuple[str, ...] = _derive_toolcall_markers()
 
 
 def _load_toolcall_markers() -> tuple[str, ...]:
@@ -135,18 +159,13 @@ def _load_toolcall_markers() -> tuple[str, ...]:
         return _DEFAULT_TOOLCALL_MARKERS
     values: list[str] = []
     for chunk in env_value.split(","):
-        normalized = chunk.strip().lower()
+        normalized = normalize_model_id(chunk)
         if normalized:
             values.append(normalized)
     return tuple(values) if values else _DEFAULT_TOOLCALL_MARKERS
 
 
 TOOLCALL_MODEL_MARKERS: tuple[str, ...] = _load_toolcall_markers()
-
-
-def normalize_model_id(model_id: str | None) -> str:
-    """Canonicalize model identifiers for substring comparisons."""
-    return (model_id or "").strip().lower()
 
 
 def is_toolcall_model(model_id: str) -> bool:
