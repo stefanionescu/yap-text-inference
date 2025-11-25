@@ -18,8 +18,9 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much (good for general RP tho)
     "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting (good for general RP tho)
-    "zerofata/MS3.2-PaintedFantasy-Visage-33B",
-    
+    "zerofata/MS3.2-PaintedFantasy-Visage-33B", # clearly better than cydonia but still has quirks that have to be prompted out
+    "anthracite-org/magnum-v4-72b", # amazing on OpenRouter but too big
+    "anthracite-org/magnum-v1-72b", # amazing on OpenRouter but too big
     "TheDrummer/Big-Tiger-Gemma-27B-v1", # H100
     "TheDrummer/Tiger-Gemma-12B-v3",
     
@@ -33,7 +34,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ",
 
-    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # 2
+    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # 
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
     "yapwithai/thedrummer-theia-21B-v2-w4a16",
     "yapwithai/doctor-shotgun-ms3.2-24B-magnum-diamond-w4a16",
