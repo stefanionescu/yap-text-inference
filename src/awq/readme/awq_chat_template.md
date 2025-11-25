@@ -14,10 +14,10 @@ pipeline_tag: text-generation
 
 # {model_name} — AWQ {w_bit}-bit
 
-This model was quantized with [LLM Compressor](https://github.com/vllm-project/llm-compressor) from {source_model_link}.
+This model was quantized with [{quantizer_name}]({quantizer_link}) from {source_model_link}.
 
 ## Quantization Overview
-- Compressor version: {llmcompressor_version}
+- Quantizer version: {quantizer_version}
 - Scheme: {quant_scheme}
 - Weights: {w_bit}-bit (group size {q_group_size}, zero-point {quant_zero_point})
 - Targets: {quant_targets}
@@ -29,7 +29,7 @@ This model was quantized with [LLM Compressor](https://github.com/vllm-project/l
 - Samples: {calibration_samples}
 - Max sequence length: {calibration_seq_len}
 
-### llmcompressor recipe
+### {quantizer_recipe_heading}
 ```json
 {quant_summary}
 ```

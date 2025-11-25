@@ -29,7 +29,7 @@ from src.awq.utils.template_utils import generate_readme
 def _regenerate_readme(folder: Path, metadata: dict[str, Any]) -> None:
     """Regenerate README.md to ensure valid HF metadata."""
     source_model = (metadata.get("source_model") or "").strip() or "unknown"
-    awq_version = metadata.get("awq_version") or "llmcompressor==unknown"
+    awq_version = metadata.get("awq_version") or "unknown"
     quant_config = metadata.get("quantization_config") or {}
     quant_summary = json.dumps(quant_config, indent=2)
     

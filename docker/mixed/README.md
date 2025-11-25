@@ -7,7 +7,7 @@ Embed-first image that downloads models at build time and runs them as-is. Suppo
 - Chat-only / Tool-only / Both
 - Mixed quant (e.g., chat=AWQ, tool=float)
 
-> ℹ️ AWQ artifacts are the same W4A16 compressed-tensor exports produced by `llmcompressor`. Whether the model lives inside the image or is mounted from Hugging Face, vLLM now auto-detects the `quantization_config.json` metadata and switches to `quantization=compressed-tensors` automatically (so long as `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` is provided for private repos).
+> ℹ️ AWQ artifacts are the same W4A16 compressed-tensor exports produced by `llmcompressor` (or AutoAWQ 0.2.9 for Qwen2/Qwen3 and Mistral 3). Whether the model lives inside the image or is mounted from Hugging Face, vLLM now auto-detects the `quantization_config.json` metadata and switches to `quantization=compressed-tensors` automatically (so long as `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` is provided for private repos).
 
 ## Contents
 
@@ -36,7 +36,7 @@ DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool TOOL_MODEL=org/tool docker/mixed
 DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool AWQ_TOOL_MODEL=org/tool-awq docker/mixed/build.sh                              # :tool-awq
 ```
 
-> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it can coexist with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... docker/mixed/build.sh` if you need a different release, but keep the manual install pattern.
+> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it can coexist with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... docker/mixed/build.sh` if you need a different release, but keep the manual install pattern. AutoAWQ (`autoawq==0.2.9`) is also part of the base requirements so Qwen-family models can bypass llmcompressor automatically.
 
 Important: specify exactly one source per engine (chat/tool). Do not set both `CHAT_MODEL` and `AWQ_CHAT_MODEL` for chat, nor both `TOOL_MODEL` and `AWQ_TOOL_MODEL` for tool.
 
@@ -149,7 +149,7 @@ docker run -d --gpus all --name yap-tool \
   -p 8000:8000 yourusername/yap-text-inference-mixed:tool-awq
 ```
 
-Quantization is automatically derived from embedded models (AWQ dirs -> `awq` → detected as compressed tensors; otherwise `fp8`). The server logs show the detected backend and llmcompressor metadata so you can confirm the baked combination.
+Quantization is automatically derived from embedded models (AWQ dirs -> `awq` → detected as compressed tensors; otherwise `fp8`). The server logs show the detected backend and quantizer metadata (llmcompressor vs AutoAWQ) so you can confirm the baked combination.
 
 ### Concurrency
 

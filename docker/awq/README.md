@@ -1,7 +1,7 @@
 # Yap Text Inference Docker Setup (AWQ)
 
 This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**.  
-All artifacts are produced with [`llmcompressor`](https://github.com/vllm-project/llm-compressor) and ship as **W4A16 compressed-tensor exports**, so vLLM automatically selects the Marlin kernels (you will see `quantization=compressed-tensors` in the server logs even though `QUANTIZATION=awq` is configured).
+All artifacts are produced with [`llmcompressor`](https://github.com/vllm-project/llm-compressor) (or [AutoAWQ 0.2.9](https://github.com/AutoAWQ/AutoAWQ) for Qwen2/Qwen3 and Mistral 3 families) and ship as **W4A16 compressed-tensor exports**, so vLLM automatically selects the Marlin kernels (you will see `quantization=compressed-tensors` in the server logs even though `QUANTIZATION=awq` is configured).
 
 **Default Models:**
 - **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - AWQ quantized Impish Nemo 12B
@@ -114,7 +114,7 @@ DOCKER_USERNAME=yourusername ./build.sh
 TAG=v1.0.0 ./build.sh
 ```
 
-> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it remains compatible with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... ./build.sh` if you need a different release, but keep the manual install pattern.
+> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it remains compatible with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... ./build.sh` if you need a different release, but keep the manual install pattern. Qwen-family and Mistral 3 exports automatically use AutoAWQ (pinned to `autoawq==0.2.9` in `requirements.txt`) because llmcompressor cannot trace their hybrid forward graphs yet.
 
 ### Running the Container
 

@@ -135,7 +135,7 @@ See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, ima
 
 ## Quantization
 
-4-bit mode AWQ/W4A16 via llmcompressor + vLLM.
+4-bit mode AWQ/W4A16 via llmcompressor + vLLM (with AutoAWQ fallback for Qwen & Mistral 3).
 
 ### Option 1: Local Quantization (Quantizes on First Run)
 
@@ -148,6 +148,7 @@ CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nem
 ```
 
 Local quantization runs [`llmcompressor`](https://github.com/vllm-project/llm-compressor) `oneshot()` with the AWQ modifier (pinned at version 0.8.1). Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`, with automatic fallback from `pileval` on older llmcompressor builds).  
+> **AutoAWQ fallback:** Qwen2/Qwen3 and Mistral 3 checkpoints automatically switch to [AutoAWQ 0.2.9](https://github.com/AutoAWQ/AutoAWQ) because llmcompressor cannot yet trace their hybrid forward graphs. Other architectures continue to use llmcompressor.  
 > To coexist with `vllm==0.11.2`/`torch==2.9.0`, the setup scripts install `llmcompressor` with `--no-deps`. If you manage the environment manually, mirror this behavior (`pip install llmcompressor==0.8.1 --no-deps`) after installing the base requirements.
 
 ### Option 2: Pre-Quantized Models
@@ -189,7 +190,7 @@ bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgen
 bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
 ```
 
-> **Note on llmcompressor / W4A16 exports:** Whether the model lives locally or on Hugging Face, Yap inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `AWQ_CHAT_MODEL` / `AWQ_TOOL_MODEL` / regular `CHAT_MODEL` at the repo IDs—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime.
+> **Note on llmcompressor / W4A16 exports:** Whether the model lives locally or on Hugging Face, the code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `AWQ_CHAT_MODEL` / `AWQ_TOOL_MODEL` / regular `CHAT_MODEL` at the repo IDs—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime. Qwen-family and Mistral-3 exports are tagged as AutoAWQ in metadata so downstream consumers know which quantizer produced the checkpoint.
 
 ## Local Test Dependencies
 
