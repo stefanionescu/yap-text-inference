@@ -97,7 +97,6 @@ def quantize_with_autoawq(
             pass
 
     dataset_info = {
-        "requested": "AutoAWQ builtin",
         "effective": "AutoAWQ builtin",
     }
     advanced_kwargs: dict[str, Any] = {

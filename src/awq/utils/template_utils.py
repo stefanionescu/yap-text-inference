@@ -21,10 +21,7 @@ def _parse_quant_summary(quant_summary: str) -> dict[str, Any]:
 
 
 def _render_fallback(template_vars: dict[str, Any]) -> str:
-    dataset_line = (
-        f"{template_vars['calibration_dataset_effective']} "
-        f"(requested: {template_vars['calibration_dataset_requested']})"
-    )
+    samples_line = template_vars.get('calibration_samples_line', '')
     return dedent(f"""
     # {template_vars['model_name']} — AWQ {template_vars['w_bit']}-bit
 
@@ -33,8 +30,8 @@ def _render_fallback(template_vars: dict[str, Any]) -> str:
     - Quantizer version: `{template_vars['quantizer_version']}`
     - Scheme: {template_vars['quant_scheme']} | Targets: {template_vars['quant_targets']}
     - Precision: group size {template_vars['q_group_size']} | zero-point {template_vars['quant_zero_point']}
-    - Dataset: {dataset_line}
-    - Samples: {template_vars['calibration_samples']} | Max seq len: {template_vars['calibration_seq_len']}
+    - Dataset: {template_vars['calibration_dataset_effective']}
+    {samples_line}- Max seq len: {template_vars['calibration_seq_len']}
 
     ## {template_vars['quantizer_recipe_heading']}
     ```json
@@ -77,7 +74,7 @@ def _resolve_quantizer_fields(awq_version: str) -> dict[str, str]:
     if backend.startswith("autoawq"):
         return {
             "quantizer_name": "AutoAWQ",
-            "quantizer_link": "https://github.com/AutoAWQ/AutoAWQ",
+            "quantizer_link": "https://github.com/casper-hansen/AutoAWQ",
             "quantizer_version": version,
             "quantizer_recipe_heading": "AutoAWQ config",
         }
@@ -136,7 +133,11 @@ def generate_readme(
         or quant_config.get("max_seq_length")
         or "unknown"
     )
-    calibration_samples = calibration_samples if calibration_samples is not None else "unknown"
+    # For samples, if unknown or not set, we'll omit the line entirely
+    calibration_samples_line = ""
+    if calibration_samples is not None and str(calibration_samples) not in ("unknown", ""):
+        calibration_samples_line = f"- Samples: {calibration_samples}\n"
+
     awq_version = awq_version or metadata.get("awq_version") or "llmcompressor==unknown"
     quantizer_fields = _resolve_quantizer_fields(awq_version)
 
@@ -154,9 +155,9 @@ def generate_readme(
         'quant_zero_point': quant_zero_point,
         'quant_summary': (quant_summary or "").strip() or "{}",
         'awq_version': awq_version,
-        'calibration_dataset_requested': dataset_requested,
         'calibration_dataset_effective': dataset_effective,
         'calibration_samples': calibration_samples,
+        'calibration_samples_line': calibration_samples_line,
         'calibration_seq_len': calibration_seq_len,
         **quantizer_fields,
         **license_info,
