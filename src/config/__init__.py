@@ -29,7 +29,6 @@ from .models import (
     classify_prequantized_model,
     is_valid_model as _is_valid_model,
 )
-from .chat_prompt import ensure_prompt_format_available
 from .quantization import is_awq_model_name
 from .limits import (
     CHAT_MAX_LEN,
@@ -124,10 +123,6 @@ if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
         "For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
         f"Got: {CHAT_MODEL}. Use a pre-quantized AWQ model or a float model instead."
     )
-
-if DEPLOY_CHAT:
-    ensure_prompt_format_available(CHAT_MODEL)
-
 
 __all__ = [
     # env/core

@@ -142,6 +142,40 @@ class FastTokenizer:
         with self._lock:
             return self._hf_tok
 
+    def apply_chat_template(
+        self,
+        messages: list[dict[str, str]],
+        add_generation_prompt: bool = True,
+    ) -> str:
+        """Apply the tokenizer's built-in chat template to format messages.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys.
+                      Roles are typically 'system', 'user', 'assistant'.
+            add_generation_prompt: If True, appends the assistant turn start token.
+
+        Returns:
+            Formatted prompt string ready for generation.
+
+        Raises:
+            RuntimeError: If no transformers tokenizer is available or no chat template.
+        """
+        with self._lock:
+            if self._hf_tok is None:
+                raise RuntimeError(
+                    "apply_chat_template requires a transformers tokenizer, "
+                    "but only tokenizer.json was loaded"
+                )
+            if not hasattr(self._hf_tok, "apply_chat_template"):
+                raise RuntimeError(
+                    "Tokenizer does not have apply_chat_template method"
+                )
+            return self._hf_tok.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=add_generation_prompt,
+            )
+
     def _inspect_source(self, path_or_repo: str) -> TokenizerSource:
         try:
             is_local = os.path.exists(path_or_repo)
