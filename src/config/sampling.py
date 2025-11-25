@@ -30,15 +30,10 @@ CHAT_STOP = [
     # Gemma 3 format
     "<|eot_id|>",
     "<|start_header_id|>",
+    # Kimi / Kimi Linear format
+    "<|im_user|>",
+    "<|im_system|>",
     # General
-    " ‍♀️",
-    " ‍♂️",
-    "</s>",
-    "User ",
-    "User:",
-    "Assistant:",
-    "\nUser",
-    "\nAssistant",
     "[SYSTEM_PROMPT]",
     "[/SYSTEM_PROMPT]",
 ]

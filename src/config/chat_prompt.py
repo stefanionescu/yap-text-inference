@@ -15,6 +15,7 @@ class ChatPromptFormat(str, Enum):
     MISTRAL_INSTRUCT = "mistral_instruct"
     GEMMA = "gemma" # Gemma 1 & 2
     GEMMA3 = "gemma3" # Gemma 3
+    KIMI = "kimi"  # Kimi / Kimi Linear (uses <|im_user|>, <|im_assistant|>, <|im_end|>)
 
 
 _MISTRAL_MODELS: set[str] = {
@@ -33,6 +34,11 @@ _GEMMA3_MODELS: set[str] = {
     "leon-se/gemma-3-27b-it-qat-W4A16-G128",
 }
 
+# Kimi / Kimi Linear models use <|im_user|>, <|im_assistant|>, <|im_end|> (NOT standard ChatML)
+_KIMI_MODELS: set[str] = {
+    "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
+}
+
 def _build_prompt_map() -> dict[str, ChatPromptFormat]:
     prompt_map: dict[str, ChatPromptFormat] = {
         model: ChatPromptFormat.CHATML for model in ALLOWED_CHAT_MODELS
@@ -43,6 +49,7 @@ def _build_prompt_map() -> dict[str, ChatPromptFormat]:
         "mistral": _MISTRAL_MODELS,
         "gemma": _GEMMA_MODELS,
         "gemma3": _GEMMA3_MODELS,
+        "kimi": _KIMI_MODELS,
     }
     for name, model_set in custom_models.items():
         missing = model_set.difference(prompt_map)
@@ -59,6 +66,8 @@ def _build_prompt_map() -> dict[str, ChatPromptFormat]:
         prompt_map[name] = ChatPromptFormat.GEMMA
     for name in _GEMMA3_MODELS:
         prompt_map[name] = ChatPromptFormat.GEMMA3
+    for name in _KIMI_MODELS:
+        prompt_map[name] = ChatPromptFormat.KIMI
 
     return prompt_map
 
