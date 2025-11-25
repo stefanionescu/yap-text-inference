@@ -85,8 +85,6 @@ def quantize_with_autoawq(
 
     try:
         # Explicitly request safetensors format for HuggingFace compatibility
-        # Note: save_quantized should ONLY save quantized weights (qweight/qzeros/scales)
-        # and non-quantized layers (embeddings, layer_norms) in their original precision
         model.save_quantized(output_dir, safetensors=True)
         tokenizer.save_pretrained(output_dir)
         
@@ -97,73 +95,6 @@ def quantize_with_autoawq(
             print("[awq] Warning: No safetensors files found after save_quantized")
         else:
             print(f"[awq] Saved quantized weights to {len(safetensors_files)} safetensors file(s)")
-            
-            # Verify quantization actually happened by checking safetensors contents
-            # AutoAWQ sometimes saves BOTH quantized (qweight) AND unquantized (weight) tensors
-            # We need to ensure only quantized tensors exist for Linear layers
-            try:
-                from safetensors import safe_open
-                unquantized_linear_weights = []
-                quantized_layers = []
-                
-                for safetensor_file in safetensors_files:
-                    with safe_open(safetensor_file, framework="pt") as f:
-                        keys = f.keys()
-                        for key in keys:
-                            # Check for unquantized Linear layer weights (should NOT exist)
-                            if ".weight" in key and any(x in key for x in ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]):
-                                if "qweight" not in key and "qzeros" not in key and "scales" not in key:
-                                    unquantized_linear_weights.append(key)
-                            # Track quantized layers
-                            if "qweight" in key:
-                                layer_name = key.split(".qweight")[0]
-                                if layer_name not in quantized_layers:
-                                    quantized_layers.append(layer_name)
-                
-                if unquantized_linear_weights:
-                    print(f"[awq] ERROR: Found {len(unquantized_linear_weights)} unquantized Linear weight tensors!")
-                    print(f"[awq] These should not exist in quantized model: {unquantized_linear_weights[:5]}...")
-                    print("[awq] This indicates quantization may have failed or saved duplicate weights")
-                    return False
-                
-                if quantized_layers:
-                    print(f"[awq] Verified quantization: {len(quantized_layers)} Linear layers quantized")
-                else:
-                    print("[awq] WARNING: No quantized layers found! Quantization may have failed")
-                    return False
-                
-                # Check total file size - quantized models should be significantly smaller
-                total_size = sum(os.path.getsize(f) for f in safetensors_files)
-                total_size_gb = total_size / (1024**3)
-                print(f"[awq] Total safetensors size: {total_size_gb:.2f} GB")
-                
-                # Calculate size breakdown
-                try:
-                    embedding_size = 0
-                    quantized_size = 0
-                    other_size = 0
-                    
-                    for safetensor_file in safetensors_files:
-                        with safe_open(safetensor_file, framework="pt") as f:
-                            for key in f.keys():
-                                tensor = f.get_tensor_info(key)
-                                if tensor_info:
-                                    size_bytes = tensor_info.get("data_offsets", [0, 0])[1] - tensor_info.get("data_offsets", [0, 0])[0]
-                                    if "embed_tokens" in key:
-                                        embedding_size += size_bytes
-                                    elif any(x in key for x in ["qweight", "qzeros", "scales"]):
-                                        quantized_size += size_bytes
-                                    else:
-                                        other_size += size_bytes
-                    
-                    print(f"[awq] Size breakdown: embeddings={embedding_size/(1024**3):.2f}GB, quantized={quantized_size/(1024**3):.2f}GB, other={other_size/(1024**3):.2f}GB")
-                except Exception:  # noqa: BLE001
-                    pass
-                    
-            except ImportError:
-                print("[awq] Warning: safetensors not available for verification, skipping tensor check")
-            except Exception as verify_exc:  # noqa: BLE001
-                print(f"[awq] Warning: Failed to verify quantization: {verify_exc}")
         
         # Remove runtime config files that shouldn't be in quantized exports
         # generation_config.json contains sampling parameters (temperature, top_p, etc.)

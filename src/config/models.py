@@ -20,7 +20,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting (good for general RP tho)
     "zerofata/MS3.2-PaintedFantasy-Visage-33B",
     
-    "TheDrummer/Big-Tiger-Gemma-27B-v1",
+    "TheDrummer/Big-Tiger-Gemma-27B-v1", # H100
     "TheDrummer/Tiger-Gemma-12B-v3",
     
     # Pre-quantized GPTQ models
@@ -33,7 +33,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ",
 
-    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16",
+    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # 2
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
     "yapwithai/thedrummer-theia-21B-v2-w4a16",
     "yapwithai/doctor-shotgun-ms3.2-24B-magnum-diamond-w4a16",
@@ -46,8 +46,8 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "MadeAgents/Hammer2.1-1.5b",
     "MadeAgents/Hammer2.1-3b",
 
-    "Qwen/Qwen2.5-7B-Instruct", # 2
-    "Qwen/Qwen2.5-14B-Instruct", # 3
+    "Qwen/Qwen2.5-7B-Instruct",
+    "Qwen/Qwen2.5-14B-Instruct",
 
     # Pre-quantized AWQ models
     "Qwen/Qwen2.5-14B-Instruct-AWQ",
