@@ -2,8 +2,10 @@
 
 from .quantizer import AWQQuantizer
 from .calibration import CalibrationConfig
+from .config_fixes import apply_post_quantization_fixes
 
 __all__ = [
     "AWQQuantizer",
-    "CalibrationConfig", 
+    "CalibrationConfig",
+    "apply_post_quantization_fixes",
 ]

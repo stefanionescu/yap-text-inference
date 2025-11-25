@@ -13,25 +13,53 @@ class ChatPromptFormat(str, Enum):
 
     CHATML = "chatml"
     MISTRAL_INSTRUCT = "mistral_instruct"
+    GEMMA = "gemma" # Gemma 1 & 2
+    GEMMA3 = "gemma3" # Gemma 3
 
 
-_MISTRAL_MODELS = {
+_MISTRAL_MODELS: set[str] = {
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
+}
+
+# Gemma 1 & 2 models use <start_of_turn>user/model format
+_GEMMA_MODELS: set[str] = {
+    "TheDrummer/Big-Tiger-Gemma-27B-v1",
+    "TheDrummer/Tiger-Gemma-12B-v3",
+}
+
+# Gemma 3 models use <|start_header_id|> format
+_GEMMA3_MODELS: set[str] = {
+    "leon-se/gemma-3-27b-it-qat-W4A16-G128",
 }
 
 def _build_prompt_map() -> dict[str, ChatPromptFormat]:
     prompt_map: dict[str, ChatPromptFormat] = {
         model: ChatPromptFormat.CHATML for model in ALLOWED_CHAT_MODELS
     }
-    missing_mistral = _MISTRAL_MODELS.difference(prompt_map)
-    if missing_mistral:
-        raise RuntimeError(
-            "Chat prompt routing misconfigured; the following mistral models are not in "
-            f"ALLOWED_CHAT_MODELS: {sorted(missing_mistral)}"
-        )
+
+    # Validate all custom model sets exist in ALLOWED_CHAT_MODELS
+    custom_models = {
+        "mistral": _MISTRAL_MODELS,
+        "gemma": _GEMMA_MODELS,
+        "gemma3": _GEMMA3_MODELS,
+    }
+    for name, model_set in custom_models.items():
+        missing = model_set.difference(prompt_map)
+        if missing:
+            raise RuntimeError(
+                f"Chat prompt routing misconfigured; the following {name} models are not in "
+                f"ALLOWED_CHAT_MODELS: {sorted(missing)}"
+            )
+
+    # Apply format overrides
     for name in _MISTRAL_MODELS:
         prompt_map[name] = ChatPromptFormat.MISTRAL_INSTRUCT
+    for name in _GEMMA_MODELS:
+        prompt_map[name] = ChatPromptFormat.GEMMA
+    for name in _GEMMA3_MODELS:
+        prompt_map[name] = ChatPromptFormat.GEMMA3
+
     return prompt_map
 
 

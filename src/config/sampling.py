@@ -18,15 +18,21 @@ CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 
 # Extra STOP sequences used by chat model
 CHAT_STOP = [
-    " |",
-    "  |",
+    # ChatML format
     "<|im_end|>",
     "|im_end|>",
     "<|assistant|>",
     "<|user|>",
+    "<|end|>",
+    # Gemma 1/2 format
+    "<end_of_turn>",
+    "<start_of_turn>",
+    # Gemma 3 format
+    "<|eot_id|>",
+    "<|start_header_id|>",
+    # General
     " ‍♀️",
     " ‍♂️",
-    "<|end|>",
     "</s>",
     "User ",
     "User:",

@@ -33,6 +33,10 @@ def build_chat_prompt_with_prefix(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt)
+    if prompt_format is ChatPromptFormat.GEMMA:
+        return _build_gemma_prompt(system_prompt, history_turns, user_utt)
+    if prompt_format is ChatPromptFormat.GEMMA3:
+        return _build_gemma3_prompt(system_prompt, history_turns, user_utt)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt)
 
 
@@ -47,6 +51,10 @@ def build_chat_warm_prompt(
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     if prompt_format is ChatPromptFormat.CHATML:
         return _build_chatml_prompt(system_prompt, history_turns, user_utt=None)
+    if prompt_format is ChatPromptFormat.GEMMA:
+        return _build_gemma_prompt(system_prompt, history_turns, user_utt=None)
+    if prompt_format is ChatPromptFormat.GEMMA3:
+        return _build_gemma3_prompt(system_prompt, history_turns, user_utt=None)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
 
 
@@ -156,6 +164,111 @@ def _build_mistral_prompt(
         parts.append(_format_user_block("", include_system=True))
 
     return "".join(parts)
+
+
+def _build_gemma_prompt(
+    system_prompt: str,
+    history_turns: Sequence[tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    """Render prompts using Gemma 1/2 format (<start_of_turn>user/model).
+
+    Format:
+        <bos><start_of_turn>user
+        {content}<end_of_turn>
+        <start_of_turn>model
+        {response}<end_of_turn>
+        ...
+
+    Gemma has no native system role, so system prompt is embedded in the first user turn.
+    """
+    system_text = system_prompt.strip()
+    parts: list[str] = ["<bos>"]
+    is_first_user_turn = True
+
+    for user_text, assistant_text in history_turns:
+        if user_text:
+            parts.append("<start_of_turn>user")
+            # Embed system prompt in first user turn
+            if is_first_user_turn and system_text:
+                parts.append(f"<System>\n{system_text}\n</System>\n\n{user_text.strip()}")
+                is_first_user_turn = False
+            else:
+                parts.append(user_text.strip())
+            parts.append("<end_of_turn>")
+        if assistant_text:
+            parts.append("<start_of_turn>model")
+            parts.append(assistant_text.strip())
+            parts.append("<end_of_turn>")
+
+    if user_utt is not None:
+        parts.append("<start_of_turn>user")
+        if is_first_user_turn and system_text:
+            parts.append(f"<System>\n{system_text}\n</System>\n\n{user_utt.strip()}")
+        else:
+            parts.append(user_utt.strip())
+        parts.append("<end_of_turn>")
+    elif is_first_user_turn and system_text:
+        # Warm prompt with only system - embed system in a user turn
+        parts.append("<start_of_turn>user")
+        parts.append(f"<System>\n{system_text}\n</System>")
+        parts.append("<end_of_turn>")
+
+    # Model turn start (generation continues from here)
+    parts.append("<start_of_turn>model")
+    return "\n".join(parts)
+
+
+def _build_gemma3_prompt(
+    system_prompt: str,
+    history_turns: Sequence[tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    """Render prompts using Gemma 3 format (<|start_header_id|>).
+
+    Format:
+        <bos><|start_header_id|>system<|end_header_id|>
+
+        {system}<|eot_id|>
+        <|start_header_id|>user<|end_header_id|>
+
+        {content}<|eot_id|>
+        <|start_header_id|>assistant<|end_header_id|>
+
+    Gemma 3 has native system role support.
+    """
+    system_text = system_prompt.strip()
+    parts: list[str] = ["<bos>"]
+
+    # System turn (if present)
+    if system_text:
+        parts.append("<|start_header_id|>system<|end_header_id|>")
+        parts.append("")
+        parts.append(system_text)
+        parts.append("<|eot_id|>")
+
+    for user_text, assistant_text in history_turns:
+        if user_text:
+            parts.append("<|start_header_id|>user<|end_header_id|>")
+            parts.append("")
+            parts.append(user_text.strip())
+            parts.append("<|eot_id|>")
+        if assistant_text:
+            parts.append("<|start_header_id|>assistant<|end_header_id|>")
+            parts.append("")
+            parts.append(assistant_text.strip())
+            parts.append("<|eot_id|>")
+
+    if user_utt is not None:
+        parts.append("<|start_header_id|>user<|end_header_id|>")
+        parts.append("")
+        parts.append(user_utt.strip())
+        parts.append("<|eot_id|>")
+
+    # Assistant turn start (generation continues from here)
+    parts.append("<|start_header_id|>assistant<|end_header_id|>")
+    parts.append("")
+    return "\n".join(parts)
 
 
 @lru_cache(maxsize=1)

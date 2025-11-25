@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Any, Mapping
 
 from .limits import CHAT_MAX_LEN, CHAT_MAX_OUT, TOOL_MAX_LEN, TOOL_MAX_OUT
 from .models import ALLOWED_TOOL_MODELS
@@ -185,6 +185,8 @@ class ModelProfile:
     requires_bfloat16: bool = False
     requires_fla_runtime: bool = False
     needs_memory_optimization: bool = False
+    # Post-quantization config.json overrides (applied after AWQ export)
+    config_overrides: Mapping[str, Any] | None = None
 
     def matches(self, identifier: str) -> bool:
         return any(marker in identifier for marker in self.markers)
@@ -202,6 +204,8 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         markers=("gemma-2", "gemma2", "gemma-27b", "gemma-9b"),
         requires_bfloat16=True,
         needs_memory_optimization=True,
+        # vLLM requires tie_word_embeddings=True for Gemma2, but some finetunes set it to False
+        config_overrides={"tie_word_embeddings": True},
     ),
     ModelProfile(
         name="gemma",
@@ -248,6 +252,12 @@ def model_needs_memory_optimization(model_identifier: str | None) -> bool:
     return bool(profile and profile.needs_memory_optimization)
 
 
+def get_config_overrides(model_identifier: str | None) -> Mapping[str, Any] | None:
+    """Return config.json overrides needed for a model family, or None if none needed."""
+    profile = get_model_profile(model_identifier)
+    return profile.config_overrides if profile else None
+
+
 __all__ = [
     "AWQ_DEFAULT_DATASET",
     "AWQ_MODEL_MARKERS",
@@ -267,5 +277,6 @@ __all__ = [
     "model_requires_bfloat16",
     "model_requires_fla_runtime",
     "model_needs_memory_optimization",
+    "get_config_overrides",
 ]
 
