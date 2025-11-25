@@ -3,6 +3,7 @@
 import json
 import os
 import time
+import traceback
 from typing import Any
 
 import torch
@@ -176,10 +177,13 @@ class AWQQuantizer:
                 try:
                     _run_oneshot(fallback_dataset, model)
                 except Exception as final_exc:  # noqa: BLE001
-                    print(f"[awq] Quantization failed via llmcompressor after fallback: {final_exc}")
+                    self._log_llmcompressor_exception(
+                        final_exc,
+                        prefix="after fallback",
+                    )
                     return False
             else:
-                print(f"[awq] Quantization failed via llmcompressor: {exc}")
+                self._log_llmcompressor_exception(exc)
                 return False
         finally:
             # Clean up model memory
@@ -220,6 +224,14 @@ class AWQQuantizer:
 
         print(f"[awq] Done: {output_dir}")
         return True
+
+    @staticmethod
+    def _log_llmcompressor_exception(exc: Exception, prefix: str | None = None) -> None:
+        """Dump llmcompressor failures with the full traceback for easier debugging."""
+
+        scope = f" {prefix}" if prefix else ""
+        print(f"[awq] Quantization failed via llmcompressor{scope}: {exc}")
+        traceback.print_exception(type(exc), exc, exc.__traceback__)
 
     def _build_awq_recipe(
         self,
