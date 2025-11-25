@@ -22,17 +22,18 @@ apply_awq_env() {
       log_warn "HF_AWQ_PUSH=1 but HF_TOKEN is not set. Aborting."
       return 1
     fi
-    if [ "${DEPLOY_CHAT}" = "1" ]; then
-      if [ -z "${HF_AWQ_CHAT_REPO}" ] || [[ "${HF_AWQ_CHAT_REPO}" == your-org/* ]]; then
-        log_warn "HF_AWQ_PUSH=1 requires HF_AWQ_CHAT_REPO to be set for chat deployments. Aborting."
-        return 1
-      fi
+    # Check if at least one repo is set (not default)
+    local chat_repo_valid=0 tool_repo_valid=0
+    if [ -n "${HF_AWQ_CHAT_REPO}" ] && [[ "${HF_AWQ_CHAT_REPO}" != your-org/* ]]; then
+      chat_repo_valid=1
     fi
-    if [ "${DEPLOY_TOOL}" = "1" ]; then
-      if [ -z "${HF_AWQ_TOOL_REPO}" ] || [[ "${HF_AWQ_TOOL_REPO}" == your-org/* ]]; then
-        log_warn "HF_AWQ_PUSH=1 requires HF_AWQ_TOOL_REPO to be set for tool deployments. Aborting."
-        return 1
-      fi
+    if [ -n "${HF_AWQ_TOOL_REPO}" ] && [[ "${HF_AWQ_TOOL_REPO}" != your-org/* ]]; then
+      tool_repo_valid=1
+    fi
+    # Require at least one valid repo to be set
+    if [ "${chat_repo_valid}" = "0" ] && [ "${tool_repo_valid}" = "0" ]; then
+      log_warn "HF_AWQ_PUSH=1 requires either HF_AWQ_CHAT_REPO or HF_AWQ_TOOL_REPO (or both) to be set. Aborting."
+      return 1
     fi
   fi
 }

@@ -37,7 +37,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "yapwithai/thedrummer-theia-21B-v2-w4a16",
     "yapwithai/doctor-shotgun-ms3.2-24B-magnum-diamond-w4a16",
     "yapwithai/thedrummer-rocinante-12B-v1.1-w4a16",
-    "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16",
+    "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # 2
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
