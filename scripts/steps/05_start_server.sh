@@ -33,10 +33,6 @@ log_info "TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_
 
 runtime_guard_write_snapshot "${ROOT_DIR}"
 
-# Set TOKENIZERS_PARALLELISM to avoid fork warnings
-# This must be set before Python imports tokenizers (which happens during module loading)
-export TOKENIZERS_PARALLELISM=false
-
 # Resolve uvicorn launcher robustly (prefer venv python -m, then venv binary, then system)
 CMD_ARGS=("src.server:app" "--host" "0.0.0.0" "--port" "8000" "--workers" "1")
 

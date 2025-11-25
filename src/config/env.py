@@ -9,9 +9,6 @@ import os
 
 # Ensure V1 engine is selected before importing any vLLM modules
 os.environ.setdefault("VLLM_USE_V1", "1")
-# Disable tokenizers parallelism before any tokenizers usage (vLLM spawns worker processes)
-# Force to false to override any default or previous setting
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def _select_attention_backend() -> None:
