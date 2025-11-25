@@ -12,13 +12,13 @@ from ..adapters import (
     is_toolcall_model,
 )
 from ..utils import resolve_calibration_seqlen, is_awq_dir
-from .backends import quantize_with_autoawq, quantize_with_llmcompressor
-from .calibration import CalibrationConfig
-from .model_utils import (
+from ..utils.model_utils import (
     load_model_config,
     prefetch_model,
     requires_autoawq_backend,
 )
+from .backends import quantize_with_autoawq, quantize_with_llmcompressor
+from .calibration import CalibrationConfig
 
 
 class AWQQuantizer:

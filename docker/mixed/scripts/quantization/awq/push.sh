@@ -11,7 +11,7 @@ push_awq_to_hf() {
     log_warn "HF_AWQ_PUSH=1 but HF_TOKEN missing; skipping upload"; return; fi
   if [ ! -d "${src_dir}" ]; then
     log_warn "HF AWQ push skipped; directory not found: ${src_dir}"; return; fi
-  local python_cmd=("/opt/venv/bin/python" "${ROOT_DIR}/src/awq/utils/hf_push.py" --src "${src_dir}" --repo-id "${repo_id}" --branch "${HF_AWQ_BRANCH}" --token "${HF_TOKEN}")
+  local python_cmd=("/opt/venv/bin/python" "${ROOT_DIR}/src/awq/hf/hf_push.py" --src "${src_dir}" --repo-id "${repo_id}" --branch "${HF_AWQ_BRANCH}" --token "${HF_TOKEN}")
   if [ "${HF_AWQ_PRIVATE}" = "1" ]; then python_cmd+=(--private); fi
   if [ "${HF_AWQ_ALLOW_CREATE}" != "1" ]; then python_cmd+=(--no-create); fi
   if [ -n "${commit_msg}" ]; then python_cmd+=(--commit-message "${commit_msg}"); fi

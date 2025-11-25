@@ -10,7 +10,7 @@ import torch
 from src.config.awq import get_model_profile
 
 from ..metadata import save_quantization_metadata
-from ..model_utils import ensure_autoawq_dependencies
+from ...utils.model_utils import ensure_autoawq_dependencies
 
 
 def quantize_with_autoawq(
