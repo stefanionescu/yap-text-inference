@@ -9,7 +9,7 @@ import time
 
 from fastapi import WebSocket
 
-from ..config.websocket import (
+from ...config.websocket import (
     WS_IDLE_TIMEOUT_S,
     WS_WATCHDOG_TICK_S,
     WS_CLOSE_IDLE_CODE,
@@ -31,23 +31,28 @@ class WebSocketLifecycle:
         self._ws = websocket
         self._idle_timeout_s = float(idle_timeout_s or WS_IDLE_TIMEOUT_S)
         self._watchdog_tick_s = float(watchdog_tick_s or WS_WATCHDOG_TICK_S)
-        self._idle_close_code = idle_close_code if idle_close_code is not None else WS_CLOSE_IDLE_CODE
+        self._idle_close_code = (
+            idle_close_code if idle_close_code is not None else WS_CLOSE_IDLE_CODE
+        )
         self._last_activity = time.monotonic()
         self._stop_event = asyncio.Event()
         self._task: asyncio.Task | None = None
 
     def touch(self) -> None:
         """Record recent activity (resets idle countdown)."""
+
         self._last_activity = time.monotonic()
 
     def start(self) -> asyncio.Task:
         """Start the watchdog task (idempotent)."""
+
         if self._task is None:
             self._task = asyncio.create_task(self._watchdog_loop())
         return self._task
 
     async def stop(self) -> None:
         """Stop the watchdog task and wait for it to finish."""
+
         self._stop_event.set()
         if self._task is None:
             return
@@ -77,4 +82,5 @@ class WebSocketLifecycle:
 
 
 __all__ = ["WebSocketLifecycle"]
+
 

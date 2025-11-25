@@ -15,7 +15,7 @@ from ...persona import build_toolcall_prompt_with_history
 from ...config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
 from ...tokens import trim_history_for_tool_sharing, trim_text_to_token_limit_tool
 from ...config import USER_UTT_MAX_TOKENS
-from ...handlers.session_handler import session_handler
+from ...handlers.session import session_handler
 from ...config.sampling import (
     TOOL_TEMPERATURE,
     TOOL_TOP_P,

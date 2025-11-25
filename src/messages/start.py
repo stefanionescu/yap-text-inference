@@ -38,7 +38,7 @@ from ..tokens import (
     trim_text_to_token_limit_chat,
     trim_text_to_token_limit_tool,
 )
-from ..handlers.session_handler import session_handler
+from ..handlers.session import session_handler
 from ..execution.executors.sequential_executor import run_sequential_execution
 from ..execution.executors.concurrent_executor import run_concurrent_execution
 from ..execution.streaming.chat_streamer import run_chat_stream

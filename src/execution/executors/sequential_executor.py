@@ -7,7 +7,7 @@ from fastapi import WebSocket
 
 from ..tool.tool_parser import parse_tool_result
 from ..streaming.chat_streamer import run_chat_stream
-from ...handlers.session_handler import session_handler
+from ...handlers.session import session_handler
 from ...config.timeouts import TOOL_HARD_TIMEOUT_MS
 from ...utils.executor import (
     abort_tool_request,
