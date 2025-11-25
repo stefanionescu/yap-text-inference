@@ -150,7 +150,16 @@ def main() -> int:
         revision=args.branch,
         commit_message=commit_message,
         token=token,
-        ignore_patterns=["*.tmp", "*.log", "__pycache__/*"],
+        ignore_patterns=[
+            "*.tmp",
+            "*.log",
+            "__pycache__/*",
+            "generation_config.json",  # Runtime sampling config, not part of quantized model
+            "training_args.bin",
+            "optimizer.pt",
+            "scheduler.pt",
+            "rng_state.pth",
+        ],
     )
     print("[hf-push] Upload complete")
     return 0
