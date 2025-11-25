@@ -47,6 +47,10 @@ ALLOWED_TOOL_MODELS: list[str] = [
 
     "Qwen/Qwen2.5-7B-Instruct", # 2
     "Qwen/Qwen2.5-14B-Instruct", # 3
+
+    # Pre-quantized AWQ models
+    "Qwen/Qwen2.5-14B-Instruct-AWQ",
+    "Qwen/Qwen2.5-7B-Instruct-AWQ",
 ]
 
 

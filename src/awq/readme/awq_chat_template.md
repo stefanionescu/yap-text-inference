@@ -24,10 +24,8 @@ This model was quantized with [{quantizer_name}]({quantizer_link}) from {source_
 - Ignored modules: {quant_ignore}
 
 ## Calibration Data
-- Requested dataset: {calibration_dataset_requested}
-- Effective dataset: {calibration_dataset_effective}
-- Samples: {calibration_samples}
-- Max sequence length: {calibration_seq_len}
+- Dataset: {calibration_dataset_effective}
+{calibration_samples_line}- Max sequence length: {calibration_seq_len}
 
 ### {quantizer_recipe_heading}
 ```json
