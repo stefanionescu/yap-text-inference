@@ -198,6 +198,12 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         needs_memory_optimization=True,
     ),
     ModelProfile(
+        name="gemma2",
+        markers=("gemma-2", "gemma2", "gemma-27b", "gemma-9b"),
+        requires_bfloat16=True,
+        needs_memory_optimization=True,
+    ),
+    ModelProfile(
         name="gemma",
         markers=("gemma",),
         needs_memory_optimization=True,
