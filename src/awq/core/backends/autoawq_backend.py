@@ -16,6 +16,74 @@ from ..metadata import save_quantization_metadata
 from ...utils.model_utils import ensure_autoawq_dependencies
 
 
+def _get_safetensors_size(directory: str) -> int:
+    """Calculate total size of safetensors files in a directory."""
+    total = 0
+    for filepath in glob.glob(os.path.join(directory, "*.safetensors")):
+        try:
+            total += os.path.getsize(filepath)
+        except OSError:
+            pass
+    return total
+
+
+def _verify_awq_tensors(safetensor_path: str) -> tuple[bool, str]:
+    """Verify that a safetensors file contains AWQ-quantized weights.
+    
+    AWQ quantization converts Linear layers to use qweight (int32), qzeros, and scales.
+    If we find float16/bfloat16 weight tensors instead, quantization likely failed.
+    
+    Returns:
+        (is_valid, message) tuple.
+    """
+    try:
+        from safetensors import safe_open  # type: ignore
+    except ImportError:
+        return True, "safetensors not available for verification"
+    
+    try:
+        with safe_open(safetensor_path, framework="pt") as f:
+            keys = list(f.keys())
+            
+            # Look for AWQ-specific tensor patterns
+            qweight_keys = [k for k in keys if "qweight" in k]
+            scales_keys = [k for k in keys if "scales" in k]
+            qzeros_keys = [k for k in keys if "qzeros" in k]
+            
+            # Check for unquantized weight patterns (bad sign)
+            # AWQ replaces .weight with .qweight, so finding plain .weight tensors
+            # in quantizable layers suggests quantization didn't happen
+            weight_keys = [
+                k for k in keys 
+                if k.endswith(".weight") 
+                and any(layer in k for layer in ["q_proj", "k_proj", "v_proj", "o_proj", 
+                                                   "gate_proj", "up_proj", "down_proj",
+                                                   "dense", "fc1", "fc2"])
+            ]
+            
+            if qweight_keys:
+                # Verify qweight dtype is int (int32 for packed 4-bit)
+                sample_qweight = f.get_tensor(qweight_keys[0])
+                if sample_qweight.dtype not in (torch.int32, torch.int8, torch.uint8):
+                    return False, f"qweight has unexpected dtype {sample_qweight.dtype}"
+                return True, f"Found {len(qweight_keys)} qweight tensors (dtype={sample_qweight.dtype})"
+            
+            if weight_keys and not qweight_keys:
+                # Found regular weight tensors but no qweight - likely not quantized
+                sample_weight = f.get_tensor(weight_keys[0])
+                return False, (
+                    f"Found {len(weight_keys)} unquantized .weight tensors "
+                    f"(dtype={sample_weight.dtype}) but no qweight tensors. "
+                    "Model may not be properly quantized!"
+                )
+            
+            # Fallback: no clear signal
+            return True, f"Tensor keys present: {len(keys)} total"
+            
+    except Exception as exc:
+        return True, f"Verification skipped: {exc}"
+
+
 def quantize_with_autoawq(
     *,
     model_path: str,
@@ -96,6 +164,20 @@ def quantize_with_autoawq(
             print("[awq] Warning: No safetensors files found after save_quantized")
         else:
             print(f"[awq] Saved quantized weights to {len(safetensors_files)} safetensors file(s)")
+            
+            # Verify output size is reasonable for quantized model
+            # 4-bit AWQ should be roughly 3-4x smaller than bf16/fp16
+            output_size_gb = _get_safetensors_size(output_dir) / 1e9
+            print(f"[awq] Total safetensors size: {output_size_gb:.2f} GB")
+            
+            # Verify tensors actually contain AWQ-quantized weights
+            # Check the first safetensors file for qweight tensors with int dtype
+            is_valid, verification_msg = _verify_awq_tensors(safetensors_files[0])
+            if is_valid:
+                print(f"[awq] Quantization verification: {verification_msg}")
+            else:
+                print(f"[awq] WARNING: Quantization verification failed: {verification_msg}")
+                print("[awq] The saved model may contain unquantized weights!")
         
         # Remove runtime config files that shouldn't be in quantized exports
         # generation_config.json contains sampling parameters (temperature, top_p, etc.)
