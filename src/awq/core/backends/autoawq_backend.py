@@ -11,6 +11,7 @@ import torch
 
 from src.config.awq import get_model_profile
 
+from ..config_fixes import apply_post_quantization_fixes
 from ..metadata import save_quantization_metadata
 from ...utils.model_utils import ensure_autoawq_dependencies
 
@@ -150,6 +151,9 @@ def quantize_with_autoawq(
         dataset_info=dataset_info,
         advanced_kwargs=advanced_kwargs,
     )
+
+    # Apply model-family-specific config.json fixes (e.g., Gemma2 tie_word_embeddings)
+    apply_post_quantization_fixes(output_dir, model_path)
 
     print(f"[awq] Done: {output_dir}")
     return True

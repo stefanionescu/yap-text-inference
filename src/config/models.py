@@ -14,7 +14,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "TheDrummer/Theia-21B-v2", # mid intelligence, overall meh but good if you start to be poor and need to keep running inference
 
     "TheDrummer/Rocinante-12B-v1.1", # mid intelligence, good if you need to downgrade quality temporarily, not that great at instruction following
-    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # good, need further tests
+    "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # pretty bad overall
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much (good for general RP tho)
     "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting (good for general RP tho)
