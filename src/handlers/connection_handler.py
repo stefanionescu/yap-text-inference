@@ -101,5 +101,3 @@ class ConnectionHandler:
 
 # Global connection handler instance
 connection_handler = ConnectionHandler()
-
-

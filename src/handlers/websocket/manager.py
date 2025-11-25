@@ -1,124 +1,64 @@
-"""Main WebSocket connection handler."""
+"""Primary WebSocket connection handler orchestration."""
+
+from __future__ import annotations
 
 import contextlib
 import json
 import logging
 import math
+from typing import Any, Callable
+
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..auth import authenticate_websocket
-from ..config import (
+from ...auth import authenticate_websocket
+from ...config import (
     WS_CANCEL_WINDOW_SECONDS,
     WS_MAX_CANCELS_PER_WINDOW,
     WS_MAX_MESSAGES_PER_WINDOW,
     WS_MESSAGE_WINDOW_SECONDS,
 )
-from ..config.websocket import (
+from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
     WS_CLOSE_UNAUTHORIZED_CODE,
-    WS_CANCEL_SENTINEL,
-    WS_END_SENTINEL,
 )
-from ..engines import clear_all_engine_caches_on_disconnect
-from ..messages.cancel import handle_cancel_message
-from ..messages.chat_prompt import handle_chat_prompt
-from ..messages.followup import handle_followup_message
-from ..messages.start import handle_start_message
-from ..messages.warm.warm_history import handle_warm_history_message
-from ..messages.warm.warm_persona import handle_warm_persona_message
-from ..utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
-from .connection_handler import connection_handler
-from .session_handler import abort_session_requests, session_handler
-from .ws_lifecycle import WebSocketLifecycle
+from ...engines import clear_all_engine_caches_on_disconnect
+from ...messages.cancel import handle_cancel_message
+from ...messages.chat_prompt import handle_chat_prompt
+from ...messages.followup import handle_followup_message
+from ...messages.start import handle_start_message
+from ...messages.warm.warm_history import handle_warm_history_message
+from ...messages.warm.warm_persona import handle_warm_persona_message
+from ...utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
+from ..connection_handler import connection_handler
+from ..session import abort_session_requests, session_handler
+from .lifecycle import WebSocketLifecycle
+from .errors import reject_connection, send_error
+from .parser import parse_client_message
 
 logger = logging.getLogger(__name__)
 
+SessionHandlerFn = Callable[[WebSocket, dict[str, Any], str | None], Any]
 
-def _parse_client_message(raw: str) -> dict:
-    """Normalize client message types to align with Yap TTS server contract."""
-    text = (raw or "").strip()
-    if not text:
-        raise ValueError("Empty message.")
-
-    if text == WS_CANCEL_SENTINEL:
-        return {"type": "cancel"}
-    if text == WS_END_SENTINEL:
-        return {"type": "end"}
-
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError("Message must be valid JSON or a sentinel string.") from exc
-
-    if not isinstance(data, dict):
-        raise ValueError("Message must be a JSON object.")
-
-    msg_type = data.get("type")
-    if not msg_type:
-        if bool(data.get("cancel")):
-            msg_type = "cancel"
-        elif bool(data.get("end")):
-            msg_type = "end"
-
-    if not msg_type:
-        raise ValueError("Missing 'type' in message.")
-
-    data["type"] = str(msg_type).strip().lower()
-    if "request_id" in data and data["request_id"] is not None:
-        data["request_id"] = str(data["request_id"])
-    return data
-
-
-_SESSION_MESSAGE_HANDLERS = {
+_SESSION_MESSAGE_HANDLERS: dict[str, SessionHandlerFn] = {
     "followup": handle_followup_message,
     "chat_prompt": handle_chat_prompt,
 }
 
-_PAYLOAD_ONLY_HANDLERS = {
+_PAYLOAD_ONLY_HANDLERS: dict[str, Callable[[WebSocket, dict[str, Any]], Any]] = {
     "warm_persona": handle_warm_persona_message,
     "warm_history": handle_warm_history_message,
 }
 
 
-async def _send_error(
-    ws: WebSocket,
-    *,
-    error_code: str,
-    message: str,
-    extra: dict | None = None,
-) -> None:
-    payload = {
-        "type": "error",
-        "error_code": error_code,
-        "message": message,
-    }
-    if extra:
-        payload.update(extra)
-    await ws.send_text(json.dumps(payload))
-
-
-async def _reject_connection(
-    ws: WebSocket,
-    *,
-    error_code: str,
-    message: str,
-    close_code: int,
-    extra: dict | None = None,
-) -> None:
-    await ws.accept()
-    await _send_error(ws, error_code=error_code, message=message, extra=extra)
-    await ws.close(code=close_code)
-
-
 async def _handle_start_command(
     ws: WebSocket,
-    msg: dict,
+    msg: dict[str, Any],
     current_session_id: str | None,
 ) -> str | None:
     session_id = msg.get("session_id")
     if not session_id:
-        await _send_error(
+        await send_error(
             ws,
             error_code="missing_session_id",
             message="start message must include 'session_id'.",
@@ -133,41 +73,44 @@ async def _handle_start_command(
     return session_id
 
 
+async def _cleanup_session(session_id: str | None) -> None:
+    """Clean up session resources on disconnect."""
+
+    await abort_session_requests(session_id, clear_state=True)
+
+
 async def handle_websocket_connection(ws: WebSocket) -> None:
-    """Handle WebSocket connection and route messages to appropriate handlers.
-    
-    Args:
-        ws: WebSocket connection
-    """
+    """Handle WebSocket connection and route messages to appropriate handlers."""
+
     lifecycle: WebSocketLifecycle | None = None
-    
+
     if not await authenticate_websocket(ws):
-        await _reject_connection(
+        await reject_connection(
             ws,
             error_code="authentication_failed",
             message=(
-                        "Authentication required. Provide valid API key via 'api_key' "
-                        "query parameter or 'X-API-Key' header."
-                    ),
+                "Authentication required. Provide valid API key via 'api_key' "
+                "query parameter or 'X-API-Key' header."
+            ),
             close_code=WS_CLOSE_UNAUTHORIZED_CODE,
         )
         return
-    
+
     if not await connection_handler.connect(ws):
         capacity_info = connection_handler.get_capacity_info()
-        await _reject_connection(
+        await reject_connection(
             ws,
             error_code="server_at_capacity",
             message=(
                 "Server is at capacity. "
                 f"Active connections: {capacity_info['active']}/{capacity_info['max']}. "
-                        "Please try again later."
-                    ),
+                "Please try again later."
+            ),
             close_code=WS_CLOSE_BUSY_CODE,
             extra={"capacity": capacity_info},
         )
         return
-    
+
     await ws.accept()
     session_id: str | None = None
     message_limiter = SlidingWindowRateLimiter(
@@ -180,7 +123,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     )
     lifecycle = WebSocketLifecycle(ws)
     lifecycle.start()
-    
+
     logger.info(
         "WebSocket connection accepted. Active: %s",
         connection_handler.get_connection_count(),
@@ -190,9 +133,9 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         while True:
             raw_msg = await ws.receive_text()
             try:
-                msg = _parse_client_message(raw_msg)
+                msg = parse_client_message(raw_msg)
             except ValueError as exc:
-                await _send_error(
+                await send_error(
                     ws,
                     error_code="invalid_message",
                     message=str(exc),
@@ -220,7 +163,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                         f"{label} rate limit: at most {limit_desc} per {window_desc} seconds; "
                         f"retry in {retry_in} seconds"
                     )
-                    await _send_error(
+                    await send_error(
                         ws,
                         error_code=f"{label}_rate_limited",
                         message=message,
@@ -273,7 +216,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 await session_handler_fn(ws, msg, session_id)
                 continue
 
-            await _send_error(
+            await send_error(
                 ws,
                 error_code="unknown_message_type",
                 message=f"Message type '{msg_type}' is not supported.",
@@ -283,7 +226,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     except Exception as exc:  # noqa: BLE001
         logger.exception("WebSocket error")
         with contextlib.suppress(Exception):
-            await _send_error(ws, error_code="internal_error", message=str(exc))
+            await send_error(ws, error_code="internal_error", message=str(exc))
     finally:
         if lifecycle is not None:
             with contextlib.suppress(Exception):
@@ -297,10 +240,3 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 await clear_all_engine_caches_on_disconnect()
 
 
-async def _cleanup_session(session_id: str | None) -> None:
-    """Clean up session resources on disconnect.
-    
-    Args:
-        session_id: Session identifier to clean up
-    """
-    await abort_session_requests(session_id, clear_state=True)

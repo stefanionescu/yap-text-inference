@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
-from ..handlers.session_handler import session_handler
+from ..handlers.session import session_handler
 from ..config import DEPLOY_CHAT
 from ..tokens import (
     count_tokens_chat,

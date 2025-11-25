@@ -3,7 +3,7 @@
 import json
 from fastapi import WebSocket
 
-from ..handlers.session_handler import abort_session_requests
+from ..handlers.session import abort_session_requests
 
 
 async def handle_cancel_message(ws: WebSocket, session_id: str, request_id: str | None = None) -> None:

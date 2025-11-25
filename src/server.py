@@ -18,7 +18,7 @@ from .config import DEPLOY_CHAT, DEPLOY_TOOL
 from .config.env import validate_env
 from .config.logging import configure_logging
 from .engines import get_chat_engine, get_tool_engine
-from .handlers.websocket_handler import handle_websocket_connection
+from .handlers.websocket import handle_websocket_connection
 from .handlers.connection_handler import connection_handler
 from .auth import get_api_key
 

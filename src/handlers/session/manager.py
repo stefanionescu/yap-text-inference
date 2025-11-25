@@ -1,49 +1,20 @@
-"""Session handler for WebSocket connections."""
+"""Session handler orchestration logic."""
 
 from __future__ import annotations
 
 import asyncio
 import copy
-import os
 import time
 import uuid
-from dataclasses import dataclass, field
 from typing import Any
 
-from ..config import CHAT_MODEL, TOOL_MODEL, HISTORY_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
-from ..tokens import count_tokens_chat
-from ..utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
-from ..utils.sanitize import sanitize_llm_output
-from ..utils.time import format_session_timestamp
+from src.config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
+from src.utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
+from src.utils.sanitize import sanitize_llm_output
+from src.utils.time import format_session_timestamp
 
-
-SESSION_IDLE_TTL_SECONDS = int(os.getenv("SESSION_IDLE_TTL_SECONDS", "1800"))
-
-
-@dataclass
-class HistoryTurn:
-    turn_id: str
-    user: str
-    assistant: str
-
-
-@dataclass
-class SessionState:
-    """Container for all mutable session-scoped data."""
-
-    session_id: str
-    meta: dict[str, Any]
-    history_turns: list[HistoryTurn] = field(default_factory=list)
-    task: asyncio.Task | None = None
-    active_request_id: str | None = None
-    tool_request_id: str | None = None
-    created_at: float = field(default_factory=time.monotonic)
-    last_access: float = field(default_factory=time.monotonic)
-    chat_prompt_last_update_at: float = 0.0
-    chat_prompt_rate_limiter: SlidingWindowRateLimiter | None = None
-
-    def touch(self) -> None:
-        self.last_access = time.monotonic()
+from .history import parse_history_text, render_history, trim_history_turns
+from .state import HistoryTurn, SessionState, SESSION_IDLE_TTL_SECONDS
 
 
 class SessionHandler:
@@ -60,6 +31,7 @@ class SessionHandler:
     # ------------------------------------------------------------------ #
     def initialize_session(self, session_id: str) -> dict[str, Any]:
         """Ensure a session state exists and return its metadata."""
+
         self._evict_idle_sessions()
         state = self._sessions.get(session_id)
         if state:
@@ -91,6 +63,7 @@ class SessionHandler:
         chat_sampling: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Update mutable persona configuration for a session."""
+
         meta = self.initialize_session(session_id)
         state = self._sessions[session_id]
         state.touch()
@@ -124,7 +97,9 @@ class SessionHandler:
             else:
                 sampling_copy = None
             meta["chat_sampling"] = sampling_copy
-            changed["chat_sampling"] = sampling_copy.copy() if isinstance(sampling_copy, dict) else None
+            changed["chat_sampling"] = (
+                sampling_copy.copy() if isinstance(sampling_copy, dict) else None
+            )
 
         return changed
 
@@ -156,6 +131,7 @@ class SessionHandler:
         Returns:
             float: 0 if allowed, otherwise the number of seconds until the next slot frees.
         """
+
         state = self._sessions.get(session_id)
         if not state:
             self.initialize_session(session_id)
@@ -181,6 +157,7 @@ class SessionHandler:
 
     def get_session_config(self, session_id: str) -> dict[str, Any]:
         """Return a copy of the current session configuration."""
+
         state = self._sessions.get(session_id)
         if not state:
             return {}
@@ -189,6 +166,7 @@ class SessionHandler:
 
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""
+
         state = self._sessions.pop(session_id, None)
         if state and state.task and not state.task.done():
             state.task.cancel()
@@ -201,18 +179,18 @@ class SessionHandler:
         if not state:
             return ""
         state.touch()
-        self._trim_history_turns(state)
-        return self._render_history(state.history_turns)
+        trim_history_turns(state)
+        return render_history(state.history_turns)
 
     def set_history_text(self, session_id: str, history_text: str) -> str:
         state = self._sessions.get(session_id)
         if not state:
             self.initialize_session(session_id)
             state = self._sessions[session_id]
-        state.history_turns = self._parse_history_text(history_text)
-        self._trim_history_turns(state)
+        state.history_turns = parse_history_text(history_text)
+        trim_history_turns(state)
         state.touch()
-        return self._render_history(state.history_turns)
+        return render_history(state.history_turns)
 
     def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
         state = self._sessions.get(session_id)
@@ -225,7 +203,7 @@ class SessionHandler:
 
         turn_id = uuid.uuid4().hex
         state.history_turns.append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
-        self._trim_history_turns(state)
+        trim_history_turns(state)
         state.touch()
         return turn_id
 
@@ -254,13 +232,13 @@ class SessionHandler:
                 target_turn.assistant = assistant
         else:
             if not user and not assistant:
-                return self._render_history(state.history_turns)
+                return render_history(state.history_turns)
             fallback_turn = HistoryTurn(turn_id=uuid.uuid4().hex, user=user, assistant=assistant)
             state.history_turns.append(fallback_turn)
 
-        self._trim_history_turns(state)
+        trim_history_turns(state)
         state.touch()
-        return self._render_history(state.history_turns)
+        return render_history(state.history_turns)
 
     # ------------------------------------------------------------------ #
     # Request/task tracking
@@ -346,82 +324,6 @@ class SessionHandler:
     # ------------------------------------------------------------------ #
     # Internal helpers
     # ------------------------------------------------------------------ #
-    def _render_history(self, turns: list[HistoryTurn]) -> str:
-        if not turns:
-            return ""
-        chunks: list[str] = []
-        for turn in turns:
-            lines: list[str] = []
-            user_text = (turn.user or "").strip()
-            assistant_text = (turn.assistant or "").strip()
-            lines.append(f"User: {user_text}")
-            if assistant_text:
-                lines.append(f"Assistant: {assistant_text}")
-            chunk = "\n".join(lines).strip()
-            if chunk:
-                chunks.append(chunk)
-        return "\n\n".join(chunks)
-
-    def _parse_history_text(self, history_text: str) -> list[HistoryTurn]:
-        text = (history_text or "").strip()
-        if not text:
-            return []
-
-        turns: list[HistoryTurn] = []
-        current_user: list[str] = []
-        current_assistant: list[str] = []
-        mode: str | None = None
-
-        def _flush() -> None:
-            nonlocal current_user, current_assistant, mode
-            if not current_user and not current_assistant:
-                return
-            user_text = "\n".join(current_user).strip()
-            assistant_text = "\n".join(current_assistant).strip()
-            turns.append(HistoryTurn(turn_id=uuid.uuid4().hex, user=user_text, assistant=assistant_text))
-            current_user = []
-            current_assistant = []
-            mode = None
-
-        for line in text.splitlines():
-            if line.startswith("User:"):
-                _flush()
-                current_user = [line[len("User:"):].lstrip()]
-                current_assistant = []
-                mode = "user"
-            elif line.startswith("Assistant:"):
-                current_assistant = [line[len("Assistant:"):].lstrip()]
-                mode = "assistant"
-            else:
-                if mode == "assistant":
-                    current_assistant.append(line)
-                elif mode == "user":
-                    current_user.append(line)
-                elif line.strip():
-                    current_user.append(line)
-                    mode = "user"
-
-        _flush()
-        return turns
-
-    def _trim_history_turns(self, state: SessionState) -> None:
-        if not state.history_turns or not DEPLOY_CHAT:
-            return
-
-        rendered = self._render_history(state.history_turns)
-        if not rendered:
-            state.history_turns = []
-            return
-
-        tokens = count_tokens_chat(rendered)
-        if tokens <= HISTORY_MAX_TOKENS:
-            return
-
-        while state.history_turns and tokens > HISTORY_MAX_TOKENS:
-            state.history_turns.pop(0)
-            rendered = self._render_history(state.history_turns)
-            tokens = count_tokens_chat(rendered) if rendered else 0
-
     def _evict_idle_sessions(self) -> None:
         if self._idle_ttl_seconds <= 0:
             return
@@ -435,7 +337,6 @@ class SessionHandler:
             self.clear_session_state(session_id)
 
 
-# Global session handler instance
 session_handler = SessionHandler()
 
 
@@ -445,6 +346,7 @@ async def abort_session_requests(
     clear_state: bool = False,
 ) -> dict[str, str]:
     """Cancel tracked session requests and best-effort abort engine work."""
+
     if not session_id:
         return {"active": "", "tool": ""}
 
@@ -453,7 +355,7 @@ async def abort_session_requests(
 
     if DEPLOY_CHAT and req_info.get("active"):
         try:
-            from ..engines import get_chat_engine  # local import to avoid cycles
+            from src.engines import get_chat_engine  # local import to avoid cycles
 
             await (await get_chat_engine()).abort_request(req_info["active"])
         except Exception:  # noqa: BLE001 - best effort
@@ -461,7 +363,7 @@ async def abort_session_requests(
 
     if DEPLOY_TOOL and req_info.get("tool"):
         try:
-            from ..engines import get_tool_engine  # local import to avoid cycles
+            from src.engines import get_tool_engine  # local import to avoid cycles
 
             await (await get_tool_engine()).abort_request(req_info["tool"])
         except Exception:  # noqa: BLE001 - best effort

@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator, Awaitable
 from fastapi import WebSocket
 
 from ..engines import get_tool_engine
-from ..handlers.session_handler import session_handler
+from ..handlers.session import session_handler
 from ..execution.tool.tool_runner import run_toolcall
 
 
