@@ -37,6 +37,8 @@ def build_chat_prompt_with_prefix(
         return _build_gemma_prompt(system_prompt, history_turns, user_utt)
     if prompt_format is ChatPromptFormat.GEMMA3:
         return _build_gemma3_prompt(system_prompt, history_turns, user_utt)
+    if prompt_format is ChatPromptFormat.KIMI:
+        return _build_kimi_prompt(system_prompt, history_turns, user_utt)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt)
 
 
@@ -55,6 +57,8 @@ def build_chat_warm_prompt(
         return _build_gemma_prompt(system_prompt, history_turns, user_utt=None)
     if prompt_format is ChatPromptFormat.GEMMA3:
         return _build_gemma3_prompt(system_prompt, history_turns, user_utt=None)
+    if prompt_format is ChatPromptFormat.KIMI:
+        return _build_kimi_prompt(system_prompt, history_turns, user_utt=None)
     return _build_mistral_prompt(system_prompt, history_turns, user_utt=None)
 
 
@@ -268,6 +272,54 @@ def _build_gemma3_prompt(
     # Assistant turn start (generation continues from here)
     parts.append("<|start_header_id|>assistant<|end_header_id|>")
     parts.append("")
+    return "\n".join(parts)
+
+
+def _build_kimi_prompt(
+    system_prompt: str,
+    history_turns: Sequence[tuple[str, str]],
+    user_utt: str | None,
+) -> str:
+    """Render prompts using Kimi / Kimi Linear format.
+
+    Kimi uses a ChatML variant with single-token role markers:
+        <|im_system|>
+        {system}
+        <|im_end|>
+        <|im_user|>
+        {content}
+        <|im_end|>
+        <|im_assistant|>
+
+    Note: <|im_user|>, <|im_assistant|>, <|im_system|> are SINGLE tokens,
+    NOT <|im_start|> + role name like standard ChatML.
+    """
+    system_text = system_prompt.strip()
+    parts: list[str] = []
+
+    # System turn (if present)
+    if system_text:
+        parts.append("<|im_system|>")
+        parts.append(system_text)
+        parts.append("<|im_end|>")
+
+    for user_text, assistant_text in history_turns:
+        if user_text:
+            parts.append("<|im_user|>")
+            parts.append(user_text.strip())
+            parts.append("<|im_end|>")
+        if assistant_text:
+            parts.append("<|im_assistant|>")
+            parts.append(assistant_text.strip())
+            parts.append("<|im_end|>")
+
+    if user_utt is not None:
+        parts.append("<|im_user|>")
+        parts.append(user_utt.strip())
+        parts.append("<|im_end|>")
+
+    # Assistant turn start (generation continues from here)
+    parts.append("<|im_assistant|>")
     return "\n".join(parts)
 
 
