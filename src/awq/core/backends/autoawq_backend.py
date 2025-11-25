@@ -136,9 +136,29 @@ def quantize_with_autoawq(
                 total_size = sum(os.path.getsize(f) for f in safetensors_files)
                 total_size_gb = total_size / (1024**3)
                 print(f"[awq] Total safetensors size: {total_size_gb:.2f} GB")
-                if total_size_gb > 10:
-                    print("[awq] WARNING: File size seems large for a quantized model. Expected ~70% reduction from FP16.")
-                    print("[awq] This may indicate unquantized weights are being saved.")
+                
+                # Calculate size breakdown
+                try:
+                    embedding_size = 0
+                    quantized_size = 0
+                    other_size = 0
+                    
+                    for safetensor_file in safetensors_files:
+                        with safe_open(safetensor_file, framework="pt") as f:
+                            for key in f.keys():
+                                tensor = f.get_tensor_info(key)
+                                if tensor_info:
+                                    size_bytes = tensor_info.get("data_offsets", [0, 0])[1] - tensor_info.get("data_offsets", [0, 0])[0]
+                                    if "embed_tokens" in key:
+                                        embedding_size += size_bytes
+                                    elif any(x in key for x in ["qweight", "qzeros", "scales"]):
+                                        quantized_size += size_bytes
+                                    else:
+                                        other_size += size_bytes
+                    
+                    print(f"[awq] Size breakdown: embeddings={embedding_size/(1024**3):.2f}GB, quantized={quantized_size/(1024**3):.2f}GB, other={other_size/(1024**3):.2f}GB")
+                except Exception:  # noqa: BLE001
+                    pass
                     
             except ImportError:
                 print("[awq] Warning: safetensors not available for verification, skipping tensor check")
