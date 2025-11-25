@@ -95,7 +95,7 @@ restart_detect_awq_models "${DEPLOY_MODE}"
 restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
-if [ "${USING_LOCAL_MODELS}" = "0" ] && [ "${USING_HF_MODELS}" = "0" ]; then
+if [ "${USING_LOCAL_MODELS}" = "0" ]; then
   log_error "No AWQ models found for deploy mode '${DEPLOY_MODE}'"
   log_error ""
   log_error "Options:"
@@ -105,29 +105,17 @@ if [ "${USING_LOCAL_MODELS}" = "0" ] && [ "${USING_HF_MODELS}" = "0" ]; then
 fi
 
 # Check if venv exists (only required for local models or first run)
-if [ ! -d "${ROOT_DIR}/.venv" ] && [ "${USING_HF_MODELS}" = "0" ]; then
+if [ ! -d "${ROOT_DIR}/.venv" ]; then
   log_error "No virtual environment found at ${ROOT_DIR}/.venv"
   log_error "For local models: Run full deployment first: bash scripts/main.sh awq <chat_model> <tool_model>"
   log_error "For HF or other remote models: run full deployment first to cache AWQ artifacts"
   exit 1
 fi
 
-# For HF models, create venv if it doesn't exist
-if [ "${USING_HF_MODELS}" = "1" ]; then
-  if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    if [ "${INSTALL_DEPS}" = "1" ]; then
-      log_info "No venv found; creating and installing deps (--install-deps)"
-      "${SCRIPT_DIR}/steps/02_python_env.sh"
-      "${SCRIPT_DIR}/steps/03_install_deps.sh"
-    else
-      log_error "No virtual environment found at ${ROOT_DIR}/.venv"
-      log_error "Run with --install-deps or run full deployment to set up the environment."
-      exit 1
-    fi
-  elif [ "${INSTALL_DEPS}" = "1" ]; then
-    log_info "Reinstalling/upgrading dependencies in existing venv (--install-deps)"
-    "${SCRIPT_DIR}/steps/03_install_deps.sh"
-  fi
+# Optional dependency refresh
+if [ "${INSTALL_DEPS}" = "1" ]; then
+  log_info "Reinstalling/upgrading dependencies in existing venv (--install-deps)"
+  "${SCRIPT_DIR}/steps/03_install_deps.sh"
 fi
 
 # Report detected model sources
