@@ -49,13 +49,14 @@ def quantize_with_autoawq(
     }
     print(f"[awq] AutoAWQ quant_config: {json.dumps(autoawq_quant_config)}")
 
-    device_map = "auto" if torch.cuda.is_available() else None
+    # NOTE: Do NOT use device_map="auto" here. AutoAWQ handles device placement
+    # internally during quantization. Using device_map breaks the quantization
+    # process and results in saving unquantized weights.
     model = None
     try:
         model = AutoAWQForCausalLM.from_pretrained(
             resolved_model_path,
             trust_remote_code=True,
-            device_map=device_map,
         )
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to load model for AutoAWQ: {exc}")
@@ -81,7 +82,8 @@ def quantize_with_autoawq(
         return False
 
     try:
-        model.save_quantized(output_dir)
+        # Explicitly request safetensors format for HuggingFace compatibility
+        model.save_quantized(output_dir, safetensors=True)
         tokenizer.save_pretrained(output_dir)
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to save AutoAWQ artifacts: {exc}")
