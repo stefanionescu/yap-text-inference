@@ -109,7 +109,7 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = ELLIPSIS_TRAILING_DOT_PATTERN.sub("...", cleaned)
     cleaned = cleaned.replace("’", "'")
     cleaned = re.sub(r"\s+([',?!])", r"\1", cleaned)
-    cleaned = ESCAPED_QUOTE_PATTERN.sub(lambda match: match.group(1), cleaned)
+    cleaned = ESCAPED_QUOTE_PATTERN.sub(_normalize_escaped_quote, cleaned)
     cleaned = EXAGGERATED_OH_PATTERN.sub(_normalize_exaggerated_oh, cleaned)
     cleaned = _strip_emoji_like_tokens(cleaned)
     return _ensure_leading_capital(cleaned)
@@ -200,6 +200,14 @@ def _normalize_exaggerated_oh(match: re.Match[str]) -> str:
         return text
     replacement = "Ooh" if text[0].isupper() else "ooh"
     return replacement
+
+
+def _normalize_escaped_quote(match: re.Match[str]) -> str:
+    """Replace escaped quotes, downgrading \" to ' for stability."""
+    char = match.group(1)
+    if char == '"':
+        return "'"
+    return char
 
 
 def _strip_markdown(text: str) -> str:
