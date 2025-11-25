@@ -4,6 +4,7 @@ import json
 import os
 import time
 import traceback
+from contextlib import contextmanager
 from typing import Any
 
 import torch
@@ -85,6 +86,7 @@ class AWQQuantizer:
             quant_config["ignore"] = self._qwen_ignore_patterns()
             quant_config["recipe"] = "qwen_awq"
             print("[awq] Enabling Qwen-specific AWQ recipe (duo_scaling, group_size=32)")
+            self._install_autowrap_debugger()
         toolcall_model = is_toolcall_model(model_path)
 
         if toolcall_model:
@@ -305,6 +307,42 @@ class AWQQuantizer:
             "re:visual.*",
             "lm_head",
         ]
+
+    def _install_autowrap_debugger(self) -> None:
+        """Patch llmcompressor autowrap hooks to log the offending module on error."""
+
+        try:
+            from llmcompressor.pipelines.sequential import ast_helpers  # type: ignore
+        except Exception:
+            return
+
+        original = getattr(ast_helpers, "autowrap_forward", None)
+        if original is None:
+            return
+        if getattr(original, "_awq_debug_wrapped", False):
+            return
+
+        def debugging_autowrap_forward(module: Any, ignore: Any) -> Any:
+            module_cls = f"{module.__class__.__module__}.{module.__class__.__name__}"
+            module_id = getattr(module, "name", None) or getattr(module, "layer_idx", None)
+            inner_cm = original(module, ignore)
+
+            @contextmanager
+            def _cm():
+                try:
+                    with inner_cm:
+                        yield
+                except KeyError as exc:
+                    print(
+                        "[awq] autowrap_forward failed for "
+                        f"{module_cls} (id={module_id!r}): {exc}"
+                    )
+                    raise
+
+            return _cm()
+
+        debugging_autowrap_forward._awq_debug_wrapped = True  # type: ignore[attr-defined]
+        ast_helpers.autowrap_forward = debugging_autowrap_forward  # type: ignore[assignment]
 
     def _prefetch_model(self, model_path: str) -> str | None:
         """Resolve remote HF repos to a local snapshot for robustness."""
