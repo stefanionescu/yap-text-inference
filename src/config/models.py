@@ -37,6 +37,11 @@ ALLOWED_TOOL_MODELS: list[str] = [
     # Full precision models
     "MadeAgents/Hammer2.1-1.5b",
     "MadeAgents/Hammer2.1-3b",
+
+    "Qwen/Qwen2.5-7B-Instruct",
+    "Qwen/Qwen2.5-14B-Instruct",
+    "Qwen/Qwen3-4B",
+
     # Pre-quantized AWQ models
     "yapwithai/hammer-2.1-3b-awq",
 ]

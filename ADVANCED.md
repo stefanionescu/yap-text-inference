@@ -7,6 +7,7 @@ This document covers advanced operations, configuration, and deep-dive details.
 - [Authentication Coverage](#authentication-coverage)
 - [Log Rotation](#log-rotation)
 - [Viewing Logs](#viewing-logs)
+- [Linting](#linting)
 - [API — WebSocket `/ws`](#api--websocket-ws)
   - [WebSocket Protocol Highlights](#websocket-protocol-highlights)
   - [Connection Lifecycle](#connection-lifecycle)
@@ -17,6 +18,7 @@ This document covers advanced operations, configuration, and deep-dive details.
   - [Barge-In and Cancellation](#barge-in-and-cancellation)
 - [Quantization Notes](#quantization-notes)
   - [Pushing AWQ Exports to Hugging Face](#pushing-awq-exports-to-hugging-face)
+- [Server Status and Capacity](#server-status-and-capacity)
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
 
@@ -58,6 +60,19 @@ head -n 100 server.log
 ```
 
 Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tail without stopping the deployment.
+
+## Linting
+
+Create/activate a virtualenv, install runtime + dev deps, then run the integrated lint script:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+bash scripts/lint.sh
+```
+
+`scripts/lint.sh` runs Ruff across `src` and `test`, then ShellCheck over every tracked `*.sh`, exiting non-zero if anything fails.
 
 ## API — WebSocket `/ws`
 
@@ -262,6 +277,18 @@ bash scripts/restart.sh --push-awq [deploy_mode] [--reset-models]
 ```
 
 The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.
+
+## Server Status and Capacity
+
+```bash
+# With API key (required)
+curl -H "X-API-Key: your_api_key" http://127.0.0.1:8000/status
+
+# Via query parameter
+curl "http://127.0.0.1:8000/status?api_key=your_api_key"
+```
+
+Returns server status and connection capacity information, including current active connections and limits.
 
 ## Persona and History Behavior
 
