@@ -23,6 +23,18 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "anthracite-org/magnum-v1-72b", # amazing on OpenRouter but too big
     "TheDrummer/Big-Tiger-Gemma-27B-v1", # might or might not work depending on vllm setup/version
     "TheDrummer/Tiger-Gemma-12B-v3", # might or might not work depending on vllm setup/version
+
+
+    "dphn/Dolphin3.0-Llama3.1-8B",
+    "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+    "nvidia/Llama-3_3-Nemotron-Super-49B-v1",
+    "nvidia/Llama-3_1-Nemotron-51B-Instruct",
+    "mistralai/Ministral-8B-Instruct-2410",
+    "internlm/internlm2_5-20b-chat",
+    "openchat/openchat-3.5-0106",
+    
+
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
@@ -31,10 +43,17 @@ ALLOWED_CHAT_MODELS: list[str] = [
 
     # Pre-quantized AWQ/W4A16 models
     "leon-se/gemma-3-27b-it-qat-W4A16-G128",
-    "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit", # running now
-    "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ",
+    "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
+    "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ", # stupid and random as fuck
 
-    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16",
+
+    "TheBloke/30B-Lazarus-AWQ",
+    "ReadyArt/Skyfall-36B-v2-AWQ",
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
+    "warshanks/Ministral-8B-Instruct-2410-AWQ",
+
+
+    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, blabbers, loses focus, says random shit even with super conservative params
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
     "yapwithai/thedrummer-theia-21B-v2-w4a16",
     "yapwithai/doctor-shotgun-ms3.2-24B-magnum-diamond-w4a16",
