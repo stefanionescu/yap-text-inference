@@ -81,17 +81,26 @@ def add_sampling_args(parser: ArgumentParser) -> None:
         dest="frequency_penalty",
         help=f"Frequency penalty (default server value: {CHAT_FREQUENCY_PENALTY_DEFAULT})",
     )
+    parser.add_argument(
+        "--no-sanitize-output",
+        action="store_true",
+        dest="no_sanitize_output",
+        help="Disable output sanitization/cleanup (default: sanitization enabled)",
+    )
 
 
-def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, float | int]:
+def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, float | int | bool]:
     """Extract CLI sampling overrides into the payload format expected by the server."""
     if not isinstance(args, Mapping):
         args = vars(args)
-    payload: dict[str, float | int] = {}
+    payload: dict[str, float | int | bool] = {}
     for field in ("temperature", "top_p", "top_k", "repetition_penalty", "presence_penalty", "frequency_penalty"):
         value = args.get(field)
         if value is not None:
             payload[field] = value
+    # Handle boolean flags
+    if args.get("no_sanitize_output"):
+        payload["sanitize_output"] = False
     return payload
 
 

@@ -38,7 +38,7 @@ async def run_chat_stream(
     user_utt: str,
     request_id: str | None = None,
     *,
-    sampling_overrides: dict[str, float | int] | None = None,
+    sampling_overrides: dict[str, float | int | bool] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream chat generation with optional micro-coalescing."""
     req_id = request_id or f"chat-{uuid.uuid4()}"
@@ -52,6 +52,7 @@ async def run_chat_stream(
     repetition_penalty = float(overrides.get("repetition_penalty", CHAT_REPETITION_PENALTY))
     presence_penalty = float(overrides.get("presence_penalty", CHAT_PRESENCE_PENALTY))
     frequency_penalty = float(overrides.get("frequency_penalty", CHAT_FREQUENCY_PENALTY))
+    sanitize_output = bool(overrides.get("sanitize_output", True))
 
     logit_bias = _get_logit_bias_map()
 
@@ -83,17 +84,20 @@ async def run_chat_stream(
         )
     )
 
-    sanitizer = StreamingSanitizer()
+    sanitizer = StreamingSanitizer() if sanitize_output else None
     normal_completion = False
     try:
         async for chunk in stream:
-            clean = sanitizer.push(chunk)
-            if clean:
-                yield clean
+            if sanitizer:
+                clean = sanitizer.push(chunk)
+                if clean:
+                    yield clean
+            else:
+                yield chunk
         normal_completion = True
     finally:
         pass  # Cleanup if needed, but don't return or yield here
-    if normal_completion:
+    if normal_completion and sanitizer:
         tail = sanitizer.flush()
         if tail:
             yield tail
