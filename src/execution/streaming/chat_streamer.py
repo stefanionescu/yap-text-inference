@@ -19,7 +19,7 @@ from ...config.sampling import (
     CHAT_TOP_P,
     CHAT_TOP_K,
     CHAT_MIN_P,
-    CHAT_REPEAT_PENALTY,
+    CHAT_REPETITION_PENALTY,
     CHAT_PRESENCE_PENALTY,
     CHAT_FREQUENCY_PENALTY,
     CHAT_STOP,
@@ -49,7 +49,7 @@ async def run_chat_stream(
     top_p = float(overrides.get("top_p", CHAT_TOP_P))
     top_k = int(overrides.get("top_k", CHAT_TOP_K))
     min_p = float(overrides.get("min_p", CHAT_MIN_P))
-    repeat_penalty = float(overrides.get("repeat_penalty", CHAT_REPEAT_PENALTY))
+    repetition_penalty = float(overrides.get("repetition_penalty", CHAT_REPETITION_PENALTY))
     presence_penalty = float(overrides.get("presence_penalty", CHAT_PRESENCE_PENALTY))
     frequency_penalty = float(overrides.get("frequency_penalty", CHAT_FREQUENCY_PENALTY))
 
@@ -60,7 +60,7 @@ async def run_chat_stream(
         top_p=top_p,
         top_k=top_k,
         min_p=min_p,
-        repetition_penalty=repeat_penalty,
+        repetition_penalty=repetition_penalty,
         presence_penalty=presence_penalty,
         frequency_penalty=frequency_penalty,
         logit_bias=logit_bias if logit_bias else None,

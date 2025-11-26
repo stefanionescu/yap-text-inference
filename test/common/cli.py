@@ -7,7 +7,9 @@ from typing import Any
 
 from test.config import (
     DEFAULT_SERVER_WS_URL,
-    CHAT_REPEAT_PENALTY_DEFAULT,
+    CHAT_REPETITION_PENALTY_DEFAULT,
+    CHAT_PRESENCE_PENALTY_DEFAULT,
+    CHAT_FREQUENCY_PENALTY_DEFAULT,
     CHAT_TEMPERATURE_DEFAULT,
     CHAT_TOP_K_DEFAULT,
     CHAT_TOP_P_DEFAULT,
@@ -62,10 +64,22 @@ def add_sampling_args(parser: ArgumentParser) -> None:
         help=f"Top-k sampling cap (default server value: {CHAT_TOP_K_DEFAULT})",
     )
     parser.add_argument(
-        "--repeat-penalty",
+        "--repetition-penalty",
         type=float,
-        dest="repeat_penalty",
-        help=f"Repetition penalty (default server value: {CHAT_REPEAT_PENALTY_DEFAULT})",
+        dest="repetition_penalty",
+        help=f"Repetition penalty (default server value: {CHAT_REPETITION_PENALTY_DEFAULT})",
+    )
+    parser.add_argument(
+        "--presence-penalty",
+        type=float,
+        dest="presence_penalty",
+        help=f"Presence penalty (default server value: {CHAT_PRESENCE_PENALTY_DEFAULT})",
+    )
+    parser.add_argument(
+        "--frequency-penalty",
+        type=float,
+        dest="frequency_penalty",
+        help=f"Frequency penalty (default server value: {CHAT_FREQUENCY_PENALTY_DEFAULT})",
     )
 
 
@@ -74,7 +88,7 @@ def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, flo
     if not isinstance(args, Mapping):
         args = vars(args)
     payload: dict[str, float | int] = {}
-    for field in ("temperature", "top_p", "top_k", "repeat_penalty"):
+    for field in ("temperature", "top_p", "top_k", "repetition_penalty", "presence_penalty", "frequency_penalty"):
         value = args.get(field)
         if value is not None:
             payload[field] = value

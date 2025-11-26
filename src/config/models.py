@@ -30,10 +30,8 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     "nvidia/Llama-3_1-Nemotron-51B-Instruct",
     "mistralai/Ministral-8B-Instruct-2410",
-    "internlm/internlm2_5-20b-chat", # 3
-    "vicgalle/Humanish-Roleplay-Llama-3.1-8B", # 2
     "zerofata/L3.3-GeneticLemonade-Unleashed-v3-70B",
-    "chargoddard/storytime-13b", # 1
+    "chargoddard/storytime-13b",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
@@ -46,7 +44,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ", # stupid and random as fuck
 
     "TheBloke/30B-Lazarus-AWQ",
-    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # 2
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
 
