@@ -237,11 +237,11 @@ def _trim_user_utterance(user_utt: str) -> str:
     return user_utt or ""
 
 
-def _extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int]:
+def _extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int | bool]:
     if not DEPLOY_CHAT:
         return {}
 
-    overrides: dict[str, float | int] = {}
+    overrides: dict[str, float | int | bool] = {}
     sampling_block = msg.get("sampling") or msg.get("sampling_params") or {}
     if sampling_block and not isinstance(sampling_block, dict):
         raise ValidationError("invalid_sampling_payload", "sampling must be an object")
@@ -266,6 +266,15 @@ def _extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int]:
                 f"{field} must be between {minimum} and {maximum}",
             )
         overrides[field] = normalized
+
+    # Handle boolean options
+    sanitize_raw = sampling_block.get("sanitize_output") if isinstance(sampling_block, dict) else None
+    if sanitize_raw is None:
+        sanitize_raw = msg.get("sanitize_output")
+    if sanitize_raw is not None:
+        if not isinstance(sanitize_raw, bool):
+            raise ValidationError("invalid_sanitize_output", "sanitize_output must be a boolean")
+        overrides["sanitize_output"] = sanitize_raw
 
     return overrides
 
