@@ -54,8 +54,24 @@ def _build_messages(
     history_turns: Sequence[tuple[str, str]],
     user_utt: str | None,
 ) -> list[dict[str, str]]:
-    """Build a list of message dicts for the chat template."""
+    """Build a list of message dicts for the chat template.
+    
+    Ensures proper role alternation (user/assistant/user/assistant) as required
+    by some tokenizer templates (e.g., Gemma 3). Consecutive messages of the
+    same role are merged together.
+    """
     messages: list[dict[str, str]] = []
+
+    def _append_message(role: str, content: str) -> None:
+        """Append a message, merging with previous if same role."""
+        content = content.strip()
+        if not content:
+            return
+        if messages and messages[-1]["role"] == role:
+            # Merge with previous message of same role
+            messages[-1]["content"] += "\n\n" + content
+        else:
+            messages.append({"role": role, "content": content})
 
     # System message (if present)
     if system_prompt.strip():
@@ -64,13 +80,13 @@ def _build_messages(
     # History turns
     for user_text, assistant_text in history_turns:
         if user_text:
-            messages.append({"role": "user", "content": user_text.strip()})
+            _append_message("user", user_text)
         if assistant_text:
-            messages.append({"role": "assistant", "content": assistant_text.strip()})
+            _append_message("assistant", assistant_text)
 
     # Current user message
     if user_utt is not None:
-        messages.append({"role": "user", "content": user_utt.strip()})
+        _append_message("user", user_utt)
 
     return messages
 
