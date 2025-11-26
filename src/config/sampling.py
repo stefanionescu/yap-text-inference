@@ -8,11 +8,11 @@ import os
 
 
 # --- Chat sampling ---
-CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.7"))
+CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.9"))
 CHAT_TOP_P = float(os.getenv("CHAT_TOP_P", "0.95"))
-CHAT_TOP_K = int(os.getenv("CHAT_TOP_K", "10"))
+CHAT_TOP_K = int(os.getenv("CHAT_TOP_K", "20"))
 CHAT_MIN_P = float(os.getenv("CHAT_MIN_P", "0"))
-CHAT_REPEAT_PENALTY = float(os.getenv("CHAT_REPEAT_PENALTY", "1.0"))
+CHAT_REPETITION_PENALTY = float(os.getenv("CHAT_REPETITION_PENALTY", "1.0"))
 CHAT_PRESENCE_PENALTY = float(os.getenv("CHAT_PRESENCE_PENALTY", "0"))
 CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 
@@ -110,7 +110,7 @@ __all__ = [
     "CHAT_TOP_P",
     "CHAT_TOP_K",
     "CHAT_MIN_P",
-    "CHAT_REPEAT_PENALTY",
+    "CHAT_REPETITION_PENALTY",
     "CHAT_PRESENCE_PENALTY",
     "CHAT_FREQUENCY_PENALTY",
     "CHAT_STOP",
