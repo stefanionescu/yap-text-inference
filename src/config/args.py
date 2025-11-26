@@ -14,6 +14,7 @@ from .env import (
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from .awq import (
+    get_tokenizer_kwargs,
     model_needs_memory_optimization,
     model_requires_bfloat16,
     model_requires_fla_runtime,
@@ -258,6 +259,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     elif inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
         dtype_value = "float16"
 
+    # Get model-specific tokenizer kwargs (e.g., fix_mistral_regex for broken tokenizers)
+    tok_kwargs = get_tokenizer_kwargs(model_origin)
+
     # Build kwargs for V1 engine.
     kwargs = dict(
         model=model,
@@ -277,6 +281,10 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
     )
+
+    # Apply model-specific tokenizer kwargs if any
+    if tok_kwargs:
+        kwargs["tokenizer_kwargs"] = tok_kwargs
 
     # Memory optimization for models prone to OOM (e.g., Gemma)
     # Lower max_num_seqs to reduce memory pressure during warmup

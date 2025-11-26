@@ -138,7 +138,7 @@ class LiveClient:
                     chunk = msg.get("text", "")
                     metrics = tracker.record_token(chunk)
                     if not printed_header:
-                        print("\\companion >", end=" ", flush=True)
+                        print("\ncompanion >", end=" ", flush=True)
                         printed_header = True
                     print(chunk, end="", flush=True)
                     chat_ttfb = metrics.get("chat_ttfb_ms")
