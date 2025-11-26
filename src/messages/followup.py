@@ -66,8 +66,10 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     # Synthesize the follow-up prompt for the chat model
     prefixed = f"{SCREEN_CHECKED_PREFIX} {analysis_text}".strip()
     user_utt = trim_text_to_token_limit_chat(prefixed, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+    # Track user utterance for pairing with assistant response later.
+    # Don't re-fetch history_text - it already contains previous turns (line 50),
+    # and user_utt is passed separately to the prompt builder.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
-    history_text = session_handler.get_history_text(session_id)
 
     final_text = ""
     sampling_overrides = cfg.get("chat_sampling")
