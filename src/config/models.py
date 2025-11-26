@@ -30,11 +30,10 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     "nvidia/Llama-3_1-Nemotron-51B-Instruct",
     "mistralai/Ministral-8B-Instruct-2410",
-    "internlm/internlm2_5-20b-chat",
-    "openchat/openchat-3.5-0106",
-    "vicgalle/Humanish-Roleplay-Llama-3.1-8B",
+    "internlm/internlm2_5-20b-chat", # 3
+    "vicgalle/Humanish-Roleplay-Llama-3.1-8B", # 2
     "zerofata/L3.3-GeneticLemonade-Unleashed-v3-70B",
-    "chargoddard/storytime-13b",
+    "chargoddard/storytime-13b", # 1
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
