@@ -4,12 +4,26 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import multiprocessing
 import os
 import time
 
-# Ensure V1 engine flag is set before importing any vLLM modules in this process
+# Set multiprocessing start method to 'spawn' before anything else
+# This MUST happen before any CUDA/torch imports
+try:
+    multiprocessing.set_start_method("spawn", force=True)
+except RuntimeError:
+    pass  # Already set
+
+# Set all CUDA/vLLM environment variables BEFORE any vLLM/torch imports
 os.environ.setdefault("VLLM_USE_V1", "1")
 os.environ.setdefault("ENFORCE_EAGER", "0")
+# Use 'spawn' for multiprocessing to avoid CUDA issues in forked subprocesses
+os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
+# Delay CUDA module loading to avoid early initialization issues
+os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")
+# Ensure CUDA_VISIBLE_DEVICES is set to avoid "changing after program start" errors
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", os.environ.get("CUDA_VISIBLE_DEVICES", "0"))
 
 from fastapi import FastAPI, WebSocket, Depends
 from fastapi.responses import ORJSONResponse
