@@ -154,8 +154,10 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     runtime_text = ""
     history_text = _resolve_history(session_id, msg)
     user_utt = _trim_user_utterance(msg.get("user_utterance", ""))
+    # Track user utterance for pairing with assistant response later.
+    # Don't re-fetch history_text - it already contains previous turns,
+    # and user_utt is passed separately to the prompt builder.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
-    history_text = session_handler.get_history_text(session_id)
 
     await ws.send_text(json.dumps(_build_ack_payload(session_id, session_config, updated_config)))
     logger.info("handle_start: ack sent session_id=%s", session_id)
