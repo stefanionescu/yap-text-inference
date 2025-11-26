@@ -105,7 +105,7 @@ def _apply_chat_template(
     tokenizer = _get_cached_tokenizer()
     try:
         return tokenizer.apply_chat_template(messages, add_generation_prompt)
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         # Fallback to basic ChatML if no chat template available
         logger.warning("Chat template not available, falling back to ChatML: %s", e)
         return _build_chatml_prompt_from_messages(messages, add_generation_prompt)

@@ -8,6 +8,8 @@ import contextlib
 
 # Ensure V1 engine path before importing vLLM
 os.environ.setdefault("VLLM_USE_V1", "1")
+# Use 'spawn' for multiprocessing to avoid CUDA re-initialization issues in forked subprocesses
+os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
 
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
