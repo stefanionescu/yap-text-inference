@@ -187,6 +187,8 @@ class ModelProfile:
     needs_memory_optimization: bool = False
     # Post-quantization config.json overrides (applied after AWQ export)
     config_overrides: Mapping[str, Any] | None = None
+    # Tokenizer kwargs to pass to vLLM (e.g., fix_mistral_regex for broken tokenizers)
+    tokenizer_kwargs: Mapping[str, Any] | None = None
 
     def matches(self, identifier: str) -> bool:
         return any(marker in identifier for marker in self.markers)
@@ -223,6 +225,13 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         markers=("kimi",),
         requires_fla_runtime=True,
     ),
+    # Mistral Small 3.x models have a broken tokenizer regex pattern
+    # See: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84
+    ModelProfile(
+        name="mistral-small-3-jeffcookio",
+        markers=("jeffcookio/mistral-small-3",),
+        tokenizer_kwargs={"fix_mistral_regex": True},
+    ),
 )
 
 
@@ -258,6 +267,14 @@ def get_config_overrides(model_identifier: str | None) -> Mapping[str, Any] | No
     return profile.config_overrides if profile else None
 
 
+def get_tokenizer_kwargs(model_identifier: str | None) -> dict[str, Any]:
+    """Return tokenizer kwargs needed for a model, or empty dict if none needed."""
+    profile = get_model_profile(model_identifier)
+    if profile and profile.tokenizer_kwargs:
+        return dict(profile.tokenizer_kwargs)
+    return {}
+
+
 __all__ = [
     "AWQ_DEFAULT_DATASET",
     "AWQ_MODEL_MARKERS",
@@ -278,5 +295,6 @@ __all__ = [
     "model_requires_fla_runtime",
     "model_needs_memory_optimization",
     "get_config_overrides",
+    "get_tokenizer_kwargs",
 ]
 

@@ -32,6 +32,10 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "mistralai/Ministral-8B-Instruct-2410",
     "zerofata/L3.3-GeneticLemonade-Unleashed-v3-70B",
     "chargoddard/storytime-13b",
+    "Qwen/Qwen3-Next-80B-A3B-Instruct",
+    "baidu/ERNIE-4.5-21B-A3B-PT",
+    "moonshotai/Moonlight-16B-A3B-Instruct",
+    "kakaocorp/kanana-1.5-15.7b-a3b-instruct",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
@@ -43,8 +47,8 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ", # stupid and random as fuck
 
-    "TheBloke/30B-Lazarus-AWQ",
-    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # 2
+    "TheBloke/30B-Lazarus-AWQ", # completely ignores instructions, super dumb
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # BEST MODEL FOR NOW
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
 
