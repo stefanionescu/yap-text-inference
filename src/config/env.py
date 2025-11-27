@@ -6,6 +6,8 @@ Includes validation of required variables and quantization mode.
 
 import os
 
+from ..utils import env_flag
+
 
 # Ensure V1 engine is selected before importing any vLLM modules
 os.environ.setdefault("VLLM_USE_V1", "1")
@@ -70,6 +72,7 @@ TOOL_QUANTIZATION = os.getenv("TOOL_QUANTIZATION")  # Optional override per-engi
 # Prefixes used to steer chat behavior around screenshot flows
 CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "CHECK SCREEN:").strip()
 SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "SCREEN CHECKED:").strip()
+CHAT_TEMPLATE_ENABLE_THINKING = env_flag("CHAT_TEMPLATE_ENABLE_THINKING", False)
 
 
 def validate_env() -> None:
@@ -104,5 +107,6 @@ __all__ = [
     # prefixes
     "CHECK_SCREEN_PREFIX",
     "SCREEN_CHECKED_PREFIX",
+    "CHAT_TEMPLATE_ENABLE_THINKING",
     "validate_env",
 ]

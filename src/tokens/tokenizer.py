@@ -12,6 +12,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 # Disable tokenizers parallelism before importing tokenizers (prevents fork warnings)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -146,6 +147,7 @@ class FastTokenizer:
         self,
         messages: list[dict[str, str]],
         add_generation_prompt: bool = True,
+        **template_kwargs: Any,
     ) -> str:
         """Apply the tokenizer's built-in chat template to format messages.
 
@@ -174,6 +176,7 @@ class FastTokenizer:
                 messages,
                 tokenize=False,
                 add_generation_prompt=add_generation_prompt,
+                **template_kwargs,
             )
 
     def _inspect_source(self, path_or_repo: str) -> TokenizerSource:

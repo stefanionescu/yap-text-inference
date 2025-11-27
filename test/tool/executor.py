@@ -36,6 +36,24 @@ def _format_bool(value: bool | None) -> str:
     return "yes" if value else "no"
 
 
+def _is_valid_response_shape(turn: TurnResult) -> bool:
+    raw = turn.tool_raw
+    if turn.tool_called:
+        if not isinstance(raw, list) or not raw:
+            return False
+        for item in raw:
+            if not isinstance(item, dict):
+                return False
+            if "name" not in item or "arguments" not in item:
+                return False
+        return True
+    if raw is None:
+        return True
+    if isinstance(raw, list):
+        return len(raw) == 0
+    return False
+
+
 async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
     state: dict[str, Any] = {
         "tool_status": None,
@@ -182,6 +200,18 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 case=case,
                 success=False,
                 reason=turn.reason or "unknown",
+                detail=detail,
+                failing_step=user_turn_index,
+                expected=step.expect_tool,
+                actual=turn.tool_called,
+            )
+
+        if not _is_valid_response_shape(turn):
+            detail = f"step {user_turn_index}: invalid tool response format (raw={turn.tool_raw!r})"
+            return CaseResult(
+                case=case,
+                success=False,
+                reason="wrong_format",
                 detail=detail,
                 failing_step=user_turn_index,
                 expected=step.expect_tool,
