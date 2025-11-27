@@ -55,8 +55,8 @@ TEXT_API_KEY=your_secret_key \
 DEPLOY_MODELS=both \
 CHAT_MODEL=your-org/chat-awq \
 TOOL_MODEL=your-org/tool-awq \
-CHAT_GPU_FRAC=0.70 \
-TOOL_GPU_FRAC=0.20 \
+CHAT_GPU_FRAC=0.71 \
+TOOL_GPU_FRAC=0.21 \
   docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY -e DEPLOY_MODELS \
   -e CHAT_MODEL -e TOOL_MODEL \
@@ -89,8 +89,8 @@ docker run -d --gpus all --name yap-tool \
 - If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
 
 ### Optional
-- `CHAT_GPU_FRAC` (default: `0.70`)
-- `TOOL_GPU_FRAC` (default: `0.20`)
+- `CHAT_GPU_FRAC` (default: `0.71`)
+- `TOOL_GPU_FRAC` (default: `0.21`)
 
 Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports). Make sure `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` is set if you pull private repos.
 
@@ -124,8 +124,8 @@ docker run -d --gpus all --name yap-server \
   -e CHAT_MODEL=your-org/chat-awq \
   -e TOOL_MODEL=your-org/tool-awq \
   -e TEXT_API_KEY=your_secret_key \
-  -e CHAT_GPU_FRAC=0.70 \
-  -e TOOL_GPU_FRAC=0.20 \
+  -e CHAT_GPU_FRAC=0.71 \
+  -e TOOL_GPU_FRAC=0.21 \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:latest
 

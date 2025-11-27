@@ -8,11 +8,11 @@ export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3000}
 
 # GPU memory allocation
 if [ "${DEPLOY_MODELS}" = "both" ]; then
-  export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
-  export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
+  export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.71}
+  export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.21}
 else
-  export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
-  export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}
+  export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.92}
+  export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.92}
 fi
 
 # vLLM toggles

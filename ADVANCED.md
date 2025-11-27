@@ -300,8 +300,8 @@ Returns server status and connection capacity information, including current act
 
 GPU memory is allocated based on deployment mode:
 
-- Single model: 90% GPU memory (chat-only or tool-only)
-- Both models: Chat gets 70%, Tool gets 20%
+- Single model: 92% GPU memory (chat-only or tool-only)
+- Both models: Chat gets 71%, Tool gets 21%
 
 Override as needed:
 

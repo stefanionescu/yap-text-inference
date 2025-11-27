@@ -55,12 +55,12 @@ TOOL_MODEL = os.getenv("TOOL_MODEL")
 # GPU memory fractions: adjust based on deployment mode
 if DEPLOY_CHAT and DEPLOY_TOOL:
     # Both models: split GPU memory
-    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
+    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.71"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.21"))
 else:
     # Single model: use most of GPU memory
-    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
+    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.92"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.92"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'

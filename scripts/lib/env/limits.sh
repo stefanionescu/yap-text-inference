@@ -11,13 +11,13 @@ apply_limits_and_timeouts() {
   export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3000}
 
   # GPU memory fractions (weights + KV). Use fractions only.
-  # Adjust based on deployment mode: single model gets 90%, both models split memory
+  # Adjust based on deployment mode: single model gets 92%, both models split memory
   if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
-    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
-    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
+    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.71}
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.21}
   else
-    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
-    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}
+    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.92}
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.92}
   fi
 
   # Optional tiny packet coalescer window (ms); 0 = off
