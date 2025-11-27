@@ -6,7 +6,6 @@ import uuid
 
 from src.config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
 from src.tokens import count_tokens_chat
-from src.utils.sanitize import sanitize_llm_output
 
 from .state import HistoryTurn, SessionState
 
@@ -129,8 +128,7 @@ class HistoryController:
         turn_id: str | None = None,
     ) -> str:
         user = (user_utt or "").strip()
-        assistant_raw = assistant_text or ""
-        assistant = sanitize_llm_output(assistant_raw) if assistant_raw else ""
+        assistant = assistant_text or ""
 
         target_turn: HistoryTurn | None = None
         if turn_id:

@@ -7,9 +7,6 @@ import re
 import unicodedata
 
 from ..config.filters import (
-    BACKSLASH_ESCAPE_PATTERN,
-    BLOCKQUOTE_PATTERN,
-    CODE_BLOCK_PATTERN,
     DOUBLE_DOT_SPACE_PATTERN,
     ELLIPSIS_PATTERN,
     ELLIPSIS_TRAILING_DOT_PATTERN,
@@ -19,14 +16,8 @@ from ..config.filters import (
     EXAGGERATED_OH_PATTERN,
     FREESTYLE_PREFIX_PATTERN,
     FREESTYLE_TARGET_PREFIXES,
-    HEADING_PATTERN,
     HTML_TAG_PATTERN,
-    IMAGE_PATTERN,
-    INLINE_CODE_PATTERN,
-    LINK_PATTERN,
-    LIST_MARKER_PATTERN,
     NEWLINE_TOKEN_PATTERN,
-    TABLE_BORDER_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
 )
 from ..config.limits import PROMPT_SANITIZE_MAX_CHARS
@@ -79,21 +70,6 @@ def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS)
     if len(text) > max_chars:
         raise ValueError("prompt too large")
     return text
-
-
-def sanitize_llm_output(
-    text: str | None,
-    *,
-    strip_markdown: bool = True,
-) -> str:
-    """Normalize assistant output while keeping semantics intact."""
-    if not text:
-        return ""
-
-    cleaned = text
-    if strip_markdown:
-        cleaned = _strip_markdown(cleaned)
-    return _normalize_whitespace(cleaned)
 
 
 def sanitize_stream_text(text: str) -> str:
@@ -213,25 +189,6 @@ def _normalize_escaped_quote(match: re.Match[str]) -> str:
     return char
 
 
-def _strip_markdown(text: str) -> str:
-    """Convert Markdown-like text into plain text."""
-    text = CODE_BLOCK_PATTERN.sub(" ", text)
-    text = INLINE_CODE_PATTERN.sub(r"\1", text)
-    text = IMAGE_PATTERN.sub(lambda match: match.group(1) or "", text)
-    text = LINK_PATTERN.sub(lambda match: match.group(1), text)
-    text = HEADING_PATTERN.sub("", text)
-    text = BLOCKQUOTE_PATTERN.sub("", text)
-    text = LIST_MARKER_PATTERN.sub("", text)
-    text = TABLE_BORDER_PATTERN.sub("", text)
-    text = text.replace("|", " ")
-    text = text.replace("**", "").replace("__", "")
-    text = text.replace("*", " ").replace("_", " ")
-    text = text.replace("~~", " ")
-    text = BACKSLASH_ESCAPE_PATTERN.sub(r"\1", text)
-    text = HTML_TAG_PATTERN.sub(" ", text)
-    return html.unescape(text)
-
-
 def _strip_emoji_like_tokens(text: str) -> str:
     """Remove unicode emojis and ASCII emoticons while collapsing spacing."""
     if not text:
@@ -242,18 +199,8 @@ def _strip_emoji_like_tokens(text: str) -> str:
     return text
 
 
-def _normalize_whitespace(text: str) -> str:
-    """Collapse redundant whitespace without removing intentional spacing."""
-    text = text.replace("\r", "\n")
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n+", " ", text)
-    text = re.sub(r"\s{2,}", " ", text)
-    return text.strip()
-
-
 __all__ = [
     "sanitize_prompt",
-    "sanitize_llm_output",
     "sanitize_stream_text",
     "StreamingSanitizer",
 ]

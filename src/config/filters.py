@@ -4,16 +4,7 @@ from __future__ import annotations
 
 import re
 
-CODE_BLOCK_PATTERN = re.compile(r"```.*?```", re.DOTALL)
-INLINE_CODE_PATTERN = re.compile(r"`{1,2}([^`]+)`{1,2}")
-IMAGE_PATTERN = re.compile(r"!\[([^\]]*)\]\([^)]+\)")
-LINK_PATTERN = re.compile(r"\[([^\]]+)\]\([^)]+\)")
-HEADING_PATTERN = re.compile(r"^#{1,6}\s*", re.MULTILINE)
-BLOCKQUOTE_PATTERN = re.compile(r"^>\s?", re.MULTILINE)
-LIST_MARKER_PATTERN = re.compile(r"^\s*(?:[-*+]|[0-9]+\.)\s+", re.MULTILINE)
-TABLE_BORDER_PATTERN = re.compile(r"^\s*\|?(?:\s*:?-+:?\s*\|)+\s*:?-+:?\s*\|?\s*$", re.MULTILINE)
 HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
-BACKSLASH_ESCAPE_PATTERN = re.compile(r"\\([\\`*_{}\[\]()#+\-.!])")
 
 EMOJI_PATTERN = re.compile(
     "["
@@ -57,19 +48,9 @@ ESCAPED_QUOTE_PATTERN = re.compile(r'\\(["\'])')
 DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s*")
 EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
-EMOTICON_SMILE_PATTERN = re.compile(r"[ \t]*[:;][\)-Dd\*][ \t]*")
 
 __all__ = [
-    "CODE_BLOCK_PATTERN",
-    "INLINE_CODE_PATTERN",
-    "IMAGE_PATTERN",
-    "LINK_PATTERN",
-    "HEADING_PATTERN",
-    "BLOCKQUOTE_PATTERN",
-    "LIST_MARKER_PATTERN",
-    "TABLE_BORDER_PATTERN",
     "HTML_TAG_PATTERN",
-    "BACKSLASH_ESCAPE_PATTERN",
     "EMOJI_PATTERN",
     "EMOTICON_PATTERN",
     "FREESTYLE_PREFIX_PATTERN",

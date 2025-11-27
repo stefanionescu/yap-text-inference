@@ -54,14 +54,9 @@ def is_personality_empty_or_null(val: str | None) -> bool:
     return False
 
 
-def validate_personality(personality: str | None) -> bool:
-    return normalize_personality(personality) is not None
-
-
 __all__ = [
     "normalize_gender",
     "is_gender_empty_or_null",
-    "validate_personality",
     "normalize_personality",
     "is_personality_empty_or_null",
 ]

@@ -262,12 +262,6 @@ def model_needs_memory_optimization(model_identifier: str | None) -> bool:
     return bool(profile and profile.needs_memory_optimization)
 
 
-def get_config_overrides(model_identifier: str | None) -> Mapping[str, Any] | None:
-    """Return config.json overrides needed for a model family, or None if none needed."""
-    profile = get_model_profile(model_identifier)
-    return profile.config_overrides if profile else None
-
-
 def get_tokenizer_kwargs(model_identifier: str | None) -> dict[str, Any]:
     """Return tokenizer kwargs needed for a model, or empty dict if none needed."""
     profile = get_model_profile(model_identifier)
@@ -295,7 +289,6 @@ __all__ = [
     "model_requires_bfloat16",
     "model_requires_fla_runtime",
     "model_needs_memory_optimization",
-    "get_config_overrides",
     "get_tokenizer_kwargs",
 ]
 
