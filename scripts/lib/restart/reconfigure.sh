@@ -306,6 +306,13 @@ restart_reconfigure_models() {
   if [ -z "${quantization}" ]; then
     quantization="$(_restart_autodetect_quantization "${chat_model}" "${deploy_chat}" "${tool_model}" "${deploy_tool}")"
   fi
+  if [ -z "${quantization}" ] || [ "${quantization}" = "fp8" ]; then
+    if [ -n "${chat_quant}" ] && [ "${chat_quant}" != "fp8" ]; then
+      quantization="${chat_quant}"
+    elif [ -n "${tool_quant}" ] && [ "${tool_quant}" != "fp8" ]; then
+      quantization="${tool_quant}"
+    fi
+  fi
   if ! _restart_validate_quantization "${quantization}"; then
     exit 1
   fi
