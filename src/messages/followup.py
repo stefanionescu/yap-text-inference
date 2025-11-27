@@ -15,6 +15,7 @@ from ..handlers.session import session_handler
 from ..execution.streaming.chat_streamer import run_chat_stream
 from ..config import DEPLOY_CHAT, SCREEN_CHECKED_PREFIX, USER_UTT_MAX_TOKENS
 from ..tokens import trim_text_to_token_limit_chat
+from ..utils.executor import safe_send_json
 
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
 
     final_text = ""
     sampling_overrides = cfg.get("chat_sampling")
+    interrupted = False
 
     async for chunk in run_chat_stream(
         session_id=session_id,
@@ -82,11 +84,20 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
         user_utt=user_utt,
         sampling_overrides=sampling_overrides,
     ):
-        await ws.send_text(json.dumps({"type": "token", "text": chunk}))
+        sent = await safe_send_json(ws, {"type": "token", "text": chunk})
+        if not sent:
+            interrupted = True
+            break
         final_text += chunk
 
-    await ws.send_text(json.dumps({"type": "final", "normalized_text": final_text}))
-    await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+    if interrupted:
+        return
+
+    if not await safe_send_json(ws, {"type": "final", "normalized_text": final_text}):
+        return
+    if not await safe_send_json(ws, {"type": "done", "usage": {}}):
+        return
+
     session_handler.append_history_turn(session_id, user_utt, final_text, turn_id=history_turn_id)
 
 

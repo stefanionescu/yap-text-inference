@@ -11,7 +11,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from config import CONVERSATION_HISTORY_PROMPTS
+from config import CONVERSATION_HISTORY_MESSAGES
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ class PersonaSession:
     session_id: str
     history: str = ""
     prompt_index: int = 0
-    prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_PROMPTS))
+    prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_MESSAGES))
     sampling: dict[str, float | int] | None = None
 
     def has_remaining_prompts(self) -> bool:
@@ -40,7 +40,7 @@ class PersonaSession:
     def next_script_prompt(self) -> str:
         """Get the next prompt from the script and advance the index."""
         if not self.has_remaining_prompts():
-            raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; cannot produce user prompts.")
+            raise RuntimeError("CONVERSATION_HISTORY_MESSAGES is empty; cannot produce user prompts.")
         prompt = self.prompts[self.prompt_index]
         self.prompt_index += 1
         return prompt

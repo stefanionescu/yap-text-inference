@@ -16,7 +16,7 @@ if _TEST_DIR not in sys.path:
 from common.rate import SlidingWindowPacer
 from common.ws import send_client_end, with_api_key
 from config import (
-    CONVERSATION_HISTORY_PROMPTS,
+    CONVERSATION_HISTORY_MESSAGES,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     PERSONA_VARIANTS,
@@ -41,9 +41,9 @@ async def run_test(
 ) -> None:
     """Run the personality switch test."""
     url = with_api_key(ws_url, api_key=api_key)
-    prompt_sequence = tuple(CONVERSATION_HISTORY_PROMPTS)
+    prompt_sequence = tuple(CONVERSATION_HISTORY_MESSAGES)
     if not prompt_sequence:
-        raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; nothing to test.")
+        raise RuntimeError("CONVERSATION_HISTORY_MESSAGES is empty; nothing to test.")
     session = PersonaSession(
         session_id=f"sess-{uuid.uuid4()}",
         prompts=prompt_sequence,

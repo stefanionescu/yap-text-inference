@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 try:  # When /test is on sys.path
-    from prompts.chat import FIRST_PROMPT, SECOND_PROMPT
+    from prompts.chat import FEMALE_PROMPT, MALE_PROMPT
 except ModuleNotFoundError:  # When repo root is on sys.path
-    from test.prompts.chat import FIRST_PROMPT, SECOND_PROMPT
+    from test.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
 
 WARMUP_FALLBACK_MESSAGE = "hey there! how are you today?"
 BENCHMARK_FALLBACK_MESSAGE = "who was Columbus?"
@@ -19,8 +19,8 @@ PERSONALITY_SWITCH_DELAY_SECONDS = 10
 PERSONALITY_REPLIES_PER_SWITCH = 2
 
 PERSONA_VARIANTS = [
-    ("female", "anna", FIRST_PROMPT),
-    ("male", "mark", SECOND_PROMPT),
+    ("female", "anna", FEMALE_PROMPT),
+    ("male", "mark", MALE_PROMPT),
 ]
 
 # Sampling defaults mirrored from src.config.sampling for CLI usage

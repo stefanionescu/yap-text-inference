@@ -319,7 +319,7 @@ Then run:
 TEXT_API_KEY=your_api_key python3 test/conversation.py --server ws://127.0.0.1:8000
 ```
 
-Prompts are sourced from `CONVERSATION_HISTORY_PROMPTS` in `test/config/messages.py`.
+Prompts are sourced from `CONVERSATION_HISTORY_MESSAGES` in `test/config/messages.py`.
 
 ### Screen Analysis / Toolcall Test
 
