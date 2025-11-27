@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 from ...config.websocket import WS_CANCEL_SENTINEL, WS_END_SENTINEL
 
 
-def parse_client_message(raw: str) -> Dict[str, Any]:
+def parse_client_message(raw: str) -> dict[str, Any]:
     """Normalize client message types to align with Yap TTS server contract."""
 
     text = (raw or "").strip()

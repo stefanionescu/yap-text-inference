@@ -10,15 +10,15 @@ from .quantization import (
 
 ALLOWED_CHAT_MODELS: list[str] = [
     # Full precision models
-    "SicariusSicariiStuff/Impish_Nemo_12B", # unstable once it gets past 0.8 temp, not like the model card describes it; sorta decent at temp <=0.6
-    "TheDrummer/Theia-21B-v2", # mid intelligence, overall meh but good if you start to be poor and need to keep running inference
+    "SicariusSicariiStuff/Impish_Nemo_12B", # unstable above 0.8 temp; decent <=0.6
+    "TheDrummer/Theia-21B-v2", # mid intelligence; ok for cheaper long runs
 
-    "TheDrummer/Rocinante-12B-v1.1", # mid intelligence, good if you need to downgrade quality temporarily, not that great at instruction following
+    "TheDrummer/Rocinante-12B-v1.1", # mid intelligence; downgrade option, weak instructions
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # pretty bad overall
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much (good for general RP tho)
     "djuna/magnum-v2-32b-chatml", # yaps too much but might fix with prompting (good for general RP tho)
-    "zerofata/MS3.2-PaintedFantasy-Visage-33B", # clearly better than cydonia but still has quirks that have to be prompted out
+    "zerofata/MS3.2-PaintedFantasy-Visage-33B", # better than Cydonia but still quirky
     "anthracite-org/magnum-v4-72b", # amazing on OpenRouter but too big
     "anthracite-org/magnum-v1-72b", # amazing on OpenRouter but too big
     "TheDrummer/Big-Tiger-Gemma-27B-v1", # might or might not work depending on vllm setup/version
@@ -52,7 +52,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
 
-    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, blabbers, loses focus, says random shit even with super conservative params
+    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, rambles even with conservative params
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
     "yapwithai/thedrummer-theia-21B-v2-w4a16",
     "yapwithai/doctor-shotgun-ms3.2-24B-magnum-diamond-w4a16",

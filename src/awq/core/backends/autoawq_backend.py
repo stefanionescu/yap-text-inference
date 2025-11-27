@@ -66,6 +66,16 @@ def _verify_awq_tensors(safetensor_path: str) -> tuple[bool, str]:
                 sample_qweight = f.get_tensor(qweight_keys[0])
                 if sample_qweight.dtype not in (torch.int32, torch.int8, torch.uint8):
                     return False, f"qweight has unexpected dtype {sample_qweight.dtype}"
+
+                missing_parts = []
+                if not scales_keys:
+                    missing_parts.append("scales")
+                if not qzeros_keys:
+                    missing_parts.append("qzeros")
+                if missing_parts:
+                    missing = " and ".join(missing_parts)
+                    return False, f"Found qweight tensors but missing accompanying {missing} tensors"
+
                 return True, f"Found {len(qweight_keys)} qweight tensors (dtype={sample_qweight.dtype})"
             
             if weight_keys and not qweight_keys:

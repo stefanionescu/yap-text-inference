@@ -22,26 +22,32 @@ def _parse_quant_summary(quant_summary: str) -> dict[str, Any]:
 
 def _render_fallback(template_vars: dict[str, Any]) -> str:
     samples_line = template_vars.get('calibration_samples_line', '')
-    return dedent(f"""
-    # {template_vars['model_name']} — AWQ {template_vars['w_bit']}-bit
+    return (
+        dedent(
+            f"""
+        # {template_vars['model_name']} — AWQ {template_vars['w_bit']}-bit
 
-    This model was quantized with [{template_vars['quantizer_name']}]({template_vars['quantizer_link']}) from {template_vars['source_model_link']}.
+        This model was quantized with [{template_vars['quantizer_name']}]({template_vars['quantizer_link']})
+        from {template_vars['source_model_link']}.
 
-    - Quantizer version: `{template_vars['quantizer_version']}`
-    - Scheme: {template_vars['quant_scheme']} | Targets: {template_vars['quant_targets']}
-    - Precision: group size {template_vars['q_group_size']} | zero-point {template_vars['quant_zero_point']}
-    - Dataset: {template_vars['calibration_dataset_effective']}
-    {samples_line}- Max seq len: {template_vars['calibration_seq_len']}
+        - Quantizer version: `{template_vars['quantizer_version']}`
+        - Scheme: {template_vars['quant_scheme']} | Targets: {template_vars['quant_targets']}
+        - Precision: group size {template_vars['q_group_size']} | zero-point {template_vars['quant_zero_point']}
+        - Dataset: {template_vars['calibration_dataset_effective']}
+        {samples_line}- Max seq len: {template_vars['calibration_seq_len']}
 
-    ## {template_vars['quantizer_recipe_heading']}
-    ```json
-    {template_vars['quant_summary']}
-    ```
-    """).strip() + "\n"
+        ## {template_vars['quantizer_recipe_heading']}
+        ```json
+        {template_vars['quant_summary']}
+        ```
+        """
+        ).strip()
+        + "\n"
+    )
 
 
 def _format_list(value: Any) -> str:
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, list | tuple | set):
         joined = ", ".join(str(v) for v in value if v)
         return joined or "none"
     if isinstance(value, str):
@@ -53,7 +59,7 @@ def _format_list(value: Any) -> str:
 def _format_zero_point(value: Any) -> str:
     if isinstance(value, bool):
         return "enabled" if value else "disabled"
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return "enabled" if value else "disabled"
     return "unspecified"
 

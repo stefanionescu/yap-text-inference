@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-from typing import Any, Tuple
+from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
@@ -83,7 +83,7 @@ def _extract_quantization_method(payload: Any) -> str | None:
 
 def _read_json_file(path: str) -> dict[str, Any] | None:
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             return json.load(fh)
     except Exception:
         return None
@@ -123,7 +123,7 @@ def _log_detected_quantization(model_path: str, method: str, payload: dict[str, 
     print(f"[config] Detected {method} quantization for {model_path}: {detail_str}")
 
 
-def _detect_local_quantization_backend(model_path: str) -> Tuple[str | None, dict[str, Any]]:
+def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect local model files to detect the quantization backend."""
     if not _is_local_model_path(model_path):
         return None, {}
@@ -141,7 +141,7 @@ def _detect_local_quantization_backend(model_path: str) -> Tuple[str | None, dic
     return None, {}
 
 
-def _detect_remote_quantization_backend(model_path: str) -> Tuple[str | None, dict[str, Any]]:
+def _detect_remote_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect remote Hugging Face repos for quantization metadata."""
     if not model_path or "/" not in model_path or _is_local_model_path(model_path):
         return None, {}
@@ -175,7 +175,7 @@ def _detect_remote_quantization_backend(model_path: str) -> Tuple[str | None, di
     return None, {}
 
 
-def _detect_quantization_backend(model_path: str) -> Tuple[str | None, dict[str, Any]]:
+def _detect_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Attempt both local and remote detection for llmcompressor exports."""
     method, payload = _detect_local_quantization_backend(model_path)
     if method:
