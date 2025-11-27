@@ -36,7 +36,7 @@ def apply_post_quantization_fixes(
         return True
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config: dict[str, Any] = json.load(f)
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Warning: failed to read config.json for fixes: {exc}")

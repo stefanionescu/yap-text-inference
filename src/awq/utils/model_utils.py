@@ -61,7 +61,7 @@ def ensure_autoawq_dependencies() -> None:
     try:
         from transformers import activations  # type: ignore
 
-        getattr(activations, "PytorchGELUTanh")
+        _ = activations.PytorchGELUTanh
     except Exception:
         import torch.nn as nn
         from transformers import activations  # type: ignore

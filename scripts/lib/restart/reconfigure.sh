@@ -105,7 +105,8 @@ _restart_resolve_model_identity() {
     return
   fi
   if [[ "${value}" == "${ROOT_DIR}/.awq/"* ]]; then
-    local source="$(_awq_read_source_model "${value}")"
+    local source
+    source="$(_awq_read_source_model "${value}")"
     if [ -n "${source}" ]; then
       echo "${source}"
       return

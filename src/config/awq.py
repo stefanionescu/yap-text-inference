@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from .limits import CHAT_MAX_LEN, CHAT_MAX_OUT, TOOL_MAX_LEN, TOOL_MAX_OUT
 from .models import ALLOWED_TOOL_MODELS
