@@ -17,7 +17,7 @@ from ...engines import get_chat_engine
 from ...handlers.session import session_handler
 from ...config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
 from ...config import CHECK_SCREEN_PREFIX
-from ...utils import (
+from ...utils.executor import (
     abort_tool_request,
     cancel_task,
     flush_and_send,
