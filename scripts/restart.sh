@@ -95,7 +95,7 @@ restart_detect_awq_models "${DEPLOY_MODE}"
 restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
-if [ "${USING_LOCAL_MODELS}" = "0" ]; then
+if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
   log_error "No AWQ models found for deploy mode '${DEPLOY_MODE}'"
   log_error ""
   log_error "Options:"
@@ -119,12 +119,20 @@ if [ "${INSTALL_DEPS}" = "1" ]; then
 fi
 
 # Report detected model sources
-log_info "Using LOCAL AWQ models:"
+log_info "Resolved AWQ sources for restart:"
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-  log_info "  Chat: ${CHAT_AWQ_DIR}"
+  chat_origin="local cache"
+  if [ "${CHAT_AWQ_SOURCE_KIND:-local}" != "local" ]; then
+    chat_origin="pre-quantized repo"
+  fi
+  log_info "  Chat (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
 fi
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-  log_info "  Tool: ${TOOL_AWQ_DIR}" 
+  tool_origin="local cache"
+  if [ "${TOOL_AWQ_SOURCE_KIND:-local}" != "local" ]; then
+    tool_origin="pre-quantized repo"
+  fi
+  log_info "  Tool (${tool_origin}): ${TOOL_AWQ_SOURCE:-${TOOL_AWQ_DIR}}" 
 fi
 
 # Light stop - preserve models and dependencies
