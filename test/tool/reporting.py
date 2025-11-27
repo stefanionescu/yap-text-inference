@@ -7,16 +7,21 @@ from typing import Sequence
 
 from .types import CaseResult
 
-__all__ = ["print_case_result", "print_summary"]
+__all__ = ["print_failures", "print_summary"]
 
 
-def print_case_result(result: CaseResult) -> None:
-    status = "PASS" if result.success else "FAIL"
-    reason = f" ({result.reason})" if result.reason else ""
-    summary = f"[{status}] {result.case.name}{reason} — {result.case.label}"
-    print(summary)
-    if not result.success and result.detail:
-        print(f"        {result.detail}")
+def print_failures(results: Sequence[CaseResult]) -> None:
+    failures = [r for r in results if not r.success]
+    if not failures:
+        return
+
+    print("=== Failures ===")
+    for result in failures:
+        reason = f" ({result.reason})" if result.reason else ""
+        summary = f"[FAIL] {result.case.name}{reason} — {result.case.label}"
+        print(summary)
+        if result.detail:
+            print(f"        {result.detail}")
 
 
 def print_summary(results: Sequence[CaseResult]) -> None:
@@ -35,8 +40,4 @@ def print_summary(results: Sequence[CaseResult]) -> None:
         print("Failure breakdown:")
         for reason, count in counter.items():
             print(f"  - {reason}: {count}")
-        print("Sample failures:")
-        for result in (r for r in results if not r.success)[:5]:
-            snippet = result.detail or "no detail"
-            print(f"    * {result.case.name}: {snippet}")
 

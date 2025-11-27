@@ -6,9 +6,14 @@ import logging
 from functools import lru_cache
 from collections.abc import Sequence
 
+from .config import CHAT_TEMPLATE_ENABLE_THINKING
 from .tokens.tokenizer import get_chat_tokenizer
 
 logger = logging.getLogger(__name__)
+
+# Chat templates like Qwen3 emit `<think>` sections by default. The toggle lives
+# in config so deployments can reason about it centrally (default: disabled).
+_CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKING}
 
 
 def build_toolcall_prompt_with_history(
@@ -104,7 +109,11 @@ def _apply_chat_template(
     """Apply the tokenizer's chat template to format messages."""
     tokenizer = _get_cached_tokenizer()
     try:
-        return tokenizer.apply_chat_template(messages, add_generation_prompt)
+        return tokenizer.apply_chat_template(
+            messages,
+            add_generation_prompt,
+            **_CHAT_TEMPLATE_DEFAULT_KWARGS,
+        )
     except (RuntimeError, ValueError) as e:
         # Fallback to basic ChatML if no chat template available
         logger.warning("Chat template not available, falling back to ChatML: %s", e)

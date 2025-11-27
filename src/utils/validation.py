@@ -1,7 +1,8 @@
 """Validation utilities for input normalization and checks."""
 
 import re
-from ..config import PERSONALITY_MAX_LEN
+
+from ..config.limits import PERSONALITY_MAX_LEN
 
 
 def normalize_gender(val: str | None) -> str | None:
