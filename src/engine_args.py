@@ -1,26 +1,28 @@
 """Engine args builder and related utilities for vLLM engines."""
 
+from __future__ import annotations
+
 import importlib.util
 import json
 import os
 from typing import Any, Tuple
 
-from .env import (
+from vllm.engine.arg_utils import AsyncEngineArgs
+
+from .config.env import (
     KV_DTYPE,
     QUANTIZATION,
     CHAT_QUANTIZATION,
     TOOL_QUANTIZATION,
 )
-
-from vllm.engine.arg_utils import AsyncEngineArgs
-from .awq import (
+from .config.awq import (
     get_tokenizer_kwargs,
     model_needs_memory_optimization,
     model_requires_bfloat16,
     model_requires_fla_runtime,
 )
-from .quantization import is_lowbit_quantization
-from .models import _is_local_model_path
+from .config.quantization import is_lowbit_quantization
+from .config.models import _is_local_model_path
 
 
 _QUANT_CONFIG_CANDIDATES = (
@@ -207,7 +209,6 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
-
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv(
         "MAX_NUM_BATCHED_TOKENS_CHAT" if is_chat else "MAX_NUM_BATCHED_TOKENS_TOOL",
@@ -323,5 +324,4 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
 
 __all__ = ["make_engine_args"]
-
 

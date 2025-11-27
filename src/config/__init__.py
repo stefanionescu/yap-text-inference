@@ -5,7 +5,6 @@ This module re-exports the config API from smaller modules:
 - models: allowlists and validation helpers
 - limits: token and concurrency limits
 - secrets: secrets like API_KEY
-- engine_args: make_engine_args utility
 """
 
 from .env import (
@@ -68,7 +67,6 @@ from .limits import (
     MAX_CONCURRENT_CONNECTIONS,
 )
 from .secrets import TEXT_API_KEY
-from .args import make_engine_args
 from .websocket import (
     WS_IDLE_TIMEOUT_S,
     WS_WATCHDOG_TICK_S,
@@ -189,6 +187,4 @@ __all__ = [
     "WS_CLOSE_BUSY_CODE",
     "WS_CLOSE_IDLE_CODE",
     "WS_CLOSE_CLIENT_REQUEST_CODE",
-    # helpers
-    "make_engine_args",
 ]

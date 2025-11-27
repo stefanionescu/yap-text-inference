@@ -1,312 +1,46 @@
+#!/usr/bin/env python3
+"""
+Personality switch WS test.
+
+Tests the ability to dynamically switch persona/chat_prompt mid-session.
+Cycles through PERSONA_VARIANTS while maintaining conversation history.
+
+Environment Variables:
+- SERVER_WS_URL: WebSocket URL (default: ws://127.0.0.1:8000/ws)
+- TEXT_API_KEY: API key for authentication (required, no default)
+- CHAT_PROMPT_UPDATE_WINDOW_SECONDS: Rate limit window for persona updates
+- CHAT_PROMPT_UPDATE_MAX_PER_WINDOW: Max updates per window
+- WS_MESSAGE_WINDOW_SECONDS: Rate limit window for messages
+- WS_MAX_MESSAGES_PER_WINDOW: Max messages per window
+
+Usage:
+  python3 test/personality.py
+  python3 test/personality.py --switches 5 --delay 2
+  python3 test/personality.py --temperature 0.8 --top_p 0.9
+"""
+
+from __future__ import annotations
+
 import argparse
 import asyncio
-import json
 import os
 import sys
-import uuid
-from dataclasses import dataclass, field
-from collections.abc import Sequence
-
-import websockets  # type: ignore[import-not-found]
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from test.common.message import iter_messages
-from test.common.rate import SlidingWindowPacer
-from test.common.ws import send_client_end, with_api_key
 from test.config import (
-    CONVERSATION_HISTORY_PROMPTS,
     DEFAULT_SERVER_WS_URL,
-    DEFAULT_WS_PING_INTERVAL,
-    DEFAULT_WS_PING_TIMEOUT,
-    PERSONA_VARIANTS,
-    PERSONALITY_NAME_CHECK_PROMPT,
-    PERSONALITY_REPLIES_PER_SWITCH,
     PERSONALITY_SWITCH_DEFAULT,
     PERSONALITY_SWITCH_DELAY_SECONDS,
     PERSONALITY_SWITCH_MAX,
     PERSONALITY_SWITCH_MIN,
 )
-from test.config.env import get_float_env, get_int_env
-from test.prompts.toolcall import TOOLCALL_PROMPT
 
 
-PERSONA_WINDOW_SECONDS = get_float_env("CHAT_PROMPT_UPDATE_WINDOW_SECONDS", 60.0)
-PERSONA_MAX_PER_WINDOW = get_int_env("CHAT_PROMPT_UPDATE_MAX_PER_WINDOW", 4)
-MESSAGE_WINDOW_SECONDS = get_float_env("WS_MESSAGE_WINDOW_SECONDS", 60.0)
-MESSAGE_MAX_PER_WINDOW = get_int_env("WS_MAX_MESSAGES_PER_WINDOW", 20)
-
-
-@dataclass(frozen=True)
-class PersonaVariant:
-    gender: str
-    personality: str
-    chat_prompt: str
-
-
-@dataclass
-class PersonaSession:
-    session_id: str
-    history: str = ""
-    prompt_index: int = 0
-    prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_PROMPTS))
-    sampling: dict[str, float | int] | None = None
-
-    def has_remaining_prompts(self) -> bool:
-        return self.prompt_index < len(self.prompts)
-
-    def next_script_prompt(self) -> str:
-        if not self.has_remaining_prompts():
-            raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; cannot produce user prompts.")
-        prompt = self.prompts[self.prompt_index]
-        self.prompt_index += 1
-        return prompt
-
-    def append_exchange(self, user_text: str, assistant_text: str) -> None:
-        transcript = "\n".join(
-            chunk for chunk in (self.history, f"User: {user_text}", f"Assistant: {assistant_text}") if chunk
-        )
-        self.history = transcript.strip()
-
-
-async def _collect_response(ws) -> str:
-    final_text = ""
-    async for msg in iter_messages(ws):
-        t = msg.get("type")
-        if t == "token":
-            final_text += msg.get("text", "")
-            continue
-        if t == "final":
-            if msg.get("normalized_text"):
-                final_text = msg["normalized_text"]
-            continue
-        if t == "done":
-            return final_text
-        if t == "error":
-            raise RuntimeError(f"server error: {msg}")
-    raise RuntimeError("WebSocket closed before receiving 'done'")
-
-
-async def _send_start_request(
-    ws,
-    session: PersonaSession,
-    variant: PersonaVariant,
-    user_text: str,
-    *,
-    message_pacer: SlidingWindowPacer | None = None,
-) -> str:
-    payload = {
-        "type": "start",
-        "session_id": session.session_id,
-        "gender": variant.gender,
-        "personality": variant.personality,
-        "chat_prompt": variant.chat_prompt,
-        "tool_prompt": TOOLCALL_PROMPT,
-        "history_text": session.history,
-        "user_utterance": user_text,
-    }
-    if session.sampling:
-        payload["sampling"] = session.sampling
-    if message_pacer:
-        await message_pacer.wait_turn()
-    await ws.send(json.dumps(payload))
-    reply = await _collect_response(ws)
-    print(
-        f"[persona={variant.personality} gender={variant.gender}] "
-        f"user: {user_text!r} -> assistant: {reply!r}"
-    )
-    return reply
-
-
-async def _wait_for_chat_prompt_ack(ws) -> dict:
-    async for msg in iter_messages(ws):
-        if msg.get("type") == "ack" and msg.get("for") == "chat_prompt":
-            return msg
-        if msg.get("type") == "error":
-            return msg
-    raise RuntimeError("WebSocket closed before receiving chat_prompt ack")
-
-
-async def _send_persona_update(
-    ws,
-    session: PersonaSession,
-    variant: PersonaVariant,
-    *,
-    persona_pacer: SlidingWindowPacer | None = None,
-    message_pacer: SlidingWindowPacer | None = None,
-) -> None:
-    payload = {
-        "type": "chat_prompt",
-        "session_id": session.session_id,
-        "gender": variant.gender,
-        "personality": variant.personality,
-        "chat_prompt": variant.chat_prompt,
-        "history_text": session.history,
-    }
-    if persona_pacer:
-        await persona_pacer.wait_turn()
-    if message_pacer:
-        await message_pacer.wait_turn()
-    await ws.send(json.dumps(payload))
-    ack = await _wait_for_chat_prompt_ack(ws)
-    if not (ack.get("type") == "ack" and ack.get("ok") and ack.get("code") in (200, 204)):
-        raise RuntimeError(f"update_chat_prompt failed: {ack}")
-
-
-async def _send_user_exchange(
-    ws,
-    session: PersonaSession,
-    variant: PersonaVariant,
-    user_text: str,
-    *,
-    message_pacer: SlidingWindowPacer | None = None,
-) -> None:
-    assistant_text = await _send_start_request(
-        ws,
-        session,
-        variant,
-        user_text,
-        message_pacer=message_pacer,
-    )
-    session.append_exchange(user_text, assistant_text)
-
-
-async def _run_initial_exchange(
-    ws,
-    session: PersonaSession,
-    variant: PersonaVariant,
-    *,
-    message_pacer: SlidingWindowPacer | None = None,
-) -> None:
-    opener = session.next_script_prompt()
-    await _send_user_exchange(
-        ws,
-        session,
-        variant,
-        opener,
-        message_pacer=message_pacer,
-    )
-
-
-async def _run_switch_sequence(
-    ws,
-    session: PersonaSession,
-    variant: PersonaVariant,
-    *,
-    persona_pacer: SlidingWindowPacer | None = None,
-    message_pacer: SlidingWindowPacer | None = None,
-) -> None:
-    if not session.has_remaining_prompts():
-        return
-    await _send_persona_update(
-        ws,
-        session,
-        variant,
-        persona_pacer=persona_pacer,
-        message_pacer=message_pacer,
-    )
-    await _send_user_exchange(
-        ws,
-        session,
-        variant,
-        PERSONALITY_NAME_CHECK_PROMPT,
-        message_pacer=message_pacer,
-    )
-    for _ in range(PERSONALITY_REPLIES_PER_SWITCH):
-        if not session.has_remaining_prompts():
-            break
-        user_text = session.next_script_prompt()
-        await _send_user_exchange(
-            ws,
-            session,
-            variant,
-            user_text,
-            message_pacer=message_pacer,
-        )
-
-
-async def _run_remaining_sequence(
-    ws,
-    session: PersonaSession,
-    variant: PersonaVariant,
-    *,
-    message_pacer: SlidingWindowPacer | None = None,
-) -> None:
-    while session.has_remaining_prompts():
-        user_text = session.next_script_prompt()
-        await _send_user_exchange(
-            ws,
-            session,
-            variant,
-            user_text,
-            message_pacer=message_pacer,
-        )
-
-
-async def run_test(
-    ws_url: str,
-    api_key: str | None,
-    switches: int,
-    delay_s: int,
-    sampling: dict[str, float | int] | None,
-) -> None:
-    url = with_api_key(ws_url, api_key=api_key)
-    prompt_sequence = tuple(CONVERSATION_HISTORY_PROMPTS)
-    if not prompt_sequence:
-        raise RuntimeError("CONVERSATION_HISTORY_PROMPTS is empty; nothing to test.")
-    session = PersonaSession(
-        session_id=f"sess-{uuid.uuid4()}",
-        prompts=prompt_sequence,
-        sampling=sampling,
-    )
-    variants: list[PersonaVariant] = [PersonaVariant(*variant) for variant in PERSONA_VARIANTS]
-    if not variants:
-        raise RuntimeError("PERSONA_VARIANTS is empty; nothing to test.")
-
-    message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
-    persona_pacer = SlidingWindowPacer(PERSONA_MAX_PER_WINDOW, PERSONA_WINDOW_SECONDS)
-
-    async with websockets.connect(
-        url,
-        ping_interval=DEFAULT_WS_PING_INTERVAL,
-        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
-    ) as ws:
-        try:
-            current_variant_idx = 0
-            await _run_initial_exchange(
-                ws,
-                session,
-                variants[current_variant_idx],
-                message_pacer=message_pacer,
-            )
-            for _ in range(switches):
-                if not session.has_remaining_prompts():
-                    break
-                await asyncio.sleep(delay_s)
-                current_variant_idx = (current_variant_idx + 1) % len(variants)
-                variant = variants[current_variant_idx]
-                await _run_switch_sequence(
-                    ws,
-                    session,
-                    variant,
-                    persona_pacer=persona_pacer,
-                    message_pacer=message_pacer,
-                )
-            if session.has_remaining_prompts():
-                await _run_remaining_sequence(
-                    ws,
-                    session,
-                    variants[current_variant_idx],
-                    message_pacer=message_pacer,
-                )
-        finally:
-            await send_client_end(ws)
-
-
-def main() -> None:
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Personality switch WS test")
     add_connection_args(
         parser,
@@ -330,12 +64,18 @@ def main() -> None:
     )
     args = parser.parse_args()
     args.sampling = build_sampling_payload(args)
+    return args
 
+
+def main() -> None:
+    """Thin orchestrator: parse CLI args and run the test."""
+    from personality.runner import run_test
+
+    args = _parse_args()
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
     asyncio.run(run_test(args.server, args.api_key, switches, args.delay, args.sampling or None))
 
 
 if __name__ == "__main__":
     main()
-
 

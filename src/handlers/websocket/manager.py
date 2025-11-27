@@ -51,6 +51,95 @@ _PAYLOAD_ONLY_HANDLERS: dict[str, Callable[[WebSocket, dict[str, Any]], Any]] = 
 }
 
 
+async def _prepare_connection(ws: WebSocket) -> bool:
+    if not await authenticate_websocket(ws):
+        await reject_connection(
+            ws,
+            error_code="authentication_failed",
+            message=(
+                "Authentication required. Provide valid API key via 'api_key' "
+                "query parameter or 'X-API-Key' header."
+            ),
+            close_code=WS_CLOSE_UNAUTHORIZED_CODE,
+        )
+        return False
+
+    if not await connection_handler.connect(ws):
+        capacity_info = connection_handler.get_capacity_info()
+        await reject_connection(
+            ws,
+            error_code="server_at_capacity",
+            message=(
+                "Server is at capacity. "
+                f"Active connections: {capacity_info['active']}/{capacity_info['max']}. "
+                "Please try again later."
+            ),
+            close_code=WS_CLOSE_BUSY_CODE,
+            extra={"capacity": capacity_info},
+        )
+        return False
+
+    await ws.accept()
+    return True
+
+
+def _select_rate_limiter(
+    msg_type: str,
+    message_limiter: SlidingWindowRateLimiter,
+    cancel_limiter: SlidingWindowRateLimiter,
+) -> tuple[SlidingWindowRateLimiter | None, str]:
+    if msg_type == "cancel":
+        return cancel_limiter, "cancel"
+    if msg_type in {"ping", "pong", "end"}:
+        return None, ""
+    return message_limiter, "message"
+
+
+async def _consume_limiter(
+    ws: WebSocket,
+    limiter: SlidingWindowRateLimiter,
+    label: str,
+) -> bool:
+    try:
+        limiter.consume()
+    except RateLimitError as err:
+        retry_in = int(max(1, math.ceil(err.retry_in))) if err.retry_in > 0 else 1
+        limit_desc = limiter.limit
+        window_desc = int(limiter.window_seconds)
+        message = (
+            f"{label} rate limit: at most {limit_desc} per {window_desc} seconds; "
+            f"retry in {retry_in} seconds"
+        )
+        await send_error(
+            ws,
+            error_code=f"{label}_rate_limited",
+            message=message,
+            extra={"retry_in": retry_in},
+        )
+        return False
+    return True
+
+
+async def _handle_control_message(
+    ws: WebSocket,
+    msg_type: str,
+    session_id: str | None,
+) -> bool:
+    if msg_type == "ping":
+        await ws.send_text(json.dumps({"type": "pong"}))
+        return False
+    if msg_type == "pong":
+        return False
+    if msg_type == "end":
+        logger.info("WS recv: end session_id=%s", session_id)
+        await ws.send_text(
+            json.dumps({"type": "connection_closed", "reason": "client_request"})
+        )
+        await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
+        return True
+    return False
+
+
 async def _handle_start_command(
     ws: WebSocket,
     msg: dict[str, Any],
@@ -83,35 +172,12 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     """Handle WebSocket connection and route messages to appropriate handlers."""
 
     lifecycle: WebSocketLifecycle | None = None
+    admitted = False
 
-    if not await authenticate_websocket(ws):
-        await reject_connection(
-            ws,
-            error_code="authentication_failed",
-            message=(
-                "Authentication required. Provide valid API key via 'api_key' "
-                "query parameter or 'X-API-Key' header."
-            ),
-            close_code=WS_CLOSE_UNAUTHORIZED_CODE,
-        )
+    if not await _prepare_connection(ws):
         return
 
-    if not await connection_handler.connect(ws):
-        capacity_info = connection_handler.get_capacity_info()
-        await reject_connection(
-            ws,
-            error_code="server_at_capacity",
-            message=(
-                "Server is at capacity. "
-                f"Active connections: {capacity_info['active']}/{capacity_info['max']}. "
-                "Please try again later."
-            ),
-            close_code=WS_CLOSE_BUSY_CODE,
-            extra={"capacity": capacity_info},
-        )
-        return
-
-    await ws.accept()
+    admitted = True
     session_id: str | None = None
     message_limiter = SlidingWindowRateLimiter(
         limit=WS_MAX_MESSAGES_PER_WINDOW,
@@ -145,47 +211,11 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             lifecycle.touch()
             msg_type = msg.get("type")
 
-            limiter: SlidingWindowRateLimiter | None = None
-            if msg_type == "cancel":
-                limiter = cancel_limiter
-            elif msg_type not in {"ping", "pong", "end"}:
-                limiter = message_limiter
-
-            if limiter:
-                try:
-                    limiter.consume()
-                except RateLimitError as err:
-                    retry_in = int(max(1, math.ceil(err.retry_in))) if err.retry_in > 0 else 1
-                    limit_desc = limiter.limit
-                    window_desc = int(limiter.window_seconds)
-                    label = "cancel" if msg_type == "cancel" else "message"
-                    message = (
-                        f"{label} rate limit: at most {limit_desc} per {window_desc} seconds; "
-                        f"retry in {retry_in} seconds"
-                    )
-                    await send_error(
-                        ws,
-                        error_code=f"{label}_rate_limited",
-                        message=message,
-                        extra={"retry_in": retry_in},
-                    )
-                    continue
-
-            if msg_type == "ping":
-                await ws.send_text(json.dumps({"type": "pong"}))
+            limiter, label = _select_rate_limiter(msg_type, message_limiter, cancel_limiter)
+            if limiter and not await _consume_limiter(ws, limiter, label):
                 continue
 
-            if msg_type == "pong":
-                continue
-
-            if msg_type == "end":
-                logger.info("WS recv: end session_id=%s", session_id)
-                await ws.send_text(
-                    json.dumps(
-                        {"type": "connection_closed", "reason": "client_request"}
-                    )
-                )
-                await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
+            if await _handle_control_message(ws, msg_type, session_id):
                 break
 
             if msg_type == "start":
@@ -232,11 +262,12 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             with contextlib.suppress(Exception):
                 await lifecycle.stop()
         await _cleanup_session(session_id)
-        await connection_handler.disconnect(ws)
-        remaining = connection_handler.get_connection_count()
-        logger.info("WebSocket connection closed. Active: %s", remaining)
-        if remaining == 0:
-            with contextlib.suppress(Exception):
-                await clear_all_engine_caches_on_disconnect()
+        if admitted:
+            await connection_handler.disconnect(ws)
+            remaining = connection_handler.get_connection_count()
+            logger.info("WebSocket connection closed. Active: %s", remaining)
+            if remaining == 0:
+                with contextlib.suppress(Exception):
+                    await clear_all_engine_caches_on_disconnect()
 
 

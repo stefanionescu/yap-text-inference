@@ -179,5 +179,3 @@ __all__ = [
     "build_chat_warm_prompt",
     "build_toolcall_prompt_with_history",
 ]
-
-

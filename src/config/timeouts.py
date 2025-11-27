@@ -14,7 +14,7 @@ GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "60"))
 TOOL_TIMEOUT_S = float(os.getenv("TOOL_TIMEOUT_S", "10"))
 
 # Tool hard timeout for concurrent/sequential decision in milliseconds
-TOOL_HARD_TIMEOUT_MS = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "300"))
+TOOL_HARD_TIMEOUT_MS = float(os.getenv("TOOL_HARD_TIMEOUT_MS", "500"))
 
 # Prebuffer size (characters) for concurrent executor before tool decision
 PREBUFFER_MAX_CHARS = int(os.getenv("PREBUFFER_MAX_CHARS", "1000"))

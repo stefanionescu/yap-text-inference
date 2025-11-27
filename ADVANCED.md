@@ -161,7 +161,7 @@ Keep the connection warm during long pauses
 Warm persona/history (cache priming; optional)
 
 ```json
-{ "type": "warm_persona", "persona_text": "..." }
+{ "type": "warm_persona", "chat_prompt": "..." }
 { "type": "warm_history", "history_text": "..." }
 ```
 
