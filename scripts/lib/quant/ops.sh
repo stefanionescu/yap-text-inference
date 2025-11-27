@@ -18,9 +18,12 @@ _awq_resolve_prequant_model() {
   local out_dir="${cache_dir}/${model_type}_awq"
   local source_marker="${cache_dir}/.${model_type}_source"
 
+  log_info "Resolving pre-quantized model: ${model_repo}"
+
   # If already a local directory with AWQ markers, use it directly
   if [ -d "${model_repo}" ]; then
     if [ -f "${model_repo}/awq_config.json" ] || [ -f "${model_repo}/awq_metadata.json" ]; then
+      log_info "Using local AWQ directory: ${model_repo}"
       # Create symlink in cache dir for restart detection
       rm -rf "${out_dir}"
       ln -sfn "$(cd "${model_repo}" && pwd)" "${out_dir}"
@@ -31,9 +34,12 @@ _awq_resolve_prequant_model() {
     fi
   fi
 
-  # Remote HF repo - download and symlink
+  # Remote HF repo - download to HF cache and get the local path
+  log_info "Downloading pre-quantized model from HF: ${model_repo}"
   local resolved_path
-  resolved_path=$("${ROOT_DIR}/.venv/bin/python" - <<PY "${model_repo}" 2>/dev/null || true
+  local dl_stderr
+  dl_stderr=$(mktemp)
+  resolved_path=$("${ROOT_DIR}/.venv/bin/python" - <<PY "${model_repo}" 2>"${dl_stderr}"
 import sys
 import os
 try:
@@ -53,18 +59,28 @@ except Exception as e:
     print(f"ERROR: {e}", file=sys.stderr)
     sys.exit(1)
 PY
-)
+) || true
 
   if [ -z "${resolved_path}" ] || [ ! -d "${resolved_path}" ]; then
     log_warn "Failed to resolve pre-quantized model: ${model_repo}"
+    if [ -s "${dl_stderr}" ]; then
+      log_warn "Download error: $(cat "${dl_stderr}")"
+    fi
+    rm -f "${dl_stderr}"
     return 1
   fi
+  rm -f "${dl_stderr}"
+
+  log_info "Model downloaded to: ${resolved_path}"
 
   # Verify it has AWQ markers
   if [ ! -f "${resolved_path}/awq_config.json" ] && [ ! -f "${resolved_path}/awq_metadata.json" ]; then
-    log_warn "Resolved path ${resolved_path} does not contain AWQ markers"
+    log_warn "Resolved path ${resolved_path} does not contain AWQ markers (awq_config.json or awq_metadata.json)"
+    log_warn "This model may not be a valid pre-quantized AWQ model"
     return 1
   fi
+
+  log_info "Verified AWQ markers present, creating cache symlink"
 
   # Create symlink in cache dir for restart detection
   rm -rf "${out_dir}"
@@ -72,6 +88,7 @@ PY
   # Store source model info in a separate file (not in symlink target)
   echo "${model_repo}" > "${source_marker}"
 
+  log_info "Pre-quantized model ready at: ${out_dir} -> ${resolved_path}"
   echo "${out_dir}"
   return 0
 }
@@ -81,13 +98,23 @@ awq_should_use_prequant() {
   local need_tool="${AWQ_TARGET_TOOL:-0}"
   local use=0 chat_use=0 tool_use=0
 
-  if [ "${need_chat}" = "1" ] && model_detect_is_prequant_awq "${CHAT_MODEL:-}"; then
-    chat_use=1
-    use=1
+  if [ "${need_chat}" = "1" ]; then
+    if model_detect_is_prequant_awq "${CHAT_MODEL:-}"; then
+      log_info "Chat model '${CHAT_MODEL}' detected as pre-quantized AWQ"
+      chat_use=1
+      use=1
+    else
+      log_info "Chat model '${CHAT_MODEL}' NOT detected as pre-quantized AWQ (will quantize)"
+    fi
   fi
-  if [ "${need_tool}" = "1" ] && model_detect_is_prequant_awq "${TOOL_MODEL:-}"; then
-    tool_use=1
-    use=1
+  if [ "${need_tool}" = "1" ]; then
+    if model_detect_is_prequant_awq "${TOOL_MODEL:-}"; then
+      log_info "Tool model '${TOOL_MODEL}' detected as pre-quantized AWQ"
+      tool_use=1
+      use=1
+    else
+      log_info "Tool model '${TOOL_MODEL}' NOT detected as pre-quantized AWQ (will quantize)"
+    fi
   fi
 
   export USE_PREQUANT_AWQ=${use}

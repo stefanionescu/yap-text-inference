@@ -1,6 +1,6 @@
 # Yap Text Inference Server
 
-A vLLM text inference server optimized for low TTFT. It can run:
+A vLLM text inference server optimized for dual model deployment. It can run:
 - Chat engine for roleplay
 - Engine for tool-call detection
 - Both engines together by default; chat-only/tool-only are supported in host scripts and Docker (mixed image)
