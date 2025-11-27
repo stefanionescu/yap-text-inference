@@ -27,7 +27,11 @@ if [ -f "${PID_FILE}" ]; then
 fi
 
 # Log key env knobs
-log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${CHAT_MODEL:-} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
+model_display="${CHAT_MODEL:-}"
+if [ -z "${model_display}" ] || [ "${DEPLOY_MODELS:-both}" = "tool" ]; then
+  model_display="${TOOL_MODEL:-${model_display}}"
+fi
+log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${model_display:-<unset>} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
 deploy_line="DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
 if [ "${DEPLOY_MODELS:-both}" != "tool" ]; then
   deploy_line+=" CHAT=${CHAT_MODEL:-}"
