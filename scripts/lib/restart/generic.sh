@@ -3,7 +3,7 @@
 # Generic (non-AWQ) restart path for scripts/restart.sh
 # Requires: SCRIPT_DIR, ROOT_DIR
 
-restart_generic_restart_if_needed() {
+restart_basic() {
   local SERVER_LOG LAST_QUANT LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_ENV_FILE
   SERVER_LOG="${ROOT_DIR}/server.log"
   LAST_QUANT=""; LAST_DEPLOY=""; LAST_CHAT=""; LAST_TOOL=""

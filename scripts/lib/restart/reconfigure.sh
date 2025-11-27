@@ -367,5 +367,5 @@ restart_reconfigure_models() {
     source "${SCRIPT_DIR}/quantization/awq_quantizer.sh"
   fi
 
-  restart_start_server_background
+  restart_server_background
 }

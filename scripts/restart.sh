@@ -89,8 +89,7 @@ if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
 fi
 
 # Generic path may start and tail the server; if not applicable, it returns
-restart_generic_restart_if_needed
-
+restart_basic
 restart_detect_awq_models "${DEPLOY_MODE}"
 restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
@@ -140,7 +139,6 @@ log_info "Stopping server (preserving models and dependencies)..."
 NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 restart_setup_env_for_awq "${DEPLOY_MODE}"
-
 restart_apply_defaults_and_deps
 restart_push_cached_awq_models "${DEPLOY_MODE}"
-restart_start_server_background
+restart_server_background
