@@ -28,7 +28,14 @@ fi
 
 # Log key env knobs
 log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${CHAT_MODEL:-} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
-log_info "DEPLOY_MODELS=${DEPLOY_MODELS:-both} CHAT=${CHAT_MODEL:-} TOOL=${TOOL_MODEL:-}"
+deploy_line="DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
+if [ "${DEPLOY_MODELS:-both}" != "tool" ]; then
+  deploy_line+=" CHAT=${CHAT_MODEL:-}"
+fi
+if [ "${DEPLOY_MODELS:-both}" != "chat" ]; then
+  deploy_line+=" TOOL=${TOOL_MODEL:-}"
+fi
+log_info "${deploy_line}"
 log_info "TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_V1:-} ENFORCE_EAGER=${ENFORCE_EAGER:-}"
 
 runtime_guard_write_snapshot "${ROOT_DIR}"
