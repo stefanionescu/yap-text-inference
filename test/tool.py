@@ -53,6 +53,11 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         help="Optional limit on number of test cases to run",
     )
+    parser.add_argument(
+        "--show-successes",
+        action="store_true",
+        help="Include passing test cases in the per-case output",
+    )
     return parser.parse_args()
 
 
@@ -75,6 +80,7 @@ def main() -> None:
                 timeout_s=max(0.1, args.timeout),
                 concurrency=max(1, args.concurrency),
                 limit=args.limit,
+                show_successes=args.show_successes,
             )
         )
     except KeyboardInterrupt:

@@ -59,4 +59,5 @@ class CaseResult:
     failing_step: int | None = None
     expected: bool | None = None
     actual: bool | None = None
+    responses: list[Any] | None = None
 

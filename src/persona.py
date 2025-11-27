@@ -7,7 +7,7 @@ from functools import lru_cache
 from collections.abc import Sequence
 
 from .config import CHAT_TEMPLATE_ENABLE_THINKING
-from .tokens.tokenizer import get_chat_tokenizer
+from .tokens.tokenizer import get_chat_tokenizer, get_tool_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -16,17 +16,18 @@ logger = logging.getLogger(__name__)
 _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKING}
 
 
-def build_toolcall_prompt_with_history(
+def build_toolcall_prompt_with_prefix(
     base_prompt: str,
     user_utt: str,
-    history_text: str = "",
+    prefix_text: str = "",
 ) -> str:
-    """Build Toolcall prompt with optional history context for KV cache sharing."""
-    prompt_parts = [base_prompt.strip()]
-    if history_text.strip():
-        prompt_parts.append(f"Recent conversation context:\n{history_text.strip()}")
-    prompt_parts.append(f"User message:\n{user_utt.strip()}")
-    return "\n\n".join(prompt_parts) + "\n"
+    """Build the tool prompt using the tokenizer's native chat template."""
+    history_turns = _parse_history(prefix_text)
+    system_prompt = (base_prompt or "").strip()
+    messages = _build_messages(system_prompt, history_turns, user_utt)
+    if not messages:
+        return ""
+    return _apply_tool_chat_template(messages, add_generation_prompt=True)
 
 
 def build_chat_prompt_with_prefix(
@@ -97,9 +98,15 @@ def _build_messages(
 
 
 @lru_cache(maxsize=1)
-def _get_cached_tokenizer():
+def _get_cached_chat_tokenizer():
     """Get the chat tokenizer (cached)."""
     return get_chat_tokenizer()
+
+
+@lru_cache(maxsize=1)
+def _get_cached_tool_tokenizer():
+    """Get the tool tokenizer (cached)."""
+    return get_tool_tokenizer()
 
 
 def _apply_chat_template(
@@ -107,7 +114,7 @@ def _apply_chat_template(
     add_generation_prompt: bool = True,
 ) -> str:
     """Apply the tokenizer's chat template to format messages."""
-    tokenizer = _get_cached_tokenizer()
+    tokenizer = _get_cached_chat_tokenizer()
     try:
         return tokenizer.apply_chat_template(
             messages,
@@ -117,6 +124,23 @@ def _apply_chat_template(
     except (RuntimeError, ValueError) as e:
         # Fallback to basic ChatML if no chat template available
         logger.warning("Chat template not available, falling back to ChatML: %s", e)
+        return _build_chatml_prompt_from_messages(messages, add_generation_prompt)
+
+
+def _apply_tool_chat_template(
+    messages: list[dict[str, str]],
+    add_generation_prompt: bool = True,
+) -> str:
+    """Apply the tool tokenizer's chat template to format messages."""
+    tokenizer = _get_cached_tool_tokenizer()
+    try:
+        return tokenizer.apply_chat_template(
+            messages,
+            add_generation_prompt,
+            **_CHAT_TEMPLATE_DEFAULT_KWARGS,
+        )
+    except (RuntimeError, ValueError) as e:
+        logger.warning("Tool template not available, falling back to ChatML: %s", e)
         return _build_chatml_prompt_from_messages(messages, add_generation_prompt)
 
 
@@ -186,5 +210,5 @@ def _parse_history(history_text: str) -> list[tuple[str, str]]:
 __all__ = [
     "build_chat_prompt_with_prefix",
     "build_chat_warm_prompt",
-    "build_toolcall_prompt_with_history",
+    "build_toolcall_prompt_with_prefix",
 ]
