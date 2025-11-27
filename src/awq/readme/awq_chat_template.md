@@ -16,6 +16,8 @@ pipeline_tag: text-generation
 
 This model was quantized with [{quantizer_name}]({quantizer_link}) from {source_model_link}.
 
+{hf_size_note}
+
 ## Quantization Overview
 - Quantizer version: {quantizer_version}
 - Scheme: {quant_scheme}
