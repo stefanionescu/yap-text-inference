@@ -116,5 +116,3 @@ restart_basic() {
   log_info "Following logs (Ctrl+C detaches, server continues)..."
   exec tail -n +1 -F "${SERVER_LOG_PATH}"
 }
-
-
