@@ -234,6 +234,11 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         requires_bfloat16=True,
         requires_fla_runtime=True,
     ),
+    ModelProfile(
+        name="qwen3",
+        markers=("qwen3",),
+        tokenizer_kwargs={"fix_mistral_regex": True},
+    ),
 )
 
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 
-
 CHAT_TEMPLATE_NAME = "awq_chat_template.md"
 TOOL_TEMPLATE_NAME = "awq_tool_template.md"
 
@@ -27,6 +26,17 @@ _QWEN_LICENSE = {
     "license": "other",
     "license_name": "other",
     "license_link": "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct/blob/main/LICENSE",
+}
+
+_HAMMER_LICENSE_MODELS = {
+    "MadeAgents/Hammer2.1-1.5b",
+    "MadeAgents/Hammer2.1-3b",
+}
+
+_HAMMER_LICENSE = {
+    "license": "cc-by-nc-4.0",
+    "license_name": "cc-by-nc-4.0",
+    "license_link": "LICENSE",
 }
 
 
@@ -60,15 +70,24 @@ def _is_qwen_license_model(model_path: str) -> bool:
     return False
 
 
+def _is_hammer_license_model(model_path: str) -> bool:
+    normalized = (model_path or "").strip()
+    if not normalized:
+        return False
+    for target in _HAMMER_LICENSE_MODELS:
+        if normalized == target or normalized.endswith(target):
+            return True
+    return False
+
+
 def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> dict[str, str]:
     """Return license info dict with keys: license, license_name, license_link."""
     if is_tool:
-        if "Hammer2.1-1.5b" in model_path:
-            return {
-                "license": "cc-by-nc-4.0",
-                "license_name": "cc-by-nc-4.0",
-                "license_link": _license_link_for(model_path, is_hf_model),
-            }
+        if _is_hammer_license_model(model_path):
+            license_info = _HAMMER_LICENSE.copy()
+            if license_info.get("license_link") == "LICENSE":
+                license_info["license_link"] = _license_link_for(model_path, is_hf_model)
+            return license_info
         return {
             "license": "other",
             "license_name": "other",
