@@ -42,7 +42,7 @@ from test.common.rate import SlidingWindowPacer
 from test.common.regex import contains_complete_sentence, has_at_least_n_words
 from test.common.ws import send_client_end, with_api_key
 from test.config import (
-    CONVERSATION_HISTORY_PROMPTS,
+    CONVERSATION_HISTORY_MESSAGES,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
@@ -298,7 +298,7 @@ def main() -> None:
             run_conversation(
                 ws_url=args.server,
                 api_key=args.api_key,
-                prompts=CONVERSATION_HISTORY_PROMPTS,
+                prompts=CONVERSATION_HISTORY_MESSAGES,
                 gender=gender,
                 personality=personality,
                 recv_timeout=args.recv_timeout,

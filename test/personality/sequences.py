@@ -10,7 +10,7 @@ if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
 from common.rate import SlidingWindowPacer
-from config import PERSONALITY_NAME_CHECK_PROMPT, PERSONALITY_REPLIES_PER_SWITCH
+from config import PERSONALITY_NAME_CHECK_MESSAGE, PERSONALITY_REPLIES_PER_SWITCH
 
 from .messaging import send_persona_update, send_user_exchange
 from .session import PersonaSession, PersonaVariant
@@ -56,7 +56,7 @@ async def run_switch_sequence(
         ws,
         session,
         variant,
-        PERSONALITY_NAME_CHECK_PROMPT,
+        PERSONALITY_NAME_CHECK_MESSAGE,
         message_pacer=message_pacer,
     )
     for _ in range(PERSONALITY_REPLIES_PER_SWITCH):

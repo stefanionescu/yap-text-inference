@@ -5,28 +5,47 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable
+from typing import Any
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 from ..engines import get_tool_engine
 from ..handlers.session import session_handler
 from ..execution.tool.tool_runner import run_toolcall
 
+logger = logging.getLogger(__name__)
+
+
+async def safe_send_text(ws: WebSocket, text: str) -> bool:
+    """Send text to the client, returning False if the socket is gone."""
+    try:
+        await ws.send_text(text)
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected while sending %s bytes", len(text))
+        return False
+    return True
+
+
+async def safe_send_json(ws: WebSocket, payload: dict[str, Any]) -> bool:
+    """Send a JSON payload, swallowing client disconnects."""
+    return await safe_send_text(ws, json.dumps(payload))
+
 
 async def send_toolcall(ws: WebSocket, status: str, raw: object) -> None:
-    await ws.send_text(json.dumps({
+    await safe_send_json(ws, {
         "type": "toolcall",
         "status": status,
         "raw": raw,
-    }))
+    })
 
 
 async def flush_and_send(ws: WebSocket, buffer_text: str) -> None:
     if not buffer_text:
         return
-    await ws.send_text(json.dumps({"type": "token", "text": buffer_text}))
+    await safe_send_json(ws, {"type": "token", "text": buffer_text})
 
 
 async def cancel_task(task: asyncio.Task | None) -> None:
@@ -79,22 +98,40 @@ async def stream_chat_response(
     final_text = initial_text
     text_visible = bool(initial_text) and initial_text_already_sent
     history_user = history_user_utt if history_user_utt is not None else user_utt
+    interrupted = False
 
     try:
         if initial_text and not initial_text_already_sent:
-            await ws.send_text(json.dumps({"type": "token", "text": initial_text}))
-            text_visible = True
+            sent = await safe_send_json(ws, {"type": "token", "text": initial_text})
+            if sent:
+                text_visible = True
+            else:
+                interrupted = True
 
-        async for chunk in stream:
-            await ws.send_text(json.dumps({"type": "token", "text": chunk}))
-            final_text += chunk
-            text_visible = True
+        if not interrupted:
+            async for chunk in stream:
+                sent = await safe_send_json(ws, {"type": "token", "text": chunk})
+                if not sent:
+                    interrupted = True
+                    break
+                final_text += chunk
+                text_visible = True
 
-        await ws.send_text(json.dumps({
-            "type": "final",
-            "normalized_text": final_text,
-        }))
-        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+        if not interrupted:
+            sent_final = await safe_send_json(
+                ws,
+                {
+                    "type": "final",
+                    "normalized_text": final_text,
+                },
+            )
+            if not sent_final:
+                interrupted = True
+
+        if not interrupted:
+            sent_done = await safe_send_json(ws, {"type": "done", "usage": {}})
+            if not sent_done:
+                interrupted = True
     except asyncio.CancelledError:
         if text_visible:
             session_handler.append_history_turn(
@@ -104,6 +141,9 @@ async def stream_chat_response(
                 turn_id=history_turn_id,
             )
         raise
+
+    if interrupted:
+        return final_text
 
     session_handler.append_history_turn(
         session_id,

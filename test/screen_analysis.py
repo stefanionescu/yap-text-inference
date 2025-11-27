@@ -38,8 +38,8 @@ from test.config import (
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
-    SCREEN_ANALYSIS_ANALYSIS_TEXT,
-    SCREEN_ANALYSIS_USER_UTTERANCE,
+    SCREEN_ANALYSIS_TEXT,
+    SCREEN_ANALYSIS_USER_REPLY,
 )
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,7 @@ async def run_once(server: str, api_key: str | None, sampling: dict[str, float |
         "gender": DEFAULT_GENDER,
         "personality": DEFAULT_PERSONALITY,
         "history_text": "",
-        "user_utterance": SCREEN_ANALYSIS_USER_UTTERANCE,
+        "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
     }
     if sampling:
         start_payload["sampling"] = sampling
@@ -134,7 +134,7 @@ async def run_once(server: str, api_key: str | None, sampling: dict[str, float |
 
             followup_payload = {
                 "type": "followup",
-                "analysis_text": SCREEN_ANALYSIS_ANALYSIS_TEXT,
+                "analysis_text": SCREEN_ANALYSIS_TEXT,
                 "history_text": "",
             }
             await ws.send(json.dumps(followup_payload))
