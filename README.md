@@ -220,8 +220,8 @@ python3 test/warmup.py --gender male --style flirty "hello there"
 ### Testing Concurrent vs. Sequential Modes
 
 ```bash
-# Test sequential mode (default)
-python3 test/warmup.py "write a simple hello world function"
+# Test sequential mode (set CONCURRENT_MODEL_CALL=0)
+CONCURRENT_MODEL_CALL=0 python3 test/warmup.py "write a simple hello world function"
 
 # Test concurrent mode
 # Terminal 1: Start server with concurrent mode (auto → FP8)

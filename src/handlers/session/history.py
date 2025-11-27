@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from typing import List
 
 from src.config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
 from src.tokens import count_tokens_chat
+from src.utils.sanitize import sanitize_llm_output
 
 from .state import HistoryTurn, SessionState
 
@@ -97,5 +97,55 @@ def trim_history_turns(state: SessionState) -> None:
         state.history_turns.pop(0)
         rendered = render_history(state.history_turns)
         tokens = count_tokens_chat(rendered) if rendered else 0
+
+
+class HistoryController:
+    """Encapsulates history CRUD operations for SessionState instances."""
+
+    def get_text(self, state: SessionState) -> str:
+        trim_history_turns(state)
+        return render_history(state.history_turns)
+
+    def set_text(self, state: SessionState, history_text: str) -> str:
+        state.history_turns = parse_history_text(history_text)
+        trim_history_turns(state)
+        return render_history(state.history_turns)
+
+    def append_user_turn(self, state: SessionState, user_utt: str) -> str | None:
+        user = (user_utt or "").strip()
+        if not user:
+            return None
+        turn_id = uuid.uuid4().hex
+        state.history_turns.append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
+        trim_history_turns(state)
+        return turn_id
+
+    def append_turn(
+        self,
+        state: SessionState,
+        user_utt: str,
+        assistant_text: str,
+        *,
+        turn_id: str | None = None,
+    ) -> str:
+        user = (user_utt or "").strip()
+        assistant_raw = assistant_text or ""
+        assistant = sanitize_llm_output(assistant_raw) if assistant_raw else ""
+
+        target_turn: HistoryTurn | None = None
+        if turn_id:
+            target_turn = next((turn for turn in state.history_turns if turn.turn_id == turn_id), None)
+
+        if target_turn:
+            if assistant:
+                target_turn.assistant = assistant
+        else:
+            if not user and not assistant:
+                return render_history(state.history_turns)
+            fallback_turn = HistoryTurn(turn_id=uuid.uuid4().hex, user=user, assistant=assistant)
+            state.history_turns.append(fallback_turn)
+
+        trim_history_turns(state)
+        return render_history(state.history_turns)
 
 

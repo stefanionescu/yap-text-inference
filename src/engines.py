@@ -22,8 +22,8 @@ from .config import (
     TOOL_MAX_LEN,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
-    make_engine_args,
 )
+from .engine_args import make_engine_args
 
 
 _chat_engine: AsyncLLMEngine | None = None

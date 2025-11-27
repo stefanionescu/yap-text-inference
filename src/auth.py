@@ -53,7 +53,7 @@ async def get_api_key(
         )
     
     if not validate_api_key(provided_key):
-        logger.warning(f"Invalid API key provided: {provided_key[:8]}...")
+        logger.warning("Invalid API key provided")
         raise HTTPException(
             status_code=401,
             detail="Invalid API key."
@@ -101,7 +101,7 @@ async def authenticate_websocket(websocket: WebSocket) -> bool:
         return False
     
     if not validate_api_key(provided_key):
-        logger.warning(f"WebSocket connection with invalid API key: {provided_key[:8]}...")
+        logger.warning("WebSocket connection with invalid API key")
         return False
     
     logger.info("WebSocket connection authenticated successfully")

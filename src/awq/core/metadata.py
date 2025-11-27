@@ -66,5 +66,3 @@ def save_quantization_metadata(
             file.write("ok")
     except Exception:
         pass
-
-

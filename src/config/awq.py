@@ -207,7 +207,7 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         requires_bfloat16=True,
         needs_memory_optimization=True,
         # NOTE: Some Gemma2 finetunes have tie_word_embeddings=false which breaks vLLM's
-        # assertion but works fine otherwise. We don't override it here - see below.
+        # assertion but works fine otherwise.
     ),
     ModelProfile(
         name="gemma",
@@ -225,12 +225,13 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         markers=("kimi",),
         requires_fla_runtime=True,
     ),
-    # Mistral Small 3.x models have a broken tokenizer regex pattern
-    # See: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84
+    # Moonlight uses DeepSeek V3 architecture with MLA (Multi-Head Latent Attention)
+    # FLASHINFER doesn't support MLA, so we need to unset the backend to allow auto-selection
     ModelProfile(
-        name="mistral-small-3-jeffcookio",
-        markers=("jeffcookio/mistral-small-3",),
-        tokenizer_kwargs={"fix_mistral_regex": True},
+        name="moonlight",
+        markers=("moonlight",),
+        requires_bfloat16=True,
+        requires_fla_runtime=True,
     ),
 )
 

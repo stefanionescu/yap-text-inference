@@ -5,16 +5,14 @@ from __future__ import annotations
 import asyncio
 import copy
 import time
-import uuid
 from typing import Any
 
 from src.config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 from src.utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
-from src.utils.sanitize import sanitize_llm_output
 from src.utils.time import format_session_timestamp
 
-from .history import parse_history_text, render_history, trim_history_turns
-from .state import HistoryTurn, SessionState, SESSION_IDLE_TTL_SECONDS
+from .history import HistoryController
+from .state import SessionState, SESSION_IDLE_TTL_SECONDS
 
 
 class SessionHandler:
@@ -25,6 +23,19 @@ class SessionHandler:
     def __init__(self, idle_ttl_seconds: int = SESSION_IDLE_TTL_SECONDS):
         self._sessions: dict[str, SessionState] = {}
         self._idle_ttl_seconds = idle_ttl_seconds
+        self._history = HistoryController()
+
+    def _get_state(self, session_id: str) -> SessionState | None:
+        return self._sessions.get(session_id)
+
+    def _ensure_state(self, session_id: str) -> SessionState:
+        state = self._sessions.get(session_id)
+        if state is None:
+            self.initialize_session(session_id)
+            state = self._sessions[session_id]
+        else:
+            state.touch()
+        return state
 
     # ------------------------------------------------------------------ #
     # Session metadata / lifecycle
@@ -51,6 +62,7 @@ class SessionHandler:
         }
         new_state = SessionState(session_id=session_id, meta=meta)
         self._sessions[session_id] = new_state
+        new_state.touch()
         return meta
 
     def update_session_config(
@@ -64,9 +76,8 @@ class SessionHandler:
     ) -> dict[str, Any]:
         """Update mutable persona configuration for a session."""
 
-        meta = self.initialize_session(session_id)
-        state = self._sessions[session_id]
-        state.touch()
+        state = self._ensure_state(session_id)
+        meta = state.meta
 
         changed: dict[str, Any] = {}
         if chat_gender is not None:
@@ -104,20 +115,12 @@ class SessionHandler:
         return changed
 
     def get_chat_prompt_last_update_at(self, session_id: str) -> float:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
-        state.touch()
+        state = self._ensure_state(session_id)
         return float(state.chat_prompt_last_update_at or 0.0)
 
     def set_chat_prompt_last_update_at(self, session_id: str, timestamp: float) -> None:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
+        state = self._ensure_state(session_id)
         state.chat_prompt_last_update_at = timestamp
-        state.touch()
 
     def consume_chat_prompt_update(
         self,
@@ -132,12 +135,7 @@ class SessionHandler:
             float: 0 if allowed, otherwise the number of seconds until the next slot frees.
         """
 
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
-
-        state.touch()
+        state = self._ensure_state(session_id)
         limiter = state.chat_prompt_rate_limiter
         if (
             limiter is None
@@ -158,7 +156,7 @@ class SessionHandler:
     def get_session_config(self, session_id: str) -> dict[str, Any]:
         """Return a copy of the current session configuration."""
 
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         if not state:
             return {}
         state.touch()
@@ -175,35 +173,21 @@ class SessionHandler:
     # History helpers
     # ------------------------------------------------------------------ #
     def get_history_text(self, session_id: str) -> str:
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         if not state:
             return ""
         state.touch()
-        trim_history_turns(state)
-        return render_history(state.history_turns)
+        return self._history.get_text(state)
 
     def set_history_text(self, session_id: str, history_text: str) -> str:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
-        state.history_turns = parse_history_text(history_text)
-        trim_history_turns(state)
+        state = self._ensure_state(session_id)
+        rendered = self._history.set_text(state, history_text)
         state.touch()
-        return render_history(state.history_turns)
+        return rendered
 
     def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
-        user = (user_utt or "").strip()
-        if not user:
-            return None
-
-        turn_id = uuid.uuid4().hex
-        state.history_turns.append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
-        trim_history_turns(state)
+        state = self._ensure_state(session_id)
+        turn_id = self._history.append_user_turn(state, user_utt)
         state.touch()
         return turn_id
 
@@ -215,61 +199,38 @@ class SessionHandler:
         *,
         turn_id: str | None = None,
     ) -> str:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
-        user = (user_utt or "").strip()
-        assistant_raw = assistant_text or ""
-        assistant = sanitize_llm_output(assistant_raw) if assistant_raw else ""
-
-        target_turn: HistoryTurn | None = None
-        if turn_id:
-            target_turn = next((turn for turn in state.history_turns if turn.turn_id == turn_id), None)
-
-        if target_turn:
-            if assistant:
-                target_turn.assistant = assistant
-        else:
-            if not user and not assistant:
-                return render_history(state.history_turns)
-            fallback_turn = HistoryTurn(turn_id=uuid.uuid4().hex, user=user, assistant=assistant)
-            state.history_turns.append(fallback_turn)
-
-        trim_history_turns(state)
+        state = self._ensure_state(session_id)
+        rendered = self._history.append_turn(
+            state,
+            user_utt,
+            assistant_text,
+            turn_id=turn_id,
+        )
         state.touch()
-        return render_history(state.history_turns)
+        return rendered
 
     # ------------------------------------------------------------------ #
     # Request/task tracking
     # ------------------------------------------------------------------ #
     def set_active_request(self, session_id: str, request_id: str) -> None:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
+        state = self._ensure_state(session_id)
         state.active_request_id = request_id
-        state.touch()
 
     def set_tool_request(self, session_id: str, request_id: str) -> None:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
+        state = self._ensure_state(session_id)
         state.tool_request_id = request_id
-        state.touch()
 
     def get_tool_request_id(self, session_id: str) -> str:
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         return state.tool_request_id or "" if state else ""
 
     def clear_tool_request_id(self, session_id: str) -> None:
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         if state:
             state.tool_request_id = None
 
     def is_request_cancelled(self, session_id: str, request_id: str) -> bool:
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         if not state:
             return True
         active = state.active_request_id
@@ -280,15 +241,11 @@ class SessionHandler:
         return active != request_id
 
     def track_task(self, session_id: str, task: asyncio.Task) -> None:
-        state = self._sessions.get(session_id)
-        if not state:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
+        state = self._ensure_state(session_id)
         state.task = task
-        state.touch()
 
         def _clear_task(completed: asyncio.Task) -> None:
-            current = self._sessions.get(session_id)
+            current = self._get_state(session_id)
             if current and current.task is completed:
                 current.task = None
                 current.touch()
@@ -296,11 +253,11 @@ class SessionHandler:
         task.add_done_callback(_clear_task)
 
     def has_running_task(self, session_id: str) -> bool:
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         return bool(state and state.task and not state.task.done())
 
     def cancel_session_requests(self, session_id: str) -> None:
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         if not state:
             return
         state.active_request_id = self.CANCELLED_SENTINEL
@@ -308,7 +265,7 @@ class SessionHandler:
             state.task.cancel()
 
     def cleanup_session_requests(self, session_id: str) -> dict[str, str]:
-        state = self._sessions.get(session_id)
+        state = self._get_state(session_id)
         if not state:
             return {"active": "", "tool": ""}
         active_req = (

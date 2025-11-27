@@ -106,5 +106,3 @@ __all__ = [
     "SCREEN_CHECKED_PREFIX",
     "validate_env",
 ]
-
-
