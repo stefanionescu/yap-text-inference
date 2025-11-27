@@ -11,7 +11,7 @@ from ...engines import get_chat_engine
 from ...persona import build_chat_prompt_with_prefix
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...handlers.session import session_handler
-from ...utils.sanitize import StreamingSanitizer
+from ...utils import StreamingSanitizer
 from functools import lru_cache
 
 from ...config.sampling import (

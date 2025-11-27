@@ -15,7 +15,7 @@ from ..handlers.session import session_handler
 from ..execution.streaming.chat_streamer import run_chat_stream
 from ..config import DEPLOY_CHAT, SCREEN_CHECKED_PREFIX, USER_UTT_MAX_TOKENS
 from ..tokens import trim_text_to_token_limit_chat
-from ..utils.executor import safe_send_json
+from ..utils import safe_send_json
 
 
 logger = logging.getLogger(__name__)

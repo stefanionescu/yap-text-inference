@@ -12,7 +12,6 @@ from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..engines import get_tool_engine
 from ..handlers.session import session_handler
 from ..execution.tool.tool_runner import run_toolcall
 
@@ -80,7 +79,10 @@ async def abort_tool_request(session_id: str) -> None:
     if not req_id:
         return
     with contextlib.suppress(Exception):
-        await (await get_tool_engine()).abort_request(req_id)
+        from ..engines import get_tool_engine
+
+        engine = await get_tool_engine()
+        await engine.abort_request(req_id)
 
 
 async def stream_chat_response(
