@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import json
 import os
 from typing import Any
@@ -32,6 +33,40 @@ _QUANT_CONFIG_CANDIDATES = (
     "awq_config.json",
 )
 _AWQ_METADATA_FILE = "awq_metadata.json"
+_TOKENIZER_WARNING_EMITTED = False
+
+
+def _resolve_tokenizer_kwarg_key() -> str | None:
+    """Return the AsyncEngineArgs kwarg that accepts tokenizer kwargs."""
+    try:
+        params = inspect.signature(AsyncEngineArgs.__init__).parameters
+    except (ValueError, TypeError):
+        return None
+    for candidate in ("tokenizer_kwargs", "tokenizer_init_kwargs"):
+        if candidate in params:
+            return candidate
+    return None
+
+
+_TOKENIZER_KWARG_KEY = _resolve_tokenizer_kwarg_key()
+
+
+def _inject_tokenizer_kwargs(target: dict[str, Any], tok_kwargs: dict[str, Any]) -> None:
+    """Attach tokenizer kwargs if the installed vLLM supports them."""
+    global _TOKENIZER_WARNING_EMITTED
+
+    if not tok_kwargs:
+        return
+    if _TOKENIZER_KWARG_KEY:
+        target[_TOKENIZER_KWARG_KEY] = tok_kwargs
+        return
+    if not _TOKENIZER_WARNING_EMITTED:
+        keys = ", ".join(sorted(tok_kwargs.keys()))
+        print(
+            "[config] Warning: vLLM does not expose tokenizer kwargs; "
+            f"skipping tokenizer overrides ({keys or 'unknown keys'})."
+        )
+        _TOKENIZER_WARNING_EMITTED = True
 
 
 def _normalize_quantization_name(name: str | None) -> str | None:
@@ -260,9 +295,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     elif inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
         dtype_value = "float16"
 
-    # Get model-specific tokenizer kwargs (e.g., fix_mistral_regex for broken tokenizers)
-    tok_kwargs = get_tokenizer_kwargs(model_origin)
-
     # Build kwargs for V1 engine.
     kwargs = dict(
         model=model,
@@ -283,9 +315,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         scheduling_policy="priority",
     )
 
-    # Apply model-specific tokenizer kwargs if any
-    if tok_kwargs:
-        kwargs["tokenizer_kwargs"] = tok_kwargs
+    # Apply model-specific tokenizer kwargs if supported by vLLM
+    tok_kwargs = get_tokenizer_kwargs(model_origin)
+    _inject_tokenizer_kwargs(kwargs, tok_kwargs)
 
     # Memory optimization for models prone to OOM (e.g., Gemma)
     # Lower max_num_seqs to reduce memory pressure during warmup
