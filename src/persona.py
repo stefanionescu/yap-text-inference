@@ -25,8 +25,6 @@ def build_toolcall_prompt_with_prefix(
     history_turns = _parse_history(prefix_text)
     system_prompt = (base_prompt or "").strip()
     messages = _build_messages(system_prompt, history_turns, user_utt)
-    if not messages:
-        return ""
     return _apply_tool_chat_template(messages, add_generation_prompt=True)
 
 

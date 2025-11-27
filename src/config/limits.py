@@ -5,7 +5,7 @@ import os
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5160"))  # 1800 persona + 3000 history + 350 user + 10 tool reply
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
-TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "10"))
+TOOL_MAX_OUT = int(os.getenv("TOOL_MAX_OUT", "25"))
 TOOL_MAX_LEN = int(os.getenv("TOOL_MAX_LEN", "3000"))  # 1450 system + 350 user + 1200 history
 PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
 

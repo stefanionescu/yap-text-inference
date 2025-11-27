@@ -36,21 +36,93 @@ def _format_bool(value: bool | None) -> str:
     return "yes" if value else "no"
 
 
+def _extract_json_array(text: str) -> list | None:
+    """Try to extract a JSON array from text, handling trailing content."""
+    if not isinstance(text, str):
+        return None
+    text = text.strip()
+    if not text.startswith("["):
+        return None
+    
+    # Try to find the closing bracket of the JSON array
+    # This handles cases where there's extra text after the JSON
+    bracket_count = 0
+    in_string = False
+    escape_next = False
+    
+    for i, char in enumerate(text):
+        if escape_next:
+            escape_next = False
+            continue
+        if char == "\\":
+            escape_next = True
+            continue
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if char == "[":
+            bracket_count += 1
+        elif char == "]":
+            bracket_count -= 1
+            if bracket_count == 0:
+                # Found the end of the JSON array
+                try:
+                    parsed = json.loads(text[:i + 1])
+                    if isinstance(parsed, list):
+                        return parsed
+                except (json.JSONDecodeError, ValueError):
+                    pass
+                return None
+    return None
+
+
 def _is_valid_response_shape(turn: TurnResult) -> bool:
+    """Validate tool response shape, handling up to 25 tokens with possible trailing content."""
     raw = turn.tool_raw
+    
     if turn.tool_called:
-        if not isinstance(raw, list) or not raw:
+        # Tool was called - expect a non-empty list with tool call dicts
+        parsed_list = None
+        
+        if isinstance(raw, list):
+            parsed_list = raw
+        elif isinstance(raw, str):
+            # Try to extract JSON array from string (handles trailing content)
+            parsed_list = _extract_json_array(raw)
+        
+        if not parsed_list or len(parsed_list) == 0:
             return False
-        for item in raw:
+        
+        # Validate each item in the list
+        for item in parsed_list:
             if not isinstance(item, dict):
                 return False
-            if "name" not in item or "arguments" not in item:
+            if "name" not in item:
                 return False
+            # "arguments" is optional but if present should be a dict
+            if "arguments" in item and not isinstance(item["arguments"], dict):
+                return False
+        
         return True
+    
+    # Tool was not called - expect empty list, None, or empty string/array
     if raw is None:
         return True
+    
     if isinstance(raw, list):
         return len(raw) == 0
+    
+    if isinstance(raw, str):
+        # Try to parse as JSON array - should be empty
+        parsed = _extract_json_array(raw)
+        if parsed is not None:
+            return len(parsed) == 0
+        # If it's a string that doesn't parse as JSON array, check if it's empty or "[]"
+        stripped = raw.strip()
+        return stripped == "" or stripped == "[]"
+    
     return False
 
 
