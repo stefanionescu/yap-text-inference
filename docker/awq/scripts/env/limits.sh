@@ -3,7 +3,7 @@
 # Context and output limits
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5160}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
-export TOOL_MAX_OUT=${TOOL_MAX_OUT:-10}
+export TOOL_MAX_OUT=${TOOL_MAX_OUT:-25}
 export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3000}
 
   # GPU memory fractions (weights + KV). Use fractions only.
