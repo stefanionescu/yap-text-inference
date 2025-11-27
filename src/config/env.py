@@ -6,7 +6,7 @@ Includes validation of required variables and quantization mode.
 
 import os
 
-from ..utils import env_flag
+from ..utils.env import env_flag
 
 
 # Ensure V1 engine is selected before importing any vLLM modules
