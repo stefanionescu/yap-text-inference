@@ -15,6 +15,28 @@ log_info "Starting Yap Text Inference Server"
 
 ensure_required_env_vars
 
+# Determine whether AWQ uploads should run this invocation
+PUSH_AWQ=0
+PARSED_ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --push-awq)
+      PUSH_AWQ=1
+      shift
+      ;;
+    --no-push-awq)
+      PUSH_AWQ=0
+      shift
+      ;;
+    *)
+      PARSED_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${PARSED_ARGS[@]}"
+export HF_AWQ_PUSH="${PUSH_AWQ}"
+
 # Stop any existing warmup processes before starting deployment
 stop_existing_warmup_processes "${ROOT_DIR}"
 
@@ -91,6 +113,10 @@ usage() {
   echo "  # Tool-only deployment"
   echo "  $0 tool MadeAgents/Hammer2.1-1.5b"
   echo "  DEPLOY_MODELS=tool $0 MadeAgents/Hammer2.1-1.5b"
+  echo ""
+  echo "AWQ uploads:"
+  echo "  --push-awq        Explicitly upload freshly built AWQ caches to HF"
+  echo "  --no-push-awq     Skip uploads (default)"
   exit 1
 }
 
