@@ -6,38 +6,100 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 
 HARD_RESET="${HARD_RESET:-0}"   # set HARD_RESET=1 to attempt nvidia-smi --gpu-reset
-PID_FILE="${ROOT_DIR}/server.pid"
+SERVER_PID_FILE="${ROOT_DIR}/server.pid"
+DEPLOYMENT_PID_FILE="${ROOT_DIR}/.run/deployment.pid"
+WARMUP_LOCK_FILE="${ROOT_DIR}/.run/warmup.lock"
 
 # Default to deepest cleanup unless explicitly opted out (NUKE_ALL=0)
 NUKE_ALL="${NUKE_ALL:-1}"
 
 log_info "Wiping runtime deps and caches; keeping repo and container services alive"
 
-# 0) Stop server + ALL its children (vLLM workers) = free VRAM
-if [ -f "${PID_FILE}" ]; then
-  PID="$(cat "${PID_FILE}")" || true
-  if [ -n "${PID:-}" ] && ps -p "${PID}" >/dev/null 2>&1; then
-    # uvicorn was started as a session leader via setsid; kill the whole session
-    log_info "Stopping server session (PID ${PID})"
-    kill -TERM -"${PID}" || true
-    # graceful wait up to 10s
-    for _ in {1..10}; do
-      ps -p "${PID}" >/dev/null 2>&1 || break
-      sleep 1
-    done
-    # hard kill if still alive
-    ps -p "${PID}" >/dev/null 2>&1 && kill -KILL -"${PID}" || true
+# Helper to kill a process session by PID file
+_kill_pid_file_session() {
+  local pid_file="$1"
+  local description="$2"
+  
+  if [ ! -f "${pid_file}" ]; then
+    return 1
   fi
-  rm -f "${PID_FILE}" || true
+  
+  local pid
+  pid="$(cat "${pid_file}" 2>/dev/null)" || true
+  if [ -z "${pid:-}" ]; then
+    rm -f "${pid_file}" || true
+    return 1
+  fi
+  
+  if ! ps -p "${pid}" >/dev/null 2>&1; then
+    log_info "Stale ${description} PID file (process ${pid} not running)"
+    rm -f "${pid_file}" || true
+    return 1
+  fi
+  
+  log_info "Stopping ${description} session (PID ${pid})"
+  # Kill the whole process group/session
+  kill -TERM -"${pid}" 2>/dev/null || kill -TERM "${pid}" 2>/dev/null || true
+  
+  # Graceful wait up to 10s
+  local waited=0
+  while [ "${waited}" -lt 10 ] && ps -p "${pid}" >/dev/null 2>&1; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  
+  # Hard kill if still alive
+  if ps -p "${pid}" >/dev/null 2>&1; then
+    log_warn "${description} still alive after 10s, forcing kill"
+    kill -KILL -"${pid}" 2>/dev/null || kill -KILL "${pid}" 2>/dev/null || true
+  fi
+  
+  rm -f "${pid_file}" || true
+  return 0
+}
+
+# 0) Stop deployment pipeline (includes quantization) if running
+if _kill_pid_file_session "${DEPLOYMENT_PID_FILE}" "deployment pipeline"; then
+  log_info "Deployment pipeline stopped"
+fi
+
+# 1) Stop server + ALL its children (vLLM workers) = free VRAM
+if _kill_pid_file_session "${SERVER_PID_FILE}" "server"; then
+  log_info "Server stopped"
 else
   log_info "No server.pid; best-effort kill by pattern"
   pkill -f "uvicorn src.server:app" || true
 fi
 
-# Also kill any orphan vLLM/engine workers just in case
+# 2) Stop warmup process if running
+if [ -f "${WARMUP_LOCK_FILE}" ]; then
+  warmup_pid="$(cat "${WARMUP_LOCK_FILE}" 2>/dev/null)" || true
+  if [ -n "${warmup_pid:-}" ] && ps -p "${warmup_pid}" >/dev/null 2>&1; then
+    log_info "Stopping warmup process (PID ${warmup_pid})"
+    kill -TERM "${warmup_pid}" 2>/dev/null || true
+    sleep 2
+    ps -p "${warmup_pid}" >/dev/null 2>&1 && kill -KILL "${warmup_pid}" 2>/dev/null || true
+  fi
+  rm -f "${WARMUP_LOCK_FILE}" || true
+fi
+
+# 3) Kill any orphan processes by pattern
+log_info "Killing orphan processes by pattern..."
+
+# vLLM engine workers
 pkill -f "vllm.v1.engine.core" || true
 pkill -f "EngineCore_0" || true
 pkill -f "python.*vllm" || true
+
+# AWQ quantization processes
+pkill -f "src.awq.quantize" || true
+pkill -f "python.*awq" || true
+pkill -f "autoawq" || true
+
+# Any remaining server/test processes
+pkill -f "uvicorn src.server" || true
+pkill -f "test/warmup.py" || true
+pkill -f "test/bench.py" || true
 
 sleep 1
 
