@@ -244,9 +244,9 @@ Notes for AWQ:
 
 ### Pushing AWQ Exports to Hugging Face
 
-When `QUANTIZATION=awq`, the deployment pipeline can upload the freshly quantized folders to the Hugging Face Hub. Uploads are opt-in and controlled via environment variables shared by both the full deployer (`scripts/main.sh`) and the restart helper (`scripts/restart.sh --push-awq ...`).
+Uploads only happen when you pass `--push-awq` to the launcher you’re using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—even if you previously exported `HF_AWQ_PUSH`.
 
-**Required when `HF_AWQ_PUSH=1`:**
+**Required whenever `--push-awq` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
 - `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat/both are deployed
 - `HF_AWQ_TOOL_REPO` pointing to your tool AWQ repo whenever tool/both are deployed
@@ -258,7 +258,6 @@ When `QUANTIZATION=awq`, the deployment pipeline can upload the freshly quantize
 - `HF_AWQ_COMMIT_MSG_CHAT` / `HF_AWQ_COMMIT_MSG_TOOL` – commit message overrides
 
 ```bash
-export HF_AWQ_PUSH=1                           # enable uploads (quits early if token/repos missing)
 export HF_TOKEN="hf_your_api_token"            # token with write access
 export HF_AWQ_CHAT_REPO="your-org/chat-awq"    # repo for the chat model (required if chat deployed)
 export HF_AWQ_TOOL_REPO="your-org/tool-awq"    # repo for the tool model (required if tool deployed)
@@ -269,11 +268,11 @@ export HF_AWQ_ALLOW_CREATE=1                   # create repo automatically (0 = 
 export HF_AWQ_COMMIT_MSG_CHAT="Upload Nemo AWQ build"   # optional commit message override
 export HF_AWQ_COMMIT_MSG_TOOL="Upload Hammer AWQ build"
 
-# now run the usual launcher
-scripts/main.sh awq <chat_model> <tool_model>
+# full deployment that quantizes + uploads
+scripts/main.sh awq <chat_model> <tool_model> --push-awq
 
-# re-upload cached AWQ exports during a restart (no full redeploy needed)
-bash scripts/restart.sh --push-awq [deploy_mode] [--reset-models]
+# restart-only upload (works with or without --reset-models)
+bash scripts/restart.sh tool --push-awq --tool-model <model> --tool-quant awq
 ```
 
 The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.
