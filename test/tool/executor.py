@@ -176,6 +176,7 @@ async def _run_user_turn(
 async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
     history: list[CaseStep] = []
     user_turn_index = 0
+    turn_raws: list[Any] = []
 
     for step in case.steps:
         user_turn_index += 1
@@ -193,6 +194,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
 
         turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
         history.append(step)
+        turn_raws.append(turn.tool_raw)
 
         if not turn.ok:
             detail = f"step {user_turn_index}: {turn.detail or turn.reason}"
@@ -204,6 +206,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 failing_step=user_turn_index,
                 expected=step.expect_tool,
                 actual=turn.tool_called,
+                responses=list(turn_raws),
             )
 
         if not _is_valid_response_shape(turn):
@@ -216,6 +219,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 failing_step=user_turn_index,
                 expected=step.expect_tool,
                 actual=turn.tool_called,
+                responses=list(turn_raws),
             )
 
         actual = turn.tool_called
@@ -235,9 +239,10 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 failing_step=user_turn_index,
                 expected=expected,
                 actual=actual,
+                responses=list(turn_raws),
             )
 
-    return CaseResult(case=case, success=True)
+    return CaseResult(case=case, success=True, responses=list(turn_raws))
 
 
 async def _run_case(case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:

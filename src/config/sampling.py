@@ -16,38 +16,14 @@ CHAT_REPETITION_PENALTY = float(os.getenv("CHAT_REPETITION_PENALTY", "1.0"))
 CHAT_PRESENCE_PENALTY = float(os.getenv("CHAT_PRESENCE_PENALTY", "0"))
 CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 
-# Extra STOP sequences used by chat model
-CHAT_STOP = [
-    # ChatML format
-    "<|im_end|>",
-    "|im_end|>",
-    "<|assistant|>",
-    "<|user|>",
-    "<|end|>",
-    # Gemma 1/2 format
-    "<end_of_turn>",
-    "<start_of_turn>",
-    # Gemma 3 format
-    "<|eot_id|>",
-    "<|start_header_id|>",
-    # Kimi / Kimi Linear format
-    "<|im_user|>",
-    "<|im_system|>",
-    "[EOS]",
-    "[EOT]",
-    # General
-    "[SYSTEM_PROMPT]",
-    "[/SYSTEM_PROMPT]",
-]
-
 
 # --- Tool sampling ---
 TOOL_TEMPERATURE = float(os.getenv("TOOL_TEMPERATURE", "0.05"))
 TOOL_TOP_P = float(os.getenv("TOOL_TOP_P", "1.0"))
 TOOL_TOP_K = int(os.getenv("TOOL_TOP_K", "1"))
-TOOL_STOP = ["\n", "</s>"]
 
 
+# What words/text to discourage
 _DEFAULT_LOGIT_BIAS = {
     "*winks*": -100.0,
     "*winks*.": -100.0,
@@ -77,6 +53,31 @@ _DEFAULT_LOGIT_BIAS = {
     "~": -100.0,
     " - ": -100,
 }
+
+
+# STOP sequences
+INFERENCE_STOP = [
+    # ChatML format
+    "<|im_end|>",
+    "|im_end|>",
+    "<|assistant|>",
+    "<|user|>",
+    "<|end|>",
+    # Gemma 1/2 format
+    "<end_of_turn>",
+    "<start_of_turn>",
+    # Gemma 3 format
+    "<|eot_id|>",
+    "<|start_header_id|>",
+    # Kimi / Kimi Linear format
+    "<|im_user|>",
+    "<|im_system|>",
+    "[EOS]",
+    "[EOT]",
+    # General
+    "[SYSTEM_PROMPT]",
+    "[/SYSTEM_PROMPT]",
+]
 
 
 def _build_logit_bias_map(raw_map: dict[str, float]) -> dict[str, float]:
@@ -113,12 +114,10 @@ __all__ = [
     "CHAT_REPETITION_PENALTY",
     "CHAT_PRESENCE_PENALTY",
     "CHAT_FREQUENCY_PENALTY",
-    "CHAT_STOP",
+    "INFERENCE_STOP",
     "CHAT_LOGIT_BIAS",
     "TOOL_TEMPERATURE",
     "TOOL_TOP_P",
     "TOOL_TOP_K",
-    "TOOL_STOP",
 ]
-
 

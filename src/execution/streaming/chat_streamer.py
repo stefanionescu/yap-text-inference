@@ -22,7 +22,7 @@ from ...config.sampling import (
     CHAT_REPETITION_PENALTY,
     CHAT_PRESENCE_PENALTY,
     CHAT_FREQUENCY_PENALTY,
-    CHAT_STOP,
+    INFERENCE_STOP,
     CHAT_LOGIT_BIAS,
 )
 from ...config.timeouts import GEN_TIMEOUT_S
@@ -66,7 +66,7 @@ async def run_chat_stream(
         frequency_penalty=frequency_penalty,
         logit_bias=logit_bias if logit_bias else None,
         max_tokens=CHAT_MAX_OUT,
-        stop=CHAT_STOP,
+        stop=INFERENCE_STOP,
     )
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     stream = LLMStream(

@@ -11,7 +11,7 @@ from typing import Any
 from vllm.sampling_params import SamplingParams
 
 from ...engines import get_tool_engine
-from ...persona import build_toolcall_prompt_with_history
+from ...persona import build_toolcall_prompt_with_prefix
 from ...config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
 from ...tokens import trim_history_for_tool_sharing, trim_text_to_token_limit_tool
 from ...config import USER_UTT_MAX_TOKENS
@@ -20,7 +20,7 @@ from ...config.sampling import (
     TOOL_TEMPERATURE,
     TOOL_TOP_P,
     TOOL_TOP_K,
-    TOOL_STOP,
+    INFERENCE_STOP,
 )
 from ...config.timeouts import TOOL_TIMEOUT_S
 from ..streaming.llm_stream import LLMStream, LLMStreamConfig
@@ -46,7 +46,7 @@ async def run_toolcall(
         top_p=TOOL_TOP_P,
         top_k=TOOL_TOP_K,
         max_tokens=TOOL_MAX_OUT,
-        stop=TOOL_STOP,
+        stop=INFERENCE_STOP,
     )
     tool_timeout_s = float(TOOL_TIMEOUT_S)
     logger.info("tool_runner: start session_id=%s req_id=%s timeout_s=%.2f", session_id, req_id, tool_timeout_s)
@@ -57,7 +57,7 @@ async def run_toolcall(
     if not base_tool_prompt:
         raise RuntimeError("tool_prompt not set for session")
     tool_user_utt = trim_text_to_token_limit_tool(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
-    prompt = build_toolcall_prompt_with_history(base_tool_prompt, tool_user_utt, tool_history)
+    prompt = build_toolcall_prompt_with_prefix(base_tool_prompt, tool_user_utt, tool_history)
 
     stream = LLMStream(
         LLMStreamConfig(
