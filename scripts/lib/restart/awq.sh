@@ -5,18 +5,6 @@
 
 _awq_read_source_model() {
   local dir="$1"
-  local model_type="$2"  # optional: "chat" or "tool"
-  
-  # First check for pre-quantized source marker file (new format)
-  if [ -n "${model_type}" ]; then
-    local source_marker="${AWQ_CACHE_DIR}/.${model_type}_source"
-    if [ -f "${source_marker}" ]; then
-      cat "${source_marker}"
-      return
-    fi
-  fi
-  
-  # Fall back to awq_metadata.json in the model directory
   local meta="${dir}/awq_metadata.json"
   if [ ! -f "${meta}" ]; then
     echo ""
@@ -65,13 +53,13 @@ restart_setup_env_for_awq() {
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     export CHAT_MODEL="${CHAT_AWQ_DIR}" CHAT_QUANTIZATION=awq
     if [ -z "${CHAT_MODEL_NAME:-}" ]; then
-      CHAT_MODEL_NAME="$(_awq_read_source_model "${CHAT_AWQ_DIR}" "chat")"
+      CHAT_MODEL_NAME="$(_awq_read_source_model "${CHAT_AWQ_DIR}")"
     fi
   fi
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
     export TOOL_MODEL="${TOOL_AWQ_DIR}" TOOL_QUANTIZATION=awq
     if [ -z "${TOOL_MODEL_NAME:-}" ]; then
-      TOOL_MODEL_NAME="$(_awq_read_source_model "${TOOL_AWQ_DIR}" "tool")"
+      TOOL_MODEL_NAME="$(_awq_read_source_model "${TOOL_AWQ_DIR}")"
     fi
   fi
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
