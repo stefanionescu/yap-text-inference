@@ -24,7 +24,6 @@ except Exception:
 PY
 }
 
-
 restart_detect_awq_models() {
   local DEPLOY_MODE="$1"
   AWQ_CACHE_DIR="${ROOT_DIR}/.awq"
@@ -99,7 +98,6 @@ restart_detect_awq_models() {
   export CHAT_AWQ_SOURCE TOOL_AWQ_SOURCE
   export CHAT_AWQ_SOURCE_KIND TOOL_AWQ_SOURCE_KIND
 }
-
 
 restart_setup_env_for_awq() {
   local DEPLOY_MODE="$1"
