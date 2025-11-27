@@ -25,6 +25,7 @@ A vLLM text inference server optimized for dual model deployment. It can run:
 - [Personality Switch Test](#personality-switch-test)
 - [Conversation History Test](#conversation-history-test)
 - [Screen Analysis / Toolcall Test](#screen-analysis--toolcall-test)
+- [Tool Regression Test](#tool-regression-test)
 - [Benchmark Client](#benchmark-client)
 - [Stopping and Restarting](#stopping-and-restarting)
   - [Stop Script Behavior (Deep Clean)](#stop-script-behavior-deep-clean)
@@ -321,7 +322,7 @@ TEXT_API_KEY=your_api_key python3 test/conversation.py --server ws://127.0.0.1:8
 
 Prompts are sourced from `CONVERSATION_HISTORY_MESSAGES` in `test/config/messages.py`.
 
-### Screen Analysis / Toolcall Test
+## Screen Analysis / Toolcall Test
 
 Runs the end-to-end toolcall → follow-up flow used for screen analysis, asserting the first turn triggers `toolcall == YES` and that the follow-up response streams successfully.
 
@@ -330,6 +331,23 @@ TEXT_API_KEY=your_api_key python3 test/screen_analysis.py
 ```
 
 Override defaults via `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` environment variables when needed.
+
+## Tool Regression Test
+
+Validates the screenshot/tool-call classifier against the full suite defined in `TOOL_DEFAULT_MESSAGES` (see `test/config/messages.py`). Each case may contain multiple user-only turns; the harness replays them sequentially, enforcing per-turn timeouts and collecting accuracy stats.
+
+```bash
+TEXT_API_KEY=your_api_key python3 test/tool.py \
+  --server ws://127.0.0.1:8000/ws \
+  --timeout 5 \
+  --concurrency 4 \
+  --limit 50
+```
+
+- `--timeout` caps the wait for each tool decision (default 5 s). Overwrite for slower models.
+- `--concurrency` lets you run several cases in parallel if the tool engine has spare capacity.
+- `--limit` restricts the run to the first *N* cases for quick smoke checks; omit to run all.
+- Results include PASS/FAIL per case plus an overall summary (passes, failures, accuracy, and failure-type breakdown such as timeouts or chat-only responses).
 
 ## Benchmark Client
 
