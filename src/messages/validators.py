@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ..config import PERSONALITY_MAX_LEN
-from ..utils.sanitize import sanitize_prompt
-from ..utils.validation import (
+from ..utils import (
+    sanitize_prompt,
     is_gender_empty_or_null,
     is_personality_empty_or_null,
     normalize_gender,

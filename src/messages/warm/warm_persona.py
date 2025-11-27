@@ -5,7 +5,7 @@ from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT
 from ...persona import build_chat_warm_prompt
-from ...utils.sanitize import sanitize_prompt
+from ...utils import sanitize_prompt
 from .warm_utils import warm_chat_segment
 
 

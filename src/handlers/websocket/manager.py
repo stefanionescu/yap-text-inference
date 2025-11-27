@@ -30,7 +30,7 @@ from ...messages.followup import handle_followup_message
 from ...messages.start import handle_start_message
 from ...messages.warm.warm_history import handle_warm_history_message
 from ...messages.warm.warm_persona import handle_warm_persona_message
-from ...utils.rate_limit import RateLimitError, SlidingWindowRateLimiter
+from ...utils import RateLimitError, SlidingWindowRateLimiter
 from ..connection_handler import connection_handler
 from ..session import abort_session_requests, session_handler
 from .lifecycle import WebSocketLifecycle
