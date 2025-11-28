@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from tests.common.regex import contains_complete_sentence, has_at_least_n_words
+from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
 
 
 def round_ms(value: float | None) -> float | None:

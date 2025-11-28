@@ -35,14 +35,13 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from tests.common.message import iter_messages
-from tests.common.prompt import select_chat_prompt
-from tests.common.rate import SlidingWindowPacer
-from tests.common.regex import contains_complete_sentence, has_at_least_n_words
-from tests.common.ws import send_client_end, with_api_key
+from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.message import iter_messages
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
+from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
-    CONVERSATION_HISTORY_MESSAGES,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
@@ -50,6 +49,7 @@ from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
+from tests.messages.conversation import CONVERSATION_HISTORY_MESSAGES
 from tests.config.env import get_float_env, get_int_env
 from tests.prompts.toolcall import TOOLCALL_PROMPT
 

@@ -29,19 +29,18 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from tests.common.message import iter_messages
-from tests.common.ws import send_client_end, with_api_key
+from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.message import iter_messages
+from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
-    SCREEN_ANALYSIS_TEXT,
-    SCREEN_ANALYSIS_USER_REPLY,
 )
-from tool.prompts import (
+from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
+from tests.logic.tool.prompts import (
     DEFAULT_TOOL_PROMPT_NAME,
     ToolPromptRegistry,
 )

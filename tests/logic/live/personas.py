@@ -4,7 +4,7 @@ import importlib
 from dataclasses import dataclass
 from typing import Any
 
-from tests.common.prompt import normalize_gender
+from tests.helpers.prompt import normalize_gender
 
 PERSONA_MODULE = "tests.prompts.live"
 DEFAULT_PERSONA_NAME = "anna_flirty"

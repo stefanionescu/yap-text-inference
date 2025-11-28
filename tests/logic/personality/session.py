@@ -11,7 +11,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from config import CONVERSATION_HISTORY_MESSAGES
+from tests.messages.conversation import CONVERSATION_HISTORY_MESSAGES
 
 
 @dataclass(frozen=True)

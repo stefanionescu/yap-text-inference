@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from config import TOOL_DEFAULT_MESSAGES
+from tests.messages.tool import TOOL_DEFAULT_MESSAGES
 
 from .types import CaseStep, ToolTestCase
 

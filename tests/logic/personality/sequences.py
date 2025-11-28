@@ -9,8 +9,9 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from common.rate import SlidingWindowPacer
-from config import PERSONALITY_NAME_CHECK_MESSAGE, PERSONALITY_REPLIES_PER_SWITCH
+from tests.helpers.rate import SlidingWindowPacer
+from tests.config import PERSONALITY_REPLIES_PER_SWITCH
+from tests.messages.personality import PERSONALITY_NAME_CHECK_MESSAGE
 
 from .messaging import send_persona_update, send_user_exchange
 from .session import PersonaSession, PersonaVariant

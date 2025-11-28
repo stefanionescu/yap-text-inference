@@ -9,8 +9,8 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from common.prompt import select_chat_prompt  # noqa: E402
-from config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT  # noqa: E402
+from tests.helpers.prompt import select_chat_prompt  # noqa: E402
+from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT  # noqa: E402
 
 from .cases import build_cases
 from .executor import run_all_cases

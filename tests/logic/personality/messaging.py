@@ -10,9 +10,9 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from common.message import iter_messages
-from common.rate import SlidingWindowPacer
-from prompts.toolcall import TOOLCALL_PROMPT
+from tests.helpers.message import iter_messages
+from tests.helpers.rate import SlidingWindowPacer
+from tests.prompts.toolcall import TOOLCALL_PROMPT
 
 from .session import PersonaSession, PersonaVariant
 from .tracker import StreamTracker

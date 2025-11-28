@@ -12,7 +12,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from common.regex import contains_complete_sentence, has_at_least_n_words
+from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
 
 
 def _round(value: float | None) -> float | None:

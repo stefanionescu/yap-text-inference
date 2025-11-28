@@ -6,7 +6,7 @@ from .env import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
-from .messages import (
+from tests.messages import (
     WARMUP_DEFAULT_MESSAGES,
     SCREEN_ANALYSIS_USER_REPLY,
     SCREEN_ANALYSIS_TEXT,
