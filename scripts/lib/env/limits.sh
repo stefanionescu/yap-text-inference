@@ -24,7 +24,7 @@ apply_limits_and_timeouts() {
   export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
 
   # Buffer-then-flush knobs for parallel tool router
-  export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-300}
+  export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-500}
   export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
 
   # Concurrent model calling mode: 0=sequential, 1=concurrent (default)
