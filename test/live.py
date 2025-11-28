@@ -26,7 +26,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from test.common.ws import with_api_key
+from test.common.ws import connect_with_retries, with_api_key
 from test.config import (
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
@@ -99,11 +99,13 @@ async def _run(args: argparse.Namespace) -> None:
 
     ws_url = with_api_key(args.server, api_key=args.api_key)
     try:
-        async with websockets.connect(
-            ws_url,
-            max_queue=None,
-            ping_interval=DEFAULT_WS_PING_INTERVAL,
-            ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+        async with connect_with_retries(
+            lambda: websockets.connect(
+                ws_url,
+                max_queue=None,
+                ping_interval=DEFAULT_WS_PING_INTERVAL,
+                ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+            )
         ) as ws:
             client = LiveClient(ws, session, args.recv_timeout)
             try:

@@ -10,6 +10,7 @@ __all__ = [
     "ToolTestCase",
     "RunnerConfig",
     "TurnResult",
+    "StepTiming",
     "CaseResult",
 ]
 
@@ -34,6 +35,7 @@ class RunnerConfig:
     gender: str
     personality: str
     chat_prompt: str
+    tool_prompt: str
     timeout_s: float
     ping_interval: int
     ping_timeout: int
@@ -48,6 +50,15 @@ class TurnResult:
     chat_seen: bool
     reason: str | None = None
     detail: str | None = None
+    ttfb_s: float | None = None
+    total_s: float | None = None
+
+
+@dataclass(frozen=True)
+class StepTiming:
+    step_index: int
+    ttfb_ms: float | None
+    total_ms: float | None
 
 
 @dataclass(frozen=True)
@@ -60,4 +71,5 @@ class CaseResult:
     expected: bool | None = None
     actual: bool | None = None
     responses: list[Any] | None = None
+    step_timings: list[StepTiming] | None = None
 

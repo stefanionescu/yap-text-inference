@@ -41,6 +41,10 @@ from test.config import (
     SCREEN_ANALYSIS_TEXT,
     SCREEN_ANALYSIS_USER_REPLY,
 )
+from tool.prompts import (
+    DEFAULT_TOOL_PROMPT_NAME,
+    ToolPromptRegistry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +103,22 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
+    parser.add_argument(
+        "--tool-prompt",
+        default=DEFAULT_TOOL_PROMPT_NAME,
+        help=f"Tool prompt name defined in test/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
+    )
     args = parser.parse_args()
     args.sampling = build_sampling_payload(args)
     return args
 
 
-async def run_once(server: str, api_key: str | None, sampling: dict[str, float | int] | None) -> None:
+async def run_once(
+    server: str,
+    api_key: str | None,
+    sampling: dict[str, float | int] | None,
+    tool_prompt: str,
+) -> None:
     ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
 
@@ -115,6 +129,7 @@ async def run_once(server: str, api_key: str | None, sampling: dict[str, float |
         "personality": DEFAULT_PERSONALITY,
         "history_text": "",
         "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
+        "tool_prompt": tool_prompt,
     }
     if sampling:
         start_payload["sampling"] = sampling
@@ -147,6 +162,13 @@ async def run_once(server: str, api_key: str | None, sampling: dict[str, float |
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     args = _parse_args()
-    asyncio.run(run_once(args.server, args.api_key, args.sampling or None))
+    registry = ToolPromptRegistry()
+    try:
+        prompt_definition = registry.require(args.tool_prompt)
+    except ValueError as exc:
+        print(f"[error] {exc}")
+        raise SystemExit(1) from exc
+
+    asyncio.run(run_once(args.server, args.api_key, args.sampling or None, prompt_definition.prompt))
 
 
