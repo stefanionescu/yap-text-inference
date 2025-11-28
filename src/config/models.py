@@ -69,6 +69,13 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "Qwen/Qwen2.5-7B-Instruct",
     "Qwen/Qwen2.5-14B-Instruct",
 
+    "Qwen/Qwen3-4B-Instruct-2507",
+    "Qwen/Qwen3-1.7B",
+
+    "Salesforce/xLAM-2-1b-fc-r",
+    "katanemo/Arch-Agent-7B",
+    "katanemo/Arch-Agent-3B",
+
     # Pre-quantized GPTQ models
     "Qwen/Qwen2.5-1.5B-Instruct-GPTQ-Int4",
 
@@ -77,6 +84,7 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "Qwen/Qwen2.5-14B-Instruct-AWQ",
     "Qwen/Qwen2.5-7B-Instruct-AWQ",
     "Qwen/Qwen3-4B-AWQ",
+    "cpatonn/Qwen3-4B-Instruct-2507-AWQ-4bit",
 ]
 
 
