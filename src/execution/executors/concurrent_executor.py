@@ -202,7 +202,8 @@ class ConcurrentCoordinator:
                 self.session_id,
                 self.chat_req_id,
             )
-            await (await get_chat_engine()).abort_request(self.chat_req_id)
+            engine = await get_chat_engine()
+            await engine.abort_request(self.chat_req_id)
             logger.info(
                 "concurrent_exec: abort_request succeeded session_id=%s old_req_id=%s",
                 self.session_id,
