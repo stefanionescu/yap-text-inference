@@ -38,7 +38,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
 
 
 def _parse_args() -> argparse.Namespace:
@@ -63,7 +63,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 async def _run_once(args: argparse.Namespace) -> None:
-    from warmup.runner import run_once
+    from tests.logic.warmup.runner import run_once
 
     await run_once(args)
 

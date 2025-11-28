@@ -320,7 +320,7 @@ Then run:
 TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
 ```
 
-Prompts are sourced from `CONVERSATION_HISTORY_MESSAGES` in `tests/config/messages.py`.
+Prompts are sourced from `CONVERSATION_HISTORY_MESSAGES` in `tests/messages/conversation.py`.
 
 ## Screen Analysis / Toolcall Test
 
@@ -334,7 +334,7 @@ Override defaults via `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` environment va
 
 ## Tool Regression Test
 
-Validates the screenshot/tool-call classifier against the full suite defined in `TOOL_DEFAULT_MESSAGES` (see `tests/config/messages.py`). Each case may contain multiple user-only turns; the harness replays them sequentially, enforcing per-turn timeouts and collecting accuracy stats.
+Validates the screenshot/tool-call classifier against the full suite defined in `TOOL_DEFAULT_MESSAGES` (see `tests/messages/tool.py`). Each case may contain multiple user-only turns; the harness replays them sequentially, enforcing per-turn timeouts and collecting accuracy stats.
 
 ```bash
 TEXT_API_KEY=your_api_key python3 tests/tool.py \

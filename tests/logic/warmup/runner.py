@@ -17,22 +17,22 @@ _test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _test_dir not in sys.path:
     sys.path.insert(0, _test_dir)
 
-from config import (
+from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
-    WARMUP_DEFAULT_MESSAGES,
     WARMUP_FALLBACK_MESSAGE,
 )
-from common.message import iter_messages
-from common.prompt import select_chat_prompt
-from common.regex import contains_complete_sentence, has_at_least_n_words
-from common.util import choose_message
-from common.ws import connect_with_retries, send_client_end, with_api_key
-from prompts.toolcall import TOOLCALL_PROMPT
+from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
+from tests.helpers.message import iter_messages
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
+from tests.helpers.util import choose_message
+from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
+from tests.prompts.toolcall import TOOLCALL_PROMPT
 
 logger = logging.getLogger(__name__)
 

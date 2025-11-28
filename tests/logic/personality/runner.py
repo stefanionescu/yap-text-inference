@@ -13,15 +13,15 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from common.rate import SlidingWindowPacer
-from common.ws import send_client_end, with_api_key
-from config import (
-    CONVERSATION_HISTORY_MESSAGES,
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.ws import send_client_end, with_api_key
+from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     PERSONA_VARIANTS,
 )
-from config.env import get_float_env, get_int_env
+from tests.messages.conversation import CONVERSATION_HISTORY_MESSAGES
+from tests.config.env import get_float_env, get_int_env
 
 from .sequences import run_initial_exchange, run_remaining_sequence, run_switch_sequence
 from .session import PersonaSession, PersonaVariant

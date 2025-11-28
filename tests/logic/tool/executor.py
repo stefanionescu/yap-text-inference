@@ -10,8 +10,8 @@ from typing import Any, Sequence
 
 import websockets  # type: ignore[import-not-found]
 
-from common.message import iter_messages
-from common.ws import connect_with_retries, send_client_end
+from tests.helpers.message import iter_messages
+from tests.helpers.ws import connect_with_retries, send_client_end
 from .cases import render_history
 from .types import CaseResult, CaseStep, RunnerConfig, StepTiming, ToolTestCase, TurnResult
 

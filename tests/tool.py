@@ -17,11 +17,11 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from tests.common.cli import add_connection_args  # noqa: E402
-from tests.common.ws import with_api_key  # noqa: E402
+from tests.helpers.cli import add_connection_args  # noqa: E402
+from tests.helpers.ws import with_api_key  # noqa: E402
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
-from tool.runner import run_suite  # noqa: E402
-from tool.prompts import (  # noqa: E402
+from tests.logic.tool.runner import run_suite  # noqa: E402
+from tests.logic.tool.prompts import (  # noqa: E402
     DEFAULT_TOOL_PROMPT_NAME,
     ToolPromptRegistry,
 )

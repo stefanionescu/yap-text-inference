@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 try:  # When /tests is on sys.path
-    from prompts.chat import FEMALE_PROMPT, MALE_PROMPT
+    from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
 except ModuleNotFoundError:  # When repo root is on sys.path
     from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
 

@@ -36,7 +36,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
 from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -94,7 +94,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Thin orchestrator: parse CLI args and run the benchmark."""
-    from benchmark.runner import run_benchmark
+    from tests.logic.benchmark.runner import run_benchmark
 
     args = _parse_args()
     asyncio.run(run_benchmark(args))
