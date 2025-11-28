@@ -170,15 +170,30 @@ class ConcurrentCoordinator:
 
     async def _handle_tool_yes(self, raw_field: object) -> None:
         await send_toolcall(self.ws, "yes", raw_field)
-        logger.info("concurrent_exec: sent toolcall yes")
+        logger.info(
+            "concurrent_exec: sent toolcall yes session_id=%s tool_raw=%s",
+            self.session_id,
+            raw_field,
+        )
         await self._shutdown_pending_chunk()
         logger.info(
             "concurrent_exec: aborting speculative chat session_id=%s req_id=%s",
             self.session_id,
             self.chat_req_id,
         )
-        with contextlib.suppress(Exception):
+        try:
             await (await get_chat_engine()).abort_request(self.chat_req_id)
+            logger.info(
+                "concurrent_exec: abort_request succeeded session_id=%s old_req_id=%s",
+                self.session_id,
+                self.chat_req_id,
+            )
+        except Exception:
+            logger.exception(
+                "concurrent_exec: abort_request failed session_id=%s old_req_id=%s",
+                self.session_id,
+                self.chat_req_id,
+            )
 
         new_chat_req_id = f"chat-{uuid.uuid4()}"
         session_handler.set_active_request(self.session_id, new_chat_req_id)
@@ -190,23 +205,45 @@ class ConcurrentCoordinator:
             len(modified_user_utt),
         )
 
-        new_chat_stream = run_chat_stream(
-            self.session_id,
-            self.static_prefix,
-            self.runtime_text,
-            self.history_text,
-            modified_user_utt,
-            request_id=new_chat_req_id,
-            sampling_overrides=self.sampling_overrides,
-        )
-        final_text = await stream_chat_response(
-            self.ws,
-            new_chat_stream,
-            self.session_id,
-            modified_user_utt,
-            history_turn_id=self.history_turn_id,
-            history_user_utt=self.user_utt,
-        )
+        try:
+            new_chat_stream = run_chat_stream(
+                self.session_id,
+                self.static_prefix,
+                self.runtime_text,
+                self.history_text,
+                modified_user_utt,
+                request_id=new_chat_req_id,
+                sampling_overrides=self.sampling_overrides,
+            )
+            logger.info(
+                "concurrent_exec: streaming restarted chat session_id=%s new_req_id=%s",
+                self.session_id,
+                new_chat_req_id,
+            )
+        except Exception:
+            logger.exception(
+                "concurrent_exec: run_chat_stream failed session_id=%s new_req_id=%s",
+                self.session_id,
+                new_chat_req_id,
+            )
+            raise
+
+        try:
+            final_text = await stream_chat_response(
+                self.ws,
+                new_chat_stream,
+                self.session_id,
+                modified_user_utt,
+                history_turn_id=self.history_turn_id,
+                history_user_utt=self.user_utt,
+            )
+        except Exception:
+            logger.exception(
+                "concurrent_exec: stream_chat_response failed session_id=%s new_req_id=%s",
+                self.session_id,
+                new_chat_req_id,
+            )
+            raise
         logger.info(
             "concurrent_exec: done after tool yes session_id=%s chars=%s",
             self.session_id,
