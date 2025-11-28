@@ -315,7 +315,7 @@ async def abort_session_requests(
         try:
             from src.engines import get_chat_engine  # local import to avoid cycles
 
-            await (await get_chat_engine()).abort_request(req_info["active"])
+            await (await get_chat_engine()).abort(req_info["active"])
         except Exception:  # noqa: BLE001 - best effort
             pass
 
@@ -323,7 +323,7 @@ async def abort_session_requests(
         try:
             from src.engines import get_tool_engine  # local import to avoid cycles
 
-            await (await get_tool_engine()).abort_request(req_info["tool"])
+            await (await get_tool_engine()).abort(req_info["tool"])
         except Exception:  # noqa: BLE001 - best effort
             pass
 

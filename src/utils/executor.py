@@ -84,7 +84,7 @@ async def abort_tool_request(session_id: str) -> None:
         from ..engines import get_tool_engine
 
         engine = await get_tool_engine()
-        await engine.abort_request(req_id)
+        await engine.abort(req_id)
 
 
 async def stream_chat_response(
