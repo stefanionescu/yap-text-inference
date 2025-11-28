@@ -14,7 +14,7 @@ from common.message import iter_messages
 from common.prompt import select_chat_prompt
 from common.regex import contains_complete_sentence, has_at_least_n_words
 from common.util import choose_message
-from common.ws import send_client_end, with_api_key
+from common.ws import connect_with_retries, send_client_end, with_api_key
 from .reporting import print_report
 
 # Ensure prompts/config modules are importable when running as script
@@ -60,7 +60,9 @@ async def _one_request(
         first_3_words_ms: float | None = None
         final_text = ""
 
-        async with websockets.connect(auth_url, max_queue=None) as ws:
+        async with connect_with_retries(
+            lambda: websockets.connect(auth_url, max_queue=None)
+        ) as ws:
             try:
                 await ws.send(json.dumps(start_payload))
 

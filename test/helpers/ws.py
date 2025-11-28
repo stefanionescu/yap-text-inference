@@ -83,4 +83,35 @@ async def recv_raw(ws, *, timeout: float | None = None) -> str:
     return await asyncio.wait_for(receiver(), timeout)
 
 
-__all__ = ["with_api_key", "send_client_end", "recv_raw"]
+@contextlib.asynccontextmanager
+async def connect_with_retries(
+    factory: Callable[[], contextlib.AbstractAsyncContextManager],
+    *,
+    max_retries: int = 2,
+    base_delay_s: float = 0.5,
+    backoff_factor: float = 2.0,
+):
+    """
+    Attempt to open a websocket-like connection, retrying with exponential backoff.
+
+    Retries `max_retries` times after the initial attempt, so the total attempts
+    equal `max_retries + 1`. The `factory` must return a fresh async context
+    manager each time (e.g., `lambda: websockets.connect(...)`).
+    """
+
+    attempt = 0
+    delay = base_delay_s
+    while True:
+        try:
+            async with factory() as ws:
+                yield ws
+                return
+        except Exception:
+            if attempt >= max_retries:
+                raise
+            await asyncio.sleep(max(0.0, delay))
+            delay *= backoff_factor
+            attempt += 1
+
+
+__all__ = ["with_api_key", "send_client_end", "recv_raw", "connect_with_retries"]

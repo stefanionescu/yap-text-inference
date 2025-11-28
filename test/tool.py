@@ -21,6 +21,10 @@ from test.common.cli import add_connection_args  # noqa: E402
 from test.common.ws import with_api_key  # noqa: E402
 from test.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
 from tool.runner import run_suite  # noqa: E402
+from tool.prompts import (  # noqa: E402
+    DEFAULT_TOOL_PROMPT_NAME,
+    ToolPromptRegistry,
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -58,6 +62,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include passing test cases in the per-case output",
     )
+    parser.add_argument(
+        "--tool-prompt",
+        default=DEFAULT_TOOL_PROMPT_NAME,
+        help=f"Tool prompt name defined in test/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
+    )
     return parser.parse_args()
 
 
@@ -71,12 +80,20 @@ def main() -> None:
         print(f"[error] {exc}")
         sys.exit(1)
 
+    registry = ToolPromptRegistry()
+    try:
+        prompt_definition = registry.require(args.tool_prompt)
+    except ValueError as exc:
+        print(f"[error] {exc}")
+        sys.exit(1)
+
     try:
         asyncio.run(
             run_suite(
                 ws_url=ws_url,
                 gender=args.gender or DEFAULT_GENDER,
                 personality=args.personality or DEFAULT_PERSONALITY,
+                tool_prompt=prompt_definition.prompt,
                 timeout_s=max(0.1, args.timeout),
                 concurrency=max(1, args.concurrency),
                 limit=args.limit,

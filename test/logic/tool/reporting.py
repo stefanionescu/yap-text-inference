@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections import Counter
 from typing import Iterator, Sequence
 
@@ -77,4 +78,54 @@ def print_summary(results: Sequence[CaseResult]) -> None:
         print("Failure breakdown:")
         for reason, count in counter.items():
             print(f"  - {reason}: {count}")
+
+    _print_latency_summary(results)
+
+
+def _print_latency_summary(results: Sequence[CaseResult]) -> None:
+    ttfb_samples: list[float] = []
+    total_samples: list[float] = []
+    for result in results:
+        if not result.step_timings:
+            continue
+        for timing in result.step_timings:
+            if timing.ttfb_ms is not None:
+                ttfb_samples.append(timing.ttfb_ms)
+            if timing.total_ms is not None:
+                total_samples.append(timing.total_ms)
+
+    if not ttfb_samples and not total_samples:
+        return
+
+    print("\nLatency (ms):")
+    _print_latency_line("TTFB", ttfb_samples)
+    _print_latency_line("Total", total_samples)
+
+
+def _print_latency_line(label: str, samples: list[float]) -> None:
+    if not samples:
+        print(f"  {label}: no samples")
+        return
+    values = sorted(samples)
+    p50 = _percentile(values, 50)
+    p90 = _percentile(values, 90)
+    p95 = _percentile(values, 95)
+    print(
+        f"  {label}: p50={p50:.1f} ms  p90={p90:.1f} ms  p95={p95:.1f} ms  (n={len(values)})"
+    )
+
+
+def _percentile(sorted_values: list[float], percentile: float) -> float:
+    if not sorted_values:
+        raise ValueError("percentile requires at least one value")
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+    k = (len(sorted_values) - 1) * (percentile / 100.0)
+    f = math.floor(k)
+    c = math.ceil(k)
+    if f == c:
+        return sorted_values[int(k)]
+    d0 = sorted_values[f] * (c - k)
+    d1 = sorted_values[c] * (k - f)
+    return d0 + d1
 

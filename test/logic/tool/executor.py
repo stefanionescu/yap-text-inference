@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 import uuid
 from typing import Any, Sequence
 
 import websockets  # type: ignore[import-not-found]
 
 from common.message import iter_messages
-from common.ws import send_client_end
-from prompts.toolcall import TOOLCALL_PROMPT
-
+from common.ws import connect_with_retries, send_client_end
 from .cases import render_history
-from .types import CaseResult, CaseStep, RunnerConfig, ToolTestCase, TurnResult
+from .types import CaseResult, CaseStep, RunnerConfig, StepTiming, ToolTestCase, TurnResult
 
 __all__ = ["run_all_cases"]
 
@@ -126,7 +125,13 @@ def _is_valid_response_shape(turn: TurnResult) -> bool:
     return False
 
 
-async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
+def _secs_to_ms(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return value * 1000.0
+
+
+async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResult:
     state: dict[str, Any] = {
         "tool_status": None,
         "tool_raw": None,
@@ -135,12 +140,16 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
         "cancelled": False,
         "error": None,
     }
+    first_frame_s: float | None = None
 
     async def _consume() -> None:
+        nonlocal first_frame_s
         async for msg in iter_messages(ws):
             msg_type = msg.get("type")
             if msg_type == "ack":
                 continue
+            if first_frame_s is None:
+                first_frame_s = time.perf_counter() - start_ts
             if msg_type == "toolcall":
                 state["tool_status"] = str(msg.get("status") or "").strip().lower()
                 state["tool_raw"] = msg.get("raw")
@@ -159,6 +168,7 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
     try:
         await asyncio.wait_for(_consume(), timeout=timeout_s)
     except asyncio.TimeoutError:
+        total_elapsed = time.perf_counter() - start_ts
         return TurnResult(
             ok=False,
             tool_called=None,
@@ -167,8 +177,11 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
             chat_seen=state["chat_seen"],
             reason="timeout",
             detail=f"no response within {timeout_s:.1f}s",
+            ttfb_s=first_frame_s,
+            total_s=total_elapsed,
         )
 
+    total_elapsed = time.perf_counter() - start_ts
     if state["error"]:
         detail = json.dumps(state["error"], ensure_ascii=False)
         return TurnResult(
@@ -179,6 +192,8 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
             chat_seen=state["chat_seen"],
             reason="server_error",
             detail=detail,
+            ttfb_s=first_frame_s,
+            total_s=total_elapsed,
         )
 
     if not state["done"]:
@@ -190,6 +205,8 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
             chat_seen=state["chat_seen"],
             reason="incomplete",
             detail="stream ended before 'done'",
+            ttfb_s=first_frame_s,
+            total_s=total_elapsed,
         )
 
     if state["cancelled"]:
@@ -201,6 +218,8 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
             chat_seen=state["chat_seen"],
             reason="cancelled",
             detail="server reported cancellation",
+            ttfb_s=first_frame_s,
+            total_s=total_elapsed,
         )
 
     tool_bool = _tool_status_to_bool(state["tool_status"])
@@ -216,6 +235,8 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
                 chat_seen=state["chat_seen"],
                 reason=reason,
                 detail=detail,
+                ttfb_s=first_frame_s,
+                total_s=total_elapsed,
             )
         return TurnResult(
             ok=False,
@@ -225,6 +246,8 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
             chat_seen=state["chat_seen"],
             reason="invalid_tool_status",
             detail=f"toolcall status '{state['tool_status']}' is not yes/no",
+            ttfb_s=first_frame_s,
+            total_s=total_elapsed,
         )
 
     return TurnResult(
@@ -233,6 +256,8 @@ async def _drain_response(ws, *, timeout_s: float) -> TurnResult:
         tool_status=state["tool_status"],
         tool_raw=state["tool_raw"],
         chat_seen=state["chat_seen"],
+        ttfb_s=first_frame_s,
+        total_s=total_elapsed,
     )
 
 
@@ -242,13 +267,15 @@ async def _run_user_turn(
     timeout_s: float,
 ) -> TurnResult:
     await ws.send(json.dumps(payload))
-    return await _drain_response(ws, timeout_s=timeout_s)
+    start_ts = time.perf_counter()
+    return await _drain_response(ws, timeout_s=timeout_s, start_ts=start_ts)
 
 
 async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
     history: list[CaseStep] = []
     user_turn_index = 0
     turn_raws: list[Any] = []
+    step_timings: list[StepTiming] = []
 
     for step in case.steps:
         user_turn_index += 1
@@ -261,12 +288,19 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
             "chat_prompt": cfg.chat_prompt,
             "history_text": history_text,
             "user_utterance": step.text,
-            "tool_prompt": TOOLCALL_PROMPT,
+            "tool_prompt": cfg.tool_prompt,
         }
 
         turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
         history.append(step)
         turn_raws.append(turn.tool_raw)
+        step_timings.append(
+            StepTiming(
+                step_index=user_turn_index,
+                ttfb_ms=_secs_to_ms(turn.ttfb_s),
+                total_ms=_secs_to_ms(turn.total_s),
+            )
+        )
 
         if not turn.ok:
             detail = f"step {user_turn_index}: {turn.detail or turn.reason}"
@@ -279,6 +313,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 expected=step.expect_tool,
                 actual=turn.tool_called,
                 responses=list(turn_raws),
+                step_timings=list(step_timings),
             )
 
         if not _is_valid_response_shape(turn):
@@ -292,6 +327,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 expected=step.expect_tool,
                 actual=turn.tool_called,
                 responses=list(turn_raws),
+                step_timings=list(step_timings),
             )
 
         actual = turn.tool_called
@@ -312,19 +348,22 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 expected=expected,
                 actual=actual,
                 responses=list(turn_raws),
+                step_timings=list(step_timings),
             )
 
-    return CaseResult(case=case, success=True, responses=list(turn_raws))
+    return CaseResult(case=case, success=True, responses=list(turn_raws), step_timings=list(step_timings))
 
 
 async def _run_case(case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
     session_id = f"tooltest-{uuid.uuid4()}"
     try:
-        async with websockets.connect(
-            cfg.ws_url,
-            max_queue=None,
-            ping_interval=cfg.ping_interval,
-            ping_timeout=cfg.ping_timeout,
+        async with connect_with_retries(
+            lambda: websockets.connect(
+                cfg.ws_url,
+                max_queue=None,
+                ping_interval=cfg.ping_interval,
+                ping_timeout=cfg.ping_timeout,
+            )
         ) as ws:
             try:
                 return await _execute_case(ws, session_id, case, cfg)

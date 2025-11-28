@@ -223,151 +223,151 @@ TOOL_DEFAULT_MESSAGES = [
     ("tell me about space exploration", False),
     ("how do I improve my writing?", False),
 
-    # # Multi-message conversations - format: (conversation_name, [(user_message, expect_tool_bool), ...])
-    # ("asking_for_opinion", [
-    #     ("Thoughts on this?", True),
-    #     ("What about this guy?", True),
-    # ]),
-    # ("vague_exclamations", [
-    #     ("So cool!", True),
-    #     ("This is sick!", True),
-    #     ("Wow", False),
-    #     ("Crazy stuff.", True),
-    # ]),
-    # ("context_switch", [
-    #     ("I'm wondering if blue goes well with yellow.", False),
-    #     ("What's your take on this?", True),
-    #     ("And this?", True),
-    #     ("This has to be it.", True),
-    # ]),
-    # ("vacation_planning", [
-    #     ("I'm planning a trip to Hawaii.", False),
-    #     ("No, it's my first time. Any recommendations?", False),
-    # ]),
-    # ("shopping_for_clothes", [
-    #     ("I need a new outfit for the party.", False),
-    #     ("Something casual but stylish.", False),
-    #     ("How about this dress? It's perfect for a casual party.", True),
-    # ]),
-    # ("cooking_advice", [
-    #     ("I'm trying to cook pasta tonight.", False),
-    #     ("I think so. Just need some tips on the sauce.", False),
-    # ]),
-    # ("workout_planning", [
-    #     ("I want to start a new workout routine.", False),
-    #     ("I want to build muscle and improve endurance.", False),
-    # ]),
-    # ("movie_discussion", [
-    #     ("Have you seen the new superhero movie?", False),
-    #     ("What did you think of it?", False),
-    # ]),
-    # ("book_discussion", [
-    #     ("I'm reading a fascinating book on history.", False),
-    #     ("It's about ancient civilizations.", False),
-    # ]),
-    # ("weekend_planning", [
-    #     ("What should I do this weekend?", False),
-    #     ("A hike sounds good. Any trails you recommend?", False),
-    # ]),
-    # ("technology_discussion", [
-    #     ("I'm thinking of getting a new phone.", False),
-    #     ("A good camera and long battery life.", False),
-    # ]),
-    # ("dinner_planning", [
-    #     ("I want to cook a special dinner tonight.", False),
-    #     ("Just a nice evening with friends.", False),
-    # ]),
-    # ("hobby_discussion", [
-    #     ("I've started painting as a hobby.", False),
-    #     ("Mostly landscapes and nature.", False),
-    # ]),
-    # ("photo_sharing", [
-    #     ("I went to the beach today.", False),
-    #     ("Perfect! The sunset was amazing.", False),
-    #     ("Look at this incredible view I captured!", True),
-    # ]),
-    # ("outfit_feedback", [
-    #     ("I'm getting ready for a date tonight.", False),
-    #     ("A nice restaurant downtown. I'm nervous about what to wear.", False),
-    #     ("What do you think of this outfit?", True),
-    # ]),
-    # ("context_switch_followup", [
-    #     ("We were just talking about movies.", False),
-    #     ("Actually, let's change topics.", False),
-    #     ("Check out this crazy car I saw today!", True),
-    # ]),
-    # ("gradual_visual_buildup", [
-    #     ("I'm at this new restaurant.", False),
-    #     ("It's good, but the presentation is incredible.", False),
-    #     ("You have to see this artistic plating!", True),
-    # ]),
-    # ("multiple_screenshots_rejected", [
-    #     ("I'm showing my friend some photos.", False),
-    #     ("From my vacation last week. There are so many good ones.", False),
-    #     ("Take 3 screenshots of these vacation pics.", False),
-    # ]),
-    # ("city_night_out", [
-    #     ("Long day at work. Thinking of unwinding with a movie tonight.", False),
-    #     ("Actually I might go out—what outfit works for a rooftop bar?", False),
-    #     ("check this out", True),
-    #     ("what do you think of this poster?", True),
-    # ]),
-    # ("freestyle_street_then_screen", [
-    #     ("FREESTYLE MODE: I'm walking downtown, neon lights everywhere, scooters buzzing by.", False),
-    #     ("Just saw a street performer juggling knives—wild.", False),
-    #     ("see this chat", True),
-    # ]),
-    # ("kitchen_plate_then_visual", [
-    #     ("I'm trying a new pasta recipe tonight—need sauce advice.", False),
-    #     ("It's good, but the presentation is incredible.", False),
-    #     ("you have to see this", True),
-    # ]),
-    # ("gym_plan_form_check", [
-    #     ("Building a new gym routine—push/pull/legs or full body?", False),
-    #     ("how does this look?", True),
-    #     ("okay, also switching to hook grip for pulls", False),
-    # ]),
-    # ("festival_then_keep_then_peek", [
-    #     ("Headed to a music festival this weekend.", False),
-    #     ("keep screenshotting this", False),
-    #     ("peek at this", True),
-    # ]),
-    # ("language_switch_then_visual_eval", [
-    #     ("Can you help me write a DM in Spanish?", False),
-    #     ("thoughts on this?", True),
-    #     ("btw I might switch to English if that's easier", False),
-    # ]),
-    # ("dating_profile_then_quantity", [
-    #     ("I need feedback on my dating app profile.", False),
-    #     ("see this profile", True),
-    #     ("look twice at this", False),
-    # ]),
-    # ("art_museum_context_switch", [
-    #     ("We're hitting the museum later—any modern artists to watch?", False),
-    #     ("this painting is insane", True),
-    #     ("what do you think about aliens?", False),
-    #     ("rate this pic", True),
-    # ]),
-    # ("tech_purchase_then_eval", [
-    #     ("I'm picking a new phone—battery vs camera is my dilemma.", False),
-    #     ("check this out", True),
-    #     ("is this good?", True),
-    # ]),
-    # ("travel_itinerary_then_hotel_flag", [
-    #     ("Drafting a 4-day NYC itinerary—food, art, and rooftops.", False),
-    #     ("this hotel looks sketchy", True),
-    #     ("take 2 screenshots", False),
-    # ]),
-    # ("music_chat_then_outfit_then_back", [
-    #     ("Been looping the new synthwave album.", False),
-    #     ("what do you think of this outfit?", True),
-    #     ("you gotta see this", True),
-    # ]),
-    # ("sports_game_then_clip", [
-    #     ("Did you catch last night's game?", False),
-    #     ("this play was wild", False),
-    #     ("see this video", True),
-    # ]),
+    # Multi-message conversations - format: (conversation_name, [(user_message, expect_tool_bool), ...])
+    ("asking_for_opinion", [
+        ("Thoughts on this?", True),
+        ("What about this guy?", True),
+    ]),
+    ("vague_exclamations", [
+        ("So cool!", True),
+        ("This is sick!", True),
+        ("Wow", False),
+        ("Crazy stuff.", True),
+    ]),
+    ("context_switch", [
+        ("I'm wondering if blue goes well with yellow.", False),
+        ("What's your take on this?", True),
+        ("And this?", True),
+        ("This has to be it.", True),
+    ]),
+    ("vacation_planning", [
+        ("I'm planning a trip to Hawaii.", False),
+        ("No, it's my first time. Any recommendations?", False),
+    ]),
+    ("shopping_for_clothes", [
+        ("I need a new outfit for the party.", False),
+        ("Something casual but stylish.", False),
+        ("How about this dress? It's perfect for a casual party.", True),
+    ]),
+    ("cooking_advice", [
+        ("I'm trying to cook pasta tonight.", False),
+        ("I think so. Just need some tips on the sauce.", False),
+    ]),
+    ("workout_planning", [
+        ("I want to start a new workout routine.", False),
+        ("I want to build muscle and improve endurance.", False),
+    ]),
+    ("movie_discussion", [
+        ("Have you seen the new superhero movie?", False),
+        ("What did you think of it?", False),
+    ]),
+    ("book_discussion", [
+        ("I'm reading a fascinating book on history.", False),
+        ("It's about ancient civilizations.", False),
+    ]),
+    ("weekend_planning", [
+        ("What should I do this weekend?", False),
+        ("A hike sounds good. Any trails you recommend?", False),
+    ]),
+    ("technology_discussion", [
+        ("I'm thinking of getting a new phone.", False),
+        ("A good camera and long battery life.", False),
+    ]),
+    ("dinner_planning", [
+        ("I want to cook a special dinner tonight.", False),
+        ("Just a nice evening with friends.", False),
+    ]),
+    ("hobby_discussion", [
+        ("I've started painting as a hobby.", False),
+        ("Mostly landscapes and nature.", False),
+    ]),
+    ("photo_sharing", [
+        ("I went to the beach today.", False),
+        ("Perfect! The sunset was amazing.", False),
+        ("Look at this incredible view I captured!", True),
+    ]),
+    ("outfit_feedback", [
+        ("I'm getting ready for a date tonight.", False),
+        ("A nice restaurant downtown. I'm nervous about what to wear.", False),
+        ("What do you think of this outfit?", True),
+    ]),
+    ("context_switch_followup", [
+        ("We were just talking about movies.", False),
+        ("Actually, let's change topics.", False),
+        ("Check out this crazy car I saw today!", True),
+    ]),
+    ("gradual_visual_buildup", [
+        ("I'm at this new restaurant.", False),
+        ("It's good, but the presentation is incredible.", False),
+        ("You have to see this artistic plating!", True),
+    ]),
+    ("multiple_screenshots_rejected", [
+        ("I'm showing my friend some photos.", False),
+        ("From my vacation last week. There are so many good ones.", False),
+        ("Take 3 screenshots of these vacation pics.", False),
+    ]),
+    ("city_night_out", [
+        ("Long day at work. Thinking of unwinding with a movie tonight.", False),
+        ("Actually I might go out—what outfit works for a rooftop bar?", False),
+        ("check this out", True),
+        ("what do you think of this poster?", True),
+    ]),
+    ("freestyle_street_then_screen", [
+        ("FREESTYLE MODE: I'm walking downtown, neon lights everywhere, scooters buzzing by.", False),
+        ("Just saw a street performer juggling knives—wild.", False),
+        ("see this chat", True),
+    ]),
+    ("kitchen_plate_then_visual", [
+        ("I'm trying a new pasta recipe tonight—need sauce advice.", False),
+        ("It's good, but the presentation is incredible.", False),
+        ("you have to see this", True),
+    ]),
+    ("gym_plan_form_check", [
+        ("Building a new gym routine—push/pull/legs or full body?", False),
+        ("how does this look?", True),
+        ("okay, also switching to hook grip for pulls", False),
+    ]),
+    ("festival_then_keep_then_peek", [
+        ("Headed to a music festival this weekend.", False),
+        ("keep screenshotting this", False),
+        ("peek at this", True),
+    ]),
+    ("language_switch_then_visual_eval", [
+        ("Can you help me write a DM in Spanish?", False),
+        ("thoughts on this?", True),
+        ("btw I might switch to English if that's easier", False),
+    ]),
+    ("dating_profile_then_quantity", [
+        ("I need feedback on my dating app profile.", False),
+        ("see this profile", True),
+        ("look twice at this", False),
+    ]),
+    ("art_museum_context_switch", [
+        ("We're hitting the museum later—any modern artists to watch?", False),
+        ("this painting is insane", True),
+        ("what do you think about aliens?", False),
+        ("rate this pic", True),
+    ]),
+    ("tech_purchase_then_eval", [
+        ("I'm picking a new phone—battery vs camera is my dilemma.", False),
+        ("check this out", True),
+        ("is this good?", True),
+    ]),
+    ("travel_itinerary_then_hotel_flag", [
+        ("Drafting a 4-day NYC itinerary—food, art, and rooftops.", False),
+        ("this hotel looks sketchy", True),
+        ("take 2 screenshots", False),
+    ]),
+    ("music_chat_then_outfit_then_back", [
+        ("Been looping the new synthwave album.", False),
+        ("what do you think of this outfit?", True),
+        ("you gotta see this", True),
+    ]),
+    ("sports_game_then_clip", [
+        ("Did you catch last night's game?", False),
+        ("this play was wild", False),
+        ("see this video", True),
+    ]),
 ]
 
 PERSONALITY_NAME_CHECK_MESSAGE = "Sorry what is your name now? I forgot."

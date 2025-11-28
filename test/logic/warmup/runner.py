@@ -31,7 +31,7 @@ from common.message import iter_messages
 from common.prompt import select_chat_prompt
 from common.regex import contains_complete_sentence, has_at_least_n_words
 from common.util import choose_message
-from common.ws import send_client_end, with_api_key
+from common.ws import connect_with_retries, send_client_end, with_api_key
 from prompts.toolcall import TOOLCALL_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -130,11 +130,13 @@ async def run_once(args) -> None:
     )
 
     logger.info("Connecting to %s (with API key auth)", server_ws_url)
-    async with websockets.connect(
-        ws_url_with_auth,
-        max_queue=None,
-        ping_interval=DEFAULT_WS_PING_INTERVAL,
-        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+    async with connect_with_retries(
+        lambda: websockets.connect(
+            ws_url_with_auth,
+            max_queue=None,
+            ping_interval=DEFAULT_WS_PING_INTERVAL,
+            ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+        )
     ) as ws:
         tracker = StreamTracker()
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
