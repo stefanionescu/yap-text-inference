@@ -50,9 +50,11 @@ async def flush_and_send(ws: WebSocket, buffer_text: str) -> None:
 async def cancel_task(task: asyncio.Task | None) -> None:
     if not task or task.done():
         return
+    logger.info("executor: cancelling task %s", repr(task))
     task.cancel()
     with contextlib.suppress(Exception):
         await task
+    logger.info("executor: cancelled task %s", repr(task))
 
 
 def launch_tool_request(
