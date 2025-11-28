@@ -125,6 +125,7 @@ _restart_load_previous_config() {
   PREV_DEPLOY_MODELS=""
   PREV_DEPLOY_CHAT=0
   PREV_DEPLOY_TOOL=0
+  PREV_CONCURRENT_MODEL_CALL=""
 
   local last_env="${ROOT_DIR}/.run/last_config.env"
   if [ ! -f "${last_env}" ]; then
@@ -139,6 +140,7 @@ _restart_load_previous_config() {
   local cur_chat_quant="${CHAT_QUANTIZATION:-}"
   local cur_tool_quant="${TOOL_QUANTIZATION:-}"
   local cur_deploy="${DEPLOY_MODELS:-}"
+  restart_capture_user_env "CONCURRENT_MODEL_CALL"
   # shellcheck disable=SC1090
   source "${last_env}" || true
 
@@ -148,6 +150,8 @@ _restart_load_previous_config() {
   PREV_CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
   PREV_TOOL_QUANTIZATION="${TOOL_QUANTIZATION:-}"
   PREV_DEPLOY_MODELS="${DEPLOY_MODELS:-}"
+  PREV_CONCURRENT_MODEL_CALL="${CONCURRENT_MODEL_CALL:-}"
+  restart_set_snapshot_value "CONCURRENT_MODEL_CALL" "${PREV_CONCURRENT_MODEL_CALL}"
   case "${PREV_DEPLOY_MODELS}" in
     both) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=1 ;;
     chat) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=0 ;;
@@ -161,6 +165,9 @@ _restart_load_previous_config() {
   CHAT_QUANTIZATION="${cur_chat_quant}"
   TOOL_QUANTIZATION="${cur_tool_quant}"
   DEPLOY_MODELS="${cur_deploy}"
+
+  restart_restore_user_env "CONCURRENT_MODEL_CALL"
+  restart_mark_override_if_changed "CONCURRENT_MODEL_CALL" "CONCURRENT_MODEL_CALL"
 }
 
 _restart_can_preserve_cache() {
