@@ -97,7 +97,7 @@ def _print_latency_summary(results: Sequence[CaseResult]) -> None:
     if not ttfb_samples and not total_samples:
         return
 
-    print("\nLatency (ms):")
+    print("\nLatency (tool response, ms):")
     _print_latency_line("TTFB", ttfb_samples)
     _print_latency_line("Total", total_samples)
 

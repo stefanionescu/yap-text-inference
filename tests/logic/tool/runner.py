@@ -38,6 +38,27 @@ async def run_suite(
     cases = build_cases()
     if limit is not None:
         cases = cases[:limit]
+    cases = list(cases)
+    total_cases = len(cases)
+    effective_concurrency = max(1, concurrency)
+
+    progress_cb = None
+    if total_cases:
+        bar_width = 30
+        print(f"Running {total_cases} tool cases (concurrency={effective_concurrency})...")
+
+        def _render_progress(completed: int, total: int) -> None:
+            total = max(1, total)
+            ratio = min(max(completed / total, 0.0), 1.0)
+            filled = int(bar_width * ratio)
+            bar = "#" * filled + "-" * (bar_width - filled)
+            line = f"\rProgress [{bar}] {completed}/{total} ({ratio * 100:5.1f}%)"
+            end = "\n" if completed >= total else ""
+            print(line, end=end, flush=True)
+
+        progress_cb = _render_progress
+    else:
+        print("No tool cases to run.")
 
     cfg = RunnerConfig(
         ws_url=ws_url,
@@ -50,7 +71,12 @@ async def run_suite(
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
     )
 
-    results = await run_all_cases(cases, cfg, concurrency=max(1, concurrency))
+    results = await run_all_cases(
+        cases,
+        cfg,
+        concurrency=effective_concurrency,
+        progress_cb=progress_cb,
+    )
     print_case_results(results, include_successes=show_successes)
     print_summary(results)
     return results

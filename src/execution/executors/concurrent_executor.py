@@ -172,12 +172,23 @@ class ConcurrentCoordinator:
         await send_toolcall(self.ws, "yes", raw_field)
         logger.info("concurrent_exec: sent toolcall yes")
         await self._shutdown_pending_chunk()
+        logger.info(
+            "concurrent_exec: aborting speculative chat session_id=%s req_id=%s",
+            self.session_id,
+            self.chat_req_id,
+        )
         with contextlib.suppress(Exception):
             await (await get_chat_engine()).abort_request(self.chat_req_id)
 
         new_chat_req_id = f"chat-{uuid.uuid4()}"
         session_handler.set_active_request(self.session_id, new_chat_req_id)
         modified_user_utt = f"{CHECK_SCREEN_PREFIX} {self.user_utt}".strip()
+        logger.info(
+            "concurrent_exec: restarting chat session_id=%s new_req_id=%s user_len=%s",
+            self.session_id,
+            new_chat_req_id,
+            len(modified_user_utt),
+        )
 
         new_chat_stream = run_chat_stream(
             self.session_id,
