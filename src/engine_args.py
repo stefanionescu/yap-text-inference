@@ -17,10 +17,12 @@ from .config.env import (
     TOOL_QUANTIZATION,
 )
 from .config.awq import (
+    get_model_profile,
     get_tokenizer_kwargs,
     model_needs_memory_optimization,
     model_requires_bfloat16,
     model_requires_fla_runtime,
+    normalize_model_id,
 )
 from .config.quantization import is_lowbit_quantization
 from .config.models import _is_local_model_path
@@ -34,6 +36,9 @@ _QUANT_CONFIG_CANDIDATES = (
 )
 _AWQ_METADATA_FILE = "awq_metadata.json"
 _TOKENIZER_WARNING_EMITTED = False
+_TOKENIZER_PATCH_WARNING_EMITTED = False
+_FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
+_FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
 
 
 def _resolve_tokenizer_kwarg_key() -> str | None:
@@ -51,7 +56,11 @@ def _resolve_tokenizer_kwarg_key() -> str | None:
 _TOKENIZER_KWARG_KEY = _resolve_tokenizer_kwarg_key()
 
 
-def _inject_tokenizer_kwargs(target: dict[str, Any], tok_kwargs: dict[str, Any]) -> None:
+def _inject_tokenizer_kwargs(
+    target: dict[str, Any],
+    tok_kwargs: dict[str, Any],
+    model_identifier: str | None,
+) -> None:
     """Attach tokenizer kwargs if the installed vLLM supports them."""
     global _TOKENIZER_WARNING_EMITTED
 
@@ -60,6 +69,9 @@ def _inject_tokenizer_kwargs(target: dict[str, Any], tok_kwargs: dict[str, Any])
     if _TOKENIZER_KWARG_KEY:
         target[_TOKENIZER_KWARG_KEY] = tok_kwargs
         return
+    if _maybe_patch_tokenizer(model_identifier, tok_kwargs):
+        return
+
     if not _TOKENIZER_WARNING_EMITTED:
         keys = ", ".join(sorted(tok_kwargs.keys()))
         print(
@@ -67,6 +79,89 @@ def _inject_tokenizer_kwargs(target: dict[str, Any], tok_kwargs: dict[str, Any])
             f"skipping tokenizer overrides ({keys or 'unknown keys'})."
         )
         _TOKENIZER_WARNING_EMITTED = True
+
+
+def _maybe_patch_tokenizer(model_identifier: str | None, tok_kwargs: dict[str, Any]) -> bool:
+    """Best-effort tokenizer monkeypatch for engines lacking tokenizer kwargs."""
+    if not tok_kwargs:
+        return False
+
+    needs_mistral_fix = tok_kwargs.get("fix_mistral_regex")
+    if not needs_mistral_fix:
+        return False
+
+    markers: set[str] = set()
+    profile = get_model_profile(model_identifier) if model_identifier else None
+    if profile:
+        for marker in profile.markers:
+            normalized = normalize_model_id(marker)
+            if normalized:
+                markers.add(normalized)
+
+    normalized_identifier = normalize_model_id(model_identifier)
+    if normalized_identifier:
+        markers.add(normalized_identifier)
+
+    if not markers:
+        return False
+
+    return _install_fix_mistral_regex_patch(markers)
+
+
+def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
+    """Monkeypatch AutoTokenizer to force fix_mistral_regex for specific models."""
+    global _FIX_MISTRAL_REGEX_PATCH_INSTALLED, _FIX_MISTRAL_REGEX_MARKERS, _TOKENIZER_PATCH_WARNING_EMITTED
+
+    try:
+        from transformers import AutoTokenizer  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        if not _TOKENIZER_PATCH_WARNING_EMITTED:
+            print(
+                "[config] Warning: transformers not available to patch tokenizer "
+                f"kwargs fallback ({exc})."
+            )
+            _TOKENIZER_PATCH_WARNING_EMITTED = True
+        return False
+
+    markers = {m for m in markers if m}
+    if not markers:
+        return False
+
+    _FIX_MISTRAL_REGEX_MARKERS.update(markers)
+
+    if _FIX_MISTRAL_REGEX_PATCH_INSTALLED:
+        return True
+
+    original = AutoTokenizer.from_pretrained.__func__
+
+    def _patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
+        normalized = _normalize_tokenizer_identifier(pretrained_model_name_or_path)
+        if normalized and any(marker in normalized for marker in _FIX_MISTRAL_REGEX_MARKERS):
+            kwargs.setdefault("fix_mistral_regex", True)
+        return original(cls, pretrained_model_name_or_path, *args, **kwargs)
+
+    AutoTokenizer._yap_original_from_pretrained = original  # type: ignore[attr-defined]
+    AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)
+    _FIX_MISTRAL_REGEX_PATCH_INSTALLED = True
+    print(
+        "[config] Applied AutoTokenizer monkeypatch for fix_mistral_regex "
+        f"(markers: {', '.join(sorted(_FIX_MISTRAL_REGEX_MARKERS))})"
+    )
+    return True
+
+
+def _normalize_tokenizer_identifier(candidate: Any) -> str:
+    """Best-effort normalization for AutoTokenizer inputs."""
+    if candidate is None:
+        return ""
+    if isinstance(candidate, (str, os.PathLike)):
+        return normalize_model_id(os.fspath(candidate))
+
+    name_or_path = getattr(candidate, "name_or_path", None)
+    if isinstance(name_or_path, str):
+        return normalize_model_id(name_or_path)
+
+    return normalize_model_id(str(candidate))
 
 
 def _normalize_quantization_name(name: str | None) -> str | None:
@@ -317,7 +412,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
     # Apply model-specific tokenizer kwargs if supported by vLLM
     tok_kwargs = get_tokenizer_kwargs(model_origin)
-    _inject_tokenizer_kwargs(kwargs, tok_kwargs)
+    _inject_tokenizer_kwargs(kwargs, tok_kwargs, model_origin)
 
     # Memory optimization for models prone to OOM (e.g., Gemma)
     # Lower max_num_seqs to reduce memory pressure during warmup
