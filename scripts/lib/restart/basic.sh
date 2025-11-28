@@ -8,6 +8,9 @@ restart_basic() {
   SERVER_LOG="${ROOT_DIR}/server.log"
   LAST_QUANT=""; LAST_DEPLOY=""; LAST_CHAT=""; LAST_TOOL=""
   LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
+  restart_capture_user_env "CONCURRENT_MODEL_CALL"
+  restart_snapshot_value_from_env_file "CONCURRENT_MODEL_CALL" "${LAST_ENV_FILE}"
+  PREV_CONCURRENT_MODEL_CALL="${RESTART_SNAPSHOT_VALUE_CONCURRENT_MODEL_CALL:-}"
 
   if [ -f "${SERVER_LOG}" ]; then
     LAST_QUANT=$(grep -E "Quantization: " "${SERVER_LOG}" | tail -n1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
@@ -30,6 +33,9 @@ restart_basic() {
     LAST_CHAT="${LAST_CHAT:-${CHAT_MODEL:-}}"
     LAST_TOOL="${LAST_TOOL:-${TOOL_MODEL:-}}"
   fi
+
+  restart_restore_user_env "CONCURRENT_MODEL_CALL"
+  restart_mark_override_if_changed "CONCURRENT_MODEL_CALL" "CONCURRENT_MODEL_CALL"
 
   # If the last snapshot stored explicit per-engine quantization, prefer that over
   # the generic fallback so we don't misclassify AWQ/GPTQ deployments as fp8.
