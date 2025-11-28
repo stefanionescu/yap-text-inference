@@ -330,14 +330,45 @@ class ConcurrentCoordinator:
     async def _shutdown_pending_chunk(self) -> None:
         if not self._pending_chunk_task:
             return
+        task = self._pending_chunk_task
+        self._pending_chunk_task = None
         logger.info(
             "concurrent_exec: cancelling pending chunk task session_id=%s task=%s",
             self.session_id,
-            repr(self._pending_chunk_task),
+            repr(task),
         )
-        await cancel_task(self._pending_chunk_task)
-        self._pending_chunk_task = None
-        logger.info("concurrent_exec: pending chunk task cancelled session_id=%s", self.session_id)
+        task.cancel()
+
+        def _log_task_done(fut: asyncio.Task) -> None:
+            try:
+                if fut.cancelled():
+                    logger.info(
+                        "concurrent_exec: pending chunk task cancelled session_id=%s",
+                        self.session_id,
+                    )
+                else:
+                    exc = fut.exception()
+                    if exc:
+                        logger.info(
+                            "concurrent_exec: pending chunk task exception session_id=%s exc=%s",
+                            self.session_id,
+                            exc,
+                        )
+                    else:
+                        logger.info(
+                            "concurrent_exec: pending chunk task completed session_id=%s",
+                            self.session_id,
+                        )
+            except asyncio.CancelledError:
+                logger.info(
+                    "concurrent_exec: pending chunk task callback cancelled session_id=%s",
+                    self.session_id,
+                )
+
+        task.add_done_callback(_log_task_done)
+        with contextlib.suppress(Exception):
+            await self._chat_iter.aclose()
+        logger.info("concurrent_exec: pending chunk shutdown complete session_id=%s", self.session_id)
 
 
 async def run_concurrent_execution(
