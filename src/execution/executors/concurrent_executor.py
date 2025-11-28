@@ -77,8 +77,14 @@ class ConcurrentCoordinator:
         self._tool_task = asyncio.create_task(self._collect_tool_result())
 
     async def run(self) -> None:
+        logger.info("concurrent_exec: coordinator run start session_id=%s", self.session_id)
         try:
             decision = await self._await_tool_decision()
+            logger.info(
+                "concurrent_exec: decision resolved session_id=%s is_tool=%s",
+                self.session_id,
+                decision.is_tool,
+            )
             session_handler.clear_tool_request_id(self.session_id)
             if decision.is_tool:
                 await self._handle_tool_yes(decision.raw_field)
@@ -86,8 +92,10 @@ class ConcurrentCoordinator:
                 await self._handle_tool_no(decision.raw_field)
         finally:
             await self._shutdown_pending_chunk()
+            logger.info("concurrent_exec: coordinator run end session_id=%s", self.session_id)
 
     async def _await_tool_decision(self) -> ToolDecision:
+        logger.info("concurrent_exec: awaiting tool decision session_id=%s", self.session_id)
         while True:
             self._ensure_chunk_task()
             wait_set = {self._tool_task}
@@ -100,6 +108,11 @@ class ConcurrentCoordinator:
                 chunk = await self._consume_pending_chunk()
                 if chunk:
                     await self._maybe_flush_prebuffer(chunk)
+                    logger.info(
+                        "concurrent_exec: prebuffer chunk flushed session_id=%s chunk_len=%s",
+                        self.session_id,
+                        len(chunk),
+                    )
                 if self._chat_finished and self._tool_task.done():
                     break
                 if not self._tool_task.done():
@@ -169,6 +182,7 @@ class ConcurrentCoordinator:
         self._buffer = ""
 
     async def _handle_tool_yes(self, raw_field: object) -> None:
+        logger.info("concurrent_exec: handle_tool_yes start session_id=%s", self.session_id)
         await send_toolcall(self.ws, "yes", raw_field)
         logger.info(
             "concurrent_exec: sent toolcall yes session_id=%s tool_raw=%s",
@@ -176,12 +190,18 @@ class ConcurrentCoordinator:
             raw_field,
         )
         await self._shutdown_pending_chunk()
+        logger.info("concurrent_exec: pending chunk shutdown complete session_id=%s", self.session_id)
         logger.info(
             "concurrent_exec: aborting speculative chat session_id=%s req_id=%s",
             self.session_id,
             self.chat_req_id,
         )
         try:
+            logger.info(
+                "concurrent_exec: abort_request start session_id=%s old_req_id=%s",
+                self.session_id,
+                self.chat_req_id,
+            )
             await (await get_chat_engine()).abort_request(self.chat_req_id)
             logger.info(
                 "concurrent_exec: abort_request succeeded session_id=%s old_req_id=%s",
@@ -251,6 +271,7 @@ class ConcurrentCoordinator:
         )
 
     async def _handle_tool_no(self, raw_field: object) -> None:
+        logger.info("concurrent_exec: handle_tool_no start session_id=%s", self.session_id)
         await send_toolcall(self.ws, "no", raw_field)
         logger.info("concurrent_exec: sent toolcall no")
 
@@ -268,6 +289,11 @@ class ConcurrentCoordinator:
 
         async def _remaining_stream():
             if first_chunk:
+                logger.info(
+                    "concurrent_exec: replaying first chunk session_id=%s len=%s",
+                    self.session_id,
+                    len(first_chunk),
+                )
                 yield first_chunk
             async for chunk in self._chat_iter:
                 yield chunk
@@ -288,7 +314,14 @@ class ConcurrentCoordinator:
         if not self._pending_chunk_task:
             return None
         try:
-            return await self._pending_chunk_task
+            chunk = await self._pending_chunk_task
+            if chunk:
+                logger.info(
+                    "concurrent_exec: drained pending chunk session_id=%s len=%s",
+                    self.session_id,
+                    len(chunk),
+                )
+            return chunk
         except (asyncio.CancelledError, StopAsyncIteration):
             return None
         finally:
@@ -297,8 +330,10 @@ class ConcurrentCoordinator:
     async def _shutdown_pending_chunk(self) -> None:
         if not self._pending_chunk_task:
             return
+        logger.info("concurrent_exec: cancelling pending chunk task session_id=%s", self.session_id)
         await cancel_task(self._pending_chunk_task)
         self._pending_chunk_task = None
+        logger.info("concurrent_exec: pending chunk task cancelled session_id=%s", self.session_id)
 
 
 async def run_concurrent_execution(
