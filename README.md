@@ -190,7 +190,7 @@ source .venv-local/bin/activate
 pip install -r requirements-local.txt
 ```
 
-This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) without pulling CUDA wheels, so macOS users can run `python3 test/live.py ...` without errors. Use the full `requirements.txt` only when you need to run the actual inference server.
+This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) without pulling CUDA wheels, so macOS users can run `python3 tests/live.py ...` without errors. Use the full `requirements.txt` only when you need to run the actual inference server.
 
 ## Warmup Test Client
 
@@ -203,26 +203,26 @@ source .venv/bin/activate
 ### Basic Usage
 
 ```bash
-python3 test/warmup.py
+python3 tests/warmup.py
 ```
 
 ### With a Custom Message
 
 ```bash
-python3 test/warmup.py "who was Columbus?"
+python3 tests/warmup.py "who was Columbus?"
 ```
 
 ### With Gender/Style Flags
 
 ```bash
-python3 test/warmup.py --gender male --style flirty "hello there"
+python3 tests/warmup.py --gender male --style flirty "hello there"
 ```
 
 ### Testing Concurrent vs. Sequential Modes
 
 ```bash
 # Test sequential mode (set CONCURRENT_MODEL_CALL=0)
-CONCURRENT_MODEL_CALL=0 python3 test/warmup.py "write a simple hello world function"
+CONCURRENT_MODEL_CALL=0 python3 tests/warmup.py "write a simple hello world function"
 
 # Test concurrent mode
 # Terminal 1: Start server with concurrent mode (auto → FP8)
@@ -230,7 +230,7 @@ NUKE_ALL=1 bash scripts/stop.sh  # Stop previous deployment
 CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
 
 # Terminal 2: Test the same query (after server is ready)
-python3 test/warmup.py "write a simple hello world function"
+python3 tests/warmup.py "write a simple hello world function"
 
 # Test the roleplay-optimized model
 # Terminal 1: Start server with Wingless_Imp_8B (auto → FP8)
@@ -238,7 +238,7 @@ NUKE_ALL=1 bash scripts/stop.sh  # Stop previous deployment
 bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
 
 # Terminal 2: Test creative/roleplay query (after server is ready)
-python3 test/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
+python3 tests/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
 ```
 
 The concurrent mode should show lower `ttfb_ms` for chat responses where the toolcall model returns false.
@@ -253,13 +253,13 @@ The concurrent mode should show lower `ttfb_ms` for chat responses where the too
 Examples:
 
 ```bash
-SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 test/warmup.py
-RECV_TIMEOUT_SEC=120 python3 test/warmup.py --gender female --style savage "hey there"
+SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 tests/warmup.py
+RECV_TIMEOUT_SEC=120 python3 tests/warmup.py --gender female --style savage "hey there"
 ```
 
 ## Interactive Live Client
 
-Streams a real-time conversation you can steer from the CLI, hot-reloading persona definitions from `test/prompts/live.py`. If you omit `--server`, the client falls back to `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`). When you do provide `--server`, you can point at either the full `/ws` endpoint or just the origin (`ws://host:port`); the client automatically appends `/ws` and your API key.
+Streams a real-time conversation you can steer from the CLI, hot-reloading persona definitions from `tests/prompts/live.py`. If you omit `--server`, the client falls back to `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`). When you do provide `--server`, you can point at either the full `/ws` endpoint or just the origin (`ws://host:port`); the client automatically appends `/ws` and your API key.
 
 Activate the virtualenv created by the setup scripts:
 
@@ -270,7 +270,7 @@ source .venv/bin/activate
 Then run:
 
 ```bash
-TEXT_API_KEY=your_api_key python3 test/live.py \
+TEXT_API_KEY=your_api_key python3 tests/live.py \
   --server ws://127.0.0.1:8000 \
   --persona default_live_persona
 ```
@@ -279,7 +279,7 @@ Flags:
 
 - `--server`: target WebSocket URL (defaults to `SERVER_WS_URL`; accepts origins without `/ws`)
 - `--api-key`: override `TEXT_API_KEY` env for the session
-- `--persona/-p`: persona key from `test/prompts/live.py` (defaults to `anna_flirty`)
+- `--persona/-p`: persona key from `tests/prompts/live.py` (defaults to `anna_flirty`)
 - `--recv-timeout`: receive timeout in seconds (default `DEFAULT_RECV_TIMEOUT_SEC`)
 - positional arguments: optional opener message; falls back to warmup defaults otherwise
 
@@ -296,13 +296,13 @@ source .venv/bin/activate
 Then run:
 
 ```bash
-TEXT_API_KEY=your_api_key python3 test/personality.py \
+TEXT_API_KEY=your_api_key python3 tests/personality.py \
   --server ws://127.0.0.1:8000 \
   --switches 3 \
   --delay 2
 ```
 
-`PERSONA_VARIANTS`, reply lists, and switch counts live in `test/config`.
+`PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
 
 ## Conversation History Test
 
@@ -317,27 +317,27 @@ source .venv/bin/activate
 Then run:
 
 ```bash
-TEXT_API_KEY=your_api_key python3 test/conversation.py --server ws://127.0.0.1:8000
+TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
 ```
 
-Prompts are sourced from `CONVERSATION_HISTORY_MESSAGES` in `test/config/messages.py`.
+Prompts are sourced from `CONVERSATION_HISTORY_MESSAGES` in `tests/config/messages.py`.
 
 ## Screen Analysis / Toolcall Test
 
 Runs the end-to-end toolcall → follow-up flow used for screen analysis, asserting the first turn triggers `toolcall == YES` and that the follow-up response streams successfully.
 
 ```bash
-TEXT_API_KEY=your_api_key python3 test/screen_analysis.py
+TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
 ```
 
 Override defaults via `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` environment variables when needed.
 
 ## Tool Regression Test
 
-Validates the screenshot/tool-call classifier against the full suite defined in `TOOL_DEFAULT_MESSAGES` (see `test/config/messages.py`). Each case may contain multiple user-only turns; the harness replays them sequentially, enforcing per-turn timeouts and collecting accuracy stats.
+Validates the screenshot/tool-call classifier against the full suite defined in `TOOL_DEFAULT_MESSAGES` (see `tests/config/messages.py`). Each case may contain multiple user-only turns; the harness replays them sequentially, enforcing per-turn timeouts and collecting accuracy stats.
 
 ```bash
-TEXT_API_KEY=your_api_key python3 test/tool.py \
+TEXT_API_KEY=your_api_key python3 tests/tool.py \
   --server ws://127.0.0.1:8000/ws \
   --timeout 5 \
   --concurrency 4 \
@@ -360,19 +360,19 @@ source .venv/bin/activate
 Then, run concurrent sessions and report p50/p95 latencies:
 
 ```bash
-python3 test/bench.py -n 32 -c 8
+python3 tests/bench.py -n 32 -c 8
 ```
 
 With a custom message and persona:
 
 ```bash
-python3 test/bench.py --gender female --style flirty "who was Columbus?"
+python3 tests/bench.py --gender female --style flirty "who was Columbus?"
 ```
 
 Override URL and timeout:
 
 ```bash
-python3 test/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+python3 tests/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
 ## Stopping and Restarting

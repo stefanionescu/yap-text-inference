@@ -5,7 +5,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping
 from typing import Any
 
-from test.config import (
+from tests.config import (
     DEFAULT_SERVER_WS_URL,
     CHAT_REPETITION_PENALTY_DEFAULT,
     CHAT_PRESENCE_PENALTY_DEFAULT,

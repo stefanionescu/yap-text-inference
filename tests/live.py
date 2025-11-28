@@ -4,7 +4,7 @@ Interactive live WebSocket test client.
 
 - Starts a session using the same default prompt as warmup (anna_flirty)
 - Keeps the connection open so you can exchange messages from the CLI
-- Supports hot-reloading persona definitions from `test/prompts/live.py`
+    - Supports hot-reloading persona definitions from `tests/prompts/live.py`
 - Lets you switch personas mid-session via `chat_prompt` updates
 - Prints streaming tokens, metrics, and structured error information
 - Sends a graceful `{"type": "end"}` message on /stop, Ctrl+C, or server close
@@ -25,15 +25,15 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from test.common.ws import connect_with_retries, with_api_key
-from test.config import (
+from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.common.ws import connect_with_retries, with_api_key
+from tests.config import (
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
-from test.live import (
+from tests.live import (
     DEFAULT_PERSONA_NAME,
     LiveClient,
     LiveConnectionClosed,
@@ -41,7 +41,7 @@ from test.live import (
     PersonaRegistry,
     LiveServerError,
 )
-from test.live.cli import interactive_loop, print_help
+from tests.live.cli import interactive_loop, print_help
 
 logger = logging.getLogger("live")
 
@@ -63,7 +63,7 @@ def _parse_args() -> argparse.Namespace:
         "-p",
         dest="persona",
         default=DEFAULT_PERSONA_NAME,
-        help=f"Persona name from test/prompts/live.py (default: {DEFAULT_PERSONA_NAME})",
+        help=f"Persona name from tests/prompts/live.py (default: {DEFAULT_PERSONA_NAME})",
     )
     parser.add_argument(
         "--recv-timeout",

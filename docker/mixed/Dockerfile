@@ -168,7 +168,7 @@ WORKDIR /app
 # Copy app code
 COPY src/ /app/src/
 COPY prompts/ /app/prompts/
-COPY test/ /app/test/
+COPY tests/ /app/tests/
 
 # Copy preloaded models (if any)
 COPY --from=builder /app/models /app/models

@@ -17,9 +17,9 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args  # noqa: E402
-from test.common.ws import with_api_key  # noqa: E402
-from test.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
+from tests.common.cli import add_connection_args  # noqa: E402
+from tests.common.ws import with_api_key  # noqa: E402
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
 from tool.runner import run_suite  # noqa: E402
 from tool.prompts import (  # noqa: E402
     DEFAULT_TOOL_PROMPT_NAME,
@@ -65,7 +65,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--tool-prompt",
         default=DEFAULT_TOOL_PROMPT_NAME,
-        help=f"Tool prompt name defined in test/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
+        help=f"Tool prompt name defined in tests/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
     )
     return parser.parse_args()
 

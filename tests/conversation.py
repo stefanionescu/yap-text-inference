@@ -11,8 +11,8 @@ remain stable under bounded-history constraints. Each exchange logs:
   - time to first complete sentence
 
 Usage:
-    python3 test/conversation.py
-    python3 test/conversation.py --server ws://127.0.0.1:8000/ws
+    python3 tests/conversation.py
+    python3 tests/conversation.py --server ws://127.0.0.1:8000/ws
 """
 
 from __future__ import annotations
@@ -35,13 +35,13 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from test.common.message import iter_messages
-from test.common.prompt import select_chat_prompt
-from test.common.rate import SlidingWindowPacer
-from test.common.regex import contains_complete_sentence, has_at_least_n_words
-from test.common.ws import send_client_end, with_api_key
-from test.config import (
+from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.common.message import iter_messages
+from tests.common.prompt import select_chat_prompt
+from tests.common.rate import SlidingWindowPacer
+from tests.common.regex import contains_complete_sentence, has_at_least_n_words
+from tests.common.ws import send_client_end, with_api_key
+from tests.config import (
     CONVERSATION_HISTORY_MESSAGES,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -50,8 +50,8 @@ from test.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
-from test.config.env import get_float_env, get_int_env
-from test.prompts.toolcall import TOOLCALL_PROMPT
+from tests.config.env import get_float_env, get_int_env
+from tests.prompts.toolcall import TOOLCALL_PROMPT
 
 logger = logging.getLogger(__name__)
 

@@ -8,8 +8,8 @@ from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
-from test.common.message import iter_messages
-from test.common.ws import send_client_end
+from tests.common.message import iter_messages
+from tests.common.ws import send_client_end
 
 from .errors import LiveClientError, LiveConnectionClosed, LiveServerError
 from .personas import PersonaDefinition
