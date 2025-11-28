@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import time
 import uuid
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import websockets  # type: ignore[import-not-found]
 
+from tests.config import POST_TOOL_IDLE_MIN_S
 from tests.helpers.message import iter_messages
 from tests.helpers.ws import connect_with_retries, send_client_end
 from .cases import render_history
@@ -131,7 +133,42 @@ def _secs_to_ms(value: float | None) -> float | None:
     return value * 1000.0
 
 
-async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResult:
+async def _close_connection(ws, *, reason: str | None = None) -> None:
+    """Attempt to close the websocket connection gracefully."""
+    close = getattr(ws, "close", None)
+    if close is None:
+        return
+    try:
+        if reason is None:
+            result = close()
+        else:
+            try:
+                result = close(reason=reason)
+            except TypeError:
+                result = close()
+        if inspect.isawaitable(result):
+            await result
+    except Exception:
+        # Best-effort close; ignore failures
+        return
+
+
+async def _drain_response(
+    ws,
+    *,
+    timeout_s: float,
+    chat_idle_timeout_s: float | None,
+    start_ts: float,
+) -> TurnResult:
+    """
+    Drain websocket frames until the server finishes the turn.
+
+    The timeout applies only to the TOOL response (i.e., until we receive a
+    ``toolcall`` frame). Once the tool decision arrives we continue waiting for
+    the chat stream to flush without enforcing the per-turn timeout so that
+    chat completions do not register as premature failures.
+    """
+
     state: dict[str, Any] = {
         "tool_status": None,
         "tool_raw": None,
@@ -140,48 +177,81 @@ async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResul
         "cancelled": False,
         "error": None,
     }
-    first_frame_s: float | None = None
+    first_tool_frame_s: float | None = None
+    last_tool_frame_s: float | None = None
+    tool_decision_received = False
+    messages = iter_messages(ws)
+    tool_deadline = start_ts + timeout_s
 
-    async def _consume() -> None:
-        nonlocal first_frame_s
-        async for msg in iter_messages(ws):
-            msg_type = msg.get("type")
-            if msg_type == "ack":
-                continue
-            if first_frame_s is None:
-                first_frame_s = time.perf_counter() - start_ts
-            if msg_type == "toolcall":
-                state["tool_status"] = str(msg.get("status") or "").strip().lower()
-                state["tool_raw"] = msg.get("raw")
-                continue
-            if msg_type in {"token", "final"}:
-                state["chat_seen"] = True
-                continue
-            if msg_type == "done":
-                state["done"] = True
-                state["cancelled"] = bool(msg.get("cancelled"))
-                return
-            if msg_type == "error":
-                state["error"] = msg
-                return
+    while True:
+        wait_timeout: float | None = None
+        if not tool_decision_received:
+            now = time.perf_counter()
+            remaining = tool_deadline - now
+            if remaining <= 0:
+                await _close_connection(ws, reason="tool_timeout")
+                return TurnResult(
+                    ok=False,
+                    tool_called=None,
+                    tool_status=state["tool_status"],
+                    tool_raw=state["tool_raw"],
+                    chat_seen=state["chat_seen"],
+                    reason="timeout",
+                    detail=f"tool response not received within {timeout_s:.1f}s",
+                    ttfb_s=first_tool_frame_s,
+                    total_s=last_tool_frame_s,
+                )
+            wait_timeout = remaining
+        elif chat_idle_timeout_s is not None:
+            wait_timeout = chat_idle_timeout_s
 
-    try:
-        await asyncio.wait_for(_consume(), timeout=timeout_s)
-    except asyncio.TimeoutError:
-        total_elapsed = time.perf_counter() - start_ts
-        return TurnResult(
-            ok=False,
-            tool_called=None,
-            tool_status=state["tool_status"],
-            tool_raw=state["tool_raw"],
-            chat_seen=state["chat_seen"],
-            reason="timeout",
-            detail=f"no response within {timeout_s:.1f}s",
-            ttfb_s=first_frame_s,
-            total_s=total_elapsed,
-        )
+        try:
+            next_msg = messages.__anext__()
+            msg = await (next_msg if wait_timeout is None else asyncio.wait_for(next_msg, wait_timeout))
+        except asyncio.TimeoutError:
+            await _close_connection(ws, reason="tool_timeout" if not tool_decision_received else "chat_idle_timeout")
+            return TurnResult(
+                ok=False,
+                tool_called=None,
+                tool_status=state["tool_status"],
+                tool_raw=state["tool_raw"],
+                chat_seen=state["chat_seen"],
+                reason="timeout" if not tool_decision_received else "chat_timeout",
+                detail=(
+                    f"tool response not received within {timeout_s:.1f}s"
+                    if not tool_decision_received
+                    else f"no chat frames within {chat_idle_timeout_s:.1f}s after tool response"
+                ),
+                ttfb_s=first_tool_frame_s,
+                total_s=last_tool_frame_s,
+            )
+        except StopAsyncIteration:
+            break
 
-    total_elapsed = time.perf_counter() - start_ts
+        msg_type = msg.get("type")
+        if msg_type == "ack":
+            continue
+        if msg_type == "toolcall":
+            now = time.perf_counter()
+            elapsed = now - start_ts
+            if first_tool_frame_s is None:
+                first_tool_frame_s = elapsed
+            last_tool_frame_s = elapsed
+            tool_decision_received = True
+            state["tool_status"] = str(msg.get("status") or "").strip().lower()
+            state["tool_raw"] = msg.get("raw")
+            continue
+        if msg_type in {"token", "final"}:
+            state["chat_seen"] = True
+            continue
+        if msg_type == "done":
+            state["done"] = True
+            state["cancelled"] = bool(msg.get("cancelled"))
+            break
+        if msg_type == "error":
+            state["error"] = msg
+            break
+
     if state["error"]:
         detail = json.dumps(state["error"], ensure_ascii=False)
         return TurnResult(
@@ -192,8 +262,8 @@ async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResul
             chat_seen=state["chat_seen"],
             reason="server_error",
             detail=detail,
-            ttfb_s=first_frame_s,
-            total_s=total_elapsed,
+            ttfb_s=first_tool_frame_s,
+            total_s=last_tool_frame_s,
         )
 
     if not state["done"]:
@@ -205,8 +275,8 @@ async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResul
             chat_seen=state["chat_seen"],
             reason="incomplete",
             detail="stream ended before 'done'",
-            ttfb_s=first_frame_s,
-            total_s=total_elapsed,
+            ttfb_s=first_tool_frame_s,
+            total_s=last_tool_frame_s,
         )
 
     if state["cancelled"]:
@@ -218,8 +288,8 @@ async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResul
             chat_seen=state["chat_seen"],
             reason="cancelled",
             detail="server reported cancellation",
-            ttfb_s=first_frame_s,
-            total_s=total_elapsed,
+            ttfb_s=first_tool_frame_s,
+            total_s=last_tool_frame_s,
         )
 
     tool_bool = _tool_status_to_bool(state["tool_status"])
@@ -235,8 +305,8 @@ async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResul
                 chat_seen=state["chat_seen"],
                 reason=reason,
                 detail=detail,
-                ttfb_s=first_frame_s,
-                total_s=total_elapsed,
+                ttfb_s=first_tool_frame_s,
+                total_s=last_tool_frame_s,
             )
         return TurnResult(
             ok=False,
@@ -246,8 +316,8 @@ async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResul
             chat_seen=state["chat_seen"],
             reason="invalid_tool_status",
             detail=f"toolcall status '{state['tool_status']}' is not yes/no",
-            ttfb_s=first_frame_s,
-            total_s=total_elapsed,
+            ttfb_s=first_tool_frame_s,
+            total_s=last_tool_frame_s,
         )
 
     return TurnResult(
@@ -256,8 +326,8 @@ async def _drain_response(ws, *, timeout_s: float, start_ts: float) -> TurnResul
         tool_status=state["tool_status"],
         tool_raw=state["tool_raw"],
         chat_seen=state["chat_seen"],
-        ttfb_s=first_frame_s,
-        total_s=total_elapsed,
+        ttfb_s=first_tool_frame_s,
+        total_s=last_tool_frame_s,
     )
 
 
@@ -268,7 +338,13 @@ async def _run_user_turn(
 ) -> TurnResult:
     await ws.send(json.dumps(payload))
     start_ts = time.perf_counter()
-    return await _drain_response(ws, timeout_s=timeout_s, start_ts=start_ts)
+    chat_idle_timeout_s = max(timeout_s, POST_TOOL_IDLE_MIN_S)
+    return await _drain_response(
+        ws,
+        timeout_s=timeout_s,
+        chat_idle_timeout_s=chat_idle_timeout_s,
+        start_ts=start_ts,
+    )
 
 
 async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
@@ -377,13 +453,36 @@ async def run_all_cases(
     cases: Sequence[ToolTestCase],
     cfg: RunnerConfig,
     concurrency: int,
+    *,
+    progress_cb: Callable[[int, int], None] | None = None,
 ) -> list[CaseResult]:
+    case_list = list(cases)
+    total = len(case_list)
+    if total == 0:
+        return []
+
     semaphore = asyncio.Semaphore(max(1, concurrency))
+    if progress_cb:
+        progress_cb(0, total)
 
-    async def _bounded(case: ToolTestCase) -> CaseResult:
+    async def _run_bounded(index: int, case: ToolTestCase) -> tuple[int, CaseResult]:
         async with semaphore:
-            return await _run_case(case, cfg)
+            result = await _run_case(case, cfg)
+            return index, result
 
-    tasks = [asyncio.create_task(_bounded(case)) for case in cases]
-    return await asyncio.gather(*tasks)
+    tasks = [
+        asyncio.create_task(_run_bounded(idx, case))
+        for idx, case in enumerate(case_list)
+    ]
+
+    results: list[CaseResult | None] = [None] * total
+    completed = 0
+    for pending in asyncio.as_completed(tasks):
+        idx, result = await pending
+        results[idx] = result
+        completed += 1
+        if progress_cb:
+            progress_cb(completed, total)
+
+    return [r for r in results if r is not None]
 

@@ -1,4 +1,4 @@
-"""Model allowlists and validation helpers, including AWQ support."""
+"""Model allowlists and validation helpers, including quantization support."""
 
 import os
 
