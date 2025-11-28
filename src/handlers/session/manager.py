@@ -7,7 +7,7 @@ import copy
 import time
 from typing import Any
 
-from src.config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
+from src.config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL, CHECK_SCREEN_PREFIX
 from src.utils import RateLimitError, SlidingWindowRateLimiter, format_session_timestamp
 
 from .history import HistoryController
@@ -186,7 +186,8 @@ class SessionHandler:
 
     def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
         state = self._ensure_state(session_id)
-        turn_id = self._history.append_user_turn(state, user_utt)
+        normalized_user = _strip_check_screen_prefix(user_utt or "")
+        turn_id = self._history.append_user_turn(state, normalized_user)
         state.touch()
         return turn_id
 
@@ -199,9 +200,10 @@ class SessionHandler:
         turn_id: str | None = None,
     ) -> str:
         state = self._ensure_state(session_id)
+        normalized_user = _strip_check_screen_prefix(user_utt or "")
         rendered = self._history.append_turn(
             state,
-            user_utt,
+            normalized_user,
             assistant_text,
             turn_id=turn_id,
         )
@@ -329,5 +331,20 @@ async def abort_session_requests(
         session_handler.clear_session_state(session_id)
 
     return req_info
+
+
+def _strip_check_screen_prefix(text: str) -> str:
+    """Remove the leading CHECK_SCREEN prefix from user utterances for history."""
+    if not text:
+        return ""
+    prefix = (CHECK_SCREEN_PREFIX or "").strip()
+    if not prefix:
+        return text
+    if text.startswith(prefix):
+        return text[len(prefix):].lstrip()
+    lower_prefix = prefix.lower()
+    if text.lower().startswith(lower_prefix):
+        return text[len(prefix):].lstrip()
+    return text
 
 
