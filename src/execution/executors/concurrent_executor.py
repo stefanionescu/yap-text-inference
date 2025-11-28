@@ -330,7 +330,11 @@ class ConcurrentCoordinator:
     async def _shutdown_pending_chunk(self) -> None:
         if not self._pending_chunk_task:
             return
-        logger.info("concurrent_exec: cancelling pending chunk task session_id=%s", self.session_id)
+        logger.info(
+            "concurrent_exec: cancelling pending chunk task session_id=%s task=%s",
+            self.session_id,
+            repr(self._pending_chunk_task),
+        )
         await cancel_task(self._pending_chunk_task)
         self._pending_chunk_task = None
         logger.info("concurrent_exec: pending chunk task cancelled session_id=%s", self.session_id)
