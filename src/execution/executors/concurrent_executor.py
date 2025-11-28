@@ -198,20 +198,20 @@ class ConcurrentCoordinator:
         )
         try:
             logger.info(
-                "concurrent_exec: abort_request start session_id=%s old_req_id=%s",
+                "concurrent_exec: abort start session_id=%s old_req_id=%s",
                 self.session_id,
                 self.chat_req_id,
             )
             engine = await get_chat_engine()
-            await engine.abort_request(self.chat_req_id)
+            await engine.abort(self.chat_req_id)
             logger.info(
-                "concurrent_exec: abort_request succeeded session_id=%s old_req_id=%s",
+                "concurrent_exec: abort succeeded session_id=%s old_req_id=%s",
                 self.session_id,
                 self.chat_req_id,
             )
         except Exception:
             logger.exception(
-                "concurrent_exec: abort_request failed session_id=%s old_req_id=%s",
+                "concurrent_exec: abort failed session_id=%s old_req_id=%s",
                 self.session_id,
                 self.chat_req_id,
             )
@@ -431,7 +431,7 @@ async def run_concurrent_execution(
         await coordinator.run()
     except Exception:
         with contextlib.suppress(Exception):
-            await (await get_chat_engine()).abort_request(chat_req_id)
+            await (await get_chat_engine()).abort(chat_req_id)
         await abort_tool_request(session_id)
         logger.exception("concurrent_exec: error")
         raise

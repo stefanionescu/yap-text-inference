@@ -206,17 +206,17 @@ async def _stream_with_timeout(
         async with asyncio.timeout(timeout_s):
             async for out in stream:
                 if await cancel_checker.triggered():
-                    await _abort_request(engine, request_id)
+                    await _abort(engine, request_id)
                     raise StreamCancelledError()
                 yield out
     except asyncio.TimeoutError:
-        await _abort_request(engine, request_id)
+        await _abort(engine, request_id)
         raise
 
 
-async def _abort_request(engine: Any, request_id: str) -> None:
+async def _abort(engine: Any, request_id: str) -> None:
     with contextlib.suppress(Exception):
-        await engine.abort_request(request_id)
+        await engine.abort(request_id)
 
 
 class _CancelChecker:

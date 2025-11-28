@@ -156,7 +156,7 @@ async def _handle_start_command(
         return current_session_id
 
     if current_session_id and session_handler.has_running_task(current_session_id):
-        session_handler.cancel_session_requests(current_session_id)
+        await abort_session_requests(current_session_id, clear_state=False)
 
     await handle_start_message(ws, msg, session_id)
     logger.info("WS start scheduled for session_id=%s", session_id)
