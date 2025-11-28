@@ -70,8 +70,8 @@ CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override per-engi
 TOOL_QUANTIZATION = os.getenv("TOOL_QUANTIZATION")  # Optional override per-engine
 
 # Prefixes used to steer chat behavior around screenshot flows
-CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "CHECK SCREEN:").strip()
-SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "SCREEN CHECKED:").strip()
+CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "MUST CHECK SCREEN:").strip()
+SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "ON THE SCREEN NOW:").strip()
 CHAT_TEMPLATE_ENABLE_THINKING = env_flag("CHAT_TEMPLATE_ENABLE_THINKING", False)
 
 
