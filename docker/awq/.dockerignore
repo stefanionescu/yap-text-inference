@@ -71,7 +71,6 @@ ehthumbs.db
 Thumbs.db
 
 # Test files
-test/
 tests/
 *_test.py
 test_*.py

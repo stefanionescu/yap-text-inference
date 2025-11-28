@@ -29,10 +29,10 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from test.common.message import iter_messages
-from test.common.ws import send_client_end, with_api_key
-from test.config import (
+from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.common.message import iter_messages
+from tests.common.ws import send_client_end, with_api_key
+from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
@@ -106,7 +106,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--tool-prompt",
         default=DEFAULT_TOOL_PROMPT_NAME,
-        help=f"Tool prompt name defined in test/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
+        help=f"Tool prompt name defined in tests/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
     )
     args = parser.parse_args()
     args.sampling = build_sampling_payload(args)

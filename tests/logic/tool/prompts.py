@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 from dataclasses import dataclass
 
-TOOL_PROMPT_MODULE = "test.prompts.toolcall"
+TOOL_PROMPT_MODULE = "tests.prompts.toolcall"
 DEFAULT_TOOL_PROMPT_NAME = "base"
 
 
@@ -14,7 +14,7 @@ class ToolPromptDefinition:
 
 
 class ToolPromptRegistry:
-    """Reloadable registry backed by `test/prompts/toolcall.py`."""
+    """Reloadable registry backed by `tests/prompts/toolcall.py`."""
 
     def __init__(self, module_name: str = TOOL_PROMPT_MODULE) -> None:
         self._module_name = module_name

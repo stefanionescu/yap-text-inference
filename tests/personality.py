@@ -14,9 +14,9 @@ Environment Variables:
 - WS_MAX_MESSAGES_PER_WINDOW: Max messages per window
 
 Usage:
-  python3 test/personality.py
-  python3 test/personality.py --switches 5 --delay 2
-  python3 test/personality.py --temperature 0.8 --top_p 0.9
+  python3 tests/personality.py
+  python3 tests/personality.py --switches 5 --delay 2
+  python3 tests/personality.py --temperature 0.8 --top_p 0.9
 """
 
 from __future__ import annotations
@@ -30,8 +30,8 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from test.config import (
+from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.config import (
     DEFAULT_SERVER_WS_URL,
     PERSONALITY_SWITCH_DEFAULT,
     PERSONALITY_SWITCH_DELAY_SECONDS,

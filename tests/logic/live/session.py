@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from test.prompts.toolcall import TOOLCALL_PROMPT
+from tests.prompts.toolcall import TOOLCALL_PROMPT
 
 from .personas import PersonaDefinition
 

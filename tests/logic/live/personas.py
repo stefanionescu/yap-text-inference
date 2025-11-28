@@ -4,9 +4,9 @@ import importlib
 from dataclasses import dataclass
 from typing import Any
 
-from test.common.prompt import normalize_gender
+from tests.common.prompt import normalize_gender
 
-PERSONA_MODULE = "test.prompts.live"
+PERSONA_MODULE = "tests.prompts.live"
 DEFAULT_PERSONA_NAME = "anna_flirty"
 
 
@@ -19,7 +19,7 @@ class PersonaDefinition:
 
 
 class PersonaRegistry:
-    """Reloadable registry backed by `test/prompts/live.py`."""
+    """Reloadable registry backed by `tests/prompts/live.py`."""
 
     def __init__(self, module_name: str = PERSONA_MODULE) -> None:
         self._module_name = module_name

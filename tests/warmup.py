@@ -12,9 +12,9 @@ Metrics reported:
 - first_3_words_ms: time from request send to first three words
 
 Usage:
-  python3 test/warmup.py
-  python3 test/warmup.py "your custom message"
-  python3 test/warmup.py --gender male --style playful "hello there"
+  python3 tests/warmup.py
+  python3 tests/warmup.py "your custom message"
+  python3 tests/warmup.py --gender male --style playful "hello there"
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
@@ -38,7 +38,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from test.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.common.cli import add_connection_args, add_sampling_args, build_sampling_payload
 
 
 def _parse_args() -> argparse.Namespace:

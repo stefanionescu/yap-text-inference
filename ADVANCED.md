@@ -72,7 +72,7 @@ pip install -r requirements-dev.txt
 bash scripts/lint.sh
 ```
 
-`scripts/lint.sh` runs Ruff across `src` and `test`, then ShellCheck over every tracked `*.sh`, exiting non-zero if anything fails.
+`scripts/lint.sh` runs Ruff across `src` and `tests`, then ShellCheck over every tracked `*.sh`, exiting non-zero if anything fails.
 
 ## API — WebSocket `/ws`
 

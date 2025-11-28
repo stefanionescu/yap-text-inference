@@ -1,4 +1,4 @@
-# Base stack-specific dockerignore (mirrors awq, but keeps test/ included)
+# Base stack-specific dockerignore (mirrors awq, but keeps tests/ included)
 
 # Exclude other docker stacks
 docker/awq/

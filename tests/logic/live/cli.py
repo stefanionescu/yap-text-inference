@@ -228,7 +228,7 @@ def print_help(names: list[str], current: str, verbose: bool = False) -> None:
             "  /stop|/quit          Stop and close the session\n"
             "\n"
             "Any line without a leading '/' is sent to the assistant.\n"
-            "Personas are loaded from test/prompts/live.py (default: anna_flirty).\n"
+            "Personas are loaded from tests/prompts/live.py (default: anna_flirty).\n"
         )
     else:
         print(
