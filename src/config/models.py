@@ -65,10 +65,15 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "MadeAgents/Hammer2.1-1.5b",
     "MadeAgents/Hammer2.1-3b",
 
+    "Qwen/Qwen2.5-1.5B-Instruct",
     "Qwen/Qwen2.5-7B-Instruct",
     "Qwen/Qwen2.5-14B-Instruct",
 
+    # Pre-quantized GPTQ models
+    "Qwen/Qwen2.5-1.5B-Instruct-GPTQ-Int4",
+
     # Pre-quantized AWQ models
+    "Qwen/Qwen2-1.5B-Instruct-AWQ",
     "Qwen/Qwen2.5-14B-Instruct-AWQ",
     "Qwen/Qwen2.5-7B-Instruct-AWQ",
     "Qwen/Qwen3-4B-AWQ",
