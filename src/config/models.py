@@ -48,7 +48,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ", # stupid and random as fuck
 
     "TheBloke/30B-Lazarus-AWQ", # completely ignores instructions, super dumb
-    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # BEST MODEL FOR NOW
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # BEST CHAT MODEL FOR NOW
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
 
@@ -82,7 +82,7 @@ ALLOWED_TOOL_MODELS: list[str] = [
     # Pre-quantized AWQ models
     "Qwen/Qwen2-1.5B-Instruct-AWQ",
     "Qwen/Qwen2.5-14B-Instruct-AWQ",
-    "Qwen/Qwen2.5-7B-Instruct-AWQ",
+    "Qwen/Qwen2.5-7B-Instruct-AWQ", # BEST TOOL MODEL FOR NOW
     "Qwen/Qwen3-4B-AWQ",
     "cpatonn/Qwen3-4B-Instruct-2507-AWQ-4bit",
 ]
@@ -125,5 +125,3 @@ __all__ = [
     "is_prequantized_model",
     "is_awq_model_name",
 ]
-
-

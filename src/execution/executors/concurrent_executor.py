@@ -289,7 +289,6 @@ async def run_concurrent_execution(
         user_utt,
         request_id=chat_req_id,
         sampling_overrides=sampling_overrides,
-        history_turn_id=history_turn_id,
     )
     logger.info("concurrent_exec: chat start req_id=%s", chat_req_id)
 
@@ -306,6 +305,7 @@ async def run_concurrent_execution(
         tool_timeout_s=tool_timeout_s,
         prebuffer_max_chars=prebuffer_max_chars,
         sampling_overrides=sampling_overrides,
+        history_turn_id=history_turn_id,
     )
 
     try:
