@@ -106,7 +106,7 @@ class ConcurrentCoordinator:
             if self._pending_chunk_task and self._pending_chunk_task in done:
                 chunk = await self._consume_pending_chunk()
                 if chunk:
-                    await self._maybe_flush_prebuffer(chunk)
+                    await self._flush_prebuffer(chunk)
                     logger.info(
                         "concurrent_exec: prebuffer chunk flushed session_id=%s chunk_len=%s",
                         self.session_id,
@@ -159,7 +159,7 @@ class ConcurrentCoordinator:
         except asyncio.CancelledError:
             return None
 
-    async def _maybe_flush_prebuffer(self, chunk: str) -> None:
+    async def _flush_prebuffer(self, chunk: str) -> None:
         self._buffer += chunk
         if self.prebuffer_limit <= 0:
             await flush_and_send(self.ws, self._buffer)

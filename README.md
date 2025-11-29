@@ -33,9 +33,9 @@ A vLLM text inference server optimized for dual model deployment. It can run:
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
-- Tool-call-first detection. Toolcall signal is sent when detected, then (when chat is deployed) chat tokens always stream regardless.
+- Tool-call-first detection. Toolcall signal is sent when detected, then (if chat is deployed) chat tokens always stream regardless.
 - Persona/history segmented prompts with prefix caching for KV reuse.
-- FP8/INT8 KV cache in vLLM to reduce VRAM and speed up decoding.
+- FP8/INT8 KV cache to reduce VRAM and speed up decoding.
 - Built-in logit bias that permanently suppresses banned phrases/emoticons (e.g., `*winks*`, `Oh honey`, `:)`). You can override via `CHAT_LOGIT_BIAS_FILE` if needed.
 - Interrupts/barge-in via cancel or a new start, plus explicit heartbeats and idle enforcement (150 s default).
 - Concurrent connection limiting via a global semaphore (capacity is explicitly configured through the `MAX_CONCURRENT_CONNECTIONS` environment variable so you can match your hardware profile)

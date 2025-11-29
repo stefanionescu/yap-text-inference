@@ -24,7 +24,7 @@ from ...config.websocket import (
     WS_CLOSE_CLIENT_REQUEST_CODE,
     WS_CLOSE_UNAUTHORIZED_CODE,
 )
-from ...engines import clear_all_engine_caches_on_disconnect, maybe_reset_engine_caches
+from ...engines import clear_all_engine_caches_on_disconnect, reset_engine_caches
 from ...messages.cancel import handle_cancel_message
 from ...messages.chat_prompt import handle_chat_prompt
 from ...messages.followup import handle_followup_message
@@ -278,7 +278,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             )
             if should_reset:
                 with contextlib.suppress(Exception):
-                    triggered = await maybe_reset_engine_caches("long_session", force=True)
+                    triggered = await reset_engine_caches("long_session", force=True)
                     if triggered:
                         logger.info(
                             "cache reset after long session_id=%s duration=%.1fs",

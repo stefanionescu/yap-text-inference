@@ -178,7 +178,7 @@ def _load_autoawq_tokenizer(tokenizer_cls: Any, resolved_model_path: str) -> Any
         return None
 
 
-def _maybe_set_pad_token(tokenizer: Any) -> None:
+def _set_pad_token(tokenizer: Any) -> None:
     """Backfill pad token if the tokenizer only defines eos_token."""
     if tokenizer.pad_token is None and tokenizer.eos_token is not None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -329,7 +329,7 @@ def quantize_with_autoawq(
     if tokenizer is None:
         return False
 
-    _maybe_set_pad_token(tokenizer)
+    _set_pad_token(tokenizer)
 
     if not _execute_autoawq_quantization(model, tokenizer, autoawq_quant_config):
         return False
