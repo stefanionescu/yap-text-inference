@@ -25,8 +25,7 @@ async def warm_chat_segment(
     """Generic warming helper for persona/history segments."""
     req_id = f"warm-{segment}-{uuid.uuid4()}"
     stream = (await get_chat_engine()).generate(
-        prompt=None,
-        prompt_token_ids=compiled_prompt.token_ids,
+        prompt=compiled_prompt.text,
         sampling_params=_WARM_PARAMS,
         request_id=req_id,
         priority=WARM_REQUEST_PRIORITY,

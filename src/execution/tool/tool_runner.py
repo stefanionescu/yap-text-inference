@@ -65,7 +65,6 @@ async def run_toolcall(
             session_id=session_id,
             request_id=req_id,
             prompt=compiled_prompt.text,
-            prompt_token_ids=compiled_prompt.token_ids,
             sampling_params=params,
             engine_getter=get_tool_engine,
             timeout_s=tool_timeout_s,

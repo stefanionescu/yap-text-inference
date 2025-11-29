@@ -75,7 +75,6 @@ async def run_chat_stream(
             session_id=session_id,
             request_id=req_id,
             prompt=compiled_prompt.text,
-            prompt_token_ids=compiled_prompt.token_ids,
             sampling_params=params,
             engine_getter=get_chat_engine,
             timeout_s=float(GEN_TIMEOUT_S),

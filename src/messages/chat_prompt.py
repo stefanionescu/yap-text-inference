@@ -154,8 +154,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     req_id = f"warm-update-{uuid.uuid4()}"
 
     stream = (await get_chat_engine()).generate(
-        prompt=None,
-        prompt_token_ids=compiled_warm.token_ids,
+        prompt=compiled_warm.text,
         sampling_params=params,
         request_id=req_id,
         priority=WARM_REQUEST_PRIORITY,
