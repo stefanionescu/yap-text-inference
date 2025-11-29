@@ -15,24 +15,22 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import os
-import sys
 import uuid
 
 import websockets  # type: ignore[import-not-found]
 
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+from tests.helpers.setup import setup_repo_path
 
-from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
-from tests.helpers.ws import connect_with_retries, with_api_key
+setup_repo_path()
+
 from tests.config import (
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
+from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.ws import connect_with_retries, with_api_key
 from tests.logic.live import (
     DEFAULT_PERSONA_NAME,
     LiveClient,

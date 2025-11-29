@@ -32,11 +32,10 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+from tests.helpers.setup import setup_repo_path
+
+setup_repo_path()
 
 from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
 
@@ -57,7 +56,14 @@ def _parse_args() -> argparse.Namespace:
         dest="personality",
         help="personality (e.g., wholesome, savage, playful)",
     )
+    parser.add_argument(
+        "--style",
+        dest="style",
+        help="deprecated alias for --personality (kept for backward compatibility)",
+    )
     args = parser.parse_args()
+    if not getattr(args, "personality", None) and getattr(args, "style", None):
+        args.personality = args.style
     args.sampling = build_sampling_payload(args)
     return args
 

@@ -287,7 +287,138 @@ curl -H "X-API-Key: your_api_key" http://127.0.0.1:8000/status
 curl "http://127.0.0.1:8000/status?api_key=your_api_key"
 ```
 
-Returns server status and connection capacity information, including current active connections and limits.
+Typical response:
+
+```json
+{
+  "status": "running",
+  "healthy": true,
+  "connections": {
+    "active": 4,
+    "max": 24,
+    "available": 20,
+    "at_capacity": false
+  }
+}
+```
+
+Field notes:
+- `status`: `"running"` whenever the FastAPI process is alive and engines are preloaded.
+- `healthy`: flips to `false` only when you have zero spare connection slots (mirrors `at_capacity`).
+- `connections.active`: live WebSocket sessions currently admitted.
+- `connections.max`: value of `MAX_CONCURRENT_CONNECTIONS`.
+- `connections.available`: spare slots before the server starts rejecting new clients.
+- `connections.at_capacity`: `true` when `active >= max`; matches the `extra.capacity` payload returned by the WebSocket rejection path.
+
+Use this endpoint for dashboards/alerts instead of `/healthz` whenever you need to track saturation.
+
+## Test Clients
+
+All CLI harnesses run against the same WebSocket stack; use them to validate behavior end to end. Unless otherwise noted, activate `.venv` (or the lightweight `.venv-local`) before running the commands below.
+
+### Warmup Test Client
+
+```bash
+source .venv/bin/activate
+python3 tests/warmup.py
+python3 tests/warmup.py "who was Columbus?"
+python3 tests/warmup.py --gender male --personality flirty "hello there"
+```
+
+Toggle concurrency by exporting the flag before launching the client:
+
+```bash
+# Sequential test (override the concurrent default)
+CONCURRENT_MODEL_CALL=0 python3 tests/warmup.py "write a simple hello world function"
+
+# Re-enable concurrent mode (default pipeline)
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+python3 tests/warmup.py "write a simple hello world function"
+```
+
+Environment overrides honored by the client:
+- `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
+- `GENDER` (aliases `woman|man`)
+- `PERSONALITY` (alias `PERSONA_STYLE`, default `wholesome`)
+- `RECV_TIMEOUT_SEC` (default `60`)
+
+Example:
+
+```bash
+SERVER_WS_URL=ws://127.0.0.1:8000/ws \
+RECV_TIMEOUT_SEC=120 \
+python3 tests/warmup.py --gender female --personality savage "hey there"
+```
+
+### Interactive Live Client
+
+```bash
+source .venv/bin/activate
+TEXT_API_KEY=your_api_key python3 tests/live.py \
+  --server ws://127.0.0.1:8000 \
+  --persona default_live_persona
+```
+
+Flags:
+- `--server`: explicit URL (falls back to `SERVER_WS_URL`, appends `/ws` if missing)
+- `--api-key`: override `TEXT_API_KEY`
+- `--persona/-p`: persona key from `tests/prompts/live.py` (defaults to `anna_flirty`)
+- `--recv-timeout`: override `DEFAULT_RECV_TIMEOUT_SEC`
+- positional text: optional opener message
+
+### Personality Switch Test
+
+```bash
+source .venv/bin/activate
+TEXT_API_KEY=your_api_key python3 tests/personality.py \
+  --server ws://127.0.0.1:8000 \
+  --switches 3 \
+  --delay 2
+```
+
+`PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
+
+### Conversation History Test
+
+```bash
+source .venv/bin/activate
+TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
+```
+
+Streams a fixed 10-turn script (`tests/messages/conversation.py`) to verify bounded-history eviction and KV-cache reuse.
+
+### Screen Analysis / Toolcall Test
+
+```bash
+TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
+```
+
+Ensures toolcall decisions fire before the follow-up chat stream. Override `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` as needed.
+
+### Tool Regression Test
+
+```bash
+TEXT_API_KEY=your_api_key python3 tests/tool.py \
+  --server ws://127.0.0.1:8000/ws \
+  --timeout 5 \
+  --concurrency 4 \
+  --limit 50
+```
+
+- `--timeout`: wait per tool decision (default 5 s)
+- `--concurrency`: parallel cases if the tool engine has capacity
+- `--limit`: cap the number of replayed cases for faster smoke runs
+
+### Benchmark Client
+
+```bash
+source .venv/bin/activate
+python3 tests/bench.py -n 32 -c 8
+python3 tests/bench.py --gender female --personality flirty "who was Columbus?"
+python3 tests/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+```
+
+Reports p50/p95 latencies while hammering the WebSocket endpoint with concurrent sessions.
 
 ## Persona and History Behavior
 

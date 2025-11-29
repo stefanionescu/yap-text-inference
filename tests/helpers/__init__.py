@@ -3,6 +3,7 @@
 __all__ = [
     "cli",
     "regex",
+    "stream",
     "ws",
     "util",
 ]

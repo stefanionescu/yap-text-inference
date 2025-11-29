@@ -12,34 +12,22 @@ A vLLM text inference server optimized for dual model deployment. It can run:
 - [Quickstart](#quickstart)
 - [Docker Deployment](#docker-deployment)
 - [Quantization](#quantization)
-  - [Option 1: Local Quantization (Quantizes on First Run)](#option-1-local-quantization-quantizes-on-first-run)
+  - [Option 1: Local Quantization](#option-1-local-quantization)
   - [Option 2: Pre-Quantized Models](#option-2-pre-quantized-models)
 - [Local Test Dependencies](#local-test-dependencies)
-- [Warmup Test Client](#warmup-test-client)
-  - [Basic Usage](#basic-usage)
-  - [With a Custom Message](#with-a-custom-message)
-  - [With Gender/Style Flags](#with-genderstyle-flags)
-  - [Testing Concurrent vs. Sequential Modes](#testing-concurrent-vs-sequential-modes)
-  - [Environment Overrides](#environment-overrides)
-- [Interactive Live Client](#interactive-live-client)
-- [Personality Switch Test](#personality-switch-test)
-- [Conversation History Test](#conversation-history-test)
-- [Screen Analysis / Toolcall Test](#screen-analysis--toolcall-test)
-- [Tool Regression Test](#tool-regression-test)
-- [Benchmark Client](#benchmark-client)
+- [Test Clients](#test-clients)
 - [Stopping and Restarting](#stopping-and-restarting)
-  - [Stop Script Behavior (Deep Clean)](#stop-script-behavior-deep-clean)
+  - [Stop Script Behavior](#stop-script-behavior)
 - [Health Check](#health-check)
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
-- Tool-call-first detection. Toolcall signal is sent when detected, then (if chat is deployed) chat tokens always stream regardless.
-- Persona/history segmented prompts with prefix caching for KV reuse.
-- FP8/INT8 KV cache to reduce VRAM and speed up decoding.
-- Built-in logit bias that permanently suppresses banned phrases/emoticons (e.g., `*winks*`, `Oh honey`, `:)`). You can override via `CHAT_LOGIT_BIAS_FILE` if needed.
-- Interrupts/barge-in via cancel or a new start, plus explicit heartbeats and idle enforcement (150 s default).
-- Concurrent connection limiting via a global semaphore (capacity is explicitly configured through the `MAX_CONCURRENT_CONNECTIONS` environment variable so you can match your hardware profile)
-- API key authentication for secure access (required, must be set via TEXT_API_KEY environment variable)
+- Dual-engine architecture (chat + tool) with optional chat-only/tool-only modes and concurrent streaming to keep both models busy.
+- Tool-call-first detection: tool decisions fire before chat tokens, while chat still streams for every turn so UX never stalls.
+- Persona/history segmented prompts with prefix caching and FP8/INT8 KV reuse to keep latency low across restarts.
+- Integrated quantization pipeline (FP8 default, AWQ/GPTQ/W4A16 auto-detect, AutoAWQ fallbacks) plus configurable logit bias for banned phrases.
+- Built-in resiliency: interrupts/barge-in, heartbeats, idle watchdog (150 s default), and sliding-window rate limits on both messages and cancels.
+- Secure multi-tenant guardrails via required API keys and a global semaphore driven by `MAX_CONCURRENT_CONNECTIONS`.
 
 ## Quickstart
 
@@ -123,7 +111,7 @@ See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, ima
 
 4-bit mode AWQ/W4A16 via llmcompressor + vLLM (with AutoAWQ fallback for Qwen & Mistral 3).
 
-### Option 1: Local Quantization (Quantizes on First Run)
+### Option 1: Local Quantization
 
 ```bash
 # Uses float (non-GPTQ) chat model weights and quantizes BOTH chat and tool models at load
@@ -192,188 +180,19 @@ pip install -r requirements-local.txt
 
 This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) without pulling CUDA wheels, so macOS users can run `python3 tests/live.py ...` without errors. Use the full `requirements.txt` only when you need to run the actual inference server.
 
-## Warmup Test Client
+## Test Clients
 
-Activate the virtualenv created by the setup scripts:
+Need to smoke-test the stack without touching production traffic? Every CLI harness now has a consolidated home in [`ADVANCED.md#test-clients`](ADVANCED.md#test-clients). Highlights:
 
-```bash
-source .venv/bin/activate
-```
+- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` (alias: `--style`) and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Set `CONCURRENT_MODEL_CALL=0` only if you explicitly want to compare sequential mode to the default concurrent pipeline.
+- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/live.py`.
+- [`tests/personality.py`](ADVANCED.md#personality-switch-test) – exercises persona swaps and history stitching to ensure cache hits are preserved.
+- [`tests/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics.
+- [`tests/screen_analysis.py`](ADVANCED.md#screen-analysis--toolcall-test) – validates the toolcall branch used by screen analysis flows.
+- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call classifier (timeouts, concurrency, limit flags).
+- [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for concurrent sessions.
 
-### Basic Usage
-
-```bash
-python3 tests/warmup.py
-```
-
-### With a Custom Message
-
-```bash
-python3 tests/warmup.py "who was Columbus?"
-```
-
-### With Gender/Style Flags
-
-```bash
-python3 tests/warmup.py --gender male --style flirty "hello there"
-```
-
-### Testing Concurrent vs. Sequential Modes
-
-```bash
-# Test sequential mode (set CONCURRENT_MODEL_CALL=0)
-CONCURRENT_MODEL_CALL=0 python3 tests/warmup.py "write a simple hello world function"
-
-# Test concurrent mode
-# Terminal 1: Start server with concurrent mode (auto → FP8)
-NUKE_ALL=1 bash scripts/stop.sh  # Stop previous deployment
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-
-# Terminal 2: Test the same query (after server is ready)
-python3 tests/warmup.py "write a simple hello world function"
-
-# Test the roleplay-optimized model
-# Terminal 1: Start server with Wingless_Imp_8B (auto → FP8)
-NUKE_ALL=1 bash scripts/stop.sh  # Stop previous deployment
-bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
-
-# Terminal 2: Test creative/roleplay query (after server is ready)
-python3 tests/warmup.py "*waves hand* Tell me a creative story about a lonely dragon"
-```
-
-The concurrent mode should show lower `ttfb_ms` for chat responses where the toolcall model returns false.
-
-### Environment Overrides
-
-- `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
-- `GENDER` (default `female`) — aliases accepted: `woman|man`
-- `PERSONA_STYLE` (default `wholesome`)
-- `RECV_TIMEOUT_SEC` (default `60`)
-
-Examples:
-
-```bash
-SERVER_WS_URL=ws://127.0.0.1:8000/ws python3 tests/warmup.py
-RECV_TIMEOUT_SEC=120 python3 tests/warmup.py --gender female --style savage "hey there"
-```
-
-## Interactive Live Client
-
-Streams a real-time conversation you can steer from the CLI, hot-reloading persona definitions from `tests/prompts/live.py`. If you omit `--server`, the client falls back to `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`). When you do provide `--server`, you can point at either the full `/ws` endpoint or just the origin (`ws://host:port`); the client automatically appends `/ws` and your API key.
-
-Activate the virtualenv created by the setup scripts:
-
-```bash
-source .venv/bin/activate
-```
-
-Then run:
-
-```bash
-TEXT_API_KEY=your_api_key python3 tests/live.py \
-  --server ws://127.0.0.1:8000 \
-  --persona default_live_persona
-```
-
-Flags:
-
-- `--server`: target WebSocket URL (defaults to `SERVER_WS_URL`; accepts origins without `/ws`)
-- `--api-key`: override `TEXT_API_KEY` env for the session
-- `--persona/-p`: persona key from `tests/prompts/live.py` (defaults to `anna_flirty`)
-- `--recv-timeout`: receive timeout in seconds (default `DEFAULT_RECV_TIMEOUT_SEC`)
-- positional arguments: optional opener message; falls back to warmup defaults otherwise
-
-## Personality Switch Test
-
-Exercises persona updates, ensuring chat prompt swaps and history stitching behave correctly.
-
-Activate the virtualenv created by the setup scripts:
-
-```bash
-source .venv/bin/activate
-```
-
-Then run:
-
-```bash
-TEXT_API_KEY=your_api_key python3 tests/personality.py \
-  --server ws://127.0.0.1:8000 \
-  --switches 3 \
-  --delay 2
-```
-
-`PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
-
-## Conversation History Test
-
-Streams a fixed 10-turn conversation (same persona throughout) to verify bounded-history eviction and KV-cache reuse while logging TTFB/first-word metrics for every exchange.
-
-Activate the virtualenv created by the setup scripts:
-
-```bash
-source .venv/bin/activate
-```
-
-Then run:
-
-```bash
-TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
-```
-
-Prompts are sourced from `CONVERSATION_HISTORY_MESSAGES` in `tests/messages/conversation.py`.
-
-## Screen Analysis / Toolcall Test
-
-Runs the end-to-end toolcall → follow-up flow used for screen analysis, asserting the first turn triggers `toolcall == YES` and that the follow-up response streams successfully.
-
-```bash
-TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
-```
-
-Override defaults via `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` environment variables when needed.
-
-## Tool Regression Test
-
-Validates the screenshot/tool-call classifier against the full suite defined in `TOOL_DEFAULT_MESSAGES` (see `tests/messages/tool.py`). Each case may contain multiple user-only turns; the harness replays them sequentially, enforcing per-turn timeouts and collecting accuracy stats.
-
-```bash
-TEXT_API_KEY=your_api_key python3 tests/tool.py \
-  --server ws://127.0.0.1:8000/ws \
-  --timeout 5 \
-  --concurrency 4 \
-  --limit 50
-```
-
-- `--timeout` caps the wait for each tool decision (default 5 s). Overwrite for slower models.
-- `--concurrency` lets you run several cases in parallel if the tool engine has spare capacity.
-- `--limit` restricts the run to the first *N* cases for quick smoke checks; omit to run all.
-- Results include PASS/FAIL per case plus an overall summary (passes, failures, accuracy, and failure-type breakdown such as timeouts or chat-only responses).
-
-## Benchmark Client
-
-Activate the virtualenv created by the setup scripts:
-
-```bash
-source .venv/bin/activate
-```
-
-Then, run concurrent sessions and report p50/p95 latencies:
-
-```bash
-python3 tests/bench.py -n 32 -c 8
-```
-
-With a custom message and persona:
-
-```bash
-python3 tests/bench.py --gender female --style flirty "who was Columbus?"
-```
-
-Override URL and timeout:
-
-```bash
-python3 tests/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
-```
+All of them run happily on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
 
 ## Stopping and Restarting
 
@@ -406,9 +225,15 @@ bash scripts/restart.sh --reset-models --deploy-mode chat \
 bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
 ```
 
+Key restart knobs:
+- `--keep-models` (default) reuses cached AWQ exports; combine with `NUKE_ALL=0` for sub-minute restarts.
+- `--reset-models` wipes caches before relaunching different repos or quantization.
+- `--install-deps` reinstalls `.venv` before launching.
+- `--push-awq` uploads the cached AWQ build; see [`ADVANCED.md#pushing-awq-exports-to-hugging-face`](ADVANCED.md#pushing-awq-exports-to-hugging-face) for required env vars.
+
 Caches are wiped by default during model resets; they are only preserved automatically when the requested models *and* quantization match the previous deployment.
 
-### Stop Script Behavior (Deep Clean)
+### Stop Script Behavior
 
 Default behavior (deep clean):
 - Terminates only `uvicorn src.server:app`
