@@ -33,7 +33,6 @@ class LLMStreamConfig:
     engine_getter: Callable[[], Awaitable[Any]]
     timeout_s: float
     priority: int = 0
-    prompt_token_ids: list[int] | None = None
     use_prefix_cache: bool = False
     flush_ms: float = 0.0
     cancel_check: CancelCheck = None
@@ -71,7 +70,6 @@ class LLMStream:
             async for out in _stream_with_timeout(
                 get_engine=cfg.engine_getter,
                 prompt=cfg.prompt,
-                prompt_token_ids=cfg.prompt_token_ids,
                 sampling_params=cfg.sampling_params,
                 request_id=cfg.request_id,
                 priority=cfg.priority,
@@ -191,7 +189,6 @@ class LLMStream:
 async def _stream_with_timeout(
     get_engine: Callable[[], Awaitable[Any]],
     prompt: str,
-    prompt_token_ids: list[int] | None,
     sampling_params: Any,
     request_id: str,
     priority: int,
@@ -200,10 +197,8 @@ async def _stream_with_timeout(
     cancel_check: CancelCheck = None,
 ) -> AsyncGenerator[Any, None]:
     engine = await get_engine()
-    prompt_arg = None if prompt_token_ids is not None else prompt
     stream = engine.generate(
-        prompt=prompt_arg,
-        prompt_token_ids=prompt_token_ids,
+        prompt=prompt,
         sampling_params=sampling_params,
         request_id=request_id,
         priority=priority,
