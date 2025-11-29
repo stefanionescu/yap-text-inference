@@ -73,6 +73,10 @@ from .limits import (
     EXACT_TOKEN_TRIM,
     CONCURRENT_MODEL_CALL,
     MAX_CONCURRENT_CONNECTIONS,
+    SCREEN_PREFIX_MAX_CHARS,
+    SAFE_LEXER_NAMES,
+    CODE_FENCES,
+    CODE_DETECTION_MIN_LENGTH,
 )
 from .secrets import TEXT_API_KEY
 from .websocket import (
@@ -188,6 +192,10 @@ __all__ = [
     "EXACT_TOKEN_TRIM",
     "CONCURRENT_MODEL_CALL",
     "MAX_CONCURRENT_CONNECTIONS",
+    "SCREEN_PREFIX_MAX_CHARS",
+    "SAFE_LEXER_NAMES",
+    "CODE_FENCES",
+    "CODE_DETECTION_MIN_LENGTH",
     # secrets
     "TEXT_API_KEY",
     # websocket

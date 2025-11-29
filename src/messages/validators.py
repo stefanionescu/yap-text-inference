@@ -3,9 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-import re
 
-from ..config import PERSONALITY_MAX_LEN
+try:
+    from pygments.lexers import guess_lexer  # type: ignore[import-not-found]
+    from pygments.util import ClassNotFound  # type: ignore[import-not-found]
+except Exception:  # pragma: no cover - pygments is optional
+    guess_lexer = None
+    ClassNotFound = Exception  # type: ignore[assignment]
+
+from ..config import (
+    CODE_DETECTION_MIN_LENGTH,
+    CODE_FENCES,
+    PERSONALITY_MAX_LEN,
+    SAFE_LEXER_NAMES,
+    SCREEN_PREFIX_MAX_CHARS,
+)
 from ..utils import (
     sanitize_prompt,
     is_gender_empty_or_null,
@@ -65,46 +77,36 @@ def require_prompt(
     return raw_prompt
 
 
-SCREEN_PREFIX_MAX_CHARS = 30
-
-_CODE_SENTINEL_REGEXES: tuple[re.Pattern[str], ...] = (
-    re.compile(r"```|~~~"),
-    re.compile(r"<\s*/?\s*script\b", re.IGNORECASE),
-    re.compile(r"<\?php", re.IGNORECASE),
-    re.compile(r"#!\s*/bin", re.IGNORECASE),
-    re.compile(r"\b(from\s+[A-Za-z0-9_.]+\s+import\s+[A-Za-z0-9_*, ]+)\b", re.IGNORECASE),
-    re.compile(r"\bimport\s+[A-Za-z0-9_.]+\b", re.IGNORECASE),
-    re.compile(r"\b(def|class|function)\s+[A-Za-z0-9_]+\s*\(", re.IGNORECASE),
-    re.compile(r"\bconsole\.log\s*\(", re.IGNORECASE),
-    re.compile(r"\b(var|let|const)\s+[A-Za-z0-9_]+\s*=", re.IGNORECASE),
-    re.compile(r"\bSystem\.[A-Za-z]+\s*\(", re.IGNORECASE),
-    re.compile(r"\bpublic\s+static\s+void\b", re.IGNORECASE),
-    re.compile(r"\bSELECT\s+.+\s+FROM\b", re.IGNORECASE),
-    re.compile(r"\bDROP\s+TABLE\b", re.IGNORECASE),
-    re.compile(r"\bsudo\s+\S+", re.IGNORECASE),
-    re.compile(r"\brm\s+-rf\b", re.IGNORECASE),
-)
+def _has_code_fences(text: str) -> bool:
+    """Check for markdown-style code fences."""
+    return any(fence in text for fence in CODE_FENCES)
 
 
 def _looks_like_code_block(text: str) -> bool:
-    """Heuristic detection for embedded code or executable snippets."""
-    for pattern in _CODE_SENTINEL_REGEXES:
-        if pattern.search(text):
-            return True
-    suspicious_lines = 0
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("//") or stripped.startswith("#include"):
-            return True
-        if stripped.endswith((";", "{", "}")):
-            suspicious_lines += 1
-        if "return " in stripped or stripped.startswith("return"):
-            suspicious_lines += 1
-        if suspicious_lines >= 2:
-            return True
-    return False
+    """Detect executable code using Pygments lexer detection."""
+    if not text:
+        return False
+    
+    # Quick check for code fences
+    if _has_code_fences(text):
+        return True
+    
+    # Use Pygments to detect if it's code
+    if not guess_lexer:
+        return False
+    
+    # Skip very short text that's unlikely to be code
+    if len(text.strip()) < CODE_DETECTION_MIN_LENGTH:
+        return False
+    
+    try:
+        lexer = guess_lexer(text)
+        lexer_name = getattr(lexer, "name", "").lower()
+        # If Pygments detected a lexer that's NOT in our safe list, it's code
+        return lexer_name not in SAFE_LEXER_NAMES
+    except ClassNotFound:
+        # Pygments couldn't detect a language, assume it's not code
+        return False
 
 
 def ensure_text_is_not_code(*, text: str, field_label: str, error_code: str) -> None:
