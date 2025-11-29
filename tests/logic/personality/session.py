@@ -7,6 +7,8 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from tests.prompts.toolcall import TOOLCALL_PROMPT
+
 _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
@@ -32,6 +34,7 @@ class PersonaSession:
     prompt_index: int = 0
     prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_MESSAGES))
     sampling: dict[str, float | int] | None = None
+    tool_prompt: str | None = TOOLCALL_PROMPT
 
     def has_remaining_prompts(self) -> bool:
         """Check if there are more prompts to process."""

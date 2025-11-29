@@ -3,8 +3,9 @@ from __future__ import annotations
 import importlib
 from dataclasses import dataclass
 
+from tests.prompts.toolcall import DEFAULT_TOOL_PROMPT_NAME
+
 TOOL_PROMPT_MODULE = "tests.prompts.toolcall"
-DEFAULT_TOOL_PROMPT_NAME = "base"
 
 
 @dataclass(frozen=True)

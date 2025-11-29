@@ -14,6 +14,7 @@ from tests.config import (
     CHAT_TOP_K_DEFAULT,
     CHAT_TOP_P_DEFAULT,
 )
+from tests.helpers.prompt import PROMPT_MODE_BOTH, PROMPT_MODE_CHOICES, normalize_prompt_mode
 
 
 def add_connection_args(
@@ -104,5 +105,39 @@ def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, flo
     return payload
 
 
-__all__ = ["add_connection_args", "add_sampling_args", "build_sampling_payload"]
+PROMPT_MODE_ENV_VAR = "PROMPT_MODE"
+
+
+def add_prompt_mode_arg(
+    parser: ArgumentParser,
+    *,
+    default: str = PROMPT_MODE_BOTH,
+    env_var: str = PROMPT_MODE_ENV_VAR,
+) -> None:
+    """
+    Register a flag controlling which prompts get sent to the server.
+
+    Respects ``env_var`` (default: PROMPT_MODE) for overrides.
+    """
+
+    env_override = os.getenv(env_var)
+    resolved_default = default
+    if env_override:
+        try:
+            resolved_default = normalize_prompt_mode(env_override)
+        except ValueError:
+            resolved_default = default
+
+    parser.add_argument(
+        "--prompt-mode",
+        choices=PROMPT_MODE_CHOICES,
+        default=resolved_default,
+        help=(
+            "Which prompts to send on connection start "
+            f"(default: {resolved_default}, env {env_var} overrides)"
+        ),
+    )
+
+
+__all__ = ["add_connection_args", "add_sampling_args", "add_prompt_mode_arg", "build_sampling_payload"]
 

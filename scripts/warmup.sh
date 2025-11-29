@@ -104,6 +104,28 @@ print(MAX_CONCURRENT_CONNECTIONS)
   return 1
 }
 
+detect_prompt_mode() {
+  local deploy_mode="${DEPLOY_MODELS:-}"
+  case "${deploy_mode}" in
+    chat) echo "chat"; return 0 ;;
+    tool) echo "tool"; return 0 ;;
+    both|"") ;;
+    *) ;;
+  esac
+
+  local chat_flag="${DEPLOY_CHAT:-}"
+  local tool_flag="${DEPLOY_TOOL:-}"
+  if [[ "${chat_flag}" = "1" && "${tool_flag}" = "1" ]]; then
+    echo "both"
+  elif [[ "${chat_flag}" = "1" ]]; then
+    echo "chat"
+  elif [[ "${tool_flag}" = "1" ]]; then
+    echo "tool"
+  else
+    echo "both"
+  fi
+}
+
 run_py_tool() {
   local log_path="$1"; shift
   if "${PY_BIN}" "$@" >"${log_path}" 2>&1; then
@@ -132,12 +154,15 @@ fi
 log "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
 
 ok=1
+prompt_mode="$(detect_prompt_mode)"
+PROMPT_MODE_FLAG=(--prompt-mode "${prompt_mode}")
+log "Using prompt mode '${prompt_mode}' for warmup + bench tests"
 
 cd "${ROOT_DIR}"
 
 for idx in 1 2; do
   run_log="${LOG_DIR}/warmup_run_${idx}.log"
-  if run_py_tool "${run_log}" "tests/warmup.py"; then
+  if run_py_tool "${run_log}" "tests/warmup.py" "${PROMPT_MODE_FLAG[@]}"; then
     log "OK: warmup run ${idx} (see ${run_log})"
   else
     log "FAIL: warmup run ${idx} (see ${run_log})"
@@ -148,7 +173,7 @@ done
 
 for idx in 1 2; do
   run_log="${LOG_DIR}/bench_run_${idx}.log"
-  if run_py_tool "${run_log}" "tests/bench.py" "--requests" "${max_conn}" "--concurrency" "${max_conn}"; then
+  if run_py_tool "${run_log}" "tests/bench.py" "${PROMPT_MODE_FLAG[@]}" "--requests" "${max_conn}" "--concurrency" "${max_conn}"; then
     log "OK: bench run ${idx} (n=${max_conn}, c=${max_conn}) (see ${run_log})"
   else
     log "FAIL: bench run ${idx} (see ${run_log})"

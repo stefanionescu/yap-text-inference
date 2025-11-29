@@ -12,6 +12,8 @@ from .personas import PersonaDefinition
 class LiveSession:
     session_id: str
     persona: PersonaDefinition
+    include_chat_prompt: bool = True
+    tool_prompt: str | None = TOOLCALL_PROMPT
     history: str = ""
     sampling: dict[str, float | int] | None = None
 
@@ -21,16 +23,22 @@ class LiveSession:
             "session_id": self.session_id,
             "gender": self.persona.gender,
             "personality": self.persona.personality,
-            "chat_prompt": self.persona.prompt,
             "history_text": self.history,
             "user_utterance": user_text,
-            "tool_prompt": TOOLCALL_PROMPT,
         }
+        if self.include_chat_prompt:
+            payload["chat_prompt"] = self.persona.prompt
+        if self.tool_prompt is not None:
+            payload["tool_prompt"] = self.tool_prompt
+        if "chat_prompt" not in payload and "tool_prompt" not in payload:
+            raise ValueError("prompt_mode must enable chat and/or tool prompts for live sessions")
         if self.sampling:
             payload["sampling"] = self.sampling
         return payload
 
     def build_persona_payload(self, persona: PersonaDefinition) -> dict[str, Any]:
+        if not self.include_chat_prompt:
+            raise ValueError("chat prompts are disabled for this session; persona updates are unavailable")
         return {
             "type": "chat_prompt",
             "session_id": self.session_id,

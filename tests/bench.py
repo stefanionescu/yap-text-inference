@@ -35,7 +35,12 @@ from tests.helpers.setup import setup_repo_path
 
 setup_repo_path()
 
-from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.cli import (
+    add_connection_args,
+    add_prompt_mode_arg,
+    add_sampling_args,
+    build_sampling_payload,
+)
 from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -52,6 +57,7 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(p)
+    add_prompt_mode_arg(p)
     p.add_argument("message", nargs="*", help="optional user message for all requests")
     p.add_argument(
         "--requests",

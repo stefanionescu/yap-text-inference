@@ -38,16 +38,20 @@ async def run_test(
     switches: int,
     delay_s: int,
     sampling: dict[str, float | int] | None,
+    tool_prompt: str | None,
 ) -> None:
     """Run the personality switch test."""
     url = with_api_key(ws_url, api_key=api_key)
-    session = _build_session(sampling)
+    session = _build_session(sampling, tool_prompt)
     variants = _load_variants()
     message_pacer, persona_pacer = _build_pacers()
     await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
 
 
-def _build_session(sampling: dict[str, float | int] | None) -> PersonaSession:
+def _build_session(
+    sampling: dict[str, float | int] | None,
+    tool_prompt: str | None,
+) -> PersonaSession:
     prompt_sequence = tuple(CONVERSATION_HISTORY_MESSAGES)
     if not prompt_sequence:
         raise RuntimeError("CONVERSATION_HISTORY_MESSAGES is empty; nothing to test.")
@@ -55,6 +59,7 @@ def _build_session(sampling: dict[str, float | int] | None) -> PersonaSession:
         session_id=f"sess-{uuid.uuid4()}",
         prompts=prompt_sequence,
         sampling=sampling,
+        tool_prompt=tool_prompt,
     )
 
 

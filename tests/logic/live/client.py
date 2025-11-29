@@ -95,7 +95,11 @@ class LiveClient:
         await self.ws.wait_closed()
 
     async def change_persona(self, persona: PersonaDefinition) -> None:
-        payload = self.session.build_persona_payload(persona)
+        try:
+            payload = self.session.build_persona_payload(persona)
+        except ValueError as exc:
+            logger.warning("%s", exc)
+            return
         logger.info(
             "Requesting persona change → name=%s gender=%s personality=%s",
             persona.name,

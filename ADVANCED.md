@@ -316,6 +316,12 @@ Use this endpoint for dashboards/alerts instead of `/healthz` whenever you need 
 
 All CLI harnesses run against the same WebSocket stack; use them to validate behavior end to end. Unless otherwise noted, activate `.venv` (or the lightweight `.venv-local`) before running the commands below.
 
+> **Prompt modes:** every client accepts `--prompt-mode {both,chat,tool}` (or `PROMPT_MODE` env).  
+> `both` (default) sends both `chat_prompt` and `tool_prompt`.  
+> `chat` sends only the persona/chat prompt, skipping the tool prompt.  
+> `tool` does the inverse.  
+> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. `scripts/warmup.sh` auto-detects `DEPLOY_MODELS` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
+
 ### Warmup Test Client
 
 ```bash
@@ -324,6 +330,8 @@ python3 tests/warmup.py
 python3 tests/warmup.py "who was Columbus?"
 python3 tests/warmup.py --gender male --personality flirty "hello there"
 ```
+
+Append `--prompt-mode chat` or `--prompt-mode tool` to mirror single-engine deployments (default `both`).
 
 Toggle concurrency by exporting the flag before launching the client:
 
@@ -364,6 +372,7 @@ Flags:
 - `--api-key`: override `TEXT_API_KEY`
 - `--persona/-p`: persona key from `tests/prompts/live.py` (defaults to `anna_flirty`)
 - `--recv-timeout`: override `DEFAULT_RECV_TIMEOUT_SEC`
+- `--prompt-mode`: disable chat (`tool`) or tool prompts (`chat`) mid-session; persona switches are disabled automatically when chat prompts are off
 - positional text: optional opener message
 
 ### Personality Switch Test
@@ -376,6 +385,8 @@ TEXT_API_KEY=your_api_key python3 tests/personality.py \
   --delay 2
 ```
 
+This client requires chat prompts, so invoke it with `--prompt-mode chat` or `both`; tool prompts remain optional.
+
 `PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
 
 ### Conversation History Test
@@ -385,6 +396,8 @@ source .venv/bin/activate
 TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
 ```
 
+Supports `--prompt-mode` for chat-only or tool-only deployments.
+
 Streams a fixed 10-turn script (`tests/messages/conversation.py`) to verify bounded-history eviction and KV-cache reuse.
 
 ### Screen Analysis / Toolcall Test
@@ -393,7 +406,7 @@ Streams a fixed 10-turn script (`tests/messages/conversation.py`) to verify boun
 TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
 ```
 
-Ensures toolcall decisions fire before the follow-up chat stream. Override `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` as needed.
+Ensures toolcall decisions fire before the follow-up chat stream. Override `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` as needed, and pass `--prompt-mode tool` when the chat engine is disabled.
 
 ### Tool Regression Test
 
@@ -408,6 +421,7 @@ TEXT_API_KEY=your_api_key python3 tests/tool.py \
 - `--timeout`: wait per tool decision (default 5 s)
 - `--concurrency`: parallel cases if the tool engine has capacity
 - `--limit`: cap the number of replayed cases for faster smoke runs
+- `--prompt-mode`: limit prompts to `chat` or `tool` so the suite matches the deployment mode (default `both`)
 
 ### Benchmark Client
 
