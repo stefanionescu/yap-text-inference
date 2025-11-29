@@ -7,10 +7,6 @@ from typing import Any
 from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
 
 
-def round_ms(value: float | None) -> float | None:
-    return round(value, 2) if value is not None else None
-
-
 @dataclass
 class StreamTracker:
     sent_ts: float = field(default_factory=time.perf_counter)
@@ -72,6 +68,10 @@ class StreamTracker:
             "chunks": self.chunks,
             "chars": len(self.final_text),
         }
+
+
+def round_ms(value: float | None) -> float | None:
+    return round(value, 2) if value is not None else None
 
 
 __all__ = ["StreamTracker", "round_ms"]

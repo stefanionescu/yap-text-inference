@@ -39,6 +39,8 @@ _TOKENIZER_WARNING_EMITTED = False
 _TOKENIZER_PATCH_WARNING_EMITTED = False
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
 _FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
+_CUDA_MEM_WARNING_EMITTED = False
+_KV_DTYPE_WARNING_EMITTED = False
 
 
 def _resolve_tokenizer_kwarg_key() -> str | None:
@@ -338,6 +340,93 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
     )
 
 
+def _read_cuda_memory_snapshot() -> tuple[int, int] | None:
+    """Return (free_bytes, total_bytes) for the current CUDA device."""
+    global _CUDA_MEM_WARNING_EMITTED
+    try:
+        import torch  # local import to avoid hard dependency at module import time
+    except Exception as exc:  # noqa: BLE001
+        if not _CUDA_MEM_WARNING_EMITTED:
+            print(f"[config] Warning: torch unavailable for CUDA mem introspection ({exc})")
+            _CUDA_MEM_WARNING_EMITTED = True
+        return None
+
+    if not torch.cuda.is_available() or torch.cuda.device_count() == 0:
+        return None
+
+    try:
+        device_index = torch.cuda.current_device() if torch.cuda.is_initialized() else 0
+        with torch.cuda.device(device_index):
+            free_bytes, total_bytes = torch.cuda.mem_get_info()
+        return int(free_bytes), int(total_bytes)
+    except Exception as exc:  # noqa: BLE001
+        if not _CUDA_MEM_WARNING_EMITTED:
+            print(f"[config] Warning: unable to read torch.cuda.mem_get_info ({exc})")
+            _CUDA_MEM_WARNING_EMITTED = True
+        return None
+
+
+def _scale_batching_limits(
+    *,
+    max_tokens: int,
+    max_seqs: int | None,
+    gpu_frac: float,
+    engine_role: str,
+) -> tuple[int, int | None]:
+    """Shrink batching knobs when available memory is below the target budget."""
+    snapshot = _read_cuda_memory_snapshot()
+    if not snapshot or gpu_frac <= 0:
+        return max_tokens, max_seqs
+
+    free_bytes, total_bytes = snapshot
+    target_bytes = max(int(total_bytes * min(gpu_frac, 0.99)), 1)
+    if free_bytes >= target_bytes:
+        return max_tokens, max_seqs
+
+    ratio = max(free_bytes / target_bytes, 0.1)
+    scaled_tokens = max(64, int(max_tokens * ratio))
+    scaled_seqs = None
+    if max_seqs is not None:
+        scaled_seqs = max(4, int(max_seqs * ratio))
+
+    print(
+        "[config] Scaling %s batching limits to %.2fx (free %.1f GiB vs budget %.1f GiB)"
+        % (
+            engine_role,
+            ratio,
+            free_bytes / (1024**3),
+            target_bytes / (1024**3),
+        )
+    )
+    return scaled_tokens, scaled_seqs
+
+
+def _configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> None:
+    """Attach the appropriate KV cache controls based on engine mode."""
+    global _KV_DTYPE_WARNING_EMITTED
+    normalized = kv_dtype.strip().lower()
+    if not normalized or normalized == "auto":
+        return
+
+    if use_v1:
+        if normalized.startswith("fp8"):
+            kwargs["fp8_kv_cache"] = True
+            os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
+        else:
+            if not _KV_DTYPE_WARNING_EMITTED:
+                print(
+                    "[config] Warning: kv_cache_dtype=%s is ignored by the V1 engine. "
+                    "Set VLLM_USE_V1=0 to use legacy int8/fp8 switches."
+                    % normalized
+                )
+                _KV_DTYPE_WARNING_EMITTED = True
+        return
+
+    kwargs["kv_cache_dtype"] = normalized
+    if normalized.startswith("fp8"):
+        kwargs["calculate_kv_scales"] = True
+
+
 def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv(
@@ -346,7 +435,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     ))
 
     # Normalize/validate KV cache dtype
-    kv_dtype = (KV_DTYPE or "").strip().lower()  # empty => let vLLM decide
+    kv_dtype_value = (KV_DTYPE or "").strip()  # empty => let vLLM decide
 
     # Select per-engine quantization:
     # - If CHAT_QUANTIZATION/TOOL_QUANTIZATION is set, prefer that.
@@ -431,15 +520,18 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         # For local AWQ models, ensure the path is absolute so vLLM treats it as local
         kwargs["model"] = os.path.abspath(model)
 
-    # Only pass kv_cache_dtype if explicitly set AND V1 is off
-    # (V1 rejects --kv-cache-dtype and will throw NotImplementedError)
     use_v1 = (os.getenv("VLLM_USE_V1", "1") == "1")
-    if (not use_v1) and kv_dtype:
-        kwargs["kv_cache_dtype"] = kv_dtype
-        # Add KV scale calculation for FP8 KV cache
-        if kv_dtype.startswith("fp8"):
-            # Enable dynamic k/v scale calculation for FP8 KV cache
-            kwargs["calculate_kv_scales"] = True
+    _configure_kv_cache(kwargs, kv_dtype_value, use_v1)
+
+    scaled_tokens, scaled_max_seqs = _scale_batching_limits(
+        max_tokens=kwargs["max_num_batched_tokens"],
+        max_seqs=kwargs.get("max_num_seqs"),
+        gpu_frac=kwargs["gpu_memory_utilization"],
+        engine_role="chat" if is_chat else "tool",
+    )
+    kwargs["max_num_batched_tokens"] = scaled_tokens
+    if scaled_max_seqs is not None:
+        kwargs["max_num_seqs"] = scaled_max_seqs
 
     engine_args = AsyncEngineArgs(**kwargs)
 

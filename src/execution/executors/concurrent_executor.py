@@ -16,7 +16,6 @@ from ..streaming.chat_streamer import run_chat_stream
 from ...engines import get_chat_engine
 from ...handlers.session import session_handler
 from ...config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
-from ...config import CHECK_SCREEN_PREFIX
 from ...utils.executor import (
     abort_tool_request,
     cancel_task,
@@ -218,7 +217,8 @@ class ConcurrentCoordinator:
 
         new_chat_req_id = f"chat-{uuid.uuid4()}"
         session_handler.set_active_request(self.session_id, new_chat_req_id)
-        modified_user_utt = f"{CHECK_SCREEN_PREFIX} {self.user_utt}".strip()
+        prefix = session_handler.get_check_screen_prefix(self.session_id)
+        modified_user_utt = f"{prefix} {self.user_utt}".strip()
         logger.info(
             "concurrent_exec: restarting chat session_id=%s new_req_id=%s user_len=%s",
             self.session_id,

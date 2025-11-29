@@ -51,6 +51,7 @@ from .validators import (
     sanitize_prompt_with_limit,
     validate_required_gender,
     validate_required_personality,
+    validate_optional_prefix,
 )
 
 
@@ -132,6 +133,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         gender, personality = _validate_persona(msg)
         chat_prompt, tool_prompt = _extract_prompts(msg)
         sampling_overrides = _extract_sampling_overrides(msg)
+        check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(msg)
     except ValidationError as err:
         await _close_with_validation_error(ws, err)
         return
@@ -147,6 +149,8 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         chat_prompt=chat_prompt,
         tool_prompt=tool_prompt,
         chat_sampling=sampling_payload,
+        check_screen_prefix=check_screen_prefix,
+        screen_checked_prefix=screen_checked_prefix,
     )
 
     updated_config = session_handler.get_session_config(session_id)
@@ -220,6 +224,20 @@ def _extract_prompts(msg: dict[str, Any]) -> tuple[str | None, str | None]:
         )
 
     return chat_prompt, tool_prompt
+
+
+def _extract_screen_prefixes(msg: dict[str, Any]) -> tuple[str | None, str | None]:
+    check_prefix = validate_optional_prefix(
+        msg.get("check_screen_prefix"),
+        field_label="check_screen_prefix",
+        invalid_error_code="invalid_check_screen_prefix",
+    )
+    screen_checked_prefix = validate_optional_prefix(
+        msg.get("screen_checked_prefix"),
+        field_label="screen_checked_prefix",
+        invalid_error_code="invalid_screen_checked_prefix",
+    )
+    return check_prefix, screen_checked_prefix
 
 
 def _resolve_history(session_id: str, msg: dict[str, Any]) -> str:

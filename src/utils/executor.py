@@ -8,6 +8,7 @@ import json
 import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -87,6 +88,13 @@ async def abort_tool_request(session_id: str) -> None:
         await engine.abort(req_id)
 
 
+@dataclass
+class _ChatStreamState:
+    final_text: str
+    text_visible: bool
+    interrupted: bool = False
+
+
 async def stream_chat_response(
     ws: WebSocket,
     stream: AsyncIterator[str],
@@ -99,63 +107,85 @@ async def stream_chat_response(
     history_turn_id: str | None = None,
 ) -> str:
     """Stream chat chunks, emit final/done messages, and record history."""
-    final_text = initial_text
-    text_visible = bool(initial_text) and initial_text_already_sent
     history_user = history_user_utt if history_user_utt is not None else user_utt
-    interrupted = False
+    state = _ChatStreamState(
+        final_text=initial_text,
+        text_visible=bool(initial_text) and initial_text_already_sent,
+    )
 
     try:
-        if initial_text and not initial_text_already_sent:
-            sent = await safe_send_json(ws, {"type": "token", "text": initial_text})
-            if sent:
-                text_visible = True
-            else:
-                interrupted = True
-
-        if not interrupted:
-            async for chunk in stream:
-                sent = await safe_send_json(ws, {"type": "token", "text": chunk})
-                if not sent:
-                    interrupted = True
-                    break
-                final_text += chunk
-                text_visible = True
-
-        if not interrupted:
-            sent_final = await safe_send_json(
-                ws,
-                {
-                    "type": "final",
-                    "normalized_text": final_text,
-                },
-            )
-            if not sent_final:
-                interrupted = True
-
-        if not interrupted:
-            sent_done = await safe_send_json(ws, {"type": "done", "usage": {}})
-            if not sent_done:
-                interrupted = True
+        await _send_initial_text(ws, initial_text, initial_text_already_sent, state)
+        if not state.interrupted:
+            await _forward_stream_chunks(ws, stream, state)
+        if not state.interrupted:
+            await _send_completion_frames(ws, state)
     except asyncio.CancelledError:
-        if text_visible:
-            session_handler.append_history_turn(
-                session_id,
-                history_user,
-                final_text,
-                turn_id=history_turn_id,
-            )
+        if state.text_visible:
+            _append_history(session_id, history_user, state.final_text, history_turn_id)
         raise
 
-    if interrupted:
-        return final_text
+    if not state.interrupted:
+        _append_history(session_id, history_user, state.final_text, history_turn_id)
+    return state.final_text
 
+
+async def _send_initial_text(
+    ws: WebSocket,
+    initial_text: str,
+    initial_text_already_sent: bool,
+    state: _ChatStreamState,
+) -> None:
+    if not initial_text or initial_text_already_sent:
+        return
+    sent = await safe_send_json(ws, {"type": "token", "text": initial_text})
+    if sent:
+        state.text_visible = True
+    else:
+        state.interrupted = True
+
+
+async def _forward_stream_chunks(
+    ws: WebSocket,
+    stream: AsyncIterator[str],
+    state: _ChatStreamState,
+) -> None:
+    async for chunk in stream:
+        sent = await safe_send_json(ws, {"type": "token", "text": chunk})
+        if not sent:
+            state.interrupted = True
+            break
+        state.final_text += chunk
+        state.text_visible = True
+
+
+async def _send_completion_frames(ws: WebSocket, state: _ChatStreamState) -> None:
+    sent_final = await safe_send_json(
+        ws,
+        {
+            "type": "final",
+            "normalized_text": state.final_text,
+        },
+    )
+    if not sent_final:
+        state.interrupted = True
+        return
+    sent_done = await safe_send_json(ws, {"type": "done", "usage": {}})
+    if not sent_done:
+        state.interrupted = True
+
+
+def _append_history(
+    session_id: str,
+    history_user: str,
+    final_text: str,
+    history_turn_id: str | None,
+) -> None:
     session_handler.append_history_turn(
         session_id,
         history_user,
         final_text,
         turn_id=history_turn_id,
     )
-    return final_text
 
 
 __all__ = [

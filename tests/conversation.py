@@ -60,39 +60,6 @@ MESSAGE_WINDOW_SECONDS = get_float_env("WS_MESSAGE_WINDOW_SECONDS", 60.0)
 MESSAGE_MAX_PER_WINDOW = get_int_env("WS_MAX_MESSAGES_PER_WINDOW", 20)
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Conversation history regression test")
-    add_connection_args(
-        parser,
-        server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
-    )
-    add_sampling_args(parser)
-    parser.add_argument(
-        "--gender",
-        dest="gender",
-        help="Assistant gender override (defaults to env/DEFAULT_GENDER)",
-    )
-    parser.add_argument(
-        "--personality",
-        dest="personality",
-        help="Assistant personality override (defaults to env/DEFAULT_PERSONALITY)",
-    )
-    parser.add_argument(
-        "--recv-timeout",
-        dest="recv_timeout",
-        type=float,
-        default=DEFAULT_RECV_TIMEOUT_SEC,
-        help=f"Receive timeout in seconds (default: {DEFAULT_RECV_TIMEOUT_SEC})",
-    )
-    args = parser.parse_args()
-    args.sampling = build_sampling_payload(args)
-    return args
-
-
-def _round(value: float | None) -> float | None:
-    return round(value, 2) if value is not None else None
-
-
 @dataclass
 class StreamTracker:
     sent_ts: float = field(default_factory=time.perf_counter)
@@ -170,6 +137,39 @@ class ConversationSession:
             chunk for chunk in (self.history, f"User: {user_text}", f"Assistant: {assistant_text}") if chunk
         )
         self.history = transcript.strip()
+
+
+def _round(value: float | None) -> float | None:
+    return round(value, 2) if value is not None else None
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Conversation history regression test")
+    add_connection_args(
+        parser,
+        server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
+    )
+    add_sampling_args(parser)
+    parser.add_argument(
+        "--gender",
+        dest="gender",
+        help="Assistant gender override (defaults to env/DEFAULT_GENDER)",
+    )
+    parser.add_argument(
+        "--personality",
+        dest="personality",
+        help="Assistant personality override (defaults to env/DEFAULT_PERSONALITY)",
+    )
+    parser.add_argument(
+        "--recv-timeout",
+        dest="recv_timeout",
+        type=float,
+        default=DEFAULT_RECV_TIMEOUT_SEC,
+        help=f"Receive timeout in seconds (default: {DEFAULT_RECV_TIMEOUT_SEC})",
+    )
+    args = parser.parse_args()
+    args.sampling = build_sampling_payload(args)
+    return args
 
 
 def _build_start_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:

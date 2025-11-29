@@ -33,6 +33,8 @@ class LLMStreamConfig:
     engine_getter: Callable[[], Awaitable[Any]]
     timeout_s: float
     priority: int = 0
+    prompt_token_ids: list[int] | None = None
+    use_prefix_cache: bool = False
     flush_ms: float = 0.0
     cancel_check: CancelCheck = None
 
@@ -69,10 +71,12 @@ class LLMStream:
             async for out in _stream_with_timeout(
                 get_engine=cfg.engine_getter,
                 prompt=cfg.prompt,
+                prompt_token_ids=cfg.prompt_token_ids,
                 sampling_params=cfg.sampling_params,
                 request_id=cfg.request_id,
                 priority=cfg.priority,
                 timeout_s=cfg.timeout_s,
+                use_prefix_cache=cfg.use_prefix_cache,
                 cancel_check=cfg.cancel_check,
             ):
                 delta = self._extract_delta(out)
@@ -187,18 +191,23 @@ class LLMStream:
 async def _stream_with_timeout(
     get_engine: Callable[[], Awaitable[Any]],
     prompt: str,
+    prompt_token_ids: list[int] | None,
     sampling_params: Any,
     request_id: str,
     priority: int,
     timeout_s: float,
+    use_prefix_cache: bool,
     cancel_check: CancelCheck = None,
 ) -> AsyncGenerator[Any, None]:
     engine = await get_engine()
+    prompt_arg = None if prompt_token_ids is not None else prompt
     stream = engine.generate(
-        prompt=prompt,
+        prompt=prompt_arg,
+        prompt_token_ids=prompt_token_ids,
         sampling_params=sampling_params,
         request_id=request_id,
         priority=priority,
+        use_prefix_cache=use_prefix_cache,
     )
     cancel_checker = _CancelChecker(cancel_check)
 
