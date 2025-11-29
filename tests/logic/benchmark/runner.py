@@ -12,7 +12,13 @@ from typing import Any
 import websockets
 
 from tests.helpers.message import iter_messages
-from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.prompt import (
+    PROMPT_MODE_BOTH,
+    select_chat_prompt,
+    select_tool_prompt,
+    should_send_chat_prompt,
+    should_send_tool_prompt,
+)
 from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
 from tests.helpers.util import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
@@ -24,7 +30,6 @@ if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
 from tests.config import BENCHMARK_FALLBACK_MESSAGE  # noqa: E402
-from tests.prompts.toolcall import TOOLCALL_PROMPT  # noqa: E402
 
 
 @dataclass
@@ -74,7 +79,8 @@ def _build_start_payload(
     session_id: str,
     gender: str,
     style: str,
-    chat_prompt: str,
+    chat_prompt: str | None,
+    tool_prompt: str | None,
     message: str,
     sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
@@ -83,11 +89,15 @@ def _build_start_payload(
         "session_id": session_id,
         "gender": gender,
         "personality": style,
-        "chat_prompt": chat_prompt,
-        "tool_prompt": TOOLCALL_PROMPT,
         "history_text": "",
         "user_utterance": message,
     }
+    if chat_prompt is not None:
+        payload["chat_prompt"] = chat_prompt
+    if tool_prompt is not None:
+        payload["tool_prompt"] = tool_prompt
+    if "chat_prompt" not in payload and "tool_prompt" not in payload:
+        raise ValueError("prompt_mode must include chat, tool, or both prompts")
     if sampling:
         payload["sampling"] = sampling
     return payload
@@ -132,6 +142,8 @@ async def _one_request(
     api_key: str | None,
     gender: str,
     style: str,
+    chat_prompt: str | None,
+    tool_prompt: str | None,
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
@@ -139,8 +151,15 @@ async def _one_request(
     async def _session() -> dict[str, Any]:
         auth_url = with_api_key(url, api_key=api_key)
         session_id = str(uuid.uuid4())
-        chat_prompt = select_chat_prompt(gender)
-        start_payload = _build_start_payload(session_id, gender, style, chat_prompt, message, sampling)
+        start_payload = _build_start_payload(
+            session_id,
+            gender,
+            style,
+            chat_prompt,
+            tool_prompt,
+            message,
+            sampling,
+        )
         tracker = _StreamTracker()
 
         async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=None)) as ws:
@@ -162,13 +181,27 @@ async def _worker(
     api_key: str | None,
     gender: str,
     style: str,
+    chat_prompt: str | None,
+    tool_prompt: str | None,
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
 ) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for _ in range(num):
-        out.append(await _one_request(url, api_key, gender, style, message, timeout_s, sampling))
+        out.append(
+            await _one_request(
+                url,
+                api_key,
+                gender,
+                style,
+                chat_prompt,
+                tool_prompt,
+                message,
+                timeout_s,
+                sampling,
+            )
+        )
     return out
 
 
@@ -184,8 +217,22 @@ async def run_benchmark(args) -> None:
     requests, concurrency = _sanitize_workload_args(int(args.requests), int(args.concurrency))
     counts = _distribute_requests(requests, concurrency)
     timeout_s = float(args.timeout)
+    prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
+    chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
+    tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode) else None
 
-    tasks = _launch_worker_tasks(counts, url, api_key, gender, style, message, timeout_s, sampling)
+    tasks = _launch_worker_tasks(
+        counts,
+        url,
+        api_key,
+        gender,
+        style,
+        chat_prompt,
+        tool_prompt,
+        message,
+        timeout_s,
+        sampling,
+    )
     nested = await asyncio.gather(*tasks)
     results: list[dict[str, Any]] = [item for sub in nested for item in sub]
 
@@ -217,6 +264,8 @@ def _launch_worker_tasks(
     api_key: str | None,
     gender: str,
     style: str,
+    chat_prompt: str | None,
+    tool_prompt: str | None,
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
@@ -226,7 +275,20 @@ def _launch_worker_tasks(
         if count <= 0:
             continue
         tasks.append(
-            asyncio.create_task(_worker(count, url, api_key, gender, style, message, timeout_s, sampling))
+            asyncio.create_task(
+                _worker(
+                    count,
+                    url,
+                    api_key,
+                    gender,
+                    style,
+                    chat_prompt,
+                    tool_prompt,
+                    message,
+                    timeout_s,
+                    sampling,
+                )
+            )
         )
     return tasks
 

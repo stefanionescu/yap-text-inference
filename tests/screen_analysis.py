@@ -27,7 +27,12 @@ from tests.helpers.setup import setup_repo_path
 
 setup_repo_path()
 
-from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.cli import (
+    add_connection_args,
+    add_prompt_mode_arg,
+    add_sampling_args,
+    build_sampling_payload,
+)
 from tests.helpers.message import iter_messages
 from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
@@ -41,6 +46,12 @@ from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS
 from tests.logic.tool.prompts import (
     DEFAULT_TOOL_PROMPT_NAME,
     ToolPromptRegistry,
+)
+from tests.helpers.prompt import (
+    PROMPT_MODE_BOTH,
+    select_chat_prompt,
+    should_send_chat_prompt,
+    should_send_tool_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,6 +111,7 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
+    add_prompt_mode_arg(parser)
     parser.add_argument(
         "--tool-prompt",
         default=DEFAULT_TOOL_PROMPT_NAME,
@@ -114,7 +126,8 @@ async def run_once(
     server: str,
     api_key: str | None,
     sampling: dict[str, float | int] | None,
-    tool_prompt: str,
+    chat_prompt: str | None,
+    tool_prompt: str | None,
 ) -> None:
     ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
@@ -126,8 +139,13 @@ async def run_once(
         "personality": DEFAULT_PERSONALITY,
         "history_text": "",
         "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
-        "tool_prompt": tool_prompt,
     }
+    if chat_prompt is not None:
+        start_payload["chat_prompt"] = chat_prompt
+    if tool_prompt is not None:
+        start_payload["tool_prompt"] = tool_prompt
+    if "chat_prompt" not in start_payload and "tool_prompt" not in start_payload:
+        raise ValueError("prompt_mode must allow chat, tool, or both prompts")
     if sampling:
         start_payload["sampling"] = sampling
 
@@ -166,6 +184,20 @@ if __name__ == "__main__":
         print(f"[error] {exc}")
         raise SystemExit(1) from exc
 
-    asyncio.run(run_once(args.server, args.api_key, args.sampling or None, prompt_definition.prompt))
+    prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
+    chat_prompt = select_chat_prompt(DEFAULT_GENDER) if should_send_chat_prompt(prompt_mode) else None
+    tool_prompt = prompt_definition.prompt if should_send_tool_prompt(prompt_mode) else None
+    if chat_prompt is None and tool_prompt is None:
+        raise SystemExit("prompt_mode must allow chat, tool, or both prompts for this test.")
+
+    asyncio.run(
+        run_once(
+            args.server,
+            args.api_key,
+            args.sampling or None,
+            chat_prompt,
+            tool_prompt,
+        )
+    )
 
 

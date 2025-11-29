@@ -88,7 +88,9 @@ OPTIONAL PHRASE SIGNAL:
   - If [PHRASE SIGNAL] says detected=true and multiple=false, treat it as extra evidence to call the tool unless STEP 0 or the quantity safeguard already blocked it.
   - If [PHRASE SIGNAL] says multiple=true or quantity>1, always return []."""
 
+DEFAULT_TOOL_PROMPT_NAME = "base"
+
 TOOL_PROMPTS = {
-    "base": TOOLCALL_PROMPT,
-    "generalized": GENERALIZABLE
+    DEFAULT_TOOL_PROMPT_NAME: TOOLCALL_PROMPT,
+    "generalized": GENERALIZABLE,
 }

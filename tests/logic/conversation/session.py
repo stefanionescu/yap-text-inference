@@ -9,15 +9,13 @@ _test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _test_dir not in sys.path:
     sys.path.insert(0, _test_dir)
 
-from tests.prompts.toolcall import TOOLCALL_PROMPT  # noqa: E402
-
-
 @dataclass
 class ConversationSession:
     session_id: str
     gender: str
     personality: str
-    chat_prompt: str
+    chat_prompt: str | None
+    tool_prompt: str | None
     history: str = ""
     sampling: dict[str, float | int] | None = None
 
@@ -34,11 +32,15 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
         "session_id": session.session_id,
         "gender": session.gender,
         "personality": session.personality,
-        "chat_prompt": session.chat_prompt,
         "history_text": session.history,
         "user_utterance": user_text,
-        "tool_prompt": TOOLCALL_PROMPT,
     }
+    if session.chat_prompt is not None:
+        payload["chat_prompt"] = session.chat_prompt
+    if session.tool_prompt is not None:
+        payload["tool_prompt"] = session.tool_prompt
+    if "chat_prompt" not in payload and "tool_prompt" not in payload:
+        raise ValueError("Session configuration requires chat_prompt and/or tool_prompt")
     if session.sampling:
         payload["sampling"] = session.sampling
     return payload

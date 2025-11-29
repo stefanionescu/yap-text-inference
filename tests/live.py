@@ -29,7 +29,12 @@ from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
-from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
+from tests.helpers.cli import (
+    add_connection_args,
+    add_prompt_mode_arg,
+    add_sampling_args,
+    build_sampling_payload,
+)
 from tests.helpers.ws import connect_with_retries, with_api_key
 from tests.logic.live import (
     DEFAULT_PERSONA_NAME,
@@ -38,6 +43,12 @@ from tests.logic.live import (
     LiveServerError,
     LiveSession,
     PersonaRegistry,
+)
+from tests.helpers.prompt import (
+    PROMPT_MODE_BOTH,
+    select_tool_prompt,
+    should_send_chat_prompt,
+    should_send_tool_prompt,
 )
 from tests.logic.live.cli import interactive_loop, print_help
 
@@ -51,6 +62,7 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
+    add_prompt_mode_arg(parser)
     parser.add_argument(
         "message",
         nargs="*",
@@ -86,9 +98,21 @@ async def _run(args: argparse.Namespace) -> None:
         " ".join(args.message).strip() if args.message else "Hey!"
     )
 
+    prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
+    chat_enabled = should_send_chat_prompt(prompt_mode)
+    tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode) else None
+    if not chat_enabled and tool_prompt is None:
+        raise SystemExit("prompt_mode must allow chat, tool, or both prompts for live testing.")
+    if not chat_enabled:
+        logger.warning(
+            "Chat prompts disabled by prompt mode; persona changes and chat streaming will be limited."
+        )
+
     session = LiveSession(
         session_id=f"live-{uuid.uuid4()}",
         persona=persona,
+        include_chat_prompt=chat_enabled,
+        tool_prompt=tool_prompt,
         sampling=args.sampling or None,
     )
 

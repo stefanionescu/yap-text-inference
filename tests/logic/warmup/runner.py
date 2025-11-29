@@ -26,12 +26,17 @@ from tests.config import (
     WARMUP_FALLBACK_MESSAGE,
 )
 from tests.helpers.message import dispatch_message, iter_messages
-from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.prompt import (
+    PROMPT_MODE_BOTH,
+    select_chat_prompt,
+    select_tool_prompt,
+    should_send_chat_prompt,
+    should_send_tool_prompt,
+)
 from tests.helpers.stream import StreamTracker
 from tests.helpers.util import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
-from tests.prompts.toolcall import TOOLCALL_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +51,7 @@ async def run_once(args) -> None:
     gender = args.gender or gender_env or DEFAULT_GENDER
     personality = args.personality or personality_env or DEFAULT_PERSONALITY
     sampling_overrides = getattr(args, "sampling", None) or None
+    prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
     user_msg = choose_message(
@@ -54,9 +60,16 @@ async def run_once(args) -> None:
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
     session_id = str(uuid.uuid4())
-    chat_prompt = select_chat_prompt(gender)
+    chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
+    tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode) else None
     start_payload = _build_start_payload(
-        session_id, gender, personality, chat_prompt, user_msg, sampling_overrides
+        session_id,
+        gender,
+        personality,
+        chat_prompt,
+        tool_prompt,
+        user_msg,
+        sampling_overrides,
     )
 
     logger.info("Connecting to %s (with API key auth)", server_ws_url)
@@ -81,7 +94,8 @@ def _build_start_payload(
     session_id: str,
     gender: str,
     personality: str,
-    chat_prompt: str,
+    chat_prompt: str | None,
+    tool_prompt: str | None,
     user_msg: str,
     sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
@@ -90,11 +104,15 @@ def _build_start_payload(
         "session_id": session_id,
         "gender": gender,
         "personality": personality,
-        "chat_prompt": chat_prompt,
         "history_text": "",
         "user_utterance": user_msg,
-        "tool_prompt": TOOLCALL_PROMPT,
     }
+    if chat_prompt is not None:
+        payload["chat_prompt"] = chat_prompt
+    if tool_prompt is not None:
+        payload["tool_prompt"] = tool_prompt
+    if "chat_prompt" not in payload and "tool_prompt" not in payload:
+        raise ValueError("prompt_mode must include chat, tool, or both prompts")
     if sampling:
         payload["sampling"] = sampling
     return payload

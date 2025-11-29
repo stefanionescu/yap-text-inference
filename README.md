@@ -182,14 +182,14 @@ This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) with
 
 ## Test Clients
 
-Need to smoke-test the stack without touching production traffic? Every CLI harness now has a consolidated home in [`ADVANCED.md#test-clients`](ADVANCED.md#test-clients). Highlights:
+Highlights:
 
-- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` (alias: `--style`) and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Set `CONCURRENT_MODEL_CALL=0` only if you explicitly want to compare sequential mode to the default concurrent pipeline.
-- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/live.py`.
-- [`tests/personality.py`](ADVANCED.md#personality-switch-test) – exercises persona swaps and history stitching to ensure cache hits are preserved.
-- [`tests/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics.
-- [`tests/screen_analysis.py`](ADVANCED.md#screen-analysis--toolcall-test) – validates the toolcall branch used by screen analysis flows.
-- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call classifier (timeouts, concurrency, limit flags).
+- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` (alias: `--style`) and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Add `--prompt-mode chat|tool` to mirror chat-only/tool-only deployments; otherwise the default `both` sends both prompts.
+- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/live.py`. The `--prompt-mode` flag lets you run tool-only smoke tests while still connecting to the live CLI (persona switches are disabled automatically when chat prompts are off).
+- [`tests/personality.py`](ADVANCED.md#personality-switch-test) – exercises persona swaps and history stitching to ensure cache hits are preserved. Requires `--prompt-mode chat` or `both` because persona updates depend on chat prompts; tool prompts remain optional.
+- [`tests/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics; honors `--prompt-mode` the same way as warmup/live.
+- [`tests/screen_analysis.py`](ADVANCED.md#screen-analysis--toolcall-test) – validates the toolcall branch used by screen analysis flows. Use `--prompt-mode tool` when the chat engine is disabled to avoid sending unused prompts.
+- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call classifier (timeouts, concurrency, limit flags). It now mirrors `--prompt-mode` so you can run chat-only passes without providing tool prompts (or vice versa).
 - [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for concurrent sessions.
 
 All of them run happily on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.

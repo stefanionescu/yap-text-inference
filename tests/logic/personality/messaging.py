@@ -12,7 +12,6 @@ if _TEST_DIR not in sys.path:
 
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
-from tests.prompts.toolcall import TOOLCALL_PROMPT
 
 from .session import PersonaSession, PersonaVariant
 from .tracker import StreamTracker
@@ -70,10 +69,11 @@ async def send_start_request(
         "gender": variant.gender,
         "personality": variant.personality,
         "chat_prompt": variant.chat_prompt,
-        "tool_prompt": TOOLCALL_PROMPT,
         "history_text": session.history,
         "user_utterance": user_text,
     }
+    if session.tool_prompt is not None:
+        payload["tool_prompt"] = session.tool_prompt
     if session.sampling:
         payload["sampling"] = session.sampling
     if message_pacer:

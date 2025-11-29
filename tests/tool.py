@@ -16,7 +16,7 @@ from tests.helpers.setup import setup_repo_path
 
 setup_repo_path()
 
-from tests.helpers.cli import add_connection_args  # noqa: E402
+from tests.helpers.cli import add_connection_args, add_prompt_mode_arg  # noqa: E402
 from tests.helpers.ws import with_api_key  # noqa: E402
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
 from tests.logic.tool.runner import run_suite  # noqa: E402
@@ -29,6 +29,7 @@ from tests.logic.tool.prompts import (  # noqa: E402
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")
     add_connection_args(parser)
+    add_prompt_mode_arg(parser)
     parser.add_argument(
         "--gender",
         default=DEFAULT_GENDER,
@@ -97,6 +98,7 @@ def main() -> None:
                 concurrency=max(1, args.concurrency),
                 limit=args.limit,
                 show_successes=args.show_successes,
+                prompt_mode=args.prompt_mode,
             )
         )
     except KeyboardInterrupt:

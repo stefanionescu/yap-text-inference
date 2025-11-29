@@ -9,7 +9,12 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from tests.helpers.prompt import select_chat_prompt  # noqa: E402
+from tests.helpers.prompt import (  # noqa: E402
+    PROMPT_MODE_BOTH,
+    select_chat_prompt,
+    should_send_chat_prompt,
+    should_send_tool_prompt,
+)
 from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT  # noqa: E402
 
 from .cases import build_cases
@@ -30,6 +35,7 @@ async def run_suite(
     concurrency: int,
     limit: int | None = None,
     show_successes: bool = False,
+    prompt_mode: str | None = None,
 ) -> list[CaseResult]:
     """
     Execute the tool-call regression suite and print per-case + summary output.
@@ -60,12 +66,18 @@ async def run_suite(
     else:
         print("No tool cases to run.")
 
+    normalized_mode = prompt_mode or PROMPT_MODE_BOTH
+    chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(normalized_mode) else None
+    resolved_tool_prompt = tool_prompt if should_send_tool_prompt(normalized_mode) else None
+    if chat_prompt is None and resolved_tool_prompt is None:
+        raise ValueError("prompt_mode must allow chat, tool, or both prompts for tool regression suite")
+
     cfg = RunnerConfig(
         ws_url=ws_url,
         gender=gender,
         personality=personality,
-        chat_prompt=select_chat_prompt(gender),
-        tool_prompt=tool_prompt,
+        chat_prompt=chat_prompt,
+        tool_prompt=resolved_tool_prompt,
         timeout_s=timeout_s,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
