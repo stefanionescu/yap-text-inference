@@ -10,12 +10,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import os
 import sys
 
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+from tests.helpers.setup import setup_repo_path
+
+setup_repo_path()
 
 from tests.helpers.cli import add_connection_args  # noqa: E402
 from tests.helpers.ws import with_api_key  # noqa: E402

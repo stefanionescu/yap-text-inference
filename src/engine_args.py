@@ -401,6 +401,53 @@ def _scale_batching_limits(
     return scaled_tokens, scaled_seqs
 
 
+def _get_max_num_seqs_override(is_chat: bool) -> int | None:
+    """Return env-provided max_num_seqs override for the given engine."""
+
+    keys = [
+        "MAX_NUM_SEQS_CHAT" if is_chat else "MAX_NUM_SEQS_TOOL",
+        "MAX_NUM_SEQS",
+    ]
+    for key in keys:
+        value = os.getenv(key)
+        if not value:
+            continue
+        try:
+            parsed = int(value)
+        except ValueError:
+            continue
+        if parsed > 0:
+            return parsed
+    return None
+
+
+def _auto_max_num_seqs(is_chat: bool, gpu_frac: float, needs_memory_opt: bool) -> int:
+    """Heuristically choose max_num_seqs based on GPU size and allocation."""
+
+    baseline = 96 if is_chat else 64
+    min_floor = 32 if is_chat else 24
+    if needs_memory_opt:
+        baseline = min(baseline, 64 if is_chat else 48)
+
+    snapshot = _read_cuda_memory_snapshot()
+    if snapshot:
+        _, total_bytes = snapshot
+        total_gib = total_bytes / (1024**3)
+        if total_gib < 36:
+            baseline = min(baseline, 48 if is_chat else 32)
+        elif total_gib < 48:
+            baseline = min(baseline, 56 if is_chat else 40)
+        elif total_gib < 72:
+            baseline = min(baseline, 72 if is_chat else 56)
+        else:
+            baseline = min(baseline, 112 if is_chat else 80)
+
+    # Scale based on the fraction allocated to this engine so smaller splits run fewer warmup seqs
+    allocation_ratio = max(0.4, min(gpu_frac, 0.95)) / 0.85
+    resolved = int(baseline * allocation_ratio)
+    return max(min_floor, min(resolved, 128))
+
+
 def _configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> None:
     """Attach the appropriate KV cache controls based on engine mode."""
     global _KV_DTYPE_WARNING_EMITTED
@@ -503,16 +550,19 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     _inject_tokenizer_kwargs(kwargs, tok_kwargs, model_origin)
 
     # Memory optimization for models prone to OOM (e.g., Gemma)
-    # Lower max_num_seqs to reduce memory pressure during warmup
-    if needs_memory_opt:
-        # Allow override via env var, otherwise use conservative default
-        # Check engine-specific var first, then global, then default to 64
-        env_key = "MAX_NUM_SEQS_CHAT" if is_chat else "MAX_NUM_SEQS_TOOL"
-        max_num_seqs = int(os.getenv(env_key) or os.getenv("MAX_NUM_SEQS", "64"))
-        kwargs["max_num_seqs"] = max_num_seqs
-        # Slightly reduce GPU memory utilization for Gemma if not already lowered
-        if gpu_frac > 0.85:
-            kwargs["gpu_memory_utilization"] = min(gpu_frac, 0.85)
+    if needs_memory_opt and gpu_frac > 0.85:
+        # Slightly reduce GPU memory utilization if not already lowered
+        kwargs["gpu_memory_utilization"] = min(gpu_frac, 0.85)
+
+    # Resolve max_num_seqs dynamically to avoid warmup OOMs
+    max_num_seqs = _get_max_num_seqs_override(is_chat)
+    if max_num_seqs is None:
+        max_num_seqs = _auto_max_num_seqs(
+            is_chat=is_chat,
+            gpu_frac=kwargs["gpu_memory_utilization"],
+            needs_memory_opt=needs_memory_opt,
+        )
+    kwargs["max_num_seqs"] = max_num_seqs
 
     # Special handling for local AWQ models to avoid Hugging Face repo ID validation
     if raw_quant == "awq" and _is_local_model_path(model):

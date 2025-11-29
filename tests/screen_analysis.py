@@ -19,15 +19,13 @@ import argparse
 import asyncio
 import json
 import logging
-import os
-import sys
 import uuid
 
 import websockets
 
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+from tests.helpers.setup import setup_repo_path
+
+setup_repo_path()
 
 from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload
 from tests.helpers.message import iter_messages

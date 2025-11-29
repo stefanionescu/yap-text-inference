@@ -7,7 +7,6 @@ import os
 import sys
 import time
 import uuid
-from dataclasses import dataclass, field
 from typing import Any
 
 import websockets
@@ -26,86 +25,15 @@ from tests.config import (
     DEFAULT_WS_PING_TIMEOUT,
     WARMUP_FALLBACK_MESSAGE,
 )
-from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
-from tests.helpers.message import iter_messages
+from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
+from tests.helpers.stream import StreamTracker
 from tests.helpers.util import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
+from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
 from tests.prompts.toolcall import TOOLCALL_PROMPT
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class StreamTracker:
-    sent_ts: float = field(default_factory=time.perf_counter)
-    final_text: str = ""
-    ack_seen: bool = False
-    first_token_ts: float | None = None
-    first_sentence_ts: float | None = None
-    first_3_words_ts: float | None = None
-    toolcall_ttfb_ms: float | None = None
-    chunks: int = 0
-
-    def _ms_since_sent(self, timestamp: float | None) -> float | None:
-        if timestamp is None:
-            return None
-        return (timestamp - self.sent_ts) * 1000.0
-
-    def record_toolcall(self) -> float | None:
-        now = time.perf_counter()
-        self.toolcall_ttfb_ms = self._ms_since_sent(now)
-        return self.toolcall_ttfb_ms
-
-    def record_token(self, chunk: str) -> dict[str, float | None]:
-        metrics: dict[str, float | None] = {}
-        if not chunk:
-            return metrics
-
-        if self.first_token_ts is None:
-            self.first_token_ts = time.perf_counter()
-            metrics["chat_ttfb_ms"] = self._ms_since_sent(self.first_token_ts)
-
-        self.final_text += chunk
-        if self.first_3_words_ts is None and has_at_least_n_words(self.final_text, 3):
-            self.first_3_words_ts = time.perf_counter()
-            metrics["time_to_first_3_words_ms"] = self._ms_since_sent(self.first_3_words_ts)
-
-        if self.first_sentence_ts is None and contains_complete_sentence(self.final_text):
-            self.first_sentence_ts = time.perf_counter()
-            metrics["time_to_first_complete_sentence_ms"] = self._ms_since_sent(self.first_sentence_ts)
-
-        self.chunks += 1
-        return metrics
-
-    def finalize_metrics(self, cancelled: bool) -> dict[str, Any]:
-        done_ts = time.perf_counter()
-        ttfb_ms = self._ms_since_sent(self.first_token_ts)
-        stream_ms = None
-        if self.first_token_ts is not None:
-            stream_ms = (done_ts - self.first_token_ts) * 1000.0
-        total_ms = (done_ts - self.sent_ts) * 1000.0
-        return {
-            "type": "metrics",
-            "ok": not cancelled,
-            "ttfb_ms": _round(ttfb_ms),
-            "ttfb_chat_ms": _round(ttfb_ms),
-            "ttfb_toolcall_ms": _round(self.toolcall_ttfb_ms),
-            "total_ms": _round(total_ms),
-            "stream_ms": _round(stream_ms),
-            "time_to_first_complete_sentence_ms": _round(self._ms_since_sent(self.first_sentence_ts)),
-            "time_to_first_3_words_ms": _round(self._ms_since_sent(self.first_3_words_ts)),
-            "chunks": self.chunks,
-            "chars": len(self.final_text),
-        }
-
-    def final_text_payload(self) -> dict[str, Any]:
-        return {"type": "final_text", "text": self.final_text}
-
-
-def _round(value: float | None) -> float | None:
-    return round(value, 2) if value is not None else None
 
 
 async def run_once(args) -> None:
@@ -113,8 +41,10 @@ async def run_once(args) -> None:
     api_key = args.api_key or os.getenv("TEXT_API_KEY")
     if not api_key:
         raise ValueError("TEXT_API_KEY environment variable is required and must be set before running tests")
-    gender = args.gender or os.getenv("GENDER", DEFAULT_GENDER)
-    personality = args.personality or os.getenv("PERSONALITY", DEFAULT_PERSONALITY)
+    gender_env = os.getenv("GENDER")
+    personality_env = os.getenv("PERSONALITY") or os.getenv("PERSONA_STYLE")
+    gender = args.gender or gender_env or DEFAULT_GENDER
+    personality = args.personality or personality_env or DEFAULT_PERSONALITY
     sampling_overrides = getattr(args, "sampling", None) or None
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
@@ -171,9 +101,17 @@ def _build_start_payload(
 
 
 async def _stream_session(ws, tracker: StreamTracker, recv_timeout: float, api_key: str) -> None:
+    handlers = _build_stream_handlers(tracker, api_key)
+    done_seen = False
     try:
         async for msg in iter_messages(ws, timeout=recv_timeout):
-            if not _process_message(msg, tracker, api_key):
+            should_continue = await dispatch_message(
+                msg,
+                handlers,
+                default=_log_unknown_message,
+            )
+            if should_continue is False:
+                done_seen = True
                 break
     except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
         logger.warning("Connection closed by server")
@@ -181,27 +119,23 @@ async def _stream_session(ws, tracker: StreamTracker, recv_timeout: float, api_k
         logger.error("recv timeout after %.1fs", recv_timeout)
     if not tracker.ack_seen:
         logger.warning("no ACK(start) received from server")
+    if not done_seen:
+        logger.warning("stream terminated before receiving 'done'")
 
 
-def _process_message(msg: dict[str, Any], tracker: StreamTracker, api_key: str) -> bool:
-    t = msg.get("type")
-    if t == "ack":
-        return _handle_ack(msg, tracker)
-    if t == "toolcall":
-        _handle_toolcall(msg, tracker)
-        return True
-    if t == "token":
-        _handle_token(msg, tracker)
-        return True
-    if t == "final":
-        _handle_final(msg, tracker)
-        return True
-    if t == "done":
-        _handle_done(msg, tracker)
-        return False
-    if t == "error":
-        _handle_error(msg, api_key)
-        return False
+def _build_stream_handlers(tracker: StreamTracker, api_key: str):
+    return {
+        "ack": lambda msg: _handle_ack(msg, tracker),
+        "toolcall": lambda msg: (_handle_toolcall(msg, tracker) or True),
+        "token": lambda msg: (_handle_token(msg, tracker) or True),
+        "final": lambda msg: (_handle_final(msg, tracker) or True),
+        "done": lambda msg: _handle_done(msg, tracker),
+        "error": lambda msg: _handle_error(msg, api_key),
+    }
+
+
+def _log_unknown_message(msg: dict[str, Any]) -> bool:
+    logger.debug("Ignoring message type=%s payload=%s", msg.get("type"), msg)
     return True
 
 
@@ -248,8 +182,11 @@ def _handle_final(msg: dict[str, Any], tracker: StreamTracker) -> None:
 
 def _handle_done(msg: dict[str, Any], tracker: StreamTracker) -> None:
     cancelled = bool(msg.get("cancelled"))
-    logger.info(json.dumps(tracker.finalize_metrics(cancelled), ensure_ascii=False))
-    logger.info(json.dumps(tracker.final_text_payload(), ensure_ascii=False))
+    metrics_payload = {"type": "metrics", **tracker.finalize_metrics(cancelled)}
+    final_text_payload = {"type": "final_text", "text": tracker.final_text}
+    logger.info(json.dumps(metrics_payload, ensure_ascii=False))
+    logger.info(json.dumps(final_text_payload, ensure_ascii=False))
+    return False
 
 
 def _handle_error(msg: dict[str, Any], api_key: str) -> None:
