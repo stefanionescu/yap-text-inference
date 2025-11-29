@@ -67,7 +67,7 @@ else:
     CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
     TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
-KV_DTYPE = os.getenv("KV_DTYPE")  # 'auto' (fp16) | 'fp8' | 'int8'
+KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
 CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override per-engine
 TOOL_QUANTIZATION = os.getenv("TOOL_QUANTIZATION")  # Optional override per-engine
@@ -81,6 +81,10 @@ if os.getenv("VLLM_USE_V1", "1") == "1":
 DEFAULT_CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "MUST CHECK SCREEN:").strip()
 DEFAULT_SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "ON THE SCREEN NOW:").strip()
 CHAT_TEMPLATE_ENABLE_THINKING = env_flag("CHAT_TEMPLATE_ENABLE_THINKING", False)
+
+# Cache management defaults
+CACHE_RESET_INTERVAL_SECONDS = float(os.getenv("CACHE_RESET_INTERVAL_SECONDS", "600"))
+CACHE_RESET_MIN_SESSION_SECONDS = float(os.getenv("CACHE_RESET_MIN_SESSION_SECONDS", "300"))
 
 
 def validate_env() -> None:
@@ -116,5 +120,7 @@ __all__ = [
     "DEFAULT_CHECK_SCREEN_PREFIX",
     "DEFAULT_SCREEN_CHECKED_PREFIX",
     "CHAT_TEMPLATE_ENABLE_THINKING",
+    "CACHE_RESET_INTERVAL_SECONDS",
+    "CACHE_RESET_MIN_SESSION_SECONDS",
     "validate_env",
 ]
