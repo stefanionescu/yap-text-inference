@@ -28,10 +28,21 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", os.environ.get("CUDA_VISIBLE_DEVIC
 from fastapi import FastAPI, WebSocket, Depends
 from fastapi.responses import ORJSONResponse
 
-from .config import DEPLOY_CHAT, DEPLOY_TOOL
+from .config import (
+    DEPLOY_CHAT,
+    DEPLOY_TOOL,
+    CACHE_RESET_INTERVAL_SECONDS,
+)
 from .config.env import validate_env
 from .config.logging import configure_logging
-from .engines import get_chat_engine, get_tool_engine
+from .engines import (
+    cache_reset_reschedule_event,
+    get_chat_engine,
+    get_tool_engine,
+    maybe_reset_engine_caches,
+    seconds_since_last_cache_reset,
+    shutdown_engines,
+)
 from .handlers.websocket import handle_websocket_connection
 from .handlers.connection_handler import connection_handler
 from .auth import get_api_key
@@ -43,6 +54,9 @@ app = FastAPI(default_response_class=ORJSONResponse)
 
 configure_logging()
 validate_env()
+
+
+_cache_reset_task: asyncio.Task | None = None
 
 
 async def _warm_engine(name: str, getter):
@@ -71,6 +85,15 @@ async def preload_engines() -> None:
     await asyncio.gather(*tasks)
     logger.info("preload_engines: all requested engines ready")
 
+    _ensure_cache_reset_daemon()
+
+
+@app.on_event("shutdown")
+async def stop_engines() -> None:
+    """Ensure all engines shut down cleanly when the server exits."""
+
+    await shutdown_engines()
+
 
 @app.get("/healthz")
 async def healthz():
@@ -93,3 +116,44 @@ async def status(api_key: str = Depends(get_api_key)):
 async def websocket_endpoint(websocket: WebSocket):
     """Main WebSocket endpoint for chat interactions."""
     await handle_websocket_connection(websocket)
+
+
+def _ensure_cache_reset_daemon() -> None:
+    """Start the cache reset daemon if configuration enables it."""
+
+    global _cache_reset_task
+    if _cache_reset_task and not _cache_reset_task.done():
+        return
+    if CACHE_RESET_INTERVAL_SECONDS <= 0:
+        return
+    _cache_reset_task = asyncio.create_task(cache_reset_daemon())
+
+
+async def cache_reset_daemon() -> None:
+    """Background task to periodically reset vLLM caches."""
+
+    interval = CACHE_RESET_INTERVAL_SECONDS
+    if interval <= 0:
+        logger.info("cache reset daemon disabled")
+        return
+
+    event = cache_reset_reschedule_event()
+    logger.info("cache reset daemon started interval=%ss", interval)
+
+    while True:
+        if event.is_set():
+            event.clear()
+            continue
+
+        wait = max(0.0, interval - seconds_since_last_cache_reset())
+        if wait <= 0:
+            await maybe_reset_engine_caches("timer", force=True)
+            continue
+
+        try:
+            await asyncio.wait_for(event.wait(), timeout=wait)
+        except asyncio.TimeoutError:
+            await maybe_reset_engine_caches("timer", force=True)
+        else:
+            if event.is_set():
+                event.clear()

@@ -211,6 +211,14 @@ class SessionHandler:
         if state and state.task and not state.task.done():
             state.task.cancel()
 
+    def get_session_duration(self, session_id: str) -> float:
+        """Return the elapsed time since the session was created."""
+
+        state = self._get_state(session_id)
+        if not state:
+            return 0.0
+        return max(0.0, time.monotonic() - state.created_at)
+
     # ------------------------------------------------------------------ #
     # History helpers
     # ------------------------------------------------------------------ #

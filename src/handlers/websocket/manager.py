@@ -17,13 +17,14 @@ from ...config import (
     WS_MAX_CANCELS_PER_WINDOW,
     WS_MAX_MESSAGES_PER_WINDOW,
     WS_MESSAGE_WINDOW_SECONDS,
+    CACHE_RESET_MIN_SESSION_SECONDS,
 )
 from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
     WS_CLOSE_UNAUTHORIZED_CODE,
 )
-from ...engines import clear_all_engine_caches_on_disconnect
+from ...engines import clear_all_engine_caches_on_disconnect, maybe_reset_engine_caches
 from ...messages.cancel import handle_cancel_message
 from ...messages.chat_prompt import handle_chat_prompt
 from ...messages.followup import handle_followup_message
@@ -163,10 +164,14 @@ async def _handle_start_command(
     return session_id
 
 
-async def _cleanup_session(session_id: str | None) -> None:
-    """Clean up session resources on disconnect."""
+async def _cleanup_session(session_id: str | None) -> float:
+    """Clean up session resources on disconnect and return duration."""
 
+    duration = 0.0
+    if session_id:
+        duration = session_handler.get_session_duration(session_id)
     await abort_session_requests(session_id, clear_state=True)
+    return duration
 
 
 async def handle_websocket_connection(ws: WebSocket) -> None:
@@ -262,13 +267,24 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         if lifecycle is not None:
             with contextlib.suppress(Exception):
                 await lifecycle.stop()
-        await _cleanup_session(session_id)
+        session_duration = await _cleanup_session(session_id)
         if admitted:
             await connection_handler.disconnect(ws)
             remaining = connection_handler.get_connection_count()
             logger.info("WebSocket connection closed. Active: %s", remaining)
+            should_reset = (
+                session_id is not None and
+                session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
+            )
+            if should_reset:
+                with contextlib.suppress(Exception):
+                    triggered = await maybe_reset_engine_caches("long_session", force=True)
+                    if triggered:
+                        logger.info(
+                            "cache reset after long session_id=%s duration=%.1fs",
+                            session_id,
+                            session_duration,
+                        )
             if remaining == 0:
                 with contextlib.suppress(Exception):
                     await clear_all_engine_caches_on_disconnect()
-
-

@@ -6,6 +6,8 @@ import os
 import asyncio
 import contextlib
 import inspect
+import logging
+import time
 
 # Ensure V1 engine path before importing vLLM
 os.environ.setdefault("VLLM_USE_V1", "1")
@@ -23,6 +25,7 @@ from .config import (
     TOOL_MAX_LEN,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
+    CACHE_RESET_INTERVAL_SECONDS,
 )
 from .engine_args import make_engine_args
 
@@ -32,6 +35,11 @@ _tool_engine: AsyncLLMEngine | None = None
 
 # Lock to prevent concurrent engine construction (but not generation)
 _ENGINE_CONSTRUCTION_LOCK = asyncio.Lock()
+_CACHE_RESET_LOCK = asyncio.Lock()
+_CACHE_RESET_EVENT = asyncio.Event()
+_LAST_CACHE_RESET_MONOTONIC = time.monotonic()
+
+logger = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
@@ -134,11 +142,74 @@ async def _clean_engine_caches(engine: AsyncLLMEngine) -> None:
             pass
 
 
-async def clear_all_engine_caches_on_disconnect() -> None:
-    """Clear caches of any constructed engines after a client disconnects."""
-    global _chat_engine, _tool_engine
-    if _chat_engine is not None:
-        await _clean_engine_caches(_chat_engine)
-    if _tool_engine is not None:
-        await _clean_engine_caches(_tool_engine)
+def seconds_since_last_cache_reset() -> float:
+    """Return the elapsed seconds since the last successful cache reset."""
 
+    return max(0.0, time.monotonic() - _LAST_CACHE_RESET_MONOTONIC)
+
+
+def cache_reset_reschedule_event() -> asyncio.Event:
+    """Event fired whenever a cache reset completes (used to reschedule daemons)."""
+
+    return _CACHE_RESET_EVENT
+
+
+async def maybe_reset_engine_caches(reason: str, *, force: bool = False) -> bool:
+    """Reset prefix/MM caches if interval has elapsed or force is specified."""
+
+    global _LAST_CACHE_RESET_MONOTONIC
+
+    engines: list[tuple[str, AsyncLLMEngine]] = []
+    if _chat_engine is not None:
+        engines.append(("chat", _chat_engine))
+    if _tool_engine is not None:
+        engines.append(("tool", _tool_engine))
+    if not engines:
+        return False
+
+    interval = CACHE_RESET_INTERVAL_SECONDS
+    now = time.monotonic()
+    if not force and interval > 0 and (now - _LAST_CACHE_RESET_MONOTONIC) < interval:
+        return False
+
+    async with _CACHE_RESET_LOCK:
+        now = time.monotonic()
+        if not force and interval > 0 and (now - _LAST_CACHE_RESET_MONOTONIC) < interval:
+            return False
+
+        logger.info("resetting vLLM caches (reason=%s)", reason)
+        for name, engine in engines:
+            try:
+                await _clean_engine_caches(engine)
+            except Exception:  # noqa: BLE001 - best effort
+                logger.warning("cache reset failed for %s engine", name, exc_info=True)
+
+        _LAST_CACHE_RESET_MONOTONIC = now
+        _CACHE_RESET_EVENT.set()
+    return True
+
+
+async def shutdown_engines() -> None:
+    """Gracefully shut down any constructed engines."""
+
+    global _chat_engine, _tool_engine
+    engines: list[tuple[str, AsyncLLMEngine | None]] = [
+        ("chat", _chat_engine),
+        ("tool", _tool_engine),
+    ]
+    for name, engine in engines:
+        if engine is None:
+            continue
+        try:
+            await engine.shutdown()
+            logger.info("%s engine shutdown complete", name)
+        except Exception:
+            logger.warning("failed to shutdown %s engine", name, exc_info=True)
+    _chat_engine = None
+    _tool_engine = None
+
+
+async def clear_all_engine_caches_on_disconnect() -> None:
+    """Force cache reset when the final client disconnects."""
+
+    await maybe_reset_engine_caches("all_clients_disconnected", force=True)
