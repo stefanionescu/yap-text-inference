@@ -78,74 +78,6 @@ except ValueError as exc:
 # Screen prefix validation
 SCREEN_PREFIX_MAX_CHARS = int(os.getenv("SCREEN_PREFIX_MAX_CHARS", "30"))
 
-# Code detection configuration (for Pygments-based validation)
-# Lexers that Pygments considers "safe" (not executable code)
-SAFE_LEXER_NAMES = {
-    "text",
-    "plain text",
-    "markdown",
-    "restructuredtext",
-    "rst",
-    "ini",
-    "json",
-    "yaml",
-    "toml",
-}
-
-# Programming language keywords that indicate executable code
-CODE_LEXER_KEYWORDS = {
-    "python",
-    "javascript",
-    "typescript",
-    "java",
-    "c++",
-    "cpp",
-    "c#",
-    "csharp",
-    "go",
-    "rust",
-    "php",
-    "sql",
-    "bash",
-    "shell",
-    "sh",
-    "perl",
-    "ruby",
-    "swift",
-    "scala",
-    "powershell",
-    "ps1",
-    "kotlin",
-    "dart",
-    "lua",
-    "r",
-    "matlab",
-    "octave",
-    "haskell",
-    "clojure",
-    "erlang",
-    "elixir",
-    "f#",
-    "fsharp",
-    "vb.net",
-    "vbnet",
-    "objective-c",
-    "objc",
-    "assembly",
-    "asm",
-    "fortran",
-    "cobol",
-    "pascal",
-    "delphi",
-}
-
-# Code fence markers for markdown-style code blocks
-CODE_FENCES = ("```", "~~~")
-
-# Minimum text length for code detection (skip very short text)
-CODE_DETECTION_MIN_LENGTH = int(os.getenv("CODE_DETECTION_MIN_LENGTH", "10"))
-
-
 __all__ = [
     "CHAT_MAX_LEN",
     "CHAT_MAX_OUT",
@@ -183,8 +115,4 @@ __all__ = [
     "CONCURRENT_MODEL_CALL",
     "MAX_CONCURRENT_CONNECTIONS",
     "SCREEN_PREFIX_MAX_CHARS",
-    "SAFE_LEXER_NAMES",
-    "CODE_LEXER_KEYWORDS",
-    "CODE_FENCES",
-    "CODE_DETECTION_MIN_LENGTH",
 ]
