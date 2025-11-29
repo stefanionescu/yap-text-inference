@@ -7,7 +7,14 @@ import copy
 import time
 from typing import Any
 
-from src.config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL, CHECK_SCREEN_PREFIX
+from src.config import (
+    CHAT_MODEL,
+    TOOL_MODEL,
+    DEPLOY_CHAT,
+    DEPLOY_TOOL,
+    DEFAULT_CHECK_SCREEN_PREFIX,
+    DEFAULT_SCREEN_CHECKED_PREFIX,
+)
 from src.utils import RateLimitError, SlidingWindowRateLimiter, format_session_timestamp
 
 from .history import HistoryController
@@ -58,6 +65,8 @@ class SessionHandler:
             "chat_sampling": None,
             "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
             "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
+            "check_screen_prefix": None,
+            "screen_checked_prefix": None,
         }
         new_state = SessionState(session_id=session_id, meta=meta)
         self._sessions[session_id] = new_state
@@ -72,6 +81,8 @@ class SessionHandler:
         chat_prompt: str | None = None,
         tool_prompt: str | None = None,
         chat_sampling: dict[str, Any] | None = None,
+        check_screen_prefix: str | None = None,
+        screen_checked_prefix: str | None = None,
     ) -> dict[str, Any]:
         """Update mutable persona configuration for a session."""
 
@@ -110,6 +121,16 @@ class SessionHandler:
             changed["chat_sampling"] = (
                 sampling_copy.copy() if isinstance(sampling_copy, dict) else None
             )
+
+        if check_screen_prefix is not None:
+            normalized = (check_screen_prefix or "").strip() or None
+            meta["check_screen_prefix"] = normalized
+            changed["check_screen_prefix"] = normalized
+
+        if screen_checked_prefix is not None:
+            normalized_checked = (screen_checked_prefix or "").strip() or None
+            meta["screen_checked_prefix"] = normalized_checked
+            changed["screen_checked_prefix"] = normalized_checked
 
         return changed
 
@@ -161,6 +182,28 @@ class SessionHandler:
         state.touch()
         return copy.deepcopy(state.meta)
 
+    def get_check_screen_prefix(self, session_id: str | None) -> str:
+        """Resolve the check-screen prefix for the given session."""
+        resolved_default = (DEFAULT_CHECK_SCREEN_PREFIX or "").strip()
+        if not session_id:
+            return resolved_default
+        state = self._get_state(session_id)
+        if not state:
+            return resolved_default
+        prefix = (state.meta.get("check_screen_prefix") or "").strip()
+        return prefix or resolved_default
+
+    def get_screen_checked_prefix(self, session_id: str | None) -> str:
+        """Resolve the screen-checked prefix for the given session."""
+        resolved_default = (DEFAULT_SCREEN_CHECKED_PREFIX or "").strip()
+        if not session_id:
+            return resolved_default
+        state = self._get_state(session_id)
+        if not state:
+            return resolved_default
+        prefix = (state.meta.get("screen_checked_prefix") or "").strip()
+        return prefix or resolved_default
+
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""
 
@@ -186,7 +229,7 @@ class SessionHandler:
 
     def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
         state = self._ensure_state(session_id)
-        normalized_user = _strip_check_screen_prefix(user_utt or "")
+        normalized_user = self._strip_check_screen_prefix(session_id, user_utt or "")
         turn_id = self._history.append_user_turn(state, normalized_user)
         state.touch()
         return turn_id
@@ -200,7 +243,7 @@ class SessionHandler:
         turn_id: str | None = None,
     ) -> str:
         state = self._ensure_state(session_id)
-        normalized_user = _strip_check_screen_prefix(user_utt or "")
+        normalized_user = self._strip_check_screen_prefix(session_id, user_utt or "")
         rendered = self._history.append_turn(
             state,
             normalized_user,
@@ -282,6 +325,20 @@ class SessionHandler:
     # ------------------------------------------------------------------ #
     # Internal helpers
     # ------------------------------------------------------------------ #
+    def _strip_check_screen_prefix(self, session_id: str, text: str) -> str:
+        """Remove the session-specific CHECK SCREEN prefix from stored history."""
+        if not text:
+            return ""
+        prefix = self.get_check_screen_prefix(session_id)
+        if not prefix:
+            return text
+        if text.startswith(prefix):
+            return text[len(prefix):].lstrip()
+        lower_prefix = prefix.lower()
+        if text.lower().startswith(lower_prefix):
+            return text[len(prefix):].lstrip()
+        return text
+
     def _evict_idle_sessions(self) -> None:
         if self._idle_ttl_seconds <= 0:
             return
@@ -331,20 +388,3 @@ async def abort_session_requests(
         session_handler.clear_session_state(session_id)
 
     return req_info
-
-
-def _strip_check_screen_prefix(text: str) -> str:
-    """Remove the leading CHECK_SCREEN prefix from user utterances for history."""
-    if not text:
-        return ""
-    prefix = (CHECK_SCREEN_PREFIX or "").strip()
-    if not prefix:
-        return text
-    if text.startswith(prefix):
-        return text[len(prefix):].lstrip()
-    lower_prefix = prefix.lower()
-    if text.lower().startswith(lower_prefix):
-        return text[len(prefix):].lstrip()
-    return text
-
-

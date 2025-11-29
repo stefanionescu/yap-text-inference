@@ -11,8 +11,7 @@ from typing import Any
 from vllm.sampling_params import SamplingParams
 
 from ...engines import get_tool_engine
-from ...persona import build_toolcall_prompt_with_prefix
-from ...config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS
+from ...config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, TOOL_REQUEST_PRIORITY
 from ...tokens import trim_history_for_tool_sharing, trim_text_to_token_limit_tool
 from ...config import USER_UTT_MAX_TOKENS
 from ...handlers.session import session_handler
@@ -24,6 +23,7 @@ from ...config.sampling import (
 )
 from ...config.timeouts import TOOL_TIMEOUT_S
 from ..streaming.llm_stream import LLMStream, LLMStreamConfig
+from ...tokens.prompt_cache import compile_tool_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -57,18 +57,20 @@ async def run_toolcall(
     if not base_tool_prompt:
         raise RuntimeError("tool_prompt not set for session")
     tool_user_utt = trim_text_to_token_limit_tool(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
-    prompt = build_toolcall_prompt_with_prefix(base_tool_prompt, tool_user_utt, tool_history)
+    compiled_prompt = compile_tool_prompt(base_tool_prompt, tool_user_utt, tool_history)
 
     stream = LLMStream(
         LLMStreamConfig(
             name="tool",
             session_id=session_id,
             request_id=req_id,
-            prompt=prompt,
+            prompt=compiled_prompt.text,
+            prompt_token_ids=compiled_prompt.token_ids,
             sampling_params=params,
             engine_getter=get_tool_engine,
             timeout_s=tool_timeout_s,
-            priority=1,
+            priority=TOOL_REQUEST_PRIORITY,
+            use_prefix_cache=True,
             flush_ms=0.0,
             cancel_check=(
                 (lambda: session_handler.is_request_cancelled(session_id, req_id))

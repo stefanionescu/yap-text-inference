@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import uuid
+from dataclasses import dataclass, field
 from typing import Any
 
 import websockets
@@ -26,6 +27,106 @@ from tests.config import BENCHMARK_FALLBACK_MESSAGE  # noqa: E402
 from tests.prompts.toolcall import TOOLCALL_PROMPT  # noqa: E402
 
 
+@dataclass
+class _StreamTracker:
+    """Track benchmark timing metrics as messages stream in."""
+
+    t_sent: float = field(default_factory=time.perf_counter)
+    final_text: str = ""
+    ttfb_toolcall_ms: float | None = None
+    ttfb_chat_ms: float | None = None
+    first_sentence_ms: float | None = None
+    first_3_words_ms: float | None = None
+
+    def _elapsed_ms(self) -> float:
+        return (time.perf_counter() - self.t_sent) * 1000.0
+
+    def record_toolcall(self) -> None:
+        if self.ttfb_toolcall_ms is None:
+            self.ttfb_toolcall_ms = self._elapsed_ms()
+
+    def record_token(self, chunk: str) -> None:
+        if not chunk:
+            return
+        if self.ttfb_chat_ms is None:
+            self.ttfb_chat_ms = self._elapsed_ms()
+        self.final_text += chunk
+        if self.first_3_words_ms is None and has_at_least_n_words(self.final_text, 3):
+            self.first_3_words_ms = self._elapsed_ms()
+        if self.first_sentence_ms is None and contains_complete_sentence(self.final_text):
+            self.first_sentence_ms = self._elapsed_ms()
+
+    def apply_normalized_text(self, normalized: str | None) -> None:
+        if normalized:
+            self.final_text = normalized
+
+    def build_result(self, cancelled: bool) -> dict[str, Any]:
+        return {
+            "ok": not cancelled,
+            "ttfb_toolcall_ms": self.ttfb_toolcall_ms,
+            "ttfb_chat_ms": self.ttfb_chat_ms,
+            "first_sentence_ms": self.first_sentence_ms,
+            "first_3_words_ms": self.first_3_words_ms,
+        }
+
+
+def _build_start_payload(
+    session_id: str,
+    gender: str,
+    style: str,
+    chat_prompt: str,
+    message: str,
+    sampling: dict[str, float | int] | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "type": "start",
+        "session_id": session_id,
+        "gender": gender,
+        "personality": style,
+        "chat_prompt": chat_prompt,
+        "tool_prompt": TOOLCALL_PROMPT,
+        "history_text": "",
+        "user_utterance": message,
+    }
+    if sampling:
+        payload["sampling"] = sampling
+    return payload
+
+
+async def _consume_stream(ws, tracker: _StreamTracker) -> dict[str, Any]:
+    async for msg in iter_messages(ws):
+        msg_type = msg.get("type")
+
+        if msg_type == "toolcall":
+            tracker.record_toolcall()
+            continue
+
+        if msg_type == "token":
+            tracker.record_token(msg.get("text", ""))
+            continue
+
+        if msg_type == "final":
+            tracker.apply_normalized_text(msg.get("normalized_text"))
+            continue
+
+        if msg_type == "done":
+            cancelled = bool(msg.get("cancelled"))
+            return tracker.build_result(cancelled)
+
+        if msg_type == "error":
+            return _error_from_message(msg)
+
+    return {"ok": False, "error": "stream ended before 'done'"}
+
+
+def _error_from_message(msg: dict[str, Any]) -> dict[str, Any]:
+    error_code = msg.get("error_code", "")
+    error_message = msg.get("message", "unknown error")
+    if error_code:
+        return {"ok": False, "error": f"{error_code}: {error_message}"}
+    return {"ok": False, "error": error_message}
+
+
 async def _one_request(
     url: str,
     api_key: str | None,
@@ -37,74 +138,15 @@ async def _one_request(
 ) -> dict[str, Any]:
     async def _session() -> dict[str, Any]:
         auth_url = with_api_key(url, api_key=api_key)
-
         session_id = str(uuid.uuid4())
         chat_prompt = select_chat_prompt(gender)
-        start_payload: dict[str, Any] = {
-            "type": "start",
-            "session_id": session_id,
-            "gender": gender,
-            "personality": style,
-            "chat_prompt": chat_prompt,
-            "tool_prompt": TOOLCALL_PROMPT,
-            "history_text": "",
-            "user_utterance": message,
-        }
-        if sampling:
-            start_payload["sampling"] = sampling
+        start_payload = _build_start_payload(session_id, gender, style, chat_prompt, message, sampling)
+        tracker = _StreamTracker()
 
-        t_sent = time.perf_counter()
-        ttfb_toolcall_ms: float | None = None
-        ttfb_chat_ms: float | None = None
-        first_sentence_ms: float | None = None
-        first_3_words_ms: float | None = None
-        final_text = ""
-
-        async with connect_with_retries(
-            lambda: websockets.connect(auth_url, max_queue=None)
-        ) as ws:
+        async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=None)) as ws:
             try:
                 await ws.send(json.dumps(start_payload))
-
-                async for msg in iter_messages(ws):
-                    t = msg.get("type")
-
-                    if t == "toolcall":
-                        if ttfb_toolcall_ms is None:
-                            ttfb_toolcall_ms = (time.perf_counter() - t_sent) * 1000.0
-                        continue
-
-                    if t == "token":
-                        if ttfb_chat_ms is None:
-                            ttfb_chat_ms = (time.perf_counter() - t_sent) * 1000.0
-                        chunk = msg.get("text", "")
-                        final_text += chunk
-                        if first_3_words_ms is None and has_at_least_n_words(final_text, 3):
-                            first_3_words_ms = (time.perf_counter() - t_sent) * 1000.0
-                        if first_sentence_ms is None and contains_complete_sentence(final_text):
-                            first_sentence_ms = (time.perf_counter() - t_sent) * 1000.0
-                        continue
-
-                    if t == "final":
-                        normalized = msg.get("normalized_text")
-                        if normalized:
-                            final_text = normalized
-                        continue
-
-                    if t == "done":
-                        cancelled = bool(msg.get("cancelled"))
-                        return {
-                            "ok": not cancelled,
-                            "ttfb_toolcall_ms": ttfb_toolcall_ms,
-                            "ttfb_chat_ms": ttfb_chat_ms,
-                            "first_sentence_ms": first_sentence_ms,
-                            "first_3_words_ms": first_3_words_ms,
-                        }
-
-                    if t == "error":
-                        error_code = msg.get("error_code", "")
-                        error_message = msg.get("message", "unknown error")
-                        return {"ok": False, "error": f"{error_code}: {error_message}" if error_code else error_message}
+                return await _consume_stream(ws, tracker)
             finally:
                 await send_client_end(ws)
 
@@ -131,28 +173,61 @@ async def _worker(
 
 
 async def run_benchmark(args) -> None:
-    url: str = args.server
-    api_key: str | None = args.api_key
-    gender: str = args.gender
-    style: str = args.personality
-    message: str = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
-    sampling: dict[str, float | int] | None = getattr(args, "sampling", None) or None
+    (
+        url,
+        api_key,
+        gender,
+        style,
+        message,
+        sampling,
+    ) = _extract_session_options(args)
+    requests, concurrency = _sanitize_workload_args(int(args.requests), int(args.concurrency))
+    counts = _distribute_requests(requests, concurrency)
+    timeout_s = float(args.timeout)
 
-    requests = max(1, int(args.requests))
-    concurrency = max(1, min(int(args.concurrency), requests))
-    base, rem = divmod(requests, concurrency)
-    counts = [base + (1 if i < rem else 0) for i in range(concurrency)]
-
-    tasks = [
-        asyncio.create_task(
-            _worker(counts[i], url, api_key, gender, style, message, float(args.timeout), sampling)
-        )
-        for i in range(concurrency)
-        if counts[i] > 0
-    ]
+    tasks = _launch_worker_tasks(counts, url, api_key, gender, style, message, timeout_s, sampling)
     nested = await asyncio.gather(*tasks)
     results: list[dict[str, Any]] = [item for sub in nested for item in sub]
 
     print_report(url, requests, concurrency, results)
+
+
+def _extract_session_options(
+    args,
+) -> tuple[str, str | None, str, str, str, dict[str, float | int] | None]:
+    message = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
+    sampling = getattr(args, "sampling", None) or None
+    return args.server, args.api_key, args.gender, args.personality, message, sampling
+
+
+def _sanitize_workload_args(requests: int, concurrency: int) -> tuple[int, int]:
+    safe_requests = max(1, requests)
+    safe_concurrency = max(1, min(concurrency, safe_requests))
+    return safe_requests, safe_concurrency
+
+
+def _distribute_requests(requests: int, concurrency: int) -> list[int]:
+    base, rem = divmod(requests, concurrency)
+    return [base + (1 if i < rem else 0) for i in range(concurrency)]
+
+
+def _launch_worker_tasks(
+    counts: list[int],
+    url: str,
+    api_key: str | None,
+    gender: str,
+    style: str,
+    message: str,
+    timeout_s: float,
+    sampling: dict[str, float | int] | None,
+) -> list[asyncio.Task[list[dict[str, Any]]]]:
+    tasks: list[asyncio.Task[list[dict[str, Any]]]] = []
+    for count in counts:
+        if count <= 0:
+            continue
+        tasks.append(
+            asyncio.create_task(_worker(count, url, api_key, gender, style, message, timeout_s, sampling))
+        )
+    return tasks
 
 

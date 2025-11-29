@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import logging
+from dataclasses import dataclass, field
 from typing import Any
 
 import websockets  # type: ignore[import-not-found]
@@ -17,6 +18,38 @@ from .session import LiveSession
 from .stream import StreamTracker, round_ms
 
 logger = logging.getLogger("live")
+
+
+@dataclass
+class _StreamPrinter:
+    printed_header: bool = False
+
+    def write_chunk(self, chunk: str) -> None:
+        if not chunk:
+            return
+        if not self.printed_header:
+            print("\ncompanion >", end=" ", flush=True)
+            self.printed_header = True
+        print(chunk, end="", flush=True)
+
+    def finish(self) -> None:
+        if self.printed_header:
+            print()
+            print()
+
+
+@dataclass
+class _StreamState:
+    tracker: StreamTracker
+    printer: _StreamPrinter = field(default_factory=_StreamPrinter)
+    pending_chat_ttfb: float | None = None
+
+    def handle_token(self, chunk: str) -> None:
+        metrics = self.tracker.record_token(chunk)
+        self.printer.write_chunk(chunk)
+        chat_ttfb = metrics.get("chat_ttfb_ms")
+        if chat_ttfb is not None and self.pending_chat_ttfb is None:
+            self.pending_chat_ttfb = chat_ttfb
 
 
 class LiveClient:
@@ -101,7 +134,6 @@ class LiveClient:
         try:
             await send_client_end(self.ws)
         except asyncio.CancelledError:
-            # Preserve cancellation but still attempt to close the socket.
             raise
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to send client end frame: %s", exc)
@@ -122,8 +154,7 @@ class LiveClient:
         *,
         print_user_prompt: bool = True,
     ) -> str:
-        printed_header = False
-        pending_chat_ttfb: float | None = None
+        state = _StreamState(tracker)
         try:
             async for msg in iter_messages(self.ws, timeout=self.recv_timeout):
                 msg_type = msg.get("type")
@@ -131,19 +162,10 @@ class LiveClient:
                     tracker.ack_seen = True
                     continue
                 if msg_type == "toolcall":
-                    ttfb = tracker.record_toolcall()
-                    logger.info("TOOLCALL status=%s ttfb_ms=%s", msg.get("status"), round_ms(ttfb))
+                    self._handle_toolcall_frame(msg, tracker)
                     continue
                 if msg_type == "token":
-                    chunk = msg.get("text", "")
-                    metrics = tracker.record_token(chunk)
-                    if not printed_header:
-                        print("\ncompanion >", end=" ", flush=True)
-                        printed_header = True
-                    print(chunk, end="", flush=True)
-                    chat_ttfb = metrics.get("chat_ttfb_ms")
-                    if chat_ttfb is not None and pending_chat_ttfb is None:
-                        pending_chat_ttfb = chat_ttfb
+                    state.handle_token(msg.get("text", ""))
                     continue
                 if msg_type == "final":
                     normalized = msg.get("normalized_text")
@@ -151,24 +173,9 @@ class LiveClient:
                         tracker.final_text = normalized
                     continue
                 if msg_type == "connection_closed":
-                    reason = msg.get("reason") or "server_request"
-                    logger.info("Server signaled connection_closed reason=%s", reason)
-                    return tracker.final_text
+                    return self._handle_connection_closed(msg, tracker)
                 if msg_type == "done":
-                    if printed_header:
-                        print()
-                        print()
-                    if print_user_prompt:
-                        print("you >", end=" ", flush=True)
-                    cancelled = bool(msg.get("cancelled"))
-                    if pending_chat_ttfb is not None and self._stats_enabled:
-                        logger.info("CHAT ttfb_ms=%.2f", pending_chat_ttfb)
-                    if self._stats_enabled:
-                        logger.info(
-                            "metrics: %s",
-                            json.dumps(tracker.finalize_metrics(cancelled), ensure_ascii=False),
-                        )
-                    return tracker.final_text
+                    return self._handle_done_frame(msg, state, print_user_prompt=print_user_prompt)
                 if msg_type == "error":
                     _log_server_error(msg)
                     raise LiveServerError(msg.get("message", "server error"), code=msg.get("error_code"))
@@ -180,6 +187,35 @@ class LiveClient:
             asyncio.create_task(self.close())
             return tracker.final_text
         raise LiveClientError("WebSocket closed before receiving 'done'")
+
+    def _handle_toolcall_frame(self, msg: dict[str, Any], tracker: StreamTracker) -> None:
+        ttfb = tracker.record_toolcall()
+        logger.info("TOOLCALL status=%s ttfb_ms=%s", msg.get("status"), round_ms(ttfb))
+
+    def _handle_done_frame(
+        self,
+        msg: dict[str, Any],
+        state: _StreamState,
+        *,
+        print_user_prompt: bool,
+    ) -> str:
+        state.printer.finish()
+        if print_user_prompt:
+            print("you >", end=" ", flush=True)
+        cancelled = bool(msg.get("cancelled"))
+        if state.pending_chat_ttfb is not None and self._stats_enabled:
+            logger.info("CHAT ttfb_ms=%.2f", state.pending_chat_ttfb)
+        if self._stats_enabled:
+            logger.info(
+                "metrics: %s",
+                json.dumps(state.tracker.finalize_metrics(cancelled), ensure_ascii=False),
+            )
+        return state.tracker.final_text
+
+    def _handle_connection_closed(self, msg: dict[str, Any], tracker: StreamTracker) -> str:
+        reason = msg.get("reason") or "server_request"
+        logger.info("Server signaled connection_closed reason=%s", reason)
+        return tracker.final_text
 
     async def _wait_for_chat_prompt_ack(self) -> dict[str, Any]:
         try:

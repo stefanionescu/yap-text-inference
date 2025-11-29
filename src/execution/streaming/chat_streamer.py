@@ -8,8 +8,7 @@ from collections.abc import AsyncGenerator
 from vllm.sampling_params import SamplingParams
 
 from ...engines import get_chat_engine
-from ...persona import build_chat_prompt_with_prefix
-from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
+from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
 from ...handlers.session import session_handler
 from ...utils import StreamingSanitizer
 from functools import lru_cache
@@ -28,6 +27,7 @@ from ...config.sampling import (
 from ...config.timeouts import GEN_TIMEOUT_S
 from .llm_stream import LLMStream, LLMStreamConfig
 from ...tokens.tokenizer import get_chat_tokenizer
+from ...tokens.prompt_cache import compile_chat_prompt
 
 
 async def run_chat_stream(
@@ -68,17 +68,19 @@ async def run_chat_stream(
         max_tokens=CHAT_MAX_OUT,
         stop=INFERENCE_STOP,
     )
-    prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
+    compiled_prompt = compile_chat_prompt(static_prefix, runtime_text, history_text, user_utt)
     stream = LLMStream(
         LLMStreamConfig(
             name="chat",
             session_id=session_id,
             request_id=req_id,
-            prompt=prompt,
+            prompt=compiled_prompt.text,
+            prompt_token_ids=compiled_prompt.token_ids,
             sampling_params=params,
             engine_getter=get_chat_engine,
             timeout_s=float(GEN_TIMEOUT_S),
-            priority=0,
+            priority=CHAT_REQUEST_PRIORITY,
+            use_prefix_cache=True,
             flush_ms=float(STREAM_FLUSH_MS),
             cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
         )

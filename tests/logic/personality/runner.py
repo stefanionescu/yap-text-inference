@@ -41,55 +41,113 @@ async def run_test(
 ) -> None:
     """Run the personality switch test."""
     url = with_api_key(ws_url, api_key=api_key)
+    session = _build_session(sampling)
+    variants = _load_variants()
+    message_pacer, persona_pacer = _build_pacers()
+    await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
+
+
+def _build_session(sampling: dict[str, float | int] | None) -> PersonaSession:
     prompt_sequence = tuple(CONVERSATION_HISTORY_MESSAGES)
     if not prompt_sequence:
         raise RuntimeError("CONVERSATION_HISTORY_MESSAGES is empty; nothing to test.")
-    session = PersonaSession(
+    return PersonaSession(
         session_id=f"sess-{uuid.uuid4()}",
         prompts=prompt_sequence,
         sampling=sampling,
     )
+
+
+def _load_variants() -> list[PersonaVariant]:
     variants: list[PersonaVariant] = [PersonaVariant(*variant) for variant in PERSONA_VARIANTS]
     if not variants:
         raise RuntimeError("PERSONA_VARIANTS is empty; nothing to test.")
+    return variants
 
+
+def _build_pacers() -> tuple[SlidingWindowPacer, SlidingWindowPacer]:
     message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
     persona_pacer = SlidingWindowPacer(PERSONA_MAX_PER_WINDOW, PERSONA_WINDOW_SECONDS)
+    return message_pacer, persona_pacer
 
+
+async def _execute_test(
+    url: str,
+    session: PersonaSession,
+    variants: list[PersonaVariant],
+    switches: int,
+    delay_s: int,
+    message_pacer: SlidingWindowPacer,
+    persona_pacer: SlidingWindowPacer,
+) -> None:
     async with websockets.connect(
         url,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
     ) as ws:
         try:
-            current_variant_idx = 0
-            await run_initial_exchange(
-                ws,
-                session,
-                variants[current_variant_idx],
-                message_pacer=message_pacer,
-            )
-            for _ in range(switches):
-                if not session.has_remaining_prompts():
-                    break
-                await asyncio.sleep(delay_s)
-                current_variant_idx = (current_variant_idx + 1) % len(variants)
-                variant = variants[current_variant_idx]
-                await run_switch_sequence(
-                    ws,
-                    session,
-                    variant,
-                    persona_pacer=persona_pacer,
-                    message_pacer=message_pacer,
-                )
-            if session.has_remaining_prompts():
-                await run_remaining_sequence(
-                    ws,
-                    session,
-                    variants[current_variant_idx],
-                    message_pacer=message_pacer,
-                )
+            await _run_sequences(ws, session, variants, switches, delay_s, message_pacer, persona_pacer)
         finally:
             await send_client_end(ws)
+
+
+async def _run_sequences(
+    ws,
+    session: PersonaSession,
+    variants: list[PersonaVariant],
+    switches: int,
+    delay_s: int,
+    message_pacer: SlidingWindowPacer,
+    persona_pacer: SlidingWindowPacer,
+) -> None:
+    current_idx = 0
+    await run_initial_exchange(
+        ws,
+        session,
+        variants[current_idx],
+        message_pacer=message_pacer,
+    )
+    current_idx = await _perform_switches(
+        ws,
+        session,
+        variants,
+        current_idx,
+        switches,
+        delay_s,
+        message_pacer,
+        persona_pacer,
+    )
+    if session.has_remaining_prompts():
+        await run_remaining_sequence(
+            ws,
+            session,
+            variants[current_idx],
+            message_pacer=message_pacer,
+        )
+
+
+async def _perform_switches(
+    ws,
+    session: PersonaSession,
+    variants: list[PersonaVariant],
+    current_idx: int,
+    switches: int,
+    delay_s: int,
+    message_pacer: SlidingWindowPacer,
+    persona_pacer: SlidingWindowPacer,
+) -> int:
+    for _ in range(switches):
+        if not session.has_remaining_prompts():
+            break
+        await asyncio.sleep(delay_s)
+        current_idx = (current_idx + 1) % len(variants)
+        await run_switch_sequence(
+            ws,
+            session,
+            variants[current_idx],
+            persona_pacer=persona_pacer,
+            message_pacer=message_pacer,
+        )
+    return current_idx
 
 

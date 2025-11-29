@@ -5,7 +5,7 @@ import contextlib
 import logging
 import signal
 from dataclasses import dataclass
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from .client import LiveClient
 from .errors import LiveClientError, LiveConnectionClosed, LiveInputClosed
@@ -24,40 +24,61 @@ class InteractiveRunner:
 
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
-        sigint_installed = False
-        disconnect_task: asyncio.Task | None = None
+        sigint_installed = self._install_sigint_handler(loop)
         loop_task: asyncio.Task | None = None
+        disconnect_task: asyncio.Task | None = None
         try:
-            loop.add_signal_handler(signal.SIGINT, self._handle_sigint)
-            sigint_installed = True
-        except (NotImplementedError, RuntimeError):
-            logger.warning("Signal handlers unavailable; Ctrl+C may be noisy")
-        try:
-            loop_task = asyncio.create_task(self._loop())
-            disconnect_task = asyncio.create_task(self._watch_disconnect())
-            done, pending = await asyncio.wait(
-                {loop_task, disconnect_task},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if disconnect_task in done:
-                loop_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError, LiveInputClosed, LiveConnectionClosed):
-                    await loop_task
-            else:
-                disconnect_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await disconnect_task
+            loop_task, disconnect_task = self._start_background_tasks()
+            await self._coordinate_tasks(loop_task, disconnect_task)
         finally:
-            if loop_task and not loop_task.done():
-                loop_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await loop_task
-            if disconnect_task and not disconnect_task.done():
-                disconnect_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await disconnect_task
+            await self._finalize_task(loop_task)
+            await self._finalize_task(disconnect_task)
             if sigint_installed:
                 loop.remove_signal_handler(signal.SIGINT)
+
+    def _install_sigint_handler(self, loop: asyncio.AbstractEventLoop) -> bool:
+        try:
+            loop.add_signal_handler(signal.SIGINT, self._handle_sigint)
+            return True
+        except (NotImplementedError, RuntimeError):
+            logger.warning("Signal handlers unavailable; Ctrl+C may be noisy")
+            return False
+
+    def _start_background_tasks(self) -> tuple[asyncio.Task, asyncio.Task]:
+        loop_task = asyncio.create_task(self._loop())
+        disconnect_task = asyncio.create_task(self._watch_disconnect())
+        return loop_task, disconnect_task
+
+    async def _coordinate_tasks(self, loop_task: asyncio.Task, disconnect_task: asyncio.Task) -> None:
+        done, _ = await asyncio.wait({loop_task, disconnect_task}, return_when=asyncio.FIRST_COMPLETED)
+        if disconnect_task in done:
+            await self._cancel_task(
+                loop_task,
+                suppress=(asyncio.CancelledError, LiveInputClosed, LiveConnectionClosed),
+            )
+        else:
+            await self._cancel_task(disconnect_task)
+
+    async def _cancel_task(
+        self,
+        task: asyncio.Task,
+        *,
+        suppress: tuple[type[BaseException], ...] = (asyncio.CancelledError,),
+    ) -> None:
+        if task.done():
+            return
+        task.cancel()
+        with contextlib.suppress(*suppress):
+            await task
+
+    async def _finalize_task(self, task: asyncio.Task | None) -> None:
+        if not task:
+            return
+        if not task.done():
+            await self._cancel_task(task)
+        else:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
     async def _loop(self) -> None:
         if self.show_banner:
@@ -145,64 +166,12 @@ async def _handle_command(command_line: str, client: LiveClient, registry: Perso
     command, *rest = command_line.split(maxsplit=1)
     arg = rest[0].strip() if rest else ""
     cmd = command.lower()
-
-    if cmd in {"help", "?"}:
-        print_help(registry.available_names(), client.session.persona.name, verbose=True)
+    handler_key = _COMMAND_ALIASES.get(cmd, cmd)
+    handler = _COMMAND_HANDLERS.get(handler_key)
+    if handler is None:
+        logger.warning("Unknown command '/%s'. Type /help for options.", command)
         return False
-    if cmd in {"list", "personas"}:
-        names = registry.available_names()
-        logger.info("Available personas: %s", ", ".join(names))
-        return False
-    if cmd in {"persona", "personality"}:
-        if not arg:
-            logger.warning("Usage: /persona <name>")
-            return False
-        try:
-            persona = registry.require(arg)
-        except ValueError as exc:
-            logger.error("%s", exc)
-            return False
-        try:
-            await client.change_persona(persona)
-        except LiveClientError as exc:
-            logger.error("persona update failed: %s", exc)
-        return False
-    if cmd == "history":
-        if client.session.history:
-            print("\n--- conversation history ---")
-            print(client.session.history)
-            print("--- end history ---")
-        else:
-            logger.info("History is empty")
-        return False
-    if cmd in {"info", "status"}:
-        persona = client.session.persona
-        logger.info(
-            "Session %s persona=%s gender=%s personality=%s history_chars=%d",
-            client.session.session_id,
-            persona.name,
-            persona.gender,
-            persona.personality,
-            len(client.session.history),
-        )
-        return False
-    if cmd in {"stats"}:
-        _handle_toggle_command(
-            arg,
-            getter=lambda: client.stats_logging_enabled,
-            setter=client.set_stats_logging,
-            label="stats logging (metrics + chat TTFB)",
-            command="stats",
-        )
-        return False
-    if cmd in {"stop", "quit", "exit"}:
-        logger.info("Stopping live session...")
-        await client.close()
-        logger.info("Stopped live session.")
-        return True
-
-    logger.warning("Unknown command '/%s'. Type /help for options.", command)
-    return False
+    return await handler(arg, client, registry, raw_command=cmd)
 
 
 async def _ainput(prompt: str) -> str:
@@ -268,3 +237,140 @@ def _resolve_toggle(arg: str, current: bool) -> bool:
 __all__ = ["interactive_loop", "print_help"]
 
 
+async def _handle_help_command(
+    _: str,
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    raw_command: str,
+) -> bool:
+    _ = raw_command  # unused; keeps signature uniform
+    print_help(registry.available_names(), client.session.persona.name, verbose=True)
+    return False
+
+
+async def _handle_list_command(
+    _: str,
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    raw_command: str,
+) -> bool:
+    _ = raw_command
+    names = registry.available_names()
+    logger.info("Available personas: %s", ", ".join(names))
+    return False
+
+
+async def _handle_persona_command(
+    arg: str,
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    raw_command: str,
+) -> bool:
+    _ = raw_command
+    if not arg:
+        logger.warning("Usage: /persona <name>")
+        return False
+    try:
+        persona = registry.require(arg)
+    except ValueError as exc:
+        logger.error("%s", exc)
+        return False
+    try:
+        await client.change_persona(persona)
+    except LiveClientError as exc:
+        logger.error("persona update failed: %s", exc)
+    return False
+
+
+async def _handle_history_command(
+    _: str,
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    raw_command: str,
+) -> bool:
+    _ = registry, raw_command  # unused
+    if client.session.history:
+        print("\n--- conversation history ---")
+        print(client.session.history)
+        print("--- end history ---")
+    else:
+        logger.info("History is empty")
+    return False
+
+
+async def _handle_info_command(
+    _: str,
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    raw_command: str,
+) -> bool:
+    _ = registry, raw_command
+    persona = client.session.persona
+    logger.info(
+        "Session %s persona=%s gender=%s personality=%s history_chars=%d",
+        client.session.session_id,
+        persona.name,
+        persona.gender,
+        persona.personality,
+        len(client.session.history),
+    )
+    return False
+
+
+async def _handle_stats_command(
+    arg: str,
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    raw_command: str,
+) -> bool:
+    _ = registry
+    _handle_toggle_command(
+        arg,
+        getter=lambda: client.stats_logging_enabled,
+        setter=client.set_stats_logging,
+        label="stats logging (metrics + chat TTFB)",
+        command=raw_command or "stats",
+    )
+    return False
+
+
+async def _handle_stop_command(
+    _: str,
+    client: LiveClient,
+    registry: PersonaRegistry,
+    *,
+    raw_command: str,
+) -> bool:
+    _ = registry, raw_command
+    logger.info("Stopping live session...")
+    await client.close()
+    logger.info("Stopped live session.")
+    return True
+
+
+CommandHandler = Callable[..., Awaitable[bool]]
+
+_COMMAND_HANDLERS: dict[str, CommandHandler] = {
+    "help": _handle_help_command,
+    "list": _handle_list_command,
+    "persona": _handle_persona_command,
+    "history": _handle_history_command,
+    "info": _handle_info_command,
+    "stats": _handle_stats_command,
+    "stop": _handle_stop_command,
+}
+
+_COMMAND_ALIASES = {
+    "?": "help",
+    "personas": "list",
+    "personality": "persona",
+    "status": "info",
+    "quit": "stop",
+    "exit": "stop",
+}

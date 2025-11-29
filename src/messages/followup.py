@@ -1,21 +1,21 @@
 """Follow-up handler to continue answer after external screen analysis.
 
 Bypasses tool routing and directly invokes the chat model with a synthetic
-user utterance that embeds the analysis with a configurable prefix.
+with a screenshot analysis with a configurable prefix.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 from fastapi import WebSocket
 
 from ..handlers.session import session_handler
 from ..execution.streaming.chat_streamer import run_chat_stream
-from ..config import DEPLOY_CHAT, SCREEN_CHECKED_PREFIX, USER_UTT_MAX_TOKENS
+from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS
 from ..tokens import trim_text_to_token_limit_chat
 from ..utils.executor import safe_send_json
+from .responses import error_response
 
 
 logger = logging.getLogger(__name__)
@@ -32,20 +32,17 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
         - user_utterance: str (ignored for synthesis; may be used by clients)
     """
     if not DEPLOY_CHAT:
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "message": "followup requires chat model deployment"
-        }))
+        await safe_send_json(ws, error_response("followup requires chat model deployment"))
         return
     
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
-        await ws.send_text(json.dumps({"type": "error", "message": "no active session; send 'start' first"}))
+        await safe_send_json(ws, error_response("no active session; send 'start' first"))
         return
 
     analysis_text = (msg.get("analysis_text") or "").strip()
     if not analysis_text:
-        await ws.send_text(json.dumps({"type": "error", "message": "analysis_text is required"}))
+        await safe_send_json(ws, error_response("analysis_text is required"))
         return
 
     history_text = session_handler.get_history_text(session_id)
@@ -54,22 +51,17 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     static_prefix = cfg.get("chat_prompt") or ""
     runtime_text = ""
     if not static_prefix:
-        await ws.send_text(
-            json.dumps(
-                {
-                    "type": "error",
-                    "message": "chat_prompt must be set in session (send in start)",
-                }
-            )
+        await safe_send_json(
+            ws,
+            error_response("chat_prompt must be set in session (send in start)"),
         )
         return
 
     # Synthesize the follow-up prompt for the chat model
-    prefixed = f"{SCREEN_CHECKED_PREFIX} {analysis_text}".strip()
+    prefix = session_handler.get_screen_checked_prefix(session_id)
+    prefixed = f"{prefix} {analysis_text}".strip()
     user_utt = trim_text_to_token_limit_chat(prefixed, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
     # Track user utterance for pairing with assistant response later.
-    # Don't re-fetch history_text - it already contains previous turns (line 50),
-    # and user_utt is passed separately to the prompt builder.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
 
     final_text = ""

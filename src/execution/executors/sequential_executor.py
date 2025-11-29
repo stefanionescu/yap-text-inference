@@ -15,7 +15,6 @@ from ...utils.executor import (
     send_toolcall,
     stream_chat_response,
 )
-from ...config import CHECK_SCREEN_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +76,12 @@ async def run_sequential_execution(
     # Start chat stream (always runs regardless of tool decision)
     chat_req_id = f"chat-{uuid.uuid4()}"
     session_handler.set_active_request(session_id, chat_req_id)
-    # If tool said yes, prefix the user utterance with CHECK SCREEN
-    user_utt_for_chat = f"{CHECK_SCREEN_PREFIX} {user_utt}".strip() if is_tool else user_utt
+    # If tool said yes, prefix the user utterance with the session-specific CHECK SCREEN hint
+    if is_tool:
+        prefix = session_handler.get_check_screen_prefix(session_id)
+        user_utt_for_chat = f"{prefix} {user_utt}".strip()
+    else:
+        user_utt_for_chat = user_utt
 
     final_text = await stream_chat_response(
         ws,

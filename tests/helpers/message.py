@@ -7,13 +7,6 @@ from collections.abc import Awaitable, Callable, Mapping
 
 from .ws import recv_raw
 
-__all__ = [
-    "MessageParseError",
-    "dispatch_message",
-    "iter_messages",
-    "parse_message",
-]
-
 
 class MessageParseError(RuntimeError):
     """Raised when a websocket frame cannot be parsed into JSON."""
@@ -66,3 +59,9 @@ async def dispatch_message(
     return result
 
 
+__all__ = [
+    "MessageParseError",
+    "dispatch_message",
+    "iter_messages",
+    "parse_message",
+]

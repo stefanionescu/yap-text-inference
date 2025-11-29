@@ -37,10 +37,6 @@ from tests.prompts.toolcall import TOOLCALL_PROMPT
 logger = logging.getLogger(__name__)
 
 
-def _round(value: float | None) -> float | None:
-    return round(value, 2) if value is not None else None
-
-
 @dataclass
 class StreamTracker:
     sent_ts: float = field(default_factory=time.perf_counter)
@@ -106,6 +102,10 @@ class StreamTracker:
 
     def final_text_payload(self) -> dict[str, Any]:
         return {"type": "final_text", "text": self.final_text}
+
+
+def _round(value: float | None) -> float | None:
+    return round(value, 2) if value is not None else None
 
 
 async def run_once(args) -> None:

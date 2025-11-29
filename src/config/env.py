@@ -11,6 +11,9 @@ from ..utils.env import env_flag
 
 # Ensure V1 engine is selected before importing any vLLM modules
 os.environ.setdefault("VLLM_USE_V1", "1")
+# vLLM docs recommend constraining CUDA streams + allocator defaults for stability
+os.environ.setdefault("CUDA_DEVICE_MAX_CONNECTIONS", "1")
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 
 def _select_attention_backend() -> None:
@@ -56,22 +59,27 @@ TOOL_MODEL = os.getenv("TOOL_MODEL")
 
 # GPU memory fractions: adjust based on deployment mode
 if DEPLOY_CHAT and DEPLOY_TOOL:
-    # Both models: split GPU memory
-    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.71"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.21"))
+    # Both models: split GPU memory conservatively to leave room for CUDA/NCCL
+    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 else:
-    # Single model: use most of GPU memory
-    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.92"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.92"))
+    # Single model: keep ~10% free for runtime overhead
+    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
-KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
+KV_DTYPE = os.getenv("KV_DTYPE")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
 CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override per-engine
 TOOL_QUANTIZATION = os.getenv("TOOL_QUANTIZATION")  # Optional override per-engine
 
+if os.getenv("VLLM_USE_V1", "1") == "1":
+    kv_lower = (KV_DTYPE or "").strip().lower()
+    if kv_lower.startswith("fp8"):
+        os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
+
 # Prefixes used to steer chat behavior around screenshot flows
-CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "MUST CHECK SCREEN:").strip()
-SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "ON THE SCREEN NOW:").strip()
+DEFAULT_CHECK_SCREEN_PREFIX = os.getenv("CHECK_SCREEN_PREFIX", "MUST CHECK SCREEN:").strip()
+DEFAULT_SCREEN_CHECKED_PREFIX = os.getenv("SCREEN_CHECKED_PREFIX", "ON THE SCREEN NOW:").strip()
 CHAT_TEMPLATE_ENABLE_THINKING = env_flag("CHAT_TEMPLATE_ENABLE_THINKING", False)
 
 
@@ -105,8 +113,8 @@ __all__ = [
     "CHAT_QUANTIZATION",
     "TOOL_QUANTIZATION",
     # prefixes
-    "CHECK_SCREEN_PREFIX",
-    "SCREEN_CHECKED_PREFIX",
+    "DEFAULT_CHECK_SCREEN_PREFIX",
+    "DEFAULT_SCREEN_CHECKED_PREFIX",
     "CHAT_TEMPLATE_ENABLE_THINKING",
     "validate_env",
 ]

@@ -15,7 +15,7 @@ from fastapi import WebSocket
 from vllm.sampling_params import SamplingParams
 
 from ..handlers.session import session_handler
-from ..config import DEPLOY_CHAT
+from ..config import DEPLOY_CHAT, WARM_REQUEST_PRIORITY
 from ..tokens import (
     count_tokens_chat,
     trim_history_preserve_messages_chat,
@@ -27,7 +27,7 @@ from ..config import (
     CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
 )
 from ..engines import get_chat_engine
-from ..persona import build_chat_warm_prompt
+from ..tokens.prompt_cache import compile_chat_warm_prompt
 from .validators import (
     ValidationError,
     require_prompt,
@@ -149,15 +149,17 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         history_text = trim_history_preserve_messages_chat(history_text, HISTORY_MAX_TOKENS)
         session_handler.set_history_text(session_id, history_text)
 
-    warm_prompt = build_chat_warm_prompt(chat_prompt, "", history_text)
+    compiled_warm = compile_chat_warm_prompt(chat_prompt, "", history_text)
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
     req_id = f"warm-update-{uuid.uuid4()}"
 
     stream = (await get_chat_engine()).generate(
-        prompt=warm_prompt,
+        prompt=None,
+        prompt_token_ids=compiled_warm.token_ids,
         sampling_params=params,
         request_id=req_id,
-        priority=1,
+        priority=WARM_REQUEST_PRIORITY,
+        use_prefix_cache=True,
     )
     async for _ in stream:
         break
