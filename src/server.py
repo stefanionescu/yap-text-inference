@@ -39,7 +39,7 @@ from .engines import (
     cache_reset_reschedule_event,
     get_chat_engine,
     get_tool_engine,
-    maybe_reset_engine_caches,
+    reset_engine_caches,
     seconds_since_last_cache_reset,
     shutdown_engines,
 )
@@ -147,13 +147,13 @@ async def cache_reset_daemon() -> None:
 
         wait = max(0.0, interval - seconds_since_last_cache_reset())
         if wait <= 0:
-            await maybe_reset_engine_caches("timer", force=True)
+            await reset_engine_caches("timer", force=True)
             continue
 
         try:
             await asyncio.wait_for(event.wait(), timeout=wait)
         except asyncio.TimeoutError:
-            await maybe_reset_engine_caches("timer", force=True)
+            await reset_engine_caches("timer", force=True)
         else:
             if event.is_set():
                 event.clear()

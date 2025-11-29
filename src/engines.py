@@ -134,9 +134,9 @@ async def _clean_engine_caches(engine: AsyncLLMEngine) -> None:
         if method is None:
             continue
         try:
-            maybe_coro = method()
-            if inspect.isawaitable(maybe_coro):
-                await maybe_coro
+            coro = method()
+            if inspect.isawaitable(coro):
+                await coro
         except Exception:
             # Best effort only
             pass
@@ -154,7 +154,7 @@ def cache_reset_reschedule_event() -> asyncio.Event:
     return _CACHE_RESET_EVENT
 
 
-async def maybe_reset_engine_caches(reason: str, *, force: bool = False) -> bool:
+async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
     """Reset prefix/MM caches if interval has elapsed or force is specified."""
 
     global _LAST_CACHE_RESET_MONOTONIC
@@ -212,4 +212,4 @@ async def shutdown_engines() -> None:
 async def clear_all_engine_caches_on_disconnect() -> None:
     """Force cache reset when the final client disconnects."""
 
-    await maybe_reset_engine_caches("all_clients_disconnected", force=True)
+    await reset_engine_caches("all_clients_disconnected", force=True)

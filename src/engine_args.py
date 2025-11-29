@@ -71,7 +71,7 @@ def _inject_tokenizer_kwargs(
     if _TOKENIZER_KWARG_KEY:
         target[_TOKENIZER_KWARG_KEY] = tok_kwargs
         return
-    if _maybe_patch_tokenizer(model_identifier, tok_kwargs):
+    if _patch_tokenizer(model_identifier, tok_kwargs):
         return
 
     if not _TOKENIZER_WARNING_EMITTED:
@@ -83,7 +83,7 @@ def _inject_tokenizer_kwargs(
         _TOKENIZER_WARNING_EMITTED = True
 
 
-def _maybe_patch_tokenizer(model_identifier: str | None, tok_kwargs: dict[str, Any]) -> bool:
+def _patch_tokenizer(model_identifier: str | None, tok_kwargs: dict[str, Any]) -> bool:
     """Best-effort tokenizer monkeypatch for engines lacking tokenizer kwargs."""
     if not tok_kwargs:
         return False
@@ -410,7 +410,6 @@ def _configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> 
 
     if use_v1:
         if normalized.startswith("fp8"):
-            kwargs["fp8_kv_cache"] = True
             os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
         else:
             if not _KV_DTYPE_WARNING_EMITTED:
@@ -543,4 +542,3 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
 
 
 __all__ = ["make_engine_args"]
-
