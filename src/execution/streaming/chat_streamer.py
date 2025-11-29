@@ -79,7 +79,6 @@ async def run_chat_stream(
             engine_getter=get_chat_engine,
             timeout_s=float(GEN_TIMEOUT_S),
             priority=CHAT_REQUEST_PRIORITY,
-            use_prefix_cache=True,
             flush_ms=float(STREAM_FLUSH_MS),
             cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
         )

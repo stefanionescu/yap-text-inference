@@ -29,7 +29,6 @@ async def warm_chat_segment(
         sampling_params=_WARM_PARAMS,
         request_id=req_id,
         priority=WARM_REQUEST_PRIORITY,
-        use_prefix_cache=True,
     )
     async for _ in stream:
         break

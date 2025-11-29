@@ -69,7 +69,6 @@ async def run_toolcall(
             engine_getter=get_tool_engine,
             timeout_s=tool_timeout_s,
             priority=TOOL_REQUEST_PRIORITY,
-            use_prefix_cache=True,
             flush_ms=0.0,
             cancel_check=(
                 (lambda: session_handler.is_request_cancelled(session_id, req_id))

@@ -33,7 +33,6 @@ class LLMStreamConfig:
     engine_getter: Callable[[], Awaitable[Any]]
     timeout_s: float
     priority: int = 0
-    use_prefix_cache: bool = False
     flush_ms: float = 0.0
     cancel_check: CancelCheck = None
 
@@ -74,7 +73,6 @@ class LLMStream:
                 request_id=cfg.request_id,
                 priority=cfg.priority,
                 timeout_s=cfg.timeout_s,
-                use_prefix_cache=cfg.use_prefix_cache,
                 cancel_check=cfg.cancel_check,
             ):
                 delta = self._extract_delta(out)
@@ -193,7 +191,6 @@ async def _stream_with_timeout(
     request_id: str,
     priority: int,
     timeout_s: float,
-    use_prefix_cache: bool,
     cancel_check: CancelCheck = None,
 ) -> AsyncGenerator[Any, None]:
     engine = await get_engine()
@@ -202,7 +199,6 @@ async def _stream_with_timeout(
         sampling_params=sampling_params,
         request_id=request_id,
         priority=priority,
-        use_prefix_cache=use_prefix_cache,
     )
     cancel_checker = _CancelChecker(cancel_check)
 
