@@ -92,6 +92,53 @@ SAFE_LEXER_NAMES = {
     "toml",
 }
 
+# Programming language keywords that indicate executable code
+CODE_LEXER_KEYWORDS = {
+    "python",
+    "javascript",
+    "typescript",
+    "java",
+    "c++",
+    "cpp",
+    "c#",
+    "csharp",
+    "go",
+    "rust",
+    "php",
+    "sql",
+    "bash",
+    "shell",
+    "sh",
+    "perl",
+    "ruby",
+    "swift",
+    "scala",
+    "powershell",
+    "ps1",
+    "kotlin",
+    "dart",
+    "lua",
+    "r",
+    "matlab",
+    "octave",
+    "haskell",
+    "clojure",
+    "erlang",
+    "elixir",
+    "f#",
+    "fsharp",
+    "vb.net",
+    "vbnet",
+    "objective-c",
+    "objc",
+    "assembly",
+    "asm",
+    "fortran",
+    "cobol",
+    "pascal",
+    "delphi",
+}
+
 # Code fence markers for markdown-style code blocks
 CODE_FENCES = ("```", "~~~")
 
@@ -137,6 +184,7 @@ __all__ = [
     "MAX_CONCURRENT_CONNECTIONS",
     "SCREEN_PREFIX_MAX_CHARS",
     "SAFE_LEXER_NAMES",
+    "CODE_LEXER_KEYWORDS",
     "CODE_FENCES",
     "CODE_DETECTION_MIN_LENGTH",
 ]

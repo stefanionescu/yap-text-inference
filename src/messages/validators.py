@@ -14,6 +14,7 @@ except Exception:  # pragma: no cover - pygments is optional
 from ..config import (
     CODE_DETECTION_MIN_LENGTH,
     CODE_FENCES,
+    CODE_LEXER_KEYWORDS,
     PERSONALITY_MAX_LEN,
     SAFE_LEXER_NAMES,
     SCREEN_PREFIX_MAX_CHARS,
@@ -102,8 +103,18 @@ def _looks_like_code_block(text: str) -> bool:
     try:
         lexer = guess_lexer(text)
         lexer_name = getattr(lexer, "name", "").lower()
-        # If Pygments detected a lexer that's NOT in our safe list, it's code
-        return lexer_name not in SAFE_LEXER_NAMES
+        aliases = {alias.lower() for alias in getattr(lexer, "aliases", [])}
+        all_names = {lexer_name, *aliases}
+        
+        # If it's in our safe list, it's definitely not code
+        if any(name in SAFE_LEXER_NAMES for name in all_names):
+            return False
+        
+        # Only flag as code if Pygments detected an actual programming language
+        # Check if any lexer name/alias contains programming language keywords
+        return any(
+            keyword in name for name in all_names for keyword in CODE_LEXER_KEYWORDS
+        )
     except ClassNotFound:
         # Pygments couldn't detect a language, assume it's not code
         return False
