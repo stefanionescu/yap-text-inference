@@ -75,6 +75,29 @@ except ValueError as exc:
         f"MAX_CONCURRENT_CONNECTIONS must be an integer, got '{_max_concurrent_raw}'."
     ) from exc
 
+# Screen prefix validation
+SCREEN_PREFIX_MAX_CHARS = int(os.getenv("SCREEN_PREFIX_MAX_CHARS", "30"))
+
+# Code detection configuration (for Pygments-based validation)
+# Lexers that Pygments considers "safe" (not executable code)
+SAFE_LEXER_NAMES = {
+    "text",
+    "plain text",
+    "markdown",
+    "restructuredtext",
+    "rst",
+    "ini",
+    "json",
+    "yaml",
+    "toml",
+}
+
+# Code fence markers for markdown-style code blocks
+CODE_FENCES = ("```", "~~~")
+
+# Minimum text length for code detection (skip very short text)
+CODE_DETECTION_MIN_LENGTH = int(os.getenv("CODE_DETECTION_MIN_LENGTH", "10"))
+
 
 __all__ = [
     "CHAT_MAX_LEN",
@@ -112,4 +135,8 @@ __all__ = [
     "EXACT_TOKEN_TRIM",
     "CONCURRENT_MODEL_CALL",
     "MAX_CONCURRENT_CONNECTIONS",
+    "SCREEN_PREFIX_MAX_CHARS",
+    "SAFE_LEXER_NAMES",
+    "CODE_FENCES",
+    "CODE_DETECTION_MIN_LENGTH",
 ]
