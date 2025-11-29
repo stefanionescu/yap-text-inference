@@ -158,7 +158,6 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         sampling_params=params,
         request_id=req_id,
         priority=WARM_REQUEST_PRIORITY,
-        use_prefix_cache=True,
     )
     async for _ in stream:
         break
