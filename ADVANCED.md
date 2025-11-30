@@ -18,14 +18,12 @@ This document covers advanced operations, configuration, and deep-dive details.
   - [Barge-In and Cancellation](#barge-in-and-cancellation)
 - [Quantization Notes](#quantization-notes)
   - [Pushing AWQ Exports to Hugging Face](#pushing-awq-exports-to-hugging-face)
-- [Server Status and Capacity](#server-status-and-capacity)
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
 
 ## Authentication Coverage
 
 - `/healthz` – No authentication required
-- `/status` – Requires API key
 - `/ws` – Requires API key
 
 ## Log Rotation
@@ -276,41 +274,6 @@ bash scripts/restart.sh tool --push-awq --tool-model <model> --tool-quant awq
 ```
 
 The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.
-
-## Server Status and Capacity
-
-```bash
-# With API key (required)
-curl -H "X-API-Key: your_api_key" http://127.0.0.1:8000/status
-
-# Via query parameter
-curl "http://127.0.0.1:8000/status?api_key=your_api_key"
-```
-
-Typical response:
-
-```json
-{
-  "status": "running",
-  "healthy": true,
-  "connections": {
-    "active": 4,
-    "max": 24,
-    "available": 20,
-    "at_capacity": false
-  }
-}
-```
-
-Field notes:
-- `status`: `"running"` whenever the FastAPI process is alive and engines are preloaded.
-- `healthy`: flips to `false` only when you have zero spare connection slots (mirrors `at_capacity`).
-- `connections.active`: live WebSocket sessions currently admitted.
-- `connections.max`: value of `MAX_CONCURRENT_CONNECTIONS`.
-- `connections.available`: spare slots before the server starts rejecting new clients.
-- `connections.at_capacity`: `true` when `active >= max`; matches the `extra.capacity` payload returned by the WebSocket rejection path.
-
-Use this endpoint for dashboards/alerts instead of `/healthz` whenever you need to track saturation.
 
 ## Test Clients
 
