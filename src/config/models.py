@@ -85,6 +85,8 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "Qwen/Qwen2.5-7B-Instruct-AWQ", # BEST TOOL MODEL FOR NOW
     "Qwen/Qwen3-4B-AWQ",
     "cpatonn/Qwen3-4B-Instruct-2507-AWQ-4bit",
+
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
 ]
 
 
