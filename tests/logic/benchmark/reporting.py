@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Iterable
 
 
 def percentile(values: list[float], frac: float, minus_one: bool = False) -> float:
@@ -24,31 +24,28 @@ def _is_capacity_error(message: str | None) -> bool:
     return "server_at_capacity" in msg or "1013" in msg
 
 
-def print_report(url: str, requests: int, concurrency: int, results: list[dict[str, Any]]) -> None:
+def print_report(
+    url: str,
+    requests: int,
+    concurrency: int,
+    results: list[dict[str, Any]],
+    *,
+    double_ttfb: bool = False,
+) -> None:
     ok = [r for r in results if r.get("ok")]
     errs = [r for r in results if not r.get("ok")]
-    tool_ttfb = [r["ttfb_toolcall_ms"] for r in ok if r.get("ttfb_toolcall_ms") is not None]
-    chat_ttfb = [r["ttfb_chat_ms"] for r in ok if r.get("ttfb_chat_ms") is not None]
-    first_sentence = [r["first_sentence_ms"] for r in ok if r.get("first_sentence_ms") is not None]
-    first_3_words = [r["first_3_words_ms"] for r in ok if r.get("first_3_words_ms") is not None]
+    total_transactions = len(results)
 
-    print(f"url={url} total={requests} conc={concurrency} ok={len(ok)} err={len(errs)}")
-    if tool_ttfb:
-        p50 = percentile(tool_ttfb, 0.5)
-        p95 = percentile(tool_ttfb, 0.95, minus_one=True)
-        print(f"toolcall_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
-    if chat_ttfb:
-        p50 = percentile(chat_ttfb, 0.5)
-        p95 = percentile(chat_ttfb, 0.95, minus_one=True)
-        print(f"chat_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
-    if first_sentence:
-        p50 = percentile(first_sentence, 0.5)
-        p95 = percentile(first_sentence, 0.95, minus_one=True)
-        print(f"first_sentence_ms p50={p50:.1f} p95={p95:.1f}")
-    if first_3_words:
-        p50 = percentile(first_3_words, 0.5)
-        p95 = percentile(first_3_words, 0.95, minus_one=True)
-        print(f"first_3_words_ms p50={p50:.1f} p95={p95:.1f}")
+    if not double_ttfb:
+        print(f"url={url} total={requests} conc={concurrency} ok={len(ok)} err={len(errs)}")
+        _print_latency_section(ok)
+    else:
+        print(
+            f"url={url} connections={requests} transactions={total_transactions} "
+            f"conc={concurrency} ok={len(ok)} err={len(errs)}"
+        )
+        _print_tagged_section("first", [r for r in results if r.get("phase") == 1])
+        _print_tagged_section("second", [r for r in results if r.get("phase") == 2])
 
     if errs:
         e = errs[0]
@@ -73,5 +70,38 @@ def print_report(url: str, requests: int, concurrency: int, results: list[dict[s
                 "Observation: The server refused extra sessions once concurrency hit its limit. "
                 "Lower --concurrency or add capacity if this is unexpected."
             )
+
+
+def _print_tagged_section(tag: str, results: list[dict[str, Any]]) -> None:
+    ok = [r for r in results if r.get("ok")]
+    if not ok:
+        return
+    prefix = f"[{tag}] "
+    _print_latency_section(ok, prefix=prefix)
+
+
+def _print_latency_section(ok_results: Iterable[dict[str, Any]], prefix: str = "") -> None:
+    ok_list = list(ok_results)
+    tool_ttfb = [r["ttfb_toolcall_ms"] for r in ok_list if r.get("ttfb_toolcall_ms") is not None]
+    chat_ttfb = [r["ttfb_chat_ms"] for r in ok_list if r.get("ttfb_chat_ms") is not None]
+    first_sentence = [r["first_sentence_ms"] for r in ok_list if r.get("first_sentence_ms") is not None]
+    first_3_words = [r["first_3_words_ms"] for r in ok_list if r.get("first_3_words_ms") is not None]
+
+    if tool_ttfb:
+        p50 = percentile(tool_ttfb, 0.5)
+        p95 = percentile(tool_ttfb, 0.95, minus_one=True)
+        print(f"{prefix}toolcall_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
+    if chat_ttfb:
+        p50 = percentile(chat_ttfb, 0.5)
+        p95 = percentile(chat_ttfb, 0.95, minus_one=True)
+        print(f"{prefix}chat_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
+    if first_sentence:
+        p50 = percentile(first_sentence, 0.5)
+        p95 = percentile(first_sentence, 0.95, minus_one=True)
+        print(f"{prefix}first_sentence_ms p50={p50:.1f} p95={p95:.1f}")
+    if first_3_words:
+        p50 = percentile(first_3_words, 0.5)
+        p95 = percentile(first_3_words, 0.95, minus_one=True)
+        print(f"{prefix}first_3_words_ms p50={p50:.1f} p95={p95:.1f}")
 
 

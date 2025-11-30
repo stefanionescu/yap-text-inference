@@ -400,8 +400,8 @@ Reports p50/p95 latencies while hammering the WebSocket endpoint with concurrent
 
 ## Persona and History Behavior
 
-- Chat prompts are rendered in ChatML, Mistral Instruct (mistral-common V7 template), or Llama-3 Instruct format based on the selected chat model (see `src/config/chat_prompt.py`)
-- Prefix caching reuses any repeated spans within the process. If you swap persona but keep the history bytes identical, history KV stays hot.
+- Chat prompts are rendered using each model's own tokenizer
+- Prefix caching reuses any repeated history/prompts within the process. If you swap a companion's system prompt, history KV stays hot.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
 
 ## GPU Memory Fractions
