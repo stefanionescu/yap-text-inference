@@ -347,6 +347,33 @@ async def _run_user_turn(
     )
 
 
+def _coerce_missing_tool_result(turn: TurnResult, expected: bool | None) -> TurnResult:
+    """
+    When a case explicitly expects no tool call, treat missing tool output as success.
+
+    Some setups avoid tool-calling altogether, so the server never emits a
+    ``toolcall`` frame. Historically we flagged that as a failure, but for these cases
+    the absence of tool output is the desired outcome. Coerce such turns into a
+    synthetic "no" decision so the rest of the pipeline treats them as successes.
+    """
+
+    if (
+        expected is False
+        and not turn.ok
+        and turn.reason in {"no_tool_response", "chat_only"}
+    ):
+        return TurnResult(
+            ok=True,
+            tool_called=False,
+            tool_status="no",
+            tool_raw=turn.tool_raw if turn.tool_raw is not None else [],
+            chat_seen=turn.chat_seen,
+            ttfb_s=turn.ttfb_s,
+            total_s=turn.total_s,
+        )
+    return turn
+
+
 async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
     history: list[CaseStep] = []
     user_turn_index = 0
@@ -372,6 +399,8 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
             raise ValueError("RunnerConfig must include chat_prompt and/or tool_prompt")
 
         turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
+        expected = step.expect_tool
+        turn = _coerce_missing_tool_result(turn, expected)
         history.append(step)
         turn_raws.append(turn.tool_raw)
         step_timings.append(
@@ -390,7 +419,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 reason=turn.reason or "unknown",
                 detail=detail,
                 failing_step=user_turn_index,
-                expected=step.expect_tool,
+                expected=expected,
                 actual=turn.tool_called,
                 responses=list(turn_raws),
                 step_timings=list(step_timings),
@@ -411,7 +440,6 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
             )
 
         actual = turn.tool_called
-        expected = step.expect_tool
         if expected is None:
             continue
         if actual != expected:
