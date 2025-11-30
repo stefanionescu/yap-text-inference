@@ -477,7 +477,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv(
         "MAX_NUM_BATCHED_TOKENS_CHAT" if is_chat else "MAX_NUM_BATCHED_TOKENS_TOOL",
-        "512" if is_chat else "256",
+        "384" if is_chat else "416",
     ))
 
     # Normalize/validate KV cache dtype
