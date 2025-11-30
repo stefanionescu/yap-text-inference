@@ -85,8 +85,10 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "Qwen/Qwen2.5-7B-Instruct-AWQ", # BEST TOOL MODEL FOR NOW
     "Qwen/Qwen3-4B-AWQ",
     "cpatonn/Qwen3-4B-Instruct-2507-AWQ-4bit",
+]
 
-    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
+ALLOWED_DUAL_MODELS: list[str] = [
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit"
 ]
 
 
@@ -121,6 +123,7 @@ def is_valid_model(model: str, allowed_models: list, model_type: str) -> bool:
 __all__ = [
     "ALLOWED_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
+    "ALLOWED_DUAL_MODELS",
     "_is_local_model_path",
     "is_valid_model",
     "classify_prequantized_model",

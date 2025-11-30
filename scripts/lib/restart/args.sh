@@ -10,13 +10,14 @@ restart_parse_args() {
   RECONFIG_DEPLOY_MODE="${RECONFIG_DEPLOY_MODE:-}"
   RECONFIG_CHAT_MODEL="${RECONFIG_CHAT_MODEL:-}"
   RECONFIG_TOOL_MODEL="${RECONFIG_TOOL_MODEL:-}"
+  RECONFIG_DUAL_MODEL="${RECONFIG_DUAL_MODEL:-}"
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
   RECONFIG_TOOL_QUANTIZATION="${RECONFIG_TOOL_QUANTIZATION:-}"
   HF_AWQ_PUSH=0
 
   while [ $# -gt 0 ]; do
     case "$1" in
-      both|chat|tool)
+      both|chat|tool|dual)
         if [ -z "${DEPLOY_MODE}" ]; then DEPLOY_MODE="$1"; fi
         if [ -z "${RECONFIG_DEPLOY_MODE}" ]; then RECONFIG_DEPLOY_MODE="$1"; fi
         shift
@@ -73,6 +74,15 @@ restart_parse_args() {
         RECONFIG_TOOL_MODEL="${1#*=}"
         shift
         ;;
+      --dual-model)
+        if [ -z "${2:-}" ]; then return 2; fi
+        RECONFIG_DUAL_MODEL="$2"
+        shift 2
+        ;;
+      --dual-model=*)
+        RECONFIG_DUAL_MODEL="${1#*=}"
+        shift
+        ;;
       --tool-quant)
         if [ -z "${2:-}" ]; then return 2; fi
         RECONFIG_TOOL_QUANTIZATION="$2"
@@ -102,7 +112,7 @@ restart_parse_args() {
   DEPLOY_MODE="${DEPLOY_MODE:-both}"
   export INSTALL_DEPS DEPLOY_MODE
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE
-  export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
+  export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL RECONFIG_DUAL_MODEL
   export RECONFIG_CHAT_QUANTIZATION RECONFIG_TOOL_QUANTIZATION
   export HF_AWQ_PUSH
   return 0

@@ -234,6 +234,7 @@ Notes for AWQ:
 - Pre-quantized models: Point `CHAT_MODEL` / `TOOL_MODEL` at pre-quantized AWQ or W4A16 repos; Yap skips quantization automatically
 - Smart detection: Any repo name containing `awq`, `w4a16`, `nvfp4`, `compressed-tensors`, or `autoround` is treated as 4-bit and run directly
 - The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency (local mode)
+- Dual deployments reuse the chat model for tool routing. Set `DEPLOY_MODELS=dual` (or run `scripts/main.sh dual <model>`) to export `DUAL_MODEL`, `CHAT_MODEL`, and `TOOL_MODEL` automatically; the AWQ pipeline skips the tool branch and reuses the chat artifact.
 - AWQ requires additional wheels (installed automatically via `requirements.txt`)
 - Qwen2/Qwen3 and Mistral 3 checkpoints automatically fall back to AutoAWQ 0.2.9 when quantized because llmcompressor cannot reliably trace their hybrid forward graphs yet. Metadata/readmes flag the backend so downstream consumers know whether AutoAWQ or llmcompressor produced the export.
 - Auth for private/gated repos: Set `HUGGINGFACE_HUB_TOKEN` or `HF_TOKEN`
@@ -246,8 +247,8 @@ Uploads only happen when you pass `--push-awq` to the launcher you’re using (`
 
 **Required whenever `--push-awq` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
-- `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat/both are deployed
-- `HF_AWQ_TOOL_REPO` pointing to your tool AWQ repo whenever tool/both are deployed
+- `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat/both/dual are deployed
+- `HF_AWQ_TOOL_REPO` pointing to your tool AWQ repo whenever tool/both are deployed (dual reuses the chat artifact, so no tool repo is needed)
 
 **Optional tuning (defaults shown below):**
 - `HF_AWQ_BRANCH` – upload branch (default `main`)
@@ -283,7 +284,7 @@ All CLI harnesses run against the same WebSocket stack; use them to validate beh
 > `both` (default) sends both `chat_prompt` and `tool_prompt`.  
 > `chat` sends only the persona/chat prompt, skipping the tool prompt.  
 > `tool` does the inverse.  
-> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. `scripts/warmup.sh` auto-detects `DEPLOY_MODELS` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
+> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. Dual deployments still run both prompts (default `both`). `scripts/warmup.sh` auto-detects `DEPLOY_MODELS` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
 
 ### Warmup Test Client
 
@@ -299,12 +300,12 @@ Append `--prompt-mode chat` or `--prompt-mode tool` to mirror single-engine depl
 Toggle concurrency by exporting the flag before launching the client:
 
 ```bash
-# Sequential test (override the concurrent default)
-CONCURRENT_MODEL_CALL=0 python3 tests/warmup.py "write a simple hello world function"
-
-# Re-enable concurrent mode (default pipeline)
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# Sequential test (default)
 python3 tests/warmup.py "write a simple hello world function"
+
+# Enable concurrent mode (override the sequential default)
+CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+CONCURRENT_MODEL_CALL=1 python3 tests/warmup.py "write a simple hello world function"
 ```
 
 Environment overrides honored by the client:
@@ -407,8 +408,8 @@ Reports p50/p95 latencies while hammering the WebSocket endpoint with concurrent
 
 GPU memory is allocated based on deployment mode:
 
-- Single model: 92% GPU memory (chat-only or tool-only)
-- Both models: Chat gets 71%, Tool gets 21%
+- Single model: 90% GPU memory (chat-only, tool-only, or dual)
+- Both models: Chat gets 70%, Tool gets 20%
 
 Override as needed:
 

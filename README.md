@@ -22,7 +22,7 @@ A vLLM text inference server optimized for dual model deployment. It can run:
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
-- Dual-engine architecture (chat + tool) with optional chat-only/tool-only modes and concurrent streaming to keep both models busy.
+- Dual-engine architecture (chat + tool) with optional chat-only/tool-only modes, plus a **dual** deployment that reuses one chat model for both tool routing and responses while preserving existing sequential/concurrent flows.
 - Tool-call-first detection: tool decisions fire before chat tokens, while chat still streams for every turn so UX never stalls.
 - Persona/history segmented prompts with prefix caching and FP8/INT8 KV reuse to keep latency low across restarts.
 - Integrated quantization pipeline (FP8 default, AWQ/GPTQ/W4A16 auto-detect, AutoAWQ fallbacks) plus configurable logit bias for banned phrases.
@@ -52,11 +52,19 @@ bash scripts/main.sh [awq] <chat_model> <tool_model> [deploy_mode]
 # Single-model forms (host scripts only; Docker always runs both)
 bash scripts/main.sh [awq] chat <chat_model>
 bash scripts/main.sh [awq] tool <tool_model>
+bash scripts/main.sh [awq] dual <model>
 
 # Behavior: Auto-detached deployment + log tailing
 # Ctrl+C stops tail only, deployment continues
 # Use scripts/stop.sh to stop deployment
 ```
+
+`DEPLOY_MODELS=dual` (or the `dual` CLI argument) tells the server to reuse one chat-capable model for both tool routing and chat responses. The CLI automatically exports `DUAL_MODEL=<model_id>` along with matching `CHAT_MODEL` / `TOOL_MODEL` env vars, but you can set them manually if you orchestrate deployments yourself.
+
+Default GPU allocation:
+- Chat + tool deployments reserve 70% for the chat engine and 20% for the tool router (override with `CHAT_GPU_FRAC` / `TOOL_GPU_FRAC`).
+- Single-engine modes (chat-only, tool-only, or dual) allocate 90% to the active engine.
+- Sequential execution is now the default. Set `CONCURRENT_MODEL_CALL=1` when you want tool routing and chat generation to run concurrently.
 
 Examples:
 ```bash
@@ -145,6 +153,9 @@ bash scripts/main.sh chat yapwithai/impish-12b-awq
 # Tool-only AWQ
 bash scripts/main.sh tool yapwithai/hammer-2.1-3b-awq
 
+# Dual AWQ (one model handles chat + tool)
+bash scripts/main.sh dual cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
+
 # AWQ with concurrent mode
 CONCURRENT_MODEL_CALL=1 \
 bash scripts/main.sh \
@@ -203,7 +214,7 @@ After initial deployment, you can use these commands to stop and/or restart the 
 NUKE_ALL=0 bash scripts/stop.sh
 
 # Quick restart using existing AWQ models
-bash scripts/restart.sh [both|chat|tool]
+bash scripts/restart.sh [both|chat|tool|dual]
 
 # Restart and reinstall dependencies (e.g., refresh venv)
 bash scripts/restart.sh both --install-deps
@@ -214,6 +225,10 @@ bash scripts/restart.sh --reset-models --deploy-mode both \
   --tool-model MadeAgents/Hammer2.1-3b \
   --chat-quant fp8 \
   --tool-quant awq
+
+# Dual-mode reset (one model handles chat + tool)
+bash scripts/restart.sh --reset-models --deploy-mode dual \
+  --dual-model cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
 
 # Auto-detect pre-quantized repos (AWQ/GPTQ) during reset
 bash scripts/restart.sh --reset-models --deploy-mode chat \

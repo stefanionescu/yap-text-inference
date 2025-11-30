@@ -22,6 +22,7 @@ from src.config import (
     CHAT_MODEL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
+    DEPLOY_DUAL,
     TOOL_GPU_FRAC,
     TOOL_MAX_LEN,
     TOOL_MODEL,
@@ -146,25 +147,31 @@ async def _clean_engine_caches(engine: AsyncLLMEngine) -> None:
             pass
 
 
-_ENGINE_REGISTRY = EngineRegistry(
-    configs=[
-        EngineRoleConfig(
-            role="chat",
-            enabled=DEPLOY_CHAT,
-            model=CHAT_MODEL,
-            gpu_frac=CHAT_GPU_FRAC,
-            max_len=CHAT_MAX_LEN,
-            is_chat=True,
-        ),
+_ENGINE_CONFIGS: list[EngineRoleConfig] = [
+    EngineRoleConfig(
+        role="chat",
+        enabled=DEPLOY_CHAT,
+        model=CHAT_MODEL,
+        gpu_frac=CHAT_GPU_FRAC,
+        max_len=CHAT_MAX_LEN,
+        is_chat=True,
+    ),
+]
+
+if DEPLOY_TOOL and not DEPLOY_DUAL:
+    _ENGINE_CONFIGS.append(
         EngineRoleConfig(
             role="tool",
-            enabled=DEPLOY_TOOL,
+            enabled=True,
             model=TOOL_MODEL,
             gpu_frac=TOOL_GPU_FRAC,
             max_len=TOOL_MAX_LEN,
             is_chat=False,
-        ),
-    ],
+        )
+    )
+
+_ENGINE_REGISTRY = EngineRegistry(
+    configs=_ENGINE_CONFIGS,
     cache_reset_interval=CACHE_RESET_INTERVAL_SECONDS,
 )
 
@@ -174,6 +181,8 @@ async def get_chat_engine() -> AsyncLLMEngine:
 
 
 async def get_tool_engine() -> AsyncLLMEngine:
+    if DEPLOY_DUAL:
+        return await get_chat_engine()
     return await _ENGINE_REGISTRY.get_engine("tool")
 
 

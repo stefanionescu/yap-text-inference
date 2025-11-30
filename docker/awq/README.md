@@ -55,8 +55,8 @@ TEXT_API_KEY=your_secret_key \
 DEPLOY_MODELS=both \
 CHAT_MODEL=your-org/chat-awq \
 TOOL_MODEL=your-org/tool-awq \
-CHAT_GPU_FRAC=0.71 \
-TOOL_GPU_FRAC=0.21 \
+CHAT_GPU_FRAC=0.70 \
+TOOL_GPU_FRAC=0.20 \
   docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY -e DEPLOY_MODELS \
   -e CHAT_MODEL -e TOOL_MODEL \
@@ -77,24 +77,32 @@ docker run -d --gpus all --name yap-tool \
   -e TOOL_MODEL=your-org/tool-awq \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:tool
+
+# Run (dual – reuse one model for chat + tool)
+docker run -d --gpus all --name yap-dual \
+  -e DEPLOY_MODELS=dual \
+  -e DUAL_MODEL=your-org/chat-awq \
+  -p 8000:8000 \
+  yourusername/yap-text-inference-awq:both
 ```
 
 ## Environment Variables
 
 ### Required
 - `TEXT_API_KEY` – API key handed to the server
-- `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
+- `DEPLOY_MODELS` – `both|chat|tool|dual` (default: `both`)
 - If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
 - If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/hammer-2.1-3b-awq`)
 - If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
+- If `DEPLOY_MODELS=dual`: `DUAL_MODEL` (or `CHAT_MODEL`) reused for chat + tool
 
 ### Optional
-- `CHAT_GPU_FRAC` (default: `0.71`)
-- `TOOL_GPU_FRAC` (default: `0.21`)
+- `CHAT_GPU_FRAC` (default: `0.70`)
+- `TOOL_GPU_FRAC` (default: `0.20`)
 
 Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports). Make sure `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` is set if you pull private repos.
 
-Note: This AWQ image now supports chat-only, tool-only, or both.
+Note: This AWQ image now supports chat-only, tool-only, dual (single model), or both.
 
 ## Build and Deploy
 
@@ -124,8 +132,8 @@ docker run -d --gpus all --name yap-server \
   -e CHAT_MODEL=your-org/chat-awq \
   -e TOOL_MODEL=your-org/tool-awq \
   -e TEXT_API_KEY=your_secret_key \
-  -e CHAT_GPU_FRAC=0.71 \
-  -e TOOL_GPU_FRAC=0.21 \
+  -e CHAT_GPU_FRAC=0.70 \
+  -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:latest
 

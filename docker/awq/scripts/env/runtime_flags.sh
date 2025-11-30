@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Concurrent model calling mode: 0=sequential, 1=concurrent (default: concurrent for Docker)
-export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-1}
+# Concurrent model calling mode: 0=sequential (default), 1=concurrent
+export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-0}
 
 

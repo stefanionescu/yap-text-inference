@@ -9,8 +9,10 @@ This module re-exports the config API from smaller modules:
 
 from .env import (
     DEPLOY_MODELS,
+    DEPLOY_DUAL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
+    DUAL_MODEL,
     CHAT_MODEL,
     TOOL_MODEL,
     CHAT_GPU_FRAC,
@@ -28,6 +30,7 @@ from .env import (
 from .models import (
     ALLOWED_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
+    ALLOWED_DUAL_MODELS,
     classify_prequantized_model,
     is_valid_model as _is_valid_model,
 )
@@ -115,13 +118,18 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
 
 
 # Validate models with the same logic as before, raising on invalid
-if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALLOWED_CHAT_MODELS, "chat"):
-    if not _allow_prequantized_override(CHAT_MODEL, "chat"):
-        raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
+if DEPLOY_DUAL:
+    if not _is_valid_model(DUAL_MODEL, ALLOWED_DUAL_MODELS, "dual"):
+        if not _allow_prequantized_override(DUAL_MODEL, "chat"):
+            raise ValueError(f"DUAL_MODEL must be one of: {ALLOWED_DUAL_MODELS}, got: {DUAL_MODEL}")
+else:
+    if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALLOWED_CHAT_MODELS, "chat"):
+        if not _allow_prequantized_override(CHAT_MODEL, "chat"):
+            raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
 
-if DEPLOY_TOOL and not _is_valid_model(TOOL_MODEL, ALLOWED_TOOL_MODELS, "tool"):
-    if not _allow_prequantized_override(TOOL_MODEL, "tool"):
-        raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
+    if DEPLOY_TOOL and not _is_valid_model(TOOL_MODEL, ALLOWED_TOOL_MODELS, "tool"):
+        if not _allow_prequantized_override(TOOL_MODEL, "tool"):
+            raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
 
 # Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
 if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
@@ -134,8 +142,10 @@ if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
 __all__ = [
     # env/core
     "DEPLOY_MODELS",
+    "DEPLOY_DUAL",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
+    "DUAL_MODEL",
     "CHAT_MODEL",
     "TOOL_MODEL",
     "CHAT_GPU_FRAC",
@@ -153,6 +163,7 @@ __all__ = [
     # models/validation
     "ALLOWED_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
+    "ALLOWED_DUAL_MODELS",
     # limits
     "CHAT_MAX_LEN",
     "CHAT_MAX_OUT",
