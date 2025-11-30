@@ -25,8 +25,8 @@ apply_quantization_defaults() {
             export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
           fi
           export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-384}
-          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-416}
+          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-320}
+          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
           export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
           export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-500}
           export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-0.5}
@@ -39,8 +39,8 @@ apply_quantization_defaults() {
           export VLLM_ATTENTION_BACKEND=XFORMERS
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
           export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-384}
-          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-416}
+          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-320}
+          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
           export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
           export CUDA_DEVICE_MAX_CONNECTIONS=1
           export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-500}
@@ -70,8 +70,8 @@ apply_quantization_defaults() {
             export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
           fi
           export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-384}
-          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-416}
+          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-320}
+          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
           export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
           ;;
         *A100*)
@@ -86,8 +86,8 @@ apply_quantization_defaults() {
           fi
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
           export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-384}
-          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-416}
+          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-320}
+          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
           export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
           export CUDA_DEVICE_MAX_CONNECTIONS=1
           ;;
