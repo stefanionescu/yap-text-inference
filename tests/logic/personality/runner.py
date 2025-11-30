@@ -14,6 +14,7 @@ if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
 from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.ttfb import TTFBAggregator
 from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
@@ -42,10 +43,16 @@ async def run_test(
 ) -> None:
     """Run the personality switch test."""
     url = with_api_key(ws_url, api_key=api_key)
+    ttfb_aggregator = TTFBAggregator()
     session = _build_session(sampling, tool_prompt)
+    session.ttfb_aggregator = ttfb_aggregator
     variants = _load_variants()
     message_pacer, persona_pacer = _build_pacers()
-    await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
+    try:
+        await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
+    finally:
+        if ttfb_aggregator.has_samples():
+            ttfb_aggregator.emit(print, label="Personality TTFB")
 
 
 def _build_session(

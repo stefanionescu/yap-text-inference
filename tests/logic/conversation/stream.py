@@ -16,21 +16,34 @@ from tests.helpers.stream import StreamTracker  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-async def stream_exchange(ws, tracker: StreamTracker, recv_timeout: float, exchange_idx: int) -> str:
+async def stream_exchange(
+    ws,
+    tracker: StreamTracker,
+    recv_timeout: float,
+    exchange_idx: int,
+) -> tuple[str, dict[str, Any]]:
     handlers = _build_exchange_handlers(tracker, exchange_idx)
     done_seen = False
+    done_payload: dict[str, Any] | None = None
     async for msg in iter_messages(ws, timeout=recv_timeout):
         should_continue = await dispatch_message(
             msg,
             handlers,
             default=lambda payload: _log_unknown_exchange_message(payload, exchange_idx),
         )
+        if isinstance(should_continue, dict) and should_continue.get("_done"):
+            done_payload = should_continue
+            done_seen = True
+            break
         if should_continue is False:
             done_seen = True
             break
     if not done_seen:
         raise RuntimeError("WebSocket closed before receiving 'done'")
-    return tracker.final_text
+    metrics = done_payload.get("metrics") if done_payload else None
+    if metrics is None:
+        metrics = tracker.finalize_metrics(cancelled=False)
+    return tracker.final_text, metrics
 
 
 def _build_exchange_handlers(tracker: StreamTracker, exchange_idx: int) -> dict[str, Callable[[dict[str, Any]], Awaitable[bool | None] | bool | None]]:
@@ -100,7 +113,7 @@ def _handle_done(msg: dict[str, Any], tracker: StreamTracker, exchange_idx: int)
         exchange_idx,
         json.dumps(metrics, ensure_ascii=False),
     )
-    return False
+    return {"_done": True, "metrics": metrics}
 
 
 def _handle_error(msg: dict[str, Any]) -> None:
