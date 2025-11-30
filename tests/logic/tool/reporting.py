@@ -47,7 +47,13 @@ def _print_case_block(title: str, results: Sequence[CaseResult]) -> None:
     print(title)
     for result in results:
         print(_format_case_summary(result))
-        if not result.success and result.detail:
+        failures = result.failures or []
+        if failures:
+            for idx, failure in enumerate(failures, start=1):
+                label = "failure" if len(failures) == 1 else f"failure[{idx}]"
+                detail = failure.detail or failure.reason
+                print(f"        {label}: {detail}")
+        elif not result.success and result.detail:
             print(f"        {result.detail}")
         for line in _iter_response_lines(result):
             print(line)

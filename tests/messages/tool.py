@@ -106,6 +106,7 @@ TOOL_DEFAULT_MESSAGES = [
     ("Jesus Christ I saw a hot girl with a giant ass past me on the street", False),
     ("fat, juicy and wet", False),
     ("what do you think about Goggins?", False),
+    ("what do you think about this?", True),
     ("how should I continue this message to a guy: 'hey nice try but I'm not interested'", False),
     ("what's chemistry?", False),
     ("think I got cancer...fuck", False),
@@ -179,7 +180,7 @@ TOOL_DEFAULT_MESSAGES = [
         ("So cool!", True),
         ("This is sick!", True),
         ("Wow", False),
-        ("Crazy stuff.", True),
+        ("Crazy stuff.", False),
     ]),
     ("context_switch", [
         ("I'm wondering if blue goes well with yellow.", False),
@@ -312,7 +313,7 @@ TOOL_DEFAULT_MESSAGES = [
     ]),
     ("sports_game_then_clip", [
         ("Did you catch last night's game?", False),
-        ("this play was wild", False),
+        ("this play was wild", True),
         ("see this video", True),
     ]),
 ]
