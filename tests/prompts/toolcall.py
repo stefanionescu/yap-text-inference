@@ -47,16 +47,18 @@ OPTIONAL PHRASE SIGNAL:
   - If [PHRASE SIGNAL] says detected=true and multiple=false, it reinforces calling the tool unless STEP 0 applied.
   - If multiple=true or quantity>1, return []."""
 
-GENERALIZABLE = """You must output exactly one of the following JSON arrays and nothing else.
+GENERALIZABLE = """You must output exactly one of the following JSON arrays and nothing else:
+[{"name": "take_screenshot"}]
+[]
+
 Return only the array. Never add prose, explanations, or code fences.
-1. [{"name": "take_screenshot"}]
-2. []
 
 Process (apply to the latest user message m plus the provided short context):
 
 STEP 0 - IMMEDIATE REJECT (wins over everything):
   - Any wording that asks for MORE THAN ONE screenshot/peek (numbers >1, "twice", "x2", "again", "double", "multiple", "many", "several", "tons", "loads", "a bunch", "keep", "continue", "forever", "infinite") near a visual verb or media noun -> []
   - "One screenshot" or unstated quantity is fine, but the instant they imply >1 you must return []
+  - The message starts with 'ON THE SCREEN NOW:' -> []
   - Requests to silently observe ("watch quietly", "shut up and watch", "see my screen silently") -> []
   - Purely past/future/hypothetical or capability talk with no present intent to show something ("I just saw...", "I'll show you later", "can I show you something?", "what can you do?") -> []
   - Non-visual small talk or unrelated topics stay [].

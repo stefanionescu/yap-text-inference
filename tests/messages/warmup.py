@@ -15,19 +15,19 @@ WARMUP_DEFAULT_MESSAGES = [
     "who was Alexander Hamilton?",
     "life sucks in Lewisham, fuck this",
     (
-        "FREESTYLE MODE: A gorgeous brunette in a tight white tee smirks "
+        "ON THE SCREEN NOW: A gorgeous brunette in a tight white tee smirks "
         "confidently from the driver’s seat, flaunting her curves and teasing "
         "with bold energy."
     ),
     (
-        "FREESTYLE MODE: A woman dressed in white is squatting confidently on a "
+        "ON THE SCREEN NOW: A woman dressed in white is squatting confidently on a "
         "Jenga tower placed on a patio table, wearing heels and sunglasses."
     ),
     "which apps do you work best with?",
     "damn I wanna fap to a goat",
-    "FREESTYLE MODE: Big ass girl in doggy-style waiting to be rammed by massive black cock",
+    "ON THE SCREEN NOW: Big ass girl in doggy-style waiting to be rammed by massive black cock",
     (
-        "FREESTYLE MODE: A stunning woman in a matching blue workout set poses "
+        "ON THE SCREEN NOW: A stunning woman in a matching blue workout set poses "
         "confidently on a rooftop, showing off her toned glutes and slim waist."
     ),
     "thinking of leaving my boyfriend with a text message",

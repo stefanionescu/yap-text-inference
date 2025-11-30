@@ -322,6 +322,8 @@ RECV_TIMEOUT_SEC=120 \
 python3 tests/warmup.py --gender female --personality savage "hey there"
 ```
 
+To compare cold vs warm responses on the exact same connection, append `--double-ttfb`. The client will send two identical `start` messages back-to-back, tagging every log/metric with `phase=first|second` so you can spot caching effects without launching separate runs.
+
 ### Interactive Live Client
 
 ```bash
@@ -397,6 +399,8 @@ python3 tests/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
 Reports p50/p95 latencies while hammering the WebSocket endpoint with concurrent sessions.
+
+Pass `--double-ttfb` to keep each connection open for two sequential transactions. The report prints separate percentile tables (`[first]`, `[second]`) so you can contrast first-token latency for cold vs warm sessions without running the suite twice.
 
 ## Persona and History Behavior
 
