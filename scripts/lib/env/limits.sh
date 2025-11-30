@@ -7,8 +7,8 @@ apply_limits_and_timeouts() {
   export CHAT_MAX_LEN=${CHAT_MAX_LEN:-4425}
   export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
   export TOOL_MAX_OUT=${TOOL_MAX_OUT:-25}
-  # Tool model max context length (Toolcall). 2650 allows for 1400 system + 900 history tokens + 350 user
-  export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2650}
+  # Tool model max context length (Toolcall). 3050 allows for 1800 system + 900 history tokens + 350 user
+  export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3050}
 
   # GPU memory fractions (weights + KV). Use fractions only.
   # Adjust based on deployment mode: single model gets 90%, both models split memory
@@ -36,7 +36,7 @@ apply_limits_and_timeouts() {
 
   # Tool model specific token limits
   export TOOL_HISTORY_TOKENS=${TOOL_HISTORY_TOKENS:-900}  # Tool model context allocation
-  export TOOL_PROMPT_MAX_TOKENS=${TOOL_PROMPT_MAX_TOKENS:-1400}   # System prompt + response space
+  export TOOL_PROMPT_MAX_TOKENS=${TOOL_PROMPT_MAX_TOKENS:-1800}   # System prompt + response space
 
   # Prefill batching overrides
   export MAX_NUM_SEQS_CHAT=${MAX_NUM_SEQS_CHAT:-32}
