@@ -72,6 +72,11 @@ def _parse_args() -> argparse.Namespace:
         dest="style",
         help="deprecated alias for --personality (kept for backward compatibility)",
     )
+    parser.add_argument(
+        "--double-ttfb",
+        action="store_true",
+        help="send two sequential start messages over one connection and log metrics per transaction",
+    )
     args = parser.parse_args()
     if not getattr(args, "personality", None) and getattr(args, "style", None):
         args.personality = args.style

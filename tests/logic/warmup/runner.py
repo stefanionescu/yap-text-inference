@@ -52,6 +52,7 @@ async def run_once(args) -> None:
     personality = args.personality or personality_env or DEFAULT_PERSONALITY
     sampling_overrides = getattr(args, "sampling", None) or None
     prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
+    double_ttfb = bool(getattr(args, "double_ttfb", False))
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
     user_msg = choose_message(
@@ -59,18 +60,8 @@ async def run_once(args) -> None:
         fallback=WARMUP_FALLBACK_MESSAGE,
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
-    session_id = str(uuid.uuid4())
     chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
     tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode) else None
-    start_payload = _build_start_payload(
-        session_id,
-        gender,
-        personality,
-        chat_prompt,
-        tool_prompt,
-        user_msg,
-        sampling_overrides,
-    )
 
     logger.info("Connecting to %s (with API key auth)", server_ws_url)
     async with connect_with_retries(
@@ -81,11 +72,26 @@ async def run_once(args) -> None:
             ping_timeout=DEFAULT_WS_PING_TIMEOUT,
         )
     ) as ws:
-        tracker = StreamTracker()
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
+        num_transactions = 2 if double_ttfb else 1
         try:
-            await ws.send(json.dumps(start_payload))
-            await _stream_session(ws, tracker, recv_timeout, api_key)
+            for idx in range(num_transactions):
+                phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
+                tracker = StreamTracker()
+                session_id = str(uuid.uuid4())
+                start_payload = _build_start_payload(
+                    session_id,
+                    gender,
+                    personality,
+                    chat_prompt,
+                    tool_prompt,
+                    user_msg,
+                    sampling_overrides,
+                )
+                if double_ttfb:
+                    logger.info("%sSending start message for %s transaction", _phase_prefix(phase_label), phase_label)
+                await ws.send(json.dumps(start_payload))
+                await _stream_session(ws, tracker, recv_timeout, api_key, phase_label if double_ttfb else None)
         finally:
             await send_client_end(ws)
 
@@ -118,15 +124,21 @@ def _build_start_payload(
     return payload
 
 
-async def _stream_session(ws, tracker: StreamTracker, recv_timeout: float, api_key: str) -> None:
-    handlers = _build_stream_handlers(tracker, api_key)
+async def _stream_session(
+    ws,
+    tracker: StreamTracker,
+    recv_timeout: float,
+    api_key: str,
+    phase_label: str | None = None,
+) -> None:
+    handlers = _build_stream_handlers(tracker, api_key, phase_label)
     done_seen = False
     try:
         async for msg in iter_messages(ws, timeout=recv_timeout):
             should_continue = await dispatch_message(
                 msg,
                 handlers,
-                default=_log_unknown_message,
+                default=lambda payload: _log_unknown_message(payload, phase_label),
             )
             if should_continue is False:
                 done_seen = True
@@ -141,79 +153,86 @@ async def _stream_session(ws, tracker: StreamTracker, recv_timeout: float, api_k
         logger.warning("stream terminated before receiving 'done'")
 
 
-def _build_stream_handlers(tracker: StreamTracker, api_key: str):
+def _build_stream_handlers(tracker: StreamTracker, api_key: str, phase_label: str | None):
     return {
-        "ack": lambda msg: _handle_ack(msg, tracker),
-        "toolcall": lambda msg: (_handle_toolcall(msg, tracker) or True),
-        "token": lambda msg: (_handle_token(msg, tracker) or True),
-        "final": lambda msg: (_handle_final(msg, tracker) or True),
-        "done": lambda msg: _handle_done(msg, tracker),
-        "error": lambda msg: _handle_error(msg, api_key),
+        "ack": lambda msg: _handle_ack(msg, tracker, phase_label),
+        "toolcall": lambda msg: (_handle_toolcall(msg, tracker, phase_label) or True),
+        "token": lambda msg: (_handle_token(msg, tracker, phase_label) or True),
+        "final": lambda msg: (_handle_final(msg, tracker, phase_label) or True),
+        "done": lambda msg: _handle_done(msg, tracker, phase_label),
+        "error": lambda msg: _handle_error(msg, api_key, phase_label),
     }
 
 
-def _log_unknown_message(msg: dict[str, Any]) -> bool:
-    logger.debug("Ignoring message type=%s payload=%s", msg.get("type"), msg)
+def _log_unknown_message(msg: dict[str, Any], phase_label: str | None) -> bool:
+    logger.debug("%sIgnoring message type=%s payload=%s", _phase_prefix(phase_label), msg.get("type"), msg)
     return True
 
 
-def _handle_ack(msg: dict[str, Any], tracker: StreamTracker) -> bool:
+def _handle_ack(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> bool:
     ack_for = msg.get("for")
     if ack_for == "start":
         tracker.ack_seen = True
         now = msg.get("now")
         gender = msg.get("gender")
         persona = msg.get("personality")
-        logger.info("ACK start → now='%s' gender=%s personality=%s", now, gender, persona)
+        logger.info("%sACK start → now='%s' gender=%s personality=%s", _phase_prefix(phase_label), now, gender, persona)
     elif ack_for == "set_persona":
-        logger.info("ACK set_persona → %s", json.dumps(msg, ensure_ascii=False))
+        logger.info("%sACK set_persona → %s", _phase_prefix(phase_label), json.dumps(msg, ensure_ascii=False))
     return True
 
 
-def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
     status = msg.get("status")
-    logger.info("TOOLCALL status=%s raw=%s", status, msg.get("raw"))
+    logger.info("%sTOOLCALL status=%s raw=%s", _phase_prefix(phase_label), status, msg.get("raw"))
     ttfb_ms = tracker.record_toolcall()
     if ttfb_ms is not None:
-        logger.info("TOOLCALL ttfb_ms=%.2f", ttfb_ms)
+        logger.info("%sTOOLCALL ttfb_ms=%.2f", _phase_prefix(phase_label), ttfb_ms)
 
 
-def _handle_token(msg: dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_token(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
     chunk = msg.get("text", "")
     metrics = tracker.record_token(chunk)
     chat_ttfb = metrics.get("chat_ttfb_ms")
     if chat_ttfb is not None:
-        logger.info("CHAT ttfb_ms=%.2f", chat_ttfb)
+        logger.info("%sCHAT ttfb_ms=%.2f", _phase_prefix(phase_label), chat_ttfb)
     first_3 = metrics.get("time_to_first_3_words_ms")
     if first_3 is not None:
-        logger.info("CHAT time_to_first_3_words_ms=%.2f", first_3)
+        logger.info("%sCHAT time_to_first_3_words_ms=%.2f", _phase_prefix(phase_label), first_3)
     first_sentence = metrics.get("time_to_first_complete_sentence_ms")
     if first_sentence is not None:
-        logger.info("CHAT time_to_first_complete_sentence_ms=%.2f", first_sentence)
+        logger.info("%sCHAT time_to_first_complete_sentence_ms=%.2f", _phase_prefix(phase_label), first_sentence)
 
 
-def _handle_final(msg: dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_final(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
     normalized = msg.get("normalized_text") or tracker.final_text
     if normalized:
         tracker.final_text = normalized
 
 
-def _handle_done(msg: dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_done(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
     cancelled = bool(msg.get("cancelled"))
     metrics_payload = {"type": "metrics", **tracker.finalize_metrics(cancelled)}
     final_text_payload = {"type": "final_text", "text": tracker.final_text}
+    if phase_label:
+        metrics_payload["phase"] = phase_label
+        final_text_payload["phase"] = phase_label
     logger.info(json.dumps(metrics_payload, ensure_ascii=False))
     logger.info(json.dumps(final_text_payload, ensure_ascii=False))
     return False
 
 
-def _handle_error(msg: dict[str, Any], api_key: str) -> None:
+def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) -> None:
     error_code = msg.get("error_code", "")
     error_message = msg.get("message", "unknown error")
-    logger.error("Server error %s: %s", error_code, error_message)
+    logger.error("%sServer error %s: %s", _phase_prefix(phase_label), error_code, error_message)
     if error_code == "authentication_failed":
-        logger.info("HINT: Check your TEXT_API_KEY environment variable (currently: '%s')", api_key)
+        logger.info("%sHINT: Check your TEXT_API_KEY environment variable (currently: '%s')", _phase_prefix(phase_label), api_key)
     elif error_code == "server_at_capacity":
-        logger.info("HINT: Server is at maximum connection capacity. Try again later.")
+        logger.info("%sHINT: Server is at maximum connection capacity. Try again later.", _phase_prefix(phase_label))
+
+
+def _phase_prefix(phase_label: str | None) -> str:
+    return f"[{phase_label}] " if phase_label else ""
 
 

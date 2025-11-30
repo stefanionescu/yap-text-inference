@@ -137,7 +137,7 @@ def _error_from_message(msg: dict[str, Any]) -> dict[str, Any]:
     return {"ok": False, "error": error_message}
 
 
-async def _one_request(
+async def _one_connection(
     url: str,
     api_key: str | None,
     gender: str,
@@ -147,32 +147,69 @@ async def _one_request(
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
-) -> dict[str, Any]:
-    async def _session() -> dict[str, Any]:
-        auth_url = with_api_key(url, api_key=api_key)
-        session_id = str(uuid.uuid4())
-        start_payload = _build_start_payload(
-            session_id,
-            gender,
-            style,
-            chat_prompt,
-            tool_prompt,
-            message,
-            sampling,
-        )
-        tracker = _StreamTracker()
+    double_ttfb: bool,
+) -> list[dict[str, Any]]:
+    phases = 2 if double_ttfb else 1
+    results: list[dict[str, Any]] = []
 
+    async def _session() -> None:
+        auth_url = with_api_key(url, api_key=api_key)
         async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=None)) as ws:
             try:
-                await ws.send(json.dumps(start_payload))
-                return await _consume_stream(ws, tracker)
+                for phase in range(1, phases + 1):
+                    try:
+                        results.append(
+                            await _send_transaction(
+                                ws,
+                                gender,
+                                style,
+                                chat_prompt,
+                                tool_prompt,
+                                message,
+                                sampling,
+                                phase,
+                            )
+                        )
+                    except Exception as phase_err:
+                        results.append({"ok": False, "error": str(phase_err), "phase": phase})
+                        break
             finally:
                 await send_client_end(ws)
 
     try:
-        return await asyncio.wait_for(_session(), timeout=timeout_s)
+        await asyncio.wait_for(_session(), timeout=timeout_s)
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        if len(results) < phases:
+            results.append({"ok": False, "error": str(e), "phase": len(results) + 1})
+    return results
+
+
+async def _send_transaction(
+    ws,
+    gender: str,
+    style: str,
+    chat_prompt: str | None,
+    tool_prompt: str | None,
+    message: str,
+    sampling: dict[str, float | int] | None,
+    phase: int,
+) -> dict[str, Any]:
+    session_id = str(uuid.uuid4())
+    start_payload = _build_start_payload(
+        session_id,
+        gender,
+        style,
+        chat_prompt,
+        tool_prompt,
+        message,
+        sampling,
+    )
+    tracker = _StreamTracker()
+
+    await ws.send(json.dumps(start_payload))
+    result = await _consume_stream(ws, tracker)
+    result["phase"] = phase
+    return result
 
 
 async def _worker(
@@ -186,11 +223,12 @@ async def _worker(
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
+    double_ttfb: bool,
 ) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for _ in range(num):
-        out.append(
-            await _one_request(
+        out.extend(
+            await _one_connection(
                 url,
                 api_key,
                 gender,
@@ -200,6 +238,7 @@ async def _worker(
                 message,
                 timeout_s,
                 sampling,
+                double_ttfb,
             )
         )
     return out
@@ -220,6 +259,7 @@ async def run_benchmark(args) -> None:
     prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
     chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
     tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode) else None
+    double_ttfb = bool(getattr(args, "double_ttfb", False))
 
     tasks = _launch_worker_tasks(
         counts,
@@ -232,11 +272,12 @@ async def run_benchmark(args) -> None:
         message,
         timeout_s,
         sampling,
+        double_ttfb,
     )
     nested = await asyncio.gather(*tasks)
     results: list[dict[str, Any]] = [item for sub in nested for item in sub]
 
-    print_report(url, requests, concurrency, results)
+    print_report(url, requests, concurrency, results, double_ttfb=double_ttfb)
 
 
 def _extract_session_options(
@@ -269,6 +310,7 @@ def _launch_worker_tasks(
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
+    double_ttfb: bool,
 ) -> list[asyncio.Task[list[dict[str, Any]]]]:
     tasks: list[asyncio.Task[list[dict[str, Any]]]] = []
     for count in counts:
@@ -287,6 +329,7 @@ def _launch_worker_tasks(
                     message,
                     timeout_s,
                     sampling,
+                    double_ttfb,
                 )
             )
         )

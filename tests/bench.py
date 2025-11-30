@@ -97,6 +97,11 @@ def _parse_args() -> argparse.Namespace:
         default=os.getenv("PERSONALITY", DEFAULT_PERSONALITY),
         help="personality (e.g., wholesome, savage, flirty)",
     )
+    p.add_argument(
+        "--double-ttfb",
+        action="store_true",
+        help="send two sequential start messages per connection and report metrics separately",
+    )
     args = p.parse_args()
     args.sampling = build_sampling_payload(args)
     return args
