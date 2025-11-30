@@ -11,6 +11,7 @@ __all__ = [
     "RunnerConfig",
     "TurnResult",
     "StepTiming",
+    "FailureRecord",
     "CaseResult",
 ]
 
@@ -62,6 +63,15 @@ class StepTiming:
 
 
 @dataclass(frozen=True)
+class FailureRecord:
+    reason: str
+    detail: str
+    failing_step: int
+    expected: bool | None
+    actual: bool | None
+
+
+@dataclass(frozen=True)
 class CaseResult:
     case: ToolTestCase
     success: bool
@@ -72,4 +82,5 @@ class CaseResult:
     actual: bool | None = None
     responses: list[Any] | None = None
     step_timings: list[StepTiming] | None = None
+    failures: list[FailureRecord] | None = None
 

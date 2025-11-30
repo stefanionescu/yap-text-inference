@@ -15,7 +15,15 @@ from tests.config import POST_TOOL_IDLE_MIN_S
 from tests.helpers.message import iter_messages
 from tests.helpers.ws import connect_with_retries, send_client_end
 from .cases import render_history
-from .types import CaseResult, CaseStep, RunnerConfig, StepTiming, ToolTestCase, TurnResult
+from .types import (
+    CaseResult,
+    CaseStep,
+    FailureRecord,
+    RunnerConfig,
+    StepTiming,
+    ToolTestCase,
+    TurnResult,
+)
 
 __all__ = ["run_all_cases"]
 
@@ -379,6 +387,25 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
     user_turn_index = 0
     turn_raws: list[Any] = []
     step_timings: list[StepTiming] = []
+    failures: list[FailureRecord] = []
+
+    def _record_failure(
+        *,
+        reason: str,
+        detail: str,
+        expected: bool | None,
+        actual: bool | None,
+        failing_step: int,
+    ) -> None:
+        failures.append(
+            FailureRecord(
+                reason=reason,
+                detail=detail,
+                failing_step=failing_step,
+                expected=expected,
+                actual=actual,
+            )
+        )
 
     for step in case.steps:
         user_turn_index += 1
@@ -413,31 +440,25 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
 
         if not turn.ok:
             detail = f"step {user_turn_index}: {turn.detail or turn.reason}"
-            return CaseResult(
-                case=case,
-                success=False,
+            _record_failure(
                 reason=turn.reason or "unknown",
                 detail=detail,
-                failing_step=user_turn_index,
                 expected=expected,
                 actual=turn.tool_called,
-                responses=list(turn_raws),
-                step_timings=list(step_timings),
+                failing_step=user_turn_index,
             )
+            continue
 
         if not _is_valid_response_shape(turn):
             detail = f"step {user_turn_index}: invalid tool response format (raw={turn.tool_raw!r})"
-            return CaseResult(
-                case=case,
-                success=False,
+            _record_failure(
                 reason="wrong_format",
                 detail=detail,
-                failing_step=user_turn_index,
                 expected=step.expect_tool,
                 actual=turn.tool_called,
-                responses=list(turn_raws),
-                step_timings=list(step_timings),
+                failing_step=user_turn_index,
             )
+            continue
 
         actual = turn.tool_called
         if expected is None:
@@ -447,17 +468,29 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
                 f"step {user_turn_index}: expected {_format_bool(expected)} but "
                 f"got {_format_bool(actual)} (raw={turn.tool_raw!r})"
             )
-            return CaseResult(
-                case=case,
-                success=False,
+            _record_failure(
                 reason="wrong_response",
                 detail=detail,
-                failing_step=user_turn_index,
                 expected=expected,
                 actual=actual,
-                responses=list(turn_raws),
-                step_timings=list(step_timings),
+                failing_step=user_turn_index,
             )
+            continue
+
+    if failures:
+        first = failures[0]
+        return CaseResult(
+            case=case,
+            success=False,
+            reason=first.reason,
+            detail=first.detail,
+            failing_step=first.failing_step,
+            expected=first.expected,
+            actual=first.actual,
+            responses=list(turn_raws),
+            step_timings=list(step_timings),
+            failures=list(failures),
+        )
 
     return CaseResult(case=case, success=True, responses=list(turn_raws), step_timings=list(step_timings))
 
