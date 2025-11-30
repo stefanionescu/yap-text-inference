@@ -51,14 +51,23 @@ _select_attention_backend()
 # ----------------- Environment / Defaults -----------------
 
 DEPLOY_MODELS = (os.getenv("DEPLOY_MODELS", "both") or "both").lower()
-DEPLOY_CHAT = DEPLOY_MODELS in ("both", "chat")
-DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool")
+DEPLOY_DUAL = DEPLOY_MODELS == "dual"
+DEPLOY_CHAT = DEPLOY_MODELS in ("both", "chat", "dual")
+DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool", "dual")
 
+DUAL_MODEL = os.getenv("DUAL_MODEL")
 CHAT_MODEL = os.getenv("CHAT_MODEL")
 TOOL_MODEL = os.getenv("TOOL_MODEL")
 
+if DEPLOY_DUAL:
+    resolved_dual = DUAL_MODEL or CHAT_MODEL or TOOL_MODEL
+    if resolved_dual:
+        DUAL_MODEL = resolved_dual
+        CHAT_MODEL = resolved_dual
+        TOOL_MODEL = resolved_dual
+
 # GPU memory fractions: adjust based on deployment mode
-if DEPLOY_CHAT and DEPLOY_TOOL:
+if DEPLOY_CHAT and DEPLOY_TOOL and not DEPLOY_DUAL:
     # Both models: split GPU memory conservatively to leave room for CUDA/NCCL
     CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
     TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
@@ -90,6 +99,8 @@ CACHE_RESET_MIN_SESSION_SECONDS = float(os.getenv("CACHE_RESET_MIN_SESSION_SECON
 def validate_env() -> None:
     """Validate required configuration once during startup."""
     errors: list[str] = []
+    if DEPLOY_DUAL and not DUAL_MODEL:
+        errors.append("DUAL_MODEL is required when DEPLOY_MODELS is 'dual'")
     if DEPLOY_CHAT and not CHAT_MODEL:
         errors.append("CHAT_MODEL is required when DEPLOY_MODELS is 'both' or 'chat'")
     if DEPLOY_TOOL and not TOOL_MODEL:
@@ -106,8 +117,10 @@ def validate_env() -> None:
 
 __all__ = [
     "DEPLOY_MODELS",
+    "DEPLOY_DUAL",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
+    "DUAL_MODEL",
     "CHAT_MODEL",
     "TOOL_MODEL",
     "CHAT_GPU_FRAC",

@@ -11,13 +11,13 @@ apply_limits_and_timeouts() {
   export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2650}
 
   # GPU memory fractions (weights + KV). Use fractions only.
-  # Adjust based on deployment mode: single model gets 92%, both models split memory
+  # Adjust based on deployment mode: single model gets 90%, both models split memory
   if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
-    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.71}
-    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.21}
+    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
   else
-    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.92}
-    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.92}
+    export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}
   fi
 
   # Optional tiny packet coalescer window (ms); 0 = off
@@ -27,8 +27,8 @@ apply_limits_and_timeouts() {
   export TOOL_HARD_TIMEOUT_MS=${TOOL_HARD_TIMEOUT_MS:-500}
   export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
 
-  # Concurrent model calling mode: 0=sequential, 1=concurrent (default)
-  export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-1}
+  # Concurrent model calling mode: 0=sequential (default), 1=concurrent
+  export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-0}
 
   # Token limits (approx)
   export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-2400}

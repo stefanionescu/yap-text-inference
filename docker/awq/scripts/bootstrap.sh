@@ -17,7 +17,7 @@ source "${SCRIPT_DIR}/env/gpu_backend.sh"
 source "${SCRIPT_DIR}/env/final_defaults.sh"
 
 CONCURRENT_STATUS="sequential"
-if [ "${CONCURRENT_MODEL_CALL:-1}" = "1" ]; then CONCURRENT_STATUS="concurrent"; fi
+if [ "${CONCURRENT_MODEL_CALL:-0}" = "1" ]; then CONCURRENT_STATUS="concurrent"; fi
 
 log_info "Docker AWQ Configuration:"
 log_info "  GPU: ${DETECTED_GPU_NAME:-unknown}"

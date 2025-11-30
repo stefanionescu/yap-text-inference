@@ -145,7 +145,7 @@ PY
 # ---- Runtime stage ----
 FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
-ARG DEFAULT_CONCURRENT=1
+ARG DEFAULT_CONCURRENT=0
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
