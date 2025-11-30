@@ -140,11 +140,6 @@ docker logs -f yap-server
 curl http://localhost:8000/healthz
 ```
 
-### Server Status (requires API key)
-```bash
-curl -H "X-API-Key: your_api_key" http://localhost:8000/status
-```
-
 ### View Logs
 ```bash
 docker logs -f yap-server
@@ -238,7 +233,6 @@ docker volume prune
 Once running, the server provides the same API as the non-Docker version:
 
 - **Health**: `GET /healthz` (no auth required)
-- **Status**: `GET /status` (requires API key)
 - **WebSocket**: `ws://localhost:8000/ws?api_key=your_key`
 
 See the main README.md for complete API documentation.

@@ -25,7 +25,7 @@ os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")
 # Ensure CUDA_VISIBLE_DEVICES is set to avoid "changing after program start" errors
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", os.environ.get("CUDA_VISIBLE_DEVICES", "0"))
 
-from fastapi import FastAPI, WebSocket, Depends
+from fastapi import FastAPI, WebSocket
 from fastapi.responses import ORJSONResponse
 
 from .config import (
@@ -45,8 +45,6 @@ from .engines import (
 )
 from .handlers.websocket import handle_websocket_connection
 from .handlers.connection_handler import connection_handler
-from .auth import get_api_key
-
 
 logger = logging.getLogger(__name__)
 
@@ -99,17 +97,6 @@ async def stop_engines() -> None:
 async def healthz():
     """Health check endpoint (no authentication required)."""
     return {"status": "ok"}
-
-
-@app.get("/status")
-async def status(api_key: str = Depends(get_api_key)):
-    """Server status and capacity information (requires authentication)."""
-    capacity = connection_handler.get_capacity_info()
-    return {
-        "status": "running",
-        "connections": capacity,
-        "healthy": not capacity["at_capacity"]
-    }
 
 
 @app.websocket("/ws")
