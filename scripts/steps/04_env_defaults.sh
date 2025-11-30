@@ -50,24 +50,35 @@ log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TO
 if [ -n "${QUANTIZATION:-}" ]; then
   log_info "  Global quantization: ${QUANTIZATION}"
 fi
-if [ "${DEPLOY_CHAT}" = "1" ]; then
-  log_info "  Chat model: ${CHAT_MODEL:-<unset>}"
+if [ "${DEPLOY_DUAL:-0}" = "1" ]; then
+  log_info "  Dual model: ${CHAT_MODEL:-${DUAL_MODEL:-<unset>}}"
   if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-    log_info "  Chat quantization: ${CHAT_QUANTIZATION}"
+    log_info "  Dual quantization: ${CHAT_QUANTIZATION}"
   elif [ -n "${QUANTIZATION:-}" ]; then
-    log_info "  Chat quantization: ${QUANTIZATION} (inherited)"
+    log_info "  Dual quantization: ${QUANTIZATION} (inherited)"
   else
-    log_info "  Chat quantization: <unset>"
+    log_info "  Dual quantization: <unset>"
   fi
-fi
-if [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "  Tool model: ${TOOL_MODEL:-<unset>}"
-  if [ -n "${TOOL_QUANTIZATION:-}" ]; then
-    log_info "  Tool quantization: ${TOOL_QUANTIZATION}"
-  elif [ -n "${QUANTIZATION:-}" ]; then
-    log_info "  Tool quantization: ${QUANTIZATION} (inherited)"
-  else
-    log_info "  Tool quantization: <unset>"
+else
+  if [ "${DEPLOY_CHAT}" = "1" ]; then
+    log_info "  Chat model: ${CHAT_MODEL:-<unset>}"
+    if [ -n "${CHAT_QUANTIZATION:-}" ]; then
+      log_info "  Chat quantization: ${CHAT_QUANTIZATION}"
+    elif [ -n "${QUANTIZATION:-}" ]; then
+      log_info "  Chat quantization: ${QUANTIZATION} (inherited)"
+    else
+      log_info "  Chat quantization: <unset>"
+    fi
+  fi
+  if [ "${DEPLOY_TOOL}" = "1" ]; then
+    log_info "  Tool model: ${TOOL_MODEL:-<unset>}"
+    if [ -n "${TOOL_QUANTIZATION:-}" ]; then
+      log_info "  Tool quantization: ${TOOL_QUANTIZATION}"
+    elif [ -n "${QUANTIZATION:-}" ]; then
+      log_info "  Tool quantization: ${QUANTIZATION} (inherited)"
+    else
+      log_info "  Tool quantization: <unset>"
+    fi
   fi
 fi
 log_info "  KV dtype: ${KV_DTYPE}"

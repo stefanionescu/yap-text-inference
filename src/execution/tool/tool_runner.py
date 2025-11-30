@@ -11,7 +11,7 @@ from typing import Any
 from vllm.sampling_params import SamplingParams
 
 from ...engines import get_tool_engine
-from ...config import TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, TOOL_REQUEST_PRIORITY
+from ...config import DEPLOY_DUAL, TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, TOOL_REQUEST_PRIORITY
 from ...tokens import trim_history_for_tool_sharing, trim_text_to_token_limit_tool
 from ...config import USER_UTT_MAX_TOKENS
 from ...handlers.session import session_handler
@@ -51,7 +51,10 @@ async def run_toolcall(
     tool_timeout_s = float(TOOL_TIMEOUT_S)
     logger.info("tool_runner: start session_id=%s req_id=%s timeout_s=%.2f", session_id, req_id, tool_timeout_s)
 
-    tool_history = trim_history_for_tool_sharing(history_text, TOOL_HISTORY_TOKENS)
+    if DEPLOY_DUAL:
+        tool_history = history_text
+    else:
+        tool_history = trim_history_for_tool_sharing(history_text, TOOL_HISTORY_TOKENS)
     cfg = session_handler.get_session_config(session_id)
     base_tool_prompt = cfg.get("tool_prompt")
     if not base_tool_prompt:
