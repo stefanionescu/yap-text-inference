@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from typing import Any
 
 _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
@@ -12,7 +13,6 @@ if _TEST_DIR not in sys.path:
 
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
-
 from .session import PersonaSession, PersonaVariant
 from .tracker import StreamTracker
 
@@ -61,7 +61,7 @@ async def send_start_request(
     user_text: str,
     *,
     message_pacer: SlidingWindowPacer | None = None,
-) -> str:
+) -> tuple[str, dict[str, Any]]:
     """Send a start request and collect the response with metrics tracking."""
     payload = {
         "type": "start",
@@ -82,7 +82,6 @@ async def send_start_request(
     tracker = StreamTracker()
     await ws.send(json.dumps(payload))
     reply = await collect_response(ws, tracker)
-
     metrics = tracker.finalize_metrics()
     print(
         f"[persona={variant.personality} gender={variant.gender}] "
@@ -90,7 +89,7 @@ async def send_start_request(
     )
     print(f"  -> assistant: {reply!r}")
     print(f"  -> metrics: {json.dumps(metrics)}")
-    return reply
+    return reply, metrics
 
 
 async def wait_for_chat_prompt_ack(ws) -> dict:
@@ -139,7 +138,7 @@ async def send_user_exchange(
     message_pacer: SlidingWindowPacer | None = None,
 ) -> None:
     """Send a user message and append the exchange to session history."""
-    assistant_text = await send_start_request(
+    assistant_text, metrics = await send_start_request(
         ws,
         session,
         variant,
@@ -147,4 +146,6 @@ async def send_user_exchange(
         message_pacer=message_pacer,
     )
     session.append_exchange(user_text, assistant_text)
+    if session.ttfb_aggregator is not None:
+        session.ttfb_aggregator.record(metrics)
 

@@ -39,7 +39,7 @@ apply_limits_and_timeouts() {
   export TOOL_PROMPT_MAX_TOKENS=${TOOL_PROMPT_MAX_TOKENS:-1400}   # System prompt + response space
 
   # Prefill batching overrides
-  export MAX_NUM_SEQS_CHAT=${MAX_NUM_SEQS_CHAT:-40}
+  export MAX_NUM_SEQS_CHAT=${MAX_NUM_SEQS_CHAT:-32}
   export MAX_NUM_SEQS_TOOL=${MAX_NUM_SEQS_TOOL:-32}
 }
 

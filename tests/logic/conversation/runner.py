@@ -29,6 +29,7 @@ from tests.helpers.prompt import (  # noqa: E402
 )
 from tests.helpers.rate import SlidingWindowPacer  # noqa: E402
 from tests.helpers.stream import StreamTracker  # noqa: E402
+from tests.helpers.ttfb import TTFBAggregator  # noqa: E402
 from tests.helpers.ws import send_client_end, with_api_key  # noqa: E402
 from .session import ConversationSession, build_start_payload  # noqa: E402
 from .stream import stream_exchange  # noqa: E402
@@ -72,6 +73,7 @@ async def run_conversation(
 
     logger.info("Connecting to %s (session=%s)", ws_url, session.session_id)
     message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
+    ttfb_aggregator = TTFBAggregator()
 
     async with websockets.connect(
         ws_url_with_auth,
@@ -87,10 +89,13 @@ async def run_conversation(
                 logger.info("User → %r", user_text)
                 await message_pacer.wait_turn()
                 await ws.send(json.dumps(payload))
-                assistant_text = await stream_exchange(ws, tracker, recv_timeout, idx)
+                assistant_text, metrics = await stream_exchange(ws, tracker, recv_timeout, idx)
                 session.append_exchange(user_text, assistant_text)
+                ttfb_aggregator.record(metrics)
                 logger.info("Assistant ← %s", assistant_text)
         finally:
+            if ttfb_aggregator.has_samples():
+                ttfb_aggregator.emit(logger.info, label="Conversation TTFB")
             await send_client_end(ws)
 
 
