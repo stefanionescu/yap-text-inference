@@ -4,7 +4,7 @@
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-4425}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-25}
-export TOOL_MAX_LEN=${TOOL_MAX_LEN:-2650}
+export TOOL_MAX_LEN=${TOOL_MAX_LEN:-3050}
 
 # GPU memory allocation
 if [ "${DEPLOY_MODELS}" = "both" ]; then
