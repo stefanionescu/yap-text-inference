@@ -176,6 +176,10 @@ TOOL_DEFAULT_MESSAGES = [
         ("Thoughts on this?", True),
         ("What about this guy?", True),
     ]),
+    ("wonder", [
+        ("Aren't boys awesome?", False),
+        ("So cool!", False),
+    ]),
     ("vague_exclamations", [
         ("So cool!", True),
         ("This is sick!", True),
