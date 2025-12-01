@@ -51,28 +51,34 @@ Process the latest user message `m` (and short context) to decide if the user wa
 
 RULE 1: DETECT QUANTITY (Override)
 - If `m` asks for MORE THAN ONE screenshot (e.g. "twice", "2", "3", "again", "keep looking", "multiple"), return [].
-- If `m` implies ONE screenshot or doesn't specify, proceed.
+- NOTE: Check ONLY `m`. Ignore quantity words in previous messages.
 
 RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY match):
    A. EXPLICIT COMMANDS: "take a screenshot", "look", "see", "watch", "check", "peek", "view", "inspect".
    B. DEICTIC REFERENCES ("this", "that", "these", "those", "it"):
       - Usage: "this is cool", "look at that", "thoughts on this?", "what is it?", "is this good?", "man this is crazy", "what do you think of this painting?".
-      - OVERRIDE: If `m` contains "this/that" + a question/opinion ("thoughts?", "opinion?", "how about?"), IT IS VISUAL. This overrides any previous text topic (e.g., "help me write Spanish" -> "thoughts on this?" = VISUAL).
+      - OVERRIDE: If `m` contains "this/that" + a question/opinion ("thoughts?", "opinion?", "how about?", "what's your take?"), IT IS VISUAL. This overrides ALL previous text context.
    C. VISUAL NOUNS WITH ACTION:
       - "see my profile", "look at the chat", "check this dashboard", "this painting", "this outfit", "this dress", "this design".
       - NOTE: Just mentioning "my profile" or "an outfit" WITHOUT a looking verb or deictic word is NOT enough (e.g. "I need feedback on my profile" -> []).
    D. CONTINUITY & REACTIONS:
       - IF `m` is a short reaction ("So cool!", "Wow", "Insane", "This is sick"):
          - If previous turn was VISUAL -> MATCH.
-         - If previous turn was TEXT -> MATCH (assume implicit visual reaction to what was just said/shown).
-         - If `m` is *bare* ("Wow") and previous was TEXT -> [] (too ambiguous).
-      - IF `m` asks a question about a NEW abstract topic ("what about aliens?", "switching to hook grip?", "speaking of text?"), the visual state ENDS -> [].
+         - If previous turn was TEXT -> MATCH (assume implicit visual reaction).
+         - If `m` is *bare* ("Wow", "Crazy stuff") WITHOUT "this/that/it", and previous was VISUAL -> MATCH (e.g. "So cool!" matches, but "Wow" is weak -> return [] to be safe against ambiguity).
+         - "So [adjective]!" (e.g. "So cool!") is stronger than just "Wow" or "Crazy".
+      - IF `m` is a NARRATIVE description ("The sunset was amazing") without "this/that/look", it is TEXT -> [].
 
-RULE 3: EXCLUSIONS (If matched, return []):
+RULE 3: STRICT RESET (Overrides Rule 2):
+   Return [] if `m` changes the topic to:
+   - ABSTRACT: "what about aliens?", "meaning of life?", "politics", "history".
+   - STATUS UPDATES: "switching to hook grip", "I might switch languages", "I'm going to bed".
+   - TEXT QUESTIONS: "speaking of text", "how do I say X in Spanish?".
+
+RULE 4: EXCLUSIONS (If matched, return []):
    - `m` starts with "ON THE SCREEN NOW:".
-   - `m` describes an object/scene textually WITHOUT "this/that" (e.g., "I'm cooking pasta", "I need an outfit", "The presentation is good").
+   - `m` describes an object/scene textually WITHOUT "this/that" (e.g., "I'm cooking pasta", "I need an outfit", "The presentation is good", "The sunset was amazing").
    - `m` asks for help/feedback WITHOUT showing anything yet (e.g., "I need feedback on my profile", "help with Bumble messages").
-   - `m` is purely about abstract topics (politics, history, meaning of life, aliens, philosophy) WITHOUT "this/that".
    - `m` explicitly mentions showing SOMEONE ELSE ("I'm showing my friend").
    - `m` is hypothetical/future ("I will show you later").
 
