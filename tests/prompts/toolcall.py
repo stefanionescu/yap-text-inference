@@ -51,7 +51,7 @@ Process the latest user message `m` (and short context) to decide if the user wa
 
 RULE 1: DETECT QUANTITY (Override)
 - If `m` asks for MORE THAN ONE screenshot (e.g. "twice", "2", "3", "again", "keep looking", "multiple"), return [].
-- NOTE: Check ONLY `m`. Ignore quantity words in previous messages.
+- If `m` implies ONE screenshot or doesn't specify, proceed.
 
 RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY match):
    A. EXPLICIT COMMANDS: "take a screenshot", "look", "see", "watch", "check", "peek", "view", "inspect".
@@ -64,23 +64,22 @@ RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY matc
    D. CONTINUITY & REACTIONS:
       - IF `m` is a short reaction ("So cool!", "Wow", "Insane", "This is sick"):
          - If previous turn was VISUAL -> MATCH.
-         - If previous turn was TEXT -> MATCH (assume implicit visual reaction).
-         - If `m` is *bare* ("Wow", "Crazy stuff") WITHOUT "this/that/it", and previous was VISUAL -> MATCH (e.g. "So cool!" matches, but "Wow" is weak -> return [] to be safe against ambiguity).
-         - "So [adjective]!" (e.g. "So cool!") is stronger than just "Wow" or "Crazy".
-      - IF `m` is a NARRATIVE description ("The sunset was amazing") without "this/that/look", it is TEXT -> [].
+         - If previous turn was TEXT -> MATCH (assume implicit visual reaction to what was just said/shown).
+         - If `m` is *bare* ("Wow") and previous was TEXT -> [] (too ambiguous).
+         - "So [adjective]!" (e.g. "So cool!") is ALWAYS visual if it stands alone as a reaction.
 
-RULE 3: STRICT RESET (Overrides Rule 2):
-   Return [] if `m` changes the topic to:
-   - ABSTRACT: "what about aliens?", "meaning of life?", "politics", "history".
+RULE 3: STRICT RESET & EXCLUSIONS (Overrides Rule 2):
+   Return [] if `m`:
+   - STARTS WITH "ON THE SCREEN NOW:" (Test artifact).
+   - DISCOURSE MARKERS: Uses "see" idiomatically ("I see", "Let's see", "See if I'm right", "See, that's why").
+   - DIRECTION: Asks YOU to show something ("Can you show me?", "Show me X") instead of you looking.
+   - CAPABILITY: Asks about ability ("Can you see my screen?", "Can you look at images?") without a command.
+   - PAST/FUTURE: "Remember that pic?", "I will show you later".
+   - ABSTRACT: Changes topic to "aliens", "politics", "history", "meaning of life".
    - STATUS UPDATES: "switching to hook grip", "I might switch languages", "I'm going to bed".
-   - TEXT QUESTIONS: "speaking of text", "how do I say X in Spanish?".
-
-RULE 4: EXCLUSIONS (If matched, return []):
-   - `m` starts with "ON THE SCREEN NOW:".
-   - `m` describes an object/scene textually WITHOUT "this/that" (e.g., "I'm cooking pasta", "I need an outfit", "The presentation is good", "The sunset was amazing").
-   - `m` asks for help/feedback WITHOUT showing anything yet (e.g., "I need feedback on my profile", "help with Bumble messages").
-   - `m` explicitly mentions showing SOMEONE ELSE ("I'm showing my friend").
-   - `m` is hypothetical/future ("I will show you later").
+   - TEXT QUESTIONS: "speaking of text", "how do I say X in Spanish?", "this text".
+   - NARRATIVE: Describes an object/scene textually WITHOUT "this/that" ("The sunset was amazing", "I'm cooking pasta", "My screen shows X", "There is a bug on the screen").
+   - NEGATION: "Not this", "Ignore this".
 
 DEFAULT:
 - If `m` is just text/chat without the above triggers -> []."""

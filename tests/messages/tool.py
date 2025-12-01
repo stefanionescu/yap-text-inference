@@ -171,6 +171,60 @@ TOOL_DEFAULT_MESSAGES = [
     ("tell me about space exploration", False),
     ("how do I improve my writing?", False),
 
+        # ── EDGE CASES: Conversational/Metaphorical Triggers (Should be False) ─────────
+    ("I see what you mean", False),
+    ("Look, I don't have time for this", False),
+    ("See, that's why I'm asking", False),
+    ("Let's see what happens", False),
+    ("Can you see if I'm right?", False), # Cognitive check
+    ("I hear what you're saying", False),
+    ("Listen to this", False), # Audio focus
+
+    # ── EDGE CASES: Abstract/Non-visual Deictics (Should be False) ────────────────
+    ("That makes sense", False),
+    ("This is correct", False),
+    ("Those were good times", False),
+    ("That is a good point", False),
+    ("This implies we should stop", False),
+
+    # ── EDGE CASES: Quantity/Negation (Should be False) ───────────────────────────
+    ("Take screenshots", False), # Plural implies >1
+    ("Don't look at this", False), # Explicit negation
+    ("Please do not screenshot", False),
+    ("Take 0 screenshots", False),
+    ("Take a screenshot of this and that", False), # Ambiguous/Multiple
+
+    # ── EDGE CASES: Textual Descriptions w/o Directives (Should be False) ─────────
+    ("I'm wearing a red shirt", False),
+    ("My screen shows a code editor", False),
+    ("There is a bug on the screen", False),
+
+    # ── EDGE CASES: Formatting/Emphasis (Should be True) ──────────────────────────
+    ("LOOK AT THIS", True),
+    ("check this out !!!", True),
+    ("look @ this", True),
+
+    # ── EDGE CASES: Future/Hypothetical/Conditional (Should be False) ─────────────
+    ("I will show you tomorrow", False),
+    ("If I had a picture, I would show you", False),
+    ("Remember that pic I showed you?", False),
+    ("I might show you later", False),
+
+    # ── EDGE CASES: Ambiguous 'Show' / Generation Requests (Should be False) ──────
+    ("Show me the code", False),
+    ("Show me how to do it", False),
+    ("Can you show me?", False),
+
+    # ── EDGE CASES: Meta/Tool Discussion (Should be False) ────────────────────────
+    ("Do you have eyes?", False),
+    ("Can you see my screen?", False),
+    ("How does the screenshot tool work?", False),
+
+    # ── EDGE CASES: Typos (Should be True if intent is clear) ─────────────────────
+    ("lok at this", True),
+    ("sceenshot this", True),
+    ("tkae a look", True),
+
     # Multi-message conversations - format: (conversation_name, [(user_message, expect_tool_bool), ...])
     ("asking_for_opinion", [
         ("Thoughts on this?", True),
@@ -319,6 +373,25 @@ TOOL_DEFAULT_MESSAGES = [
         ("Did you catch last night's game?", False),
         ("this play was wild", True),
         ("see this video", True),
+    ]),
+
+    # ── EDGE CASES: Multi-turn Ambiguity ──────────────────────────────────────────
+    ("ambiguous_pronoun_switch", [
+        ("I like this painting", True),
+        ("Actually, what about the artist?", False),
+        ("Is he good?", False),
+        ("What about this one?", True), # Returns to visual
+    ]),
+    ("negation_flow", [
+        ("Look at this", True),
+        ("Wait, don't look yet", False),
+        ("Okay now", True), # implied "now [look]"
+    ]),
+    ("text_reference_confusion", [
+        ("I wrote some text.", False),
+        ("Look at what I wrote.", True), # "Look" + "what I wrote" (visual object)
+        ("Does it make sense?", True), # Refers to the text (visual)
+        ("I mean the meaning, not the font.", False), # Topic switch to abstract meaning? Hard call.
     ]),
 ]
 
