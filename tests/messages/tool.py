@@ -393,6 +393,126 @@ TOOL_DEFAULT_MESSAGES = [
         ("Does it make sense?", False), # Refers to the text
         ("I mean the meaning, not the font.", False),
     ]),
+    ("hesitant_show", [
+        ("I wanna show you something", False),
+        ("But I'm shy...", False),
+        ("Okay, here goes...", False),
+        ("look at this", True),
+    ]),
+    ("fake_out_sequence", [
+        ("Look at this", True),
+        ("Actually nevermind, don't look.", False),
+        ("Just kidding, look now!", True),
+    ]),
+    ("quantity_trap_in_context", [
+        ("Check this out", True),
+        ("Cool right?", False),
+        ("Now take 5 more screenshots of the details", False),
+    ]),
+    ("narrative_buildup", [
+        ("I was walking down the street", False),
+        ("Saw a stray cat", False),
+        ("It was so cute", False), # Narrative past/description
+        ("I took a picture of it", False),
+        ("Want to see?", False), # Capability/Permission
+        ("Look at it", True),
+    ]),
+    ("coding_debugging_flow", [
+        ("I have a bug in my python script", False),
+        ("It's in the main function", False),
+        ("Can you read the screen?", True),
+        ("Take a look at the error trace", True),
+        ("What about this line?", True),
+    ]),
+    ("fashion_choice_comparison", [
+        ("Going out tonight, need advice.", False),
+        ("This dress?", True),
+        ("Or maybe this one?", True),
+        ("Which one do you prefer?", False),
+    ]),
+    ("gaming_moment", [
+        ("Playing Elden Ring right now.", False),
+        ("This boss is impossibly hard.", True),
+        ("Watch this move!", True),
+        ("Did you see that dodge?", False),
+        ("Look at his health bar now", True),
+    ]),
+    ("document_ocr_request", [
+        ("I have a PDF open.", False),
+        ("Need to extract the text.", False),
+        ("Can you screenshot it and transcribe?", True),
+    ]),
+    ("referential_chain_break", [
+        ("Look at this car", True),
+        ("It's so fast", False),
+        ("My friend has one too", False), # Tangent about friend's car (not visible)
+        ("His is red though", False),
+        ("But this one is blue", True), # Back to the visible one
+    ]),
+    ("typo_correction_sequence", [
+        ("lok at ths", True),
+        ("sorry i meant look at this", True),
+        ("is it clr?", False), # Is it clear? referring to image
+    ]),
+    ("emotional_cheer_up", [
+        ("I'm feeling really down today.", False),
+        ("My dog always cheers me up.", False),
+        ("Look at his silly face", True),
+        ("He's a good boy", True),
+    ]),
+    ("online_shopping_browse", [
+        ("Browsing Amazon for gifts.", False),
+        ("How about this lamp?", True),
+        ("Nah, next item.", False),
+        ("This one is much better", True),
+        ("Add to cart", False),
+    ]),
+    ("interrupted_observation", [
+        ("Philosophy is deep.", False),
+        ("Totally agree.", False),
+        ("Whoa look at that bird outside!", True),
+        ("Anyway, back to Kant.", False),
+        ("What were we saying?", False),
+    ]),
+    ("element_drill_down", [
+        ("See the dashboard?", True),
+        ("The red button in the corner", True),
+        ("What does it do?", False),
+    ]),
+    ("capability_check_to_action", [
+        ("Can you see video?", False),
+        ("What about images?", False),
+        ("Okay, watch this clip", True),
+    ]),
+    ("deferred_visual_reveal", [
+        ("I have a surprise for you.", False),
+        ("Guess what it is.", False),
+        ("It's a new puppy.", False),
+        ("Ready to see him?", False),
+        ("Here he is!", True), # Deictic presentation
+        ("Look at him jump", True),
+    ]),
+    ("screen_sharing_setup", [
+        ("Can I share my screen?", False),
+        ("Is it working?", False),
+        ("Can you see it now?", False), # Meta question
+        ("Good. Look at this spreadsheet.", True),
+    ]),
+    ("multi_image_upload_simulation", [
+        ("I'm sending a photo.", False),
+        ("And another one.", False), # Just stating action
+        ("What do you think of these?", True), # "These" implies looking at the sent items
+    ]),
+    ("rapid_fire_visuals", [
+        ("look at this", True),
+        ("and this", True),
+        ("and this one too", True),
+    ]),
+    ("negative_to_positive_command", [
+        ("Don't look yet.", False),
+        ("Not ready.", False),
+        ("Okay look now.", True),
+    ]),
 ]
 
 __all__ = ["TOOL_DEFAULT_MESSAGES"]
