@@ -57,7 +57,8 @@ RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY matc
    A. EXPLICIT COMMANDS: "take a screenshot", "look", "see", "watch", "check", "peek", "view", "inspect".
    B. DEICTIC REFERENCES ("this", "that", "these", "those", "it"):
       - Usage: "this is cool", "look at that", "thoughts on this?", "what is it?", "is this good?", "man this is crazy", "what do you think of this painting?".
-      - OVERRIDE: If `m` contains "this/that" + a question/opinion ("thoughts?", "opinion?", "how about?", "what's your take?"), IT IS VISUAL. This overrides ALL previous text context.
+      - DESCRIPTIVE: "this/that/these/those" + [noun] + "is/looks" + [adjective] (e.g. "that dog is so cute", "this outfit is wild", "these shoes are weird").
+      - OVERRIDE: If `m` contains "this/that" + a question/opinion/description ("thoughts?", "opinion?", "how about?", "what's your take?", "is cute"), IT IS VISUAL. This overrides ALL previous text context.
    C. VISUAL NOUNS WITH ACTION:
       - "see my profile", "look at the chat", "check this dashboard", "this painting", "this outfit", "this dress", "this design".
       - NOTE: Just mentioning "my profile" or "an outfit" WITHOUT a looking verb or deictic word is NOT enough (e.g. "I need feedback on my profile" -> []).
@@ -74,12 +75,12 @@ RULE 3: STRICT RESET & EXCLUSIONS (Overrides Rule 2):
    - DISCOURSE MARKERS: Uses "see" idiomatically ("I see", "Let's see", "See if I'm right", "See, that's why").
    - DIRECTION: Asks YOU to show something ("Can you show me?", "Show me X") instead of you looking.
    - CAPABILITY: Asks about ability ("Can you see my screen?", "Can you look at images?") without a command.
-   - PAST/FUTURE: "Remember that pic?", "I will show you later".
+   - PAST/FUTURE: "Remember that pic?", "I will show you later", "The sunset was amazing".
    - ABSTRACT: Changes topic to "aliens", "politics", "history", "meaning of life".
    - STATUS UPDATES: "switching to hook grip", "I might switch languages", "I'm going to bed".
-   - TEXT QUESTIONS: "speaking of text", "how do I say X in Spanish?", "this text".
-   - NARRATIVE: Describes an object/scene textually WITHOUT "this/that" ("The sunset was amazing", "I'm cooking pasta", "My screen shows X", "There is a bug on the screen").
-   - NEGATION: "Not this", "Ignore this".
+   - TEXT QUESTIONS: "speaking of text", "how do I say X in Spanish?", "this text", "this sentence", "this word".
+   - NEGATION: "Not this", "Ignore this", "No, that one".
+   - HYPOTHETICAL: "what outfit works for a rooftop bar?" (general advice vs visual check).
 
 DEFAULT:
 - If `m` is just text/chat without the above triggers -> []."""

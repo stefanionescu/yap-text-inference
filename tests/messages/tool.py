@@ -390,8 +390,8 @@ TOOL_DEFAULT_MESSAGES = [
     ("text_reference_confusion", [
         ("I wrote some text.", False),
         ("Look at what I wrote.", True), # "Look" + "what I wrote" (visual object)
-        ("Does it make sense?", True), # Refers to the text (visual)
-        ("I mean the meaning, not the font.", False), # Topic switch to abstract meaning? Hard call.
+        ("Does it make sense?", False), # Refers to the text
+        ("I mean the meaning, not the font.", False),
     ]),
 ]
 
