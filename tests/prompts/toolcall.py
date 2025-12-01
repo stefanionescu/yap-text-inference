@@ -57,24 +57,24 @@ RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY matc
    A. EXPLICIT COMMANDS: "take a screenshot", "look", "see", "watch", "check", "peek", "view", "inspect".
    B. DEICTIC REFERENCES ("this", "that", "these", "those", "it"):
       - Usage: "this is cool", "look at that", "thoughts on this?", "what is it?", "is this good?", "man this is crazy", "what do you think of this painting?".
-      - PRINCIPLE: If `m` uses "this/that/it" to describe or ask about something, ASSUME IT IS ON THE SCREEN.
-      - OVERRIDE: A deictic word in `m` overrides previous non-visual topics immediately.
+      - OVERRIDE: If `m` contains "this/that" + a question/opinion ("thoughts?", "opinion?", "how about?"), IT IS VISUAL. This overrides any previous text topic (e.g., "help me write Spanish" -> "thoughts on this?" = VISUAL).
    C. VISUAL NOUNS WITH ACTION:
-      - "see my profile", "look at the chat", "check this dashboard", "this painting".
+      - "see my profile", "look at the chat", "check this dashboard", "this painting", "this outfit", "this dress", "this design".
       - NOTE: Just mentioning "my profile" or "an outfit" WITHOUT a looking verb or deictic word is NOT enough (e.g. "I need feedback on my profile" -> []).
-   D. CONTINUITY OF ATTENTION:
-      - If the *immediately preceding* turn was VISUAL, then short reactions *with pronouns* ("It's cool", "This is sick") OR strong bare reactions ("So cool!", "Wow!") continue the visual session.
-      - STRICT RESET: If `m` contains a complete thought about a new non-visual topic (e.g., "what about aliens?", "switching to hook grip", "I might go out", "speaking of text", "I think I'll switch languages"), the visual state ENDS immediately -> [].
-      - Bare reactions ("Wow", "Cool") *without* a prior visual turn -> [].
+   D. CONTINUITY & REACTIONS:
+      - IF `m` is a short reaction ("So cool!", "Wow", "Insane", "This is sick"):
+         - If previous turn was VISUAL -> MATCH.
+         - If previous turn was TEXT -> MATCH (assume implicit visual reaction to what was just said/shown).
+         - If `m` is *bare* ("Wow") and previous was TEXT -> [] (too ambiguous).
+      - IF `m` asks a question about a NEW abstract topic ("what about aliens?", "switching to hook grip?", "speaking of text?"), the visual state ENDS -> [].
 
 RULE 3: EXCLUSIONS (If matched, return []):
    - `m` starts with "ON THE SCREEN NOW:".
    - `m` describes an object/scene textually WITHOUT "this/that" (e.g., "I'm cooking pasta", "I need an outfit", "The presentation is good").
-   - `m` asks for help/feedback WITHOUT showing anything yet (e.g., "I need feedback on my profile" -> they haven't shown it).
-   - `m` is purely about abstract topics (politics, history, meaning of life) WITHOUT "this/that".
+   - `m` asks for help/feedback WITHOUT showing anything yet (e.g., "I need feedback on my profile", "help with Bumble messages").
+   - `m` is purely about abstract topics (politics, history, meaning of life, aliens, philosophy) WITHOUT "this/that".
    - `m` explicitly mentions showing SOMEONE ELSE ("I'm showing my friend").
    - `m` is hypothetical/future ("I will show you later").
-   - `m` is about general app usage/messages ("Bumble messages", "Tinder bio") without "see/look/this".
 
 DEFAULT:
 - If `m` is just text/chat without the above triggers -> []."""
