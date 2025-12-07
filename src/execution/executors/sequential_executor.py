@@ -8,7 +8,6 @@ from fastapi import WebSocket
 from ..tool.tool_parser import parse_tool_result
 from ..streaming.chat_streamer import run_chat_stream
 from ...handlers.session import session_handler
-from ...config.timeouts import TOOL_HARD_TIMEOUT_MS
 from ...utils.executor import (
     abort_tool_request,
     launch_tool_request,
@@ -40,23 +39,12 @@ async def run_sequential_execution(
         history_text: Conversation history
         user_utt: User utterance
     """
-    tool_hard_timeout_ms = float(TOOL_HARD_TIMEOUT_MS)
-    logger.info(f"sequential_exec: session_id={session_id} tool_timeout_ms={tool_hard_timeout_ms}")
-
     # Run tool router (do not mark active to avoid clobbering chat req id)
+    # Timeout is handled internally by tool_runner.py (like chat_streamer.py does)
     tool_req_id, tool_coro = launch_tool_request(session_id, user_utt, history_text)
     logger.info(f"sequential_exec: tool start req_id={tool_req_id}")
 
-    tool_res = None
-    try:
-        if tool_hard_timeout_ms < 0:
-            tool_res = await tool_coro
-        else:
-            tool_res = await asyncio.wait_for(tool_coro, timeout=tool_hard_timeout_ms / 1000.0)
-    except asyncio.TimeoutError:
-        await abort_tool_request(session_id)
-        tool_res = {"cancelled": True}
-        logger.info("sequential_exec: tool timeout → cancelled")
+    tool_res = await tool_coro
 
     # Parse tool decision
     raw_field, is_tool = parse_tool_result(tool_res)
