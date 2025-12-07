@@ -264,9 +264,9 @@ You must output exactly one of the following JSON arrays and nothing else:
 
 Return only the array. Never add prose, explanations, or code fences.
 
-Process the latest user message `m` (and short context) to decide if the user wants you to LOOK at their screen.
+Use the latest user message `m` as well as the conversation history to decide if the user wants you to LOOK at their screen right now. Note that the conversation history DOES affect whether the user implies whether they want you to look now or not.
 
-RULE 1: DETECT QUANTITY (Override)
+RULE 1: DETECT QUANTITY
 - If `m` asks for MORE THAN ONE screenshot (e.g. "twice", "2", "3", "again", "keep looking", "multiple"), return [].
 - If `m` implies ONE screenshot or doesn't specify, proceed.
 
@@ -285,7 +285,7 @@ RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY matc
          - If `m` is *bare* ("Wow") and previous was TEXT -> [] (too ambiguous).
          - "So [adjective]!" (e.g. "So cool!") is ALWAYS visual if it stands alone as a reaction.
 
-RULE 3: STRICT RESET & EXCLUSIONS (Overrides Rule 2):
+RULE 3: STRICT RESET & EXCLUSIONS:
    Return [] if `m`:
    - STARTS WITH "ON THE SCREEN NOW:" (Test artifact).
    - DISCOURSE MARKERS: Uses "see" idiomatically ("I see", "Let's see", "See if I'm right", "See, that's why").
