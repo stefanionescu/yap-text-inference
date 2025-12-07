@@ -271,7 +271,7 @@ RULE 1: DETECT QUANTITY (Override)
 - If `m` implies ONE screenshot or doesn't specify, proceed.
 
 RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY match):
-   A. EXPLICIT COMMANDS: "take a screenshot", "look", "see", "watch", "check", "peek", "view", "inspect".
+   A. EXPLICIT COMMANDS: "take a screenshot", "look", "see", "watch", "check", "peek", "view", "inspect". This applies to continuous requests to "look", "peek", "see" etc the screen in the form of: "look at this", then the user says something like "and this" and then they say "and this one too" -> each of these returns a screenshot request because looking at the OVERALL history/context it's clear they imply screenshot every single time.
    B. DEICTIC REFERENCES ("this", "that", "these", "those", "it"):
       - Usage: "this is cool", "look at that", "thoughts on this?", "what is it?", "is this good?", "man this is crazy", "what do you think of this painting?".
       - OVERRIDE: If `m` contains "this/that" + a question/opinion ("thoughts?", "opinion?", "how about?", "what's your take?"), IT IS VISUAL. This overrides ALL previous text context.

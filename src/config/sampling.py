@@ -18,7 +18,7 @@ CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 
 
 # --- Tool sampling ---
-TOOL_TEMPERATURE = float(os.getenv("TOOL_TEMPERATURE", "0.05"))
+TOOL_TEMPERATURE = float(os.getenv("TOOL_TEMPERATURE", "0"))
 TOOL_TOP_P = float(os.getenv("TOOL_TOP_P", "1.0"))
 TOOL_TOP_K = int(os.getenv("TOOL_TOP_K", "1"))
 
