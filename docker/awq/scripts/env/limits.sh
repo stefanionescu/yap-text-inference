@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # Context and output limits
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-4425}
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5025}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
 export TOOL_MAX_OUT=${TOOL_MAX_OUT:-100}
-export TOOL_MAX_LEN=${TOOL_MAX_LEN:-4250}
+export TOOL_MAX_LEN=${TOOL_MAX_LEN:-4650}
 
   # GPU memory fractions (weights + KV). Use fractions only.
   # Adjust based on deployment mode: single model gets 90%, both models split memory
