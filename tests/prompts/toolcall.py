@@ -257,9 +257,55 @@ OUTPUT FORMAT REMINDER
   → Output: []
 """
 
+GENERAL = """
+You must output exactly one of the following JSON arrays and nothing else:
+[{"name": "take_screenshot"}]
+[]
+
+Return only the array. Never add prose, explanations, or code fences.
+
+Process the latest user message `m` (and short context) to decide if the user wants you to LOOK at their screen.
+
+RULE 1: DETECT QUANTITY (Override)
+- If `m` asks for MORE THAN ONE screenshot (e.g. "twice", "2", "3", "again", "keep looking", "multiple"), return [].
+- If `m` implies ONE screenshot or doesn't specify, proceed.
+
+RULE 2: DETECT VISUAL TRIGGERS (Return [{"name": "take_screenshot"}] if ANY match):
+   A. EXPLICIT COMMANDS: "take a screenshot", "look", "see", "watch", "check", "peek", "view", "inspect".
+   B. DEICTIC REFERENCES ("this", "that", "these", "those", "it"):
+      - Usage: "this is cool", "look at that", "thoughts on this?", "what is it?", "is this good?", "man this is crazy", "what do you think of this painting?".
+      - OVERRIDE: If `m` contains "this/that" + a question/opinion ("thoughts?", "opinion?", "how about?", "what's your take?"), IT IS VISUAL. This overrides ALL previous text context.
+   C. VISUAL NOUNS WITH ACTION:
+      - "see my profile", "look at the chat", "check this dashboard", "this painting", "this outfit", "this dress", "this design".
+      - NOTE: Just mentioning "my profile" or "an outfit" WITHOUT a looking verb or deictic word is NOT enough (e.g. "I need feedback on my profile" -> []).
+   D. CONTINUITY & REACTIONS:
+      - IF `m` is a short reaction ("So cool!", "Wow", "Insane", "This is sick"):
+         - If previous turn was VISUAL -> MATCH.
+         - If previous turn was TEXT -> MATCH (assume implicit visual reaction to what was just said/shown).
+         - If `m` is *bare* ("Wow") and previous was TEXT -> [] (too ambiguous).
+         - "So [adjective]!" (e.g. "So cool!") is ALWAYS visual if it stands alone as a reaction.
+
+RULE 3: STRICT RESET & EXCLUSIONS (Overrides Rule 2):
+   Return [] if `m`:
+   - STARTS WITH "ON THE SCREEN NOW:" (Test artifact).
+   - DISCOURSE MARKERS: Uses "see" idiomatically ("I see", "Let's see", "See if I'm right", "See, that's why").
+   - DIRECTION: Asks YOU to show something ("Can you show me?", "Show me X") instead of you looking.
+   - CAPABILITY: Asks about ability ("Can you see my screen?", "Can you look at images?") without a command.
+   - PAST/FUTURE: "Remember that pic?", "I will show you later".
+   - ABSTRACT: Changes topic to "aliens", "politics", "history", "meaning of life".
+   - STATUS UPDATES: "switching to hook grip", "I might switch languages", "I'm going to bed".
+   - TEXT QUESTIONS: "speaking of text", "how do I say X in Spanish?", "this text".
+   - NARRATIVE: Describes an object/scene textually WITHOUT "this/that" ("The sunset was amazing", "I'm cooking pasta", "My screen shows X", "There is a bug on the screen").
+   - NEGATION: "Not this", "Ignore this".
+
+DEFAULT:
+- If `m` is just text/chat without the above triggers -> [].
+"""
+
 DEFAULT_TOOL_PROMPT_NAME = "base"
 
 TOOL_PROMPTS = {
     DEFAULT_TOOL_PROMPT_NAME: BASE,
     "updated": UPDATED,
+    "generalized": GENERAL
 }
