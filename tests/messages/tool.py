@@ -64,6 +64,8 @@ TOOL_DEFAULT_MESSAGES = [
     ("take a screenshot", True),                                    # Explicit screenshot command
     ("screenshot this", True),                                      # Direct screenshot request
     ("this is interesting", True),
+    ("Can you see if I'm right?", True),
+    ("Am I in the right here?", True),
     ("take a look", True),
     ("peek at this", True),
     ("how does this look?", True),
@@ -171,12 +173,101 @@ TOOL_DEFAULT_MESSAGES = [
     ("tell me about space exploration", False),
     ("how do I improve my writing?", False),
 
-        # ── EDGE CASES: Conversational/Metaphorical Triggers (Should be False) ─────────
+    # ── EDGE CASES: Spatial/Partial Screen References ─────────────────────────────
+    ("Read the text in the bottom right corner", True),
+    ("What is that icon in the toolbar?", True),
+    ("Look at the error message in the terminal window", True),
+    ("Check the top of the page", True),
+
+    # ── EDGE CASES: Idioms involving 'Look'/'See' (Should be False) ───────────────
+    ("I'll look into it", False),
+    ("We need to look back at history", False),
+    ("It remains to be seen", False),
+    ("I'm seeing someone new", False),
+    ("Look alive!", False),
+    ("See you later", False),
+
+    # ── EDGE CASES: Technical/Code Contexts ───────────────────────────────────────
+    ("Here is the code: function() {}", False), # Text provided
+    ("I pasted the logs below", False),
+    ("I can't copy the error, just look at it", True),
+    ("My clipboard is broken, read the screen", True),
+
+    # ── EDGE CASES: 'Here' Ambiguity ──────────────────────────────────────────────
+    ("Here.", False),
+    ("Here it is.", False), # Usually introduces text
+    ("Here, look.", True),
+    ("Right here.", False), # ambiguous
+    ("Right here, look at this spot.", True),
+
+    # ── EDGE CASES: Implicit Action Verbs (Read/Translate) ────────────────────────
+    ("Read this", True),
+    ("Read this aloud", True),
+    ("Translate this", True),
+    ("Translate this sentence: Hola", False),
+
+    # ── MULTILINGUAL TEST CASES ───────────────────────────────────────────────────
+    # SPANISH
+    ("mira esto", True), # look at this
+    ("checa esto", True), # check this (mexican slang)
+    ("qué opinas de esto?", True), # what do you think of this?
+    ("toma una captura", True), # take a screenshot
+    ("mira", True), # look (imperative)
+    ("no mires", False), # don't look
+    ("te voy a mostrar algo", False), # I'm going to show you something (future)
+    ("esto es increíble", True), # this is incredible (reaction)
+    ("ver esto", True), # see this (infinitive/imperative)
+    # FRENCH
+    ("regarde ça", True), # look at this
+    ("qu'en penses-tu ?", True), # what do you think?
+    ("qu'est-ce que c'est que ça ?", True), # What is this? (pointing)
+    ("jette un œil", True), # take a look (throw an eye)
+    ("capture d'écran", True), # screenshot
+    ("c'est beau", True), # it's beautiful (reaction to visual)
+    ("ne regarde pas", False), # don't look
+    # GERMAN
+    ("schau mal", True), # look (particle)
+    ("guck dir das an", True), # look at that
+    ("was denkst du darüber?", True), # what do you think about this? (ambiguous but 'darüber' -> that over there/about that)
+    ("mach einen Screenshot", True), # take a screenshot
+    ("das ist schön", True), # that is beautiful
+    # CHINESE (Simplified)
+    ("看看这个", True), # Look at this (kankan zhege)
+    ("截图", True), # Screenshot (jietu)
+    ("你看", True), # You look / Look (ni kan)
+    ("我觉得这个很好看", True), # I think this looks good (wo juede zhege hen haokan)
+    ("帮我看一下", True), # Help me look a bit (bang wo kan yixia)
+    ("不要看", False), # Don't look (bu yao kan)
+    # KOREAN
+    ("이것 좀 봐", True), # Look at this (igeot jom bwa)
+    ("스크린샷 찍어줘", True), # Take a screenshot (screenshot jjigeojwo)
+    ("어때?", True), # How is it? (eottae? - often used when showing something)
+    ("이거 예쁘다", True), # This is pretty (igeo yeppeuda)
+    ("보지 마", False), # Don't look (boji ma)
+    # JAPANESE
+    ("これを見て", True), # Look at this (kore o mite)
+    ("スクリーンショット撮って", True), # Take a screenshot
+    ("どう思う？", True), # What do you think? (Dou omou?)
+    ("見て", True), # Look (mite)
+    ("見ないで", False), # Don't look (minaide)
+    # ITALIAN
+    ("guarda questo", True), # look at this
+    ("fammi uno screenshot", True), # make me a screenshot
+    ("cosa ne pensi?", True), # what do you think of it?
+    # PORTUGUESE
+    ("olha isso", True), # look at this
+    ("tira um print", True), # take a print (screenshot)
+    ("o que você acha?", True), # what do you think?
+    # RUSSIAN
+    ("посмотри на это", True), # look at this
+    ("сделай скриншот", True), # take a screenshot
+    ("как тебе?", True), # how is it for you? (opinion)
+
+    # ── EDGE CASES: Conversational/Metaphorical Triggers (Should be False) ─────────
     ("I see what you mean", False),
     ("Look, I don't have time for this", False),
     ("See, that's why I'm asking", False),
     ("Let's see what happens", False),
-    ("Can you see if I'm right?", False), # Cognitive check
     ("I hear what you're saying", False),
     ("Listen to this", False), # Audio focus
 
@@ -524,6 +615,79 @@ TOOL_DEFAULT_MESSAGES = [
         ("Adding more context: my studio is in an old warehouse that smells like sawdust.", False),
         ("And I'm currently obsessed with baking sourdough with roasted jalapeños.", False),
         ("Last check, what time did I say that trail run starts?", False),
+    ]),
+
+    # ── CONTEXT DEPENDENT: SAME PHRASE, DIFFERENT OUTCOME ────────────────────────
+    ("context_dependent_right_or_wrong_text", [
+        ("My friend and I argued about rent, they're always slacking", False),
+        ("Am I in the right here?", False),
+        ("Will have to give him an ultimatum", False),
+    ]),
+    ("context_dependent_right_or_wrong_visual", [
+        ("This convo is intense", True),
+        ("Look at what he said", True),
+        ("Am I in the right here?", True), # Referring to the visible chat
+    ]),
+    ("context_dependent_what_do_you_think_text", [
+        ("I have a theory about the universe.", False),
+        ("It's all a simulation.", False),
+        ("What do you think?", False),
+    ]),
+    ("context_dependent_what_do_you_think_visual", [
+        ("I made a new logo design.", False),
+        ("check this out", True),
+        ("What do you think?", True), # Evaluation of visual
+    ]),
+    ("context_dependent_is_it_good_text", [
+        ("I saw a movie last night.", False),
+        ("It was the new Marvel one.", False),
+        ("Is it good?", False),
+        ("I'm thinking of the iPhone 15.", False),
+        ("Is it good?", False),
+    ]),
+    ("context_dependent_is_it_good_visual", [
+        ("I'm working on my cable management.", False),
+        ("look at this mess", True),
+        ("Is it good?", True), # sarcastic or genuine visual check
+    ]),
+    ("context_dependent_feedback_text", [
+        ("I need feedback on my life choices.", False),
+        ("I quit my job to be a poet.", False),
+        ("Any thoughts?", False),
+    ]),
+    ("context_dependent_feedback_visual", [
+        ("I need feedback on my dating profile.", False),
+        ("see this bio", True),
+        ("Any thoughts?", True),
+    ]),
+    ("context_dependent_help_text", [
+        ("I'm stuck in a rut.", False),
+        ("Everything feels gray.", False),
+        ("Can you help me?", False),
+    ]),
+    ("context_dependent_help_visual", [
+        ("I'm stuck in this game level.", False),
+        ("Look at this puzzle.", True),
+        ("Can you help me?", True),
+    ]),
+
+    # ── SCENARIO: Navigation/Guidance ─────────────────────────────────────────────
+    ("navigation_flow", [
+        ("I'm lost in this menu.", False),
+        ("Where do I go?", False),
+        ("Look at the options", True),
+        ("Click the first one", False),
+        ("Now what?", False),
+        ("Is this the right page?", True),
+    ]),
+
+    # ── SCENARIO: Physical Object Presentation ────────────────────────────────────
+    ("physical_object_showcase", [
+        ("I bought a new watch.", False),
+        ("It's a Seiko.", False),
+        ("Hold on, let me put it under the camera.", False), # Setup action
+        ("Can you see the dial?", True),
+        ("Is it real?", True),
     ]),
 ]
 
