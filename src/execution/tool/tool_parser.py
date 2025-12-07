@@ -4,6 +4,39 @@ import json
 from typing import Any
 
 
+def _find_json_array_end(text: str) -> int | None:
+    """Find the index where a JSON array ends in text.
+    
+    Returns the index after the closing bracket, or None if not found.
+    """
+    if not isinstance(text, str) or not text.startswith("["):
+        return None
+    
+    bracket_count = 0
+    in_string = False
+    escape_next = False
+    
+    for i, char in enumerate(text):
+        if escape_next:
+            escape_next = False
+            continue
+        if char == "\\":
+            escape_next = True
+            continue
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if char == "[":
+            bracket_count += 1
+        elif char == "]":
+            bracket_count -= 1
+            if bracket_count == 0:
+                return i + 1
+    return None
+
+
 def _extract_json_array(text: str) -> list | None:
     """Extract a JSON array from text, handling trailing content like explanations.
     
@@ -71,6 +104,8 @@ def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
         
     Returns:
         Tuple of (raw_field, is_tool)
+        - raw_field: Original string if it contains explanations, otherwise parsed list
+        - is_tool: Boolean indicating if tool should be called
     """
     raw_field = None
     is_tool = False
@@ -85,7 +120,20 @@ def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
                 # Try to extract JSON array (handles trailing explanations)
                 parsed_list = _extract_json_array(normalized)
                 if parsed_list is not None:
-                    raw_field = parsed_list
+                    # Check if there's trailing text after the JSON array
+                    json_end_idx = _find_json_array_end(normalized)
+                    if json_end_idx and json_end_idx < len(normalized):
+                        remaining = normalized[json_end_idx:].strip()
+                        if remaining:
+                            # Has trailing text (explanation) - preserve original string
+                            raw_field = normalized
+                        else:
+                            # No trailing text - return parsed list
+                            raw_field = parsed_list
+                    else:
+                        # No trailing text - return parsed list
+                        raw_field = parsed_list
+                    
                     is_tool = len(parsed_list) > 0
                 else:
                     # Fallback: try parsing entire normalized string
@@ -101,8 +149,11 @@ def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
                         # If parsing fails completely, check if it starts with empty array
                         # This handles malformed responses - be conservative
                         if normalized.startswith("[]"):
-                            # Likely empty array with trailing text
-                            raw_field = []
+                            # Likely empty array with trailing text - preserve original if has explanation
+                            if "REASON" in normalized.upper():
+                                raw_field = normalized
+                            else:
+                                raw_field = []
                             is_tool = False
                         else:
                             raw_field = normalized
