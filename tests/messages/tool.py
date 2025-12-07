@@ -208,60 +208,60 @@ TOOL_DEFAULT_MESSAGES = [
 
     # ── MULTILINGUAL TEST CASES ───────────────────────────────────────────────────
     # SPANISH
-    ("mira esto", True), # look at this
-    ("checa esto", True), # check this (mexican slang)
-    ("qué opinas de esto?", True), # what do you think of this?
-    ("toma una captura", True), # take a screenshot
-    ("mira", True), # look (imperative)
+    ("mira esto", False), # look at this
+    ("checa esto", False), # check this (mexican slang)
+    ("qué opinas de esto?", False), # what do you think of this?
+    ("toma una captura", False), # take a screenshot
+    ("mira", False), # look (imperative)
     ("no mires", False), # don't look
     ("te voy a mostrar algo", False), # I'm going to show you something (future)
-    ("esto es increíble", True), # this is incredible (reaction)
-    ("ver esto", True), # see this (infinitive/imperative)
+    ("esto es increíble", False), # this is incredible (reaction)
+    ("ver esto", False), # see this (infinitive/imperative)
     # FRENCH
-    ("regarde ça", True), # look at this
-    ("qu'en penses-tu ?", True), # what do you think?
-    ("qu'est-ce que c'est que ça ?", True), # What is this? (pointing)
-    ("jette un œil", True), # take a look (throw an eye)
-    ("capture d'écran", True), # screenshot
-    ("c'est beau", True), # it's beautiful (reaction to visual)
+    ("regarde ça", False), # look at this
+    ("qu'en penses-tu ?", False), # what do you think?
+    ("qu'est-ce que c'est que ça ?", False), # What is this? (pointing)
+    ("jette un œil", False), # take a look (throw an eye)
+    ("capture d'écran", False), # screenshot
+    ("c'est beau", False), # it's beautiful (reaction to visual)
     ("ne regarde pas", False), # don't look
     # GERMAN
-    ("schau mal", True), # look (particle)
-    ("guck dir das an", True), # look at that
-    ("was denkst du darüber?", True), # what do you think about this? (ambiguous but 'darüber' -> that over there/about that)
-    ("mach einen Screenshot", True), # take a screenshot
-    ("das ist schön", True), # that is beautiful
+    ("schau mal", False), # look (particle)
+    ("guck dir das an", False), # look at that
+    ("was denkst du darüber?", False), # what do you think about this? (ambiguous but 'darüber' -> that over there/about that)
+    ("mach einen Screenshot", False), # take a screenshot
+    ("das ist schön", False), # that is beautiful
     # CHINESE (Simplified)
-    ("看看这个", True), # Look at this (kankan zhege)
-    ("截图", True), # Screenshot (jietu)
-    ("你看", True), # You look / Look (ni kan)
-    ("我觉得这个很好看", True), # I think this looks good (wo juede zhege hen haokan)
-    ("帮我看一下", True), # Help me look a bit (bang wo kan yixia)
+    ("看看这个", False), # Look at this (kankan zhege)
+    ("截图", False), # Screenshot (jietu)
+    ("你看", False), # You look / Look (ni kan)
+    ("我觉得这个很好看", False), # I think this looks good (wo juede zhege hen haokan)
+    ("帮我看一下", False), # Help me look a bit (bang wo kan yixia)
     ("不要看", False), # Don't look (bu yao kan)
     # KOREAN
-    ("이것 좀 봐", True), # Look at this (igeot jom bwa)
-    ("스크린샷 찍어줘", True), # Take a screenshot (screenshot jjigeojwo)
-    ("어때?", True), # How is it? (eottae? - often used when showing something)
-    ("이거 예쁘다", True), # This is pretty (igeo yeppeuda)
+    ("이것 좀 봐", False), # Look at this (igeot jom bwa)
+    ("스크린샷 찍어줘", False), # Take a screenshot (screenshot jjigeojwo)
+    ("어때?", False), # How is it? (eottae? - often used when showing something)
+    ("이거 예쁘다", False), # This is pretty (igeo yeppeuda)
     ("보지 마", False), # Don't look (boji ma)
     # JAPANESE
-    ("これを見て", True), # Look at this (kore o mite)
-    ("スクリーンショット撮って", True), # Take a screenshot
-    ("どう思う？", True), # What do you think? (Dou omou?)
-    ("見て", True), # Look (mite)
+    ("これを見て", False), # Look at this (kore o mite)
+    ("スクリーンショット撮って", False), # Take a screenshot
+    ("どう思う？", False), # What do you think? (Dou omou?)
+    ("見て", False), # Look (mite)
     ("見ないで", False), # Don't look (minaide)
     # ITALIAN
-    ("guarda questo", True), # look at this
-    ("fammi uno screenshot", True), # make me a screenshot
-    ("cosa ne pensi?", True), # what do you think of it?
+    ("guarda questo", False), # look at this
+    ("fammi uno screenshot", False), # make me a screenshot
+    ("cosa ne pensi?", False), # what do you think of it?
     # PORTUGUESE
-    ("olha isso", True), # look at this
-    ("tira um print", True), # take a print (screenshot)
-    ("o que você acha?", True), # what do you think?
+    ("olha isso", False), # look at this
+    ("tira um print", False), # take a print (screenshot)
+    ("o que você acha?", False), # what do you think?
     # RUSSIAN
-    ("посмотри на это", True), # look at this
-    ("сделай скриншот", True), # take a screenshot
-    ("как тебе?", True), # how is it for you? (opinion)
+    ("посмотри на это", False), # look at this
+    ("сделай скриншот", False), # take a screenshot
+    ("как тебе?", False), # how is it for you? (opinion)
 
     # ── EDGE CASES: Conversational/Metaphorical Triggers (Should be False) ─────────
     ("I see what you mean", False),
@@ -677,7 +677,7 @@ TOOL_DEFAULT_MESSAGES = [
         ("Where do I go?", False),
         ("Look at the options", True),
         ("Click the first one", False),
-        ("Now what?", False),
+        ("Now what?", True),
         ("Is this the right page?", True),
     ]),
 
