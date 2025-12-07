@@ -15,7 +15,7 @@ from ..tool.tool_parser import parse_tool_result
 from ..streaming.chat_streamer import run_chat_stream
 from ...engines import get_chat_engine
 from ...handlers.session import session_handler
-from ...config.timeouts import TOOL_HARD_TIMEOUT_MS, PREBUFFER_MAX_CHARS
+from ...config.timeouts import PREBUFFER_MAX_CHARS
 from ...utils.executor import (
     abort_tool_request,
     cancel_task,
@@ -50,7 +50,6 @@ class ConcurrentCoordinator:
         chat_req_id: str,
         chat_stream,
         tool_coro: Awaitable[dict],
-        tool_timeout_s: float,
         prebuffer_max_chars: int,
         sampling_overrides: dict[str, float | int] | None = None,
         history_turn_id: str | None = None,
@@ -64,7 +63,6 @@ class ConcurrentCoordinator:
         self.chat_req_id = chat_req_id
         self.chat_stream = chat_stream
         self.tool_coro = tool_coro
-        self.tool_timeout_s = tool_timeout_s
         self.prebuffer_limit = max(prebuffer_max_chars, 0)
         self.sampling_overrides = sampling_overrides
         self.history_turn_id = history_turn_id
@@ -132,14 +130,8 @@ class ConcurrentCoordinator:
         return ToolDecision(raw_field=raw_field, is_tool=is_tool, payload=tool_result)
 
     async def _collect_tool_result(self) -> dict | None:
-        try:
-            if self.tool_timeout_s < 0:
-                return await self.tool_coro
-            return await asyncio.wait_for(self.tool_coro, timeout=self.tool_timeout_s)
-        except asyncio.TimeoutError:
-            await abort_tool_request(self.session_id)
-            logger.info("concurrent_exec: tool timeout session_id=%s", self.session_id)
-            return {"cancelled": True}
+        # Timeout is handled internally by tool_runner.py (like chat_streamer.py does)
+        return await self.tool_coro
 
     def _ensure_chunk_task(self) -> None:
         if self._chat_finished or (self._pending_chunk_task and not self._pending_chunk_task.done()):
@@ -384,13 +376,10 @@ async def run_concurrent_execution(
     sampling_overrides: dict[str, float | int] | None = None,
 ) -> None:
     """Execute concurrent tool and chat workflow with buffering."""
-    tool_hard_timeout_ms = float(TOOL_HARD_TIMEOUT_MS)
     prebuffer_max_chars = int(PREBUFFER_MAX_CHARS)
-    tool_timeout_s = tool_hard_timeout_ms / 1000.0 if tool_hard_timeout_ms >= 0 else -1.0
     logger.info(
-        "concurrent_exec: session_id=%s tool_timeout_ms=%s prebuffer=%s",
+        "concurrent_exec: session_id=%s prebuffer=%s",
         session_id,
-        tool_hard_timeout_ms,
         prebuffer_max_chars,
     )
 
@@ -421,7 +410,6 @@ async def run_concurrent_execution(
         chat_req_id=chat_req_id,
         chat_stream=chat_stream,
         tool_coro=tool_coro,
-        tool_timeout_s=tool_timeout_s,
         prebuffer_max_chars=prebuffer_max_chars,
         sampling_overrides=sampling_overrides,
         history_turn_id=history_turn_id,
