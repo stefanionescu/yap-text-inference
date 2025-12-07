@@ -47,62 +47,98 @@ UPDATED = """You must output exactly one of the following JSON arrays and nothin
 
 Return only the array. Never add prose, explanations, or code fences.
 
-Decide for the latest user message `m` (plus a short chat history) whether the user is trying to get you to LOOK at what is currently visible on their screen or through their camera.
-When you see a clear deictic pointer ("this", "that", "these", "those") or an explicit visual verb ("look", "see", "check", "screenshot", etc.), you should usually assume they want a single screenshot unless one of the hard‑block rules below applies.
+Your job is to decide, for the latest user message `m` (plus the chat history), whether the user is trying to get you to LOOK at what is currently on their screen or in front of their camera, and whether that should be handled by a single call to the screenshot tool.
 
-STEP 0 — HARD BLOCKS (override everything)
-- If `m` clearly asks for MORE THAN ONE capture (any plural like "screenshots", "many pictures", numbers > 1, or adverbs that imply repetition such as "twice", "two times", "over and over", "again and again", "keep capturing", "forever"), return [] even if other rules would trigger.
-- If `m` or the immediately preceding tool context starts with a synthetic prefix like "ON THE SCREEN NOW:" that is describing an image in words, treat it as narration only and return []. Do NOT treat that prefix as the user actually sharing their screen.
+Always apply the hard blocks and the text‑only exclusions first. Only if none of them match, and `m` fits one of the strong visual patterns below, should you return [{"name": "take_screenshot"}] for that message. Otherwise, return [].
 
-STEP 1 — MESSAGES THAT SHOULD STAY TEXT-ONLY
-Return [] when `m` is mainly any of the following, even if it mentions screens, photos or buttons:
-- Capability or permission questions: asking in general what you can do, what features you support, or whether sharing is working (for example "can you see my display?" or "do you handle images?"). If a "can you …" question also contains a specific instruction to inspect the *current* screen (like reading or checking it), treat it as a real visual request under STEP 2A instead of keeping it here.
-- Requests for you to *show* or *generate* something for them ("show me X", "display Y for me") rather than you inspecting their view.
-- Planning, hypotheticals or stories about past/future visuals: talking about what they saw earlier, will show later, or describing a memory without a present‑tense request to look now. Simple statements that they *want* to show you something, are nervous about showing it, or are "about to" show it, but that contain no actual "look/see this" instruction yet, also stay [].
-- Plain descriptions of themselves, other people or surroundings that neither (a) use "this/that/these/those" to point at something, nor (b) ask for your opinion on how it looks; for example, a bare statement like "I'm wearing [clothes]", "there is a bug on my monitor", or "my display currently shows some code" stays text‑only.
-- Pure status updates or actions: switching modes, going to sleep, changing language, starting a game, etc., without any "look/see/check this..." style directive.
-- Strong emotional disclosures or crisis statements about feelings, relationships, or mental health that do not clearly point at something on the screen or through the camera must still return [], and you must still obey the JSON‑only format.
-- General advice or abstract questions that happen to mention outfits, profiles, hotels, etc. but not a concrete here‑and‑now item (for instance asking what kind of clothes work for a rooftop event, or how to write a good bio).
-- Purely textual or linguistic questions: asking how to phrase something, translate a sentence, correct wording, or discuss the *meaning* or logic of some writing, when they are not simultaneously asking you to look again. Questions that explicitly ask how something visually looks, whether it is attractive, or which visual option to pick belong in STEP 2 instead.
-- Functional questions about an already‑identified UI element: asking what a button, link or control does (for example "what happens if I click that?" or "what does this control do?") without a fresh "look/see/check" instruction.
-- Meta / rhetorical "see" or "look" language in the past: "did you see that …?", "see what I mean?", "look, I disagree", "let's see", or similar conversational fillers.
-- Pure UI actions that do not themselves ask you to look (add to cart, send it, scroll, click, close a window, etc.).
-- Explicit cancellations or negations of looking or capturing: "don't look", "do not screenshot this", "ignore this", "not that one".
+STEP 0 — HARD BLOCKS (OVERRIDE EVERYTHING)
+Return [] immediately if ANY of the following is true in `m`:
 
-STEP 2 — CLEAR VISUAL TRIGGERS
-Return [{"name": "take_screenshot"}] if NONE of the STEP 0–1 blocks apply and ANY of the following is true:
+- **More than one screenshot or peek**:
+  - Any explicit count greater than 1 attached to a visual verb or media noun (numbers like 2, 3, 4, "twice", "two times", "three times", etc.).
+  - Any wording that clearly implies multiple or ongoing captures: talking about "many" screen grabs, "several" shots, "tons" or "loads" of pictures, "a bunch" of screenshots, capturing something "over and over" or "again and again", "keep" capturing, or doing it "forever".
+  - Commands that use the **plural** form of the word for a screenshot (for example saying to take "screenshots" in general rather than a single screenshot) must always be treated as asking for more than one and therefore blocked.
+- **Meta description prefix**:
+  - Messages that start with a synthetic prefix that only describes an image in words (such as a prefix like "ON THE SCREEN NOW:") are test harness narration. Treat them as plain text and return [].
+- **Explicit cancellation or zero**:
+  - Direct instructions not to look or not to capture (telling you not to look, not to screenshot, to ignore something, or to take zero screenshots) always return [].
 
-2A. Direct commands to inspect what they are viewing now:
-   - Imperatives with a visual verb aimed at the current screen/camera or a concrete on‑screen object: verbs like "look", "see", "watch", "check", "peek", "view", "inspect", "capture", "screenshot".
-   - These count whether they are followed by a deictic ("this/that/these/those/it"), a screen‑related noun (screen, window, tab, chat, document, video, photo, picture, profile, dashboard, game, etc.), or appear in standard patterns like "take a look", "have a look", "look now", "read the screen", or "check this conversation/file".
+If STEP 0 matches, do not consider later rules.
 
-2B. Present‑time deictic references plus evaluation or description:
-   - Sentences where "this/that/these/those/it/this one/that one" refer to something the user is choosing or pointing at *right now* and they ask for your opinion, comparison, rating or judgment of how it looks (e.g. asking what you think about it, whether it is good, how it looks, or which of several visible options is better).
-   - Descriptions of a specific item the user is currently focusing on where the deictic plus description clearly relies on its appearance or on what is happening on screen (for example saying that a particular item, place, scene, opponent, or hotel "looks" impressive, strange, risky, over the top, etc.).
-   - Follow‑ups like "this one instead", "what about this one?" or similar phrases that obviously point at another candidate in the same visual set.
-   - Simple present‑tense statements of the form "this/that/these/those [thing] is/are/looks/seems/feels [adjective]" about whatever is on their screen or in their camera view should almost always be treated as visual and call the tool.
+STEP 1 — CLEARLY NON‑VISUAL MESSAGES (TEXT‑ONLY)
+If STEP 0 did not match, return [] when `m` is mainly any of the following, even if it mentions screens, photos or buttons:
 
-2C. First‑time visual introductions after non‑visual chat:
-   - A sudden shift from ordinary conversation to a here‑and‑now object, using a deictic or explicit mention of the medium: a message that starts a new thread of "look at this", "see this [chat/photo/clip/profile]", "check out what I'm seeing" and similar.
-   - Presentations like "here it is" or "here they are" occurring right after the user has been building up to showing you something.
+- **Capability / meta questions**:
+  - Asking in general what you can do, what features you support, or whether sharing is working (e.g. capability checks about images or screen sharing) without a concrete instruction to inspect the current view.
+- **Requests for you to show or generate content**:
+  - Commands for you to display or create something (to show code, explain how to do something, or generate an example) rather than the user asking you to inspect what *they* are seeing.
+- **Planning, stories, past/future visuals**:
+  - Narratives about what they saw earlier, will show later, or memories of past photos, without a present‑tense request to look now.
+  - Preambles like wanting or planning to show you something, being shy about showing it, or saying they are "about to" show you, but with no actual "look/see this" directive yet.
+- **Plain descriptions of self / surroundings / screen state**:
+  - Simple statements about what they are wearing, what is on their monitor, or what is around them, when they neither use "this/that/these/those" to point to a particular thing **nor** ask you how it looks. These are status updates, not requests to inspect.
+- **Pure status updates or actions**:
+  - Messages about switching modes, going to bed, changing language, starting a game, or similar life updates, without any "look/see/check this" style verb.
+- **Emotional or crisis disclosures**:
+  - Strong emotional statements or crisis talk (about feelings, relationships, or mental health) that do not clearly point at something on the screen or through the camera. These must still return [] and you must still obey the JSON‑only response format.
+- **General advice / abstract questions**:
+  - Questions about what to wear in general, how to write a good profile, which hotels or products are good in theory, or how to word a message, when they are phrased in generic terms and do not use "this/that/these/those" to single out a concrete on‑screen option.
+  - Relationship/dating/messaging advice: questions about how to handle someone texting, what to reply, or how to talk to a match are normal advice requests unless the user explicitly points at a specific on‑screen message with "this/that" and asks you to inspect it.
+- **Persona or style commands with no object**:
+  - Short instructions such as being more or less of some personality trait ("be more [X]", "act more [Y]") that do not mention any object or screen/camera content are not visual.
+- **Purely textual / linguistic questions**:
+  - Asking how to phrase something, translate a sentence, fix grammar, or discuss the meaning or logic of some writing, when they are not simultaneously asking you to look at it again.
+  - Follow‑up questions about clarity or meaning (whether some text is clear, understandable, or makes sense) are analysis of content you already saw and should not cause another screenshot unless they explicitly tell you again to look or capture.
+- **Abstract deictic uses**:
+  - Uses of "this/that" that clearly refer to an idea, argument, plan, or statement—such as saying that something is correct, that a point makes sense, or that it implies a conclusion—are about reasoning, not visuals. Sentences that say "this" is correct, valid, or implies something should stay [].
+- **Functional / behavior questions about UI or controls**:
+  - Asking what a button, link or control does, what happens if they click it, or what effect it has is a question about behavior, not a fresh request to look, unless they pair it with a new "look/see/check" directive in the same message. These should stay [] even if you recently looked at the same page.
+- **Meta / rhetorical "see" or "look" language**:
+  - Conversational phrases like "I see what you mean", "look, I disagree", "see what I mean?", or "let's see" are rhetorical and not literal viewing requests.
+- **Pure UI actions**:
+  - Commands that only manipulate the interface (adding something to a cart, sending, scrolling, clicking, closing a window, navigating, confirming, etc.) do not by themselves ask you to look and MUST NOT trigger the tool, even if an earlier message in the conversation did.
 
-2D. Short emotional reactions that clearly anchor to a visual:
-   - Very short reactions whose main purpose is to gush about how something *looks* (for example exclamations like "so [adjective]!" or "this is wild") can count as visual *only* when:
-       • there is no prior context at all (treat the reaction as if they just showed you something), or
-       • a visual trigger from the user has already occurred a moment ago and the reaction still uses "this/that/it" or explicitly names the visible thing.
-   - Bare interjections without an object ("wow", "crazy", "no way", "lol") and short follow‑up comments such as "cool, right?" that do not include "this/that/it" should NOT by themselves cause a new screenshot.
+If STEP 1 matches, return [].
 
-2E. Ongoing visual chains and enumerations:
-   - Once the user has started actively sharing something visual, additional turns that clearly point at more items or regions in that same flow ("and this", "and this one too", "now this part", "the colored button in the corner") each count as a fresh single‑screenshot request, even if they omit an explicit verb like "look", as long as they are not asking for multiple captures in one sentence.
-   - If the user first told you not to look yet and then shortly after sends a brief approval like "now it's fine", "you can look now", or similar re‑enabling language, treat that as re‑activating the earlier visual request.
+STEP 2 — STRONG VISUAL TRIGGERS (CALL THE TOOL)
+If neither STEP 0 nor STEP 1 matched, return [{"name": "take_screenshot"}] when ANY of the following patterns is clearly present in `m`.
 
-STEP 3 — CONTEXT BREAKS
-Even if there was a visual earlier in the conversation, you should treat `m` as NON‑visual (return []) when:
-- The user steers back to an abstract or previously discussed topic ("anyway, back to …", "as I was saying about philosophy/politics/feelings") and is no longer clearly pointing at what is on screen.
-- They stop talking about the visible object and instead switch to some other person, organization or concept related to it (for example talking about the creator, a friend who owns something similar, or someone's reputation) without re‑introducing "this/that/these/those" for a concrete item in view.
+2A. **Direct commands to inspect what they are viewing now**
+- Imperative or directive language with a visual verb targeted at the current screen/camera or a concrete on‑screen object. Visual verbs include: look, see, watch, check, peek, view, inspect, capture, screenshot, and similar.
+- These count whether they are followed by a deictic ("this/that/these/those/it"), or by a screen‑related noun (screen, window, tab, chat, message, document, video, photo, picture, profile, dashboard, game, graph, spreadsheet, etc.), or appear in common patterns like "take a look", "have a look", "look now", "look at this", "check this out", "see this".
+- Yes/no questions that are essentially asking you to visually inspect the current display (for example asking if you can read what is on their screen, or asking if you can look at a specific trace that is currently visible) should be treated like visual commands and call the tool.
+- Requests to perform a single capture of what is on the screen, such as capturing or screenshotting what they are currently seeing, count as strong visual triggers as long as they do not ask for multiple captures in the same message.
+
+2B. **Deictic references plus evaluation or description of appearance**
+- Sentences where "this/that/these/those/it/this one/that one" refer to something the user is choosing or pointing at right now and they ask for your opinion, comparison, rating, or judgment of how it looks. This includes messages whose whole point is to get your view or your thoughts on "this" option.
+- Questions built around a deictic ("this/that/it") and a verb about visual quality—such as asking how it looks, whether it looks okay or good, or which option looks better—MUST be treated as visual and should call the tool.
+- Descriptions of a specific item the user is currently focusing on where the deictic plus description clearly rely on its appearance or what is happening on screen (for example saying that an item, place, scene, opponent, or location looks impressive, strange, risky, over the top, scary, cute, beautiful, sketchy, etc.).
+- Simple present‑tense statements of the form "this/that/these/those [thing] is/are/looks/seems/feels [adjective]" about something on their screen or in their camera view (clothing, animals, plants, places, scenery, people, UI, videos, clips, etc.) should usually be treated as visual and call the tool.
+- When the same pattern with "this/that" is clearly about correctness, logic, or whether an argument makes sense, treat it as text‑only instead (handled in STEP 1).
+
+2C. **First‑time visual introductions after non‑visual chat**
+- A sudden shift from ordinary conversation to a here‑and‑now object using a deictic or explicit medium reference: messages that start a new thread like "look at this", "see this [chat/photo/clip/profile]", or "check out what I'm seeing".
+- Presentations like "here it is" or "here they are" right after the user has been building up to showing you something, where it is natural that they are now revealing the visual.
+
+2D. **Short emotional reactions clearly about how something looks**
+- Very short reactions whose main purpose is to gush about how something looks—for example exclamations of the form "so [adjective]!" or "this is [strong adjective]!"—should be treated as visual when:
+  - there is no prior context at all (treat the reaction as if the user just showed you something they are looking at now), or
+  - a visual trigger has just occurred and the reaction still uses "this/that/it" or explicitly names the visible thing. In a burst of several such exclamations in a row, treat each of the first clearly deictic ones (like "this is [adj]!") as visual.
+- Bare interjections without an object ("wow", "crazy", "no way", "lol") and short follow‑up comments such as "cool, right?" or similar that do not include "this/that/it" MUST NOT by themselves cause a new screenshot.
+
+2E. **Ongoing visual chains and multiple items**
+- Once the user has started actively sharing something visual in the current conversation, additional turns that clearly point at more items or regions in that same flow—phrases like "and this", "and this one too", "now this part", or references to a specific element such as "the button in the corner"—each count as a fresh single‑screenshot request, even if they omit an explicit verb like "look", as long as they do not ask for multiple captures in one sentence.
+- If the user first told you not to look yet and then shortly after sends a brief approval like "now it's fine", "you can look now", or similar re‑enabling language, treat that as re‑activating the earlier visual request.
+- If the user explicitly states that they are sending or uploading one image and then additional images (for example saying they are sending another one), and later asks what you think of "these", treat that later question as a visual request because "these" refers to the set of images they just shared.
+
+STEP 3 — CONTEXT BREAKS (WHEN PREVIOUS VISUAL NO LONGER APPLIES)
+Even if there was a visual earlier in the conversation, you should treat the current message `m` as NON‑visual (return []) when:
+
+- The user steers back to an abstract or previously discussed topic (for example saying they are going back to talking about philosophy, politics, feelings, or another non‑visual subject) and is no longer clearly pointing at what is on screen.
+- They stop talking about the visible object and instead switch to some other person, organization, or concept related to it—such as talking about the creator, a friend who owns something similar, or someone's reputation—without re‑introducing "this/that/these/those" for a concrete item in view. After that switch, follow‑up pronouns like "he/she/they" that refer to the other person or group should not cause screenshots unless the user later gives a new "look at this" style command.
 
 DEFAULT
-If after applying STEPS 0–3 you are not clearly convinced that the user wants you to inspect what is on their screen or through their camera *right now*, return []. When a message contains a strong deictic pointer or a clear visual verb and no exclusion applies, it is usually better to call the tool once than to miss the user's intent."""
+If after applying STEPS 0–3 the message does not clearly fit any of the strong visual trigger patterns in STEP 2, return []."""
 
 DEFAULT_TOOL_PROMPT_NAME = "base"
 
