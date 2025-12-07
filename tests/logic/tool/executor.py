@@ -39,6 +39,35 @@ def _tool_status_to_bool(status: str | None) -> bool | None:
     return None
 
 
+def _derive_tool_called_from_raw(raw: Any) -> bool | None:
+    """Derive tool_called boolean from raw response by parsing it.
+    
+    Returns True if non-empty array, False if empty array, None if can't parse.
+    Handles explanation formats with trailing text.
+    """
+    parsed_list = None
+    if raw is None:
+        return None
+    elif isinstance(raw, list):
+        parsed_list = raw
+    elif isinstance(raw, str):
+        # Normalize newlines and whitespace (handles cases like "[].\nREASON")
+        normalized = raw.replace("\n", " ").replace("\r", " ").strip()
+        parsed_list = _extract_json_array(normalized)
+        if parsed_list is None:
+            try:
+                parsed = json.loads(normalized)
+                if isinstance(parsed, list):
+                    parsed_list = parsed
+            except (json.JSONDecodeError, ValueError):
+                if normalized == "" or normalized == "[]":
+                    parsed_list = []
+    
+    if parsed_list is None:
+        return None
+    return len(parsed_list) > 0
+
+
 def _format_bool(value: bool | None) -> str:
     if value is None:
         return "unknown"
@@ -46,7 +75,14 @@ def _format_bool(value: bool | None) -> str:
 
 
 def _extract_json_array(text: str) -> list | None:
-    """Try to extract a JSON array from text, handling trailing content."""
+    """Extract a JSON array from text, handling trailing content like explanations.
+    
+    Handles formats like:
+    - '[{"name": "take_screenshot"}]. REASON FOR CHOOSING THIS: ...'
+    - '[]. REASON FOR CHOOSING THIS: ...'
+    - '[]'
+    - '[{"name": "take_screenshot"}]'
+    """
     if not isinstance(text, str):
         return None
     text = text.strip()
@@ -54,7 +90,7 @@ def _extract_json_array(text: str) -> list | None:
         return None
     
     # Try to find the closing bracket of the JSON array
-    # This handles cases where there's extra text after the JSON
+    # This handles cases where there's extra text after the JSON (e.g., explanations)
     bracket_count = 0
     in_string = False
     escape_next = False
@@ -88,23 +124,45 @@ def _extract_json_array(text: str) -> list | None:
 
 
 def _is_valid_response_shape(turn: TurnResult) -> bool:
-    """Validate tool response shape, handling up to 25 tokens with possible trailing content."""
+    """Validate tool response shape, handling responses with explanations after JSON arrays.
+    
+    Validates format based on parsed JSON array, regardless of server's tool_called status,
+    since server-side parsing may be incorrect with explanation formats.
+    """
     raw = turn.tool_raw
     
-    if turn.tool_called:
-        # Tool was called - expect a non-empty list with tool call dicts
-        parsed_list = None
-        
-        if isinstance(raw, list):
-            parsed_list = raw
-        elif isinstance(raw, str):
-            # Try to extract JSON array from string (handles trailing content)
-            parsed_list = _extract_json_array(raw)
-        
-        if not parsed_list or len(parsed_list) == 0:
-            return False
-        
-        # Validate each item in the list
+    # First, try to extract/parse the JSON array from the raw response
+    parsed_list = None
+    if raw is None:
+        # None is valid (means no response) - treat as empty array
+        parsed_list = []
+    elif isinstance(raw, list):
+        parsed_list = raw
+    elif isinstance(raw, str):
+        # Normalize newlines and whitespace for parsing (handles cases like "[].\nREASON")
+        normalized = raw.replace("\n", " ").replace("\r", " ").strip()
+        # Extract JSON array from string (handles trailing explanations)
+        parsed_list = _extract_json_array(normalized)
+        # If extraction failed, try parsing the whole string
+        if parsed_list is None:
+            try:
+                parsed = json.loads(normalized)
+                if isinstance(parsed, list):
+                    parsed_list = parsed
+            except (json.JSONDecodeError, ValueError):
+                # If it's just "[]" or empty string, treat as empty array
+                if normalized == "" or normalized == "[]":
+                    parsed_list = []
+    
+    # If we still couldn't parse anything, it's invalid
+    if parsed_list is None:
+        return False
+    
+    # Validate format based on parsed result (ignore server's tool_called for format validation)
+    parsed_has_tool = len(parsed_list) > 0
+    
+    if parsed_has_tool:
+        # Tool was called - validate each item in the list has correct structure
         for item in parsed_list:
             if not isinstance(item, dict):
                 return False
@@ -113,26 +171,10 @@ def _is_valid_response_shape(turn: TurnResult) -> bool:
             # "arguments" is optional but if present should be a dict
             if "arguments" in item and not isinstance(item["arguments"], dict):
                 return False
-        
         return True
-    
-    # Tool was not called - expect empty list, None, or empty string/array
-    if raw is None:
+    else:
+        # Tool was not called - empty list is valid format
         return True
-    
-    if isinstance(raw, list):
-        return len(raw) == 0
-    
-    if isinstance(raw, str):
-        # Try to parse as JSON array - should be empty
-        parsed = _extract_json_array(raw)
-        if parsed is not None:
-            return len(parsed) == 0
-        # If it's a string that doesn't parse as JSON array, check if it's empty or "[]"
-        stripped = raw.strip()
-        return stripped == "" or stripped == "[]"
-    
-    return False
 
 
 def _secs_to_ms(value: float | None) -> float | None:
@@ -460,7 +502,14 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
             )
             continue
 
-        actual = turn.tool_called
+        # Correct tool_called based on parsed result (server status may be wrong with explanations)
+        corrected_tool_called = _derive_tool_called_from_raw(turn.tool_raw)
+        if corrected_tool_called is not None:
+            # Override server's tool_called with parsed result
+            actual = corrected_tool_called
+        else:
+            # Fallback to server's tool_called if we can't parse
+            actual = turn.tool_called
         if expected is None:
             continue
         if actual != expected:

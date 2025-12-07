@@ -134,11 +134,11 @@ DEFAULT:
 - If `m` is just text/chat without the above triggers -> []."""
 
 EXPLANATIONS = """
-You must output exactly one of the following and nothing else:
+You must output exactly one of the following JSON arrays and a reason for choosing that reply:
 [{"name": "take_screenshot"}]. REASON FOR CHOOSING THIS: 'the reason you chose this answer'
 []. REASON FOR CHOOSING THIS: 'the reason you chose this answer'
 
-For REASON FOR CHOOSING THIS you must write a few words explaining WHY you picked this specific reply.
+For REASON FOR CHOOSING THIS you must write a few words explaining WHY you picked this specific reply. The reason must be non-generic and precise.
 
 Use the latest user message `m` as well as the conversation history to decide if the user wants you to LOOK at their screen right now.
 
