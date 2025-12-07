@@ -513,6 +513,18 @@ TOOL_DEFAULT_MESSAGES = [
         ("Not ready.", False),
         ("Okay look now.", True),
     ]),
+    ("general_conversation", [
+        ("Math pop quiz: what's 27 + 36? I'm double checking the mental math I bragged about to my brother.", False),
+        ("Also, I'm planning an 18 km trail run next Thursday at 6:30 AM, so hold me accountable.", False),
+        ("FYI my cat Pixel spilled turmeric tea across the sketchbook I was illustrating last night.", False),
+        ("Can you remind me what math question I asked you a moment ago?", False),
+        ("New topic: I'm planning to film a synth cover of a Dua Lipa song tonight.", False),
+        ("Also jotting down that I'll pack homemade date bars for energy during that trail run.", False),
+        ("Which pet disaster did I mention earlier so I can tell the vet the story?", False),
+        ("Adding more context: my studio is in an old warehouse that smells like sawdust.", False),
+        ("And I'm currently obsessed with baking sourdough with roasted jalapeños.", False),
+        ("Last check, what time did I say that trail run starts?", False),
+    ]),
 ]
 
 __all__ = ["TOOL_DEFAULT_MESSAGES"]
