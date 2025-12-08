@@ -23,7 +23,7 @@ If the message is clearly a command to look/screenshot despite typos, TRIGGER.
 REJECT [] if ANY:
 - STARTS WITH "ON THE SCREEN NOW:"
 - USER DESCRIBES WHAT THEY DO, HEAR, WEAR OR SEE: if the user tells you what they wear, see, hear or do (either now, in the past or future) you can return []
-- QUANTITY DIFFERENT THAN ONE: "twice", "look twice", "2 screenshots", "Take screenshots" (plural), "forever", "keep looking", "this and that" (multiple targets).
+- QUANTITY DIFFERENT THAN ONE: "twice", "look twice", "2 screenshots", "Take screenshots" (plural), "forever", "keep looking", "this and that" (multiple targets). These return [] even if there is a deictic e.g "looks twice at this" -> []
 - NEGATION: "don't look", "not this", "nevermind"
 - NO DEICTIC: statements without this/that/these/those pointing to something visual
 - IDIOMS: "I see", "Let's see", "Look alive", "I'm seeing someone"
