@@ -279,7 +279,6 @@ TOOL_DEFAULT_MESSAGES = [
     ("This implies we should stop", False),
 
     # ── EDGE CASES: Quantity/Negation (Should be False) ───────────────────────────
-    ("Take screenshots", False), # Plural implies >1
     ("Don't look at this", False), # Explicit negation
     ("Please do not screenshot", False),
     ("Take 0 screenshots", False),

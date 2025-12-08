@@ -26,6 +26,20 @@ _TAKE_SCREENSHOTS_PATTERN = re.compile(
 # Values of X that trigger a screenshot (singular)
 _TRIGGER_QUANTITIES = {"one", "1", "once", "a"}
 
+# Patterns that return [{"name": "take_screenshot"}] (trigger tool call)
+TRIGGER_PATTERNS = [
+    r"^take\s+screenshots?[.!?]*$",  # "take screenshot", "take screenshots"
+    r"^screenshot\s+this[.!?]*$",  # "screenshot this"
+    r"^sceenshot\s+this[.!?]*$",  # typo: "sceenshot this"
+    r"^lok\s+at\s+this[.!?]*$",  # typo: "lok at this"
+    r"^lock\s+at\s+this[.!?]*$",  # typo: "lock at this"
+    r"^tkae\s+a\s+look[.!?]*$",  # typo: "tkae a look"
+    r"^teak\s+a\s+look[.!?]*$",  # typo: "teak a look"
+]
+
+# Compiled trigger patterns (case insensitive)
+_TRIGGER_COMPILED = [re.compile(p, re.IGNORECASE) for p in TRIGGER_PATTERNS]
+
 
 def filter_tool_phrase(user_utt: str) -> Literal["reject", "trigger", "pass"]:
     """
@@ -38,7 +52,7 @@ def filter_tool_phrase(user_utt: str) -> Literal["reject", "trigger", "pass"]:
     """
     text = user_utt.strip()
     
-    # Check reject patterns
+    # Check reject patterns first
     for pattern in _REJECT_COMPILED:
         if pattern.match(text):
             return "reject"
@@ -52,5 +66,10 @@ def filter_tool_phrase(user_utt: str) -> Literal["reject", "trigger", "pass"]:
         else:
             # Any other quantity (two, three, multiple, etc.) -> reject
             return "reject"
+    
+    # Check trigger patterns (typos, direct commands)
+    for pattern in _TRIGGER_COMPILED:
+        if pattern.match(text):
+            return "trigger"
     
     return "pass"
