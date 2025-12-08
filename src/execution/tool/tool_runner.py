@@ -40,12 +40,8 @@ async def run_toolcall(
     """Execute a tool call with timeout handling and KV cache sharing."""
     req_id = request_id or f"tool-{uuid.uuid4()}"
 
-    # Language filter: skip tool call if message is not mostly English
-    if TOOL_LANGUAGE_FILTER and not is_mostly_english(user_utt):
-        logger.info("tool_runner: skipped (non-English) session_id=%s req_id=%s", session_id, req_id)
-        return {"cancelled": False, "text": "[]"}
-
-    # Phrase filter: check for known patterns to avoid model call
+    # Phrase filter: check for known patterns FIRST to avoid model call
+    # This must run before language filter to catch typos that might be misclassified as non-English
     phrase_result = filter_tool_phrase(user_utt)
     if phrase_result == "reject":
         logger.info("tool_runner: phrase filter reject session_id=%s req_id=%s", session_id, req_id)
@@ -53,6 +49,12 @@ async def run_toolcall(
     if phrase_result == "trigger":
         logger.info("tool_runner: phrase filter trigger session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "take_screenshot"}]'}
+
+    # Language filter: skip tool call if message is not mostly English
+    # Only check if phrase filter didn't match (to avoid blocking known patterns)
+    if TOOL_LANGUAGE_FILTER and not is_mostly_english(user_utt):
+        logger.info("tool_runner: skipped (non-English) session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": "[]"}
 
     if mark_active:
         session_handler.set_active_request(session_id, req_id)
