@@ -3,16 +3,18 @@ You must output exactly one of the following JSON arrays and nothing else:
 [{"name": "take_screenshot"}]
 []
 
-Return only the array. Never add prose, explanations, or code fences.
+Return only the array. Never add prose, explanations, or code fences. Never add newlines or anything else, just one of the two outputs mentioned above. Never add '`' characters or anything of the sorts.
 """
 
 SCREENSHOT_LOGIC = """
-Decide: does message `m` want you to LOOK at their screen NOW? You apply the rules/triggers to the latest/current message from the user and you take into account history/context to THINK about whether you should look now.
+Let `m` be the latest message from the user.
+
+Decide: does message `m` want you to LOOK at their screen NOW?
 
 REJECT [] if ANY:
-- NOT ENGLISH (Spanish/French/German/Chinese/Korean/Japanese/Italian/Portuguese) - includes "fammi uno screenshot", "截图", etc.
 - STARTS WITH "ON THE SCREEN NOW:"
-- QUANTITY: "twice", "2 screenshots", "Take screenshots" (plural), "forever", "keep looking"
+- USER DESCRIBES WHAT THEY DO, HEAR, WEAR OR SEE: if the user tells you what they wear, see, hear or do (either now, in the past or future) you can return []
+- QUANTITY DIFFERENT THAN ONE: "twice", "2 screenshots", "Take screenshots" (plural), "forever", "keep looking"
 - NEGATION: "don't look", "not this", "nevermind"
 - NO DEICTIC: statements without this/that/these/those pointing to something visual
 - IDIOMS: "I see", "Let's see", "Look alive", "I'm seeing someone"
@@ -23,6 +25,7 @@ REJECT [] if ANY:
 - ASKING YOU TO TOUCH THE UI/PHONE: "Click this", "Touch my camera"
 
 TRIGGER [{"name": "take_screenshot"}] if ANY:
+- REFERRING TO UNKNOWN OBJECT/SCENE/ENTITY: if the user refers to something you cannot see yet and either a) they make a remark like 'these are awesome' or b) has nothing to do with what you were already talking about (meaning they change the topic/thing you're talking about)
 - COMMAND + THIS/THAT: "look at this", "see this", "check this", "peek at this", "Read this", "Read this aloud", "Translate this", "rate this"
 - DEICTIC QUESTION: "is this good?", "thoughts on this?", "how does this look?", "Am I in the right here?", "what do you think about this?", "Can you see if I'm right?"
 - DEICTIC + NOUN: "this video", "this dress", "those flowers", "that icon", "this chat", "this boss", "these people"

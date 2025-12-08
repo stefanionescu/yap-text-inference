@@ -95,6 +95,9 @@ CHAT_TEMPLATE_ENABLE_THINKING = env_flag("CHAT_TEMPLATE_ENABLE_THINKING", False)
 CACHE_RESET_INTERVAL_SECONDS = float(os.getenv("CACHE_RESET_INTERVAL_SECONDS", "600"))
 CACHE_RESET_MIN_SESSION_SECONDS = float(os.getenv("CACHE_RESET_MIN_SESSION_SECONDS", "300"))
 
+# Tool language filter: skip tool call if user message is not mostly English
+TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
+
 
 def validate_env() -> None:
     """Validate required configuration once during startup."""
@@ -135,5 +138,6 @@ __all__ = [
     "CHAT_TEMPLATE_ENABLE_THINKING",
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",
+    "TOOL_LANGUAGE_FILTER",
     "validate_env",
 ]
