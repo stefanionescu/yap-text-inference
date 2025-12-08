@@ -33,10 +33,16 @@ apply_quantization_defaults() {
           export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
           ;;
         *A100*)
-          export VLLM_USE_V1=0
+          # A100 can't do FP8 KV cache, but FlashInfer works fine with int8
           export KV_DTYPE=${KV_DTYPE:-int8}
-          export VLLM_ATTENTION_BACKEND=XFORMERS
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+          if [ "${HAS_FLASHINFER}" = "1" ]; then
+            export VLLM_USE_V1=1
+            export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+          else
+            export VLLM_USE_V1=0
+            export VLLM_ATTENTION_BACKEND=XFORMERS
+          fi
           export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
           export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
           export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
@@ -104,11 +110,18 @@ apply_quantization_defaults() {
     gptq_marlin)
       case "${gpu_name}" in
         *A100*)
-          export VLLM_USE_V1=0
+          # A100 can't do FP8 KV cache, but FlashInfer works fine with int8
           export KV_DTYPE=${KV_DTYPE:-int8}
-          export VLLM_ATTENTION_BACKEND=XFORMERS
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
-          log_info "A100 4-bit mode: V0 engine + INT8 KV for maximum context slots"
+          if [ "${HAS_FLASHINFER}" = "1" ]; then
+            export VLLM_USE_V1=1
+            export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+            log_info "A100 4-bit mode: V1 engine + FlashInfer + INT8 KV"
+          else
+            export VLLM_USE_V1=0
+            export VLLM_ATTENTION_BACKEND=XFORMERS
+            log_info "A100 4-bit mode: V0 engine + XFORMERS + INT8 KV"
+          fi
           ;;
         *H100*|*L40S*|*L40*)
           export VLLM_USE_V1=1

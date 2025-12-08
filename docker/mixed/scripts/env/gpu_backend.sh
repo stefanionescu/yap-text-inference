@@ -26,10 +26,16 @@ case "${QUANTIZATION}" in
         export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
         ;;
       *A100*)
-        export VLLM_USE_V1=0
+        # A100 can't do FP8 KV cache, but FlashInfer works fine with int8
         export KV_DTYPE=${KV_DTYPE:-int8}
-        export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
         export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
+        if [ "${HAS_FLASHINFER}" = "1" ]; then
+          export VLLM_USE_V1=1
+          export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+        else
+          export VLLM_USE_V1=0
+          export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
+        fi
         export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
         export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
         export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
@@ -49,12 +55,27 @@ case "${QUANTIZATION}" in
     ;;
   gptq|gptq_marlin)
     export QUANTIZATION=gptq_marlin
-    export KV_DTYPE=${KV_DTYPE:-fp8}
-    if [ "${HAS_FLASHINFER}" = "1" ]; then
-      export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
-    else
-      export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
-    fi
+    case "${GPU_NAME}" in
+      *A100*)
+        # A100 can't do FP8 KV cache, but FlashInfer works fine with int8
+        export KV_DTYPE=${KV_DTYPE:-int8}
+        if [ "${HAS_FLASHINFER}" = "1" ]; then
+          export VLLM_USE_V1=1
+          export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+        else
+          export VLLM_USE_V1=0
+          export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
+        fi
+        ;;
+      *)
+        export KV_DTYPE=${KV_DTYPE:-fp8}
+        if [ "${HAS_FLASHINFER}" = "1" ]; then
+          export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
+        else
+          export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
+        fi
+        ;;
+    esac
     ;;
   awq)
     case "${GPU_NAME}" in
