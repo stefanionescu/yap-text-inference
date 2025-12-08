@@ -326,7 +326,7 @@ TOOL_DEFAULT_MESSAGES = [
         ("So cool!", False),
     ]),
     ("vague_exclamations", [
-        ("So cool!", True),
+        ("So cool!", False),
         ("This is sick!", True),
         ("Wow", False),
         ("Crazy stuff.", False),
