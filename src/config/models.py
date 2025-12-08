@@ -90,7 +90,10 @@ ALLOWED_TOOL_MODELS: list[str] = [
 ]
 
 ALLOWED_DUAL_MODELS: list[str] = [
-    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit"
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
+    "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
+    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
+    "cpatonn/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit",
 ]
 
 
