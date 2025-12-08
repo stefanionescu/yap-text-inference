@@ -25,6 +25,7 @@ from ...config.timeouts import TOOL_TIMEOUT_S
 from ..streaming.llm_stream import LLMStream, LLMStreamConfig
 from ...tokens.prompt_cache import compile_tool_prompt
 from ...utils import is_mostly_english
+from .tool_filter import filter_tool_phrase
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,15 @@ async def run_toolcall(
     if TOOL_LANGUAGE_FILTER and not is_mostly_english(user_utt):
         logger.info("tool_runner: skipped (non-English) session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": "[]"}
+
+    # Phrase filter: check for known patterns to avoid model call
+    phrase_result = filter_tool_phrase(user_utt)
+    if phrase_result == "reject":
+        logger.info("tool_runner: phrase filter reject session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": "[]"}
+    if phrase_result == "trigger":
+        logger.info("tool_runner: phrase filter trigger session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": '[{"name": "take_screenshot"}]'}
 
     if mark_active:
         session_handler.set_active_request(session_id, req_id)

@@ -395,7 +395,7 @@ TOOL_DEFAULT_MESSAGES = [
     ]),
     ("gradual_visual_buildup", [
         ("I'm at this new restaurant.", False),
-        ("It's good, but the presentation is incredible.", True),
+        ("It's good, but the presentation is incredible.", False),
         ("You have to see this artistic plating!", True),
     ]),
     ("multiple_screenshots_rejected", [
@@ -525,7 +525,7 @@ TOOL_DEFAULT_MESSAGES = [
         ("Playing Elden Ring right now.", False),
         ("This boss is impossibly hard.", True),
         ("Watch this move!", True),
-        ("Did you see that dodge?", False),
+        ("Did you see that dodge?", True),
         ("Look at his health bar now", True),
     ]),
     ("document_ocr_request", [
