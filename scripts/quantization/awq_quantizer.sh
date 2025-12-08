@@ -39,7 +39,7 @@ if [ "${AWQ_TARGET_CHAT}" = "0" ] && [ "${AWQ_TARGET_TOOL}" = "0" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-log_info "Running AWQ quantization process (chat=${AWQ_TARGET_CHAT}, tool=${AWQ_TARGET_TOOL})"
+log_info "Running AWQ quantization process"
 awq_setup_hf_env
 
 awq_should_use_prequant

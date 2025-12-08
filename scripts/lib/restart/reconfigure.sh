@@ -385,7 +385,7 @@ restart_reconfigure_models() {
   if [ "${deploy_dual}" = "1" ]; then
     log_info "Dual model: ${DUAL_MODEL}"
     if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-      log_info "Dual quantization override: ${CHAT_QUANTIZATION}"
+      log_info "Model quantization override: ${CHAT_QUANTIZATION}"
     fi
   else
     if [ "${deploy_chat}" = "1" ]; then

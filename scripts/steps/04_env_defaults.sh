@@ -53,11 +53,11 @@ fi
 if [ "${DEPLOY_DUAL:-0}" = "1" ]; then
   log_info "  Dual model: ${CHAT_MODEL:-${DUAL_MODEL:-<unset>}}"
   if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-    log_info "  Dual quantization: ${CHAT_QUANTIZATION}"
+    log_info "  Model quantization: ${CHAT_QUANTIZATION}"
   elif [ -n "${QUANTIZATION:-}" ]; then
-    log_info "  Dual quantization: ${QUANTIZATION} (inherited)"
+    log_info "  Model quantization: ${QUANTIZATION} (inherited)"
   else
-    log_info "  Dual quantization: <unset>"
+    log_info "  Model quantization: <unset>"
   fi
 else
   if [ "${DEPLOY_CHAT}" = "1" ]; then
