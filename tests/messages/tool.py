@@ -496,7 +496,7 @@ TOOL_DEFAULT_MESSAGES = [
     ]),
     ("quantity_trap_in_context", [
         ("Check this out", True),
-        ("Cool right?", False),
+        ("Cool right?", True),
         ("Now take 5 more screenshots of the details", False),
     ]),
     ("narrative_buildup", [
@@ -510,7 +510,7 @@ TOOL_DEFAULT_MESSAGES = [
     ("coding_debugging_flow", [
         ("I have a bug in my python script", False),
         ("It's in the main function", False),
-        ("Can you read the screen?", True),
+        ("Can you read the screen?", False),
         ("Take a look at the error trace", True),
         ("What about this line?", True),
     ]),
@@ -522,7 +522,7 @@ TOOL_DEFAULT_MESSAGES = [
     ]),
     ("gaming_moment", [
         ("Playing Elden Ring right now.", False),
-        ("This boss is impossibly hard.", True),
+        ("This boss is impossibly hard.", False),
         ("Watch this move!", True),
         ("Did you see that dodge?", True),
         ("Look at his health bar now", True),
@@ -567,7 +567,7 @@ TOOL_DEFAULT_MESSAGES = [
     ("element_drill_down", [
         ("See the dashboard?", True),
         ("The red button in the corner", True),
-        ("What does it do?", False),
+        ("What does it do?", True),
     ]),
     ("capability_check_to_action", [
         ("Can you see video?", False),
