@@ -8,6 +8,7 @@ source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
 source "${SCRIPT_DIR}/lib/common/model_detect.sh"
+source "${SCRIPT_DIR}/lib/common/model_validate.sh"
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
 source "${SCRIPT_DIR}/lib/runtime/pipeline.sh"
 
@@ -270,9 +271,6 @@ if [ "${DEPLOY_MODELS}" = "dual" ]; then
   fi
 fi
 
-# Note: Model & quantization validation is centralized in Python (src/config.py).
-# main.sh only passes through the selected values.
-
 # Export only what is needed for selected deployment
 if [ "${DEPLOY_MODELS}" = "dual" ]; then
   export DUAL_MODEL="${DUAL_MODEL_NAME:-${CHAT_MODEL_NAME}}"
@@ -285,6 +283,13 @@ else
   if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
     export TOOL_MODEL="${TOOL_MODEL_NAME}"
   fi
+fi
+
+# Early model validation - fail fast before any heavy operations
+log_info "Validating model configuration..."
+if ! validate_models_early; then
+  log_err "Aborting deployment due to invalid model configuration"
+  exit 1
 fi
 
 # Snapshot desired config for smart restart detection
