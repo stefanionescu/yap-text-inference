@@ -45,6 +45,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     # Pre-quantized AWQ/W4A16 models
     "leon-se/gemma-3-27b-it-qat-W4A16-G128",
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
+    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ", # stupid and random as fuck
 
     "TheBloke/30B-Lazarus-AWQ", # completely ignores instructions, super dumb

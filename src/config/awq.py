@@ -234,6 +234,15 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         requires_bfloat16=True,
         requires_fla_runtime=True,
     ),
+    # Qwen3-Next uses hybrid DeltaNet + Attention architecture
+    # It requires bfloat16 to avoid dtype mismatches in torch.compile
+    # Must come before generic qwen3 profile to match first
+    ModelProfile(
+        name="qwen3-next",
+        markers=("qwen3-next", "qwen3_next"),
+        requires_bfloat16=True,
+        tokenizer_kwargs={"fix_mistral_regex": True},
+    ),
     ModelProfile(
         name="qwen3",
         markers=("qwen3",),
