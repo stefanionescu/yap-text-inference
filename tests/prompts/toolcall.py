@@ -30,11 +30,12 @@ REJECT [] if ANY:
 - ASKING YOU TO SHOW: "Show me X", "Can you show me?"
 - CAPABILITY ONLY: "Can you see my screen?" (no object to look at)
 - FUTURE/PAST: "Want to see?", "Remember that pic?", "Did you see that?"
-- WAITING/DELAYING: "Wait a second to show it", "Hold on, you gotta see this"
+- WAITING/DELAYING/SETUP ACTIONS: "Wait a second to show it", "Hold on, you gotta see this", "Hold on, let me [do something]", "Wait, I need to [prepare something]", "Give me a moment to [set something up]", "Let me [position/prepare] [something]". These are instructions to WAIT, not to look. The user is telling you to stop/wait while they prepare something.
+- PURE STATEMENTS WITHOUT VISUAL INDICATION: When the user makes a simple statement about something they did/made/have without any indication they want you to look at it. Examples: "I created a new design", "I purchased something", "It's a specific brand". These are informational statements, not requests to look. Only trigger if there's a clear visual indicator like "check this out" or "look at this".
 - GENERAL ADVICE SEEKING: user asks for general advice about people/situations described in TEXT only (not on screen). Examples: "what should I do if my friend is an ass?", "what should I do if a guy keeps messaging me?", "he's cute but annoying" (describing a person via text, NOT on screen)
-- TOPIC SWITCH: "Anyway, back to Kant", "what do you think about aliens?"
-- ASKING YOU TO TOUCH THE UI/PHONE: "Click this", "Touch my camera"
-- DESCRIBING PEOPLE FROM TEXT CONVERSATIONS: when user describes someone from a chat/dating app/text message using words like "cute", "hot", "annoying" etc., they are describing someone IN TEXT, not on screen
+- TOPIC SWITCH/RETURN TO PREVIOUS TOPIC: "Anyway, back to [topic]", "what do you think about [new topic]?", "What were we saying?". When the user changes subject or returns to a previous conversation topic without indicating something new to look at, return []. Even if they previously showed something visual, returning to text discussion doesn't require looking again.
+- IMPOSSIBLE INTERACTIONS: "Click this", "Touch my camera", "Tap that", "Navigate to", "Go to", "Press this button", "Swipe here". You CANNOT interact with the phone/screen. These are impossible actions and should return [].
+- REFERENTIAL STATEMENTS ABOUT NON-VISIBLE THINGS: When the user makes statements about things that are clearly NOT on screen (like "Someone else has something similar", "That other one is different", describing something from memory or not visible). These are informational statements about things you cannot see, not requests to look.
 
 TRIGGER [{"name": "take_screenshot"}] if ANY AND if NO points from the REJECT section apply:
 - EXPLICIT SCREENSHOT REQUEST (singular only, NOT plural "screenshots"): "take screenshot", "take a screenshot", "take one screenshot", "screenshot please", "screenshot this", "capture this"
@@ -45,6 +46,8 @@ TRIGGER [{"name": "take_screenshot"}] if ANY AND if NO points from the REJECT se
 - DEICTIC EXCLAMATION: "this is interesting", "this is crazy", "this is sick", "So cool!" (first message), "This is sick!", "that dog is so cute", "this is adorable"
 - HERE + LOOK: "Here, look", "Here, look."
 - RESUMPTION: "Okay look now", "Just kidding, look now!"
+- "LOOK AGAIN" LINGUISTIC MARKERS: Patterns that indicate the user wants you to look at something NEW or DIFFERENT on screen: phrases like "and this", "and this one", "or maybe this one?", "what about this one?", "but this one", "you see?", "see this one?". These markers signal a new visual target or a request to look again at something different. The pattern is: comparison/alternative language + deictic ("this one", "that one") = look again.
+- STATEMENTS REFERRING TO VISIBLE CONTEXT: When a statement clearly refers to something visible/on-screen that requires visual confirmation. Examples: statements about visible chat conversations, visible messages, visible game screens, visible UI elements. These differ from pure statements because they reference visible context that needs to be seen. However, if it's just a statement about something you made/have without visual indication, it's NOT a trigger (see REJECT section).
 
 TEXT CONTEXT (no prior visual, discussing text topic):
 - "Am I right?" without "this" -> [] (refers to text discussion)
@@ -52,9 +55,13 @@ TEXT CONTEXT (no prior visual, discussing text topic):
 
 BARE REACTIONS -> []: "Wow", "Crazy stuff." (no deictic)
 
-KEY RULE: If the message contains "this", "that", "these", or "those" referring to something you haven't seen yet, TRIGGER. When in doubt with a deictic, TRIGGER.
+DISTINGUISHING VISIBLE REFERENCE VS PURE STATEMENT:
+- VISIBLE REFERENCE (TRIGGER): Statement that refers to something clearly visible/on-screen that you need to see. Examples: statements about visible chat conversations, visible messages, visible game screens, visible UI elements that require you to see them to understand the reference.
+- PURE STATEMENT (REJECT): Statement about something you made/have/bought without indication to look. Examples: "I created something", "I purchased an item", "It's a specific brand". These are informational only - no visual indicator present. The key difference: does the statement REQUIRE seeing something on screen to understand it, or is it just telling you information?
 
-DEFAULT: [] only if NO deictic present and unclear.
+KEY RULE: If the message contains "this", "that", "these", or "those" referring to something you haven't seen yet AND it's not a pure informational statement, TRIGGER. However, if it's just a statement about something the user did/made/has without any visual command or question, REJECT.
+
+DEFAULT: [] only if NO deictic present and unclear, OR if it's a pure informational statement without visual indication.
 """
 
 BASE = f"""

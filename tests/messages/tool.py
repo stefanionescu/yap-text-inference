@@ -194,10 +194,10 @@ TOOL_DEFAULT_MESSAGES = [
     ("My clipboard is broken, read the screen", True),
 
     # ── EDGE CASES: 'Here' Ambiguity ──────────────────────────────────────────────
-    ("Here.", False),
-    ("Here it is.", False), # Usually introduces text
+    ("Here.", True),
+    ("Here it is.", True),
     ("Here, look.", True),
-    ("Right here.", False), # ambiguous
+    ("Right here.", True), # ambiguous
     ("Right here, look at this spot.", True),
 
     # ── EDGE CASES: Implicit Action Verbs (Read/Translate) ────────────────────────

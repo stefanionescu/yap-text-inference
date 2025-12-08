@@ -1,7 +1,35 @@
 """Tool result parsing utilities."""
 
 import json
+import re
 from typing import Any
+
+
+def _strip_code_fences(text: str) -> str:
+    """Strip markdown code fences from text.
+    
+    Handles cases like:
+    - '[]\n```' -> '[]'
+    - '```json\n[]\n```' -> '[]'
+    - '```\n[]\n```' -> '[]'
+    - '[]```' -> '[]'
+    - '[{"name": "take_screenshot"}]\n```' -> '[{"name": "take_screenshot"}]'
+    """
+    # Remove leading/trailing whitespace first
+    text = text.strip()
+    
+    # Remove leading code fence: ``` optionally followed by language identifier
+    # Match: ``` (optional language like json/python/etc) followed by optional whitespace/newlines
+    text = re.sub(r'^```[a-zA-Z]*\s*\n*', '', text, flags=re.MULTILINE)
+    
+    # Remove trailing code fence: optional whitespace/newlines followed by ```
+    # This handles cases like '[]\n```' or '[]```' or '\n```'
+    text = re.sub(r'\s*\n*```\s*$', '', text, flags=re.MULTILINE)
+    
+    # Final cleanup: remove any remaining trailing ``` that might be stuck
+    text = re.sub(r'```\s*$', '', text)
+    
+    return text.strip()
 
 
 def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
@@ -10,6 +38,8 @@ def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
     Expects the tool to return a JSON array:
     - '[{"name": "take_screenshot"}]' -> tool call requested
     - '[]' -> no tool call
+    
+    Handles edge cases where LLM adds markdown code fences or extra formatting.
     
     Args:
         tool_result: Tool execution result dict
@@ -25,7 +55,9 @@ def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
     raw_txt = (tool_result or {}).get("text") if tool_result else None
     
     if isinstance(raw_txt, str):
-        normalized = raw_txt.strip()
+        # Strip code fences and normalize whitespace
+        normalized = _strip_code_fences(raw_txt)
+        
         if normalized:
             try:
                 parsed = json.loads(normalized)
