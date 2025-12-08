@@ -43,7 +43,6 @@ def _derive_tool_called_from_raw(raw: Any) -> bool | None:
     """Derive tool_called boolean from raw response by parsing it.
     
     Returns True if non-empty array, False if empty array, None if can't parse.
-    Handles explanation formats with trailing text.
     """
     parsed_list = None
     if raw is None:
@@ -51,17 +50,13 @@ def _derive_tool_called_from_raw(raw: Any) -> bool | None:
     elif isinstance(raw, list):
         parsed_list = raw
     elif isinstance(raw, str):
-        # Normalize newlines and whitespace (handles cases like "[].\nREASON")
-        normalized = raw.replace("\n", " ").replace("\r", " ").strip()
-        parsed_list = _extract_json_array(normalized)
-        if parsed_list is None:
-            try:
-                parsed = json.loads(normalized)
-                if isinstance(parsed, list):
-                    parsed_list = parsed
-            except (json.JSONDecodeError, ValueError):
-                if normalized == "" or normalized == "[]":
-                    parsed_list = []
+        normalized = raw.strip()
+        try:
+            parsed = json.loads(normalized)
+            if isinstance(parsed, list):
+                parsed_list = parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
     
     if parsed_list is None:
         return None
@@ -74,64 +69,16 @@ def _format_bool(value: bool | None) -> str:
     return "yes" if value else "no"
 
 
-def _extract_json_array(text: str) -> list | None:
-    """Extract a JSON array from text, handling trailing content like explanations.
-    
-    Handles formats like:
-    - '[{"name": "take_screenshot"}]. REASON FOR CHOOSING THIS: ...'
-    - '[]. REASON FOR CHOOSING THIS: ...'
-    - '[]'
-    - '[{"name": "take_screenshot"}]'
-    """
-    if not isinstance(text, str):
-        return None
-    text = text.strip()
-    if not text.startswith("["):
-        return None
-    
-    # Try to find the closing bracket of the JSON array
-    # This handles cases where there's extra text after the JSON (e.g., explanations)
-    bracket_count = 0
-    in_string = False
-    escape_next = False
-    
-    for i, char in enumerate(text):
-        if escape_next:
-            escape_next = False
-            continue
-        if char == "\\":
-            escape_next = True
-            continue
-        if char == '"' and not escape_next:
-            in_string = not in_string
-            continue
-        if in_string:
-            continue
-        if char == "[":
-            bracket_count += 1
-        elif char == "]":
-            bracket_count -= 1
-            if bracket_count == 0:
-                # Found the end of the JSON array
-                try:
-                    parsed = json.loads(text[:i + 1])
-                    if isinstance(parsed, list):
-                        return parsed
-                except (json.JSONDecodeError, ValueError):
-                    pass
-                return None
-    return None
 
 
 def _is_valid_response_shape(turn: TurnResult) -> bool:
-    """Validate tool response shape, handling responses with explanations after JSON arrays.
+    """Validate tool response shape.
     
-    Validates format based on parsed JSON array, regardless of server's tool_called status,
-    since server-side parsing may be incorrect with explanation formats.
+    Expects a JSON array response.
     """
     raw = turn.tool_raw
     
-    # First, try to extract/parse the JSON array from the raw response
+    # Parse the JSON array from the raw response
     parsed_list = None
     if raw is None:
         # None is valid (means no response) - treat as empty array
@@ -139,29 +86,20 @@ def _is_valid_response_shape(turn: TurnResult) -> bool:
     elif isinstance(raw, list):
         parsed_list = raw
     elif isinstance(raw, str):
-        # Normalize newlines and whitespace for parsing (handles cases like "[].\nREASON")
-        normalized = raw.replace("\n", " ").replace("\r", " ").strip()
-        # Extract JSON array from string (handles trailing explanations)
-        parsed_list = _extract_json_array(normalized)
-        # If extraction failed, try parsing the whole string
-        if parsed_list is None:
-            try:
-                parsed = json.loads(normalized)
-                if isinstance(parsed, list):
-                    parsed_list = parsed
-            except (json.JSONDecodeError, ValueError):
-                # If it's just "[]" or empty string, treat as empty array
-                if normalized == "" or normalized == "[]":
-                    parsed_list = []
+        normalized = raw.strip()
+        try:
+            parsed = json.loads(normalized)
+            if isinstance(parsed, list):
+                parsed_list = parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
     
-    # If we still couldn't parse anything, it's invalid
+    # If we couldn't parse, it's invalid
     if parsed_list is None:
         return False
     
-    # Validate format based on parsed result (ignore server's tool_called for format validation)
-    parsed_has_tool = len(parsed_list) > 0
-    
-    if parsed_has_tool:
+    # Validate format based on parsed result
+    if len(parsed_list) > 0:
         # Tool was called - validate each item in the list has correct structure
         for item in parsed_list:
             if not isinstance(item, dict):
@@ -171,10 +109,8 @@ def _is_valid_response_shape(turn: TurnResult) -> bool:
             # "arguments" is optional but if present should be a dict
             if "arguments" in item and not isinstance(item["arguments"], dict):
                 return False
-        return True
-    else:
-        # Tool was not called - empty list is valid format
-        return True
+    
+    return True
 
 
 def _secs_to_ms(value: float | None) -> float | None:

@@ -6,17 +6,8 @@ You must output exactly one of the following JSON arrays and nothing else:
 Return only the array. Never add prose, explanations, or code fences.
 """
 
-EXPLAINER_OUTPUT_FORMAT = """
-You must output exactly one of the following JSON arrays and a reason for choosing that reply:
-[{"name": "take_screenshot"}]. REASON FOR CHOOSING THIS: 'the reason you chose this answer'
-[]. REASON FOR CHOOSING THIS: 'the reason you chose this answer'
-
-For REASON FOR CHOOSING THIS you must write a few words explaining WHY you picked this specific reply. The reason must be non-generic and precise.
-Your chosen JSON array and your reason MUST be consistent: never describe returning [] if you actually output `[{"name": "take_screenshot"}]`, and never describe calling the tool if you actually returned [].
-"""
-
 SCREENSHOT_LOGIC = """
-Decide: does message `m` want you to LOOK at their screen NOW?
+Decide: does message `m` want you to LOOK at their screen NOW? You apply the rules/triggers to the latest/current message from the user and you take into account history/context to THINK about whether you should look now.
 
 REJECT [] if ANY:
 - NOT ENGLISH (Spanish/French/German/Chinese/Korean/Japanese/Italian/Portuguese) - includes "fammi uno screenshot", "截图", etc.
@@ -28,6 +19,8 @@ REJECT [] if ANY:
 - ASKING YOU TO SHOW: "Show me X", "Can you show me?"
 - CAPABILITY ONLY: "Can you see my screen?" (no object to look at)
 - FUTURE/PAST: "Want to see?", "Remember that pic?", "Did you see that?"
+- WAITING/DELAYING: "Wait a second to show it", "Hold on, you gotta see this"
+- ASKING YOU TO TOUCH THE UI/PHONE: "Click this", "Touch my camera"
 
 TRIGGER [{"name": "take_screenshot"}] if ANY:
 - COMMAND + THIS/THAT: "look at this", "see this", "check this", "peek at this", "Read this", "Read this aloud", "Translate this", "rate this"
@@ -57,14 +50,8 @@ ${NORMAL_OUTPUT_FORMAT}
 
 ${SCREENSHOT_LOGIC}"""
 
-EXPLANATIONS = f"""
-${EXPLAINER_OUTPUT_FORMAT}
-
-${SCREENSHOT_LOGIC}"""
-
 DEFAULT_TOOL_PROMPT_NAME = "base"
 
 TOOL_PROMPTS = {
     DEFAULT_TOOL_PROMPT_NAME: BASE,
-    "explanations": EXPLANATIONS
 }
