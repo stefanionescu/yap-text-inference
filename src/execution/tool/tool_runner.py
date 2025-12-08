@@ -11,7 +11,7 @@ from typing import Any
 from vllm.sampling_params import SamplingParams
 
 from ...engines import get_tool_engine
-from ...config import DEPLOY_DUAL, TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, TOOL_REQUEST_PRIORITY
+from ...config import DEPLOY_DUAL, TOOL_MAX_OUT, TOOL_HISTORY_TOKENS, TOOL_REQUEST_PRIORITY, TOOL_LANGUAGE_FILTER
 from ...tokens import trim_history_for_tool_sharing, trim_text_to_token_limit_tool
 from ...config import USER_UTT_MAX_TOKENS
 from ...handlers.session import session_handler
@@ -24,6 +24,7 @@ from ...config.sampling import (
 from ...config.timeouts import TOOL_TIMEOUT_S
 from ..streaming.llm_stream import LLMStream, LLMStreamConfig
 from ...tokens.prompt_cache import compile_tool_prompt
+from ...utils import is_mostly_english
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,11 @@ async def run_toolcall(
 ) -> dict[str, Any]:
     """Execute a tool call with timeout handling and KV cache sharing."""
     req_id = request_id or f"tool-{uuid.uuid4()}"
+
+    # Language filter: skip tool call if message is not mostly English
+    if TOOL_LANGUAGE_FILTER and not is_mostly_english(user_utt):
+        logger.info("tool_runner: skipped (non-English) session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": "[]"}
 
     if mark_active:
         session_handler.set_active_request(session_id, req_id)
