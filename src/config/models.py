@@ -49,6 +49,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
 
     "TheBloke/30B-Lazarus-AWQ", # completely ignores instructions, super dumb
     "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # BEST CHAT MODEL FOR NOW
+    "cpatonn/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit",
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
 
