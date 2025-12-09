@@ -227,8 +227,14 @@ bash scripts/restart.sh --reset-models --deploy-mode both \
   --tool-quant awq
 
 # Dual-mode reset (one model handles chat + tool)
+# With pre-quantized model (auto-detected)
 bash scripts/restart.sh --reset-models --deploy-mode dual \
   --dual-model cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
+
+# Dual-mode reset with quantization (quantizes float model at load)
+bash scripts/restart.sh --reset-models --deploy-mode dual \
+  --dual-model SicariusSicariiStuff/Impish_Nemo_12B \
+  --quant awq
 
 # Auto-detect pre-quantized repos (AWQ/GPTQ) during reset
 bash scripts/restart.sh --reset-models --deploy-mode chat \

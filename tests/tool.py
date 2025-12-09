@@ -47,8 +47,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--timeout",
         type=float,
-        default=5.0,
-        help="Per-response timeout in seconds (default: 5)",
+        default=20.0,
+        help="Per-response timeout in seconds (default: 20)",
     )
     parser.add_argument(
         "--concurrency",
