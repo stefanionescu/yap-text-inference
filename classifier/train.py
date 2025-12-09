@@ -145,8 +145,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-length",
         type=int,
-        default=3000,
-        help="Maximum sequence length in tokens (default: 3000)",
+        default=1200,
+        help="Maximum sequence length in tokens (default: 1200)",
     )
     parser.add_argument(
         "--seed",
@@ -218,6 +218,7 @@ def main() -> None:
         per_device_eval_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         weight_decay=0.01,
+        save_strategy="no",  # Don't save intermediate checkpoints
     )
 
     trainer = Trainer(

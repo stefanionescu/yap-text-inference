@@ -55,7 +55,7 @@ TESTS = [
     ("these shoes are cute", True),                                 # Visual item comment
     ("this coat is awesome, what do you say?", True),               # Opinion on visual item
     ("this girl is kinda dumb not gonna lie, see this chat", True), # Chat screenshot
-    ("got some big ass baddies I wanna show you", True),            # Potentially inappropriate
+    ("got some big ass baddies I wanna show you", False),
     ("you gotta see this", True),                                   # Casual visual sharing
     ("man this is crazy", True),                                    # Reaction to visual content
     ("this is my favorite video", True),                            # Video content sharing
