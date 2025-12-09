@@ -318,6 +318,12 @@ restart_reconfigure_models() {
   local quantization="${QUANTIZATION:-}"
   local chat_quant_from_hint=0
 
+  # For dual mode, --quant applies to both engines
+  if [ "${deploy_dual}" = "1" ] && [ -n "${RECONFIG_QUANTIZATION:-}" ]; then
+    chat_quant="${RECONFIG_QUANTIZATION}"
+    tool_quant="${RECONFIG_QUANTIZATION}"
+  fi
+
   if [ "${deploy_chat}" = "1" ] && [ -z "${chat_quant}" ]; then
     chat_quant="$(model_detect_quantization_hint "${chat_model}")"
     if [ -n "${chat_quant}" ]; then

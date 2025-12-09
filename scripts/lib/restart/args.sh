@@ -13,6 +13,7 @@ restart_parse_args() {
   RECONFIG_DUAL_MODEL="${RECONFIG_DUAL_MODEL:-}"
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
   RECONFIG_TOOL_QUANTIZATION="${RECONFIG_TOOL_QUANTIZATION:-}"
+  RECONFIG_QUANTIZATION="${RECONFIG_QUANTIZATION:-}"
   HF_AWQ_PUSH=0
 
   while [ $# -gt 0 ]; do
@@ -92,6 +93,15 @@ restart_parse_args() {
         RECONFIG_TOOL_QUANTIZATION="${1#*=}"
         shift
         ;;
+      --quant)
+        if [ -z "${2:-}" ]; then return 2; fi
+        RECONFIG_QUANTIZATION="$2"
+        shift 2
+        ;;
+      --quant=*)
+        RECONFIG_QUANTIZATION="${1#*=}"
+        shift
+        ;;
       --push-awq)
         HF_AWQ_PUSH=1
         shift
@@ -113,7 +123,7 @@ restart_parse_args() {
   export INSTALL_DEPS DEPLOY_MODE
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL RECONFIG_DUAL_MODEL
-  export RECONFIG_CHAT_QUANTIZATION RECONFIG_TOOL_QUANTIZATION
+  export RECONFIG_CHAT_QUANTIZATION RECONFIG_TOOL_QUANTIZATION RECONFIG_QUANTIZATION
   export HF_AWQ_PUSH
   return 0
 }

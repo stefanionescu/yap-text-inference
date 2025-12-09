@@ -36,8 +36,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "baidu/ERNIE-4.5-21B-A3B-PT",
     "moonshotai/Moonlight-16B-A3B-Instruct",
     "kakaocorp/kanana-1.5-15.7b-a3b-instruct",
-
-    "Qwen/Qwen2-57B-A14B",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
@@ -51,7 +49,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
 
     "TheBloke/30B-Lazarus-AWQ", # completely ignores instructions, super dumb
     "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # BEST CHAT MODEL FOR NOW
-    "cpatonn/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit",
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
 
@@ -95,9 +92,7 @@ ALLOWED_TOOL_MODELS: list[str] = [
 ALLOWED_DUAL_MODELS: list[str] = [
     "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
-    "cpatonn/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit",
     "TheBloke/mixtral-8x7b-v0.1-AWQ",
-    "Qwen/Qwen2-57B-A14B",
 ]
 
 
