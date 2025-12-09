@@ -468,7 +468,7 @@ TOOL_DEFAULT_MESSAGES = [
     # ── EDGE CASES: Multi-turn Ambiguity ──────────────────────────────────────────
     ("ambiguous_pronoun_switch", [
         ("I like this painting", True),
-        ("Actually, what about the artist?", False),
+        ("Actually, what about the artist?", True),
         ("Is he good?", False),
         ("What about this one?", True), # Returns to visual
     ]),
