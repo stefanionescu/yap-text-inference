@@ -117,7 +117,7 @@ The reference training script lives at `classifier/train.py` in the
 - Batch size: 16 (per device)
 - Learning rate: 2e-5
 - Weight decay: 0.01
-- Max sequence length: 3000 tokens (truncation applied beyond this)
+- Max sequence length: 1200 tokens (truncation applied beyond this)
 
 The script builds examples by concatenating conversation history up to and
 including the current user message, one utterance per line prefixed with
@@ -144,7 +144,7 @@ inputs = tokenizer(
     return_tensors="pt",
     truncation=True,
     padding="max_length",
-    max_length=3000,
+    max_length=1200,
 )
 
 attention_mask = inputs["attention_mask"]

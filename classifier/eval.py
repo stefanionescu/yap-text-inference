@@ -129,8 +129,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-length",
         type=int,
-        default=3000,
-        help="Maximum sequence length for tokenization (default: 3000)",
+        default=1200,
+        help="Maximum sequence length for tokenization (default: 1200)",
     )
     parser.add_argument(
         "--threshold",
@@ -261,9 +261,6 @@ def _run_eval(model_dir: Path, max_length: int, threshold: float, concurrency: i
         raise SystemExit(f"Model directory does not exist: {model_dir}")
 
     print(f"[classifier] Loading model from {model_dir}")
-    tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
-    # Keep the most recent `max_length` tokens when truncating long histories
-    tokenizer.truncation_side = "left"
     model = AutoModelForSequenceClassification.from_pretrained(str(model_dir))
     model.eval()
 
@@ -282,6 +279,16 @@ def _run_eval(model_dir: Path, max_length: int, threshold: float, concurrency: i
     effective_concurrency = max(1, concurrency)
     print(f"Running {total_examples} classifier evaluations (concurrency={effective_concurrency})...")
 
+    # Thread-local storage for tokenizers (fast tokenizer isn't thread-safe)
+    _thread_local = threading.local()
+
+    def _get_tokenizer() -> AutoTokenizer:
+        """Get or create a thread-local tokenizer instance."""
+        if not hasattr(_thread_local, "tokenizer"):
+            _thread_local.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            _thread_local.tokenizer.truncation_side = "left"
+        return _thread_local.tokenizer
+
     def _render_progress(completed: int, total: int) -> None:
         total = max(1, total)
         ratio = min(max(completed / total, 0.0), 1.0)
@@ -293,6 +300,7 @@ def _run_eval(model_dir: Path, max_length: int, threshold: float, concurrency: i
 
     def _process_example(idx: int, item: Tuple[str, int, str, int]) -> Tuple[int, EvalExample]:
         convo_name, turn_index, text, expected = item
+        tokenizer = _get_tokenizer()  # Get thread-local tokenizer
         result = _run_single_inference(
             tokenizer=tokenizer,
             model=model,
