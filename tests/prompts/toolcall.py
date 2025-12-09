@@ -13,13 +13,6 @@ Let `m` be the latest message from the user.
 
 Decide: does message `m` want you to LOOK at their screen NOW?
 
-IMPORTANT - TYPOS: Users often make typos. Interpret misspelled commands as intended:
-- "lok at this" / "loook at this" → "look at this" → TRIGGER
-- "sceenshot this" / "screenshto" → "screenshot this" → TRIGGER
-- "tkae a look" / "teak a look" → "take a look" → TRIGGER
-- "chekc this" → "check this" → TRIGGER
-If the message is clearly a command to look/screenshot despite typos, TRIGGER.
-
 REJECT [] if ANY:
 - STARTS WITH "ON THE SCREEN NOW:"
 - USER DESCRIBES WHAT THEY DO, HEAR, WEAR OR SEE: if the user tells you what they wear, see, hear or do (either now, in the past or future) you can return []
@@ -38,7 +31,8 @@ REJECT [] if ANY:
 - REFERENTIAL STATEMENTS ABOUT NON-VISIBLE THINGS: When the user makes statements about things that are clearly NOT on screen (like "Someone else has something similar", "That other one is different", describing something from memory or not visible). These are informational statements about things you cannot see, not requests to look.
 
 TRIGGER [{"name": "take_screenshot"}] if ANY AND if NO points from the REJECT section apply:
-- EXPLICIT SCREENSHOT REQUEST (singular only, NOT plural "screenshots"): "take screenshot", "take a screenshot", "take one screenshot", "screenshot please", "screenshot this", "capture this"
+- EXPLICIT SCREENSHOT REQUEST (singular only, NOT plural "screenshots"): "take screenshot", "take a screenshot", "take one screenshot", "screenshot please", "screenshot this", "capture this", "read the screen"
+- TRANSLATION REQUESTS: if the user gives vague translation orders like "translate this", "translate the screen", "translate what I see". But "Translate this: [TEXT HERE]" or "Translate this sentence: [SENTENCE HERE]" should return [] because the user gives you text already and you don't need to check the screen.
 - REFERRING TO UNKNOWN OBJECT/SCENE/ENTITY: user refers to something visible you haven't seen yet (e.g., "that dog", "this outfit", "these shoes") - if you don't know what they're referring to, you need to look
 - COMMAND + THIS/THAT (including typos): "look at this", "lok at this", "loook at this", "see this", "check this", "chekc this", "peek at this", "Read this", "Read this aloud", "Translate this", "rate this", "tkae a look", "teak a look", "take a look", "sceenshot this", "screenshto this"
 - DEICTIC QUESTION (any question with this/that about something unknown): "is this good?", "thoughts on this?", "how does this look?", "Am I in the right here?", "what do you think about this?", "what do you think about this?", "Can you see if I'm right?", "isn't it awesome?", "isn't this awesome?"

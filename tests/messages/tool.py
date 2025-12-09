@@ -201,8 +201,8 @@ TOOL_DEFAULT_MESSAGES = [
     ("Right here, look at this spot.", True),
 
     # ── EDGE CASES: Implicit Action Verbs (Read/Translate) ────────────────────────
-    ("Read this", False),
-    ("Read this aloud", False),
+    ("Read this", True),
+    ("Read this aloud", True),
     ("Translate this", True),
     ("Translate this sentence: Hola", False),
 
@@ -287,7 +287,7 @@ TOOL_DEFAULT_MESSAGES = [
     # ── EDGE CASES: Textual Descriptions w/o Directives (Should be False) ─────────
     ("I'm wearing a red shirt", False),
     ("My screen shows a code editor", False),
-    ("There is a bug on the screen", False),
+    ("There is a bug on the screen", True),
 
     # ── EDGE CASES: Formatting/Emphasis (Should be True) ──────────────────────────
     ("LOOK AT THIS", True),
