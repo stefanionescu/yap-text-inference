@@ -404,7 +404,6 @@ Override as needed:
 
 ```bash
 export CHAT_GPU_FRAC=0.80
-export TOOL_GPU_FRAC=0.15
 bash scripts/stop.sh && bash scripts/main.sh
 ```
 

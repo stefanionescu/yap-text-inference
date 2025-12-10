@@ -3,17 +3,12 @@
 # Context and output limits
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5025}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
-export TOOL_MAX_OUT=${TOOL_MAX_OUT:-100}
-export TOOL_MAX_LEN=${TOOL_MAX_LEN:-4650}
 
-  # GPU memory fractions (weights + KV). Use fractions only.
-  # Adjust based on deployment mode: single model gets 90%, both models split memory
+# GPU memory fractions (weights + KV). Use fractions only.
 if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
-    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 else
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
-    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}
 fi
 
 # vLLM toggles
@@ -23,6 +18,5 @@ export VLLM_ALLOW_LONG_MAX_MODEL_LEN=${VLLM_ALLOW_LONG_MAX_MODEL_LEN:-1}
 
 # Prefill batching overrides
 export MAX_NUM_SEQS_CHAT=${MAX_NUM_SEQS_CHAT:-32}
-export MAX_NUM_SEQS_TOOL=${MAX_NUM_SEQS_TOOL:-32}
 
 

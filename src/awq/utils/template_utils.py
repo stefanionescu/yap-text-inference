@@ -9,7 +9,6 @@ import os
 from textwrap import dedent
 from typing import Any
 
-from ..adapters.awq_toolcall_adapter import is_toolcall_model
 from ...config.templates import resolve_template_name, compute_license_info
 
 
@@ -102,8 +101,8 @@ def generate_readme(
 ) -> str:
     """Generate a comprehensive README using templates."""
 
-    # Determine if this is a tool model
-    is_tool = is_toolcall_model(model_path)
+    # Tool models are classifier-only now; AWQ exports are always chat models
+    is_tool = False
 
     # Resolve template
     template_name = resolve_template_name(is_tool)

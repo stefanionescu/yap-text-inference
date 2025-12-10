@@ -16,7 +16,6 @@ def save_quantization_metadata(
     awq_version: str,
     quant_config: dict[str, Any],
     target_seqlen: int,
-    toolcall_model: bool,
     dataset_info: dict[str, str] | None = None,
     advanced_kwargs: dict[str, Any] | None = None,
 ) -> None:
@@ -27,7 +26,6 @@ def save_quantization_metadata(
         "awq_version": awq_version,
         "quantization_config": quant_config,
         "calibration_seqlen": target_seqlen,
-        "is_toolcall_model": toolcall_model,
         "pipeline": "yap-text-inference",
     }
 
