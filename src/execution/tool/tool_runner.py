@@ -70,12 +70,16 @@ async def _run_classifier_toolcall(
     # Get classifier adapter (lazily initialized, has its own tokenizer)
     adapter = get_classifier_adapter()
     
-    # Get raw user texts from session, let classifier trim with its tokenizer
+    # Snapshot user texts inside the event loop thread
     user_texts = session_handler.get_user_texts(session_id)
-    user_history = adapter.trim_user_history(user_texts)
-    
-    # Run classifier
-    text = adapter.run_tool_inference(user_utt, user_history)
+
+    loop = asyncio.get_running_loop()
+
+    def _run_classifier_sync() -> str:
+        user_history = adapter.trim_user_history(user_texts)
+        return adapter.run_tool_inference(user_utt, user_history)
+
+    text = await loop.run_in_executor(None, _run_classifier_sync)
     
     dt_ms = (time.perf_counter() - t0) * 1000.0
     logger.info(
