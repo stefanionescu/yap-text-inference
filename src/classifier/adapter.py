@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from src.config import CLASSIFIER_MAX_LENGTH
+
 if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizerFast
 
@@ -179,12 +181,13 @@ class ClassifierToolAdapter:
         
         with torch.inference_mode():
             # Tokenize with dynamic padding
-            # History is already trimmed to budget, no need for extra truncation
+            # History is already trimmed to budget, but set max_length as safety cap
             inputs = self._tokenizer(
                 text,
                 return_tensors="pt",
                 padding=True,
-                truncation=True,  # Uses model's max length as safety fallback
+                truncation=True,
+                max_length=CLASSIFIER_MAX_LENGTH,
             )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             

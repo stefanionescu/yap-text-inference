@@ -103,6 +103,7 @@ TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
 CLASSIFIER_THRESHOLD = float(os.getenv("CLASSIFIER_THRESHOLD", "0.66"))
 CLASSIFIER_COMPILE = env_flag("CLASSIFIER_COMPILE", True)  # Use torch.compile for speedup
 CLASSIFIER_HISTORY_TOKENS = int(os.getenv("CLASSIFIER_HISTORY_TOKENS", "1200"))  # User-only history limit
+CLASSIFIER_MAX_LENGTH = int(os.getenv("CLASSIFIER_MAX_LENGTH", "1536"))  # Tokenizer max length
 
 
 # ----------------- Computed Deployment Flags -----------------
@@ -175,5 +176,6 @@ __all__ = [
     "CLASSIFIER_THRESHOLD",
     "CLASSIFIER_COMPILE",
     "CLASSIFIER_HISTORY_TOKENS",
+    "CLASSIFIER_MAX_LENGTH",
     "validate_env",
 ]

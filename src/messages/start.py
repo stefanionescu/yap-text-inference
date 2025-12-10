@@ -15,6 +15,7 @@ from ..config import (
     CONCURRENT_MODEL_CALL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
+    DEPLOY_TOOL_ENGINE,
     CHAT_PROMPT_MAX_TOKENS,
     TOOL_PROMPT_MAX_TOKENS,
     CHAT_TEMPERATURE_MIN,
@@ -208,7 +209,8 @@ def _extract_prompts(msg: dict[str, Any]) -> tuple[str | None, str | None]:
             count_tokens_fn=count_tokens_chat,
         )
 
-    if DEPLOY_TOOL:
+    # Only require tool_prompt when using vLLM tool engine (not classifier)
+    if DEPLOY_TOOL_ENGINE:
         required_tool_prompt = require_prompt(
             raw_tool_prompt,
             error_code="missing_tool_prompt",

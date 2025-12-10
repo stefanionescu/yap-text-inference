@@ -45,6 +45,7 @@ setup_repo_path()
 from tests.helpers.cli import (
     add_connection_args,
     add_prompt_mode_arg,
+    add_classifier_mode_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -56,6 +57,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("message", nargs="*", help="optional user message")
     add_sampling_args(parser)
     add_prompt_mode_arg(parser)
+    add_classifier_mode_arg(parser)
     parser.add_argument(
         "--gender",
         dest="gender",

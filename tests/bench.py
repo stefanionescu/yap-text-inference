@@ -43,6 +43,7 @@ setup_repo_path()
 from tests.helpers.cli import (
     add_connection_args,
     add_prompt_mode_arg,
+    add_classifier_mode_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -63,6 +64,7 @@ def _parse_args() -> argparse.Namespace:
     )
     add_sampling_args(p)
     add_prompt_mode_arg(p)
+    add_classifier_mode_arg(p)
     p.add_argument("message", nargs="*", help="optional user message for all requests")
     p.add_argument(
         "--requests",
