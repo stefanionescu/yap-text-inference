@@ -8,7 +8,6 @@ from typing import Any
 from collections.abc import Mapping
 
 from .limits import CHAT_MAX_LEN, CHAT_MAX_OUT, TOOL_MAX_LEN, TOOL_MAX_OUT
-from .models import ALLOWED_TOOL_MODELS
 
 
 def _read_int_env(name: str) -> int | None:
@@ -130,28 +129,7 @@ def normalize_model_id(model_id: str | None) -> str:
     return (model_id or "").strip().lower()
 
 
-def _derive_toolcall_markers() -> tuple[str, ...]:
-    """Build default tool markers directly from the allowed tool models."""
-    candidates: list[str] = []
-    for model in ALLOWED_TOOL_MODELS:
-        normalized = normalize_model_id(model)
-        if not normalized:
-            continue
-        candidates.append(normalized)
-        # Also include the last path segment for robustness with local dirs.
-        tail = normalized.rsplit("/", 1)[-1]
-        if tail and tail != normalized:
-            candidates.append(tail)
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for marker in candidates:
-        if marker and marker not in seen:
-            deduped.append(marker)
-            seen.add(marker)
-    return tuple(deduped)
-
-
-_DEFAULT_TOOLCALL_MARKERS: tuple[str, ...] = _derive_toolcall_markers()
+_DEFAULT_TOOLCALL_MARKERS: tuple[str, ...] = ()
 
 
 def _load_toolcall_markers() -> tuple[str, ...]:

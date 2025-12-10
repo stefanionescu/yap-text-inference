@@ -20,21 +20,14 @@ from tests.helpers.setup import setup_repo_path
 
 setup_repo_path()
 
-from tests.helpers.cli import add_connection_args, add_prompt_mode_arg, add_classifier_mode_arg  # noqa: E402
+from tests.helpers.cli import add_connection_args, add_prompt_mode_arg  # noqa: E402
 from tests.helpers.ws import with_api_key  # noqa: E402
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
 from tests.logic.tool.runner import run_suite  # noqa: E402
-from tests.logic.tool.prompts import (  # noqa: E402
-    DEFAULT_TOOL_PROMPT_NAME,
-    ToolPromptRegistry,
-)
-
-
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")
     add_connection_args(parser)
     add_prompt_mode_arg(parser)
-    add_classifier_mode_arg(parser)
     parser.add_argument(
         "--gender",
         default=DEFAULT_GENDER,
@@ -67,11 +60,6 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include passing test cases in the per-case output",
     )
-    parser.add_argument(
-        "--tool-prompt",
-        default=DEFAULT_TOOL_PROMPT_NAME,
-        help=f"Tool prompt name defined in tests/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
-    )
     return parser.parse_args()
 
 
@@ -85,26 +73,17 @@ def main() -> None:
         print(f"[error] {exc}")
         sys.exit(1)
 
-    registry = ToolPromptRegistry()
-    try:
-        prompt_definition = registry.require(args.tool_prompt)
-    except ValueError as exc:
-        print(f"[error] {exc}")
-        sys.exit(1)
-
     try:
         asyncio.run(
             run_suite(
                 ws_url=ws_url,
                 gender=args.gender or DEFAULT_GENDER,
                 personality=args.personality or DEFAULT_PERSONALITY,
-                tool_prompt=prompt_definition.prompt,
                 timeout_s=max(0.1, args.timeout),
                 concurrency=max(1, args.concurrency),
                 limit=args.limit,
                 show_successes=args.show_successes,
                 prompt_mode=args.prompt_mode,
-                classifier_mode=args.classifier_mode,
             )
         )
     except KeyboardInterrupt:

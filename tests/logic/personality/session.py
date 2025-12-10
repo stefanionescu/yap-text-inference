@@ -7,7 +7,6 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from tests.prompts.toolcall import TOOLCALL_PROMPT
 from tests.helpers.ttfb import TTFBAggregator
 
 _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -35,7 +34,6 @@ class PersonaSession:
     prompt_index: int = 0
     prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_MESSAGES))
     sampling: dict[str, float | int] | None = None
-    tool_prompt: str | None = TOOLCALL_PROMPT
     ttfb_aggregator: TTFBAggregator | None = None
 
     def has_remaining_prompts(self) -> bool:

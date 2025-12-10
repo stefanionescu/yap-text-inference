@@ -27,3 +27,6 @@ logs/
 *.swp
 *.swo
 .cursor/
+
+classifier/
+.venv_classifier

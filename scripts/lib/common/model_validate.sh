@@ -7,7 +7,6 @@ validate_models_early() {
   local deploy_mode="${DEPLOY_MODELS:-both}"
   local chat_model="${CHAT_MODEL:-}"
   local tool_model="${TOOL_MODEL:-}"
-  local dual_model="${DUAL_MODEL:-}"
   local quantization="${QUANTIZATION:-}"
   local chat_quant="${CHAT_QUANTIZATION:-}"
   local tool_quant="${TOOL_QUANTIZATION:-}"
@@ -28,8 +27,7 @@ sys.path.insert(0, "${ROOT_DIR}")
 
 from src.config.models import (
     ALLOWED_CHAT_MODELS,
-    ALLOWED_TOOL_MODELS,
-    ALLOWED_DUAL_MODELS,
+    ALLOWED_CLASSIFIER_MODELS,
     is_valid_model,
 )
 from src.config.quantization import classify_prequantized_model, is_awq_model_name
@@ -37,7 +35,6 @@ from src.config.quantization import classify_prequantized_model, is_awq_model_na
 deploy_mode = "${deploy_mode}"
 chat_model = "${chat_model}" or None
 tool_model = "${tool_model}" or None
-dual_model = "${dual_model}" or None
 quantization = "${quantization}" or None
 chat_quant = "${chat_quant}" or None
 tool_quant = "${tool_quant}" or None
@@ -68,30 +65,23 @@ def allow_prequantized_override(model, model_type):
     print(f"[WARNING] Using pre-quantized {kind.upper()} {model_type} model not in approved list: {model}")
     return True
 
-deploy_dual = deploy_mode == "dual"
-deploy_chat = deploy_mode in ("both", "chat", "dual")
-deploy_tool = deploy_mode in ("both", "tool", "dual")
+deploy_chat = deploy_mode in ("both", "chat")
+deploy_tool = deploy_mode in ("both", "tool")
 
-if deploy_dual:
-    if not dual_model:
-        errors.append("DUAL_MODEL is required when DEPLOY_MODELS='dual'")
-    elif not is_valid_model(dual_model, ALLOWED_DUAL_MODELS, "dual"):
-        if not allow_prequantized_override(dual_model, "chat"):
-            errors.append(f"DUAL_MODEL must be one of: {ALLOWED_DUAL_MODELS}, got: {dual_model}")
-else:
-    if deploy_chat:
-        if not chat_model:
-            errors.append("CHAT_MODEL is required when DEPLOY_MODELS='both' or 'chat'")
-        elif not is_valid_model(chat_model, ALLOWED_CHAT_MODELS, "chat"):
-            if not allow_prequantized_override(chat_model, "chat"):
-                errors.append(f"CHAT_MODEL must be one of allowed models, got: {chat_model}")
-    
-    if deploy_tool:
-        if not tool_model:
-            errors.append("TOOL_MODEL is required when DEPLOY_MODELS='both' or 'tool'")
-        elif not is_valid_model(tool_model, ALLOWED_TOOL_MODELS, "tool"):
-            if not allow_prequantized_override(tool_model, "tool"):
-                errors.append(f"TOOL_MODEL must be one of allowed models, got: {tool_model}")
+if deploy_chat:
+    if not chat_model:
+        errors.append("CHAT_MODEL is required when DEPLOY_MODELS='both' or 'chat'")
+    elif not is_valid_model(chat_model, ALLOWED_CHAT_MODELS, "chat"):
+        if not allow_prequantized_override(chat_model, "chat"):
+            errors.append(f"CHAT_MODEL must be one of allowed models, got: {chat_model}")
+
+if deploy_tool:
+    if not tool_model:
+        errors.append("TOOL_MODEL is required when DEPLOY_MODELS='both' or 'tool'")
+    elif tool_model not in ALLOWED_CLASSIFIER_MODELS and not os.path.exists(tool_model):
+        errors.append(
+            f"TOOL_MODEL must be one of classifier models {ALLOWED_CLASSIFIER_MODELS}, got: {tool_model}"
+        )
 
 # AWQ + GPTQ check
 if quantization == "awq" and deploy_chat and chat_model:

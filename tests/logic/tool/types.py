@@ -36,7 +36,6 @@ class RunnerConfig:
     gender: str
     personality: str
     chat_prompt: str | None
-    tool_prompt: str | None
     timeout_s: float
     ping_interval: int
     ping_timeout: int

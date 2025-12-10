@@ -72,8 +72,6 @@ async def send_start_request(
         "history_text": session.history,
         "user_utterance": user_text,
     }
-    if session.tool_prompt is not None:
-        payload["tool_prompt"] = session.tool_prompt
     if session.sampling:
         payload["sampling"] = session.sampling
     if message_pacer:

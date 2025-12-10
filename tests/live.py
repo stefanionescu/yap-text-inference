@@ -51,9 +51,7 @@ from tests.logic.live import (
 )
 from tests.helpers.prompt import (
     PROMPT_MODE_BOTH,
-    select_tool_prompt,
     should_send_chat_prompt,
-    should_send_tool_prompt,
 )
 from tests.logic.live.cli import interactive_loop, print_help
 
@@ -105,9 +103,8 @@ async def _run(args: argparse.Namespace) -> None:
 
     prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
     chat_enabled = should_send_chat_prompt(prompt_mode)
-    tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode) else None
-    if not chat_enabled and tool_prompt is None:
-        raise SystemExit("prompt_mode must allow chat, tool, or both prompts for live testing.")
+    if not chat_enabled:
+        raise SystemExit("prompt_mode must allow chat prompts for live testing.")
     if not chat_enabled:
         logger.warning(
             "Chat prompts disabled by prompt mode; persona changes and chat streaming will be limited."
@@ -117,7 +114,6 @@ async def _run(args: argparse.Namespace) -> None:
         session_id=f"live-{uuid.uuid4()}",
         persona=persona,
         include_chat_prompt=chat_enabled,
-        tool_prompt=tool_prompt,
         sampling=args.sampling or None,
     )
 

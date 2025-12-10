@@ -4,12 +4,8 @@ from typing import Literal
 
 try:  # When /tests is already on sys.path
     from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
-    from tests.prompts.toolcall import DEFAULT_TOOL_PROMPT_NAME, TOOL_PROMPTS
-    from tests.config.env import CLASSIFIER_MODE as _DEFAULT_CLASSIFIER_MODE
 except ModuleNotFoundError:  # When repo root is on sys.path
     from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
-    from tests.prompts.toolcall import DEFAULT_TOOL_PROMPT_NAME, TOOL_PROMPTS
-    from tests.config.env import CLASSIFIER_MODE as _DEFAULT_CLASSIFIER_MODE
 
 PromptMode = Literal["both", "chat", "tool"]
 
@@ -21,13 +17,6 @@ PROMPT_MODE_CHOICES: tuple[PromptMode, ...] = (
     PROMPT_MODE_CHAT_ONLY,
     PROMPT_MODE_TOOL_ONLY,
 )
-
-_TOOL_PROMPTS_BY_NAME: dict[str, str] = {
-    (name or "").strip().lower(): prompt
-    for name, prompt in TOOL_PROMPTS.items()
-    if isinstance(prompt, str) and (name or "").strip()
-}
-
 
 def normalize_gender(value: str | None) -> str:
     """Normalize assistant gender strings to canonical lowercase tokens."""
@@ -47,27 +36,6 @@ def select_chat_prompt(gender: str | None) -> str:
     return FEMALE_PROMPT if normalized == "female" else MALE_PROMPT
 
 
-def select_tool_prompt(name: str | None = None) -> str:
-    """
-    Look up a tool prompt by name (defaults to DEFAULT_TOOL_PROMPT_NAME).
-    """
-
-    lookup = normalize_tool_prompt_name(name)
-    try:
-        return _TOOL_PROMPTS_BY_NAME[lookup]
-    except KeyError as exc:  # pragma: no cover - defensive guard
-        available = ", ".join(sorted(_TOOL_PROMPTS_BY_NAME)) or "<none>"
-        raise ValueError(f"unknown tool prompt '{name}'. Available: {available}") from exc
-
-
-def normalize_tool_prompt_name(name: str | None) -> str:
-    lookup = (name or DEFAULT_TOOL_PROMPT_NAME).strip().lower()
-    if lookup not in _TOOL_PROMPTS_BY_NAME:
-        available = ", ".join(sorted(_TOOL_PROMPTS_BY_NAME)) or "<none>"
-        raise ValueError(f"unknown tool prompt '{name}'. Available: {available}")
-    return lookup
-
-
 def normalize_prompt_mode(value: str | None) -> PromptMode:
     """Normalize CLI/env prompt mode selections."""
     if not value:
@@ -84,30 +52,11 @@ def should_send_chat_prompt(mode: str | None) -> bool:
     return normalized in (PROMPT_MODE_BOTH, PROMPT_MODE_CHAT_ONLY)
 
 
-def should_send_tool_prompt(mode: str | None, *, classifier_mode: bool | None = None) -> bool:
-    """Check if tool prompt should be sent.
-    
-    Args:
-        mode: Prompt mode (both/chat/tool)
-        classifier_mode: If True, tool prompt is never required (classifier doesn't need it).
-                        Defaults to CLASSIFIER_MODE env var.
-    """
-    # Classifier mode means no tool prompt needed
-    if classifier_mode is None:
-        classifier_mode = _DEFAULT_CLASSIFIER_MODE
-    if classifier_mode:
-        return False
-    normalized = normalize_prompt_mode(mode)
-    return normalized in (PROMPT_MODE_BOTH, PROMPT_MODE_TOOL_ONLY)
-
-
 __all__ = [
     "normalize_gender",
     "select_chat_prompt",
-    "select_tool_prompt",
     "normalize_prompt_mode",
     "should_send_chat_prompt",
-    "should_send_tool_prompt",
     "PROMPT_MODE_CHOICES",
     "PROMPT_MODE_BOTH",
     "PROMPT_MODE_CHAT_ONLY",

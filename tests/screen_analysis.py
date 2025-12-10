@@ -48,15 +48,10 @@ from tests.config import (
     DEFAULT_WS_PING_TIMEOUT,
 )
 from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
-from tests.logic.tool.prompts import (
-    DEFAULT_TOOL_PROMPT_NAME,
-    ToolPromptRegistry,
-)
 from tests.helpers.prompt import (
     PROMPT_MODE_BOTH,
     select_chat_prompt,
     should_send_chat_prompt,
-    should_send_tool_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,11 +112,6 @@ def _parse_args() -> argparse.Namespace:
     )
     add_sampling_args(parser)
     add_prompt_mode_arg(parser)
-    parser.add_argument(
-        "--tool-prompt",
-        default=DEFAULT_TOOL_PROMPT_NAME,
-        help=f"Tool prompt name defined in tests/prompts/toolcall.py (default: {DEFAULT_TOOL_PROMPT_NAME})",
-    )
     args = parser.parse_args()
     args.sampling = build_sampling_payload(args)
     return args
@@ -132,7 +122,6 @@ async def run_once(
     api_key: str | None,
     sampling: dict[str, float | int] | None,
     chat_prompt: str | None,
-    tool_prompt: str | None,
 ) -> None:
     ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
@@ -147,10 +136,8 @@ async def run_once(
     }
     if chat_prompt is not None:
         start_payload["chat_prompt"] = chat_prompt
-    if tool_prompt is not None:
-        start_payload["tool_prompt"] = tool_prompt
-    if "chat_prompt" not in start_payload and "tool_prompt" not in start_payload:
-        raise ValueError("prompt_mode must allow chat, tool, or both prompts")
+    if chat_prompt is None:
+        raise ValueError("screen analysis requires chat prompts; set prompt mode to chat or both")
     if sampling:
         start_payload["sampling"] = sampling
 
@@ -182,18 +169,10 @@ async def run_once(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     args = _parse_args()
-    registry = ToolPromptRegistry()
-    try:
-        prompt_definition = registry.require(args.tool_prompt)
-    except ValueError as exc:
-        print(f"[error] {exc}")
-        raise SystemExit(1) from exc
-
     prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
-    chat_prompt = select_chat_prompt(DEFAULT_GENDER) if should_send_chat_prompt(prompt_mode) else None
-    tool_prompt = prompt_definition.prompt if should_send_tool_prompt(prompt_mode) else None
-    if chat_prompt is None and tool_prompt is None:
-        raise SystemExit("prompt_mode must allow chat, tool, or both prompts for this test.")
+    if not should_send_chat_prompt(prompt_mode):
+        raise SystemExit("prompt_mode must allow chat prompts for screen analysis.")
+    chat_prompt = select_chat_prompt(DEFAULT_GENDER)
 
     asyncio.run(
         run_once(
@@ -201,7 +180,6 @@ if __name__ == "__main__":
             args.api_key,
             args.sampling or None,
             chat_prompt,
-            tool_prompt,
         )
     )
 

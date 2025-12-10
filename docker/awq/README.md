@@ -90,11 +90,10 @@ docker run -d --gpus all --name yap-dual \
 
 ### Required
 - `TEXT_API_KEY` – API key handed to the server
-- `DEPLOY_MODELS` – `both|chat|tool|dual` (default: `both`)
+- `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
 - If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
 - If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/hammer-2.1-3b-awq`)
 - If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
-- If `DEPLOY_MODELS=dual`: `DUAL_MODEL` (or `CHAT_MODEL`) reused for chat + tool
 
 ### Optional
 - `CHAT_GPU_FRAC` (default: `0.70`)
@@ -102,7 +101,7 @@ docker run -d --gpus all --name yap-dual \
 
 Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports). Make sure `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` is set if you pull private repos.
 
-Note: This AWQ image now supports chat-only, tool-only, dual (single model), or both.
+Note: This AWQ image now supports chat-only, tool-only, or both deployments.
 
 ## Build and Deploy
 

@@ -15,9 +15,7 @@ from tests.helpers.message import iter_messages
 from tests.helpers.prompt import (
     PROMPT_MODE_BOTH,
     select_chat_prompt,
-    select_tool_prompt,
     should_send_chat_prompt,
-    should_send_tool_prompt,
 )
 from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
 from tests.helpers.util import choose_message
@@ -29,7 +27,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from tests.config import BENCHMARK_FALLBACK_MESSAGE, CLASSIFIER_MODE  # noqa: E402
+from tests.config import BENCHMARK_FALLBACK_MESSAGE  # noqa: E402
 
 
 @dataclass
@@ -80,11 +78,8 @@ def _build_start_payload(
     gender: str,
     style: str,
     chat_prompt: str | None,
-    tool_prompt: str | None,
     message: str,
     sampling: dict[str, float | int] | None,
-    *,
-    classifier_mode: bool = False,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "type": "start",
@@ -96,11 +91,6 @@ def _build_start_payload(
     }
     if chat_prompt is not None:
         payload["chat_prompt"] = chat_prompt
-    if tool_prompt is not None:
-        payload["tool_prompt"] = tool_prompt
-    # In classifier mode, tool_prompt is not required
-    if not classifier_mode and "chat_prompt" not in payload and "tool_prompt" not in payload:
-        raise ValueError("prompt_mode must include chat, tool, or both prompts")
     if sampling:
         payload["sampling"] = sampling
     return payload
@@ -146,12 +136,10 @@ async def _one_connection(
     gender: str,
     style: str,
     chat_prompt: str | None,
-    tool_prompt: str | None,
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
     double_ttfb: bool,
-    classifier_mode: bool = False,
 ) -> list[dict[str, Any]]:
     phases = 2 if double_ttfb else 1
     results: list[dict[str, Any]] = []
@@ -168,11 +156,9 @@ async def _one_connection(
                                 gender,
                                 style,
                                 chat_prompt,
-                                tool_prompt,
                                 message,
                                 sampling,
                                 phase,
-                                classifier_mode=classifier_mode,
                             )
                         )
                     except Exception as phase_err:
@@ -194,12 +180,9 @@ async def _send_transaction(
     gender: str,
     style: str,
     chat_prompt: str | None,
-    tool_prompt: str | None,
     message: str,
     sampling: dict[str, float | int] | None,
     phase: int,
-    *,
-    classifier_mode: bool = False,
 ) -> dict[str, Any]:
     session_id = str(uuid.uuid4())
     start_payload = _build_start_payload(
@@ -207,10 +190,8 @@ async def _send_transaction(
         gender,
         style,
         chat_prompt,
-        tool_prompt,
         message,
         sampling,
-        classifier_mode=classifier_mode,
     )
     tracker = _StreamTracker()
 
@@ -227,12 +208,10 @@ async def _worker(
     gender: str,
     style: str,
     chat_prompt: str | None,
-    tool_prompt: str | None,
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
     double_ttfb: bool,
-    classifier_mode: bool = False,
 ) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for _ in range(num):
@@ -243,12 +222,10 @@ async def _worker(
                 gender,
                 style,
                 chat_prompt,
-                tool_prompt,
                 message,
                 timeout_s,
                 sampling,
                 double_ttfb,
-                classifier_mode,
             )
         )
     return out
@@ -267,9 +244,7 @@ async def run_benchmark(args) -> None:
     counts = _distribute_requests(requests, concurrency)
     timeout_s = float(args.timeout)
     prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
-    classifier_mode = getattr(args, "classifier_mode", CLASSIFIER_MODE)
     chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
-    tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode, classifier_mode=classifier_mode) else None
     double_ttfb = bool(getattr(args, "double_ttfb", False))
 
     tasks = _launch_worker_tasks(
@@ -279,12 +254,10 @@ async def run_benchmark(args) -> None:
         gender,
         style,
         chat_prompt,
-        tool_prompt,
         message,
         timeout_s,
         sampling,
         double_ttfb,
-        classifier_mode,
     )
     nested = await asyncio.gather(*tasks)
     results: list[dict[str, Any]] = [item for sub in nested for item in sub]
@@ -318,12 +291,10 @@ def _launch_worker_tasks(
     gender: str,
     style: str,
     chat_prompt: str | None,
-    tool_prompt: str | None,
     message: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
     double_ttfb: bool,
-    classifier_mode: bool = False,
 ) -> list[asyncio.Task[list[dict[str, Any]]]]:
     tasks: list[asyncio.Task[list[dict[str, Any]]]] = []
     for count in counts:
@@ -338,12 +309,10 @@ def _launch_worker_tasks(
                     gender,
                     style,
                     chat_prompt,
-                    tool_prompt,
                     message,
                     timeout_s,
                     sampling,
                     double_ttfb,
-                    classifier_mode,
                 )
             )
         )

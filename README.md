@@ -1,9 +1,9 @@
 # Yap Text Inference Server
 
-A vLLM text inference server optimized for dual model deployment. It can run:
-- Chat engine for roleplay
-- Engine for tool-call detection
-- Both engines together by default; chat-only/tool-only are supported in host scripts and Docker (mixed image)
+A vLLM text inference server optimized for pairing a chat model with a lightweight screenshot-intent classifier. It can run:
+- A vLLM chat engine for roleplay / assistant flows
+- A classifier-only tool router (takes screenshots or skips them)
+- Either engine independently or both together (sequential flow only)
 - FastAPI + WebSocket streaming
 
 ## Contents
@@ -22,7 +22,7 @@ A vLLM text inference server optimized for dual model deployment. It can run:
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
-- Dual-engine architecture (chat + tool) with optional chat-only/tool-only modes, plus a **dual** deployment that reuses one chat model for both tool routing and responses while preserving existing sequential/concurrent flows.
+- Chat + classifier deployment with optional chat-only or classifier-only modes. Tool routing no longer spins up a second vLLM instance or shares the chat weights.
 - Tool-call-first detection: tool decisions fire before chat tokens, while chat still streams for every turn so UX never stalls.
 - Persona/history segmented prompts with prefix caching and FP8/INT8 KV reuse to keep latency low across restarts.
 - Integrated quantization pipeline (FP8 default, AWQ/GPTQ/W4A16 auto-detect, AutoAWQ fallbacks) plus configurable logit bias for banned phrases.
@@ -46,39 +46,33 @@ export MAX_CONCURRENT_CONNECTIONS=20              # Required capacity guard (pic
 1) Install deps and start the server
 
 ```bash
-# Both models (default) - always runs in background with auto-tail
-bash scripts/main.sh [awq] <chat_model> <tool_model> [deploy_mode]
+# Chat + classifier (default) - auto-detached deployment with log tailing
+bash scripts/main.sh [awq] <chat_model> <classifier_model>
 
-# Single-model forms (host scripts only; Docker always runs both)
+# Chat-only / classifier-only helpers (host scripts only; Docker always runs both)
 bash scripts/main.sh [awq] chat <chat_model>
-bash scripts/main.sh [awq] tool <tool_model>
-bash scripts/main.sh [awq] dual <model>
+bash scripts/main.sh [awq] tool <classifier_model>
 
-# Behavior: Auto-detached deployment + log tailing
-# Ctrl+C stops tail only, deployment continues
-# Use scripts/stop.sh to stop deployment
+# Ctrl+C stops the log tail only; use scripts/stop.sh to stop the server
 ```
 
-`DEPLOY_MODELS=dual` (or the `dual` CLI argument) tells the server to reuse one chat-capable model for both tool routing and chat responses. The CLI automatically exports `DUAL_MODEL=<model_id>` along with matching `CHAT_MODEL` / `TOOL_MODEL` env vars, but you can set them manually if you orchestrate deployments yourself.
-
 Default GPU allocation:
-- Chat + tool deployments reserve 70% for the chat engine and 20% for the tool router (override with `CHAT_GPU_FRAC` / `TOOL_GPU_FRAC`).
-- Single-engine modes (chat-only, tool-only, or dual) allocate 90% to the active engine.
-- Sequential execution is now the default. Set `CONCURRENT_MODEL_CALL=1` when you want tool routing and chat generation to run concurrently.
+- Chat deployments reserve 70% of GPU memory when a classifier is also configured (override with `CHAT_GPU_FRAC`).
+- Chat-only mode allocates 90% to the chat engine.
+- Classifier-only mode does not spin up vLLM at all and leaves GPU memory untouched.
+
+Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-screenshot-intent-classifier`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`. No quantization is required for classifier weights.
 
 Examples:
 ```bash
 # Float chat model (auto → FP8)
 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
 
-# Float roleplay model (auto → FP8)
-bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b
+# Float roleplay model (auto → FP8) with classifier routing
+bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-screenshot-intent-classifier
 
-# Concurrent mode for faster response (auto → FP8)
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-
-# GPTQ chat model (auto → GPTQ) with concurrent mode
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b
+# GPTQ chat model (auto → GPTQ) + classifier
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 yapwithai/yap-screenshot-intent-classifier
 ```
 
 This will:
@@ -122,11 +116,8 @@ See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, ima
 ### Option 1: Local Quantization
 
 ```bash
-# Uses float (non-GPTQ) chat model weights and quantizes BOTH chat and tool models at load
-bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
-
-# With concurrent mode
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
+# Uses float (non-GPTQ) chat model weights and quantizes the chat engine at load
+bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
 ```
 
 Local quantization runs [`llmcompressor`](https://github.com/vllm-project/llm-compressor) `oneshot()` with the AWQ modifier (pinned at version 0.8.1). Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`, with automatic fallback from `pileval` on older llmcompressor builds).  
@@ -142,42 +133,19 @@ The server now auto-detects **any** pre-quantized repo whose name includes commo
 If the repo path advertises one of these markers, Yap skips runtime quantization and runs it directly—even if the model isn’t on the default allowlist. This matches the config enforcement logic described in `src/config/models.py`.
 
 ```bash
-# Pre-quantized AWQ (chat + tool)
+# Pre-quantized AWQ chat + classifier
 bash scripts/main.sh \
   yapwithai/impish-12b-awq \
-  yapwithai/hammer-2.1-3b-awq
+  yapwithai/yap-screenshot-intent-classifier
 
 # Chat-only AWQ
 bash scripts/main.sh chat yapwithai/impish-12b-awq
-
-# Tool-only AWQ
-bash scripts/main.sh tool yapwithai/hammer-2.1-3b-awq
-
-# Dual AWQ (one model handles chat + tool)
-bash scripts/main.sh dual cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
-
-# AWQ with concurrent mode
-CONCURRENT_MODEL_CALL=1 \
-bash scripts/main.sh \
-  yapwithai/impish-12b-awq \
-  yapwithai/hammer-2.1-3b-awq
-
-# Custom AWQ or W4A16 (auto-detected compressed tensors)
-bash scripts/main.sh \
-  leon-se/gemma-3-27b-it-qat-W4A16-G128 \
-  your-org/tool-awq
-
-# Pre-quantized GPTQ chat model (tool stays float)
-CONCURRENT_MODEL_CALL=1 \
-bash scripts/main.sh \
-  SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 \
-  MadeAgents/Hammer2.1-3b
 
 # GPTQ-only chat deployment
 bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
 ```
 
-> **Note on llmcompressor / W4A16 exports:** Whether the model lives locally or on Hugging Face, the code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `CHAT_MODEL` / `TOOL_MODEL` at the repo IDs—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime. Qwen-family and Mistral-3 exports are tagged as AutoAWQ in metadata so downstream consumers know which quantizer produced the checkpoint.
+> **Note on llmcompressor / W4A16 exports:** Whether the chat model lives locally or on Hugging Face, the code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `CHAT_MODEL` at the repo ID—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime. (Classifier `TOOL_MODEL` repos are loaded via `AutoModelForSequenceClassification` and are never quantized.)
 
 ## Local Test Dependencies
 
@@ -195,13 +163,13 @@ This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) with
 
 Highlights:
 
-- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` (alias: `--style`) and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Add `--prompt-mode chat|tool` to mirror chat-only/tool-only deployments; otherwise the default `both` sends both prompts.
-- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/live.py`. The `--prompt-mode` flag lets you run tool-only smoke tests while still connecting to the live CLI (persona switches are disabled automatically when chat prompts are off).
-- [`tests/personality.py`](ADVANCED.md#personality-switch-test) – exercises persona swaps and history stitching to ensure cache hits are preserved. Requires `--prompt-mode chat` or `both` because persona updates depend on chat prompts; tool prompts remain optional.
+- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` (alias: `--style`) and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Add `--prompt-mode tool` when you deploy *only* the classifier so the client skips chat prompts; otherwise the default `both` sends the chat persona.
+- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/live.py`. Requires chat prompts (use `--prompt-mode chat` or `both`).
+- [`tests/personality.py`](ADVANCED.md#personality-switch-test) – exercises persona swaps and history stitching to ensure cache hits are preserved. Requires `--prompt-mode chat` or `both` because persona updates depend on chat prompts.
 - [`tests/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics; honors `--prompt-mode` the same way as warmup/live.
-- [`tests/screen_analysis.py`](ADVANCED.md#screen-analysis--toolcall-test) – validates the toolcall branch used by screen analysis flows. Use `--prompt-mode tool` when the chat engine is disabled to avoid sending unused prompts.
-- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call classifier (timeouts, concurrency, limit flags). It now mirrors `--prompt-mode` so you can run chat-only passes without providing tool prompts (or vice versa).
-- [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for concurrent sessions.
+- [`tests/screen_analysis.py`](ADVANCED.md#screen-analysis--toolcall-test) – validates the toolcall branch used by screen analysis flows; chat prompts are mandatory.
+- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call classifier (timeouts, concurrency, limit flags). `--prompt-mode tool` skips chat prompts (classifier-only), whereas `both`/`chat` also streams the chat response.
+- [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions.
 
 All of them run happily on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
 
@@ -214,7 +182,7 @@ After initial deployment, you can use these commands to stop and/or restart the 
 NUKE_ALL=0 bash scripts/stop.sh
 
 # Quick restart using existing AWQ models
-bash scripts/restart.sh [both|chat|tool|dual]
+bash scripts/restart.sh [both|chat|tool]
 
 # Restart and reinstall dependencies (e.g., refresh venv)
 bash scripts/restart.sh both --install-deps
@@ -226,15 +194,9 @@ bash scripts/restart.sh --reset-models --deploy-mode both \
   --chat-quant fp8 \
   --tool-quant awq
 
-# Dual-mode reset (one model handles chat + tool)
-# With pre-quantized model (auto-detected)
-bash scripts/restart.sh --reset-models --deploy-mode dual \
-  --dual-model cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
-
-# Dual-mode reset with quantization (quantizes float model at load)
-bash scripts/restart.sh --reset-models --deploy-mode dual \
-  --dual-model SicariusSicariiStuff/Impish_Nemo_12B \
-  --quant awq
+# Classifier-only reset (no chat engine)
+bash scripts/restart.sh --reset-models --deploy-mode tool \
+  --tool-model yapwithai/yap-screenshot-intent-classifier
 
 # Auto-detect pre-quantized repos (AWQ/GPTQ) during reset
 bash scripts/restart.sh --reset-models --deploy-mode chat \

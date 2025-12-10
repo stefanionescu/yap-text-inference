@@ -41,7 +41,6 @@ restart_detect_awq_models() {
     both) REQUIRE_CHAT=1; REQUIRE_TOOL=1 ;;
     chat) REQUIRE_CHAT=1 ;;
     tool) REQUIRE_TOOL=1 ;;
-    dual) REQUIRE_CHAT=1 ;;
   esac
 
   local LOCAL_CHAT_OK=0 LOCAL_TOOL_OK=0
@@ -92,7 +91,6 @@ restart_detect_awq_models() {
     both) [ "${LOCAL_CHAT_OK}" = "1" ] && [ "${LOCAL_TOOL_OK}" = "1" ] && USING_LOCAL_MODELS=1 ;;
     chat) [ "${LOCAL_CHAT_OK}" = "1" ] && USING_LOCAL_MODELS=1 ;;
     tool) [ "${LOCAL_TOOL_OK}" = "1" ] && USING_LOCAL_MODELS=1 ;;
-    dual) [ "${LOCAL_CHAT_OK}" = "1" ] && USING_LOCAL_MODELS=1 ;;
   esac
 
   export AWQ_CACHE_DIR CHAT_AWQ_DIR TOOL_AWQ_DIR USING_LOCAL_MODELS
@@ -105,7 +103,7 @@ restart_setup_env_for_awq() {
   local DEPLOY_MODE="$1"
   export QUANTIZATION=awq
   export DEPLOY_MODELS="${DEPLOY_MODE}"
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ] || [ "${DEPLOY_MODE}" = "dual" ]; then
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     local chat_source="${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
     export CHAT_MODEL="${chat_source}" CHAT_QUANTIZATION=awq
     if [ -z "${CHAT_MODEL_NAME:-}" ]; then
@@ -114,12 +112,6 @@ restart_setup_env_for_awq() {
       else
         CHAT_MODEL_NAME="${chat_source}"
       fi
-    fi
-    if [ "${DEPLOY_MODE}" = "dual" ]; then
-      export DUAL_MODEL="${CHAT_MODEL}"
-      export TOOL_MODEL="${CHAT_MODEL}"
-      export TOOL_QUANTIZATION=awq
-      export TOOL_MODEL_NAME="${CHAT_MODEL_NAME}"
     fi
   fi
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
@@ -156,7 +148,6 @@ restart_validate_awq_push_prereqs() {
     both) NEED_CHAT=1; NEED_TOOL=1 ;;
     chat) NEED_CHAT=1 ;;
     tool) NEED_TOOL=1 ;;
-    dual) NEED_CHAT=1 ;;
   esac
 
   if [ "${NEED_CHAT}" = "1" ]; then
@@ -186,11 +177,11 @@ restart_push_cached_awq_models() {
 
   log_info "Uploading cached AWQ artifacts to Hugging Face (restart)"
   local pushed=0
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ] || [ "${DEPLOY_MODE}" = "dual" ]; then
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     push_awq_to_hf "${CHAT_AWQ_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
     pushed=1
   fi
-  if ([ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]) && [ "${DEPLOY_MODE}" != "dual" ]; then
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
     push_awq_to_hf "${TOOL_AWQ_DIR}" "${HF_AWQ_TOOL_REPO}" "${HF_AWQ_COMMIT_MSG_TOOL}"
     pushed=1
   fi

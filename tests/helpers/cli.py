@@ -13,7 +13,6 @@ from tests.config import (
     CHAT_TEMPERATURE_DEFAULT,
     CHAT_TOP_K_DEFAULT,
     CHAT_TOP_P_DEFAULT,
-    CLASSIFIER_MODE,
 )
 from tests.helpers.prompt import PROMPT_MODE_BOTH, PROMPT_MODE_CHOICES, normalize_prompt_mode
 
@@ -140,35 +139,10 @@ def add_prompt_mode_arg(
     )
 
 
-CLASSIFIER_MODE_ENV_VAR = "CLASSIFIER_MODE"
-
-
-def add_classifier_mode_arg(
-    parser: ArgumentParser,
-    *,
-    env_var: str = CLASSIFIER_MODE_ENV_VAR,
-) -> None:
-    """
-    Register a flag to indicate classifier mode (no tool prompt required).
-
-    Respects ``env_var`` (default: CLASSIFIER_MODE) for overrides.
-    """
-    parser.add_argument(
-        "--classifier-mode",
-        action="store_true",
-        default=CLASSIFIER_MODE,
-        help=(
-            "Classifier mode: server uses classifier model, no tool_prompt required "
-            f"(default: {'True' if CLASSIFIER_MODE else 'False'}, env {env_var} overrides)"
-        ),
-    )
-
-
 __all__ = [
     "add_connection_args",
     "add_sampling_args",
     "add_prompt_mode_arg",
-    "add_classifier_mode_arg",
     "build_sampling_payload",
 ]
 

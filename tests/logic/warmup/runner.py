@@ -24,15 +24,12 @@ from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     WARMUP_FALLBACK_MESSAGE,
-    CLASSIFIER_MODE,
 )
 from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.prompt import (
     PROMPT_MODE_BOTH,
     select_chat_prompt,
-    select_tool_prompt,
     should_send_chat_prompt,
-    should_send_tool_prompt,
 )
 from tests.helpers.stream import StreamTracker
 from tests.helpers.util import choose_message
@@ -54,7 +51,6 @@ async def run_once(args) -> None:
     sampling_overrides = getattr(args, "sampling", None) or None
     prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
     double_ttfb = bool(getattr(args, "double_ttfb", False))
-    classifier_mode = getattr(args, "classifier_mode", CLASSIFIER_MODE)
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
     user_msg = choose_message(
@@ -63,8 +59,6 @@ async def run_once(args) -> None:
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
     chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
-    tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode, classifier_mode=classifier_mode) else None
-
     logger.info("Connecting to %s (with API key auth)", server_ws_url)
     async with connect_with_retries(
         lambda: websockets.connect(
@@ -86,10 +80,8 @@ async def run_once(args) -> None:
                     gender,
                     personality,
                     chat_prompt,
-                    tool_prompt,
                     user_msg,
                     sampling_overrides,
-                    classifier_mode=classifier_mode,
                 )
                 if double_ttfb:
                     logger.info("%sSending start message for %s transaction", _phase_prefix(phase_label), phase_label)
@@ -104,11 +96,8 @@ def _build_start_payload(
     gender: str,
     personality: str,
     chat_prompt: str | None,
-    tool_prompt: str | None,
     user_msg: str,
     sampling: dict[str, float | int] | None,
-    *,
-    classifier_mode: bool = False,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "type": "start",
@@ -120,11 +109,6 @@ def _build_start_payload(
     }
     if chat_prompt is not None:
         payload["chat_prompt"] = chat_prompt
-    if tool_prompt is not None:
-        payload["tool_prompt"] = tool_prompt
-    # In classifier mode, tool_prompt is not required
-    if not classifier_mode and "chat_prompt" not in payload and "tool_prompt" not in payload:
-        raise ValueError("prompt_mode must include chat, tool, or both prompts")
     if sampling:
         payload["sampling"] = sampling
     return payload

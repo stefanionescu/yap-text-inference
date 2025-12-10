@@ -12,12 +12,9 @@ from fastapi import WebSocket
 
 from ..config import (
     USER_UTT_MAX_TOKENS,
-    CONCURRENT_MODEL_CALL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
-    DEPLOY_TOOL_ENGINE,
     CHAT_PROMPT_MAX_TOKENS,
-    TOOL_PROMPT_MAX_TOKENS,
     CHAT_TEMPERATURE_MIN,
     CHAT_TEMPERATURE_MAX,
     CHAT_TOP_P_MIN,
@@ -35,13 +32,11 @@ from ..config import (
 )
 from ..tokens import (
     count_tokens_chat,
-    count_tokens_tool,
     trim_text_to_token_limit_chat,
     trim_text_to_token_limit_tool,
 )
 from ..handlers.session import session_handler
 from ..execution.executors.sequential_executor import run_sequential_execution
-from ..execution.executors.concurrent_executor import run_concurrent_execution
 from ..execution.streaming.chat_streamer import run_chat_stream
 from ..execution.tool.tool_runner import run_toolcall
 from ..execution.tool.tool_parser import parse_tool_result
@@ -132,7 +127,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
 
     try:
         gender, personality = _validate_persona(msg)
-        chat_prompt, tool_prompt = _extract_prompts(msg)
+        chat_prompt = _extract_chat_prompt(msg)
         sampling_overrides = _extract_sampling_overrides(msg)
         check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(msg)
     except ValidationError as err:
@@ -148,7 +143,6 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         chat_gender=gender,
         chat_personality=personality,
         chat_prompt=chat_prompt,
-        tool_prompt=tool_prompt,
         chat_sampling=sampling_payload,
         check_screen_prefix=check_screen_prefix,
         screen_checked_prefix=screen_checked_prefix,
@@ -187,45 +181,23 @@ def _validate_persona(msg: dict[str, Any]) -> tuple[str, str]:
     return gender, personality
 
 
-def _extract_prompts(msg: dict[str, Any]) -> tuple[str | None, str | None]:
-    chat_prompt = None
-    tool_prompt = None
-
+def _extract_chat_prompt(msg: dict[str, Any]) -> str | None:
     raw_chat_prompt = msg.get("chat_prompt") or msg.get("persona_text")
-    raw_tool_prompt = msg.get("tool_prompt")
-
-    if DEPLOY_CHAT:
-        required_chat_prompt = require_prompt(
-            raw_chat_prompt,
-            error_code="missing_chat_prompt",
-            message="chat_prompt is required",
-        )
-        chat_prompt = sanitize_prompt_with_limit(
-            required_chat_prompt,
-            field_label="chat_prompt",
-            invalid_error_code="invalid_chat_prompt",
-            too_long_error_code="chat_prompt_too_long",
-            max_tokens=CHAT_PROMPT_MAX_TOKENS,
-            count_tokens_fn=count_tokens_chat,
-        )
-
-    # Only require tool_prompt when using vLLM tool engine (not classifier)
-    if DEPLOY_TOOL_ENGINE:
-        required_tool_prompt = require_prompt(
-            raw_tool_prompt,
-            error_code="missing_tool_prompt",
-            message="tool_prompt is required",
-        )
-        tool_prompt = sanitize_prompt_with_limit(
-            required_tool_prompt,
-            field_label="tool_prompt",
-            invalid_error_code="invalid_tool_prompt",
-            too_long_error_code="tool_prompt_too_long",
-            max_tokens=TOOL_PROMPT_MAX_TOKENS,
-            count_tokens_fn=count_tokens_tool,
-        )
-
-    return chat_prompt, tool_prompt
+    if not DEPLOY_CHAT:
+        return None
+    required_chat_prompt = require_prompt(
+        raw_chat_prompt,
+        error_code="missing_chat_prompt",
+        message="chat_prompt is required",
+    )
+    return sanitize_prompt_with_limit(
+        required_chat_prompt,
+        field_label="chat_prompt",
+        invalid_error_code="invalid_chat_prompt",
+        too_long_error_code="chat_prompt_too_long",
+        max_tokens=CHAT_PROMPT_MAX_TOKENS,
+        count_tokens_fn=count_tokens_chat,
+    )
 
 
 def _extract_screen_prefixes(msg: dict[str, Any]) -> tuple[str | None, str | None]:
@@ -354,30 +326,17 @@ def _build_ack_payload(
 
 async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
     if DEPLOY_CHAT and DEPLOY_TOOL:
-        if CONCURRENT_MODEL_CALL:
-            logger.info("handle_start: concurrent execution session_id=%s", plan.session_id)
-            await run_concurrent_execution(
-                ws,
-                plan.session_id,
-                plan.static_prefix,
-                plan.runtime_text,
-                plan.history_text,
-                plan.user_utt,
-                history_turn_id=plan.history_turn_id,
-                sampling_overrides=plan.sampling_overrides,
-            )
-        else:
-            logger.info("handle_start: sequential execution session_id=%s", plan.session_id)
-            await run_sequential_execution(
-                ws,
-                plan.session_id,
-                plan.static_prefix,
-                plan.runtime_text,
-                plan.history_text,
-                plan.user_utt,
-                history_turn_id=plan.history_turn_id,
-                sampling_overrides=plan.sampling_overrides,
-            )
+        logger.info("handle_start: sequential execution session_id=%s", plan.session_id)
+        await run_sequential_execution(
+            ws,
+            plan.session_id,
+            plan.static_prefix,
+            plan.runtime_text,
+            plan.history_text,
+            plan.user_utt,
+            history_turn_id=plan.history_turn_id,
+            sampling_overrides=plan.sampling_overrides,
+        )
         return
 
     if DEPLOY_CHAT and not DEPLOY_TOOL:

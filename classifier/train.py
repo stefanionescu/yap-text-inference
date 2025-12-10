@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-"""Fine-tune a Longformer classifier for screenshot intent detection.
+"""Fine-tune a transformer classifier for screenshot intent detection.
 
-This script builds a dataset from `tests/messages/tool.py`, trains a
-`allenai/longformer-base-4096` classifier (or another HF model you pass in),
-and saves the model + tokenizer to a local directory.
+This script builds a dataset from `tests/messages/tool.py`, fine-tunes a Hugging
+Face encoder model (ModernBERT by default, or another HF model you pass in), and
+saves the model + tokenizer to a local directory.
 """
 
 import argparse
@@ -16,6 +16,7 @@ import torch
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from torch.utils.data import Dataset
 from transformers import (
+    AutoConfig,
     AutoModelForSequenceClassification,
     AutoTokenizer,
     Trainer,
@@ -24,6 +25,11 @@ from transformers import (
 )
 
 from .data import ToolExample, build_examples, train_eval_split
+
+
+MODELS_DIR = Path(__file__).resolve().parent / "models"
+DEFAULT_MODEL_NAME = "answerdotai/ModernBERT-base"
+DEFAULT_MODEL_DIR = MODELS_DIR / "modernbert_screenshot_classifier"
 
 
 def _truncate_conversation_text(text: str, tokenizer, max_length: int) -> str:
@@ -66,14 +72,21 @@ class ToolDataset(Dataset):
 
     This dataset performs tokenization inside `__getitem__` so that the Trainer
     receives fully encoded features (`input_ids`, `attention_mask`,
-    `global_attention_mask`, `labels`) and we don't rely on custom collate
-    functions or unused-column behavior.
+    optionally `global_attention_mask`, `labels`) and we don't rely on custom
+    collate functions or unused-column behavior.
     """
 
-    def __init__(self, examples: list[ToolExample], tokenizer, max_length: int) -> None:
+    def __init__(
+        self,
+        examples: list[ToolExample],
+        tokenizer,
+        max_length: int,
+        add_global_attention: bool,
+    ) -> None:
         self._examples = examples
         self._tokenizer = tokenizer
         self._max_length = max_length
+        self._add_global_attention = add_global_attention
 
     def __len__(self) -> int:  # type: ignore[override]
         return len(self._examples)
@@ -95,28 +108,32 @@ class ToolDataset(Dataset):
             key: torch.tensor(value) for key, value in encodings.items()
         }
 
-        attention_mask = item.get("attention_mask")
-        if attention_mask is not None:
-            # attention_mask is shape [seq_len] for a single example
-            global_attention_mask = torch.zeros_like(attention_mask)
-            global_attention_mask[0] = 1  # first token gets global attention
-            item["global_attention_mask"] = global_attention_mask
+        if self._add_global_attention:
+            attention_mask = item.get("attention_mask")
+            if attention_mask is not None:
+                # attention_mask is shape [seq_len] for a single example
+                global_attention_mask = torch.zeros_like(attention_mask)
+                global_attention_mask[0] = 1  # first token gets global attention
+                item["global_attention_mask"] = global_attention_mask
 
         item["labels"] = torch.tensor(int(ex.label), dtype=torch.long)
         return item
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Train Longformer screenshot intent classifier")
+    parser = argparse.ArgumentParser(description="Train screenshot intent classifier")
     parser.add_argument(
         "--model-name",
-        default="allenai/longformer-base-4096",
-        help="Base HF model name to fine-tune (default: allenai/longformer-base-4096)",
+        default=DEFAULT_MODEL_NAME,
+        help=f"Base HF model name to fine-tune (default: {DEFAULT_MODEL_NAME})",
     )
     parser.add_argument(
         "--output-dir",
-        default=str(Path(__file__).resolve().parent / "models" / "longformer_screenshot_classifier"),
-        help="Directory to save the fine-tuned model and tokenizer (default: classifier/models/longformer_screenshot_classifier)",
+        default=str(DEFAULT_MODEL_DIR),
+        help=(
+            "Directory to save the fine-tuned model and tokenizer "
+            f"(default: {DEFAULT_MODEL_DIR})"
+        ),
     )
     parser.add_argument(
         "--epochs",
@@ -157,6 +174,11 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _needs_global_attention(model_type: str) -> bool:
+    """Return True if the encoder expects a `global_attention_mask` tensor."""
+    return model_type.lower() in {"longformer"}
+
+
 def _compute_metrics(eval_pred: tuple[np.ndarray, np.ndarray]) -> Dict[str, float]:
     logits, labels = eval_pred
     preds = logits.argmax(axis=-1)
@@ -188,21 +210,35 @@ def main() -> None:
         seed=args.seed,
     )
 
+    config = AutoConfig.from_pretrained(args.model_name)
+    needs_global_attention = _needs_global_attention(getattr(config, "model_type", ""))
+
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     # Keep the most recent `max_length` tokens when truncating long histories
     tokenizer.truncation_side = "left"
 
-    train_dataset = ToolDataset(train_examples, tokenizer, args.max_length)
-    eval_dataset = ToolDataset(eval_examples, tokenizer, args.max_length)
+    train_dataset = ToolDataset(
+        train_examples,
+        tokenizer,
+        args.max_length,
+        add_global_attention=needs_global_attention,
+    )
+    eval_dataset = ToolDataset(
+        eval_examples,
+        tokenizer,
+        args.max_length,
+        add_global_attention=needs_global_attention,
+    )
 
     id2label = {0: "no_screenshot", 1: "take_screenshot"}
     label2id = {v: k for k, v in id2label.items()}
 
+    config.num_labels = 2
+    config.id2label = id2label
+    config.label2id = label2id
     model = AutoModelForSequenceClassification.from_pretrained(
         args.model_name,
-        num_labels=2,
-        id2label=id2label,
-        label2id=label2id,
+        config=config,
     )
 
     output_dir = Path(args.output_dir).resolve()

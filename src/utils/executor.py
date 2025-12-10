@@ -1,4 +1,4 @@
-"""Utilities for executors (sequential and concurrent)."""
+"""Utilities shared by executor workflows."""
 
 from __future__ import annotations
 
@@ -81,17 +81,8 @@ async def abort_tool_request(session_id: str) -> None:
     req_id = session_handler.get_tool_request_id(session_id)
     if not req_id:
         return
-    
-    # Only abort if vLLM tool engine is deployed
-    from ..config import DEPLOY_TOOL_ENGINE
-    if not DEPLOY_TOOL_ENGINE:
-        return
-    
-    with contextlib.suppress(Exception):
-        from ..engines import get_tool_engine
-
-        engine = await get_tool_engine()
-        await engine.abort(req_id)
+    # Classifier tool models do not support server-side cancellation; just log.
+    logger.info("executor: no-op tool abort session_id=%s req_id=%s (classifier mode)", session_id, req_id)
 
 
 @dataclass

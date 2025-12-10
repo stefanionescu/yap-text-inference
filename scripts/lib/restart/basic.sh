@@ -8,9 +8,6 @@ restart_basic() {
   SERVER_LOG="${ROOT_DIR}/server.log"
   LAST_QUANT=""; LAST_DEPLOY=""; LAST_CHAT=""; LAST_TOOL=""
   LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
-  restart_capture_user_env "CONCURRENT_MODEL_CALL"
-  restart_snapshot_value_from_env_file "CONCURRENT_MODEL_CALL" "${LAST_ENV_FILE}"
-  PREV_CONCURRENT_MODEL_CALL="${RESTART_SNAPSHOT_VALUE_CONCURRENT_MODEL_CALL:-}"
 
   if [ -f "${SERVER_LOG}" ]; then
     LAST_QUANT=$(grep -E "Quantization: " "${SERVER_LOG}" | tail -n1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
@@ -34,8 +31,6 @@ restart_basic() {
     LAST_TOOL="${LAST_TOOL:-${TOOL_MODEL:-}}"
   fi
 
-  restart_restore_user_env "CONCURRENT_MODEL_CALL"
-  restart_mark_override_if_changed "CONCURRENT_MODEL_CALL" "CONCURRENT_MODEL_CALL"
 
   # If the last snapshot stored explicit per-engine quantization, prefer that over
   # the generic fallback so we don't misclassify AWQ/GPTQ deployments as fp8.
@@ -63,29 +58,18 @@ restart_basic() {
   # Non-AWQ path
   # shellcheck disable=SC2153  # DEPLOY_MODE is set by the caller via env
   local SELECTED_DEPLOY="${DEPLOY_MODE}"
-  if [ -z "${SELECTED_DEPLOY}" ] || ! [[ "${SELECTED_DEPLOY}" =~ ^(both|chat|tool|dual)$ ]]; then
+  if [ -z "${SELECTED_DEPLOY}" ] || ! [[ "${SELECTED_DEPLOY}" =~ ^(both|chat|tool)$ ]]; then
     SELECTED_DEPLOY="${DEPLOY_MODELS:-${LAST_DEPLOY:-both}}"
   fi
 
   export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-fp8}}"
   export DEPLOY_MODELS="${SELECTED_DEPLOY}"
 
-  if [ "${DEPLOY_MODELS}" = "dual" ]; then
-    local dual_model="${DUAL_MODEL:-${CHAT_MODEL:-${LAST_CHAT:-}}}"
-    if [ -z "${dual_model}" ]; then
-      dual_model="${LAST_TOOL:-${TOOL_MODEL:-}}"
-    fi
-    export DUAL_MODEL="${dual_model}"
-    export CHAT_MODEL="${dual_model}"
-    export TOOL_MODEL="${dual_model}"
-  else
-    if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
-      export CHAT_MODEL="${CHAT_MODEL:-${LAST_CHAT:-}}"
-    fi
-    if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
-      export TOOL_MODEL="${TOOL_MODEL:-${LAST_TOOL:-}}"
-    fi
-    unset DUAL_MODEL
+  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
+    export CHAT_MODEL="${CHAT_MODEL:-${LAST_CHAT:-}}"
+  fi
+  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
+    export TOOL_MODEL="${TOOL_MODEL:-${LAST_TOOL:-}}"
   fi
 
   if [ "${DEPLOY_MODELS}" != "tool" ] && [ -z "${CHAT_MODEL:-}" ]; then
@@ -93,19 +77,15 @@ restart_basic() {
     [ -f "${SERVER_LOG}" ] && log_error "Hint: Could not parse chat model from server.log"
     exit 1
   fi
-  if [ "${DEPLOY_MODELS}" != "chat" ] && [ "${DEPLOY_MODELS}" != "dual" ] && [ -z "${TOOL_MODEL:-}" ]; then
+  if [ "${DEPLOY_MODELS}" != "chat" ] && [ -z "${TOOL_MODEL:-}" ]; then
     log_error "TOOL_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
     [ -f "${SERVER_LOG}" ] && log_error "Hint: Could not parse tool model from server.log"
     exit 1
   fi
 
   log_info "Detected last quantization='${QUANTIZATION}', deploy='${DEPLOY_MODELS}'"
-  if [ "${DEPLOY_MODELS}" = "dual" ]; then
-    log_info "  Dual model: ${CHAT_MODEL}"
-  else
-    if [ -n "${CHAT_MODEL:-}" ]; then log_info "  Chat model: ${CHAT_MODEL}"; fi
-    if [ -n "${TOOL_MODEL:-}" ]; then log_info "  Tool model: ${TOOL_MODEL}"; fi
-  fi
+  if [ -n "${CHAT_MODEL:-}" ]; then log_info "  Chat model: ${CHAT_MODEL}"; fi
+  if [ -n "${TOOL_MODEL:-}" ]; then log_info "  Tool model: ${TOOL_MODEL}"; fi
 
   log_info "Stopping server (preserving models and dependencies)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"

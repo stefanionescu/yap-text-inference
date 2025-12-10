@@ -398,10 +398,6 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
         }
         if cfg.chat_prompt is not None:
             payload["chat_prompt"] = cfg.chat_prompt
-        if cfg.tool_prompt is not None:
-            payload["tool_prompt"] = cfg.tool_prompt
-        if "chat_prompt" not in payload and "tool_prompt" not in payload:
-            raise ValueError("RunnerConfig must include chat_prompt and/or tool_prompt")
 
         turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
         expected = step.expect_tool
