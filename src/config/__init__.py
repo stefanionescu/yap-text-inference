@@ -12,6 +12,7 @@ from .env import (
     DEPLOY_DUAL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
+    DEPLOY_TOOL_ENGINE,
     DUAL_MODEL,
     CHAT_MODEL,
     TOOL_MODEL,
@@ -29,7 +30,6 @@ from .env import (
     TOOL_LANGUAGE_FILTER,
     # Classifier settings
     CLASSIFIER_THRESHOLD,
-    CLASSIFIER_MAX_LENGTH,
     CLASSIFIER_COMPILE,
     CLASSIFIER_HISTORY_TOKENS,
 )
@@ -162,6 +162,7 @@ __all__ = [
     "DEPLOY_DUAL",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
+    "DEPLOY_TOOL_ENGINE",
     "DUAL_MODEL",
     "CHAT_MODEL",
     "TOOL_MODEL",
@@ -177,7 +178,6 @@ __all__ = [
     "TOOL_LANGUAGE_FILTER",
     # classifier settings
     "CLASSIFIER_THRESHOLD",
-    "CLASSIFIER_MAX_LENGTH",
     "CLASSIFIER_COMPILE",
     "CLASSIFIER_HISTORY_TOKENS",
     # prefixes

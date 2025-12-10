@@ -159,7 +159,7 @@ async def run_toolcall(
     request_id: str | None = None,
     mark_active: bool = True,
 ) -> dict[str, Any]:
-    """Execute a tool call with timeout handling and KV cache sharing.
+    """Execute a tool call with timeout handling.
     
     Routes to either classifier or vLLM based on TOOL_MODEL type.
     """

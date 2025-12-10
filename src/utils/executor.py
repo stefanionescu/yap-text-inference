@@ -77,18 +77,14 @@ def launch_tool_request(
 
 
 async def abort_tool_request(session_id: str) -> None:
-    """Best-effort abort of an in-flight tool request for the session.
-    
-    Note: Classifier models don't have a vLLM engine to abort.
-    They run synchronous inference that completes immediately.
-    """
+    """Best-effort abort of an in-flight tool request for the session."""
     req_id = session_handler.get_tool_request_id(session_id)
     if not req_id:
         return
     
-    # Check if tool model is a classifier (no engine to abort)
-    from ..config import TOOL_MODEL, is_classifier_model
-    if is_classifier_model(TOOL_MODEL):
+    # Only abort if vLLM tool engine is deployed
+    from ..config import DEPLOY_TOOL_ENGINE
+    if not DEPLOY_TOOL_ENGINE:
         return
     
     with contextlib.suppress(Exception):
