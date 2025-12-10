@@ -41,6 +41,7 @@ from ..execution.chat import run_chat_generation
 from ..execution.tool.runner import run_toolcall
 from ..execution.tool.parser import parse_tool_result
 from ..utils.executor import stream_chat_response
+from ..config.timeouts import TOOL_TIMEOUT_S
 from .validators import (
     ValidationError,
     require_prompt,
@@ -361,7 +362,18 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
 
     if DEPLOY_TOOL and not DEPLOY_CHAT:
         logger.info("handle_start: tool-only routing session_id=%s", plan.session_id)
-        tool_res = await run_toolcall(plan.session_id, plan.user_utt, plan.history_text, mark_active=False)
+        try:
+            tool_res = await asyncio.wait_for(
+                run_toolcall(plan.session_id, plan.user_utt, plan.history_text, mark_active=False),
+                timeout=TOOL_TIMEOUT_S,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "handle_start: tool-only timeout session_id=%s timeout_s=%.1f",
+                plan.session_id,
+                TOOL_TIMEOUT_S,
+            )
+            tool_res = {"cancelled": True, "text": "[]", "timeout": True}
         raw_field, is_tool = parse_tool_result(tool_res)
         await ws.send_text(json.dumps({
             "type": "toolcall",

@@ -66,14 +66,16 @@ def launch_tool_request(
     """Create a tool request coroutine and register its request id."""
     tool_req_id = f"tool-{uuid.uuid4()}"
     session_handler.set_tool_request(session_id, tool_req_id)
-    tool_coro = run_toolcall(
-        session_id,
-        user_utt,
-        history_text,
-        request_id=tool_req_id,
-        mark_active=False,
+    tool_task = asyncio.create_task(
+        run_toolcall(
+            session_id,
+            user_utt,
+            history_text,
+            request_id=tool_req_id,
+            mark_active=False,
+        )
     )
-    return tool_req_id, tool_coro
+    return tool_req_id, tool_task
 
 
 @dataclass

@@ -57,12 +57,14 @@ DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool")
 CHAT_MODEL = os.getenv("CHAT_MODEL")
 TOOL_MODEL = os.getenv("TOOL_MODEL")
 
-# GPU memory fraction for the vLLM chat engine
+# GPU memory fractions: chat (vLLM) and classifier (PyTorch)
 if DEPLOY_CHAT and DEPLOY_TOOL:
-    # Leave headroom for classifier + allocator activity when both stacks run
+    # Leave headroom when both stacks run on the same GPU
     CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 else:
     CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
+    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
@@ -85,18 +87,17 @@ CACHE_RESET_MIN_SESSION_SECONDS = float(os.getenv("CACHE_RESET_MIN_SESSION_SECON
 # Tool language filter: skip tool call if user message is not mostly English
 TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
 
-# ----------------- Classifier Model Settings -----------------
+# ----------------- Tool Classifier Settings -----------------
 # These are only used when TOOL_MODEL is a classifier (not autoregressive LLM)
-CLASSIFIER_THRESHOLD = float(os.getenv("CLASSIFIER_THRESHOLD", "0.66"))
-CLASSIFIER_COMPILE = env_flag("CLASSIFIER_COMPILE", True)  # Use torch.compile for speedup
-CLASSIFIER_HISTORY_TOKENS = int(os.getenv("CLASSIFIER_HISTORY_TOKENS", "1200"))  # User-only history limit
-CLASSIFIER_MAX_LENGTH = int(os.getenv("CLASSIFIER_MAX_LENGTH", "1536"))  # Tokenizer max length
-CLASSIFIER_MICROBATCH_MAX_SIZE = int(os.getenv("CLASSIFIER_MICROBATCH_MAX_SIZE", "4"))
-CLASSIFIER_MICROBATCH_MAX_DELAY_MS = float(os.getenv("CLASSIFIER_MICROBATCH_MAX_DELAY_MS", "5.0"))
-CLASSIFIER_REQUEST_TIMEOUT_S = float(os.getenv("CLASSIFIER_REQUEST_TIMEOUT_S", "5.0"))
-CLASSIFIER_USE_ONNX = env_flag("CLASSIFIER_USE_ONNX", False)
-CLASSIFIER_ONNX_DIR = os.getenv("CLASSIFIER_ONNX_DIR", "build/classifier_onnx")
-CLASSIFIER_ONNX_OPSET = int(os.getenv("CLASSIFIER_ONNX_OPSET", "17"))
+TOOL_DECISION_THRESHOLD = float(os.getenv("TOOL_DECISION_THRESHOLD", "0.66"))
+TOOL_COMPILE = env_flag("TOOL_COMPILE", True)  # Use torch.compile for speedup
+TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1536"))
+TOOL_MAX_LENGTH = int(os.getenv("TOOL_MAX_LENGTH", "1536"))
+TOOL_MICROBATCH_MAX_SIZE = int(os.getenv("TOOL_MICROBATCH_MAX_SIZE", "4"))
+TOOL_MICROBATCH_MAX_DELAY_MS = float(os.getenv("TOOL_MICROBATCH_MAX_DELAY_MS", "5.0"))
+TOOL_USE_ONNX = env_flag("TOOL_USE_ONNX", False)
+TOOL_ONNX_DIR = os.getenv("TOOL_ONNX_DIR", "build/classifier_onnx")
+TOOL_ONNX_OPSET = int(os.getenv("TOOL_ONNX_OPSET", "17"))
 
 
 def validate_env() -> None:
@@ -132,6 +133,7 @@ __all__ = [
     "CHAT_MODEL",
     "TOOL_MODEL",
     "CHAT_GPU_FRAC",
+    "TOOL_GPU_FRAC",
     "KV_DTYPE",
     "QUANTIZATION",
     "CHAT_QUANTIZATION",
@@ -142,16 +144,15 @@ __all__ = [
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",
     "TOOL_LANGUAGE_FILTER",
-    # classifier settings
-    "CLASSIFIER_THRESHOLD",
-    "CLASSIFIER_COMPILE",
-    "CLASSIFIER_HISTORY_TOKENS",
-    "CLASSIFIER_MAX_LENGTH",
-    "CLASSIFIER_MICROBATCH_MAX_SIZE",
-    "CLASSIFIER_MICROBATCH_MAX_DELAY_MS",
-    "CLASSIFIER_REQUEST_TIMEOUT_S",
-    "CLASSIFIER_USE_ONNX",
-    "CLASSIFIER_ONNX_DIR",
-    "CLASSIFIER_ONNX_OPSET",
+    # tool classifier settings
+    "TOOL_DECISION_THRESHOLD",
+    "TOOL_COMPILE",
+    "TOOL_HISTORY_TOKENS",
+    "TOOL_MAX_LENGTH",
+    "TOOL_MICROBATCH_MAX_SIZE",
+    "TOOL_MICROBATCH_MAX_DELAY_MS",
+    "TOOL_USE_ONNX",
+    "TOOL_ONNX_DIR",
+    "TOOL_ONNX_OPSET",
     "validate_env",
 ]

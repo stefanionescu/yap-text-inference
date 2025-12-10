@@ -403,7 +403,8 @@ GPU memory is allocated based on deployment mode:
 Override as needed:
 
 ```bash
-export CHAT_GPU_FRAC=0.80
+export CHAT_GPU_FRAC=0.60
+export TOOL_GPU_FRAC=0.25
 bash scripts/stop.sh && bash scripts/main.sh
 ```
 
