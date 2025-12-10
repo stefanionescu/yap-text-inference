@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 from collections.abc import Mapping
 
-from .limits import CHAT_MAX_LEN, CHAT_MAX_OUT, TOOL_MAX_LEN, TOOL_MAX_OUT
+from .limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 
 
 def _read_int_env(name: str) -> int | None:
@@ -47,22 +47,11 @@ class TotalLengthPolicy:
 _CHAT_DEFAULT_TOTAL = int(
     os.getenv("AWQ_CHAT_TOTAL_LEN", str(CHAT_MAX_LEN + CHAT_MAX_OUT))
 )
-_TOOL_DEFAULT_TOTAL = int(
-    os.getenv("AWQ_TOOL_TOTAL_LEN", str(TOOL_MAX_LEN + TOOL_MAX_OUT))
-)
-
 CHAT_TOTAL_POLICY = TotalLengthPolicy(
     kind="chat",
     default_total=_CHAT_DEFAULT_TOTAL,
     len_env="CHAT_MAX_LEN",
     out_env="CHAT_MAX_OUT",
-)
-
-TOOL_TOTAL_POLICY = TotalLengthPolicy(
-    kind="tool",
-    default_total=_TOOL_DEFAULT_TOTAL,
-    len_env="TOOL_MAX_LEN",
-    out_env="TOOL_MAX_OUT",
 )
 
 
@@ -121,36 +110,10 @@ AWQ_MODEL_MARKERS: tuple[str, ...] = (
     "autoround",
 )
 
-# ----------------------- Toolcall markers ------------------------- #
-
 
 def normalize_model_id(model_id: str | None) -> str:
     """Canonicalize model identifiers for substring comparisons."""
     return (model_id or "").strip().lower()
-
-
-_DEFAULT_TOOLCALL_MARKERS: tuple[str, ...] = ()
-
-
-def _load_toolcall_markers() -> tuple[str, ...]:
-    env_value = os.getenv("AWQ_TOOLCALL_MARKERS")
-    if not env_value:
-        return _DEFAULT_TOOLCALL_MARKERS
-    values: list[str] = []
-    for chunk in env_value.split(","):
-        normalized = normalize_model_id(chunk)
-        if normalized:
-            values.append(normalized)
-    return tuple(values) if values else _DEFAULT_TOOLCALL_MARKERS
-
-
-TOOLCALL_MODEL_MARKERS: tuple[str, ...] = _load_toolcall_markers()
-
-
-def is_toolcall_model(model_id: str) -> bool:
-    """Return True if the identifier matches known toolcall markers."""
-    normalized = normalize_model_id(model_id)
-    return any(marker in normalized for marker in TOOLCALL_MODEL_MARKERS)
 
 
 # ----------------------- Model profiles --------------------------- #
@@ -267,8 +230,6 @@ __all__ = [
     "AWQ_DEFAULT_DATASET",
     "AWQ_MODEL_MARKERS",
     "CHAT_TOTAL_POLICY",
-    "TOOL_TOTAL_POLICY",
-    "TOOLCALL_MODEL_MARKERS",
     "MODEL_PROFILES",
     "TotalLengthPolicy",
     "ModelProfile",
@@ -277,7 +238,6 @@ __all__ = [
     "dataset_fallback",
     "dataset_key",
     "normalize_model_id",
-    "is_toolcall_model",
     "get_model_profile",
     "model_requires_bfloat16",
     "model_requires_fla_runtime",

@@ -266,7 +266,6 @@ def _persist_autoawq_metadata(
     autoawq_version: str,
     quant_config: dict[str, Any],
     target_seqlen: int,
-    toolcall_model: bool,
 ) -> None:
     """Write metadata artifacts and apply config patches."""
     dataset_info = {
@@ -290,7 +289,6 @@ def _persist_autoawq_metadata(
         awq_version=f"autoawq=={autoawq_version}",
         quant_config=metadata_quant_config,
         target_seqlen=target_seqlen,
-        toolcall_model=toolcall_model,
         dataset_info=dataset_info,
         advanced_kwargs=advanced_kwargs,
     )
@@ -306,7 +304,6 @@ def quantize_with_autoawq(
     output_dir: str,
     quant_config: dict[str, Any],
     target_seqlen: int,
-    toolcall_model: bool,
 ) -> bool:
     """Quantize a model with the AutoAWQ backend."""
 
@@ -346,7 +343,6 @@ def quantize_with_autoawq(
         autoawq_version=autoawq_version,
         quant_config=quant_config,
         target_seqlen=target_seqlen,
-        toolcall_model=toolcall_model,
     )
     return True
 

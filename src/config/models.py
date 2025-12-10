@@ -63,7 +63,8 @@ ALLOWED_CHAT_MODELS: list[str] = [
 ]
 
 ALLOWED_CLASSIFIER_MODELS: list[str] = [
-    "yapwithai/yap-screenshot-intent-classifier"
+    "yapwithai/yap-longformer-screenshot-intent",
+    "yapwithai/yap-modernbert-screenshot-intent"
 ]
 
 

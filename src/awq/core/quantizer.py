@@ -5,12 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from ..adapters import (
-    apply_awq_compatibility_patches,
-    compute_chat_calibration_seqlen,
-    compute_toolcall_calibration_seqlen,
-    is_toolcall_model,
-)
+from ..adapters import compute_chat_calibration_seqlen
 from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
     load_model_config,
@@ -57,7 +52,6 @@ class AWQQuantizer:
             return True
 
         os.makedirs(output_dir, exist_ok=True)
-        apply_awq_compatibility_patches()
 
         quant_config: dict[str, Any] = {
             "scheme": f"W{self.config.w_bit}A16",
@@ -77,14 +71,9 @@ class AWQQuantizer:
         hf_model_type = getattr(model_config, "model_type", "") if model_config is not None else ""
         requires_autoawq = requires_autoawq_backend(model_config, model_path)
 
-        toolcall_model = is_toolcall_model(model_path)
-        requested_seqlen = (
-            compute_toolcall_calibration_seqlen(self.config.seqlen)
-            if toolcall_model
-            else compute_chat_calibration_seqlen(self.config.seqlen)
-        )
+        requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model_config)
-        calibration_kind = "Toolcall" if toolcall_model else "Chat"
+        calibration_kind = "Chat"
         if target_seqlen != requested_seqlen:
             print(f"[awq] {calibration_kind} model calibration seqlen adjusted to {target_seqlen}")
         else:
@@ -97,7 +86,6 @@ class AWQQuantizer:
                 output_dir=output_dir,
                 quant_config=quant_config,
                 target_seqlen=target_seqlen,
-                toolcall_model=toolcall_model,
             )
 
         return quantize_with_llmcompressor(
@@ -107,7 +95,6 @@ class AWQQuantizer:
             output_dir=output_dir,
             quant_config=quant_config,
             target_seqlen=target_seqlen,
-            toolcall_model=toolcall_model,
             hf_model_type=hf_model_type,
             calibration_kind=calibration_kind,
         )

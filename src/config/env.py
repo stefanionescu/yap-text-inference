@@ -57,15 +57,12 @@ DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool")
 CHAT_MODEL = os.getenv("CHAT_MODEL")
 TOOL_MODEL = os.getenv("TOOL_MODEL")
 
-# GPU memory fractions: adjust based on deployment mode
+# GPU memory fraction for the vLLM chat engine
 if DEPLOY_CHAT and DEPLOY_TOOL:
-    # Both models: split GPU memory conservatively to leave room for CUDA/NCCL
+    # Leave headroom for classifier + allocator activity when both stacks run
     CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
 else:
-    # Single model: keep ~10% free for runtime overhead
     CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
@@ -135,7 +132,6 @@ __all__ = [
     "CHAT_MODEL",
     "TOOL_MODEL",
     "CHAT_GPU_FRAC",
-    "TOOL_GPU_FRAC",
     "KV_DTYPE",
     "QUANTIZATION",
     "CHAT_QUANTIZATION",

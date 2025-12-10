@@ -32,7 +32,6 @@ def quantize_with_llmcompressor(
     output_dir: str,
     quant_config: dict[str, Any],
     target_seqlen: int,
-    toolcall_model: bool,
     hf_model_type: str,
     calibration_kind: str,
 ) -> bool:
@@ -158,7 +157,6 @@ def quantize_with_llmcompressor(
         awq_version=f"llmcompressor=={compressor_version}",
         quant_config=metadata_quant_config,
         target_seqlen=target_seqlen,
-        toolcall_model=toolcall_model,
         dataset_info=dataset_info,
         advanced_kwargs=advanced_kwargs,
     )
