@@ -26,6 +26,7 @@ from src.config import (
     TOOL_GPU_FRAC,
     TOOL_MAX_LEN,
     TOOL_MODEL,
+    is_classifier_model,
 )
 from src.engines.awq_support import create_engine_with_awq_handling
 from src.engines.engine_args import make_engine_args
@@ -158,7 +159,11 @@ _ENGINE_CONFIGS: list[EngineRoleConfig] = [
     ),
 ]
 
-if DEPLOY_TOOL and not DEPLOY_DUAL:
+# Only add tool engine config for autoregressive LLMs, not classifiers
+# Classifier models use transformers directly, not vLLM
+_TOOL_IS_CLASSIFIER = is_classifier_model(TOOL_MODEL)
+
+if DEPLOY_TOOL and not DEPLOY_DUAL and not _TOOL_IS_CLASSIFIER:
     _ENGINE_CONFIGS.append(
         EngineRoleConfig(
             role="tool",
@@ -169,6 +174,9 @@ if DEPLOY_TOOL and not DEPLOY_DUAL:
             is_chat=False,
         )
     )
+
+if _TOOL_IS_CLASSIFIER:
+    logger.info("Tool model is a classifier (%s), skipping vLLM engine", TOOL_MODEL)
 
 _ENGINE_REGISTRY = EngineRegistry(
     configs=_ENGINE_CONFIGS,
@@ -181,6 +189,15 @@ async def get_chat_engine() -> AsyncLLMEngine:
 
 
 async def get_tool_engine() -> AsyncLLMEngine:
+    """Get the tool engine (vLLM).
+    
+    Raises RuntimeError if tool model is a classifier (use get_classifier_adapter instead).
+    """
+    if _TOOL_IS_CLASSIFIER:
+        raise RuntimeError(
+            f"Tool model '{TOOL_MODEL}' is a classifier. "
+            "Use get_classifier_adapter() instead of get_tool_engine()."
+        )
     if DEPLOY_DUAL:
         return await get_chat_engine()
     return await _ENGINE_REGISTRY.get_engine("tool")

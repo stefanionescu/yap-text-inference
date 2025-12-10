@@ -11,6 +11,7 @@ import os
 import sys
 
 from src.awq.core import AWQQuantizer, CalibrationConfig
+from src.config.models import is_classifier_model
 
 
 def main() -> int:
@@ -34,6 +35,13 @@ def main() -> int:
                        help="Calibration sequence length (default: 2048)")
     
     args = parser.parse_args()
+    
+    # Block classifier models from quantization
+    if is_classifier_model(args.model):
+        print(f"[awq] ERROR: Cannot quantize classifier model '{args.model}'")
+        print("[awq] Classifier models use transformers AutoModelForSequenceClassification,")
+        print("[awq] not autoregressive LLMs. They don't support AWQ quantization.")
+        return 1
     
     # Create calibration config
     config = CalibrationConfig(

@@ -89,7 +89,7 @@ bash classifier/train.sh \
   --epochs 5 \
   --batch-size 32 \
   --learning-rate 3e-5 \
-  --max-length 1200 \
+  --max-length 1536 \
   --output-dir classifier/models/longformer_screenshot_classifier_v2
 ```
 
@@ -135,7 +135,7 @@ train and eval.
 - **Tokenization**:
   - On-the-fly tokenization in the collate function (no pre-saved tokenized
     dataset).
-  - Default `max_length=1200`; you can increase or decrease this as long as it
+  - Default `max_length=1536`; you can increase or decrease this as long as it
     stays within the model's maximum of 4096 tokens.
   - The collate function also constructs a `global_attention_mask` that assigns
     **global attention to the first token**, as recommended for Longformer
@@ -236,7 +236,7 @@ inputs = tokenizer(
     return_tensors="pt",
     truncation=True,
     padding="max_length",
-    max_length=1200,
+    max_length=1536,
 )
 
 # For Longformer, you typically assign global attention to the first token

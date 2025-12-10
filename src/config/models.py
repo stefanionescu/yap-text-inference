@@ -89,6 +89,35 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "cpatonn/Qwen3-4B-Instruct-2507-AWQ-4bit",
 ]
 
+ALLOWED_CLASSIFIER_MODELS: list[str] = [
+    "yapwithai/yap-screenshot-intent-classifier"
+]
+
+
+def is_classifier_model(model: str | None) -> bool:
+    """Check if model is a classifier (not autoregressive LLM).
+    
+    Classifier models use transformers AutoModelForSequenceClassification,
+    not vLLM, and cannot be quantized.
+    """
+    if not model:
+        return False
+    # Check explicit allowlist
+    if model in ALLOWED_CLASSIFIER_MODELS:
+        return True
+    # Check if it's a local path containing 'classifier' in the name
+    if _is_local_model_path(model) and "classifier" in model.lower():
+        return True
+    return False
+
+
+def get_tool_model_type(model: str | None) -> str:
+    """Returns 'classifier' or 'autoregressive' based on model type."""
+    if is_classifier_model(model):
+        return "classifier"
+    return "autoregressive"
+
+
 ALLOWED_DUAL_MODELS: list[str] = [
     "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
@@ -127,9 +156,12 @@ def is_valid_model(model: str, allowed_models: list, model_type: str) -> bool:
 __all__ = [
     "ALLOWED_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
+    "ALLOWED_CLASSIFIER_MODELS",
     "ALLOWED_DUAL_MODELS",
     "_is_local_model_path",
     "is_valid_model",
+    "is_classifier_model",
+    "get_tool_model_type",
     "classify_prequantized_model",
     "is_prequantized_model",
     "is_awq_model_name",

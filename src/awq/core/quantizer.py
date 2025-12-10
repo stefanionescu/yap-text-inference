@@ -21,6 +21,13 @@ from .backends import quantize_with_autoawq, quantize_with_llmcompressor
 from .calibration import CalibrationConfig
 
 
+def _is_classifier_model_path(model_path: str) -> bool:
+    """Check if model path refers to a classifier model."""
+    # Import here to avoid circular imports
+    from src.config.models import is_classifier_model
+    return is_classifier_model(model_path)
+
+
 class AWQQuantizer:
     """AWQ quantization manager backed by llmcompressor."""
     
@@ -33,7 +40,17 @@ class AWQQuantizer:
         output_dir: str,
         force: bool = False,
     ) -> bool:
-        """Quantize a model using llmcompressor or AutoAWQ (for Qwen)."""
+        """Quantize a model using llmcompressor or AutoAWQ (for Qwen).
+        
+        Raises ValueError if model is a classifier (not supported).
+        """
+        # Block classifier models from quantization
+        if _is_classifier_model_path(model_path):
+            raise ValueError(
+                f"Cannot quantize classifier model '{model_path}'. "
+                "Classifier models use transformers AutoModelForSequenceClassification, "
+                "not autoregressive LLMs. They don't support AWQ quantization."
+            )
 
         if not force and is_awq_dir(output_dir):
             print(f"[awq] Using existing quantized model at {output_dir}")

@@ -11,17 +11,14 @@ from .state import HistoryTurn, SessionState
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
-    """Render history turns to a simple text transcript."""
-
+    """Render history turns to text: 'User: X\\nAssistant: Y'"""
     if not turns:
         return ""
-
     chunks: list[str] = []
     for turn in turns:
-        lines: list[str] = []
         user_text = (turn.user or "").strip()
         assistant_text = (turn.assistant or "").strip()
-        lines.append(f"User: {user_text}")
+        lines = [f"User: {user_text}"]
         if assistant_text:
             lines.append(f"Assistant: {assistant_text}")
         chunk = "\n".join(lines).strip()
@@ -31,8 +28,7 @@ def render_history(turns: list[HistoryTurn]) -> str:
 
 
 def parse_history_text(history_text: str) -> list[HistoryTurn]:
-    """Parse a transcript back into structured turns."""
-
+    """Parse text transcript back into structured turns."""
     text = (history_text or "").strip()
     if not text:
         return []
@@ -46,68 +42,84 @@ def parse_history_text(history_text: str) -> list[HistoryTurn]:
         nonlocal current_user, current_assistant, mode
         if not current_user and not current_assistant:
             return
-        user_text = "\n".join(current_user).strip()
-        assistant_text = "\n".join(current_assistant).strip()
-        turns.append(
-            HistoryTurn(turn_id=uuid.uuid4().hex, user=user_text, assistant=assistant_text)
-        )
-        current_user = []
-        current_assistant = []
-        mode = None
+        turns.append(HistoryTurn(
+            turn_id=uuid.uuid4().hex,
+            user="\n".join(current_user).strip(),
+            assistant="\n".join(current_assistant).strip(),
+        ))
+        current_user, current_assistant, mode = [], [], None
 
     for line in text.splitlines():
         if line.startswith("User:"):
             _flush()
-            current_user = [line[len("User:") :].lstrip()]
-            current_assistant = []
+            current_user = [line[5:].lstrip()]
             mode = "user"
         elif line.startswith("Assistant:"):
-            current_assistant = [line[len("Assistant:") :].lstrip()]
+            current_assistant = [line[10:].lstrip()]
             mode = "assistant"
-        else:
-            if mode == "assistant":
-                current_assistant.append(line)
-            elif mode == "user":
-                current_user.append(line)
-            elif line.strip():
-                current_user.append(line)
-                mode = "user"
-
+        elif mode == "assistant":
+            current_assistant.append(line)
+        elif mode == "user":
+            current_user.append(line)
+        elif line.strip():
+            current_user.append(line)
+            mode = "user"
     _flush()
     return turns
 
 
-def trim_history_turns(state: SessionState) -> None:
-    """Trim history to stay within token budget."""
-
-    if not state.history_turns or not DEPLOY_CHAT:
+def trim_history(state: SessionState) -> None:
+    """Trim history by HISTORY_MAX_TOKENS when chat is deployed.
+    
+    When classifier-only, no trimming is done here - the classifier adapter
+    handles its own trimming using its own tokenizer.
+    """
+    if not state.history_turns:
         return
-
+    
+    # Skip if chat model is not deployed (classifier handles its own trimming)
+    if not DEPLOY_CHAT:
+        return
+    
     rendered = render_history(state.history_turns)
     if not rendered:
         state.history_turns = []
         return
-
+    
     tokens = count_tokens_chat(rendered)
-    if tokens <= HISTORY_MAX_TOKENS:
-        return
-
     while state.history_turns and tokens > HISTORY_MAX_TOKENS:
         state.history_turns.pop(0)
         rendered = render_history(state.history_turns)
         tokens = count_tokens_chat(rendered) if rendered else 0
 
 
+def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
+    """Extract raw user texts from history turns.
+    
+    Returns list of user utterances (most recent last).
+    Trimming is handled by the classifier adapter using its own tokenizer.
+    """
+    if not turns:
+        return []
+    return [turn.user.strip() for turn in turns if turn.user and turn.user.strip()]
+
+
 class HistoryController:
-    """Encapsulates history CRUD operations for SessionState instances."""
+    """History operations for SessionState."""
 
     def get_text(self, state: SessionState) -> str:
-        trim_history_turns(state)
+        """Get full history (User + Assistant)."""
+        trim_history(state)
         return render_history(state.history_turns)
+    
+    def get_user_texts(self, state: SessionState) -> list[str]:
+        """Get raw user texts for classifier (trimming done by classifier adapter)."""
+        trim_history(state)
+        return get_user_texts(state.history_turns)
 
     def set_text(self, state: SessionState, history_text: str) -> str:
         state.history_turns = parse_history_text(history_text)
-        trim_history_turns(state)
+        trim_history(state)
         return render_history(state.history_turns)
 
     def append_user_turn(self, state: SessionState, user_utt: str) -> str | None:
@@ -116,7 +128,7 @@ class HistoryController:
             return None
         turn_id = uuid.uuid4().hex
         state.history_turns.append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
-        trim_history_turns(state)
+        trim_history(state)
         return turn_id
 
     def append_turn(
@@ -130,20 +142,20 @@ class HistoryController:
         user = (user_utt or "").strip()
         assistant = assistant_text or ""
 
-        target_turn: HistoryTurn | None = None
         if turn_id:
-            target_turn = next((turn for turn in state.history_turns if turn.turn_id == turn_id), None)
-
-        if target_turn:
-            if assistant:
-                target_turn.assistant = assistant
-        else:
-            if not user and not assistant:
+            target = next((t for t in state.history_turns if t.turn_id == turn_id), None)
+            if target and assistant:
+                target.assistant = assistant
+                trim_history(state)
                 return render_history(state.history_turns)
-            fallback_turn = HistoryTurn(turn_id=uuid.uuid4().hex, user=user, assistant=assistant)
-            state.history_turns.append(fallback_turn)
 
-        trim_history_turns(state)
+        if not user and not assistant:
+            return render_history(state.history_turns)
+        
+        state.history_turns.append(HistoryTurn(
+            turn_id=turn_id or uuid.uuid4().hex,
+            user=user,
+            assistant=assistant,
+        ))
+        trim_history(state)
         return render_history(state.history_turns)
-
-

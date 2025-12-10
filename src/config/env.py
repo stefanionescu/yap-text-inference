@@ -98,9 +98,18 @@ CACHE_RESET_MIN_SESSION_SECONDS = float(os.getenv("CACHE_RESET_MIN_SESSION_SECON
 # Tool language filter: skip tool call if user message is not mostly English
 TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
 
+# ----------------- Classifier Model Settings -----------------
+# These are only used when TOOL_MODEL is a classifier (not autoregressive LLM)
+CLASSIFIER_THRESHOLD = float(os.getenv("CLASSIFIER_THRESHOLD", "0.66"))
+CLASSIFIER_MAX_LENGTH = int(os.getenv("CLASSIFIER_MAX_LENGTH", "1536"))
+CLASSIFIER_COMPILE = env_flag("CLASSIFIER_COMPILE", True)  # Use torch.compile for speedup
+CLASSIFIER_HISTORY_TOKENS = int(os.getenv("CLASSIFIER_HISTORY_TOKENS", "1200"))  # User-only history limit
+
 
 def validate_env() -> None:
     """Validate required configuration once during startup."""
+    from .models import is_classifier_model
+    
     errors: list[str] = []
     if DEPLOY_DUAL and not DUAL_MODEL:
         errors.append("DUAL_MODEL is required when DEPLOY_MODELS is 'dual'")
@@ -108,12 +117,17 @@ def validate_env() -> None:
         errors.append("CHAT_MODEL is required when DEPLOY_MODELS is 'both' or 'chat'")
     if DEPLOY_TOOL and not TOOL_MODEL:
         errors.append("TOOL_MODEL is required when DEPLOY_MODELS is 'both' or 'tool'")
-    if not QUANTIZATION:
-        errors.append("QUANTIZATION environment variable is required")
-    elif QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq"}:
-        errors.append(
-            "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', or 'awq'"
-        )
+    
+    # Quantization is only required when deploying LLMs (not classifiers)
+    # Classifier-only mode (DEPLOY_CHAT=False and TOOL_MODEL is classifier) doesn't need quantization
+    needs_quantization = DEPLOY_CHAT or (DEPLOY_TOOL and not is_classifier_model(TOOL_MODEL))
+    if needs_quantization:
+        if not QUANTIZATION:
+            errors.append("QUANTIZATION environment variable is required for LLM models")
+        elif QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq"}:
+            errors.append(
+                "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', or 'awq'"
+            )
     if errors:
         raise ValueError("; ".join(errors))
 
@@ -139,5 +153,10 @@ __all__ = [
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",
     "TOOL_LANGUAGE_FILTER",
+    # classifier settings
+    "CLASSIFIER_THRESHOLD",
+    "CLASSIFIER_MAX_LENGTH",
+    "CLASSIFIER_COMPILE",
+    "CLASSIFIER_HISTORY_TOKENS",
     "validate_env",
 ]
