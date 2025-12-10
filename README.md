@@ -36,9 +36,9 @@ A vLLM text inference server optimized for pairing a chat model with a lightweig
 Set the compulsory environment variables before invoking any host script:
 
 ```bash
-export TEXT_API_KEY="my_super_secret_key_2024"    # Required for every API call
-export HF_TOKEN="hf_your_api_token"               # Required even for private/gated HF repos
-export MAX_CONCURRENT_CONNECTIONS=20              # Required capacity guard (pick a value for your GPU)
+export TEXT_API_KEY="my_super_secret_key"    # Required for every API call
+export HF_TOKEN="hf_your_api_token"          # Required even for private/gated HF repos
+export MAX_CONCURRENT_CONNECTIONS=20         # Required capacity guard
 ```
 
 `HUGGINGFACE_HUB_TOKEN` is also accepted and will be mirrored into `HF_TOKEN` automatically.
@@ -173,7 +173,7 @@ Highlights:
 - [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call classifier (timeouts, concurrency, limit flags). `--prompt-mode tool` skips chat prompts (classifier-only), whereas `both`/`chat` also streams the chat response.
 - [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions.
 
-All of them run happily on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
+All of them run on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
 
 ## Stopping and Restarting
 
