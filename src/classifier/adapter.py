@@ -80,13 +80,11 @@ class ClassifierToolAdapter:
         self._model.to(self.device)
         self._model.eval()
         
-        # Apply torch.compile for speedup (PyTorch 2.0+)
-        if compile_model and hasattr(torch, "compile"):
-            try:
-                logger.info("Compiling classifier model with torch.compile()")
-                self._model = torch.compile(self._model, mode="reduce-overhead")
-            except Exception as e:
-                logger.warning("Failed to compile classifier model: %s", e)
+        # Disable torch.compile to avoid CUDA graph pool conflicts when running in parallel
+        if compile_model:
+            logger.warning(
+                "CLASSIFIER_COMPILE requested but disabled to avoid mempool conflicts under concurrency"
+            )
         
         logger.info("Classifier model loaded successfully")
     
