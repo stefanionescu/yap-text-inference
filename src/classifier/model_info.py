@@ -10,7 +10,6 @@ from transformers import AutoConfig  # type: ignore[import]
 @dataclass(slots=True)
 class ClassifierModelInfo:
     """Metadata describing the classifier checkpoint + runtime needs."""
-
     model_id: str
     model_type: str  # "bert" or "longformer"
     max_length: int

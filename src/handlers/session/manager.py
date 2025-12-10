@@ -55,9 +55,12 @@ class SessionHandler:
             state.touch()
             return state.meta
 
-        now_str = format_session_timestamp()
+        timestamp = format_session_timestamp()
         meta = {
-            "now_str": now_str,
+            "now_iso": timestamp.iso,
+            "now_str": timestamp.display,
+            "now_classification": timestamp.classification,
+            "now_tz": timestamp.tz,
             "chat_gender": None,
             "chat_personality": None,
             "chat_prompt": None,
