@@ -58,8 +58,8 @@ bash scripts/main.sh [awq] tool <classifier_model>
 
 Default GPU allocation:
 - Chat deployments reserve 70% of GPU memory when a classifier is also configured (override with `CHAT_GPU_FRAC`).
-- Chat-only mode allocates 90% to the chat engine.
-- Classifier-only mode does not spin up vLLM at all and leaves GPU memory untouched.
+- The classifier (when it runs on GPU) is capped at 20% by default; override with `TOOL_GPU_FRAC`.
+- Chat-only mode allocates 90% to the chat engine; tool-only mode leaves the GPU to the classifier.
 
 Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-screenshot-intent-classifier`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`. No quantization is required for classifier weights.
 

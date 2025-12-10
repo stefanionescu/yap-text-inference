@@ -56,10 +56,11 @@ DEPLOY_MODELS=both \
 CHAT_MODEL=your-org/chat-awq \
 TOOL_MODEL=your-org/tool-classifier \
 CHAT_GPU_FRAC=0.70 \
+TOOL_GPU_FRAC=0.20 \
   docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY -e DEPLOY_MODELS \
   -e CHAT_MODEL -e TOOL_MODEL \
-  -e CHAT_GPU_FRAC \
+  -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:both
 
@@ -88,6 +89,7 @@ docker run -d --gpus all --name yap-tool \
 
 ### Optional
 - `CHAT_GPU_FRAC` (default: `0.70` when `DEPLOY_MODELS=both`, `0.90` otherwise)
+- `TOOL_GPU_FRAC` (default: `0.20` when `DEPLOY_MODELS=both`, `0.90` otherwise; caps classifier GPU allocations)
 
 Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports). Make sure `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` is set if you pull private repos.
 
@@ -122,6 +124,7 @@ docker run -d --gpus all --name yap-server \
   -e TOOL_MODEL=your-org/tool-classifier \
   -e TEXT_API_KEY=your_secret_key \
   -e CHAT_GPU_FRAC=0.70 \
+  -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:latest
 
@@ -180,7 +183,7 @@ docker run -d --gpus all --name yap-server \
    - Check GPU visibility: `docker run --gpus all nvidia/cuda:12.8.0-runtime-ubuntu22.04 nvidia-smi`
 
 2. **Out of memory errors**
-   - Reduce GPU memory fractions: `CHAT_GPU_FRAC=0.60`
+   - Reduce GPU memory fractions: `CHAT_GPU_FRAC=0.60 TOOL_GPU_FRAC=0.15`
    - Try int8 KV cache: `KV_DTYPE=int8`
 
 3. **Model loading failures**

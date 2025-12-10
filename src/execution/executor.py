@@ -1,5 +1,6 @@
 """Executor: tool-first, then chat."""
 
+import asyncio
 import logging
 import uuid
 from fastapi import WebSocket
@@ -7,7 +8,8 @@ from fastapi import WebSocket
 from .tool.parser import parse_tool_result
 from .chat import run_chat_generation
 from ..handlers.session import session_handler
-from ..utils.executor import launch_tool_request, send_toolcall, stream_chat_response
+from ..config.timeouts import TOOL_TIMEOUT_S
+from ..utils.executor import cancel_task, launch_tool_request, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,17 @@ async def run_execution(
     tool_req_id, tool_coro = launch_tool_request(session_id, user_utt, history_text)
     logger.info(f"sequential_exec: tool start req_id={tool_req_id}")
 
-    tool_res = await tool_coro
+    try:
+        tool_res = await asyncio.wait_for(tool_coro, timeout=TOOL_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "sequential_exec: tool timeout session_id=%s req_id=%s timeout_s=%.1f",
+            session_id,
+            tool_req_id,
+            TOOL_TIMEOUT_S,
+        )
+        await cancel_task(tool_coro)
+        tool_res = {"cancelled": True, "text": "[]", "timeout": True}
 
     # Parse tool decision
     raw_field, is_tool = parse_tool_result(tool_res)

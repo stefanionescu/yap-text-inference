@@ -5,10 +5,10 @@ from __future__ import annotations
 import uuid
 
 from src.config import (
-    CLASSIFIER_HISTORY_TOKENS,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
     HISTORY_MAX_TOKENS,
+    TOOL_HISTORY_TOKENS,
 )
 from src.tokens import build_user_history_for_tool, count_tokens_chat
 
@@ -107,7 +107,7 @@ def render_tool_history_text(turns: list[HistoryTurn]) -> str:
         return ""
     return build_user_history_for_tool(
         user_texts,
-        CLASSIFIER_HISTORY_TOKENS,
+        TOOL_HISTORY_TOKENS,
         prefix="USER",
     )
 

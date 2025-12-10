@@ -7,8 +7,10 @@ export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
 # GPU memory fractions (weights + KV). Use fractions only.
 if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 else
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}
 fi
 
 # vLLM toggles

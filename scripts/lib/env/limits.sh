@@ -12,6 +12,12 @@ apply_limits_and_timeouts() {
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
   fi
 
+  if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
+  else
+    export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}
+  fi
+
   # Optional tiny packet coalescer window (ms); 0 = off
   export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
 

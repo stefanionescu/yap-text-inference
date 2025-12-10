@@ -102,7 +102,7 @@ class OnnxClassifierBackend:
             import onnxruntime as ort  # type: ignore[import]
         except Exception as exc:  # noqa: BLE001
             raise RuntimeError(
-                "onnxruntime is required for CLASSIFIER_USE_ONNX"
+                "onnxruntime is required for TOOL_USE_ONNX"
             ) from exc
 
         self._info = info

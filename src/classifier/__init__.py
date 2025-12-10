@@ -30,28 +30,30 @@ def get_classifier_adapter() -> ClassifierToolAdapter:
     if _classifier_adapter is None:
         from src.config import (
             TOOL_MODEL,
-            CLASSIFIER_THRESHOLD,
-            CLASSIFIER_COMPILE,
-            CLASSIFIER_MAX_LENGTH,
-            CLASSIFIER_MICROBATCH_MAX_SIZE,
-            CLASSIFIER_MICROBATCH_MAX_DELAY_MS,
-            CLASSIFIER_REQUEST_TIMEOUT_S,
-            CLASSIFIER_USE_ONNX,
-            CLASSIFIER_ONNX_DIR,
-            CLASSIFIER_ONNX_OPSET,
+            TOOL_GPU_FRAC,
+            TOOL_DECISION_THRESHOLD,
+            TOOL_COMPILE,
+            TOOL_MAX_LENGTH,
+            TOOL_MICROBATCH_MAX_SIZE,
+            TOOL_MICROBATCH_MAX_DELAY_MS,
+            TOOL_USE_ONNX,
+            TOOL_ONNX_DIR,
+            TOOL_ONNX_OPSET,
         )
+        from src.config.timeouts import TOOL_TIMEOUT_S
         
         _classifier_adapter = ClassifierToolAdapter(
             model_path=TOOL_MODEL,
-            threshold=CLASSIFIER_THRESHOLD,
-            compile_model=CLASSIFIER_COMPILE,
-            max_length=CLASSIFIER_MAX_LENGTH,
-            microbatch_max_size=CLASSIFIER_MICROBATCH_MAX_SIZE,
-            microbatch_max_delay_ms=CLASSIFIER_MICROBATCH_MAX_DELAY_MS,
-            request_timeout_s=CLASSIFIER_REQUEST_TIMEOUT_S,
-            use_onnx=CLASSIFIER_USE_ONNX,
-            onnx_dir=CLASSIFIER_ONNX_DIR,
-            onnx_opset=CLASSIFIER_ONNX_OPSET,
+            threshold=TOOL_DECISION_THRESHOLD,
+            compile_model=TOOL_COMPILE,
+            max_length=TOOL_MAX_LENGTH,
+            microbatch_max_size=TOOL_MICROBATCH_MAX_SIZE,
+            microbatch_max_delay_ms=TOOL_MICROBATCH_MAX_DELAY_MS,
+            request_timeout_s=TOOL_TIMEOUT_S,
+            use_onnx=TOOL_USE_ONNX,
+            onnx_dir=TOOL_ONNX_DIR,
+            onnx_opset=TOOL_ONNX_OPSET,
+            gpu_memory_frac=TOOL_GPU_FRAC,
         )
     
     return _classifier_adapter

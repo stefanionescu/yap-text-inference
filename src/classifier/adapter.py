@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class ClassifierToolAdapter:
     """Microbatched classifier adapter for screenshot intent detection."""
 
+    _memory_fraction_configured: set[int] = set()
     _instance: "ClassifierToolAdapter | None" = None
 
     def __init__(
@@ -38,13 +39,16 @@ class ClassifierToolAdapter:
         use_onnx: bool = False,
         onnx_dir: str | None = None,
         onnx_opset: int = 17,
+        gpu_memory_frac: float | None = None,
     ) -> None:
         self.model_path = model_path
         self.threshold = threshold
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = torch.float16 if self.device.startswith("cuda") else torch.float32
         self.request_timeout_s = max(0.1, float(request_timeout_s))
+        self._gpu_memory_frac = gpu_memory_frac
 
+        self._maybe_configure_gpu_limit()
         self._model_info: ClassifierModelInfo = build_model_info(model_path, max_length)
         self._backend = self._init_backend(
             compile_model=compile_model,
@@ -96,6 +100,45 @@ class ClassifierToolAdapter:
     # ------------------------------------------------------------------ #
     # Internal helpers
     # ------------------------------------------------------------------ #
+
+    def _maybe_configure_gpu_limit(self) -> None:
+        if not self.device.startswith("cuda"):
+            return
+        if self._gpu_memory_frac is None:
+            return
+        if not hasattr(torch.cuda, "set_per_process_memory_fraction"):
+            logger.warning(
+                "classifier: torch build missing set_per_process_memory_fraction; skipping TOOL_GPU_FRAC"
+            )
+            return
+        try:
+            fraction = float(self._gpu_memory_frac)
+        except (TypeError, ValueError):
+            logger.warning("classifier: invalid TOOL_GPU_FRAC value %r; expected float", self._gpu_memory_frac)
+            return
+        if not (0.0 < fraction <= 1.0):
+            logger.warning("classifier: TOOL_GPU_FRAC %.3f out of range (0,1]; ignoring", fraction)
+            return
+        fraction = max(0.01, min(fraction, 0.90))
+        try:
+            torch_device = torch.device(self.device)
+        except Exception:
+            torch_device = torch.device("cuda")
+        device_index = torch_device.index
+        if device_index is None:
+            device_index = torch.cuda.current_device()
+        if device_index in self._memory_fraction_configured:
+            return
+        try:
+            torch.cuda.set_per_process_memory_fraction(fraction, device_index)
+            self._memory_fraction_configured.add(device_index)
+            logger.info(
+                "classifier: reserved %.1f%% of cuda:%s for tool model (TOOL_GPU_FRAC)",
+                fraction * 100.0,
+                device_index,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("classifier: failed to honor TOOL_GPU_FRAC=%.3f (%s)", fraction, exc)
 
     def _init_backend(
         self,
