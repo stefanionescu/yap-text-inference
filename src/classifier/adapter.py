@@ -8,7 +8,6 @@ tool call detection. This is much faster and lighter than running a full LLM.
 from __future__ import annotations
 
 import logging
-import threading
 from typing import TYPE_CHECKING
 
 import torch
@@ -71,11 +70,9 @@ class ClassifierToolAdapter:
         # Load model and tokenizer
         self._tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(model_path)
         self._tokenizer.truncation_side = "left"  # Keep most recent context
-        self._tokenizer_lock = threading.Lock()
-        with self._tokenizer_lock:
-            self._newline_token_count = len(
-                self._tokenizer.encode("\n", add_special_tokens=False)
-            )
+        self._newline_token_count = len(
+            self._tokenizer.encode("\n", add_special_tokens=False)
+        )
         
         self._model: PreTrainedModel = AutoModelForSequenceClassification.from_pretrained(model_path)
         self._model.to(self.device)
@@ -116,8 +113,7 @@ class ClassifierToolAdapter:
         """Count tokens using the classifier's tokenizer."""
         if not text:
             return 0
-        with self._tokenizer_lock:
-            return len(self._tokenizer.encode(text, add_special_tokens=False))
+        return len(self._tokenizer.encode(text, add_special_tokens=False))
     
     def trim_user_history(self, user_texts: list[str]) -> str:
         """Trim user history to fit within token budget.
@@ -196,14 +192,13 @@ class ClassifierToolAdapter:
         with torch.inference_mode():
             # Tokenize with dynamic padding
             # History is already trimmed to budget, but set max_length as safety cap
-            with self._tokenizer_lock:
-                inputs = self._tokenizer(
-                    text,
-                    return_tensors="pt",
-                    padding=True,
-                    truncation=True,
-                    max_length=CLASSIFIER_MAX_LENGTH,
-                )
+            inputs = self._tokenizer(
+                text,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=CLASSIFIER_MAX_LENGTH,
+            )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             
             # Run inference
