@@ -17,17 +17,6 @@ class ClassifierModelInfo:
     num_labels: int
 
 
-def slugify_model_id(model_id: str) -> str:
-    """Return a filesystem-friendly identifier for the given model id."""
-    return (
-        model_id.strip()
-        .replace("/", "_")
-        .replace(":", "_")
-        .replace(" ", "_")
-        .lower()
-    )
-
-
 def build_model_info(model_path: str, max_length: int) -> ClassifierModelInfo:
     """Inspect the Hugging Face config and produce classifier metadata."""
     config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
@@ -45,4 +34,4 @@ def build_model_info(model_path: str, max_length: int) -> ClassifierModelInfo:
     )
 
 
-__all__ = ["ClassifierModelInfo", "slugify_model_id", "build_model_info"]
+__all__ = ["ClassifierModelInfo", "build_model_info"]

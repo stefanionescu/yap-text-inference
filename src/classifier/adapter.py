@@ -31,9 +31,6 @@ class ClassifierToolAdapter:
         microbatch_max_size: int = 4,
         microbatch_max_delay_ms: float = 5.0,
         request_timeout_s: float = 5.0,
-        use_onnx: bool = False,
-        onnx_dir: str | None = None,
-        onnx_opset: int = 17,
         gpu_memory_frac: float | None = None,
     ) -> None:
         self.model_path = model_path
@@ -45,11 +42,11 @@ class ClassifierToolAdapter:
 
         self._configure_gpu_limit()
         self._model_info: ClassifierModelInfo = build_model_info(model_path, max_length)
-        self._backend = self._init_backend(
+        self._backend = TorchClassifierBackend(
+            self._model_info,
+            device=self.device,
+            dtype=self.dtype,
             compile_model=compile_model,
-            use_onnx=use_onnx,
-            onnx_dir=onnx_dir,
-            onnx_opset=onnx_opset,
         )
         self._microbatch = MicrobatchExecutor(
             self._backend.infer,
@@ -134,47 +131,6 @@ class ClassifierToolAdapter:
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("classifier: failed to honor TOOL_GPU_FRAC=%.3f (%s)", fraction, exc)
-
-    def _init_backend(
-        self,
-        *,
-        compile_model: bool,
-        use_onnx: bool,
-        onnx_dir: str | None,
-        onnx_opset: int,
-    ) -> TorchClassifierBackend | OnnxClassifierBackend:
-        if use_onnx:
-            if self._model_info.model_type == "longformer":
-                logger.warning(
-                    "classifier: ONNX for Longformer is experimental; falling back"
-                    " to PyTorch if export fails"
-                )
-            try:
-                target_dir = Path(onnx_dir or "build/classifier_onnx")
-                target_dir.mkdir(parents=True, exist_ok=True)
-                onnx_path = target_dir / f"{slugify_model_id(self.model_path)}.onnx"
-                if not onnx_path.exists():
-                    export_model_to_onnx(
-                        self._model_info,
-                        onnx_path=onnx_path,
-                        opset=onnx_opset,
-                    )
-                return OnnxClassifierBackend(
-                    self._model_info,
-                    onnx_path=onnx_path,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "classifier: ONNX backend unavailable (%s); using Torch backend",
-                    exc,
-                )
-
-        return TorchClassifierBackend(
-            self._model_info,
-            device=self.device,
-            dtype=self.dtype,
-            compile_model=compile_model,
-        )
 
     def _format_input(self, user_utt: str, user_history: str = "") -> str:
         history = (user_history or "").strip()
