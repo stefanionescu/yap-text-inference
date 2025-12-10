@@ -8,6 +8,7 @@ tool call detection. This is much faster and lighter than running a full LLM.
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import torch
@@ -73,6 +74,7 @@ class ClassifierToolAdapter:
         self._newline_token_count = len(
             self._tokenizer.encode("\n", add_special_tokens=False)
         )
+        self._count_tokens_cached = lru_cache(maxsize=4096)(self._count_tokens_uncached)
         
         self._model: PreTrainedModel = AutoModelForSequenceClassification.from_pretrained(model_path)
         self._model.to(self.device)
@@ -109,11 +111,14 @@ class ClassifierToolAdapter:
         """Reset the singleton instance (for testing)."""
         cls._instance = None
     
-    def count_tokens(self, text: str) -> int:
-        """Count tokens using the classifier's tokenizer."""
+    def _count_tokens_uncached(self, text: str) -> int:
         if not text:
             return 0
         return len(self._tokenizer.encode(text, add_special_tokens=False))
+
+    def count_tokens(self, text: str) -> int:
+        """Count tokens using the classifier's tokenizer (cached per unique text)."""
+        return self._count_tokens_cached(text or "")
     
     def trim_user_history(self, user_texts: list[str]) -> str:
         """Trim user history to fit within token budget.
