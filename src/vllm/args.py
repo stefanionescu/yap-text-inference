@@ -15,18 +15,18 @@ from src.config.awq import (
 )
 from src.config.env import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
 from src.config.models import _is_local_model_path
-from src.engines.memory_tuning import (
+from .memory_tuning import (
     auto_max_num_seqs,
     configure_kv_cache,
     get_max_num_seqs_override,
     scale_batching_limits,
 )
-from src.engines.quantization_support import (
+from .quantization_support import (
     detect_quantization_backend,
     log_detected_quantization,
     resolve_model_origin,
 )
-from src.engines.tokenizer_support import inject_tokenizer_kwargs
+from .tokenizer_support import inject_tokenizer_kwargs
 
 __all__ = ["make_engine_args"]
 
@@ -42,21 +42,15 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
     )
 
 
-def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -> AsyncEngineArgs:
+def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineArgs:
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
-    max_batched = int(os.getenv(
-        "MAX_NUM_BATCHED_TOKENS_CHAT" if is_chat else "MAX_NUM_BATCHED_TOKENS_TOOL",
-        "256" if is_chat else "224",
-    ))
+    max_batched = int(os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT", "256"))
 
     # Normalize/validate KV cache dtype
     kv_dtype_value = (KV_DTYPE or "").strip()  # empty => let vLLM decide
 
-    # Select per-engine quantization (chat-only; tool models run as classifiers via PyTorch)
-    if is_chat:
-        selected_quant = (CHAT_QUANTIZATION or QUANTIZATION)
-    else:
-        selected_quant = None
+    # Select quantization for the chat engine
+    selected_quant = (CHAT_QUANTIZATION or QUANTIZATION)
 
     raw_quant = selected_quant
     inference_quant = raw_quant
@@ -117,7 +111,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         kwargs["gpu_memory_utilization"] = min(gpu_frac, 0.85)
 
     # Resolve max_num_seqs dynamically to avoid warmup OOMs
-    max_num_seqs = get_max_num_seqs_override(is_chat)
+    max_num_seqs = get_max_num_seqs_override(True)
     if max_num_seqs is None:
         max_num_seqs = auto_max_num_seqs(
             is_chat=is_chat,
@@ -138,7 +132,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
         max_tokens=kwargs["max_num_batched_tokens"],
         max_seqs=kwargs.get("max_num_seqs"),
         gpu_frac=kwargs["gpu_memory_utilization"],
-        engine_role="chat" if is_chat else "tool",
+        engine_role="chat",
     )
     kwargs["max_num_batched_tokens"] = scaled_tokens
     if scaled_max_seqs is not None:

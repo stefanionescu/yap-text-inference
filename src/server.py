@@ -34,9 +34,9 @@ from .config import (
 )
 from .config.env import validate_env
 from .config.logging import configure_logging
-from .engines import (
+from .vllm import (
     cache_reset_reschedule_event,
-    get_chat_engine,
+    get_engine,
     reset_engine_caches,
     seconds_since_last_cache_reset,
     shutdown_engines,
@@ -70,7 +70,7 @@ async def preload_engines() -> None:
     tasks: list[asyncio.Task[None]] = []
 
     if DEPLOY_CHAT:
-        tasks.append(asyncio.create_task(_warm_engine("chat", get_chat_engine)))
+        tasks.append(asyncio.create_task(_warm_engine("chat", get_engine)))
 
     if not tasks:
         return

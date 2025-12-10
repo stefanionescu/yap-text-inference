@@ -8,7 +8,7 @@ from functools import lru_cache
 
 from vllm.sampling_params import SamplingParams
 
-from ...engines import get_chat_engine
+from ...vllm import get_engine
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
 from ...handlers.session import session_handler
 from ...utils import StreamingSanitizer
@@ -74,7 +74,7 @@ async def run_chat_generation(
             request_id=req_id,
             prompt=compiled_prompt.text,
             sampling_params=params,
-            engine_getter=get_chat_engine,
+            engine_getter=get_engine,
             timeout_s=float(GEN_TIMEOUT_S),
             priority=CHAT_REQUEST_PRIORITY,
             flush_ms=float(STREAM_FLUSH_MS),

@@ -26,7 +26,7 @@ from ..config import (
     CHAT_PROMPT_UPDATE_MAX_PER_WINDOW,
     CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
 )
-from ..engines import get_chat_engine
+from ..vllm import get_engine
 from ..tokens.prompt_cache import compile_chat_warm_prompt
 from .validators import (
     ValidationError,
@@ -144,7 +144,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
     req_id = f"warm-update-{uuid.uuid4()}"
 
-    stream = (await get_chat_engine()).generate(
+    stream = (await get_engine()).generate(
         prompt=compiled_warm.text,
         sampling_params=params,
         request_id=req_id,
