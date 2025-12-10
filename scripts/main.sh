@@ -126,7 +126,7 @@ _resolve_4bit_backend() {
   if [ -z "${chat_model}" ]; then
     echo "awq"
     return
-  }
+  fi
   local classification
   classification="$(model_detect_classify_prequant "${chat_model}")"
   case "${classification}" in
