@@ -32,7 +32,7 @@ Usage:
 
   restart.sh --reset-models --deploy-mode both \
              --chat-model <repo_or_path> --tool-model <repo_or_path> \
-             [--chat-quant fp8|gptq|gptq_marlin|awq] \
+             [--chat-quant 4bit|8bit|fp8|gptq|gptq_marlin|awq] \
              [--install-deps]
       Reconfigure which models/quantization are deployed without reinstalling deps.
 
@@ -45,11 +45,11 @@ Key flags:
   --install-deps        Reinstall dependencies inside .venv before restart
   --reset-models        Delete cached models/HF data and redeploy new models
   --keep-models         Reuse existing AWQ caches (default)
-  --push-awq            Upload cached AWQ exports to Hugging Face before relaunch
+  --push-quant          Upload cached 4-bit exports to Hugging Face before relaunch
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
-  --chat-quant <val>    Override chat/base quantization (fp8|gptq|gptq_marlin|awq).
-                        Pre-quantized AWQ repos are detected automatically by name.
+  --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|gptq|gptq_marlin|awq).
+                        `4bit` aliases AWQ, `8bit` aliases FP8. Pre-quantized repos are detected automatically.
 
 This script always:
   • Stops the server
@@ -94,7 +94,7 @@ if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
   log_error "No AWQ models found for deploy mode '${DEPLOY_MODE}'"
   log_error ""
   log_error "Options:"
-  log_error "1. Run full deployment first: bash scripts/main.sh awq <chat_model> <tool_model>"
+  log_error "1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
   log_error "2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
   exit 1
 fi
@@ -102,7 +102,7 @@ fi
 # Check if venv exists (only required for local models or first run)
 if [ ! -d "${ROOT_DIR}/.venv" ]; then
   log_error "No virtual environment found at ${ROOT_DIR}/.venv"
-  log_error "For local models: Run full deployment first: bash scripts/main.sh awq <chat_model> <tool_model>"
+  log_error "For local models: Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
   log_error "For HF or other remote models: run full deployment first to cache AWQ artifacts"
   exit 1
 fi

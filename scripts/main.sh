@@ -16,17 +16,27 @@ log_info "Starting Yap Text Inference Server"
 
 ensure_required_env_vars
 
-# Determine whether AWQ uploads should run this invocation
-PUSH_AWQ=0
+# Determine whether quantized-model uploads should run this invocation
+PUSH_QUANT=0
 PARSED_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
+    --push-quant)
+      PUSH_QUANT=1
+      shift
+      ;;
+    --no-push-quant)
+      PUSH_QUANT=0
+      shift
+      ;;
     --push-awq)
-      PUSH_AWQ=1
+      log_warn "Flag --push-awq is deprecated; use --push-quant instead."
+      PUSH_QUANT=1
       shift
       ;;
     --no-push-awq)
-      PUSH_AWQ=0
+      log_warn "Flag --no-push-awq is deprecated; use --no-push-quant instead."
+      PUSH_QUANT=0
       shift
       ;;
     *)
@@ -36,7 +46,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 set -- "${PARSED_ARGS[@]}"
-export HF_AWQ_PUSH="${PUSH_AWQ}"
+export HF_AWQ_PUSH="${PUSH_QUANT}"
 
 # Stop any existing warmup processes before starting deployment
 stop_existing_warmup_processes "${ROOT_DIR}"
@@ -44,10 +54,10 @@ stop_existing_warmup_processes "${ROOT_DIR}"
 # Usage function
 usage() {
   echo "Usage:"
-  echo "  $0 [awq] <chat_model> <tool_model> [deploy_mode]"
-  echo "  $0 [awq] chat <chat_model>"
-  echo "  $0 [awq] tool <tool_model>"
-  echo "  $0 [awq] both <chat_model> <tool_model>"
+  echo "  $0 [4bit|8bit] <chat_model> <tool_model> [deploy_mode]"
+  echo "  $0 [4bit|8bit] chat <chat_model>"
+  echo "  $0 [4bit|8bit] tool <tool_model>"
+  echo "  $0 [4bit|8bit] both <chat_model> <tool_model>"
   echo ""
   echo "Behavior:"
   echo "  • Always runs deployment in background (auto-detached)"
@@ -55,9 +65,9 @@ usage() {
   echo "  • Use scripts/stop.sh to stop the deployment"
   echo ""
   echo "Quantization:"
-  echo "  Omit flag  → auto-detects GPTQ/AWQ/W4A16 hints in model names; otherwise FP8"
-  echo "  awq        → force 4-bit AWQ for the chat engine (tool classifiers stay float)"
-  echo "             → pre-quantized AWQ/W4A16 repos are detected by name automatically"
+  echo "  Omit flag  → auto-detects GPTQ/AWQ/W4A16 hints; otherwise runs 8bit (FP8/INT8 mix)"
+  echo "  4bit       → force low-bit chat deployment (AWQ or GPTQ depending on the model)"
+  echo "  8bit       → force high-bit chat deployment (FP8 on Hopper/Ada, INT8 on Ampere)"
   echo ""
   echo "Chat model options:"
   echo "  Float models (FP8 auto): SicariusSicariiStuff/Impish_Nemo_12B"
@@ -105,10 +115,97 @@ usage() {
   echo "  $0 tool yapwithai/yap-screenshot-intent-classifier"
   echo "  DEPLOY_MODELS=tool $0 yapwithai/yap-screenshot-intent-classifier"
   echo ""
-  echo "AWQ uploads:"
-  echo "  --push-awq        Explicitly upload freshly built AWQ caches to HF"
-  echo "  --no-push-awq     Skip uploads (default)"
+  echo "Quantized model uploads:"
+  echo "  --push-quant        Upload freshly built 4-bit exports to Hugging Face"
+  echo "  --no-push-quant     Skip uploads (default)"
   exit 1
+}
+
+_resolve_4bit_backend() {
+  local chat_model="$1"
+  if [ -z "${chat_model}" ]; then
+    echo "awq"
+    return
+  }
+  local classification
+  classification="$(model_detect_classify_prequant "${chat_model}")"
+  case "${classification}" in
+    gptq) echo "gptq_marlin" ;;
+    awq) echo "awq" ;;
+    *) echo "awq" ;;
+  esac
+}
+
+_apply_quantization_selection() {
+  local forced_mode="$1"
+  local chat_hint="$2"
+
+  if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
+    QUANT_MODE="tool-only"
+    unset QUANTIZATION
+    unset CHAT_QUANTIZATION
+    export QUANT_MODE
+    return
+  fi
+
+  local resolved_mode=""
+  local resolved_backend=""
+
+  case "${forced_mode}" in
+    4bit)
+      resolved_mode="4bit"
+      resolved_backend="$(_resolve_4bit_backend "${CHAT_MODEL_NAME}")"
+      ;;
+    8bit)
+      resolved_mode="8bit"
+      resolved_backend="fp8"
+      ;;
+    auto)
+      if [ -n "${chat_hint:-}" ]; then
+        resolved_mode="4bit"
+        resolved_backend="${chat_hint}"
+      else
+        resolved_mode="8bit"
+        resolved_backend="fp8"
+      fi
+      ;;
+    *)
+      resolved_mode="8bit"
+      resolved_backend="fp8"
+      ;;
+  esac
+
+  if [ "${DEPLOY_MODE_SELECTED}" != "tool" ]; then
+    local prequant_kind
+    prequant_kind="$(model_detect_classify_prequant "${CHAT_MODEL_NAME}")"
+    case "${prequant_kind}" in
+      awq)
+        if [ "${resolved_backend}" != "awq" ]; then
+          log_warn "Chat model '${CHAT_MODEL_NAME}' is already 4-bit (AWQ/W4A16); overriding to 4bit runtime."
+          resolved_mode="4bit"
+          resolved_backend="awq"
+        fi
+        ;;
+      gptq)
+        if [ "${resolved_backend}" != "gptq_marlin" ]; then
+          log_warn "Chat model '${CHAT_MODEL_NAME}' is GPTQ; overriding to 4bit GPTQ runtime."
+          resolved_mode="4bit"
+          resolved_backend="gptq_marlin"
+        fi
+        ;;
+    esac
+  fi
+
+  QUANT_MODE="${resolved_mode}"
+  QUANTIZATION="${resolved_backend}"
+  if [ "${DEPLOY_MODE_SELECTED}" != "tool" ]; then
+    CHAT_QUANTIZATION="${resolved_backend}"
+  fi
+
+  export QUANT_MODE QUANTIZATION
+  if [ -n "${CHAT_QUANTIZATION:-}" ]; then
+    export CHAT_QUANTIZATION
+  fi
 }
 
 # Parse and normalize arguments
@@ -117,11 +214,27 @@ if [ $# -lt 1 ]; then
   usage
 fi
 
-# Optional first token may be a quant flag: 'awq' (explicit)
+# Optional first token may be a quant flag
 QUANT_TYPE="auto"
 case "${1:-}" in
+  4bit|4BIT|4Bit)
+    QUANT_TYPE="4bit"
+    shift
+    ;;
+  8bit|8BIT|8Bit)
+    QUANT_TYPE="8bit"
+    shift
+    ;;
   awq)
-    QUANT_TYPE="$1"; shift ;;
+    log_warn "Deprecated 'awq' flag detected; use '4bit' instead."
+    QUANT_TYPE="4bit"
+    shift
+    ;;
+  fp8)
+    log_warn "Deprecated 'fp8' flag detected; use '8bit' instead."
+    QUANT_TYPE="8bit"
+    shift
+    ;;
 esac
 
 # Defaults that we may fill from args
@@ -207,26 +320,7 @@ if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; t
   CHAT_QUANT_HINT="$(model_detect_quantization_hint "${CHAT_MODEL_NAME}")"
 fi
 
-# Determine QUANTIZATION
-case "${QUANT_TYPE}" in
-  awq)
-    export QUANTIZATION=awq
-    if [[ "${CHAT_MODEL_NAME}" == *GPTQ* ]]; then
-      log_warn "Error: For awq, provide a FLOAT chat model (not GPTQ)."
-      usage
-    fi
-    if [ "${DEPLOY_MODE_SELECTED}" != "tool" ]; then
-      export CHAT_QUANTIZATION=awq
-    fi
-    ;;
-  auto)
-    export QUANTIZATION=fp8
-    if [ -n "${CHAT_QUANT_HINT}" ]; then
-      export QUANTIZATION="${CHAT_QUANT_HINT}"
-      export CHAT_QUANTIZATION="${CHAT_QUANT_HINT}"
-    fi
-    ;;
-esac
+_apply_quantization_selection "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
 
 # Export only what is needed for selected deployment
 if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
@@ -260,7 +354,11 @@ runtime_guard_stop_server_if_needed \
   "${DESIRED_CHAT_QUANT}"
 
 # Display configuration
-log_info "Configuration: quantization=${QUANTIZATION} (flag=${QUANT_TYPE})"
+if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
+  log_info "Configuration: quantization=tool-only (classifier runs float16)"
+else
+  log_info "Configuration: quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
+fi
 log_info "  Deploy mode: ${DEPLOY_MODELS}"
 if [ "${DEPLOY_MODELS}" != "tool" ]; then
   log_info "  Chat model: ${CHAT_MODEL_NAME}"
@@ -287,7 +385,7 @@ DEPLOYMENT_CMD="
 "
 
 # Export all environment variables for the background process
-export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL
+export QUANTIZATION QUANT_MODE DEPLOY_MODELS CHAT_MODEL TOOL_MODEL
 export CHAT_QUANTIZATION
 export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
 

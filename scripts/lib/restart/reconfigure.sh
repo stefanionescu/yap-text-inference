@@ -47,6 +47,26 @@ _restart_autodetect_quantization() {
   echo "fp8"
 }
 
+_restart_normalize_quantization_flag() {
+  local value="${1:-}"
+  if [ -z "${value}" ]; then
+    echo ""
+    return
+  fi
+  local lowered="${value,,}"
+  case "${lowered}" in
+    4bit)
+      echo "awq"
+      ;;
+    8bit)
+      echo "fp8"
+      ;;
+    *)
+      echo "${value}"
+      ;;
+  esac
+}
+
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
@@ -250,7 +270,13 @@ restart_reconfigure_models() {
   fi
 
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
+  if [ -n "${chat_quant}" ]; then
+    chat_quant="$(_restart_normalize_quantization_flag "${chat_quant}")"
+  fi
   local quantization="${QUANTIZATION:-}"
+  if [ -n "${quantization}" ]; then
+    quantization="$(_restart_normalize_quantization_flag "${quantization}")"
+  fi
 
   if [ "${deploy_chat}" = "1" ] && [ -z "${chat_quant}" ]; then
     chat_quant="$(model_detect_quantization_hint "${chat_model}")"

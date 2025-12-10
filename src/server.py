@@ -30,6 +30,7 @@ from fastapi.responses import ORJSONResponse
 
 from .config import (
     DEPLOY_CHAT,
+    DEPLOY_TOOL,
     CACHE_RESET_INTERVAL_SECONDS,
 )
 from .config.env import validate_env
@@ -55,13 +56,25 @@ validate_env()
 _cache_reset_task: asyncio.Task | None = None
 
 
-async def _warm_engine(name: str, getter):
-    """Ensure the requested engine is constructed before serving traffic."""
+async def _warm_chat_engine(getter):
+    """Ensure the chat engine is constructed before serving traffic."""
     start = time.perf_counter()
-    logger.info("preload_engines: warming %s engine...", name)
+    logger.info("preload_engines: warming chat engine...")
     await getter()
     elapsed = time.perf_counter() - start
-    logger.info("preload_engines: %s engine ready in %.2fs", name, elapsed)
+    logger.info("preload_engines: chat engine ready in %.2fs", elapsed)
+
+
+async def _warm_classifier() -> None:
+    """Ensure the classifier adapter is constructed before serving traffic."""
+
+    from .classifier import get_classifier_adapter
+
+    start = time.perf_counter()
+    logger.info("preload_engines: warming tool classifier adapter...")
+    await asyncio.to_thread(get_classifier_adapter)
+    elapsed = time.perf_counter() - start
+    logger.info("preload_engines: tool classifier ready in %.2fs", elapsed)
 
 
 @app.on_event("startup")
@@ -70,7 +83,10 @@ async def preload_engines() -> None:
     tasks: list[asyncio.Task[None]] = []
 
     if DEPLOY_CHAT:
-        tasks.append(asyncio.create_task(_warm_engine("chat", get_engine)))
+        tasks.append(asyncio.create_task(_warm_chat_engine(get_engine)))
+
+    if DEPLOY_TOOL:
+        tasks.append(asyncio.create_task(_warm_classifier()))
 
     if not tasks:
         return
