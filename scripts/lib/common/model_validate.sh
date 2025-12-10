@@ -26,7 +26,7 @@ sys.path.insert(0, "${ROOT_DIR}")
 
 from src.config.models import (
     ALLOWED_CHAT_MODELS,
-    ALLOWED_CLASSIFIER_MODELS,
+    ALLOWED_TOOL_MODELS,
     is_valid_model,
 )
 from src.config.quantization import classify_prequantized_model, is_awq_model_name
@@ -70,9 +70,9 @@ if deploy_chat:
 if deploy_tool:
     if not tool_model:
         errors.append("TOOL_MODEL is required when DEPLOY_MODELS='both' or 'tool'")
-    elif tool_model not in ALLOWED_CLASSIFIER_MODELS and not os.path.exists(tool_model):
+    elif tool_model not in ALLOWED_TOOL_MODELS and not os.path.exists(tool_model):
         errors.append(
-            f"TOOL_MODEL must be one of classifier models {ALLOWED_CLASSIFIER_MODELS}, got: {tool_model}"
+            f"TOOL_MODEL must be one of classifier models {ALLOWED_TOOL_MODELS}, got: {tool_model}"
         )
 
 # AWQ + GPTQ check
