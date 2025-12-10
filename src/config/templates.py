@@ -4,7 +4,6 @@ from __future__ import annotations
 
 
 CHAT_TEMPLATE_NAME = "awq_chat_template.md"
-TOOL_TEMPLATE_NAME = "awq_tool_template.md"
 
 
 _MISTRAL_RESEARCH_MODELS = {
@@ -41,7 +40,7 @@ _HAMMER_LICENSE = {
 
 
 def resolve_template_name(is_tool: bool) -> str:
-    return TOOL_TEMPLATE_NAME if is_tool else CHAT_TEMPLATE_NAME
+    return CHAT_TEMPLATE_NAME
 
 
 def _is_mistral_research_model(model_path: str) -> bool:
@@ -113,7 +112,6 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
 
 __all__ = [
     "CHAT_TEMPLATE_NAME",
-    "TOOL_TEMPLATE_NAME",
     "resolve_template_name",
     "compute_license_info",
 ]

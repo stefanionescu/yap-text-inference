@@ -6,7 +6,7 @@ import json
 import os
 from typing import Any
 
-from ..utils import generate_readme
+from ..utils.template_utils import generate_readme
 
 
 def save_quantization_metadata(

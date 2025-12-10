@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import Any
 
 import torch  # type: ignore[import]
 
-from .backends import (
-    OnnxClassifierBackend,
-    TorchClassifierBackend,
-    export_model_to_onnx,
-)
+from .backend import TorchClassifierBackend
 from .microbatch import MicrobatchExecutor
-from .model_info import ClassifierModelInfo, build_model_info, slugify_model_id
+from .model_info import ClassifierModelInfo, build_model_info
 
 logger = logging.getLogger(__name__)
 

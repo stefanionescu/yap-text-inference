@@ -1,7 +1,7 @@
 """AWQ Quantization Package"""
 
 from .core import AWQQuantizer, CalibrationConfig
-from .utils import is_awq_dir
+from .utils.model_utils import is_awq_dir
 
 __version__ = "1.0.0"
 

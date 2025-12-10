@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from ..adapters import compute_chat_calibration_seqlen
+from src.config.awq import resolve_total_len, TotalLengthPolicy, CHAT_MAX_LEN, CHAT_MAX_OUT
 from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
     load_model_config,
@@ -21,6 +21,18 @@ def _is_classifier_model_path(model_path: str) -> bool:
     # Import here to avoid circular imports
     from src.config.models import is_classifier_model
     return is_classifier_model(model_path)
+
+
+CHAT_TOTAL_POLICY = TotalLengthPolicy(
+    kind="chat",
+    default_total=CHAT_MAX_LEN + CHAT_MAX_OUT,
+    len_env="CHAT_MAX_LEN",
+    out_env="CHAT_MAX_OUT",
+)
+
+
+def compute_chat_calibration_seqlen(requested: int) -> int:
+    return resolve_total_len(requested, CHAT_TOTAL_POLICY)
 
 
 class AWQQuantizer:
