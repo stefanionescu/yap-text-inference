@@ -34,6 +34,7 @@ async def run_suite(
     limit: int | None = None,
     show_successes: bool = False,
     prompt_mode: str | None = None,
+    max_steps_per_case: int | None = None,
 ) -> list[CaseResult]:
     """
     Execute the tool-call regression suite and print per-case + summary output.
@@ -43,6 +44,28 @@ async def run_suite(
     if limit is not None:
         cases = cases[:limit]
     cases = list(cases)
+
+    step_cap = max_steps_per_case if max_steps_per_case is not None else None
+    if step_cap is not None and step_cap <= 0:
+        step_cap = None
+
+    skipped_labels: list[str] = []
+    if step_cap is not None:
+        allowed_cases: list[ToolTestCase] = []
+        for case in cases:
+            if len(case.steps) <= step_cap:
+                allowed_cases.append(case)
+            else:
+                skipped_labels.append(case.label or case.name)
+        if skipped_labels:
+            shown = ", ".join(skipped_labels[:5])
+            suffix = " ..." if len(skipped_labels) > 5 else ""
+            print(
+                f"Skipping {len(skipped_labels)} tool cases exceeding {step_cap} steps: "
+                f"{shown}{suffix}"
+            )
+        cases = allowed_cases
+
     total_cases = len(cases)
     effective_concurrency = max(1, concurrency)
 

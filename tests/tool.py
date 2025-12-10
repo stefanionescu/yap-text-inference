@@ -22,7 +22,11 @@ setup_repo_path()
 
 from tests.helpers.cli import add_connection_args, add_prompt_mode_arg  # noqa: E402
 from tests.helpers.ws import with_api_key  # noqa: E402
-from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
+from tests.config import (  # noqa: E402
+    DEFAULT_GENDER,
+    DEFAULT_PERSONALITY,
+    TOOL_WS_MAX_MESSAGES_PER_WINDOW,
+)
 from tests.logic.tool.runner import run_suite  # noqa: E402
 
 def _parse_args() -> argparse.Namespace:
@@ -61,6 +65,15 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include passing test cases in the per-case output",
     )
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=TOOL_WS_MAX_MESSAGES_PER_WINDOW,
+        help=(
+            "Skip tool cases with more steps than this limit "
+            f"(default: {TOOL_WS_MAX_MESSAGES_PER_WINDOW}; 0 disables the filter)"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -85,6 +98,7 @@ def main() -> None:
                 limit=args.limit,
                 show_successes=args.show_successes,
                 prompt_mode=args.prompt_mode,
+                max_steps_per_case=args.max_steps,
             )
         )
     except KeyboardInterrupt:

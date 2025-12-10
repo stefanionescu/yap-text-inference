@@ -11,8 +11,11 @@ from typing import Any, Callable, Sequence
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.config import POST_TOOL_IDLE_MIN_S
-from tests.config.env import get_float_env, get_int_env
+from tests.config import (
+    POST_TOOL_IDLE_MIN_S,
+    TOOL_WS_MESSAGE_WINDOW_SECONDS,
+    TOOL_WS_MAX_MESSAGES_PER_WINDOW,
+)
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
 from tests.helpers.ws import connect_with_retries, send_client_end
@@ -27,8 +30,8 @@ from .types import (
     TurnResult,
 )
 
-STEP_WINDOW_SECONDS = get_float_env("TOOL_WS_MESSAGE_WINDOW_SECONDS", 60.0)
-STEP_MAX_PER_WINDOW = get_int_env("TOOL_WS_MAX_MESSAGES_PER_WINDOW", 25)
+STEP_WINDOW_SECONDS = max(0.0, float(TOOL_WS_MESSAGE_WINDOW_SECONDS))
+STEP_MAX_PER_WINDOW = max(0, int(TOOL_WS_MAX_MESSAGES_PER_WINDOW))
 
 __all__ = ["run_all_cases"]
 
