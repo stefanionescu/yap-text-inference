@@ -14,6 +14,7 @@ from src.config import (
     DEPLOY_TOOL,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
+    is_classifier_model,
 )
 from src.utils import RateLimitError, SlidingWindowRateLimiter, format_session_timestamp
 
@@ -228,6 +229,14 @@ class SessionHandler:
             return ""
         state.touch()
         return self._history.get_text(state)
+    
+    def get_user_texts(self, session_id: str) -> list[str]:
+        """Get raw user texts for classifier (trimming done by classifier adapter)."""
+        state = self._get_state(session_id)
+        if not state:
+            return []
+        state.touch()
+        return self._history.get_user_texts(state)
 
     def set_history_text(self, session_id: str, history_text: str) -> str:
         state = self._ensure_state(session_id)
@@ -384,7 +393,9 @@ async def abort_session_requests(
         except Exception:  # noqa: BLE001 - best effort
             pass
 
-    if DEPLOY_TOOL and req_info.get("tool"):
+    # Abort tool requests only for autoregressive LLMs (not classifiers)
+    # Classifiers run synchronous inference with no engine to abort
+    if DEPLOY_TOOL and req_info.get("tool") and not is_classifier_model(TOOL_MODEL):
         try:
             from src.engines import get_tool_engine  # local import to avoid cycles
 

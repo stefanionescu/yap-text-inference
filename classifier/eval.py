@@ -129,8 +129,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-length",
         type=int,
-        default=1200,
-        help="Maximum sequence length for tokenization (default: 1200)",
+        default=1536,
+        help="Maximum sequence length for tokenization (default: 1536)",
     )
     parser.add_argument(
         "--threshold",

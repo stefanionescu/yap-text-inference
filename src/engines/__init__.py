@@ -1,4 +1,4 @@
-"""Engine package."""
+"""Engine package for vLLM model management."""
 
 from __future__ import annotations
 

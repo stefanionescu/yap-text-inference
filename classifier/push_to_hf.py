@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from huggingface_hub import HfApi
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
@@ -117,7 +118,7 @@ The reference training script lives at `classifier/train.py` in the
 - Batch size: 16 (per device)
 - Learning rate: 2e-5
 - Weight decay: 0.01
-- Max sequence length: 1200 tokens (truncation applied beyond this)
+- Max sequence length: 1536 tokens (truncation applied beyond this)
 
 The script builds examples by concatenating conversation history up to and
 including the current user message, one utterance per line prefixed with
@@ -144,7 +145,7 @@ inputs = tokenizer(
     return_tensors="pt",
     truncation=True,
     padding="max_length",
-    max_length=1200,
+    max_length=1536,
 )
 
 attention_mask = inputs["attention_mask"]
@@ -173,12 +174,12 @@ In production, you would:
 If you use this model in academic work, please also cite Longformer:
 
 ```bibtex
-@article{Beltagy2020Longformer,
-  title={Longformer: The Long-Document Transformer},
-  author={Iz Beltagy and Matthew E. Peters and Arman Cohan},
-  journal={arXiv:2004.05150},
-  year={2020},
-}
+@article{{Beltagy2020Longformer,
+  title={{Longformer: The Long-Document Transformer}},
+  author={{Iz Beltagy and Matthew E. Peters and Arman Cohan}},
+  journal={{arXiv:2004.05150}},
+  year={{2020}},
+}}
 ```
 
 Longformer is an open-source project developed by the Allen Institute for
@@ -264,6 +265,18 @@ def main() -> None:
     # version, it will be passed through to huggingface_hub.
     model.push_to_hub(args.repo_id, use_auth_token=token)
     tokenizer.push_to_hub(args.repo_id, use_auth_token=token)
+
+    # Upload README.md explicitly (push_to_hub doesn't include it)
+    readme_path = model_dir / "README.md"
+    if readme_path.exists():
+        print("[classifier] Uploading README.md...")
+        api = HfApi()
+        api.upload_file(
+            path_or_fileobj=str(readme_path),
+            path_in_repo="README.md",
+            repo_id=args.repo_id,
+            token=token,
+        )
 
     print("[classifier] Push complete.")
 

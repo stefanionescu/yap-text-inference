@@ -27,13 +27,21 @@ from .env import (
     CACHE_RESET_INTERVAL_SECONDS,
     CACHE_RESET_MIN_SESSION_SECONDS,
     TOOL_LANGUAGE_FILTER,
+    # Classifier settings
+    CLASSIFIER_THRESHOLD,
+    CLASSIFIER_MAX_LENGTH,
+    CLASSIFIER_COMPILE,
+    CLASSIFIER_HISTORY_TOKENS,
 )
 from .models import (
     ALLOWED_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
+    ALLOWED_CLASSIFIER_MODELS,
     ALLOWED_DUAL_MODELS,
     classify_prequantized_model,
     is_valid_model as _is_valid_model,
+    is_classifier_model,
+    get_tool_model_type,
 )
 from .priorities import (
     CHAT_REQUEST_PRIORITY,
@@ -128,9 +136,17 @@ else:
         if not _allow_prequantized_override(CHAT_MODEL, "chat"):
             raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
 
-    if DEPLOY_TOOL and not _is_valid_model(TOOL_MODEL, ALLOWED_TOOL_MODELS, "tool"):
-        if not _allow_prequantized_override(TOOL_MODEL, "tool"):
-            raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
+    if DEPLOY_TOOL:
+        # Tool model can be either a classifier or autoregressive LLM
+        if is_classifier_model(TOOL_MODEL):
+            # Classifier models are validated against ALLOWED_CLASSIFIER_MODELS
+            if TOOL_MODEL not in ALLOWED_CLASSIFIER_MODELS:
+                raise ValueError(
+                    f"TOOL_MODEL classifier must be one of: {ALLOWED_CLASSIFIER_MODELS}, got: {TOOL_MODEL}"
+                )
+        elif not _is_valid_model(TOOL_MODEL, ALLOWED_TOOL_MODELS, "tool"):
+            if not _allow_prequantized_override(TOOL_MODEL, "tool"):
+                raise ValueError(f"TOOL_MODEL must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}")
 
 # Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
 if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
@@ -159,13 +175,21 @@ __all__ = [
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",
     "TOOL_LANGUAGE_FILTER",
+    # classifier settings
+    "CLASSIFIER_THRESHOLD",
+    "CLASSIFIER_MAX_LENGTH",
+    "CLASSIFIER_COMPILE",
+    "CLASSIFIER_HISTORY_TOKENS",
     # prefixes
     "DEFAULT_CHECK_SCREEN_PREFIX",
     "DEFAULT_SCREEN_CHECKED_PREFIX",
     # models/validation
     "ALLOWED_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
+    "ALLOWED_CLASSIFIER_MODELS",
     "ALLOWED_DUAL_MODELS",
+    "is_classifier_model",
+    "get_tool_model_type",
     # limits
     "CHAT_MAX_LEN",
     "CHAT_MAX_OUT",
