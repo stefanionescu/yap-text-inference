@@ -32,14 +32,26 @@ def get_classifier_adapter() -> ClassifierToolAdapter:
             TOOL_MODEL,
             CLASSIFIER_THRESHOLD,
             CLASSIFIER_COMPILE,
-            CLASSIFIER_HISTORY_TOKENS,
+            CLASSIFIER_MAX_LENGTH,
+            CLASSIFIER_MICROBATCH_MAX_SIZE,
+            CLASSIFIER_MICROBATCH_MAX_DELAY_MS,
+            CLASSIFIER_REQUEST_TIMEOUT_S,
+            CLASSIFIER_USE_ONNX,
+            CLASSIFIER_ONNX_DIR,
+            CLASSIFIER_ONNX_OPSET,
         )
         
         _classifier_adapter = ClassifierToolAdapter(
             model_path=TOOL_MODEL,
             threshold=CLASSIFIER_THRESHOLD,
-            history_max_tokens=CLASSIFIER_HISTORY_TOKENS,
             compile_model=CLASSIFIER_COMPILE,
+            max_length=CLASSIFIER_MAX_LENGTH,
+            microbatch_max_size=CLASSIFIER_MICROBATCH_MAX_SIZE,
+            microbatch_max_delay_ms=CLASSIFIER_MICROBATCH_MAX_DELAY_MS,
+            request_timeout_s=CLASSIFIER_REQUEST_TIMEOUT_S,
+            use_onnx=CLASSIFIER_USE_ONNX,
+            onnx_dir=CLASSIFIER_ONNX_DIR,
+            onnx_opset=CLASSIFIER_ONNX_OPSET,
         )
     
     return _classifier_adapter

@@ -1,239 +1,182 @@
-"""Classifier-based tool adapter for screenshot intent detection.
-
-This module provides a tool adapter that uses a transformers classifier model
-(AutoModelForSequenceClassification) instead of an autoregressive LLM for
-tool call detection. This is much faster and lighter than running a full LLM.
-"""
+"""Microbatched classifier adapter for screenshot intent detection."""
 
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import Any
 
-import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import torch  # type: ignore[import]
 
-from src.config import CLASSIFIER_MAX_LENGTH
-
-if TYPE_CHECKING:
-    from transformers import PreTrainedModel, PreTrainedTokenizerFast
+from .backends import (
+    OnnxClassifierBackend,
+    TorchClassifierBackend,
+    export_model_to_onnx,
+)
+from .microbatch import MicrobatchExecutor
+from .model_info import ClassifierModelInfo, build_model_info, slugify_model_id
 
 logger = logging.getLogger(__name__)
 
 
 class ClassifierToolAdapter:
-    """Tool adapter using a transformers classifier for screenshot detection.
-    
-    This adapter loads a sequence classification model and uses it to determine
-    whether a screenshot should be taken based on the conversation context.
-    
-    Optimizations:
-    - torch.compile() for kernel fusion (PyTorch 2.0+)
-    - Dynamic padding instead of fixed max_length
-    - torch.inference_mode() for faster inference
-    
-    History handling:
-    - Receives raw user texts from session handler
-    - Trims history using its own tokenizer (centralized, DRY)
-    - Formats as: "USER: {utt1}\\nUSER: {utt2}\\n..."
-    """
-    
+    """Microbatched classifier adapter for screenshot intent detection."""
+
     _instance: "ClassifierToolAdapter | None" = None
-    
+
     def __init__(
         self,
         model_path: str,
+        *,
         threshold: float = 0.66,
-        history_max_tokens: int = 1200,
         device: str | None = None,
         compile_model: bool = True,
+        max_length: int = 1536,
+        microbatch_max_size: int = 4,
+        microbatch_max_delay_ms: float = 5.0,
+        request_timeout_s: float = 5.0,
+        use_onnx: bool = False,
+        onnx_dir: str | None = None,
+        onnx_opset: int = 17,
     ) -> None:
-        """Initialize the classifier adapter.
-        
-        Args:
-            model_path: HuggingFace model ID or local path
-            threshold: Probability threshold for positive classification
-            history_max_tokens: Max tokens for user-only history
-            device: Device to run on ('cuda', 'cpu', or None for auto)
-            compile_model: Whether to use torch.compile() for speedup
-        """
         self.model_path = model_path
         self.threshold = threshold
-        self.history_max_tokens = history_max_tokens
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        
+        self.dtype = torch.float16 if self.device.startswith("cuda") else torch.float32
+        self.request_timeout_s = max(0.1, float(request_timeout_s))
+
+        self._model_info: ClassifierModelInfo = build_model_info(model_path, max_length)
+        self._backend = self._init_backend(
+            compile_model=compile_model,
+            use_onnx=use_onnx,
+            onnx_dir=onnx_dir,
+            onnx_opset=onnx_opset,
+        )
+        self._microbatch = MicrobatchExecutor(
+            self._backend.infer,
+            max_batch_size=microbatch_max_size,
+            max_delay_ms=microbatch_max_delay_ms,
+        )
+
         logger.info(
-            "Loading classifier model from %s (device=%s, threshold=%.2f)",
-            model_path, self.device, threshold
+            "classifier: ready model=%s type=%s device=%s backend=%s microbatch=%s/%s",
+            model_path,
+            self._model_info.model_type,
+            self.device,
+            self._backend.__class__.__name__,
+            microbatch_max_size,
+            microbatch_max_delay_ms,
         )
-        
-        # Load model and tokenizer
-        self._tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(model_path)
-        self._tokenizer.truncation_side = "left"  # Keep most recent context
-        self._newline_token_count = len(
-            self._tokenizer.encode("\n", add_special_tokens=False)
-        )
-        self._count_tokens_cached = lru_cache(maxsize=4096)(self._count_tokens_uncached)
-        
-        self._model: PreTrainedModel = AutoModelForSequenceClassification.from_pretrained(model_path)
-        self._model.to(self.device)
-        self._model.eval()
-        
-        # Disable torch.compile to avoid CUDA graph pool conflicts when running in parallel
-        if compile_model:
-            logger.warning(
-                "CLASSIFIER_COMPILE requested but disabled to avoid mempool conflicts under concurrency"
-            )
-        
-        logger.info("Classifier model loaded successfully")
-    
+
+    # ------------------------------------------------------------------ #
+    # Lifecycle helpers
+    # ------------------------------------------------------------------ #
+
     @classmethod
     def get_instance(
         cls,
         model_path: str,
         threshold: float = 0.66,
         compile_model: bool = True,
+        **kwargs: Any,
     ) -> "ClassifierToolAdapter":
-        """Get or create singleton instance of the classifier adapter."""
         if cls._instance is None:
             cls._instance = cls(
                 model_path=model_path,
                 threshold=threshold,
                 compile_model=compile_model,
+                **kwargs,
             )
         return cls._instance
-    
+
     @classmethod
     def reset_instance(cls) -> None:
-        """Reset the singleton instance (for testing)."""
         cls._instance = None
-    
-    def _count_tokens_uncached(self, text: str) -> int:
-        if not text:
-            return 0
-        return len(self._tokenizer.encode(text, add_special_tokens=False))
 
-    def count_tokens(self, text: str) -> int:
-        """Count tokens using the classifier's tokenizer (cached per unique text)."""
-        return self._count_tokens_cached(text or "")
-    
-    def trim_user_history(self, user_texts: list[str]) -> str:
-        """Trim user history to fit within token budget.
-        
-        Args:
-            user_texts: List of raw user utterances (most recent last)
-        
-        Returns:
-            Formatted history string: "USER: {utt1}\\nUSER: {utt2}\\n..."
-            trimmed to fit within history_max_tokens.
-        """
-        if not user_texts:
-            return ""
-        
-        newline_tokens = self._newline_token_count or 0
-        selected: list[str] = []
-        total_tokens = 0
-        
-        for text in reversed(user_texts):
-            stripped = text.strip()
-            if not stripped:
-                continue
-            line = f"USER: {stripped}"
-            line_tokens = self.count_tokens(line)
-            additional = line_tokens
-            if selected:
-                additional += newline_tokens
-            if selected and total_tokens + additional > self.history_max_tokens:
-                break
-            selected.insert(0, line)
-            total_tokens += additional
-        
-        return "\n".join(selected)
-    
-    def _format_input(self, user_utt: str, user_history: str = "") -> str:
-        """Format input text for the classifier.
-        
-        The classifier expects input formatted as:
-        USER: {utterance1}
-        USER: {utterance2}
-        ...
-        USER: {current_utterance}
-        
-        Args:
-            user_utt: Current user utterance (raw, without prefix)
-            user_history: Pre-formatted user-only history (already has USER: prefixes)
-        """
-        lines: list[str] = []
-        
-        # Add history if present
-        if user_history and user_history.strip():
-            lines.append(user_history.strip())
-        
-        # Add current utterance with USER: prefix
-        current = user_utt.strip()
-        if not current.upper().startswith("USER:"):
-            current = f"USER: {current}"
-        lines.append(current)
-        
-        return "\n".join(lines)
-    
-    def classify(self, user_utt: str, user_history: str = "") -> tuple[bool, float]:
-        """Classify whether a screenshot should be taken.
-        
-        Args:
-            user_utt: The current user utterance
-            user_history: Pre-formatted user-only history ("USER: {utt}" lines,
-                          already trimmed to token budget by session handler)
-        
-        Returns:
-            Tuple of (should_screenshot, probability)
-        """
-        # Format the full input
-        text = self._format_input(user_utt, user_history)
-        
-        with torch.inference_mode():
-            # Tokenize with dynamic padding
-            # History is already trimmed to budget, but set max_length as safety cap
-            inputs = self._tokenizer(
-                text,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=CLASSIFIER_MAX_LENGTH,
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            # Run inference
-            outputs = self._model(**inputs)
-            probs = outputs.logits.softmax(dim=-1)[0]
-            
-            # Index 1 is "take_screenshot" class
-            p_yes = probs[1].item()
-            should_screenshot = p_yes >= self.threshold
-            
-            return should_screenshot, p_yes
-    
-    def run_tool_inference(self, user_utt: str, user_history: str = "") -> str:
-        """Run tool inference and return JSON result.
-        
-        This method matches the interface expected by the tool runner.
-        
-        Args:
-            user_utt: The current user utterance
-            user_history: Pre-formatted user-only history (from session handler)
-        
-        Returns:
-            JSON string: '[{"name": "take_screenshot"}]' or '[]'
-        """
-        should_screenshot, p_yes = self.classify(user_utt, user_history)
-        
-        logger.debug(
-            "Classifier result: should_screenshot=%s p_yes=%.3f user_utt=%r",
-            should_screenshot, p_yes, user_utt[:50]
+    # ------------------------------------------------------------------ #
+    # Internal helpers
+    # ------------------------------------------------------------------ #
+
+    def _init_backend(
+        self,
+        *,
+        compile_model: bool,
+        use_onnx: bool,
+        onnx_dir: str | None,
+        onnx_opset: int,
+    ) -> TorchClassifierBackend | OnnxClassifierBackend:
+        if use_onnx:
+            if self._model_info.model_type == "longformer":
+                logger.warning(
+                    "classifier: ONNX for Longformer is experimental; falling back"
+                    " to PyTorch if export fails"
+                )
+            try:
+                target_dir = Path(onnx_dir or "build/classifier_onnx")
+                target_dir.mkdir(parents=True, exist_ok=True)
+                onnx_path = target_dir / f"{slugify_model_id(self.model_path)}.onnx"
+                if not onnx_path.exists():
+                    export_model_to_onnx(
+                        self._model_info,
+                        onnx_path=onnx_path,
+                        opset=onnx_opset,
+                    )
+                return OnnxClassifierBackend(
+                    self._model_info,
+                    onnx_path=onnx_path,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "classifier: ONNX backend unavailable (%s); using Torch backend",
+                    exc,
+                )
+
+        return TorchClassifierBackend(
+            self._model_info,
+            device=self.device,
+            dtype=self.dtype,
+            compile_model=compile_model,
         )
-        
-        if should_screenshot:
+
+    def _format_input(self, user_utt: str, user_history: str = "") -> str:
+        history = (user_history or "").strip()
+        lines: list[str] = []
+        if history:
+            lines.append(history)
+        current = user_utt.strip()
+        if current and not current.upper().startswith("USER:"):
+            current = f"USER: {current}"
+        elif not current:
+            current = "USER:"
+        lines.append(current)
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+
+    def classify(self, user_utt: str, user_history: str = "") -> tuple[bool, float]:
+        """Return (should_take_screenshot, probability)."""
+        text = self._format_input(user_utt, user_history)
+        probs = self._microbatch.classify(text, timeout_s=self.request_timeout_s)
+
+        if len(probs) < 2:
+            p_yes = float(probs[-1])
+        else:
+            p_yes = float(probs[1])
+
+        should_take = p_yes >= self.threshold
+        return should_take, p_yes
+
+    def run_tool_inference(self, user_utt: str, user_history: str = "") -> str:
+        should_take, p_yes = self.classify(user_utt, user_history)
+        logger.debug(
+            "classifier: result=%s prob=%.3f user=%r",
+            should_take,
+            p_yes,
+            user_utt[:80],
+        )
+        if should_take:
             return '[{"name": "take_screenshot"}]'
         return "[]"
 

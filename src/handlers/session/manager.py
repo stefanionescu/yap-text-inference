@@ -223,12 +223,20 @@ class SessionHandler:
         return self._history.get_text(state)
     
     def get_user_texts(self, session_id: str) -> list[str]:
-        """Get raw user texts for classifier (trimming done by classifier adapter)."""
+        """Get raw user texts (untrimmed)."""
         state = self._get_state(session_id)
         if not state:
             return []
         state.touch()
         return self._history.get_user_texts(state)
+
+    def get_tool_history_text(self, session_id: str) -> str:
+        """Get trimmed history tailored for the classifier/tool model."""
+        state = self._get_state(session_id)
+        if not state:
+            return ""
+        state.touch()
+        return self._history.get_tool_history_text(state)
 
     def set_history_text(self, session_id: str, history_text: str) -> str:
         state = self._ensure_state(session_id)
