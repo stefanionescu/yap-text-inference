@@ -4,6 +4,10 @@
 
 apply_quantization_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-}"
+  if [ "${DEPLOY_CHAT:-0}" != "1" ]; then
+    log_info "Skipping vLLM quantization defaults (chat engine disabled)"
+    return
+  fi
   local effective_quant="${QUANTIZATION:-}"
   if [ -z "${effective_quant}" ] || [ "${effective_quant}" = "fp8" ]; then
     if [ -n "${CHAT_QUANTIZATION:-}" ] && [ "${CHAT_QUANTIZATION}" != "fp8" ]; then

@@ -28,7 +28,11 @@ fi
 
 # Log key env knobs
 model_display="${CHAT_MODEL:-${TOOL_MODEL:-}}"
-log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${model_display:-<unset>} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
+if [ "${DEPLOY_MODELS:-both}" = "tool" ]; then
+  log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${model_display:-<unset>} QUANT_MODE=tool-only (classifier-only)"
+else
+  log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${model_display:-<unset>} QUANT_MODE=${QUANT_MODE:-auto} BACKEND=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
+fi
 deploy_line="DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
 if [ "${DEPLOY_MODELS:-both}" != "tool" ]; then
   deploy_line+=" CHAT=${CHAT_MODEL:-}"

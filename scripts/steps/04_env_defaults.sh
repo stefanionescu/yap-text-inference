@@ -42,21 +42,15 @@ apply_quantization_defaults
 
 log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
-if [ -n "${QUANTIZATION:-}" ]; then
-  log_info "  Global quantization: ${QUANTIZATION}"
-fi
 if [ "${DEPLOY_CHAT}" = "1" ]; then
   log_info "  Chat model: ${CHAT_MODEL:-<unset>}"
-  if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-    log_info "  Chat quantization: ${CHAT_QUANTIZATION}"
-  elif [ -n "${QUANTIZATION:-}" ]; then
-    log_info "  Chat quantization: ${QUANTIZATION} (inherited)"
-  else
-    log_info "  Chat quantization: <unset>"
-  fi
+  chat_backend="${CHAT_QUANTIZATION:-${QUANTIZATION:-<unset>}}"
+  log_info "  Chat quantization: ${QUANT_MODE:-auto} (backend=${chat_backend})"
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
   log_info "  Tool model: ${TOOL_MODEL:-<unset>}"
   log_info "  Tool runtime: classifier (PyTorch, float weights)"
 fi
-log_info "  KV dtype: ${KV_DTYPE}"
+if [ "${DEPLOY_CHAT}" = "1" ]; then
+  log_info "  KV dtype: ${KV_DTYPE}"
+fi

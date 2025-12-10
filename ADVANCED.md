@@ -242,9 +242,9 @@ Notes for AWQ:
 
 ### Pushing AWQ Exports to Hugging Face
 
-Uploads only happen when you pass `--push-awq` to the launcher you’re using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—even if you previously exported `HF_AWQ_PUSH`.
+Uploads only happen when you pass `--push-quant` to the launcher you’re using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—even if you previously exported `HF_AWQ_PUSH`.
 
-**Required whenever `--push-awq` is present:**
+**Required whenever `--push-quant` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
 - `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat or both models are deployed
 
@@ -264,10 +264,10 @@ export HF_AWQ_ALLOW_CREATE=1                   # create repo automatically (0 = 
 export HF_AWQ_COMMIT_MSG_CHAT="Upload Nemo AWQ build"   # optional commit message override
 
 # full deployment that quantizes + uploads
-scripts/main.sh awq <chat_model> <tool_model> --push-awq
+scripts/main.sh 4bit <chat_model> <tool_model> --push-quant
 
 # restart-only upload (works with or without --reset-models)
-bash scripts/restart.sh chat --push-awq --chat-model <model> --chat-quant awq
+bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 4bit
 ```
 
 The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.
@@ -405,7 +405,7 @@ Override as needed:
 ```bash
 export CHAT_GPU_FRAC=0.60
 export TOOL_GPU_FRAC=0.25
-bash scripts/stop.sh && bash scripts/main.sh
+bash scripts/stop.sh && bash scripts/main.sh 4bit <chat_model> <tool_model>
 ```
 
 

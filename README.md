@@ -47,10 +47,10 @@ export MAX_CONCURRENT_CONNECTIONS=20         # Required capacity guard
 
 ```bash
 # Chat + classifier (default) - auto-detached deployment with log tailing
-bash scripts/main.sh [awq] <chat_model> <classifier_model>
+bash scripts/main.sh [4bit|8bit] <chat_model> <classifier_model>
 
 # Chat-only / classifier-only helpers (host scripts only; Docker always runs both)
-bash scripts/main.sh [awq] chat <chat_model>
+bash scripts/main.sh [4bit|8bit] chat <chat_model>
 bash scripts/main.sh tool <classifier_model>
 
 # Ctrl+C stops the log tail only; use scripts/stop.sh to stop the server
@@ -114,12 +114,13 @@ See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, ima
 ## Quantization
 
 4-bit mode AWQ/W4A16 via llmcompressor + vLLM (with AutoAWQ fallback for Qwen & Mistral 3).
+Pass `4bit` or `8bit` to the host scripts. The logs will spell out the actual backend that gets selected (`AWQ`, `GPTQ`, `FP8`, `INT8`) so you always know what’s running.
 
 ### Option 1: Local Quantization
 
 ```bash
 # Uses float (non-GPTQ) chat model weights and quantizes the chat engine at load
-bash scripts/main.sh awq SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
 ```
 
 Local quantization runs [`llmcompressor`](https://github.com/vllm-project/llm-compressor) `oneshot()` with the AWQ modifier (pinned at version 0.8.1). Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`, with automatic fallback from `pileval` on older llmcompressor builds).  
@@ -206,14 +207,14 @@ bash scripts/restart.sh --reset-models --deploy-mode chat \
   --chat-model SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
 
 # Full stop and restart cycle
-bash scripts/stop.sh && bash scripts/main.sh awq <chat_model> <tool_model>
+bash scripts/stop.sh && bash scripts/main.sh 4bit <chat_model> <tool_model>
 ```
 
 Key restart knobs:
 - `--keep-models` (default) reuses cached AWQ exports; combine with `NUKE_ALL=0` for sub-minute restarts.
 - `--reset-models` wipes caches before relaunching different repos or quantization.
 - `--install-deps` reinstalls `.venv` before launching.
-- `--push-awq` uploads the cached AWQ build; see [`ADVANCED.md#pushing-awq-exports-to-hugging-face`](ADVANCED.md#pushing-awq-exports-to-hugging-face) for required env vars.
+- `--push-quant` uploads the cached quantized build to HF; see [`ADVANCED.md#pushing-awq-exports-to-hugging-face`](ADVANCED.md#pushing-awq-exports-to-hugging-face) for required env vars.
 
 Caches are wiped by default during model resets; they are only preserved automatically when the requested models *and* quantization match the previous deployment.
 
