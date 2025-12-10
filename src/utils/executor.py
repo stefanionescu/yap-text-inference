@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..handlers.session import session_handler
-from ..execution.tool.tool_runner import run_toolcall
+from ..execution.tool.runner import run_toolcall
 
 logger = logging.getLogger(__name__)
 

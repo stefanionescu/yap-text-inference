@@ -4,7 +4,7 @@ import logging
 import uuid
 from fastapi import WebSocket
 
-from .tool.tool_parser import parse_tool_result
+from .tool.parser import parse_tool_result
 from .chat import run_chat_generation
 from ..handlers.session import session_handler
 from ..utils.executor import launch_tool_request, send_toolcall, stream_chat_response
