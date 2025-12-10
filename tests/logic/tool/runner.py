@@ -15,7 +15,7 @@ from tests.helpers.prompt import (  # noqa: E402
     should_send_chat_prompt,
     should_send_tool_prompt,
 )
-from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT  # noqa: E402
+from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT, CLASSIFIER_MODE  # noqa: E402
 
 from .cases import build_cases
 from .executor import run_all_cases
@@ -36,6 +36,7 @@ async def run_suite(
     limit: int | None = None,
     show_successes: bool = False,
     prompt_mode: str | None = None,
+    classifier_mode: bool | None = None,
 ) -> list[CaseResult]:
     """
     Execute the tool-call regression suite and print per-case + summary output.
@@ -67,9 +68,11 @@ async def run_suite(
         print("No tool cases to run.")
 
     normalized_mode = prompt_mode or PROMPT_MODE_BOTH
+    effective_classifier_mode = classifier_mode if classifier_mode is not None else CLASSIFIER_MODE
     chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(normalized_mode) else None
-    resolved_tool_prompt = tool_prompt if should_send_tool_prompt(normalized_mode) else None
-    if chat_prompt is None and resolved_tool_prompt is None:
+    resolved_tool_prompt = tool_prompt if should_send_tool_prompt(normalized_mode, classifier_mode=effective_classifier_mode) else None
+    # In classifier mode, we don't need any prompts for tool-only mode
+    if not effective_classifier_mode and chat_prompt is None and resolved_tool_prompt is None:
         raise ValueError("prompt_mode must allow chat, tool, or both prompts for tool regression suite")
 
     cfg = RunnerConfig(

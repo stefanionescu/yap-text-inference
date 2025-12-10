@@ -5,9 +5,11 @@ from typing import Literal
 try:  # When /tests is already on sys.path
     from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
     from tests.prompts.toolcall import DEFAULT_TOOL_PROMPT_NAME, TOOL_PROMPTS
+    from tests.config.env import CLASSIFIER_MODE as _DEFAULT_CLASSIFIER_MODE
 except ModuleNotFoundError:  # When repo root is on sys.path
     from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
     from tests.prompts.toolcall import DEFAULT_TOOL_PROMPT_NAME, TOOL_PROMPTS
+    from tests.config.env import CLASSIFIER_MODE as _DEFAULT_CLASSIFIER_MODE
 
 PromptMode = Literal["both", "chat", "tool"]
 
@@ -82,7 +84,19 @@ def should_send_chat_prompt(mode: str | None) -> bool:
     return normalized in (PROMPT_MODE_BOTH, PROMPT_MODE_CHAT_ONLY)
 
 
-def should_send_tool_prompt(mode: str | None) -> bool:
+def should_send_tool_prompt(mode: str | None, *, classifier_mode: bool | None = None) -> bool:
+    """Check if tool prompt should be sent.
+    
+    Args:
+        mode: Prompt mode (both/chat/tool)
+        classifier_mode: If True, tool prompt is never required (classifier doesn't need it).
+                        Defaults to CLASSIFIER_MODE env var.
+    """
+    # Classifier mode means no tool prompt needed
+    if classifier_mode is None:
+        classifier_mode = _DEFAULT_CLASSIFIER_MODE
+    if classifier_mode:
+        return False
     normalized = normalize_prompt_mode(mode)
     return normalized in (PROMPT_MODE_BOTH, PROMPT_MODE_TOOL_ONLY)
 
