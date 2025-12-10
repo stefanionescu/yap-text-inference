@@ -117,7 +117,8 @@ TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
 # ----------------- Tool Settings -----------------
 # These are only used when TOOL_MODEL is a classifier (not autoregressive LLM)
 TOOL_DECISION_THRESHOLD = float(os.getenv("TOOL_DECISION_THRESHOLD", "0.66"))
-TOOL_COMPILE = env_flag("TOOL_COMPILE", True)  # Use torch.compile for speedup
+# Torch dynamo recompiles frequently with variable-length histories; keep eager by default.
+TOOL_COMPILE = env_flag("TOOL_COMPILE", False)
 TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1536"))
 TOOL_MAX_LENGTH = int(os.getenv("TOOL_MAX_LENGTH", "1536"))
 TOOL_MICROBATCH_MAX_SIZE = int(os.getenv("TOOL_MICROBATCH_MAX_SIZE", "2"))
