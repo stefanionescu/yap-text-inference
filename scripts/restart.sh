@@ -114,7 +114,7 @@ if [ "${INSTALL_DEPS}" = "1" ]; then
 fi
 
 # Report detected model sources
-log_info "Resolved AWQ sources for restart:"
+log_info "Detected model sources for restart:"
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
   chat_origin="local cache"
   if [ "${CHAT_AWQ_SOURCE_KIND:-local}" != "local" ]; then
@@ -123,7 +123,7 @@ if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
   log_info "  Chat (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
 fi
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-  log_info "  Tool: classifier weights reused directly (no AWQ artifacts)"
+  log_info "  Tool: classifier weights reused directly"
 fi
 
 # Light stop - preserve models and dependencies

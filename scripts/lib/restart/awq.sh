@@ -89,6 +89,21 @@ restart_setup_env_for_awq() {
     fi
   fi
   export CHAT_MODEL_NAME
+
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
+    local resolved_tool="${TOOL_MODEL:-}"
+    if [ -z "${resolved_tool}" ]; then
+      resolved_tool="$(runtime_guard_read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")"
+    fi
+    if [ -n "${resolved_tool}" ]; then
+      TOOL_MODEL="${resolved_tool}"
+    fi
+    export TOOL_MODEL
+    if [ -z "${TOOL_MODEL_NAME:-}" ] && [ -n "${TOOL_MODEL:-}" ]; then
+      TOOL_MODEL_NAME="${TOOL_MODEL}"
+    fi
+  fi
+  export TOOL_MODEL_NAME
 }
 
 restart_validate_awq_push_prereqs() {
