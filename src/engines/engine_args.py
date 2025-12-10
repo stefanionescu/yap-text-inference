@@ -13,9 +13,8 @@ from src.config.awq import (
     model_requires_bfloat16,
     model_requires_fla_runtime,
 )
-from src.config.env import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION, TOOL_QUANTIZATION
+from src.config.env import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
 from src.config.models import _is_local_model_path
-from src.config.quantization import is_lowbit_quantization
 from src.engines.memory_tuning import (
     auto_max_num_seqs,
     configure_kv_cache,
@@ -53,18 +52,11 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int, is_chat: bool) -
     # Normalize/validate KV cache dtype
     kv_dtype_value = (KV_DTYPE or "").strip()  # empty => let vLLM decide
 
-    # Select per-engine quantization:
-    # - If CHAT_QUANTIZATION/TOOL_QUANTIZATION is set, prefer that.
-    # - Else default: chat uses QUANTIZATION; tool inherits QUANTIZATION for low-bit modes.
+    # Select per-engine quantization (chat-only; tool models run as classifiers via PyTorch)
     if is_chat:
         selected_quant = (CHAT_QUANTIZATION or QUANTIZATION)
     else:
-        if TOOL_QUANTIZATION:
-            selected_quant = TOOL_QUANTIZATION
-        elif is_lowbit_quantization(QUANTIZATION):
-            selected_quant = QUANTIZATION
-        else:
-            selected_quant = None
+        selected_quant = None
 
     raw_quant = selected_quant
     inference_quant = raw_quant

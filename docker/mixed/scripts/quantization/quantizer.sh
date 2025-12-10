@@ -11,13 +11,6 @@ if [ "${QUANTIZATION:-}" != "awq" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
-  if [ "${TOOL_QUANTIZATION:-}" = "awq" ] || { [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; }; then
-    log_error "Tool models are classifier-only; AWQ quantization is not supported."
-    exit 1
-  fi
-fi
-
 log_info "Running AWQ quantization process (Docker Base)"
 
 ## Respect pre-quantized setups strictly: if the chat engine is already AWQ,

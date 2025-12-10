@@ -56,7 +56,7 @@ usage() {
   echo ""
   echo "Quantization:"
   echo "  Omit flag  → auto-detects GPTQ/AWQ/W4A16 hints in model names; otherwise FP8"
-  echo "  awq        → force 4-bit AWQ (quantizes BOTH chat and tool on load if needed)"
+  echo "  awq        → force 4-bit AWQ for the chat engine (tool classifiers stay float)"
   echo "             → pre-quantized AWQ/W4A16 repos are detected by name automatically"
   echo ""
   echo "Chat model options:"
@@ -203,17 +203,8 @@ esac
 
 # Determine per-engine quantization hints
 CHAT_QUANT_HINT=""
-TOOL_QUANT_HINT=""
 if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
   CHAT_QUANT_HINT="$(model_detect_quantization_hint "${CHAT_MODEL_NAME}")"
-fi
-if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ -z "${TOOL_QUANTIZATION:-}" ]; then
-  TOOL_QUANT_HINT="$(model_detect_quantization_hint "${TOOL_MODEL_NAME}")"
-fi
-
-if [ "${TOOL_QUANTIZATION:-}" = "awq" ]; then
-  log_warn "Error: TOOL_QUANTIZATION=awq is not supported. Tool models are classifier-only."
-  usage
 fi
 
 # Determine QUANTIZATION
@@ -233,12 +224,6 @@ case "${QUANT_TYPE}" in
     if [ -n "${CHAT_QUANT_HINT}" ]; then
       export QUANTIZATION="${CHAT_QUANT_HINT}"
       export CHAT_QUANTIZATION="${CHAT_QUANT_HINT}"
-    fi
-    if [ -n "${TOOL_QUANT_HINT}" ]; then
-      export TOOL_QUANTIZATION="${TOOL_QUANT_HINT}"
-    elif [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ "${QUANTIZATION}" != "fp8" ]; then
-      # Prevent tool engine from inheriting low-bit quantization when only chat is quantized.
-      export TOOL_QUANTIZATION=fp8
     fi
     ;;
 esac
@@ -264,8 +249,6 @@ DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
 DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
 DESIRED_QUANTIZATION="${QUANTIZATION:-}"
 DESIRED_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
-DESIRED_TOOL_QUANT="${TOOL_QUANTIZATION:-}"
-
 # If the server is already running, decide whether to keep caches or reset.
 runtime_guard_stop_server_if_needed \
   "${SCRIPT_DIR}" \
@@ -274,8 +257,7 @@ runtime_guard_stop_server_if_needed \
   "${DESIRED_CHAT_MODEL}" \
   "${DESIRED_TOOL_MODEL}" \
   "${DESIRED_QUANTIZATION}" \
-  "${DESIRED_CHAT_QUANT}" \
-  "${DESIRED_TOOL_QUANT}"
+  "${DESIRED_CHAT_QUANT}"
 
 # Display configuration
 log_info "Configuration: quantization=${QUANTIZATION} (flag=${QUANT_TYPE})"
@@ -302,7 +284,7 @@ DEPLOYMENT_CMD="
 
 # Export all environment variables for the background process
 export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL
-export CHAT_QUANTIZATION TOOL_QUANTIZATION
+export CHAT_QUANTIZATION
 export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
 
 runtime_pipeline_run_background \

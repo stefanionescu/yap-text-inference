@@ -1,9 +1,10 @@
-"""Chat streaming logic for real-time text generation."""
+"""High-level chat generation runner."""
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncGenerator
+from functools import lru_cache
 
 from vllm.sampling_params import SamplingParams
 
@@ -11,8 +12,6 @@ from ...engines import get_chat_engine
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
 from ...handlers.session import session_handler
 from ...utils import StreamingSanitizer
-from functools import lru_cache
-
 from ...config.sampling import (
     CHAT_TEMPERATURE,
     CHAT_TOP_P,
@@ -25,12 +24,12 @@ from ...config.sampling import (
     CHAT_LOGIT_BIAS,
 )
 from ...config.timeouts import GEN_TIMEOUT_S
-from .llm_stream import LLMStream, LLMStreamConfig
 from ...tokens.tokenizer import get_chat_tokenizer
 from ...tokens.prompt_cache import compile_chat_prompt
+from .controller import ChatStreamConfig, ChatStreamController
 
 
-async def run_chat_stream(
+async def run_chat_generation(
     session_id: str,
     static_prefix: str,
     runtime_text: str,
@@ -69,9 +68,8 @@ async def run_chat_stream(
         stop=INFERENCE_STOP,
     )
     compiled_prompt = compile_chat_prompt(static_prefix, runtime_text, history_text, user_utt)
-    stream = LLMStream(
-        LLMStreamConfig(
-            name="chat",
+    stream = ChatStreamController(
+        ChatStreamConfig(
             session_id=session_id,
             request_id=req_id,
             prompt=compiled_prompt.text,

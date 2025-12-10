@@ -35,12 +35,9 @@ restart_basic() {
   # If the last snapshot stored explicit per-engine quantization, prefer that over
   # the generic fallback so we don't misclassify AWQ/GPTQ deployments as fp8.
   local LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
-  local LAST_TOOL_QUANT="${TOOL_QUANTIZATION:-}"
   if [ -z "${LAST_QUANT}" ] || [ "${LAST_QUANT}" = "fp8" ]; then
     if [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "fp8" ]; then
       LAST_QUANT="${LAST_CHAT_QUANT}"
-    elif [ -n "${LAST_TOOL_QUANT}" ] && [ "${LAST_TOOL_QUANT}" != "fp8" ]; then
-      LAST_QUANT="${LAST_TOOL_QUANT}"
     fi
   fi
 

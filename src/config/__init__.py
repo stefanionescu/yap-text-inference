@@ -18,7 +18,6 @@ from .env import (
     KV_DTYPE,
     QUANTIZATION,
     CHAT_QUANTIZATION,
-    TOOL_QUANTIZATION,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
     CHAT_TEMPLATE_ENABLE_THINKING,
@@ -94,17 +93,14 @@ from .websocket import (
 
 
 # Quantization helpers for override warnings
-def _effective_quantization(model_type: str) -> str | None:
-    if model_type == "chat":
-        return (CHAT_QUANTIZATION or QUANTIZATION or "").lower()
-    tool_quant = (TOOL_QUANTIZATION or "").lower()
-    if tool_quant:
-        return tool_quant
-    return (QUANTIZATION or "").lower()
+def _effective_chat_quantization() -> str:
+    return (CHAT_QUANTIZATION or QUANTIZATION or "").lower()
 
 
 def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
-    quant = _effective_quantization(model_type)
+    if model_type != "chat":
+        return False
+    quant = _effective_chat_quantization()
     if not model or not quant:
         return False
     kind = classify_prequantized_model(model)
@@ -153,7 +149,6 @@ __all__ = [
     "KV_DTYPE",
     "QUANTIZATION",
     "CHAT_QUANTIZATION",
-    "TOOL_QUANTIZATION",
     "CHAT_TEMPLATE_ENABLE_THINKING",
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",

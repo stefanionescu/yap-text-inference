@@ -33,7 +33,6 @@ Usage:
   restart.sh --reset-models --deploy-mode both \
              --chat-model <repo_or_path> --tool-model <repo_or_path> \
              [--chat-quant fp8|gptq|gptq_marlin|awq] \
-             [--awq-chat-model <repo>] \
              [--install-deps]
       Reconfigure which models/quantization are deployed without reinstalling deps.
 
@@ -49,8 +48,8 @@ Key flags:
   --push-awq            Upload cached AWQ exports to Hugging Face before relaunch
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
-  --chat-quant <val>    Override chat/base quantization (fp8|gptq|gptq_marlin|awq)
-  --awq-chat-model      Use a pre-quantized AWQ chat repo when awq is requested
+  --chat-quant <val>    Override chat/base quantization (fp8|gptq|gptq_marlin|awq).
+                        Pre-quantized AWQ repos are detected automatically by name.
 
 This script always:
   • Stops the server

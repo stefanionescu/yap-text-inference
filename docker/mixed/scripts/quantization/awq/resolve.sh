@@ -2,13 +2,6 @@
 
 source "${ROOT_DIR}/scripts/lib/common/model_detect.sh"
 
-if [ "${DEPLOY_TOOL}" = "1" ]; then
-  if [ "${TOOL_QUANTIZATION:-}" = "awq" ] || { [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; }; then
-    log_error "Tool models are classifier-only; AWQ quantization is not supported."
-    exit 1
-  fi
-fi
-
 if [ "${DEPLOY_CHAT}" = "1" ]; then
   if model_detect_is_awq_name "${CHAT_MODEL:-}"; then
     log_info "Detected pre-quantized AWQ chat model; skipping quantization"
