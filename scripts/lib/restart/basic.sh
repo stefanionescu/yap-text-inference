@@ -59,7 +59,11 @@ restart_basic() {
     SELECTED_DEPLOY="${DEPLOY_MODELS:-${LAST_DEPLOY:-both}}"
   fi
 
-  export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-fp8}}"
+  if [ "${DEPLOY_MODELS}" = "tool" ]; then
+    unset QUANTIZATION CHAT_QUANTIZATION
+  else
+    export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-fp8}}"
+  fi
   export DEPLOY_MODELS="${SELECTED_DEPLOY}"
 
   if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
@@ -80,7 +84,11 @@ restart_basic() {
     exit 1
   fi
 
-  log_info "Detected last quantization='${QUANTIZATION}', deploy='${DEPLOY_MODELS}'"
+  local display_quant="${QUANTIZATION:-tool-only}"
+  if [ "${DEPLOY_MODELS}" != "tool" ]; then
+    display_quant="${QUANTIZATION:-<unset>}"
+  fi
+  log_info "Detected last quantization='${display_quant}', deploy='${DEPLOY_MODELS}'"
   if [ -n "${CHAT_MODEL:-}" ]; then log_info "  Chat model: ${CHAT_MODEL}"; fi
   if [ -n "${TOOL_MODEL:-}" ]; then log_info "  Tool model: ${TOOL_MODEL}"; fi
 
@@ -100,7 +108,11 @@ restart_basic() {
 
   local SERVER_LOG_PATH="${ROOT_DIR}/server.log"
   touch "${SERVER_LOG_PATH}"
-  log_info "Starting server directly with existing models (quant=${QUANTIZATION})..."
+  if [ "${DEPLOY_MODELS}" = "tool" ]; then
+    log_info "Starting server directly with existing models (tool-only classifier deployment)..."
+  else
+    log_info "Starting server directly with existing models (quant=${QUANTIZATION})..."
+  fi
   log_info "All logs: tail -f server.log"
   log_info "To stop: bash scripts/stop.sh"
   log_info ""
