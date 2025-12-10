@@ -51,7 +51,7 @@ bash scripts/main.sh [awq] <chat_model> <classifier_model>
 
 # Chat-only / classifier-only helpers (host scripts only; Docker always runs both)
 bash scripts/main.sh [awq] chat <chat_model>
-bash scripts/main.sh [awq] tool <classifier_model>
+bash scripts/main.sh tool <classifier_model>
 
 # Ctrl+C stops the log tail only; use scripts/stop.sh to stop the server
 ```
@@ -59,7 +59,7 @@ bash scripts/main.sh [awq] tool <classifier_model>
 Default GPU allocation:
 - Chat deployments reserve 70% of GPU memory when a classifier is also configured (override with `CHAT_GPU_FRAC`).
 - The classifier (when it runs on GPU) is capped at 20% by default; override with `TOOL_GPU_FRAC`.
-- Chat-only mode allocates 90% to the chat engine; tool-only mode leaves the GPU to the classifier.
+- Chat-only and tool-only mode allocates 90% to the chat engine
 
 Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-screenshot-intent-classifier`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`. No quantization is required for classifier weights.
 

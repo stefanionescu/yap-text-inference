@@ -262,8 +262,12 @@ runtime_guard_stop_server_if_needed \
 # Display configuration
 log_info "Configuration: quantization=${QUANTIZATION} (flag=${QUANT_TYPE})"
 log_info "  Deploy mode: ${DEPLOY_MODELS}"
-log_info "  Chat model: ${CHAT_MODEL_NAME}"
-log_info "  Tool model: ${TOOL_MODEL_NAME}"
+if [ "${DEPLOY_MODELS}" != "tool" ]; then
+  log_info "  Chat model: ${CHAT_MODEL_NAME}"
+fi
+if [ "${DEPLOY_MODELS}" != "chat" ]; then
+  log_info "  Tool model: ${TOOL_MODEL_NAME}"
+fi
 log_info ""
 log_info "Starting deployment in background (auto-detached)"
 log_info "Ctrl+C stops log tailing only - deployment continues"

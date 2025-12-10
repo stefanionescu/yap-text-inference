@@ -12,7 +12,7 @@ from ...classifier import get_classifier_adapter
 from ...config import TOOL_LANGUAGE_FILTER
 from ...handlers.session import session_handler
 from ...utils import is_mostly_english
-from .tool_filter import filter_tool_phrase
+from .filter import filter_tool_phrase
 
 logger = logging.getLogger(__name__)
 
