@@ -41,7 +41,7 @@ detect_gpu_name
 apply_quantization_defaults
 
 log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
-log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
+log_info "Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
 if [ "${DEPLOY_CHAT}" = "1" ]; then
   log_info "  Chat model: ${CHAT_MODEL:-<unset>}"
   chat_backend="${CHAT_QUANTIZATION:-${QUANTIZATION:-<unset>}}"
