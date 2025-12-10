@@ -1,6 +1,6 @@
 # Yap Text Inference Server
 
-A vLLM text inference server optimized for pairing a chat model with a lightweight screenshot-intent classifier. It can run:
+A vLLM text inference server optimized for pairing a chat model with a lightweight screenshot-intent classifier. Chat generations run on vLLM; the tool router is a direct transformers classifier (no vLLM, no quantization). It can run:
 - A vLLM chat engine for roleplay / assistant flows
 - A classifier-only tool router (takes screenshots or skips them)
 - Either engine independently or both together (sequential flow only)
@@ -66,7 +66,7 @@ Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-screenshot-
 Examples:
 ```bash
 # Float chat model (auto → FP8)
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
 
 # Float roleplay model (auto → FP8) with classifier routing
 bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-screenshot-intent-classifier
@@ -92,7 +92,7 @@ You can deploy the server in Docker using the stacks in `docker/awq` (pre-quanti
 DOCKER_USERNAME=youruser docker/awq/build.sh
 docker run -d --gpus all --name yap-awq \
   -e CHAT_MODEL=yapwithai/impish-12b-awq \
-  -e TOOL_MODEL=yapwithai/hammer-2.1-3b-awq \
+  -e TOOL_MODEL=yapwithai/yap-screenshot-intent-classifier \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_your_api_token \
   -e MAX_CONCURRENT_CONNECTIONS=32 \
@@ -106,6 +106,8 @@ docker run -d --gpus all --name yap-mixed \
   -e MAX_CONCURRENT_CONNECTIONS=32 \
   -p 8000:8000 youruser/yap-text-inference-mixed:both-fp8
 ```
+
+> Tool classifiers are just standard PyTorch weights. They’re cached locally (e.g., `$REPO/.run`, `.hf`, or `/app/models/tool` inside Docker) so restarts reuse them instantly even though there’s no AWQ variant.
 
 See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, image behavior, and run options.
 
@@ -190,9 +192,8 @@ bash scripts/restart.sh both --install-deps
 # Reset models/quantization without reinstalling deps
 bash scripts/restart.sh --reset-models --deploy-mode both \
   --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
-  --tool-model MadeAgents/Hammer2.1-3b \
-  --chat-quant fp8 \
-  --tool-quant awq
+  --tool-model yapwithai/yap-screenshot-intent-classifier \
+  --chat-quant fp8
 
 # Classifier-only reset (no chat engine)
 bash scripts/restart.sh --reset-models --deploy-mode tool \

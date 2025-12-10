@@ -10,13 +10,13 @@ log_info "Starting Yap Text Inference Docker Container (AWQ Mode)"
 usage() {
   echo "Yap Text Inference Docker Container - AWQ Pre-quantized Models"
   echo ""
-  echo "This container only supports pre-quantized AWQ models from Hugging Face."
+  echo "This container preloads AWQ chat models; tool classifiers remain float."
   echo ""
   echo "Required Environment Variables (based on DEPLOY_MODELS):"
   echo "  DEPLOY_MODELS=both|chat|tool  (default: both)"
   echo "  If DEPLOY_MODELS=chat  -> CHAT_MODEL required (pre-quantized AWQ/W4A16 repo)"
-  echo "  If DEPLOY_MODELS=tool  -> TOOL_MODEL required (pre-quantized AWQ/W4A16 repo)"
-  echo "  If DEPLOY_MODELS=both  -> CHAT_MODEL and TOOL_MODEL required"
+  echo "  If DEPLOY_MODELS=tool  -> TOOL_MODEL required (classifier repo, e.g. yapwithai/yap-screenshot-intent-classifier)"
+  echo "  If DEPLOY_MODELS=both  -> CHAT_MODEL (AWQ) and TOOL_MODEL (classifier) required"
   echo ""
   echo "Optional Environment Variables:"
   echo "  TEXT_API_KEY                     - API key for authentication (required, no default)"
@@ -25,20 +25,20 @@ usage() {
   echo ""
   echo "Examples:"
   echo "  # Both models"
-  echo "  docker run --gpus all -d \\
-  -e DEPLOY_MODELS=both \\
-  -e CHAT_MODEL=your-org/chat-awq \\
-  -e TOOL_MODEL=your-org/tool-awq IMAGE"
+  echo "  docker run --gpus all -d \\"
+  echo "    -e DEPLOY_MODELS=both \\"
+  echo "    -e CHAT_MODEL=your-org/chat-awq \\"
+  echo "    -e TOOL_MODEL=your-org/tool-classifier IMAGE"
   echo ""
   echo "  # Chat only"
-  echo "  docker run --gpus all -d \\
-  -e DEPLOY_MODELS=chat \\
-  -e CHAT_MODEL=your-org/chat-awq IMAGE"
+  echo "  docker run --gpus all -d \\"
+  echo "    -e DEPLOY_MODELS=chat \\"
+  echo "    -e CHAT_MODEL=your-org/chat-awq IMAGE"
   echo ""
   echo "  # Tool only"
-  echo "  docker run --gpus all -d \\
-  -e DEPLOY_MODELS=tool \\
-  -e TOOL_MODEL=your-org/tool-awq IMAGE"
+  echo "  docker run --gpus all -d \\"
+  echo "    -e DEPLOY_MODELS=tool \\"
+  echo "    -e TOOL_MODEL=your-org/tool-classifier IMAGE"
   echo ""
   echo "Health check: curl http://localhost:8000/healthz"
   exit 0

@@ -82,9 +82,6 @@ _restart_needs_awq_pipeline() {
   if [ "${CHAT_QUANTIZATION:-}" = "awq" ]; then
     return 0
   fi
-  if [ "${TOOL_QUANTIZATION:-}" = "awq" ]; then
-    return 0
-  fi
   return 1
 }
 
@@ -276,10 +273,9 @@ restart_reconfigure_models() {
   else
     unset TOOL_MODEL TOOL_MODEL_NAME
   fi
-  unset DUAL_MODEL
 
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
-  local tool_quant="${RECONFIG_TOOL_QUANTIZATION:-${TOOL_QUANTIZATION:-}}"
+  local tool_quant="${TOOL_QUANTIZATION:-}"
   local quantization="${QUANTIZATION:-}"
   local chat_quant_from_hint=0
 

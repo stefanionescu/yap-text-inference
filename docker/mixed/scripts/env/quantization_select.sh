@@ -6,9 +6,8 @@
 
 if [ -z "${QUANTIZATION:-}" ] || [ "${QUANTIZATION}" = "auto" ]; then
   CHAT_IS_AWQ=$([ "${DEPLOY_CHAT}" = "1" ] && [ "${CHAT_QUANTIZATION:-}" = "awq" ] && echo 1 || echo 0)
-  TOOL_IS_AWQ=$([ "${DEPLOY_TOOL}" = "1" ] && [ "${TOOL_QUANTIZATION:-}" = "awq" ] && echo 1 || echo 0)
 
-  if [ "${CHAT_IS_AWQ}" = "1" ] && [ "${TOOL_IS_AWQ}" = "1" ]; then
+  if [ "${CHAT_IS_AWQ}" = "1" ]; then
     export QUANTIZATION=awq
   else
     export QUANTIZATION=fp8

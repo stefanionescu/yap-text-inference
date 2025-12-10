@@ -18,7 +18,7 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
   export CHAT_MODEL=${CHAT_MODEL:-yapwithai/impish-12b-awq}
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
-  export TOOL_MODEL=${TOOL_MODEL:-yapwithai/hammer-2.1-3b-awq}
+  export TOOL_MODEL=${TOOL_MODEL:-yapwithai/yap-screenshot-intent-classifier}
 fi
 
 if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then
@@ -29,7 +29,7 @@ if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then
   if [ "${DEPLOY_TOOL}" = "1" ]; then
     log_info "  Tool: ${TOOL_MODEL:-none}"
   fi
-  log_info "  Runtime quantization: 4-bit W4A16 compressed tensors (llmcompressor exports autodetected by vLLM)"
+  log_info "  Runtime quantization: Chat runs AWQ (W4A16); tool classifier stays float."
 fi
 
 # Validate models for enabled engines when QUANTIZATION=awq
@@ -38,19 +38,12 @@ if [ "${QUANTIZATION:-awq}" = "awq" ]; then
     log_error "Error: CHAT_MODEL must be set when deploying chat in AWQ mode"
     exit 1
   fi
-  if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
-    log_error "Error: TOOL_MODEL must be set when deploying tool in AWQ mode"
-    exit 1
-  fi
 fi
 
 # Set quantization only for selected engines
 if [ "${QUANTIZATION:-awq}" = "awq" ]; then
   if [ "${DEPLOY_CHAT}" = "1" ]; then
     export CHAT_QUANTIZATION=awq
-  fi
-  if [ "${DEPLOY_TOOL}" = "1" ]; then
-    export TOOL_QUANTIZATION=awq
   fi
 fi
 

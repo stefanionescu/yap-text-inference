@@ -36,7 +36,7 @@ from ..tokens import (
     trim_text_to_token_limit_tool,
 )
 from ..handlers.session import session_handler
-from ..execution.executors.sequential_executor import run_sequential_execution
+from ..execution.sequential_executor import run_sequential_execution
 from ..execution.streaming.chat_streamer import run_chat_stream
 from ..execution.tool.tool_runner import run_toolcall
 from ..execution.tool.tool_parser import parse_tool_result

@@ -5,7 +5,7 @@ All artifacts are produced with [`llmcompressor`](https://github.com/vllm-projec
 
 **Default Models:**
 - **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - AWQ quantized Impish Nemo 12B
-- **Tool**: [yapwithai/hammer-2.1-3b-awq](https://huggingface.co/yapwithai/hammer-2.1-3b-awq) - AWQ quantized Hammer 2.1 3B
+- **Tool**: [yapwithai/yap-screenshot-intent-classifier](https://huggingface.co/yapwithai/yap-screenshot-intent-classifier) - Screenshot intent classifier (float)
 
 ## Contents
 
@@ -54,7 +54,7 @@ DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool ./build.sh  # tag :tool
 TEXT_API_KEY=your_secret_key \
 DEPLOY_MODELS=both \
 CHAT_MODEL=your-org/chat-awq \
-TOOL_MODEL=your-org/tool-awq \
+TOOL_MODEL=your-org/tool-classifier \
 CHAT_GPU_FRAC=0.70 \
 TOOL_GPU_FRAC=0.20 \
   docker run -d --gpus all --name yap-server \
@@ -74,17 +74,9 @@ docker run -d --gpus all --name yap-chat \
 # Run (tool only)
 docker run -d --gpus all --name yap-tool \
   -e DEPLOY_MODELS=tool \
-  -e TOOL_MODEL=your-org/tool-awq \
+  -e TOOL_MODEL=your-org/tool-classifier \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:tool
-
-# Run (dual – reuse one model for chat + tool)
-docker run -d --gpus all --name yap-dual \
-  -e DEPLOY_MODELS=dual \
-  -e DUAL_MODEL=your-org/chat-awq \
-  -p 8000:8000 \
-  yourusername/yap-text-inference-awq:both
-```
 
 ## Environment Variables
 
@@ -92,7 +84,7 @@ docker run -d --gpus all --name yap-dual \
 - `TEXT_API_KEY` – API key handed to the server
 - `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
 - If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
-- If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/hammer-2.1-3b-awq`)
+- If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/yap-screenshot-intent-classifier`)
 - If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
 
 ### Optional
@@ -129,7 +121,7 @@ TAG=v1.0.0 ./build.sh
 docker run -d --gpus all --name yap-server \
   -e DEPLOY_MODELS=both \
   -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-awq \
+  -e TOOL_MODEL=your-org/tool-classifier \
   -e TEXT_API_KEY=your_secret_key \
   -e CHAT_GPU_FRAC=0.70 \
   -e TOOL_GPU_FRAC=0.20 \
@@ -166,7 +158,7 @@ docker run -d --gpus all --name yap-server \
   --shm-size=2g \
   --ulimit memlock=-1:-1 \
   -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-awq \
+  -e TOOL_MODEL=your-org/tool-classifier \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:latest
 ```
@@ -177,7 +169,7 @@ docker run -d --gpus all --name yap-server \
   -v yap-hf-cache:/app/.hf \
   -v yap-vllm-cache:/app/.vllm_cache \
   -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-awq \
+  -e TOOL_MODEL=your-org/tool-classifier \
   -p 8000:8000 \
   yourusername/yap-text-inference-awq:latest
 ```
@@ -200,7 +192,7 @@ docker run -d --gpus all --name yap-server \
    - Ensure models are properly quantized AWQ format
 
 4. **Performance issues**
-   - Keep concurrent mode (default)
+   - Sequential execution is always enabled; validate tool routing before chat
    - Use fp8 KV cache on supported GPUs: `KV_DTYPE=fp8`
    - Prefer FlashInfer backend when available
 
@@ -208,7 +200,7 @@ docker run -d --gpus all --name yap-server \
 ```bash
 docker run -it --gpus all --rm \
   -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-awq \
+  -e TOOL_MODEL=your-org/tool-classifier \
   yourusername/yap-text-inference-awq:latest \
   /bin/bash
 ```

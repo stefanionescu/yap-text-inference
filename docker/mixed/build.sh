@@ -21,7 +21,7 @@ case "${DEPLOY_MODELS_VAL}" in
 esac
 
 # Normalize presence of build-time sources
-CHAT_IS_AWQ=0; TOOL_IS_AWQ=0
+CHAT_IS_AWQ=0
 if [ "${DEPLOY_MODELS_VAL}" != "tool" ]; then
   if [ -z "${CHAT_MODEL:-}" ]; then
     echo "[ERROR] CHAT_MODEL must be provided when deploying chat/both" >&2; exit 1
@@ -35,7 +35,8 @@ if [ "${DEPLOY_MODELS_VAL}" != "chat" ]; then
     echo "[ERROR] TOOL_MODEL must be provided when deploying tool/both" >&2; exit 1
   fi
   if model_detect_is_awq_name "${TOOL_MODEL}"; then
-    TOOL_IS_AWQ=1
+    echo "[ERROR] TOOL_MODEL '${TOOL_MODEL}' appears to be an AWQ export. Tool classifiers must remain float." >&2
+    exit 1
   fi
 fi
 
@@ -43,16 +44,12 @@ case "${DEPLOY_MODELS_VAL}" in
   chat)
     if [ ${CHAT_IS_AWQ} -eq 1 ]; then TAG="chat-awq"; else TAG="chat-fp8"; fi ;;
   tool)
-    if [ ${TOOL_IS_AWQ} -eq 1 ]; then TAG="tool-awq"; else TAG="tool-fp8"; fi ;;
+    TAG="tool-fp8" ;;
   both)
-    if [ ${CHAT_IS_AWQ} -eq 1 ] && [ ${TOOL_IS_AWQ} -eq 1 ]; then
-      TAG="both-awq"
-    elif [ ${CHAT_IS_AWQ} -eq 0 ] && [ ${TOOL_IS_AWQ} -eq 0 ]; then
-      TAG="both-fp8"
-    elif [ ${CHAT_IS_AWQ} -eq 0 ] && [ ${TOOL_IS_AWQ} -eq 1 ]; then
-      TAG="both-chat-fp8-tool-awq"
+    if [ ${CHAT_IS_AWQ} -eq 1 ]; then
+      TAG="both-chat-awq"
     else
-      TAG="both-chat-awq-tool-fp8"
+      TAG="both-fp8"
     fi ;;
 esac
 
@@ -77,18 +74,18 @@ usage() {
   echo "  DOCKER_USERNAME      - Docker Hub username (required)"
   echo "  DEPLOY_MODELS        - chat|tool|both (default: both)"
   echo "  CHAT_MODEL           - Chat repo/path (float, GPTQ, AWQ, W4A16 supported)"
-  echo "  TOOL_MODEL           - Tool repo/path (float, GPTQ, AWQ, W4A16 supported)"
+  echo "  TOOL_MODEL           - Tool classifier repo/path (transformers sequence classifier)"
   echo "  PLATFORM             - Target platform (default: linux/amd64)"
   echo ""
   echo "Build-Time Args (passed via --build-arg):"
   echo "  DEPLOY_MODELS=both|chat|tool"
   echo "  CHAT_MODEL           - Chat repo/path (one source per engine)"
-  echo "  TOOL_MODEL           - Tool repo/path (one source per engine)"
+  echo "  TOOL_MODEL           - Tool classifier repo/path (one source per engine)"
   echo "  HF_TOKEN             - HF token for gated/private repos"
   echo ""
   echo "Examples:"
   echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=both CHAT_MODEL=org/chat TOOL_MODEL=org/tool ${0}   # -> :both-fp8"
-  echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=both CHAT_MODEL=org/chat-awq TOOL_MODEL=org/tool-awq ${0}   # -> :both-awq"
+  echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=both CHAT_MODEL=org/chat-awq TOOL_MODEL=org/tool ${0}   # -> :both-chat-awq"
   echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=chat CHAT_MODEL=org/chat-awq ${0}   # -> :chat-awq"
   echo "  DOCKER_USERNAME=myuser DEPLOY_MODELS=tool TOOL_MODEL=org/tool ${0}   # -> :tool-fp8"
   exit 0

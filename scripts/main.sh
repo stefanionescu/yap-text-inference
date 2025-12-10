@@ -72,9 +72,9 @@ usage() {
   echo "                           SicariusSicariiStuff/Impish_Mind_8B"
   echo "                           kyx0r/Neona-12B"
   echo ""
-  echo "Tool model options:"
-  echo "  MadeAgents/Hammer2.1-1.5b"
-  echo "  MadeAgents/Hammer2.1-3b"
+  echo "Tool model options (classifier-only):"
+  echo "  yapwithai/yap-screenshot-intent-classifier"
+  echo "  (or any compatible transformers classifier repo/path)"
   echo ""
   echo "Required environment variables:"
   echo "  TEXT_API_KEY='secret'             - API authentication key"
@@ -86,24 +86,24 @@ usage() {
   echo ""
   echo "Examples:"
   echo "  # Standard deployment (auto-background with log tailing)"
-  echo "  $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo "  $0 SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier"
   echo ""
   echo "  # 8B roleplay model"
-  echo "  $0 SicariusSicariiStuff/Wingless_Imp_8B MadeAgents/Hammer2.1-1.5b"
+  echo "  $0 SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-screenshot-intent-classifier"
   echo ""
   echo "  # 8B highest rated uncensored model"
-  echo "  $0 SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-1.5b"
+  echo "  $0 SicariusSicariiStuff/Impish_Mind_8B yapwithai/yap-screenshot-intent-classifier"
   echo ""
-  echo "  # 4-bit AWQ (quantize both chat and tool models on load)"
-  echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
+  echo "  # 4-bit AWQ for chat (tool classifier stays float)"
+  echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier"
   echo ""
   echo "  # Chat-only deployment"
   echo "  $0 chat SicariusSicariiStuff/Impish_Nemo_12B"
   echo "  DEPLOY_MODELS=chat $0 SicariusSicariiStuff/Impish_Nemo_12B"
   echo ""
   echo "  # Tool-only deployment"
-  echo "  $0 tool MadeAgents/Hammer2.1-1.5b"
-  echo "  DEPLOY_MODELS=tool $0 MadeAgents/Hammer2.1-1.5b"
+  echo "  $0 tool yapwithai/yap-screenshot-intent-classifier"
+  echo "  DEPLOY_MODELS=tool $0 yapwithai/yap-screenshot-intent-classifier"
   echo ""
   echo "AWQ uploads:"
   echo "  --push-awq        Explicitly upload freshly built AWQ caches to HF"
@@ -211,6 +211,11 @@ if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ -z "${TOOL_QUANTIZATION:-}" ]; t
   TOOL_QUANT_HINT="$(model_detect_quantization_hint "${TOOL_MODEL_NAME}")"
 fi
 
+if [ "${TOOL_QUANTIZATION:-}" = "awq" ]; then
+  log_warn "Error: TOOL_QUANTIZATION=awq is not supported. Tool models are classifier-only."
+  usage
+fi
+
 # Determine QUANTIZATION
 case "${QUANT_TYPE}" in
   awq)
@@ -221,9 +226,6 @@ case "${QUANT_TYPE}" in
     fi
     if [ "${DEPLOY_MODE_SELECTED}" != "tool" ]; then
       export CHAT_QUANTIZATION=awq
-    fi
-    if [ "${DEPLOY_MODE_SELECTED}" != "chat" ]; then
-      export TOOL_QUANTIZATION=awq
     fi
     ;;
   auto)
