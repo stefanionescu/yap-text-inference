@@ -70,12 +70,16 @@ async def _run_classifier_toolcall(
     # Get classifier adapter (lazily initialized, has its own tokenizer)
     adapter = get_classifier_adapter()
     
-    # Get raw user texts from session, let classifier trim with its tokenizer
-    user_texts = session_handler.get_user_texts(session_id)
-    user_history = adapter.trim_user_history(user_texts)
-    
-    # Run classifier
-    text = adapter.run_tool_inference(user_utt, user_history)
+    # Snapshot user texts (most recent last)
+    user_texts = list(session_handler.get_user_texts(session_id))
+
+    def _classify_sync() -> str:
+        """Run the full trimming + classifier stack in a worker thread."""
+        user_history = adapter.trim_user_history(user_texts)
+        return adapter.run_tool_inference(user_utt, user_history)
+
+    loop = asyncio.get_running_loop()
+    text = await loop.run_in_executor(None, _classify_sync)
     
     dt_ms = (time.perf_counter() - t0) * 1000.0
     logger.info(
