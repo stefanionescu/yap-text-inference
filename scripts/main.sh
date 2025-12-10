@@ -359,12 +359,12 @@ if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
 else
   log_info "Configuration: quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
 fi
-log_info "  Deploy mode: ${DEPLOY_MODELS}"
+log_info "Deploy mode: ${DEPLOY_MODELS}"
 if [ "${DEPLOY_MODELS}" != "tool" ]; then
-  log_info "  Chat model: ${CHAT_MODEL_NAME}"
+  log_info "Chat model: ${CHAT_MODEL_NAME}"
 fi
 if [ "${DEPLOY_MODELS}" != "chat" ]; then
-  log_info "  Tool model: ${TOOL_MODEL_NAME}"
+  log_info "Tool model: ${TOOL_MODEL_NAME}"
 fi
 log_info ""
 log_info "Starting deployment in background (auto-detached)"
