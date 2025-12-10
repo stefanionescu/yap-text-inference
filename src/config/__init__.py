@@ -37,7 +37,7 @@ from .env import (
 )
 from .models import (
     ALLOWED_CHAT_MODELS,
-    ALLOWED_CLASSIFIER_MODELS,
+    ALLOWED_TOOL_MODELS,
     classify_prequantized_model,
     is_valid_model as _is_valid_model,
     is_classifier_model,
@@ -126,9 +126,9 @@ if DEPLOY_TOOL:
     # Tool models must be classifiers
     if not is_classifier_model(TOOL_MODEL):
         raise ValueError("TOOL_MODEL must be a classifier model; vLLM tool engines are no longer supported")
-    if TOOL_MODEL not in ALLOWED_CLASSIFIER_MODELS:
+    if TOOL_MODEL not in ALLOWED_TOOL_MODELS:
         raise ValueError(
-            f"TOOL_MODEL classifier must be one of: {ALLOWED_CLASSIFIER_MODELS}, got: {TOOL_MODEL}"
+            f"TOOL_MODEL classifier must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}"
         )
 
 # Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
@@ -170,7 +170,7 @@ __all__ = [
     "DEFAULT_SCREEN_CHECKED_PREFIX",
     # models/validation
     "ALLOWED_CHAT_MODELS",
-    "ALLOWED_CLASSIFIER_MODELS",
+    "ALLOWED_TOOL_MODELS",
     "is_classifier_model",
     # limits
     "CHAT_MAX_LEN",

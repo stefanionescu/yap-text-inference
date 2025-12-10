@@ -43,7 +43,7 @@ class ClassifierToolAdapter:
         self.request_timeout_s = max(0.1, float(request_timeout_s))
         self._gpu_memory_frac = gpu_memory_frac
 
-        self._maybe_configure_gpu_limit()
+        self._configure_gpu_limit()
         self._model_info: ClassifierModelInfo = build_model_info(model_path, max_length)
         self._backend = self._init_backend(
             compile_model=compile_model,
@@ -96,7 +96,7 @@ class ClassifierToolAdapter:
     # Internal helpers
     # ------------------------------------------------------------------ #
 
-    def _maybe_configure_gpu_limit(self) -> None:
+    def _configure_gpu_limit(self) -> None:
         if not self.device.startswith("cuda"):
             return
         if self._gpu_memory_frac is None:

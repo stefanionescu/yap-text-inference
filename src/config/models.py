@@ -62,7 +62,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # stupid, output is a bit messed up, ignores instructions
 ]
 
-ALLOWED_CLASSIFIER_MODELS: list[str] = [
+ALLOWED_TOOL_MODELS: list[str] = [
     "yapwithai/yap-longformer-screenshot-intent",
     "yapwithai/yap-modernbert-screenshot-intent"
 ]
@@ -77,7 +77,7 @@ def is_classifier_model(model: str | None) -> bool:
     if not model:
         return False
     # Check explicit allowlist
-    if model in ALLOWED_CLASSIFIER_MODELS:
+    if model in ALLOWED_TOOL_MODELS:
         return True
     # Check if it's a local path containing 'classifier' in the name
     if _is_local_model_path(model) and "classifier" in model.lower():
@@ -115,7 +115,7 @@ def is_valid_model(model: str, allowed_models: list, model_type: str) -> bool:
 
 __all__ = [
     "ALLOWED_CHAT_MODELS",
-    "ALLOWED_CLASSIFIER_MODELS",
+    "ALLOWED_TOOL_MODELS",
     "_is_local_model_path",
     "is_valid_model",
     "is_classifier_model",
