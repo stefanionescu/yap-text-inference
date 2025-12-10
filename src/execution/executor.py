@@ -1,19 +1,18 @@
-"""Sequential execution: tool-first, then chat streaming."""
+"""Executor: tool-first, then chat."""
 
-import asyncio
 import logging
 import uuid
 from fastapi import WebSocket
 
 from .tool.tool_parser import parse_tool_result
-from .streaming.chat_streamer import run_chat_stream
+from .chat import run_chat_generation
 from ..handlers.session import session_handler
 from ..utils.executor import launch_tool_request, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
 
 
-async def run_sequential_execution(
+async def run_execution(
     ws: WebSocket,
     session_id: str,
     static_prefix: str,
@@ -35,7 +34,7 @@ async def run_sequential_execution(
         user_utt: User utterance
     """
     # Run tool router (do not mark active to avoid clobbering chat req id)
-    # Timeout is handled internally by tool_runner.py (like chat_streamer.py does)
+    # Timeout is handled internally by tool_runner.py (mirroring the chat stream)
     tool_req_id, tool_coro = launch_tool_request(session_id, user_utt, history_text)
     logger.info(f"sequential_exec: tool start req_id={tool_req_id}")
 
@@ -68,7 +67,7 @@ async def run_sequential_execution(
 
     final_text = await stream_chat_response(
         ws,
-        run_chat_stream(
+        run_chat_generation(
             session_id,
             static_prefix,
             runtime_text,

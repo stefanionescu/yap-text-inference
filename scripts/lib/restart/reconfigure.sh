@@ -30,8 +30,6 @@ _restart_is_awq_model() {
 _restart_autodetect_quantization() {
   local chat_model="$1"
   local chat_enabled="$2"
-  local tool_model="$3"
-  local tool_enabled="$4"
 
   if [ "${chat_enabled}" = "1" ]; then
     local chat_hint
@@ -41,19 +39,6 @@ _restart_autodetect_quantization() {
       return
     fi
     if [ "${chat_hint}" = "gptq_marlin" ]; then
-      echo "gptq_marlin"
-      return
-    fi
-  fi
-
-  if [ "${tool_enabled}" = "1" ]; then
-    local tool_hint
-    tool_hint="$(model_detect_quantization_hint "${tool_model}")"
-    if [ "${tool_hint}" = "awq" ]; then
-      echo "awq"
-      return
-    fi
-    if [ "${tool_hint}" = "gptq_marlin" ]; then
       echo "gptq_marlin"
       return
     fi
@@ -118,7 +103,6 @@ _restart_load_previous_config() {
   PREV_TOOL_MODEL=""
   PREV_QUANTIZATION=""
   PREV_CHAT_QUANTIZATION=""
-  PREV_TOOL_QUANTIZATION=""
   PREV_DEPLOY_MODELS=""
   PREV_DEPLOY_CHAT=0
   PREV_DEPLOY_TOOL=0
@@ -134,7 +118,6 @@ _restart_load_previous_config() {
   local cur_tool="${TOOL_MODEL:-}"
   local cur_quant="${QUANTIZATION:-}"
   local cur_chat_quant="${CHAT_QUANTIZATION:-}"
-  local cur_tool_quant="${TOOL_QUANTIZATION:-}"
   local cur_deploy="${DEPLOY_MODELS:-}"
   # shellcheck disable=SC1090
   source "${last_env}" || true
@@ -143,7 +126,6 @@ _restart_load_previous_config() {
   PREV_TOOL_MODEL="${TOOL_MODEL:-}"
   PREV_QUANTIZATION="${QUANTIZATION:-}"
   PREV_CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
-  PREV_TOOL_QUANTIZATION="${TOOL_QUANTIZATION:-}"
   PREV_DEPLOY_MODELS="${DEPLOY_MODELS:-}"
   case "${PREV_DEPLOY_MODELS}" in
     both) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=1 ;;
@@ -156,7 +138,6 @@ _restart_load_previous_config() {
   TOOL_MODEL="${cur_tool}"
   QUANTIZATION="${cur_quant}"
   CHAT_QUANTIZATION="${cur_chat_quant}"
-  TOOL_QUANTIZATION="${cur_tool_quant}"
   DEPLOY_MODELS="${cur_deploy}"
 
 }
@@ -196,12 +177,6 @@ _restart_can_preserve_cache() {
     prev_tool_id="$(_restart_resolve_model_identity "${PREV_TOOL_MODEL}")"
     new_tool_id="$(_restart_resolve_model_identity "${TOOL_MODEL}")"
     if [ -z "${prev_tool_id}" ] || [ "${new_tool_id}" != "${prev_tool_id}" ]; then
-      return 1
-    fi
-    local prev_tool_quant new_tool_quant
-    prev_tool_quant="$(_restart_effective_quant "${PREV_TOOL_QUANTIZATION}" "${PREV_QUANTIZATION}")"
-    new_tool_quant="$(_restart_effective_quant "${TOOL_QUANTIZATION:-}" "${QUANTIZATION}")"
-    if [ "${new_tool_quant}" != "${prev_tool_quant}" ]; then
       return 1
     fi
   fi
@@ -275,18 +250,10 @@ restart_reconfigure_models() {
   fi
 
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
-  local tool_quant="${TOOL_QUANTIZATION:-}"
   local quantization="${QUANTIZATION:-}"
-  local chat_quant_from_hint=0
 
   if [ "${deploy_chat}" = "1" ] && [ -z "${chat_quant}" ]; then
     chat_quant="$(model_detect_quantization_hint "${chat_model}")"
-    if [ -n "${chat_quant}" ]; then
-      chat_quant_from_hint=1
-    fi
-  fi
-  if [ "${deploy_tool}" = "1" ] && [ -z "${tool_quant}" ]; then
-    tool_quant="$(model_detect_quantization_hint "${tool_model}")"
   fi
 
   if [ -n "${chat_quant}" ]; then
@@ -295,26 +262,14 @@ restart_reconfigure_models() {
     fi
     quantization="${chat_quant}"
   fi
-  if [ -n "${tool_quant}" ]; then
-    if ! _restart_validate_quantization "${tool_quant}"; then
-      exit 1
-    fi
+  if [ -z "${quantization}" ]; then
+    quantization="$(_restart_autodetect_quantization "${chat_model}" "${deploy_chat}")"
   fi
   if [ -z "${quantization}" ]; then
-    quantization="$(_restart_autodetect_quantization "${chat_model}" "${deploy_chat}" "${tool_model}" "${deploy_tool}")"
-  fi
-  if [ -z "${quantization}" ] || [ "${quantization}" = "fp8" ]; then
-    if [ -n "${chat_quant}" ] && [ "${chat_quant}" != "fp8" ]; then
-      quantization="${chat_quant}"
-    elif [ -n "${tool_quant}" ] && [ "${tool_quant}" != "fp8" ]; then
-      quantization="${tool_quant}"
-    fi
+    quantization="fp8"
   fi
   if ! _restart_validate_quantization "${quantization}"; then
     exit 1
-  fi
-  if [ -z "${tool_quant}" ] && [ "${deploy_tool}" = "1" ] && [ "${chat_quant_from_hint}" = "1" ]; then
-    tool_quant="fp8"
   fi
   export QUANTIZATION="${quantization}"
 
@@ -322,12 +277,6 @@ restart_reconfigure_models() {
     export CHAT_QUANTIZATION="${chat_quant}"
   else
     unset CHAT_QUANTIZATION
-  fi
-
-  if [ -n "${tool_quant}" ]; then
-    export TOOL_QUANTIZATION="${tool_quant}"
-  else
-    unset TOOL_QUANTIZATION
   fi
 
   local preserve_cache=0
@@ -345,9 +294,7 @@ restart_reconfigure_models() {
   fi
   if [ "${deploy_tool}" = "1" ]; then
     log_info "Tool model: ${TOOL_MODEL}"
-    if [ -n "${TOOL_QUANTIZATION:-}" ]; then
-      log_info "Tool quantization override: ${TOOL_QUANTIZATION}"
-    fi
+    log_info "Tool runtime: classifier (PyTorch, float weights)"
   fi
   log_info "Base quantization: ${QUANTIZATION}"
 

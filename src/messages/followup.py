@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import WebSocket
 
 from ..handlers.session import session_handler
-from ..execution.streaming.chat_streamer import run_chat_stream
+from ..execution.chat import run_chat_generation
 from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS
 from ..tokens import trim_text_to_token_limit_chat
 from ..utils.executor import safe_send_json
@@ -68,7 +68,7 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     sampling_overrides = cfg.get("chat_sampling")
     interrupted = False
 
-    async for chunk in run_chat_stream(
+    async for chunk in run_chat_generation(
         session_id=session_id,
         static_prefix=static_prefix,
         runtime_text=runtime_text,

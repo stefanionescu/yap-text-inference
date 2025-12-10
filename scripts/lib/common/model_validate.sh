@@ -9,7 +9,6 @@ validate_models_early() {
   local tool_model="${TOOL_MODEL:-}"
   local quantization="${QUANTIZATION:-}"
   local chat_quant="${CHAT_QUANTIZATION:-}"
-  local tool_quant="${TOOL_QUANTIZATION:-}"
 
   # Find Python - prefer venv if available
   local python_cmd="python3"
@@ -37,20 +36,13 @@ chat_model = "${chat_model}" or None
 tool_model = "${tool_model}" or None
 quantization = "${quantization}" or None
 chat_quant = "${chat_quant}" or None
-tool_quant = "${tool_quant}" or None
 
 errors = []
 
-def effective_quantization(model_type):
-    if model_type == "chat":
-        return (chat_quant or quantization or "").lower()
-    tq = (tool_quant or "").lower()
-    if tq:
-        return tq
-    return (quantization or "").lower()
-
 def allow_prequantized_override(model, model_type):
-    quant = effective_quantization(model_type)
+    if model_type != "chat":
+        return False
+    quant = (chat_quant or quantization or "").lower()
     if not model or not quant:
         return False
     kind = classify_prequantized_model(model)

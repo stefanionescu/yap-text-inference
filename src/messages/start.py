@@ -36,8 +36,8 @@ from ..tokens import (
     trim_text_to_token_limit_tool,
 )
 from ..handlers.session import session_handler
-from ..execution.sequential_executor import run_sequential_execution
-from ..execution.streaming.chat_streamer import run_chat_stream
+from ..execution.executor import run_execution
+from ..execution.chat import run_chat_generation
 from ..execution.tool.tool_runner import run_toolcall
 from ..execution.tool.tool_parser import parse_tool_result
 from ..utils.executor import stream_chat_response
@@ -327,7 +327,7 @@ def _build_ack_payload(
 async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
     if DEPLOY_CHAT and DEPLOY_TOOL:
         logger.info("handle_start: sequential execution session_id=%s", plan.session_id)
-        await run_sequential_execution(
+        await run_execution(
             ws,
             plan.session_id,
             plan.static_prefix,
@@ -343,7 +343,7 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
         logger.info("handle_start: chat-only streaming session_id=%s", plan.session_id)
         final_text = await stream_chat_response(
             ws,
-            run_chat_stream(
+            run_chat_generation(
                 plan.session_id,
                 plan.static_prefix,
                 plan.runtime_text,

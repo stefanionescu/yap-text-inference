@@ -1,4 +1,4 @@
-"""Shared LLM streaming controller for chat and tool executions."""
+"""Chat streaming controller built on top of vLLM."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 
 
 logger = logging.getLogger(__name__)
-
+STREAM_LABEL = "chat"
 
 CancelCheck = Callable[[], bool | Awaitable[bool]] | None
 
@@ -22,10 +22,9 @@ class StreamCancelledError(Exception):
 
 
 @dataclass(slots=True)
-class LLMStreamConfig:
-    """Configuration for an LLM streaming request."""
+class ChatStreamConfig:
+    """Configuration for chat streaming."""
 
-    name: str
     session_id: str
     request_id: str
     prompt: str
@@ -37,10 +36,10 @@ class LLMStreamConfig:
     cancel_check: CancelCheck = None
 
 
-class LLMStream:
-    """Unified streaming helper that handles buffering, cancellation, and logging."""
+class ChatStreamController:
+    """Handles buffering, cancellation, and logging for chat generations."""
 
-    def __init__(self, config: LLMStreamConfig):
+    def __init__(self, config: ChatStreamConfig):
         self._cfg = config
         self._full_text: str = ""
         self._ttfb_ms: float | None = None
@@ -58,7 +57,7 @@ class LLMStream:
         self._start_time = start
         logger.info(
             "%s_stream: start session_id=%s req_id=%s timeout_s=%.2f flush_ms=%.1f",
-            cfg.name,
+            STREAM_LABEL,
             cfg.session_id,
             cfg.request_id,
             cfg.timeout_s,
@@ -84,14 +83,14 @@ class LLMStream:
             self._cancelled = True
             logger.info(
                 "%s_stream: cancelled session_id=%s req_id=%s",
-                cfg.name,
+                STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
             )
         except asyncio.TimeoutError:
             logger.warning(
                 "%s_stream: timeout session_id=%s req_id=%s",
-                cfg.name,
+                STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
             )
@@ -104,7 +103,7 @@ class LLMStream:
             elapsed_ms = (time.perf_counter() - start) * 1000.0
             logger.info(
                 "%s_stream: end session_id=%s req_id=%s total_len=%s ms=%.1f",
-                cfg.name,
+                STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
                 len(self._full_text),
@@ -177,7 +176,7 @@ class LLMStream:
             cfg = self._cfg
             logger.info(
                 "%s_stream: first token session_id=%s req_id=%s ttfb_ms=%.1f",
-                cfg.name,
+                STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
                 self._ttfb_ms,
@@ -230,4 +229,3 @@ class _CancelChecker:
         if asyncio.iscoroutine(result):
             result = await result
         return bool(result)
-

@@ -8,8 +8,6 @@ apply_quantization_defaults() {
   if [ -z "${effective_quant}" ] || [ "${effective_quant}" = "fp8" ]; then
     if [ -n "${CHAT_QUANTIZATION:-}" ] && [ "${CHAT_QUANTIZATION}" != "fp8" ]; then
       effective_quant="${CHAT_QUANTIZATION}"
-    elif [ -n "${TOOL_QUANTIZATION:-}" ] && [ "${TOOL_QUANTIZATION}" != "fp8" ]; then
-      effective_quant="${TOOL_QUANTIZATION}"
     fi
   fi
   if [ -z "${effective_quant}" ]; then

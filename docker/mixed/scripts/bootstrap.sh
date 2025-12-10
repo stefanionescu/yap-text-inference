@@ -20,7 +20,8 @@ log_info "  GPU: ${DETECTED_GPU_NAME:-unknown}"
 log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
 log_info "  Chat model: ${CHAT_MODEL:-none}"
 log_info "  Tool model: ${TOOL_MODEL:-none}"
-log_info "  Quantization: ${QUANTIZATION} (chat=${CHAT_QUANTIZATION:-auto}, tool=${TOOL_QUANTIZATION:-auto})"
+log_info "  Quantization: ${QUANTIZATION} (chat=${CHAT_QUANTIZATION:-auto})"
+log_info "  Tool runtime: classifier (PyTorch, float weights)"
 log_info "  KV dtype: ${KV_DTYPE}"
 
 

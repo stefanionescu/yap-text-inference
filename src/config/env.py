@@ -69,8 +69,7 @@ else:
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
-CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override per-engine
-TOOL_QUANTIZATION = os.getenv("TOOL_QUANTIZATION")  # Optional override per-engine
+CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override for chat
 
 if os.getenv("VLLM_USE_V1", "1") == "1":
     kv_lower = (KV_DTYPE or "").strip().lower()
@@ -134,7 +133,6 @@ __all__ = [
     "KV_DTYPE",
     "QUANTIZATION",
     "CHAT_QUANTIZATION",
-    "TOOL_QUANTIZATION",
     # prefixes
     "DEFAULT_CHECK_SCREEN_PREFIX",
     "DEFAULT_SCREEN_CHECKED_PREFIX",

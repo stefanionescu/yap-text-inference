@@ -21,13 +21,6 @@ if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
   fi
 fi
 
-if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
-  if [ "${TOOL_QUANTIZATION:-}" = "awq" ] || { [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; }; then
-    log_error "Tool models are classifier-only; AWQ quantization is not supported for TOOL_MODEL."
-    exit 1
-  fi
-fi
-
 export AWQ_TARGET_CHAT
 
 # If neither engine needs AWQ work, exit quietly

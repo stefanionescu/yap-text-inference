@@ -57,12 +57,6 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
   log_info "  Tool model: ${TOOL_MODEL:-<unset>}"
-  if [ -n "${TOOL_QUANTIZATION:-}" ]; then
-    log_info "  Tool quantization: ${TOOL_QUANTIZATION}"
-  elif [ -n "${QUANTIZATION:-}" ]; then
-    log_info "  Tool quantization: ${QUANTIZATION} (inherited)"
-  else
-    log_info "  Tool quantization: <unset>"
-  fi
+  log_info "  Tool runtime: classifier (PyTorch, float weights)"
 fi
 log_info "  KV dtype: ${KV_DTYPE}"
