@@ -31,7 +31,7 @@ from fastapi.responses import ORJSONResponse
 from .config import (
     DEPLOY_CHAT,
     DEPLOY_DUAL,
-    DEPLOY_TOOL,
+    DEPLOY_TOOL_ENGINE,
     CACHE_RESET_INTERVAL_SECONDS,
 )
 from .config.env import validate_env
@@ -78,7 +78,7 @@ async def preload_engines() -> None:
     else:
         if DEPLOY_CHAT:
             tasks.append(asyncio.create_task(_warm_engine("chat", get_chat_engine)))
-        if DEPLOY_TOOL:
+        if DEPLOY_TOOL_ENGINE:
             tasks.append(asyncio.create_task(_warm_engine("tool", get_tool_engine)))
 
     if not tasks:
