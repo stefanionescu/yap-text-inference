@@ -12,9 +12,9 @@ from src.config import (
     TOOL_MODEL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
+    DEPLOY_TOOL_ENGINE,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
-    is_classifier_model,
 )
 from src.utils import RateLimitError, SlidingWindowRateLimiter, format_session_timestamp
 
@@ -393,9 +393,8 @@ async def abort_session_requests(
         except Exception:  # noqa: BLE001 - best effort
             pass
 
-    # Abort tool requests only for autoregressive LLMs (not classifiers)
-    # Classifiers run synchronous inference with no engine to abort
-    if DEPLOY_TOOL and req_info.get("tool") and not is_classifier_model(TOOL_MODEL):
+    # Abort tool requests only when vLLM tool engine is deployed
+    if DEPLOY_TOOL_ENGINE and req_info.get("tool"):
         try:
             from src.engines import get_tool_engine  # local import to avoid cycles
 

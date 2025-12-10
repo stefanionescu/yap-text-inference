@@ -31,7 +31,6 @@ def get_classifier_adapter() -> ClassifierToolAdapter:
         from src.config import (
             TOOL_MODEL,
             CLASSIFIER_THRESHOLD,
-            CLASSIFIER_MAX_LENGTH,
             CLASSIFIER_COMPILE,
             CLASSIFIER_HISTORY_TOKENS,
         )
@@ -39,7 +38,6 @@ def get_classifier_adapter() -> ClassifierToolAdapter:
         _classifier_adapter = ClassifierToolAdapter(
             model_path=TOOL_MODEL,
             threshold=CLASSIFIER_THRESHOLD,
-            max_length=CLASSIFIER_MAX_LENGTH,
             history_max_tokens=CLASSIFIER_HISTORY_TOKENS,
             compile_model=CLASSIFIER_COMPILE,
         )

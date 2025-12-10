@@ -101,9 +101,26 @@ TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
 # ----------------- Classifier Model Settings -----------------
 # These are only used when TOOL_MODEL is a classifier (not autoregressive LLM)
 CLASSIFIER_THRESHOLD = float(os.getenv("CLASSIFIER_THRESHOLD", "0.66"))
-CLASSIFIER_MAX_LENGTH = int(os.getenv("CLASSIFIER_MAX_LENGTH", "1536"))
 CLASSIFIER_COMPILE = env_flag("CLASSIFIER_COMPILE", True)  # Use torch.compile for speedup
 CLASSIFIER_HISTORY_TOKENS = int(os.getenv("CLASSIFIER_HISTORY_TOKENS", "1200"))  # User-only history limit
+
+
+# ----------------- Computed Deployment Flags -----------------
+# These are computed at import time so other modules don't need to know about classifiers
+def _compute_tool_engine_needed() -> bool:
+    """Check if we need a vLLM tool engine (not needed for classifier models)."""
+    if not DEPLOY_TOOL:
+        return False
+    if DEPLOY_DUAL:
+        return False  # Dual mode uses chat engine for tool
+    # Import here to avoid circular import at module level
+    from .models import is_classifier_model
+    return not is_classifier_model(TOOL_MODEL)
+
+
+# True if we need to create a vLLM engine for tool model
+# (False when tool model is a classifier or dual mode)
+DEPLOY_TOOL_ENGINE = _compute_tool_engine_needed()
 
 
 def validate_env() -> None:
@@ -137,6 +154,7 @@ __all__ = [
     "DEPLOY_DUAL",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
+    "DEPLOY_TOOL_ENGINE",
     "DUAL_MODEL",
     "CHAT_MODEL",
     "TOOL_MODEL",
@@ -155,7 +173,6 @@ __all__ = [
     "TOOL_LANGUAGE_FILTER",
     # classifier settings
     "CLASSIFIER_THRESHOLD",
-    "CLASSIFIER_MAX_LENGTH",
     "CLASSIFIER_COMPILE",
     "CLASSIFIER_HISTORY_TOKENS",
     "validate_env",

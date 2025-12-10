@@ -21,12 +21,11 @@ from src.config import (
     CHAT_MAX_LEN,
     CHAT_MODEL,
     DEPLOY_CHAT,
-    DEPLOY_TOOL,
     DEPLOY_DUAL,
+    DEPLOY_TOOL_ENGINE,
     TOOL_GPU_FRAC,
     TOOL_MAX_LEN,
     TOOL_MODEL,
-    is_classifier_model,
 )
 from src.engines.awq_support import create_engine_with_awq_handling
 from src.engines.engine_args import make_engine_args
@@ -159,11 +158,9 @@ _ENGINE_CONFIGS: list[EngineRoleConfig] = [
     ),
 ]
 
-# Only add tool engine config for autoregressive LLMs, not classifiers
-# Classifier models use transformers directly, not vLLM
-_TOOL_IS_CLASSIFIER = is_classifier_model(TOOL_MODEL)
-
-if DEPLOY_TOOL and not DEPLOY_DUAL and not _TOOL_IS_CLASSIFIER:
+# Only add tool engine if DEPLOY_TOOL_ENGINE is True
+# (False when tool model is a classifier or dual mode)
+if DEPLOY_TOOL_ENGINE:
     _ENGINE_CONFIGS.append(
         EngineRoleConfig(
             role="tool",
@@ -174,9 +171,6 @@ if DEPLOY_TOOL and not DEPLOY_DUAL and not _TOOL_IS_CLASSIFIER:
             is_chat=False,
         )
     )
-
-if _TOOL_IS_CLASSIFIER:
-    logger.info("Tool model is a classifier (%s), skipping vLLM engine", TOOL_MODEL)
 
 _ENGINE_REGISTRY = EngineRegistry(
     configs=_ENGINE_CONFIGS,
@@ -191,15 +185,15 @@ async def get_chat_engine() -> AsyncLLMEngine:
 async def get_tool_engine() -> AsyncLLMEngine:
     """Get the tool engine (vLLM).
     
-    Raises RuntimeError if tool model is a classifier (use get_classifier_adapter instead).
+    Raises RuntimeError if no tool engine is deployed (e.g., classifier mode).
     """
-    if _TOOL_IS_CLASSIFIER:
-        raise RuntimeError(
-            f"Tool model '{TOOL_MODEL}' is a classifier. "
-            "Use get_classifier_adapter() instead of get_tool_engine()."
-        )
     if DEPLOY_DUAL:
         return await get_chat_engine()
+    if not DEPLOY_TOOL_ENGINE:
+        raise RuntimeError(
+            "No vLLM tool engine deployed. "
+            "If using a classifier model, use get_classifier_adapter() instead."
+        )
     return await _ENGINE_REGISTRY.get_engine("tool")
 
 

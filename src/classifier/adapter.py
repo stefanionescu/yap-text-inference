@@ -42,7 +42,6 @@ class ClassifierToolAdapter:
         self,
         model_path: str,
         threshold: float = 0.66,
-        max_length: int = 1536,
         history_max_tokens: int = 1200,
         device: str | None = None,
         compile_model: bool = True,
@@ -52,14 +51,12 @@ class ClassifierToolAdapter:
         Args:
             model_path: HuggingFace model ID or local path
             threshold: Probability threshold for positive classification
-            max_length: Maximum input sequence length in tokens
             history_max_tokens: Max tokens for user-only history
             device: Device to run on ('cuda', 'cpu', or None for auto)
             compile_model: Whether to use torch.compile() for speedup
         """
         self.model_path = model_path
         self.threshold = threshold
-        self.max_length = max_length
         self.history_max_tokens = history_max_tokens
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         
@@ -91,7 +88,6 @@ class ClassifierToolAdapter:
         cls,
         model_path: str,
         threshold: float = 0.66,
-        max_length: int = 1536,
         compile_model: bool = True,
     ) -> "ClassifierToolAdapter":
         """Get or create singleton instance of the classifier adapter."""
@@ -99,7 +95,6 @@ class ClassifierToolAdapter:
             cls._instance = cls(
                 model_path=model_path,
                 threshold=threshold,
-                max_length=max_length,
                 compile_model=compile_model,
             )
         return cls._instance
@@ -183,13 +178,13 @@ class ClassifierToolAdapter:
         text = self._format_input(user_utt, user_history)
         
         with torch.inference_mode():
-            # Tokenize with dynamic padding (much faster than fixed max_length)
+            # Tokenize with dynamic padding
+            # History is already trimmed to budget, no need for extra truncation
             inputs = self._tokenizer(
                 text,
                 return_tensors="pt",
                 padding=True,
-                truncation=True,
-                max_length=self.max_length,
+                truncation=True,  # Uses model's max length as safety fallback
             )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             
