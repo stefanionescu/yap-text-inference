@@ -76,15 +76,6 @@ def launch_tool_request(
     return tool_req_id, tool_coro
 
 
-async def abort_tool_request(session_id: str) -> None:
-    """Best-effort abort of an in-flight tool request for the session."""
-    req_id = session_handler.get_tool_request_id(session_id)
-    if not req_id:
-        return
-    # Classifier tool models do not support server-side cancellation; just log.
-    logger.info("executor: no-op tool abort session_id=%s req_id=%s (classifier mode)", session_id, req_id)
-
-
 @dataclass
 class _ChatStreamState:
     final_text: str
@@ -192,6 +183,5 @@ __all__ = [
     "flush_and_send",
     "cancel_task",
     "launch_tool_request",
-    "abort_tool_request",
     "stream_chat_response",
 ]

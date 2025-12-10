@@ -3,16 +3,9 @@
 source "${ROOT_DIR}/scripts/lib/common/model_detect.sh"
 
 if [ "${DEPLOY_TOOL}" = "1" ]; then
-  if model_detect_is_awq_name "${TOOL_MODEL:-}"; then
-    log_info "Detected pre-quantized AWQ tool model; skipping quantization"
-    export TOOL_QUANTIZATION=awq
-  else
-    if OUT=$(quantize_model "tool" "${TOOL_MODEL}" "${TOOL_AWQ_DIR}" "${HF_AWQ_COMMIT_MSG_TOOL:-}" "${HF_AWQ_TOOL_REPO:-}"); then
-      export TOOL_MODEL="${OUT}"; export TOOL_QUANTIZATION=awq
-    else
-      log_error "AWQ quantization failed for tool model (${TOOL_MODEL}); aborting."
-      exit 1
-    fi
+  if [ "${TOOL_QUANTIZATION:-}" = "awq" ] || { [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; }; then
+    log_error "Tool models are classifier-only; AWQ quantization is not supported."
+    exit 1
   fi
 fi
 

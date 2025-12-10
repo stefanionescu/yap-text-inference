@@ -78,7 +78,7 @@ COPY src/ /app/src/
 RUN mkdir -p /app/models /app/.hf
 
 # Preload Hugging Face models into image layers (always for embed-first design)
-# - Stored under /app/models/{chat,tool,chat_awq,tool_awq}
+# - Stored under /app/models/{chat,tool,chat_awq}
 RUN DEPLOY_MODELS=${DEPLOY_MODELS} \
     CHAT_MODEL="${CHAT_MODEL}" \
     TOOL_MODEL="${TOOL_MODEL}" \
@@ -135,10 +135,10 @@ if deploy in ('both', 'chat'):
 if deploy in ('both', 'tool'):
     ensure_present(tool, 'tool')
     tool_kind = classify(tool)
-    target = '/app/models/tool_awq' if tool_kind == 'awq' else '/app/models/tool'
-    dl(tool, target)
     if tool_kind == 'awq':
-        Path(target, '.awq_ok').write_text('preloaded\n', encoding='utf-8')
+        raise SystemExit("Tool models are classifier-only; AWQ artifacts are not supported in mixed images.")
+    target = '/app/models/tool'
+    dl(tool, target)
 PY
 
 

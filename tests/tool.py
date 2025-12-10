@@ -24,6 +24,7 @@ from tests.helpers.cli import add_connection_args, add_prompt_mode_arg  # noqa: 
 from tests.helpers.ws import with_api_key  # noqa: E402
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY  # noqa: E402
 from tests.logic.tool.runner import run_suite  # noqa: E402
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")
     add_connection_args(parser)

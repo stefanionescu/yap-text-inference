@@ -231,10 +231,9 @@ The defaults are defined in `src/config/limits.py`, but every limiter can be tun
 
 Notes for AWQ:
 - Local quantization: Provide a float chat model (e.g., `SicariusSicariiStuff/Impish_Nemo_12B`, `kyx0r/Neona-12B`, `SicariusSicariiStuff/Wingless_Imp_8B`, etc.) — do not pass a GPTQ repo
-- Pre-quantized models: Point `CHAT_MODEL` / `TOOL_MODEL` at pre-quantized AWQ or W4A16 repos; Yap skips quantization automatically
+- Pre-quantized models: Point `CHAT_MODEL` at pre-quantized AWQ or W4A16 repos; Yap skips quantization automatically
 - Smart detection: Any repo name containing `awq`, `w4a16`, `nvfp4`, `compressed-tensors`, or `autoround` is treated as 4-bit and run directly
-- The tool model (`MadeAgents/Hammer2.1-1.5b` or `-3b`) is also quantized to 4-bit AWQ on load for consistency (local mode)
-- Dual deployments reuse the chat model for tool routing. Set `DEPLOY_MODELS=dual` (or run `scripts/main.sh dual <model>`) to export `DUAL_MODEL`, `CHAT_MODEL`, and `TOOL_MODEL` automatically; the AWQ pipeline skips the tool branch and reuses the chat artifact.
+- Tool models are lightweight classifiers and always run in float precision (AWQ does not apply)
 - AWQ requires additional wheels (installed automatically via `requirements.txt`)
 - Qwen2/Qwen3 and Mistral 3 checkpoints automatically fall back to AutoAWQ 0.2.9 when quantized because llmcompressor cannot reliably trace their hybrid forward graphs yet. Metadata/readmes flag the backend so downstream consumers know whether AutoAWQ or llmcompressor produced the export.
 - Auth for private/gated repos: Set `HUGGINGFACE_HUB_TOKEN` or `HF_TOKEN`
@@ -247,31 +246,28 @@ Uploads only happen when you pass `--push-awq` to the launcher you’re using (`
 
 **Required whenever `--push-awq` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
-- `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat/both/dual are deployed
-- `HF_AWQ_TOOL_REPO` pointing to your tool AWQ repo whenever tool/both are deployed (dual reuses the chat artifact, so no tool repo is needed)
+- `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat or both models are deployed
 
 **Optional tuning (defaults shown below):**
 - `HF_AWQ_BRANCH` – upload branch (default `main`)
 - `HF_AWQ_PRIVATE` – create repo as private (`1`) or public (`0`)
 - `HF_AWQ_ALLOW_CREATE` – auto-create repo (`1`) or require it to exist (`0`)
-- `HF_AWQ_COMMIT_MSG_CHAT` / `HF_AWQ_COMMIT_MSG_TOOL` – commit message overrides
+- `HF_AWQ_COMMIT_MSG_CHAT` – commit message override for chat uploads
 
 ```bash
 export HF_TOKEN="hf_your_api_token"            # token with write access
 export HF_AWQ_CHAT_REPO="your-org/chat-awq"    # repo for the chat model (required if chat deployed)
-export HF_AWQ_TOOL_REPO="your-org/tool-awq"    # repo for the tool model (required if tool deployed)
 # optional tweaks
 export HF_AWQ_BRANCH=main                      # branch name (default: main)
 export HF_AWQ_PRIVATE=1                        # create repo as private (0 = public)
 export HF_AWQ_ALLOW_CREATE=1                   # create repo automatically (0 = expect it to exist)
 export HF_AWQ_COMMIT_MSG_CHAT="Upload Nemo AWQ build"   # optional commit message override
-export HF_AWQ_COMMIT_MSG_TOOL="Upload Hammer AWQ build"
 
 # full deployment that quantizes + uploads
 scripts/main.sh awq <chat_model> <tool_model> --push-awq
 
 # restart-only upload (works with or without --reset-models)
-bash scripts/restart.sh tool --push-awq --tool-model <model> --tool-quant awq
+bash scripts/restart.sh chat --push-awq --chat-model <model> --chat-quant awq
 ```
 
 The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.
@@ -296,17 +292,6 @@ python3 tests/warmup.py --gender male --personality flirty "hello there"
 ```
 
 Append `--prompt-mode chat` or `--prompt-mode tool` to mirror single-engine deployments (default `both`).
-
-Toggle concurrency by exporting the flag before launching the client:
-
-```bash
-# Sequential test (default)
-python3 tests/warmup.py "write a simple hello world function"
-
-# Enable concurrent mode (override the sequential default)
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
-python3 tests/warmup.py "write a simple hello world function"
-```
 
 Environment overrides honored by the client:
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
@@ -412,7 +397,7 @@ Pass `--double-ttfb` to keep each connection open for two sequential transaction
 
 GPU memory is allocated based on deployment mode:
 
-- Single model: 90% GPU memory (chat-only, tool-only, or dual)
+- Single model: 90% GPU memory (chat-only or tool-only)
 - Both models: Chat gets 70%, Tool gets 20%
 
 Override as needed:

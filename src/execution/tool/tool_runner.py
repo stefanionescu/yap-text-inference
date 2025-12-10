@@ -9,19 +9,12 @@ import uuid
 from typing import Any
 
 from ...classifier import get_classifier_adapter
-from ...config import (
-    TOOL_LANGUAGE_FILTER,
-    TOOL_MODEL,
-    is_classifier_model,
-)
+from ...config import TOOL_LANGUAGE_FILTER
 from ...handlers.session import session_handler
 from ...utils import is_mostly_english
 from .tool_filter import filter_tool_phrase
 
 logger = logging.getLogger(__name__)
-
-# Cache whether we're using classifier mode (checked once at startup)
-_USE_CLASSIFIER: bool | None = None
 
 async def _run_classifier_toolcall(
     session_id: str,
@@ -90,5 +83,5 @@ async def run_toolcall(
     if mark_active:
         session_handler.set_active_request(session_id, req_id)
 
-    # Route to classifier (vLLM tool engines are no longer supported)
+    # Route to classifier
     return await _run_classifier_toolcall(session_id, user_utt, req_id)

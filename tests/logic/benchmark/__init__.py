@@ -1,4 +1,4 @@
-"""Benchmark runner for concurrent WS tests."""
+"""Benchmark runner for high-concurrency WebSocket tests."""
 
 __all__ = [
     "runner",

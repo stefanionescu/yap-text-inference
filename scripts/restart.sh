@@ -33,8 +33,7 @@ Usage:
   restart.sh --reset-models --deploy-mode both \
              --chat-model <repo_or_path> --tool-model <repo_or_path> \
              [--chat-quant fp8|gptq|gptq_marlin|awq] \
-             [--tool-quant <value>] \
-             [--awq-chat-model <repo>] [--awq-tool-model <repo>] \
+             [--awq-chat-model <repo>] \
              [--install-deps]
       Reconfigure which models/quantization are deployed without reinstalling deps.
 
@@ -51,9 +50,7 @@ Key flags:
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
   --chat-quant <val>    Override chat/base quantization (fp8|gptq|gptq_marlin|awq)
-  --tool-quant <val>    Override tool quantization (fp8|gptq|gptq_marlin|awq)
-  --awq-chat-model / --awq-tool-model
-                        Use pre-quantized AWQ repos when awq is requested
+  --awq-chat-model      Use a pre-quantized AWQ chat repo when awq is requested
 
 This script always:
   • Stops the server
@@ -70,9 +67,8 @@ Examples:
   bash scripts/restart.sh --reset-models \
        --deploy-mode both \
        --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
-       --tool-model MadeAgents/Hammer2.1-3b \
-       --chat-quant fp8 \
-       --tool-quant awq
+       --tool-model yapwithai/yap-screenshot-intent-classifier \
+       --chat-quant fp8
 USAGE
   exit 1
 }
@@ -128,11 +124,7 @@ if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
   log_info "  Chat (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
 fi
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-  tool_origin="local cache"
-  if [ "${TOOL_AWQ_SOURCE_KIND:-local}" != "local" ]; then
-    tool_origin="pre-quantized repo"
-  fi
-  log_info "  Tool (${tool_origin}): ${TOOL_AWQ_SOURCE:-${TOOL_AWQ_DIR}}" 
+  log_info "  Tool: classifier weights reused directly (no AWQ artifacts)"
 fi
 
 # Light stop - preserve models and dependencies

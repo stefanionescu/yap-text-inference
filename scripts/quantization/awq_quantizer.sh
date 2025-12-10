@@ -13,7 +13,6 @@ source "${LIB_Q}/ops.sh"
 
 # Determine which engines requested AWQ
 AWQ_TARGET_CHAT=0
-AWQ_TARGET_TOOL=0
 if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
   if [ "${CHAT_QUANTIZATION:-}" = "awq" ]; then
     AWQ_TARGET_CHAT=1
@@ -21,18 +20,19 @@ if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
     AWQ_TARGET_CHAT=1
   fi
 fi
+
 if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
-  if [ "${TOOL_QUANTIZATION:-}" = "awq" ]; then
-    AWQ_TARGET_TOOL=1
-  elif [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; then
-    AWQ_TARGET_TOOL=1
+  if [ "${TOOL_QUANTIZATION:-}" = "awq" ] || { [ -z "${TOOL_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; }; then
+    log_error "Tool models are classifier-only; AWQ quantization is not supported for TOOL_MODEL."
+    exit 1
   fi
 fi
-export AWQ_TARGET_CHAT AWQ_TARGET_TOOL
+
+export AWQ_TARGET_CHAT
 
 # If neither engine needs AWQ work, exit quietly
 # shellcheck disable=SC2317  # pattern handles sourced vs executed scripts
-if [ "${AWQ_TARGET_CHAT}" = "0" ] && [ "${AWQ_TARGET_TOOL}" = "0" ]; then
+if [ "${AWQ_TARGET_CHAT}" = "0" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
@@ -48,12 +48,6 @@ fi
 awq_ensure_cache_dir
 
 if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
-  if [ "${AWQ_TARGET_TOOL}" = "1" ]; then
-    if ! awq_handle_tool_prequant_or_quantize; then
-      log_error "AWQ quantization pipeline failed while preparing tool model; aborting."
-      exit 1
-    fi
-  fi
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
     if ! awq_handle_chat_prequant_or_quantize; then
       log_error "AWQ quantization pipeline failed while preparing chat model; aborting."
@@ -62,12 +56,6 @@ if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
   fi
 else
   log_info "Starting local AWQ quantization process"
-  if [ "${AWQ_TARGET_TOOL}" = "1" ]; then
-    if ! awq_quantize_tool_if_needed; then
-      log_error "AWQ quantization pipeline failed while quantizing tool model; aborting."
-      exit 1
-    fi
-  fi
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
     if ! awq_quantize_chat_if_needed; then
       log_error "AWQ quantization pipeline failed while quantizing chat model; aborting."
