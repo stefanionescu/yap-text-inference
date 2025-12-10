@@ -25,7 +25,7 @@ class ClassifierToolAdapter:
         device: str | None = None,
         compile_model: bool = True,
         max_length: int = 1536,
-        microbatch_max_size: int = 4,
+        microbatch_max_size: int = 2,
         microbatch_max_delay_ms: float = 5.0,
         request_timeout_s: float = 5.0,
         gpu_memory_frac: float | None = None,
