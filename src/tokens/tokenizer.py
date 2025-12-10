@@ -39,26 +39,38 @@ class TransformersTarget:
 
 
 class FastTokenizer:
-    def __init__(self, path_or_repo: str):
-        """Create a tokenizer optimized for counting/trimming."""
+    def __init__(self, path_or_repo: str, *, load_transformers: bool = True):
+        """Create a tokenizer optimized for counting/trimming.
+
+        Args:
+            path_or_repo: Local directory or Hugging Face repo id.
+            load_transformers: Whether to also load a transformers tokenizer, even
+                when a local tokenizer.json is present. Required for operations
+                like apply_chat_template or feeding inputs to PyTorch/ONNX models.
+        """
         self._lock = Lock()
         self.tok: Tokenizer | None = None
         self._hf_tok = None  # transformers tokenizer (fast or slow)
+        self._load_transformers = load_transformers
 
         source = self._inspect_source(path_or_repo)
-        if self._load_local_tokenizer(source):
+        loaded_local = self._load_local_tokenizer(source)
+
+        if not self._load_transformers:
+            if not loaded_local:
+                raise RuntimeError(
+                    "FastTokenizer requires load_transformers=True when tokenizer.json "
+                    f"is missing at {path_or_repo}"
+                )
             return
 
         target = self._resolve_transformers_target(path_or_repo, source)
-        try:
-            self._hf_tok = self._load_transformers_tokenizer(target)
-        except Exception:
-            if target.identifier != path_or_repo and source.is_local:
-                fallback = TransformersTarget(path_or_repo, True)
-                self._hf_tok = self._load_transformers_tokenizer(fallback)
-                logger.info("tokenizer: fallback load transformers local path=%s", path_or_repo)
-            else:
-                raise
+        self._hf_tok = self._load_transformers_with_fallback(
+            target=target,
+            original_path=path_or_repo,
+            source=source,
+            have_local=loaded_local,
+        )
 
     def count(self, text: str) -> int:
         if not text:
@@ -226,6 +238,40 @@ class FastTokenizer:
         if source.awq_metadata_model:
             return TransformersTarget(source.awq_metadata_model, False)
         return TransformersTarget(path_or_repo, True)
+
+    def _load_transformers_with_fallback(
+        self,
+        target: TransformersTarget,
+        *,
+        original_path: str,
+        source: TokenizerSource,
+        have_local: bool,
+    ):
+        try:
+            return self._load_transformers_tokenizer(target)
+        except Exception as exc:
+            if target.identifier != original_path and source.is_local:
+                fallback = TransformersTarget(original_path, True)
+                try:
+                    tok = self._load_transformers_tokenizer(fallback)
+                    logger.info(
+                        "tokenizer: fallback load transformers local path=%s",
+                        original_path,
+                    )
+                    return tok
+                except Exception:
+                    pass
+
+            if not have_local:
+                raise
+
+            logger.warning(
+                "tokenizer: transformers load failed target=%s local_only=%s",
+                target.identifier,
+                target.local_only,
+                exc_info=exc,
+            )
+            return None
 
     def _load_transformers_tokenizer(self, target: TransformersTarget):
         try:

@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import uuid
 
-from src.config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
-from src.tokens import count_tokens_chat
+from src.config import (
+    CLASSIFIER_HISTORY_TOKENS,
+    DEPLOY_CHAT,
+    DEPLOY_TOOL,
+    HISTORY_MAX_TOKENS,
+)
+from src.tokens import build_user_history_for_tool, count_tokens_chat
 
 from .state import HistoryTurn, SessionState
 
@@ -93,6 +98,20 @@ def trim_history(state: SessionState) -> None:
         tokens = count_tokens_chat(rendered) if rendered else 0
 
 
+def render_tool_history_text(turns: list[HistoryTurn]) -> str:
+    """Render user-only history trimmed for the classifier/tool model."""
+    if not DEPLOY_TOOL:
+        return ""
+    user_texts = get_user_texts(turns)
+    if not user_texts:
+        return ""
+    return build_user_history_for_tool(
+        user_texts,
+        CLASSIFIER_HISTORY_TOKENS,
+        prefix="USER",
+    )
+
+
 def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
     """Extract raw user texts from history turns.
     
@@ -113,9 +132,14 @@ class HistoryController:
         return render_history(state.history_turns)
     
     def get_user_texts(self, state: SessionState) -> list[str]:
-        """Get raw user texts for classifier (trimming done by classifier adapter)."""
+        """Get raw user texts (no trimming)."""
         trim_history(state)
         return get_user_texts(state.history_turns)
+
+    def get_tool_history_text(self, state: SessionState) -> str:
+        """Get trimmed user-only history for the classifier/tool model."""
+        trim_history(state)
+        return render_tool_history_text(state.history_turns)
 
     def set_text(self, state: SessionState, history_text: str) -> str:
         state.history_turns = parse_history_text(history_text)

@@ -28,5 +28,5 @@ logs/
 *.swo
 .cursor/
 
-classifier/
+classifier/models
 .venv_classifier

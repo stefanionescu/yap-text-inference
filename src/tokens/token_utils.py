@@ -51,20 +51,6 @@ def trim_text_to_token_limit_tool(text: str, max_tokens: int, keep: str = "end")
     return out
 
 
-def trim_history_for_tool_sharing(history_text: str, tool_history_tokens: int) -> str:
-    """Trim history for tool model KV cache sharing using tool tokenizer."""
-    if not history_text.strip():
-        return ""
-    out = trim_history_preserve_messages_tool(history_text, tool_history_tokens)
-    logger.debug(
-        "tokens.tool.trim_history_for_tool: in_len=%s out_len=%s max_tokens=%s",
-        len(history_text),
-        len(out),
-        tool_history_tokens,
-    )
-    return out
-
-
 def _trim_history_preserve_messages_with(
     history_text: str,
     max_tokens: int,
@@ -151,6 +137,55 @@ def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> s
     return out
 
 
+def build_user_history_for_tool(
+    user_texts: list[str],
+    max_tokens: int,
+    *,
+    prefix: str = "USER",
+) -> str:
+    """Format + trim user-only history for the classifier/tool model.
+
+    Args:
+        user_texts: Raw user utterances (most recent last).
+        max_tokens: Maximum token budget for the formatted history.
+        prefix: Line prefix to use (default: "USER").
+
+    Returns:
+        A newline-joined string such as:
+
+            USER: hi
+            USER: show me your screen
+
+        trimmed to <= max_tokens using the tool tokenizer for exact counts.
+    """
+    normalized_prefix = (prefix or "USER").strip()
+    if not normalized_prefix:
+        normalized_prefix = "USER"
+
+    if max_tokens <= 0 or not user_texts:
+        return ""
+
+    newline_tokens = count_tokens_tool("\n")
+    selected: list[str] = []
+    total_tokens = 0
+
+    for text in reversed(user_texts):
+        stripped = text.strip()
+        if not stripped:
+            continue
+        line = f"{normalized_prefix}: {stripped}"
+        line_tokens = count_tokens_tool(line)
+        additional = line_tokens
+        if selected:
+            additional += newline_tokens
+        if selected and total_tokens + additional > max_tokens:
+            break
+        selected.insert(0, line)
+        total_tokens += additional
+
+    return "\n".join(selected)
+
+
 __all__ = [
     # Chat
     "count_tokens_chat",
@@ -160,7 +195,7 @@ __all__ = [
     "count_tokens_tool",
     "trim_text_to_token_limit_tool",
     "trim_history_preserve_messages_tool",
-    "trim_history_for_tool_sharing",
+    "build_user_history_for_tool",
 ]
 
 

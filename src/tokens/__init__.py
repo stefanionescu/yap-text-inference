@@ -9,7 +9,7 @@ from .token_utils import (
     count_tokens_tool,
     trim_text_to_token_limit_tool,
     trim_history_preserve_messages_tool,
-    trim_history_for_tool_sharing,
+    build_user_history_for_tool,
 )
 
 __all__ = [
@@ -21,7 +21,7 @@ __all__ = [
     "count_tokens_tool",
     "trim_text_to_token_limit_tool",
     "trim_history_preserve_messages_tool",
-    "trim_history_for_tool_sharing",
+    "build_user_history_for_tool",
 ]
 
 
