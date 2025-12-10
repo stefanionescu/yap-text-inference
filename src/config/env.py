@@ -95,9 +95,6 @@ TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1536"))
 TOOL_MAX_LENGTH = int(os.getenv("TOOL_MAX_LENGTH", "1536"))
 TOOL_MICROBATCH_MAX_SIZE = int(os.getenv("TOOL_MICROBATCH_MAX_SIZE", "4"))
 TOOL_MICROBATCH_MAX_DELAY_MS = float(os.getenv("TOOL_MICROBATCH_MAX_DELAY_MS", "5.0"))
-TOOL_USE_ONNX = env_flag("TOOL_USE_ONNX", False)
-TOOL_ONNX_DIR = os.getenv("TOOL_ONNX_DIR", "build/classifier_onnx")
-TOOL_ONNX_OPSET = int(os.getenv("TOOL_ONNX_OPSET", "17"))
 
 
 def validate_env() -> None:
@@ -151,8 +148,5 @@ __all__ = [
     "TOOL_MAX_LENGTH",
     "TOOL_MICROBATCH_MAX_SIZE",
     "TOOL_MICROBATCH_MAX_DELAY_MS",
-    "TOOL_USE_ONNX",
-    "TOOL_ONNX_DIR",
-    "TOOL_ONNX_OPSET",
     "validate_env",
 ]

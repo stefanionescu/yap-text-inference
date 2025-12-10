@@ -36,9 +36,6 @@ def get_classifier_adapter() -> ClassifierToolAdapter:
             TOOL_MAX_LENGTH,
             TOOL_MICROBATCH_MAX_SIZE,
             TOOL_MICROBATCH_MAX_DELAY_MS,
-            TOOL_USE_ONNX,
-            TOOL_ONNX_DIR,
-            TOOL_ONNX_OPSET,
         )
         from src.config.timeouts import TOOL_TIMEOUT_S
         
@@ -50,9 +47,6 @@ def get_classifier_adapter() -> ClassifierToolAdapter:
             microbatch_max_size=TOOL_MICROBATCH_MAX_SIZE,
             microbatch_max_delay_ms=TOOL_MICROBATCH_MAX_DELAY_MS,
             request_timeout_s=TOOL_TIMEOUT_S,
-            use_onnx=TOOL_USE_ONNX,
-            onnx_dir=TOOL_ONNX_DIR,
-            onnx_opset=TOOL_ONNX_OPSET,
             gpu_memory_frac=TOOL_GPU_FRAC,
         )
     
