@@ -1,8 +1,7 @@
 """Classifier package for screenshot intent detection.
 
-This package provides a lightweight classifier-based alternative to
-autoregressive LLMs for tool call detection. The classifier determines
-whether a screenshot should be taken based on user utterances.
+This package provides a lightweight classifier for tool call detection. 
+The classifier determines whether a screenshot should be taken based on user utterances.
 
 Usage:
     from src.classifier import get_classifier_adapter
@@ -57,7 +56,6 @@ def reset_classifier_adapter() -> None:
     """Reset the global classifier adapter (for testing)."""
     global _classifier_adapter
     _classifier_adapter = None
-    ClassifierToolAdapter.reset_instance()
 
 
 __all__ = [

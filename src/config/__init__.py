@@ -8,6 +8,7 @@ This module re-exports the config API from smaller modules:
 """
 
 from .env import (
+    configure_runtime_env,
     DEPLOY_MODELS,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
@@ -137,6 +138,7 @@ if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
     )
 
 __all__ = [
+    "configure_runtime_env",
     # env/core
     "DEPLOY_MODELS",
     "DEPLOY_CHAT",

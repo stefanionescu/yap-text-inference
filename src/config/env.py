@@ -1,19 +1,22 @@
 """Environment initialization and core configuration values.
 
-Sets critical environment variables and reads primary config from env.
-Includes validation of required variables and quantization mode.
+This module provides helpers to apply required runtime environment defaults
+without forcing callers to pay the price on mere import.  Use
+``configure_runtime_env()`` before touching CUDA/vLLM state when running tests
+or standalone scripts; production entrypoints can keep the on-import default.
 """
 
+from __future__ import annotations
+
 import os
+from typing import Final
 
 from ..utils.env import env_flag
 
 
-# Ensure V1 engine is selected before importing any vLLM modules
-os.environ.setdefault("VLLM_USE_V1", "1")
-# vLLM docs recommend constraining CUDA streams + allocator defaults for stability
-os.environ.setdefault("CUDA_DEVICE_MAX_CONNECTIONS", "1")
-os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+_AUTO_CONFIG_FLAG: Final[str] = "YAP_AUTO_CONFIGURE_ENV"
+_SKIP_AUTOCONFIG_FLAG: Final[str] = "YAP_SKIP_ENV_AUTOCONFIG"
+_ENV_CONFIGURED = False
 
 
 def _select_attention_backend() -> None:
@@ -25,7 +28,7 @@ def _select_attention_backend() -> None:
     # Select backend if not set; otherwise detect availability for KV fallback
     if not os.getenv("VLLM_ATTENTION_BACKEND"):
         try:
-            import flashinfer  # noqa: F401
+            import flashinfer  # type: ignore[import]  # noqa: F401
             os.environ.setdefault("VLLM_ATTENTION_BACKEND", "FLASHINFER")
             has_flashinfer = True
         except Exception:
@@ -33,7 +36,7 @@ def _select_attention_backend() -> None:
             has_flashinfer = False
     else:
         try:
-            import flashinfer  # noqa: F401
+            import flashinfer  # type: ignore[import]  # noqa: F401
             has_flashinfer = True
         except Exception:
             has_flashinfer = False
@@ -44,8 +47,32 @@ def _select_attention_backend() -> None:
             os.environ["KV_DTYPE"] = "auto"
 
 
-# Apply attention backend selection immediately on import
-_select_attention_backend()
+
+def configure_runtime_env(*, force: bool = False) -> None:
+    """Apply CUDA/vLLM environment defaults exactly once per process.
+
+    Args:
+        force: Re-run the configuration even if it has already executed.
+    """
+
+    global _ENV_CONFIGURED
+    if _ENV_CONFIGURED and not force:
+        return
+    if not force and os.getenv(_SKIP_AUTOCONFIG_FLAG, "0") == "1":
+        return
+
+    # Ensure V1 engine is selected before importing any vLLM modules
+    os.environ.setdefault("VLLM_USE_V1", "1")
+    # vLLM docs recommend constraining CUDA streams + allocator defaults for stability
+    os.environ.setdefault("CUDA_DEVICE_MAX_CONNECTIONS", "1")
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+    _select_attention_backend()
+    _ENV_CONFIGURED = True
+
+
+if os.getenv(_AUTO_CONFIG_FLAG, "1") != "0":
+    configure_runtime_env()
 
 
 # ----------------- Environment / Defaults -----------------
@@ -87,7 +114,7 @@ CACHE_RESET_MIN_SESSION_SECONDS = float(os.getenv("CACHE_RESET_MIN_SESSION_SECON
 # Tool language filter: skip tool call if user message is not mostly English
 TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
 
-# ----------------- Tool Classifier Settings -----------------
+# ----------------- Tool Settings -----------------
 # These are only used when TOOL_MODEL is a classifier (not autoregressive LLM)
 TOOL_DECISION_THRESHOLD = float(os.getenv("TOOL_DECISION_THRESHOLD", "0.66"))
 TOOL_COMPILE = env_flag("TOOL_COMPILE", True)  # Use torch.compile for speedup
@@ -124,6 +151,7 @@ def validate_env() -> None:
 
 
 __all__ = [
+    "configure_runtime_env",
     "DEPLOY_MODELS",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",

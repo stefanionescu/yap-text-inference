@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
-
 import torch  # type: ignore[import]
 
 from .backend import TorchClassifierBackend
@@ -18,7 +16,6 @@ class ClassifierToolAdapter:
     """Microbatched classifier adapter for screenshot intent detection."""
 
     _memory_fraction_configured: set[int] = set()
-    _instance: "ClassifierToolAdapter | None" = None
 
     def __init__(
         self,
@@ -67,27 +64,6 @@ class ClassifierToolAdapter:
     # ------------------------------------------------------------------ #
     # Lifecycle helpers
     # ------------------------------------------------------------------ #
-
-    @classmethod
-    def get_instance(
-        cls,
-        model_path: str,
-        threshold: float = 0.66,
-        compile_model: bool = True,
-        **kwargs: Any,
-    ) -> "ClassifierToolAdapter":
-        if cls._instance is None:
-            cls._instance = cls(
-                model_path=model_path,
-                threshold=threshold,
-                compile_model=compile_model,
-                **kwargs,
-            )
-        return cls._instance
-
-    @classmethod
-    def reset_instance(cls) -> None:
-        cls._instance = None
 
     # ------------------------------------------------------------------ #
     # Internal helpers
