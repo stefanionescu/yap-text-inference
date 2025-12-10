@@ -9,11 +9,11 @@ _restart_resolve_deploy_mode() {
   local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-${DEPLOY_MODELS:-both}}}"
   candidate="${candidate,,}"
   case "${candidate}" in
-    both|chat|tool|dual)
+    both|chat|tool)
       echo "${candidate}"
       ;;
     *)
-      log_error "Invalid deploy mode '${candidate}'. Use --deploy-mode both|chat|tool|dual."
+      log_error "Invalid deploy mode '${candidate}'. Use --deploy-mode both|chat|tool."
       return 1
       ;;
   esac
@@ -125,8 +125,6 @@ _restart_load_previous_config() {
   PREV_DEPLOY_MODELS=""
   PREV_DEPLOY_CHAT=0
   PREV_DEPLOY_TOOL=0
-  PREV_DEPLOY_DUAL=0
-  PREV_CONCURRENT_MODEL_CALL=""
 
   local last_env="${ROOT_DIR}/.run/last_config.env"
   if [ ! -f "${last_env}" ]; then
@@ -141,7 +139,6 @@ _restart_load_previous_config() {
   local cur_chat_quant="${CHAT_QUANTIZATION:-}"
   local cur_tool_quant="${TOOL_QUANTIZATION:-}"
   local cur_deploy="${DEPLOY_MODELS:-}"
-  restart_capture_user_env "CONCURRENT_MODEL_CALL"
   # shellcheck disable=SC1090
   source "${last_env}" || true
 
@@ -151,13 +148,10 @@ _restart_load_previous_config() {
   PREV_CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
   PREV_TOOL_QUANTIZATION="${TOOL_QUANTIZATION:-}"
   PREV_DEPLOY_MODELS="${DEPLOY_MODELS:-}"
-  PREV_CONCURRENT_MODEL_CALL="${CONCURRENT_MODEL_CALL:-}"
-  restart_set_snapshot_value "CONCURRENT_MODEL_CALL" "${PREV_CONCURRENT_MODEL_CALL}"
   case "${PREV_DEPLOY_MODELS}" in
     both) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=1 ;;
     chat) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=0 ;;
     tool) PREV_DEPLOY_CHAT=0; PREV_DEPLOY_TOOL=1 ;;
-    dual) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=1; PREV_DEPLOY_DUAL=1 ;;
     *) PREV_DEPLOY_CHAT=0; PREV_DEPLOY_TOOL=0 ;;
   esac
 
@@ -168,8 +162,6 @@ _restart_load_previous_config() {
   TOOL_QUANTIZATION="${cur_tool_quant}"
   DEPLOY_MODELS="${cur_deploy}"
 
-  restart_restore_user_env "CONCURRENT_MODEL_CALL"
-  restart_mark_override_if_changed "CONCURRENT_MODEL_CALL" "CONCURRENT_MODEL_CALL"
 }
 
 _restart_can_preserve_cache() {
@@ -250,79 +242,46 @@ restart_reconfigure_models() {
   target_deploy="$(_restart_resolve_deploy_mode)" || exit 1
   export DEPLOY_MODELS="${target_deploy}"
 
-  local deploy_chat deploy_tool deploy_dual
-  deploy_chat=0; deploy_tool=0; deploy_dual=0
+  local deploy_chat deploy_tool
+  deploy_chat=0; deploy_tool=0
   case "${DEPLOY_MODELS}" in
     both) deploy_chat=1; deploy_tool=1 ;;
     chat) deploy_chat=1 ;;
     tool) deploy_tool=1 ;;
-    dual) deploy_chat=1; deploy_tool=1; deploy_dual=1 ;;
   esac
 
   local chat_model="${RECONFIG_CHAT_MODEL:-${CHAT_MODEL:-}}"
   local tool_model="${RECONFIG_TOOL_MODEL:-${TOOL_MODEL:-}}"
-  local dual_model="${RECONFIG_DUAL_MODEL:-${DUAL_MODEL:-}}"
-
-  if [ "${deploy_dual}" = "1" ]; then
-    if [ -z "${dual_model}" ]; then
-      dual_model="${chat_model}"
-    fi
-    if [ -z "${dual_model}" ]; then
-      dual_model="${tool_model}"
-    fi
-    if [ -z "${dual_model}" ]; then
-      log_error "Dual deployment requested but no shared model supplied."
-      log_error "Pass --dual-model <repo_or_path> or export DUAL_MODEL before running --reset-models."
-      exit 1
-    fi
-    chat_model="${dual_model}"
-    tool_model="${dual_model}"
-  else
-    if [ "${deploy_chat}" = "1" ] && [ -z "${chat_model}" ]; then
-      log_error "Chat deployment requested but no chat model supplied."
-      log_error "Pass --chat-model <repo_or_path> or export CHAT_MODEL before running --reset-models."
-      exit 1
-    fi
-    if [ "${deploy_tool}" = "1" ] && [ -z "${tool_model}" ]; then
-      log_error "Tool deployment requested but no tool model supplied."
-      log_error "Pass --tool-model <repo_or_path> or export TOOL_MODEL before running --reset-models."
-      exit 1
-    fi
+  if [ "${deploy_chat}" = "1" ] && [ -z "${chat_model}" ]; then
+    log_error "Chat deployment requested but no chat model supplied."
+    log_error "Pass --chat-model <repo_or_path> or export CHAT_MODEL before running --reset-models."
+    exit 1
+  fi
+  if [ "${deploy_tool}" = "1" ] && [ -z "${tool_model}" ]; then
+    log_error "Tool deployment requested but no tool model supplied."
+    log_error "Pass --tool-model <repo_or_path> or export TOOL_MODEL before running --reset-models."
+    exit 1
   fi
 
-  if [ "${deploy_dual}" = "1" ]; then
-    export DUAL_MODEL="${dual_model}"
-    export CHAT_MODEL="${dual_model}"
-    export TOOL_MODEL="${dual_model}"
-    export CHAT_MODEL_NAME="${dual_model}"
-    export TOOL_MODEL_NAME="${dual_model}"
+  if [ "${deploy_chat}" = "1" ]; then
+    export CHAT_MODEL="${chat_model}"
+    export CHAT_MODEL_NAME="${chat_model}"
   else
-    if [ "${deploy_chat}" = "1" ]; then
-      export CHAT_MODEL="${chat_model}"
-      export CHAT_MODEL_NAME="${chat_model}"
-    else
-      unset CHAT_MODEL CHAT_MODEL_NAME
-    fi
-
-    if [ "${deploy_tool}" = "1" ]; then
-      export TOOL_MODEL="${tool_model}"
-      export TOOL_MODEL_NAME="${tool_model}"
-    else
-      unset TOOL_MODEL TOOL_MODEL_NAME
-    fi
-    unset DUAL_MODEL
+    unset CHAT_MODEL CHAT_MODEL_NAME
   fi
+
+  if [ "${deploy_tool}" = "1" ]; then
+    export TOOL_MODEL="${tool_model}"
+    export TOOL_MODEL_NAME="${tool_model}"
+  else
+    unset TOOL_MODEL TOOL_MODEL_NAME
+  fi
+  unset DUAL_MODEL
 
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
   local tool_quant="${RECONFIG_TOOL_QUANTIZATION:-${TOOL_QUANTIZATION:-}}"
   local quantization="${QUANTIZATION:-}"
   local chat_quant_from_hint=0
-
-  # For dual mode, --quant applies to both engines
-  if [ "${deploy_dual}" = "1" ] && [ -n "${RECONFIG_QUANTIZATION:-}" ]; then
-    chat_quant="${RECONFIG_QUANTIZATION}"
-    tool_quant="${RECONFIG_QUANTIZATION}"
-  fi
 
   if [ "${deploy_chat}" = "1" ] && [ -z "${chat_quant}" ]; then
     chat_quant="$(model_detect_quantization_hint "${chat_model}")"
@@ -330,7 +289,7 @@ restart_reconfigure_models() {
       chat_quant_from_hint=1
     fi
   fi
-  if [ "${deploy_tool}" = "1" ] && [ "${deploy_dual}" != "1" ] && [ -z "${tool_quant}" ]; then
+  if [ "${deploy_tool}" = "1" ] && [ -z "${tool_quant}" ]; then
     tool_quant="$(model_detect_quantization_hint "${tool_model}")"
   fi
 
@@ -358,13 +317,7 @@ restart_reconfigure_models() {
   if ! _restart_validate_quantization "${quantization}"; then
     exit 1
   fi
-  if [ "${deploy_dual}" = "1" ]; then
-    if [ -n "${chat_quant}" ]; then
-      tool_quant="${chat_quant}"
-    else
-      tool_quant="${tool_quant:-${quantization}}"
-    fi
-  elif [ -z "${tool_quant}" ] && [ "${deploy_tool}" = "1" ] && [ "${chat_quant_from_hint}" = "1" ]; then
+  if [ -z "${tool_quant}" ] && [ "${deploy_tool}" = "1" ] && [ "${chat_quant_from_hint}" = "1" ]; then
     tool_quant="fp8"
   fi
   export QUANTIZATION="${quantization}"
@@ -388,23 +341,16 @@ restart_reconfigure_models() {
 
   log_info "Restart mode: reconfigure (models reset, deps preserved)"
   log_info "Deploy mode: ${DEPLOY_MODELS}"
-  if [ "${deploy_dual}" = "1" ]; then
-    log_info "Dual model: ${DUAL_MODEL}"
+  if [ "${deploy_chat}" = "1" ]; then
+    log_info "Chat model: ${CHAT_MODEL}"
     if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-      log_info "Model quantization override: ${CHAT_QUANTIZATION}"
+      log_info "Chat quantization override: ${CHAT_QUANTIZATION}"
     fi
-  else
-    if [ "${deploy_chat}" = "1" ]; then
-      log_info "Chat model: ${CHAT_MODEL}"
-      if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-        log_info "Chat quantization override: ${CHAT_QUANTIZATION}"
-      fi
-    fi
-    if [ "${deploy_tool}" = "1" ]; then
-      log_info "Tool model: ${TOOL_MODEL}"
-      if [ -n "${TOOL_QUANTIZATION:-}" ]; then
-        log_info "Tool quantization override: ${TOOL_QUANTIZATION}"
-      fi
+  fi
+  if [ "${deploy_tool}" = "1" ]; then
+    log_info "Tool model: ${TOOL_MODEL}"
+    if [ -n "${TOOL_QUANTIZATION:-}" ]; then
+      log_info "Tool quantization override: ${TOOL_QUANTIZATION}"
     fi
   fi
   log_info "Base quantization: ${QUANTIZATION}"

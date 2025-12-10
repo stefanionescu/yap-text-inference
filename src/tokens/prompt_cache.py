@@ -8,9 +8,8 @@ from functools import lru_cache
 from ..persona import (
     build_chat_prompt_with_prefix,
     build_chat_warm_prompt,
-    build_toolcall_prompt_with_prefix,
 )
-from .tokenizer import get_chat_tokenizer, get_tool_tokenizer
+from .tokenizer import get_chat_tokenizer
 
 
 @dataclass(slots=True)
@@ -31,15 +30,6 @@ def compile_chat_prompt(
     return CompiledPrompt(prompt, _materialize_chat_ids(prompt))
 
 
-def compile_tool_prompt(
-    base_prompt: str,
-    user_utt: str,
-    history_text: str,
-) -> CompiledPrompt:
-    prompt = build_toolcall_prompt_with_prefix(base_prompt, user_utt, history_text)
-    return CompiledPrompt(prompt, _materialize_tool_ids(prompt))
-
-
 def compile_chat_warm_prompt(
     static_prefix: str,
     runtime_text: str,
@@ -55,23 +45,12 @@ def _cached_chat_token_ids(prompt: str) -> tuple[int, ...]:
     return tuple(tok.encode_ids(prompt))
 
 
-@lru_cache(maxsize=512)
-def _cached_tool_token_ids(prompt: str) -> tuple[int, ...]:
-    tok = get_tool_tokenizer()
-    return tuple(tok.encode_ids(prompt))
-
-
 def _materialize_chat_ids(prompt: str) -> list[int]:
     return list(_cached_chat_token_ids(prompt))
-
-
-def _materialize_tool_ids(prompt: str) -> list[int]:
-    return list(_cached_tool_token_ids(prompt))
 
 
 __all__ = [
     "CompiledPrompt",
     "compile_chat_prompt",
-    "compile_tool_prompt",
     "compile_chat_warm_prompt",
 ]

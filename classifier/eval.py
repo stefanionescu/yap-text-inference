@@ -2,9 +2,9 @@ from __future__ import annotations
 
 """Evaluate the trained classifier on simple local test cases.
 
-This script loads the Longformer screenshot intent classifier from a local
-model directory and runs it against the small set of conversations defined in
-`classifier/test_cases.py`.
+This script loads the screenshot intent classifier (ModernBERT by default) from a
+local model directory and runs it against the small set of conversations defined
+in `classifier/test_cases.py`.
 
 It prints overall accuracy and a list of misclassified turns, similar in
 spirit to the reporting you get from `tests/tool.py` for the live tool-call
@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Iterable, List, Tuple
 
 import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTokenizer
 
 import sys
 
@@ -122,9 +122,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--model-dir",
         type=str,
         default=str(
-            Path(__file__).resolve().parent / "models" / "longformer_screenshot_classifier"
+            Path(__file__).resolve().parent / "models" / "modernbert_screenshot_classifier"
         ),
-        help="Path to the trained model directory (default: classifier/models/longformer_screenshot_classifier)",
+        help="Path to the trained model directory (default: classifier/models/modernbert_screenshot_classifier)",
     )
     parser.add_argument(
         "--max-length",
@@ -145,6 +145,11 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="Number of concurrent classifier evaluations (default: 1)",
     )
     return parser
+
+
+def _needs_global_attention(model_type: str) -> bool:
+    """Return True if the encoder expects a `global_attention_mask` tensor."""
+    return model_type.lower() in {"longformer"}
 
 
 def _percentile(sorted_values: list[float], percentile: float) -> float:
@@ -197,6 +202,7 @@ def _run_single_inference(
     device: torch.device,
     max_length: int,
     threshold: float,
+    use_global_attention: bool,
     convo_name: str,
     turn_index: int,
     text: str,
@@ -218,18 +224,21 @@ def _run_single_inference(
         inputs = {k: v.to(device) for k, v in inputs.items()}
         t1_tokenize = time.perf_counter()
 
-        attention_mask = inputs.get("attention_mask")
-        if attention_mask is not None:
-            global_attention_mask = torch.zeros_like(attention_mask)
-            global_attention_mask[:, 0] = 1
-        else:
-            global_attention_mask = None
+        global_attention_mask = None
+        if use_global_attention:
+            attention_mask = inputs.get("attention_mask")
+            if attention_mask is not None:
+                global_attention_mask = torch.zeros_like(attention_mask)
+                global_attention_mask[:, 0] = 1
 
         # Forward pass timing (TTFB = time until we get logits)
         t0_forward = time.perf_counter()
+        model_kwargs = {}
+        if global_attention_mask is not None:
+            model_kwargs["global_attention_mask"] = global_attention_mask
         outputs = model(
             **inputs,
-            global_attention_mask=global_attention_mask,
+            **model_kwargs,
         )
         t1_forward = time.perf_counter()
 
@@ -261,7 +270,9 @@ def _run_eval(model_dir: Path, max_length: int, threshold: float, concurrency: i
         raise SystemExit(f"Model directory does not exist: {model_dir}")
 
     print(f"[classifier] Loading model from {model_dir}")
-    model = AutoModelForSequenceClassification.from_pretrained(str(model_dir))
+    config = AutoConfig.from_pretrained(str(model_dir))
+    use_global_attention = _needs_global_attention(getattr(config, "model_type", ""))
+    model = AutoModelForSequenceClassification.from_pretrained(str(model_dir), config=config)
     model.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -307,6 +318,7 @@ def _run_eval(model_dir: Path, max_length: int, threshold: float, concurrency: i
             device=device,
             max_length=max_length,
             threshold=threshold,
+            use_global_attention=use_global_attention,
             convo_name=convo_name,
             turn_index=turn_index,
             text=text,

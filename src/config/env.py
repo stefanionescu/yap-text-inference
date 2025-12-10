@@ -51,23 +51,14 @@ _select_attention_backend()
 # ----------------- Environment / Defaults -----------------
 
 DEPLOY_MODELS = (os.getenv("DEPLOY_MODELS", "both") or "both").lower()
-DEPLOY_DUAL = DEPLOY_MODELS == "dual"
-DEPLOY_CHAT = DEPLOY_MODELS in ("both", "chat", "dual")
-DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool", "dual")
+DEPLOY_CHAT = DEPLOY_MODELS in ("both", "chat")
+DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool")
 
-DUAL_MODEL = os.getenv("DUAL_MODEL")
 CHAT_MODEL = os.getenv("CHAT_MODEL")
 TOOL_MODEL = os.getenv("TOOL_MODEL")
 
-if DEPLOY_DUAL:
-    resolved_dual = DUAL_MODEL or CHAT_MODEL or TOOL_MODEL
-    if resolved_dual:
-        DUAL_MODEL = resolved_dual
-        CHAT_MODEL = resolved_dual
-        TOOL_MODEL = resolved_dual
-
 # GPU memory fractions: adjust based on deployment mode
-if DEPLOY_CHAT and DEPLOY_TOOL and not DEPLOY_DUAL:
+if DEPLOY_CHAT and DEPLOY_TOOL:
     # Both models: split GPU memory conservatively to leave room for CUDA/NCCL
     CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
     TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
@@ -106,35 +97,17 @@ CLASSIFIER_HISTORY_TOKENS = int(os.getenv("CLASSIFIER_HISTORY_TOKENS", "1200")) 
 CLASSIFIER_MAX_LENGTH = int(os.getenv("CLASSIFIER_MAX_LENGTH", "1536"))  # Tokenizer max length
 
 
-# ----------------- Computed Deployment Flags -----------------
-# These are computed at import time so other modules don't need to know about classifiers
-def _compute_tool_engine_needed() -> bool:
-    """Check if we need a vLLM tool engine (not needed for classifier models)."""
-    if not DEPLOY_TOOL:
-        return False
-    if DEPLOY_DUAL:
-        return False  # Dual mode uses chat engine for tool
-    # Import here to avoid circular import at module level
-    from .models import is_classifier_model
-    return not is_classifier_model(TOOL_MODEL)
-
-
-# True if we need to create a vLLM engine for tool model
-# (False when tool model is a classifier or dual mode)
-DEPLOY_TOOL_ENGINE = _compute_tool_engine_needed()
-
-
 def validate_env() -> None:
     """Validate required configuration once during startup."""
     from .models import is_classifier_model
     
     errors: list[str] = []
-    if DEPLOY_DUAL and not DUAL_MODEL:
-        errors.append("DUAL_MODEL is required when DEPLOY_MODELS is 'dual'")
     if DEPLOY_CHAT and not CHAT_MODEL:
         errors.append("CHAT_MODEL is required when DEPLOY_MODELS is 'both' or 'chat'")
     if DEPLOY_TOOL and not TOOL_MODEL:
         errors.append("TOOL_MODEL is required when DEPLOY_MODELS is 'both' or 'tool'")
+    if DEPLOY_TOOL and TOOL_MODEL and not is_classifier_model(TOOL_MODEL):
+        errors.append("TOOL_MODEL must be one of the classifier models (vLLM tool engines are disabled)")
     
     # Quantization is only required when deploying LLMs (not classifiers)
     # Classifier-only mode (DEPLOY_CHAT=False and TOOL_MODEL is classifier) doesn't need quantization
@@ -152,11 +125,8 @@ def validate_env() -> None:
 
 __all__ = [
     "DEPLOY_MODELS",
-    "DEPLOY_DUAL",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
-    "DEPLOY_TOOL_ENGINE",
-    "DUAL_MODEL",
     "CHAT_MODEL",
     "TOOL_MODEL",
     "CHAT_GPU_FRAC",

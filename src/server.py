@@ -30,8 +30,6 @@ from fastapi.responses import ORJSONResponse
 
 from .config import (
     DEPLOY_CHAT,
-    DEPLOY_DUAL,
-    DEPLOY_TOOL_ENGINE,
     CACHE_RESET_INTERVAL_SECONDS,
 )
 from .config.env import validate_env
@@ -39,7 +37,6 @@ from .config.logging import configure_logging
 from .engines import (
     cache_reset_reschedule_event,
     get_chat_engine,
-    get_tool_engine,
     reset_engine_caches,
     seconds_since_last_cache_reset,
     shutdown_engines,
@@ -72,14 +69,8 @@ async def preload_engines() -> None:
     """Load any configured vLLM engines before accepting traffic."""
     tasks: list[asyncio.Task[None]] = []
 
-    if DEPLOY_DUAL:
-        # Dual mode: single engine serves both chat and tool
-        tasks.append(asyncio.create_task(_warm_engine("dual", get_chat_engine)))
-    else:
-        if DEPLOY_CHAT:
-            tasks.append(asyncio.create_task(_warm_engine("chat", get_chat_engine)))
-        if DEPLOY_TOOL_ENGINE:
-            tasks.append(asyncio.create_task(_warm_engine("tool", get_tool_engine)))
+    if DEPLOY_CHAT:
+        tasks.append(asyncio.create_task(_warm_engine("chat", get_chat_engine)))
 
     if not tasks:
         return

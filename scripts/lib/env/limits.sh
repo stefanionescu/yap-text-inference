@@ -23,19 +23,9 @@ apply_limits_and_timeouts() {
   # Optional tiny packet coalescer window (ms); 0 = off
   export STREAM_FLUSH_MS=${STREAM_FLUSH_MS:-0}
 
-  # Buffer-then-flush knobs for parallel tool router
-  export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
-
-  # Concurrent model calling mode: 0=sequential (default), 1=concurrent
-  export CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-0}
-
   # Token limits (approx)
   export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
   export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
-
-  # Tool model specific token limits
-  export TOOL_HISTORY_TOKENS=${TOOL_HISTORY_TOKENS:-900}  # Tool model context allocation
-  export TOOL_PROMPT_MAX_TOKENS=${TOOL_PROMPT_MAX_TOKENS:-3400}   # System prompt
 
   # Prefill batching overrides
   export MAX_NUM_SEQS_CHAT=${MAX_NUM_SEQS_CHAT:-32}

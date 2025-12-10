@@ -145,12 +145,10 @@ PY
 # ---- Runtime stage ----
 FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
-ARG DEFAULT_CONCURRENT=0
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:$PATH" \
-    CONCURRENT_MODEL_CALL=${DEFAULT_CONCURRENT}
+    PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y \
     python3.11 \

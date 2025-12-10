@@ -48,9 +48,7 @@ from tests.config import (
 )
 from tests.helpers.prompt import (
     PROMPT_MODE_BOTH,
-    select_tool_prompt,
     should_send_chat_prompt,
-    should_send_tool_prompt,
 )
 
 
@@ -91,7 +89,6 @@ def main() -> None:
     prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
     if not should_send_chat_prompt(prompt_mode):
         raise SystemExit("personality test requires chat prompts; set --prompt-mode chat or both.")
-    tool_prompt = select_tool_prompt() if should_send_tool_prompt(prompt_mode) else None
     asyncio.run(
         run_test(
             args.server,
@@ -99,7 +96,6 @@ def main() -> None:
             switches,
             args.delay,
             args.sampling or None,
-            tool_prompt,
         )
     )
 

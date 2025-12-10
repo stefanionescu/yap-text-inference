@@ -15,7 +15,6 @@ class ConversationSession:
     gender: str
     personality: str
     chat_prompt: str | None
-    tool_prompt: str | None
     history: str = ""
     sampling: dict[str, float | int] | None = None
 
@@ -37,10 +36,6 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
     }
     if session.chat_prompt is not None:
         payload["chat_prompt"] = session.chat_prompt
-    if session.tool_prompt is not None:
-        payload["tool_prompt"] = session.tool_prompt
-    if "chat_prompt" not in payload and "tool_prompt" not in payload:
-        raise ValueError("Session configuration requires chat_prompt and/or tool_prompt")
     if session.sampling:
         payload["sampling"] = session.sampling
     return payload

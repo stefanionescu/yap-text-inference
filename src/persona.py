@@ -1,4 +1,4 @@
-"""Prompt building helpers for chat and tool models using dynamic inputs."""
+"""Prompt building helpers for chat prompts using dynamic inputs."""
 
 from __future__ import annotations
 
@@ -7,25 +7,13 @@ from functools import lru_cache
 from collections.abc import Sequence
 
 from .config import CHAT_TEMPLATE_ENABLE_THINKING
-from .tokens.tokenizer import get_chat_tokenizer, get_tool_tokenizer
+from .tokens.tokenizer import get_chat_tokenizer
 
 logger = logging.getLogger(__name__)
 
 # Chat templates like Qwen3 emit `<think>` sections by default. The toggle lives
 # in config so deployments can reason about it centrally (default: disabled).
 _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKING}
-
-
-def build_toolcall_prompt_with_prefix(
-    base_prompt: str,
-    user_utt: str,
-    prefix_text: str = "",
-) -> str:
-    """Build the tool prompt using the tokenizer's native chat template."""
-    history_turns = _parse_history(prefix_text)
-    system_prompt = (base_prompt or "").strip()
-    messages = _build_messages(system_prompt, history_turns, user_utt)
-    return _apply_tool_chat_template(messages, add_generation_prompt=True)
 
 
 def build_chat_prompt_with_prefix(
@@ -101,12 +89,6 @@ def _get_cached_chat_tokenizer():
     return get_chat_tokenizer()
 
 
-@lru_cache(maxsize=1)
-def _get_cached_tool_tokenizer():
-    """Get the tool tokenizer (cached)."""
-    return get_tool_tokenizer()
-
-
 def _apply_chat_template(
     messages: list[dict[str, str]],
     add_generation_prompt: bool = True,
@@ -122,23 +104,6 @@ def _apply_chat_template(
     except (RuntimeError, ValueError) as e:
         # Fallback to basic ChatML if no chat template available
         logger.warning("Chat template not available, falling back to ChatML: %s", e)
-        return _build_chatml_prompt_from_messages(messages, add_generation_prompt)
-
-
-def _apply_tool_chat_template(
-    messages: list[dict[str, str]],
-    add_generation_prompt: bool = True,
-) -> str:
-    """Apply the tool tokenizer's chat template to format messages."""
-    tokenizer = _get_cached_tool_tokenizer()
-    try:
-        return tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt,
-            **_CHAT_TEMPLATE_DEFAULT_KWARGS,
-        )
-    except (RuntimeError, ValueError) as e:
-        logger.warning("Tool template not available, falling back to ChatML: %s", e)
         return _build_chatml_prompt_from_messages(messages, add_generation_prompt)
 
 
@@ -208,5 +173,4 @@ def _parse_history(history_text: str) -> list[tuple[str, str]]:
 __all__ = [
     "build_chat_prompt_with_prefix",
     "build_chat_warm_prompt",
-    "build_toolcall_prompt_with_prefix",
 ]

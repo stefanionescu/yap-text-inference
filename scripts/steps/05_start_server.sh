@@ -27,23 +27,14 @@ if [ -f "${PID_FILE}" ]; then
 fi
 
 # Log key env knobs
-model_display="${CHAT_MODEL:-}"
-if [ "${DEPLOY_MODELS:-both}" = "dual" ]; then
-  model_display="${DUAL_MODEL:-${CHAT_MODEL:-${TOOL_MODEL:-}}}"
-elif [ -z "${model_display}" ] || [ "${DEPLOY_MODELS:-both}" = "tool" ]; then
-  model_display="${TOOL_MODEL:-${model_display}}"
-fi
+model_display="${CHAT_MODEL:-${TOOL_MODEL:-}}"
 log_info "GPU=${DETECTED_GPU_NAME:-unknown} MODEL=${model_display:-<unset>} QUANTIZATION=${QUANTIZATION:-} KV_DTYPE=${KV_DTYPE:-}"
 deploy_line="DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
-if [ "${DEPLOY_MODELS:-both}" = "dual" ]; then
-  deploy_line+=" DUAL_MODEL=${DUAL_MODEL:-${CHAT_MODEL:-}}"
-else
-  if [ "${DEPLOY_MODELS:-both}" != "tool" ]; then
-    deploy_line+=" CHAT=${CHAT_MODEL:-}"
-  fi
-  if [ "${DEPLOY_MODELS:-both}" != "chat" ]; then
-    deploy_line+=" TOOL=${TOOL_MODEL:-}"
-  fi
+if [ "${DEPLOY_MODELS:-both}" != "tool" ]; then
+  deploy_line+=" CHAT=${CHAT_MODEL:-}"
+fi
+if [ "${DEPLOY_MODELS:-both}" != "chat" ]; then
+  deploy_line+=" TOOL=${TOOL_MODEL:-}"
 fi
 log_info "${deploy_line}"
 log_info "TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_V1:-} ENFORCE_EAGER=${ENFORCE_EAGER:-}"

@@ -62,33 +62,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # stupid, output is a bit messed up, ignores instructions
 ]
 
-ALLOWED_TOOL_MODELS: list[str] = [
-    # Full precision models
-    "MadeAgents/Hammer2.1-1.5b",
-    "MadeAgents/Hammer2.1-3b",
-
-    "Qwen/Qwen2.5-1.5B-Instruct",
-    "Qwen/Qwen2.5-7B-Instruct",
-    "Qwen/Qwen2.5-14B-Instruct",
-
-    "Qwen/Qwen3-4B-Instruct-2507",
-    "Qwen/Qwen3-1.7B",
-
-    "Salesforce/xLAM-2-1b-fc-r",
-    "katanemo/Arch-Agent-7B",
-    "katanemo/Arch-Agent-3B",
-
-    # Pre-quantized GPTQ models
-    "Qwen/Qwen2.5-1.5B-Instruct-GPTQ-Int4",
-
-    # Pre-quantized AWQ models
-    "Qwen/Qwen2-1.5B-Instruct-AWQ",
-    "Qwen/Qwen2.5-14B-Instruct-AWQ",
-    "Qwen/Qwen2.5-7B-Instruct-AWQ", # BEST TOOL MODEL FOR NOW
-    "Qwen/Qwen3-4B-AWQ",
-    "cpatonn/Qwen3-4B-Instruct-2507-AWQ-4bit",
-]
-
 ALLOWED_CLASSIFIER_MODELS: list[str] = [
     "yapwithai/yap-screenshot-intent-classifier"
 ]
@@ -109,20 +82,6 @@ def is_classifier_model(model: str | None) -> bool:
     if _is_local_model_path(model) and "classifier" in model.lower():
         return True
     return False
-
-
-def get_tool_model_type(model: str | None) -> str:
-    """Returns 'classifier' or 'autoregressive' based on model type."""
-    if is_classifier_model(model):
-        return "classifier"
-    return "autoregressive"
-
-
-ALLOWED_DUAL_MODELS: list[str] = [
-    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
-    "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
-    "TheBloke/mixtral-8x7b-v0.1-AWQ",
-]
 
 
 def _is_local_model_path(value: str | None) -> bool:
@@ -155,13 +114,10 @@ def is_valid_model(model: str, allowed_models: list, model_type: str) -> bool:
 
 __all__ = [
     "ALLOWED_CHAT_MODELS",
-    "ALLOWED_TOOL_MODELS",
     "ALLOWED_CLASSIFIER_MODELS",
-    "ALLOWED_DUAL_MODELS",
     "_is_local_model_path",
     "is_valid_model",
     "is_classifier_model",
-    "get_tool_model_type",
     "classify_prequantized_model",
     "is_prequantized_model",
     "is_awq_model_name",

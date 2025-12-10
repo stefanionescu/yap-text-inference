@@ -39,12 +39,11 @@ async def run_test(
     switches: int,
     delay_s: int,
     sampling: dict[str, float | int] | None,
-    tool_prompt: str | None,
 ) -> None:
     """Run the personality switch test."""
     url = with_api_key(ws_url, api_key=api_key)
     ttfb_aggregator = TTFBAggregator()
-    session = _build_session(sampling, tool_prompt)
+    session = _build_session(sampling)
     session.ttfb_aggregator = ttfb_aggregator
     variants = _load_variants()
     message_pacer, persona_pacer = _build_pacers()
@@ -57,7 +56,6 @@ async def run_test(
 
 def _build_session(
     sampling: dict[str, float | int] | None,
-    tool_prompt: str | None,
 ) -> PersonaSession:
     prompt_sequence = tuple(CONVERSATION_HISTORY_MESSAGES)
     if not prompt_sequence:
@@ -66,7 +64,6 @@ def _build_session(
         session_id=f"sess-{uuid.uuid4()}",
         prompts=prompt_sequence,
         sampling=sampling,
-        tool_prompt=tool_prompt,
     )
 
 

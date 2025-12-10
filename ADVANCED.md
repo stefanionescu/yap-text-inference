@@ -281,10 +281,10 @@ The pipeline writes `awq_metadata.json` and `README.md` into each quantized fold
 All CLI harnesses run against the same WebSocket stack; use them to validate behavior end to end. Unless otherwise noted, activate `.venv` (or the lightweight `.venv-local`) before running the commands below.
 
 > **Prompt modes:** every client accepts `--prompt-mode {both,chat,tool}` (or `PROMPT_MODE` env).  
-> `both` (default) sends both `chat_prompt` and `tool_prompt`.  
-> `chat` sends only the persona/chat prompt, skipping the tool prompt.  
-> `tool` does the inverse.  
-> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. Dual deployments still run both prompts (default `both`). `scripts/warmup.sh` auto-detects `DEPLOY_MODELS` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
+> `both` (default) sends the chat persona prompt.  
+> `chat` forces chat-only (identical to `both`).  
+> `tool` disables chat prompts entirely (for classifier-only tool deployments).  
+> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. `scripts/warmup.sh` auto-detects `DEPLOY_MODELS` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
 
 ### Warmup Test Client
 
@@ -304,8 +304,8 @@ Toggle concurrency by exporting the flag before launching the client:
 python3 tests/warmup.py "write a simple hello world function"
 
 # Enable concurrent mode (override the sequential default)
-CONCURRENT_MODEL_CALL=1 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b
-CONCURRENT_MODEL_CALL=1 python3 tests/warmup.py "write a simple hello world function"
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
+python3 tests/warmup.py "write a simple hello world function"
 ```
 
 Environment overrides honored by the client:
@@ -338,7 +338,7 @@ Flags:
 - `--api-key`: override `TEXT_API_KEY`
 - `--persona/-p`: persona key from `tests/prompts/live.py` (defaults to `anna_flirty`)
 - `--recv-timeout`: override `DEFAULT_RECV_TIMEOUT_SEC`
-- `--prompt-mode`: disable chat (`tool`) or tool prompts (`chat`) mid-session; persona switches are disabled automatically when chat prompts are off
+- `--prompt-mode`: disable chat prompts altogether (`tool`) or keep them (`chat`/`both`) mid-session; persona switches are disabled automatically when chat prompts are off
 - positional text: optional opener message
 
 ### Personality Switch Test
@@ -351,7 +351,7 @@ TEXT_API_KEY=your_api_key python3 tests/personality.py \
   --delay 2
 ```
 
-This client requires chat prompts, so invoke it with `--prompt-mode chat` or `both`; tool prompts remain optional.
+This client requires chat prompts, so invoke it with `--prompt-mode chat` or `both`.
 
 `PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
 

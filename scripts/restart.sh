@@ -42,7 +42,6 @@ Deploy modes:
   both (default)  - Deploy chat + tool engines
   chat            - Deploy chat-only
   tool            - Deploy tool-only
-  dual            - Reuse a single model for chat + tool
 
 Key flags:
   --install-deps        Reinstall dependencies inside .venv before restart
@@ -53,7 +52,6 @@ Key flags:
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
   --chat-quant <val>    Override chat/base quantization (fp8|gptq|gptq_marlin|awq)
   --tool-quant <val>    Override tool quantization (fp8|gptq|gptq_marlin|awq)
-  --dual-model <repo>   Shared model when --deploy-mode dual
   --awq-chat-model / --awq-tool-model
                         Use pre-quantized AWQ repos when awq is requested
 
@@ -75,9 +73,6 @@ Examples:
        --tool-model MadeAgents/Hammer2.1-3b \
        --chat-quant fp8 \
        --tool-quant awq
-  bash scripts/restart.sh --reset-models \
-       --deploy-mode dual \
-       --dual-model cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
 USAGE
   exit 1
 }
@@ -86,7 +81,7 @@ USAGE
 if ! restart_parse_args "$@"; then
   usage
 fi
-case "${DEPLOY_MODE}" in both|chat|tool|dual) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
+case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
 export INSTALL_DEPS DEPLOY_MODE
 
 if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
@@ -125,18 +120,14 @@ fi
 
 # Report detected model sources
 log_info "Resolved AWQ sources for restart:"
-if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ] || [ "${DEPLOY_MODE}" = "dual" ]; then
+if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
   chat_origin="local cache"
   if [ "${CHAT_AWQ_SOURCE_KIND:-local}" != "local" ]; then
     chat_origin="pre-quantized repo"
   fi
-  label="Chat"
-  if [ "${DEPLOY_MODE}" = "dual" ]; then
-    label="Dual"
-  fi
-  log_info "  ${label} (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
+  log_info "  Chat (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
 fi
-if ([ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]) && [ "${DEPLOY_MODE}" != "dual" ]; then
+if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
   tool_origin="local cache"
   if [ "${TOOL_AWQ_SOURCE_KIND:-local}" != "local" ]; then
     tool_origin="pre-quantized repo"

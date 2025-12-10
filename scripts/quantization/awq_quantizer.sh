@@ -28,9 +28,6 @@ if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
     AWQ_TARGET_TOOL=1
   fi
 fi
-if [ "${DEPLOY_DUAL:-0}" = "1" ]; then
-  AWQ_TARGET_TOOL=0
-fi
 export AWQ_TARGET_CHAT AWQ_TARGET_TOOL
 
 # If neither engine needs AWQ work, exit quietly

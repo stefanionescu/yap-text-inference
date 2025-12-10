@@ -68,15 +68,6 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         await ws.send_text(json.dumps({"type": "error", "message": "no active session; send 'start' first"}))
         return
 
-    # Disallow tool prompt updates here
-    if msg.get("tool_prompt"):
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "error_code": "tool_prompt_update_not_allowed",
-            "message": "tool_prompt cannot be updated mid-session"
-        }))
-        return
-
     # Required fields
     raw_gender = msg.get("gender")
     raw_personality = msg.get("personality")

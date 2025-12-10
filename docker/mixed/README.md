@@ -83,16 +83,6 @@ DEPLOY_MODELS=tool \
 TOOL_MODEL=MadeAgents/Hammer2.1-3b \
   docker/mixed/build.sh
 
-# Bake default concurrency (sequential)
-TAG=float-both-seq \
-DOCKER_USERNAME=yourusername \
-DEPLOY_MODELS=both \
-CHAT_MODEL=SicariusSicariiStuff/Impish_Nemo_12B \
-TOOL_MODEL=MadeAgents/Hammer2.1-3b \
-DEFAULT_CONCURRENT=1 \
-  docker/mixed/build.sh
-```
-
 Preloaded paths (if used):
 
 - Float/GPTQ chat -> `/app/models/chat`
@@ -107,14 +97,11 @@ At runtime, models are used from the embedded paths. No downloads or runtime qua
 Defaults:
 
 - `DEPLOY_MODELS=both` (if both embedded)
-- `CONCURRENT_MODEL_CALL` baked via `DEFAULT_CONCURRENT` at build (default 0 = sequential; override allowed at run)
 - `QUANTIZATION` derived from embedded models (both AWQ -> `awq`, else `fp8`)
 
 Runtime environment variables:
 
-- `DEPLOY_MODELS=both|chat|tool|dual`
-- `DUAL_MODEL` (or `CHAT_MODEL`) when `DEPLOY_MODELS=dual` so the same model powers chat + tool
-- `CONCURRENT_MODEL_CALL=0|1` (default 0=sequential; set to 1 for concurrent routing)
+- `DEPLOY_MODELS=both|chat|tool`
 
 AWQ push is not performed by the Mixed image (no runtime quantization).
 
@@ -149,19 +136,7 @@ docker run -d --gpus all --name yap-tool \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 yourusername/yap-text-inference-mixed:tool-awq
 
-# Dual (reuse chat model for tool routing)
-docker run -d --gpus all --name yap-dual \
-  -e DEPLOY_MODELS=dual \
-  -e DUAL_MODEL=your-org/chat-preload \
-  -e TEXT_API_KEY=your_secret_key \
-  -p 8000:8000 yourusername/yap-text-inference-mixed:both-fp8
-```
-
 Quantization is automatically derived from embedded models (AWQ dirs -> `awq` → detected as compressed tensors; otherwise `fp8`). The server logs show the detected backend and quantizer metadata (llmcompressor vs AutoAWQ) so you can confirm the baked combination.
-
-### Concurrency
-
-- Default is baked at build time via `DEFAULT_CONCURRENT` (0 = sequential). Set `-e CONCURRENT_MODEL_CALL=1` at run to enable concurrent mode.
 
 ### Health
 

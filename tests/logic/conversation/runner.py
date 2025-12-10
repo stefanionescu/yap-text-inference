@@ -23,9 +23,7 @@ from tests.config.env import get_float_env, get_int_env  # noqa: E402
 from tests.helpers.prompt import (  # noqa: E402
     PROMPT_MODE_BOTH,
     select_chat_prompt,
-    select_tool_prompt,
     should_send_chat_prompt,
-    should_send_tool_prompt,
 )
 from tests.helpers.rate import SlidingWindowPacer  # noqa: E402
 from tests.helpers.stream import StreamTracker  # noqa: E402
@@ -59,15 +57,13 @@ async def run_conversation(
     ws_url_with_auth = with_api_key(ws_url, api_key=api_key)
     normalized_mode = prompt_mode or PROMPT_MODE_BOTH
     chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(normalized_mode) else None
-    tool_prompt = select_tool_prompt() if should_send_tool_prompt(normalized_mode) else None
-    if chat_prompt is None and tool_prompt is None:
-        raise ValueError("prompt_mode must allow chat, tool, or both prompts")
+    if chat_prompt is None:
+        raise ValueError("prompt_mode must allow chat prompts for conversation runner")
     session = ConversationSession(
         session_id=f"sess-{uuid.uuid4()}",
         gender=gender,
         personality=personality,
         chat_prompt=chat_prompt,
-        tool_prompt=tool_prompt,
         sampling=sampling,
     )
 

@@ -48,7 +48,6 @@ usage() {
   echo "  $0 [awq] chat <chat_model>"
   echo "  $0 [awq] tool <tool_model>"
   echo "  $0 [awq] both <chat_model> <tool_model>"
-  echo "  $0 [awq] dual <model>            # reuse one model for chat + tool"
   echo ""
   echo "Behavior:"
   echo "  • Always runs deployment in background (auto-detached)"
@@ -83,14 +82,10 @@ usage() {
   echo "  MAX_CONCURRENT_CONNECTIONS=<int>  - Capacity guard limit"
   echo ""
   echo "Environment options:"
-  echo "  CONCURRENT_MODEL_CALL=1       - Enable concurrent tool+chat calls (default: 0=sequential)"
-  echo "  DEPLOY_MODELS=both|chat|tool|dual  - Which models to deploy (default: both)"
+  echo "  DEPLOY_MODELS=both|chat|tool  - Which models to deploy (default: both)"
   echo ""
   echo "Examples:"
-  echo "  # Concurrent mode (override the sequential default)"
-  echo "  CONCURRENT_MODEL_CALL=1 $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
-  echo ""
-  echo "  # Standard concurrent deployment (auto-background with log tailing)"
+  echo "  # Standard deployment (auto-background with log tailing)"
   echo "  $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
   echo ""
   echo "  # 8B roleplay model"
@@ -98,12 +93,6 @@ usage() {
   echo ""
   echo "  # 8B highest rated uncensored model"
   echo "  $0 SicariusSicariiStuff/Impish_Mind_8B MadeAgents/Hammer2.1-1.5b"
-  echo ""
-  echo "  # Concurrent mode for lower latency"
-  echo "  CONCURRENT_MODEL_CALL=1 $0 SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-3b"
-  echo ""
-  echo "  # GPTQ chat model (auto-detected) with concurrent mode"
-  echo "  CONCURRENT_MODEL_CALL=1 $0 SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 MadeAgents/Hammer2.1-3b"
   echo ""
   echo "  # 4-bit AWQ (quantize both chat and tool models on load)"
   echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B MadeAgents/Hammer2.1-1.5b"
@@ -138,13 +127,12 @@ esac
 # Defaults that we may fill from args
 CHAT_MODEL_NAME=""
 TOOL_MODEL_NAME=""
-DUAL_MODEL_NAME=""
 DEPLOY_MODE_SELECTED="${DEPLOY_MODELS:-}"
 if [ -z "${DEPLOY_MODE_SELECTED}" ]; then
   DEPLOY_MODE_SELECTED="both"
 fi
 case "${DEPLOY_MODE_SELECTED}" in
-  both|chat|tool|dual) ;;
+  both|chat|tool) ;;
   *)
     log_warn "Invalid DEPLOY_MODELS='${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
     DEPLOY_MODE_SELECTED="both"
@@ -152,7 +140,7 @@ case "${DEPLOY_MODE_SELECTED}" in
 esac
 
 case "${1:-}" in
-  chat|tool|both|dual)
+  chat|tool|both)
     DEPLOY_MODE_SELECTED="${1}"
     shift
     ;;
@@ -173,16 +161,6 @@ case "${DEPLOY_MODE_SELECTED}" in
     fi
     TOOL_MODEL_NAME="${1}"; shift
     ;;
-  dual)
-    if [ $# -lt 1 ]; then
-      log_warn "Error: dual mode requires <model>"
-      usage
-    fi
-    DUAL_MODEL_NAME="${1}"
-    CHAT_MODEL_NAME="${DUAL_MODEL_NAME}"
-    TOOL_MODEL_NAME="${DUAL_MODEL_NAME}"
-    shift
-    ;;
   both)
     if [ $# -lt 2 ]; then
       log_warn "Error: both mode requires <chat_model> <tool_model>"
@@ -198,14 +176,14 @@ if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_MODEL_NAME}" ]; then
   log_warn "Error: CHAT_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
   usage
 fi
-if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ "${DEPLOY_MODE_SELECTED}" != "dual" ] && [ -z "${TOOL_MODEL_NAME}" ]; then
+if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ -z "${TOOL_MODEL_NAME}" ]; then
   log_warn "Error: TOOL_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
   usage
 fi
 
 if [ $# -gt 0 ]; then
   case "${1}" in
-    chat|tool|both|dual)
+    chat|tool|both)
       DEPLOY_MODE_SELECTED="${1}"
       shift
       ;;
@@ -214,7 +192,7 @@ fi
 
 # Normalize and validate deploy mode selection
 case "${DEPLOY_MODE_SELECTED:-both}" in
-  both|chat|tool|dual)
+  both|chat|tool)
     export DEPLOY_MODELS="${DEPLOY_MODE_SELECTED:-both}"
     ;;
   *)
@@ -263,26 +241,12 @@ case "${QUANT_TYPE}" in
     ;;
 esac
 
-if [ "${DEPLOY_MODELS}" = "dual" ]; then
-  if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-    export TOOL_QUANTIZATION="${CHAT_QUANTIZATION}"
-  else
-    export TOOL_QUANTIZATION="${TOOL_QUANTIZATION:-${QUANTIZATION}}"
-  fi
-fi
-
 # Export only what is needed for selected deployment
-if [ "${DEPLOY_MODELS}" = "dual" ]; then
-  export DUAL_MODEL="${DUAL_MODEL_NAME:-${CHAT_MODEL_NAME}}"
+if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
   export CHAT_MODEL="${CHAT_MODEL_NAME}"
+fi
+if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
   export TOOL_MODEL="${TOOL_MODEL_NAME}"
-else
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
-    export CHAT_MODEL="${CHAT_MODEL_NAME}"
-  fi
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
-    export TOOL_MODEL="${TOOL_MODEL_NAME}"
-  fi
 fi
 
 # Early model validation - fail fast before any heavy operations
@@ -312,20 +276,10 @@ runtime_guard_stop_server_if_needed \
   "${DESIRED_TOOL_QUANT}"
 
 # Display configuration
-CONCURRENT_STATUS="sequential (default)"
-if [ "${CONCURRENT_MODEL_CALL:-0}" = "1" ]; then
-  CONCURRENT_STATUS="concurrent (override)"
-fi
-
 log_info "Configuration: quantization=${QUANTIZATION} (flag=${QUANT_TYPE})"
 log_info "  Deploy mode: ${DEPLOY_MODELS}"
-if [ "${DEPLOY_MODELS}" = "dual" ]; then
-  log_info "  Dual model: ${CHAT_MODEL_NAME}"
-else
-  log_info "  Chat model: ${CHAT_MODEL_NAME}"
-  log_info "  Tool model: ${TOOL_MODEL_NAME}"
-fi
-log_info "  Model calls: ${CONCURRENT_STATUS}"
+log_info "  Chat model: ${CHAT_MODEL_NAME}"
+log_info "  Tool model: ${TOOL_MODEL_NAME}"
 log_info ""
 log_info "Starting deployment in background (auto-detached)"
 log_info "Ctrl+C stops log tailing only - deployment continues"
@@ -345,9 +299,9 @@ DEPLOYMENT_CMD="
 "
 
 # Export all environment variables for the background process
-export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL CONCURRENT_MODEL_CALL
+export QUANTIZATION DEPLOY_MODELS CHAT_MODEL TOOL_MODEL
 export CHAT_QUANTIZATION TOOL_QUANTIZATION
-export DUAL_MODEL CHAT_MODEL_NAME TOOL_MODEL_NAME DUAL_MODEL_NAME  # Also export the display names
+export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
 
 runtime_pipeline_run_background \
   "${ROOT_DIR}" \

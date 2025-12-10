@@ -8,14 +8,9 @@ cd /app
 
 # Log key environment variables
 log_info "GPU=${DETECTED_GPU_NAME:-unknown} QUANTIZATION=${QUANTIZATION:-}"
-if [ "${DEPLOY_MODELS:-both}" = "dual" ]; then
-  log_info "DEPLOY_MODELS=dual DUAL_MODEL=${DUAL_MODEL:-${CHAT_MODEL:-${TOOL_MODEL:-none}}}"
-else
-  log_info "DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
-  log_info "CHAT_MODEL=${CHAT_MODEL:-none} TOOL_MODEL=${TOOL_MODEL:-none}"
-fi
+log_info "DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
+log_info "CHAT_MODEL=${CHAT_MODEL:-none} TOOL_MODEL=${TOOL_MODEL:-none}"
 log_info "CHAT_QUANTIZATION=${CHAT_QUANTIZATION:-} TOOL_QUANTIZATION=${TOOL_QUANTIZATION:-}"
-log_info "CONCURRENT_MODEL_CALL=${CONCURRENT_MODEL_CALL:-0}"
 log_info "VLLM_USE_V1=${VLLM_USE_V1:-1} KV_DTYPE=${KV_DTYPE:-auto}"
 log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-auto}"
 

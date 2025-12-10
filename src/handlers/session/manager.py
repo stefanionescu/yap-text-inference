@@ -12,7 +12,6 @@ from src.config import (
     TOOL_MODEL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
-    DEPLOY_TOOL_ENGINE,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
@@ -62,7 +61,6 @@ class SessionHandler:
             "chat_gender": None,
             "chat_personality": None,
             "chat_prompt": None,
-            "tool_prompt": None,
             "chat_sampling": None,
             "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
             "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
@@ -80,7 +78,6 @@ class SessionHandler:
         chat_gender: str | None = None,
         chat_personality: str | None = None,
         chat_prompt: str | None = None,
-        tool_prompt: str | None = None,
         chat_sampling: dict[str, Any] | None = None,
         check_screen_prefix: str | None = None,
         screen_checked_prefix: str | None = None,
@@ -106,11 +103,6 @@ class SessionHandler:
             cp = chat_prompt or None
             meta["chat_prompt"] = cp
             changed["chat_prompt"] = bool(cp)
-
-        if tool_prompt is not None:
-            tp = tool_prompt or None
-            meta["tool_prompt"] = tp
-            changed["tool_prompt"] = bool(tp)
 
         if chat_sampling is not None:
             sampling = chat_sampling or None
@@ -390,15 +382,6 @@ async def abort_session_requests(
             from src.engines import get_chat_engine  # local import to avoid cycles
 
             await (await get_chat_engine()).abort(req_info["active"])
-        except Exception:  # noqa: BLE001 - best effort
-            pass
-
-    # Abort tool requests only when vLLM tool engine is deployed
-    if DEPLOY_TOOL_ENGINE and req_info.get("tool"):
-        try:
-            from src.engines import get_tool_engine  # local import to avoid cycles
-
-            await (await get_tool_engine()).abort(req_info["tool"])
         except Exception:  # noqa: BLE001 - best effort
             pass
 

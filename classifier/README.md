@@ -1,14 +1,16 @@
 ### Screenshot intent classifier
 
-This directory contains an **offline training pipeline** for a
-`screenshot intent` classifier based on **Longformer**. The classifier is
-trained on the curated regression prompts in `tests/messages/tool.py` and
-predicts whether the system should call the `take_screenshot` tool for the
-latest user message, given conversation context.
+This directory contains an **offline training pipeline** for a `screenshot
+intent` classifier. By default it fine-tunes **ModernBERT**
+(`answerdotai/ModernBERT-base`) but you can switch to **Longformer**
+(`allenai/longformer-base-4096`) when you want sliding-window attention.
+The classifier is trained on the curated regression prompts in
+`tests/messages/tool.py` and predicts whether the system should call the
+`take_screenshot` tool for the latest user message, given conversation context.
 
-The goal is to provide a **fast, cheap, and stable** alternative to using a
-full chat LLM for this yes/no decision, while supporting **longer contexts**
-via `allenai/longformer-base-4096`.
+The goal is to provide a **fast, cheap, and stable** alternative to using a full
+chat LLM for this yes/no decision, while supporting both **ModernBERT** (default)
+and **Longformer** for longer contexts.
 
 ---
 
@@ -19,12 +21,14 @@ via `allenai/longformer-base-4096`.
   Accelerate, scikit-learn).
 - **`data.py`**: Turns `TOOL_DEFAULT_MESSAGES` from `tests/messages/tool.py` into
   history-aware training examples and creates train/eval splits.
-- **`train.py`**: Fine-tunes `allenai/longformer-base-4096` (by default) as a
-  binary classifier and saves model + tokenizer locally.
+- **`train.py`**: Fine-tunes `answerdotai/ModernBERT-base` by default (pass
+  `--model-name allenai/longformer-base-4096` to switch) and saves the model +
+  tokenizer locally.
 - **`install.sh`**: Creates a dedicated virtualenv and installs deps.
 - **`train.sh`**: Convenience wrapper to run training inside that virtualenv.
  - **`eval.py`**: Offline evaluation of the trained classifier on local test cases.
- - **`push_to_hf.py`**: Pushes a trained classifier to Hugging Face Hub.
+ - **`push_to_hf.py`**: Pushes a trained classifier to Hugging Face Hub (defaults
+   to the ModernBERT checkpoint/repo but supports a Longformer variant flag).
  - **`push.sh`**: Convenience wrapper around `push_to_hf.py`.
 
 ---
@@ -33,8 +37,9 @@ via `allenai/longformer-base-4096`.
 
 - **Python**: 3.9+ recommended.
 - **OS**: macOS / Linux. (Scripts are POSIX shell.)
-- **Network access**: first run will download `allenai/longformer-base-4096`
-  from Hugging Face.
+- **Network access**: first run downloads `answerdotai/ModernBERT-base`
+  (and `allenai/longformer-base-4096` if you train that variant) from
+  Hugging Face.
 - **Torch wheels**: depending on your platform (e.g. Apple Silicon), you may need
   a recent `pip` and/or extra steps if PyPI does not have a matching wheel.
 
@@ -77,10 +82,10 @@ This will:
 
 - Activate `.venv_classifier`.
 - Run `python -m classifier.train` with default hyperparameters.
-- Fine-tune `allenai/longformer-base-4096` on the dataset derived from
+- Fine-tune `answerdotai/ModernBERT-base` on the dataset derived from
   `tests/messages/tool.py`.
 - Save the resulting model + tokenizer to
-  `classifier/models/longformer_screenshot_classifier/` (by default).
+  `classifier/models/modernbert_screenshot_classifier/` (by default).
 
 You can customize training via CLI flags, e.g.:
 
@@ -90,7 +95,12 @@ bash classifier/train.sh \
   --batch-size 32 \
   --learning-rate 3e-5 \
   --max-length 1536 \
-  --output-dir classifier/models/longformer_screenshot_classifier_v2
+  --output-dir classifier/models/modernbert_screenshot_classifier_v2
+
+# Train the Longformer variant (example):
+bash classifier/train.sh \
+  --model-name allenai/longformer-base-4096 \
+  --output-dir classifier/models/longformer_screenshot_classifier
 ```
 
 Run `./classifier/train.sh --help` for the full list of options.
@@ -125,7 +135,9 @@ train and eval.
 
 ### Model & training details
 
-- **Base model**: `allenai/longformer-base-4096` (long-context encoder).
+- **Base models**:
+  - `answerdotai/ModernBERT-base` (default; fast encoder with longer-than-BERT context).
+  - `allenai/longformer-base-4096` (optional; sliding-window attention up to 4,096 tokens).
 - **Head**: 2-way classification head (`no_screenshot`, `take_screenshot`).
 - **Input format**:
   - Each training example is a text block consisting of user messages,
@@ -133,13 +145,10 @@ train and eval.
   - At inference time you should feed text in the **same style** (e.g. last N
     user messages, prefixed and joined by newlines).
 - **Tokenization**:
-  - On-the-fly tokenization in the collate function (no pre-saved tokenized
-    dataset).
-  - Default `max_length=1536`; you can increase or decrease this as long as it
-    stays within the model's maximum of 4096 tokens.
-  - The collate function also constructs a `global_attention_mask` that assigns
-    **global attention to the first token**, as recommended for Longformer
-    classification tasks.
+  - On-the-fly tokenization in the dataset (no pre-saved tokenized dataset).
+  - Default `max_length=1536`; feel free to adjust within the base model's max.
+  - When Longformer is used we also construct a `global_attention_mask` that
+    gives the first token global attention (ModernBERT ignores that tensor).
 - **Training hyperparameters** (defaults):
   - Epochs: 3
   - Batch size: 16 (per device)
@@ -165,7 +174,8 @@ python classifier/eval.py
 
 This will:
 
-- Load the model from `classifier/models/longformer_screenshot_classifier/`.
+- Load the model from `classifier/models/modernbert_screenshot_classifier/` (override
+  `--model-dir` if you want to evaluate another checkpoint).
 - Run it against all conversations in `classifier/test_cases.py`, building
   cumulative `USER:` history per turn (just like the training data).
 - Print overall accuracy and list any misclassified turns with their
@@ -182,25 +192,29 @@ python classifier/eval.py --threshold 0.3 --max-length 2048
 
 ### Pushing the model to Hugging Face Hub
 
-Once you are happy with a trained checkpoint (for example the default one in
-`classifier/models/longformer_screenshot_classifier/`), you can push it to a
-Hugging Face Hub repo.
+Once you are happy with a trained checkpoint (for example the default ModernBERT
+one in `classifier/models/modernbert_screenshot_classifier/`), you can push it to
+a Hugging Face Hub repo.
 
 From the **repository root**:
 
 ```bash
 HF_TOKEN=your_hf_token_here bash classifier/push.sh
+
+# Push the Longformer variant:
+HF_TOKEN=... bash classifier/push.sh --variant longformer
 ```
 
 This will:
 
 - Activate `.venv_classifier`.
-- Load the model + tokenizer from
-  `classifier/models/longformer_screenshot_classifier/`.
+- Load the model + tokenizer from the selected variant's model directory
+  (ModernBERT by default).
 - Create a simple `README.md` model card in that directory if one does not
   already exist.
-- Push the model and tokenizer to the default repo
-  `yapwithai/yap-function-caller`.
+- Push the model and tokenizer to the default repo for that variant:
+  - ModernBERT -> `yapwithai/yap-modernbert-screenshot-intent`
+  - Longformer -> `yapwithai/yap-longformer-screenshot-intent`
 
 You can override the target repo or model directory, for example:
 
@@ -219,13 +233,14 @@ regenerate the README from the template in `push_to_hf.py`, pass
 
 ### Using the trained classifier elsewhere
 
-Once you have a trained model in `classifier/models/longformer_screenshot_classifier/`,
-you can load it from other code (e.g. your runtime server) roughly like this:
+Once you have a trained model in `classifier/models/modernbert_screenshot_classifier/`
+(or any custom output directory), you can load it from other code (e.g. your
+runtime server) roughly like this:
 
 ```python
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-MODEL_DIR = "classifier/models/longformer_screenshot_classifier"
+MODEL_DIR = "classifier/models/modernbert_screenshot_classifier"
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
@@ -239,17 +254,16 @@ inputs = tokenizer(
     max_length=1536,
 )
 
-# For Longformer, you typically assign global attention to the first token
-attention_mask = inputs["attention_mask"]
+# Longformer expects a global attention mask; ModernBERT ignores it.
 import torch as _torch
-
-global_attention_mask = _torch.zeros_like(attention_mask)
-global_attention_mask[:, 0] = 1
-
-outputs = model(
-    **inputs,
-    global_attention_mask=global_attention_mask,
-)
+model_type = getattr(model.config, "model_type", "")
+if model_type == "longformer":
+    attention_mask = inputs["attention_mask"]
+    global_attention_mask = _torch.zeros_like(attention_mask)
+    global_attention_mask[:, 0] = 1
+    outputs = model(**inputs, global_attention_mask=global_attention_mask)
+else:
+    outputs = model(**inputs)
 probs = outputs.logits.softmax(dim=-1)
 
 p_no, p_yes = probs[0].tolist()

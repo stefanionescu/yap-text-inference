@@ -126,29 +126,6 @@ detect_prompt_mode() {
   fi
 }
 
-is_tool_model_classifier() {
-  # Check if TOOL_MODEL is a classifier (regardless of deploy mode)
-  if "${PY_BIN}" -c "
-import sys
-sys.path.insert(0, '${ROOT_DIR}')
-from src.config import is_classifier_model, TOOL_MODEL
-sys.exit(0 if is_classifier_model(TOOL_MODEL) else 1)
-" 2>/dev/null; then
-    return 0  # Tool model is a classifier
-  fi
-  return 1  # Tool model is not a classifier
-}
-
-is_classifier_only_mode() {
-  # Check if we're in classifier-only mode (no vLLM warmup needed at all)
-  local deploy_mode="${DEPLOY_MODELS:-}"
-  if [[ "${deploy_mode}" != "tool" ]]; then
-    return 1  # Not tool-only mode
-  fi
-  # Tool-only mode with classifier = no vLLM engines at all
-  is_tool_model_classifier
-}
-
 run_py_tool() {
   local log_path="$1"; shift
   if "${PY_BIN}" "$@" >"${log_path}" 2>&1; then
@@ -159,14 +136,6 @@ run_py_tool() {
 
 log "Warmup: waiting for server readiness on ${SERVER_ADDR}..."
 wait_for_ready
-
-# Skip warmup tests for classifier-only mode (classifier loads lazily, no vLLM to warm)
-if is_classifier_only_mode; then
-  log "Classifier-only mode detected (DEPLOY_MODELS=tool, TOOL_MODEL is classifier)"
-  log "Skipping warmup tests - classifier initializes on first request"
-  echo "done" > "${DONE_FILE}"
-  exit 0
-fi
 
 log "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
 
@@ -189,18 +158,11 @@ prompt_mode="$(detect_prompt_mode)"
 PROMPT_MODE_FLAG=(--prompt-mode "${prompt_mode}")
 log "Using prompt mode '${prompt_mode}' for warmup + bench tests"
 
-# Detect if tool model is a classifier (don't send tool_prompt in tests)
-CLASSIFIER_MODE_FLAG=()
-if is_tool_model_classifier; then
-  CLASSIFIER_MODE_FLAG=(--classifier-mode)
-  log "Tool model is a classifier - tests will not send tool_prompt"
-fi
-
 cd "${ROOT_DIR}"
 
 for idx in 1 2; do
   run_log="${LOG_DIR}/warmup_run_${idx}.log"
-  if run_py_tool "${run_log}" "tests/warmup.py" "${PROMPT_MODE_FLAG[@]}" "${CLASSIFIER_MODE_FLAG[@]}"; then
+  if run_py_tool "${run_log}" "tests/warmup.py" "${PROMPT_MODE_FLAG[@]}"; then
     log "OK: warmup run ${idx} (see ${run_log})"
   else
     log "FAIL: warmup run ${idx} (see ${run_log})"
@@ -211,7 +173,7 @@ done
 
 for idx in 1 2; do
   run_log="${LOG_DIR}/bench_run_${idx}.log"
-  if run_py_tool "${run_log}" "tests/bench.py" "${PROMPT_MODE_FLAG[@]}" "${CLASSIFIER_MODE_FLAG[@]}" "--requests" "${max_conn}" "--concurrency" "${max_conn}"; then
+  if run_py_tool "${run_log}" "tests/bench.py" "${PROMPT_MODE_FLAG[@]}" "--requests" "${max_conn}" "--concurrency" "${max_conn}"; then
     log "OK: bench run ${idx} (n=${max_conn}, c=${max_conn}) (see ${run_log})"
   else
     log "FAIL: bench run ${idx} (see ${run_log})"

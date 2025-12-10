@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Push the trained Longformer screenshot intent classifier to Hugging Face Hub.
+# Push the trained screenshot intent classifier to Hugging Face Hub.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$ROOT_DIR/.venv_classifier"
