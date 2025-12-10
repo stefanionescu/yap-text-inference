@@ -12,7 +12,9 @@ from typing import Any, Callable, Sequence
 import websockets  # type: ignore[import-not-found]
 
 from tests.config import POST_TOOL_IDLE_MIN_S
+from tests.config.env import get_float_env, get_int_env
 from tests.helpers.message import iter_messages
+from tests.helpers.rate import SlidingWindowPacer
 from tests.helpers.ws import connect_with_retries, send_client_end
 from .cases import render_history
 from .types import (
@@ -24,6 +26,9 @@ from .types import (
     ToolTestCase,
     TurnResult,
 )
+
+STEP_WINDOW_SECONDS = get_float_env("TOOL_WS_MESSAGE_WINDOW_SECONDS", 60.0)
+STEP_MAX_PER_WINDOW = get_int_env("TOOL_WS_MAX_MESSAGES_PER_WINDOW", 25)
 
 __all__ = ["run_all_cases"]
 
@@ -366,6 +371,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
     turn_raws: list[Any] = []
     step_timings: list[StepTiming] = []
     failures: list[FailureRecord] = []
+    step_pacer = SlidingWindowPacer(STEP_MAX_PER_WINDOW, STEP_WINDOW_SECONDS)
 
     def _record_failure(
         *,
@@ -399,6 +405,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
         if cfg.chat_prompt is not None:
             payload["chat_prompt"] = cfg.chat_prompt
 
+        await step_pacer.wait_turn()
         turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
         expected = step.expect_tool
         turn = _coerce_missing_tool_result(turn, expected)
