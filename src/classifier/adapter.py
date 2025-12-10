@@ -70,6 +70,9 @@ class ClassifierToolAdapter:
         # Load model and tokenizer
         self._tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(model_path)
         self._tokenizer.truncation_side = "left"  # Keep most recent context
+        self._newline_token_count = len(
+            self._tokenizer.encode("\n", add_special_tokens=False)
+        )
         
         self._model: PreTrainedModel = AutoModelForSequenceClassification.from_pretrained(model_path)
         self._model.to(self.device)
@@ -125,16 +128,23 @@ class ClassifierToolAdapter:
         if not user_texts:
             return ""
         
-        # Build from most recent, staying within budget
+        newline_tokens = self._newline_token_count or 0
         selected: list[str] = []
+        total_tokens = 0
         
         for text in reversed(user_texts):
-            line = f"USER: {text.strip()}"
-            candidate = "\n".join([line] + selected) if selected else line
-            tokens = self.count_tokens(candidate)
-            if tokens > self.history_max_tokens and selected:
+            stripped = text.strip()
+            if not stripped:
+                continue
+            line = f"USER: {stripped}"
+            line_tokens = self.count_tokens(line)
+            additional = line_tokens
+            if selected:
+                additional += newline_tokens
+            if selected and total_tokens + additional > self.history_max_tokens:
                 break
             selected.insert(0, line)
+            total_tokens += additional
         
         return "\n".join(selected)
     
