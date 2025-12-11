@@ -15,13 +15,13 @@ source "${SCRIPT_DIR}/env/limits.sh"
 source "${SCRIPT_DIR}/env/gpu_backend.sh"
 source "${SCRIPT_DIR}/env/final_defaults.sh"
 
-log_info "Docker Base Configuration:"
-log_info "  GPU: ${DETECTED_GPU_NAME:-unknown}"
-log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
-log_info "  Chat model: ${CHAT_MODEL:-none}"
-log_info "  Tool model: ${TOOL_MODEL:-none}"
-log_info "  Quantization: ${QUANTIZATION} (chat=${CHAT_QUANTIZATION:-auto})"
-log_info "  Tool runtime: classifier (PyTorch, float weights)"
-log_info "  KV dtype: ${KV_DTYPE}"
+log_info "Docker Base Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
+if [ "${DEPLOY_CHAT}" = "1" ]; then
+  chat_precision="${CHAT_QUANTIZATION:-${QUANTIZATION:-fp16}}"
+  log_info "Chat model: ${CHAT_MODEL:-none} (${chat_precision})"
+fi
+if [ "${DEPLOY_TOOL}" = "1" ]; then
+  log_info "Tool model: ${TOOL_MODEL:-none} (fp32)"
+fi
 
 

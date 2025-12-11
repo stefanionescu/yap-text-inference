@@ -15,12 +15,12 @@ source "${SCRIPT_DIR}/env/tokens.sh"
 source "${SCRIPT_DIR}/env/gpu_backend.sh"
 source "${SCRIPT_DIR}/env/final_defaults.sh"
 
-log_info "Docker AWQ Configuration:"
-log_info "  GPU: ${DETECTED_GPU_NAME:-unknown}"
-log_info "  Deploy mode: ${DEPLOY_MODELS} (chat=${DEPLOY_CHAT}, tool=${DEPLOY_TOOL})"
-log_info "  Chat model: ${CHAT_MODEL:-none}"
-log_info "  Tool model: ${TOOL_MODEL:-none}"
-log_info "  Quantization: ${QUANTIZATION:-awq}"
-log_info "  KV dtype: ${KV_DTYPE}"
+log_info "Docker AWQ Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
+if [ "${DEPLOY_CHAT}" = "1" ]; then
+  log_info "Chat model: ${CHAT_MODEL:-none} (${QUANTIZATION:-awq})"
+fi
+if [ "${DEPLOY_TOOL}" = "1" ]; then
+  log_info "Tool model: ${TOOL_MODEL:-none} (fp32)"
+fi
 
 

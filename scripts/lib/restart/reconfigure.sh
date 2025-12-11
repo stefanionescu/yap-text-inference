@@ -311,21 +311,11 @@ restart_reconfigure_models() {
   fi
 
   log_info "Restart mode: reconfigure (models reset, deps preserved)"
-  log_info "Deploy mode: ${DEPLOY_MODELS}"
   if [ "${deploy_chat}" = "1" ]; then
-    log_info "Chat model: ${CHAT_MODEL}"
-    if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-      log_info "Chat quantization override: ${CHAT_QUANTIZATION}"
-    fi
+    log_info "Chat model: ${CHAT_MODEL} (${QUANTIZATION})"
   fi
   if [ "${deploy_tool}" = "1" ]; then
-    log_info "Tool model: ${TOOL_MODEL}"
-    log_info "Tool runtime: classifier (PyTorch, float weights)"
-  fi
-  if [ "${deploy_chat}" = "1" ]; then
-    log_info "Base quantization: ${QUANTIZATION}"
-  else
-    log_info "Base quantization: fp16"
+    log_info "Tool model: ${TOOL_MODEL} (fp32)"
   fi
 
   log_info "Stopping server before redeploy (preserving .venv)..."

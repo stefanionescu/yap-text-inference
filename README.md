@@ -3,7 +3,7 @@
 A vLLM text inference server optimized for pairing a chat model with a lightweight screenshot-intent classifier. Chat generations run on vLLM; the tool router is a direct transformers classifier (no vLLM, no quantization). It can run:
 - A vLLM chat engine for roleplay / assistant flows
 - A classifier-only tool router (takes screenshots or skips them)
-- Either engine independently or both together (sequential flow only)
+- Either engine independently or both together
 - FastAPI + WebSocket streaming
 
 ## Contents
@@ -22,7 +22,7 @@ A vLLM text inference server optimized for pairing a chat model with a lightweig
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
-- Chat + classifier deployment with optional chat-only or classifier-only modes. Tool routing no longer spins up a second vLLM instance or shares the chat weights.
+- Chat + classifier deployment with optional chat-only or classifier-only modes.
 - Tool-call-first detection: tool decisions fire before chat tokens, while chat still streams for every turn so UX never stalls.
 - Persona/history segmented prompts with prefix caching and FP8/INT8 KV reuse to keep latency low across restarts.
 - Integrated quantization pipeline (FP8 default, AWQ/GPTQ/W4A16 auto-detect, AutoAWQ fallbacks) plus configurable logit bias for banned phrases.
@@ -61,7 +61,7 @@ Default GPU allocation:
 - The classifier (when it runs on GPU) is capped at 20% by default; override with `TOOL_GPU_FRAC`.
 - Chat-only and tool-only mode allocates 90% to the chat engine
 
-Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-longformer-screenshot-intent`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`. No quantization is required for classifier weights.
+Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-longformer-screenshot-intent`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`.
 
 Examples:
 ```bash
