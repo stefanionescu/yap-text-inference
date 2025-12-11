@@ -2,8 +2,6 @@
 
 import os
 
-from .env import CHAT_GPU_FRAC
-
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # 1650 persona + 3000 history + 350 user + 25 tool reply
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
@@ -102,15 +100,21 @@ BATCH_SCALE_MIN_TOKENS = int(os.getenv("BATCH_SCALE_MIN_TOKENS", "64"))
 BATCH_SCALE_MIN_SEQS = int(os.getenv("BATCH_SCALE_MIN_SEQS", "4"))
 
 # GPU fraction cap for batching: matches CHAT_GPU_FRAC based on deployment mode
-# When both chat and tool are deployed: matches CHAT_GPU_FRAC (default 0.70)
-# When only chat is deployed: matches CHAT_GPU_FRAC (default 0.90)
+# When both chat and tool are deployed: default 0.70
+# When only chat is deployed: default 0.90
 # This prevents pushing memory allocation beyond the configured GPU fraction
 _env_cap = os.getenv("BATCH_SCALE_GPU_FRAC_CAP")
 if _env_cap is not None:
     BATCH_SCALE_GPU_FRAC_CAP = float(_env_cap)
 else:
-    # Default to CHAT_GPU_FRAC to match the actual allocation
-    BATCH_SCALE_GPU_FRAC_CAP = CHAT_GPU_FRAC
+    # Replicate CHAT_GPU_FRAC logic to avoid circular import with env.py
+    _deploy_models = (os.getenv("DEPLOY_MODELS", "both") or "both").lower()
+    _deploy_chat = _deploy_models in ("both", "chat")
+    _deploy_tool = _deploy_models in ("both", "tool")
+    if _deploy_chat and _deploy_tool:
+        BATCH_SCALE_GPU_FRAC_CAP = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
+    else:
+        BATCH_SCALE_GPU_FRAC_CAP = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
 
 __all__ = [
     "CHAT_MAX_LEN",
