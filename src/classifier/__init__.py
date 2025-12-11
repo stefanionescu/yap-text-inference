@@ -43,8 +43,8 @@ def get_classifier_adapter() -> ClassifierToolAdapter:
             threshold=TOOL_DECISION_THRESHOLD,
             compile_model=TOOL_COMPILE,
             max_length=TOOL_MAX_LENGTH,
-            microbatch_max_size=TOOL_MICROBATCH_MAX_SIZE,
-            microbatch_max_delay_ms=TOOL_MICROBATCH_MAX_DELAY_MS,
+            batch_max_size=TOOL_MICROBATCH_MAX_SIZE,
+            batch_max_delay_ms=TOOL_MICROBATCH_MAX_DELAY_MS,
             request_timeout_s=TOOL_TIMEOUT_S,
             gpu_memory_frac=TOOL_GPU_FRAC,
         )

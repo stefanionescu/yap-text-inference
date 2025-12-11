@@ -2,6 +2,8 @@
 
 import os
 
+from .env import CHAT_GPU_FRAC
+
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # 1650 persona + 3000 history + 350 user + 25 tool reply
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
@@ -72,6 +74,44 @@ except ValueError as exc:
 # Screen prefix validation
 SCREEN_PREFIX_MAX_CHARS = int(os.getenv("SCREEN_PREFIX_MAX_CHARS", "30"))
 
+# Memory tuning constants for max_num_seqs calculation
+MAX_NUM_SEQS_BASELINE = int(os.getenv("MAX_NUM_SEQS_BASELINE", "96"))
+MAX_NUM_SEQS_MIN_FLOOR = int(os.getenv("MAX_NUM_SEQS_MIN_FLOOR", "32"))
+MAX_NUM_SEQS_MEMORY_OPT_BASELINE = int(os.getenv("MAX_NUM_SEQS_MEMORY_OPT_BASELINE", "64"))
+MAX_NUM_SEQS_MAX_RESOLVED = int(os.getenv("MAX_NUM_SEQS_MAX_RESOLVED", "128"))
+
+# GPU size thresholds (GiB) for max_num_seqs scaling
+MAX_NUM_SEQS_GPU_THRESHOLD_SMALL = float(os.getenv("MAX_NUM_SEQS_GPU_THRESHOLD_SMALL", "36"))
+MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM = float(os.getenv("MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM", "48"))
+MAX_NUM_SEQS_GPU_THRESHOLD_LARGE = float(os.getenv("MAX_NUM_SEQS_GPU_THRESHOLD_LARGE", "72"))
+
+# Baseline max_num_seqs values for different GPU sizes
+MAX_NUM_SEQS_BASELINE_SMALL = int(os.getenv("MAX_NUM_SEQS_BASELINE_SMALL", "48"))
+MAX_NUM_SEQS_BASELINE_MEDIUM = int(os.getenv("MAX_NUM_SEQS_BASELINE_MEDIUM", "56"))
+MAX_NUM_SEQS_BASELINE_LARGE = int(os.getenv("MAX_NUM_SEQS_BASELINE_LARGE", "72"))
+MAX_NUM_SEQS_BASELINE_XLARGE = int(os.getenv("MAX_NUM_SEQS_BASELINE_XLARGE", "112"))
+
+# Allocation ratio bounds for max_num_seqs calculation
+MAX_NUM_SEQS_ALLOCATION_RATIO_MIN = float(os.getenv("MAX_NUM_SEQS_ALLOCATION_RATIO_MIN", "0.4"))
+MAX_NUM_SEQS_ALLOCATION_RATIO_MAX = float(os.getenv("MAX_NUM_SEQS_ALLOCATION_RATIO_MAX", "0.95"))
+MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR = float(os.getenv("MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR", "0.85"))
+
+# Batching limits scaling constants
+BATCH_SCALE_MIN_RATIO = float(os.getenv("BATCH_SCALE_MIN_RATIO", "0.1"))
+BATCH_SCALE_MIN_TOKENS = int(os.getenv("BATCH_SCALE_MIN_TOKENS", "64"))
+BATCH_SCALE_MIN_SEQS = int(os.getenv("BATCH_SCALE_MIN_SEQS", "4"))
+
+# GPU fraction cap for batching: matches CHAT_GPU_FRAC based on deployment mode
+# When both chat and tool are deployed: matches CHAT_GPU_FRAC (default 0.70)
+# When only chat is deployed: matches CHAT_GPU_FRAC (default 0.90)
+# This prevents pushing memory allocation beyond the configured GPU fraction
+_env_cap = os.getenv("BATCH_SCALE_GPU_FRAC_CAP")
+if _env_cap is not None:
+    BATCH_SCALE_GPU_FRAC_CAP = float(_env_cap)
+else:
+    # Default to CHAT_GPU_FRAC to match the actual allocation
+    BATCH_SCALE_GPU_FRAC_CAP = CHAT_GPU_FRAC
+
 __all__ = [
     "CHAT_MAX_LEN",
     "CHAT_MAX_OUT",
@@ -105,4 +145,23 @@ __all__ = [
     "EXACT_TOKEN_TRIM",
     "MAX_CONCURRENT_CONNECTIONS",
     "SCREEN_PREFIX_MAX_CHARS",
+    # Memory tuning constants
+    "MAX_NUM_SEQS_BASELINE",
+    "MAX_NUM_SEQS_MIN_FLOOR",
+    "MAX_NUM_SEQS_MEMORY_OPT_BASELINE",
+    "MAX_NUM_SEQS_MAX_RESOLVED",
+    "MAX_NUM_SEQS_GPU_THRESHOLD_SMALL",
+    "MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM",
+    "MAX_NUM_SEQS_GPU_THRESHOLD_LARGE",
+    "MAX_NUM_SEQS_BASELINE_SMALL",
+    "MAX_NUM_SEQS_BASELINE_MEDIUM",
+    "MAX_NUM_SEQS_BASELINE_LARGE",
+    "MAX_NUM_SEQS_BASELINE_XLARGE",
+    "MAX_NUM_SEQS_ALLOCATION_RATIO_MIN",
+    "MAX_NUM_SEQS_ALLOCATION_RATIO_MAX",
+    "MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR",
+    "BATCH_SCALE_MIN_RATIO",
+    "BATCH_SCALE_MIN_TOKENS",
+    "BATCH_SCALE_MIN_SEQS",
+    "BATCH_SCALE_GPU_FRAC_CAP",
 ]

@@ -5,6 +5,27 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from src.config.limits import (
+    BATCH_SCALE_GPU_FRAC_CAP,
+    BATCH_SCALE_MIN_RATIO,
+    BATCH_SCALE_MIN_SEQS,
+    BATCH_SCALE_MIN_TOKENS,
+    MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR,
+    MAX_NUM_SEQS_ALLOCATION_RATIO_MAX,
+    MAX_NUM_SEQS_ALLOCATION_RATIO_MIN,
+    MAX_NUM_SEQS_BASELINE,
+    MAX_NUM_SEQS_BASELINE_LARGE,
+    MAX_NUM_SEQS_BASELINE_MEDIUM,
+    MAX_NUM_SEQS_BASELINE_SMALL,
+    MAX_NUM_SEQS_BASELINE_XLARGE,
+    MAX_NUM_SEQS_GPU_THRESHOLD_LARGE,
+    MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM,
+    MAX_NUM_SEQS_GPU_THRESHOLD_SMALL,
+    MAX_NUM_SEQS_MAX_RESOLVED,
+    MAX_NUM_SEQS_MEMORY_OPT_BASELINE,
+    MAX_NUM_SEQS_MIN_FLOOR,
+)
+
 __all__ = [
     "auto_max_num_seqs",
     "configure_kv_cache",
@@ -56,15 +77,15 @@ def scale_batching_limits(
         return max_tokens, max_seqs
 
     free_bytes, total_bytes = snapshot
-    target_bytes = max(int(total_bytes * min(gpu_frac, 0.99)), 1)
+    target_bytes = max(int(total_bytes * min(gpu_frac, BATCH_SCALE_GPU_FRAC_CAP)), 1)
     if free_bytes >= target_bytes:
         return max_tokens, max_seqs
 
-    ratio = max(free_bytes / target_bytes, 0.1)
-    scaled_tokens = max(64, int(max_tokens * ratio))
+    ratio = max(free_bytes / target_bytes, BATCH_SCALE_MIN_RATIO)
+    scaled_tokens = max(BATCH_SCALE_MIN_TOKENS, int(max_tokens * ratio))
     scaled_seqs = None
     if max_seqs is not None:
-        scaled_seqs = max(4, int(max_seqs * ratio))
+        scaled_seqs = max(BATCH_SCALE_MIN_SEQS, int(max_seqs * ratio))
 
     print(
         "[config] Scaling %s batching limits to %.2fx (free %.1f GiB vs budget %.1f GiB)"
@@ -78,11 +99,11 @@ def scale_batching_limits(
     return scaled_tokens, scaled_seqs
 
 
-def get_max_num_seqs_override(is_chat: bool) -> int | None:
-    """Return env-provided max_num_seqs override for the given engine."""
+def get_max_num_seqs_override() -> int | None:
+    """Return env-provided max_num_seqs override for the chat engine."""
 
     keys = [
-        "MAX_NUM_SEQS_CHAT" if is_chat else "MAX_NUM_SEQS_TOOL",
+        "MAX_NUM_SEQS_CHAT",
         "MAX_NUM_SEQS",
     ]
     for key in keys:
@@ -98,30 +119,33 @@ def get_max_num_seqs_override(is_chat: bool) -> int | None:
     return None
 
 
-def auto_max_num_seqs(is_chat: bool, gpu_frac: float, needs_memory_opt: bool) -> int:
-    """Heuristically choose max_num_seqs based on GPU size and allocation."""
+def auto_max_num_seqs(gpu_frac: float, needs_memory_opt: bool) -> int:
+    """Heuristically choose max_num_seqs for the chat engine based on GPU size and allocation."""
 
-    baseline = 96 if is_chat else 64
-    min_floor = 32 if is_chat else 24
+    baseline = MAX_NUM_SEQS_BASELINE
+    min_floor = MAX_NUM_SEQS_MIN_FLOOR
     if needs_memory_opt:
-        baseline = min(baseline, 64 if is_chat else 48)
+        baseline = min(baseline, MAX_NUM_SEQS_MEMORY_OPT_BASELINE)
 
     snapshot = read_cuda_memory_snapshot()
     if snapshot:
         _, total_bytes = snapshot
         total_gib = total_bytes / (1024**3)
-        if total_gib < 36:
-            baseline = min(baseline, 48 if is_chat else 32)
-        elif total_gib < 48:
-            baseline = min(baseline, 56 if is_chat else 40)
-        elif total_gib < 72:
-            baseline = min(baseline, 72 if is_chat else 56)
+        if total_gib < MAX_NUM_SEQS_GPU_THRESHOLD_SMALL:
+            baseline = min(baseline, MAX_NUM_SEQS_BASELINE_SMALL)
+        elif total_gib < MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM:
+            baseline = min(baseline, MAX_NUM_SEQS_BASELINE_MEDIUM)
+        elif total_gib < MAX_NUM_SEQS_GPU_THRESHOLD_LARGE:
+            baseline = min(baseline, MAX_NUM_SEQS_BASELINE_LARGE)
         else:
-            baseline = min(baseline, 112 if is_chat else 80)
+            baseline = min(baseline, MAX_NUM_SEQS_BASELINE_XLARGE)
 
-    allocation_ratio = max(0.4, min(gpu_frac, 0.95)) / 0.85
+    allocation_ratio = (
+        max(MAX_NUM_SEQS_ALLOCATION_RATIO_MIN, min(gpu_frac, MAX_NUM_SEQS_ALLOCATION_RATIO_MAX))
+        / MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR
+    )
     resolved = int(baseline * allocation_ratio)
-    return max(min_floor, min(resolved, 128))
+    return max(min_floor, min(resolved, MAX_NUM_SEQS_MAX_RESOLVED))
 
 
 def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> None:

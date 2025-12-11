@@ -11,8 +11,8 @@ from typing import Any, Callable
 import torch  # type: ignore[import]
 
 
-class SimpleFuture:
-    """Lightweight, thread-safe future used by the microbatch executor."""
+class Future:
+    """Lightweight, thread-safe future used by the batch executor."""
 
     def __init__(self) -> None:
         self._event = threading.Event()
@@ -29,7 +29,7 @@ class SimpleFuture:
 
     def result(self, timeout: float | None = None) -> Any:
         if not self._event.wait(timeout):
-            raise TimeoutError("Classifier microbatch timed out")
+            raise TimeoutError("Classifier batch timed out")
         if self._exc is not None:
             raise self._exc
         return self._result
@@ -38,10 +38,10 @@ class SimpleFuture:
 @dataclass(slots=True)
 class RequestItem:
     text: str
-    future: SimpleFuture
+    future: Future
 
 
-class MicrobatchExecutor:
+class BatchExecutor:
     """Batch incoming requests and execute them with a shared infer_fn."""
 
     def __init__(
@@ -58,7 +58,7 @@ class MicrobatchExecutor:
         self._thread.start()
 
     def classify(self, text: str, timeout_s: float) -> list[float]:
-        fut = SimpleFuture()
+        fut = Future()
         self._queue.put(RequestItem(text=text, future=fut))
         return fut.result(timeout=timeout_s)
 
@@ -88,4 +88,4 @@ class MicrobatchExecutor:
                     req.future.set_exception(exc)
 
 
-__all__ = ["MicrobatchExecutor"]
+__all__ = ["BatchExecutor"]

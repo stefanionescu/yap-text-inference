@@ -22,7 +22,7 @@ from src.config import (
     DEPLOY_CHAT,
 )
 from .args import make_engine_args
-from .awq_support import create_engine_with_awq_handling
+from .awq import create_engine_with_awq_handling
 
 logger = logging.getLogger(__name__)
 
