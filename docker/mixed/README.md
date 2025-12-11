@@ -47,7 +47,7 @@ TAG=both-fp8 \
 DOCKER_USERNAME=yourusername \
 DEPLOY_MODELS=both \
 CHAT_MODEL=SicariusSicariiStuff/Impish_Nemo_12B \
-TOOL_MODEL=yapwithai/yap-screenshot-intent-classifier \
+TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   docker/mixed/build.sh
 
 # AWQ chat + classifier tool
@@ -55,7 +55,7 @@ TAG=both-chat-awq \
 DOCKER_USERNAME=yourusername \
 DEPLOY_MODELS=both \
 CHAT_MODEL=your-org/chat-awq \
-TOOL_MODEL=yapwithai/yap-screenshot-intent-classifier \
+TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   docker/mixed/build.sh
 
 # Chat-only float
@@ -76,7 +76,7 @@ CHAT_MODEL=your-org/chat-awq \
 TAG=tool-fp8 \
 DOCKER_USERNAME=yourusername \
 DEPLOY_MODELS=tool \
-TOOL_MODEL=yapwithai/yap-screenshot-intent-classifier \
+TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   docker/mixed/build.sh
 
 Preloaded paths (if used):

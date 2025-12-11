@@ -5,7 +5,7 @@ All artifacts are produced with [`llmcompressor`](https://github.com/vllm-projec
 
 **Default Models:**
 - **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - AWQ quantized Impish Nemo 12B
-- **Tool**: [yapwithai/yap-screenshot-intent-classifier](https://huggingface.co/yapwithai/yap-screenshot-intent-classifier) - Screenshot intent classifier (float)
+- **Tool**: [yapwithai/yap-longformer-screenshot-intent](https://huggingface.co/yapwithai/yap-longformer-screenshot-intent) - Screenshot intent classifier (float)
 
 ## Contents
 
@@ -84,7 +84,7 @@ docker run -d --gpus all --name yap-tool \
 - `TEXT_API_KEY` – API key handed to the server
 - `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
 - If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
-- If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/yap-screenshot-intent-classifier`)
+- If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/yap-longformer-screenshot-intent`)
 - If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
 
 ### Optional

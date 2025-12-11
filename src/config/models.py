@@ -79,8 +79,9 @@ def is_classifier_model(model: str | None) -> bool:
     # Check explicit allowlist
     if model in ALLOWED_TOOL_MODELS:
         return True
-    # Check if it's a local path containing 'classifier' in the name
-    if _is_local_model_path(model) and "classifier" in model.lower():
+    # Accept local paths as classifier models (typically /app/models/tool in Docker)
+    # This allows preloaded models to be used without being in the explicit allowlist
+    if _is_local_model_path(model):
         return True
     return False
 

@@ -66,7 +66,7 @@ Examples:
   bash scripts/restart.sh --reset-models \
        --deploy-mode both \
        --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
-       --tool-model yapwithai/yap-screenshot-intent-classifier \
+       --tool-model yapwithai/yap-longformer-screenshot-intent \
        --chat-quant fp8
 USAGE
   exit 1

@@ -61,18 +61,18 @@ Default GPU allocation:
 - The classifier (when it runs on GPU) is capped at 20% by default; override with `TOOL_GPU_FRAC`.
 - Chat-only and tool-only mode allocates 90% to the chat engine
 
-Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-screenshot-intent-classifier`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`. No quantization is required for classifier weights.
+Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-longformer-screenshot-intent`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`. No quantization is required for classifier weights.
 
 Examples:
 ```bash
 # Float chat model (auto → FP8)
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
 # Float roleplay model (auto → FP8) with classifier routing
-bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-screenshot-intent-classifier
+bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-longformer-screenshot-intent
 
 # GPTQ chat model (auto → GPTQ) + classifier
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 yapwithai/yap-screenshot-intent-classifier
+bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 yapwithai/yap-longformer-screenshot-intent
 ```
 
 This will:
@@ -92,7 +92,7 @@ You can deploy the server in Docker using the stacks in `docker/awq` (pre-quanti
 DOCKER_USERNAME=youruser docker/awq/build.sh
 docker run -d --gpus all --name yap-awq \
   -e CHAT_MODEL=yapwithai/impish-12b-awq \
-  -e TOOL_MODEL=yapwithai/yap-screenshot-intent-classifier \
+  -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_your_api_token \
   -e MAX_CONCURRENT_CONNECTIONS=32 \
@@ -120,7 +120,7 @@ Pass `4bit` or `8bit` to the host scripts. The logs will spell out the actual ba
 
 ```bash
 # Uses float (non-GPTQ) chat model weights and quantizes the chat engine at load
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-screenshot-intent-classifier
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 ```
 
 Local quantization runs [`llmcompressor`](https://github.com/vllm-project/llm-compressor) `oneshot()` with the AWQ modifier (pinned at version 0.8.1). Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`, with automatic fallback from `pileval` on older llmcompressor builds).  
@@ -139,7 +139,7 @@ If the repo path advertises one of these markers, Yap skips runtime quantization
 # Pre-quantized AWQ chat + classifier
 bash scripts/main.sh \
   yapwithai/impish-12b-awq \
-  yapwithai/yap-screenshot-intent-classifier
+  yapwithai/yap-longformer-screenshot-intent
 
 # Chat-only AWQ
 bash scripts/main.sh chat yapwithai/impish-12b-awq
@@ -193,12 +193,12 @@ bash scripts/restart.sh both --install-deps
 # Reset models/quantization without reinstalling deps
 bash scripts/restart.sh --reset-models --deploy-mode both \
   --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
-  --tool-model yapwithai/yap-screenshot-intent-classifier \
+  --tool-model yapwithai/yap-longformer-screenshot-intent \
   --chat-quant fp8
 
 # Classifier-only reset (no chat engine)
 bash scripts/restart.sh --reset-models --deploy-mode tool \
-  --tool-model yapwithai/yap-screenshot-intent-classifier
+  --tool-model yapwithai/yap-longformer-screenshot-intent
 
 # Auto-detect pre-quantized repos (AWQ/GPTQ) during reset
 bash scripts/restart.sh --reset-models --deploy-mode chat \

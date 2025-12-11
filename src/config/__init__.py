@@ -124,7 +124,9 @@ if DEPLOY_TOOL:
     # Tool models must be classifiers
     if not is_classifier_model(TOOL_MODEL):
         raise ValueError("TOOL_MODEL must be a classifier model; vLLM tool engines are no longer supported")
-    if TOOL_MODEL not in ALLOWED_TOOL_MODELS:
+    # Only validate against allowlist for HuggingFace models, not local paths
+    from .models import _is_local_model_path
+    if not _is_local_model_path(TOOL_MODEL) and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
         raise ValueError(
             f"TOOL_MODEL classifier must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}"
         )

@@ -18,7 +18,7 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
   export CHAT_MODEL=${CHAT_MODEL:-yapwithai/impish-12b-awq}
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
-  export TOOL_MODEL=${TOOL_MODEL:-yapwithai/yap-screenshot-intent-classifier}
+  export TOOL_MODEL=${TOOL_MODEL:-yapwithai/yap-longformer-screenshot-intent}
 fi
 
 if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then

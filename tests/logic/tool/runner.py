@@ -18,8 +18,8 @@ from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT  # no
 
 from .cases import build_cases
 from .executor import run_all_cases
-from .reporting import print_case_results, print_summary
-from .types import CaseResult, RunnerConfig
+from .reporting import print_case_results, print_summary, save_logs
+from .types import CaseResult, RunnerConfig, ToolTestCase
 
 __all__ = ["run_suite"]
 
@@ -50,6 +50,7 @@ async def run_suite(
         step_cap = None
 
     skipped_labels: list[str] = []
+    skipped_count = 0
     if step_cap is not None:
         allowed_cases: list[ToolTestCase] = []
         for case in cases:
@@ -57,12 +58,10 @@ async def run_suite(
                 allowed_cases.append(case)
             else:
                 skipped_labels.append(case.label or case.name)
+        skipped_count = len(skipped_labels)
         if skipped_labels:
-            shown = ", ".join(skipped_labels[:5])
-            suffix = " ..." if len(skipped_labels) > 5 else ""
             print(
-                f"Skipping {len(skipped_labels)} tool cases exceeding {step_cap} steps: "
-                f"{shown}{suffix}"
+                f"Skipping {skipped_count} tool cases exceeding {step_cap} steps"
             )
         cases = allowed_cases
 
@@ -110,4 +109,16 @@ async def run_suite(
     )
     print_case_results(results, include_successes=show_successes)
     print_summary(results)
+    
+    # Save logs to file
+    log_file = save_logs(
+        results,
+        skipped_count=skipped_count,
+        skipped_step_cap=step_cap,
+        total_cases=total_cases,
+        concurrency=effective_concurrency,
+        include_successes=show_successes,
+    )
+    print(f"\nLogs saved to: {log_file}")
+    
     return results
