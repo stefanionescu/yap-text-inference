@@ -36,6 +36,9 @@ class SessionState:
     last_access: float = field(default_factory=time.monotonic)
     chat_prompt_last_update_at: float = 0.0
     chat_prompt_rate_limiter: SlidingWindowRateLimiter | None = None
+    # Personality mapping: {personality_name: [synonym1, synonym2, ...]}
+    # Set on connection via start message
+    personalities: dict[str, list[str]] | None = None
 
     def touch(self) -> None:
         """Mark the session as active."""

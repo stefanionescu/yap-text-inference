@@ -11,6 +11,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
+from tests.config import DEFAULT_PERSONALITIES
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
 from .session import PersonaSession, PersonaVariant
@@ -68,6 +69,7 @@ async def send_start_request(
         "session_id": session.session_id,
         "gender": variant.gender,
         "personality": variant.personality,
+        "personalities": DEFAULT_PERSONALITIES,
         "chat_prompt": variant.chat_prompt,
         "history_text": session.history,
         "user_utterance": user_text,

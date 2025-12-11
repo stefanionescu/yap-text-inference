@@ -42,6 +42,7 @@ from tests.helpers.message import iter_messages
 from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
     DEFAULT_GENDER,
+    DEFAULT_PERSONALITIES,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
     DEFAULT_WS_PING_INTERVAL,
@@ -131,6 +132,7 @@ async def run_once(
         "session_id": session_id,
         "gender": DEFAULT_GENDER,
         "personality": DEFAULT_PERSONALITY,
+        "personalities": DEFAULT_PERSONALITIES,
         "history_text": "",
         "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
     }

@@ -1,33 +1,16 @@
-"""Gender switch phrase patterns and matching logic."""
+"""Gender switch phrase matching logic."""
 
 import re
 from typing import Literal
 
-# Male identifiers (with typo handling via optional chars)
-# guy/gu, him, male/mal, hunk, dude/dud, boy/bo, marc, mark, marck
-_MALE = r"(guy?|him|male?|hunk|dude?|boy?|marc|mark|marck)"
+from ...config.tool_patterns import (
+    GENDER_MALE_PATTERNS,
+    GENDER_FEMALE_PATTERNS,
+)
 
-# Female identifiers (with typo handling via optional chars)
-# gal/ga, girl/gir, female, femme, ana, anna, annan
-_FEMALE = r"(gal?|girl?|female|femme|ana|anna|annan)"
-
-# Patterns that TRIGGER switch_gender male
-MALE_PATTERNS = [
-    rf"^switch\s+to\s+{_MALE}[.!?]*$",  # switch to guy
-    rf"^change\s+to\s+{_MALE}[.!?]*$",  # change to guy
-]
-
-# Compiled male patterns (case insensitive)
-_MALE_COMPILED = [re.compile(p, re.IGNORECASE) for p in MALE_PATTERNS]
-
-# Patterns that TRIGGER switch_gender female
-FEMALE_PATTERNS = [
-    rf"^switch\s+to\s+{_FEMALE}[.!?]*$",  # switch to gal
-    rf"^change\s+to\s+{_FEMALE}[.!?]*$",  # change to gal
-]
-
-# Compiled female patterns (case insensitive)
-_FEMALE_COMPILED = [re.compile(p, re.IGNORECASE) for p in FEMALE_PATTERNS]
+# Compiled patterns (case insensitive)
+_MALE_COMPILED = [re.compile(p, re.IGNORECASE) for p in GENDER_MALE_PATTERNS]
+_FEMALE_COMPILED = [re.compile(p, re.IGNORECASE) for p in GENDER_FEMALE_PATTERNS]
 
 
 def match_gender_phrase(text: str) -> Literal["male", "female", None]:

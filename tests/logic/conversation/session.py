@@ -9,6 +9,9 @@ _test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _test_dir not in sys.path:
     sys.path.insert(0, _test_dir)
 
+from tests.config import DEFAULT_PERSONALITIES
+
+
 @dataclass
 class ConversationSession:
     session_id: str
@@ -31,6 +34,7 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
         "session_id": session.session_id,
         "gender": session.gender,
         "personality": session.personality,
+        "personalities": DEFAULT_PERSONALITIES,
         "history_text": session.history,
         "user_utterance": user_text,
     }

@@ -49,6 +49,8 @@ from .validators import (
     validate_required_gender,
     validate_required_personality,
     validate_optional_prefix,
+    validate_personalities_list,
+    validate_personality_in_list,
 )
 
 
@@ -131,6 +133,9 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         chat_prompt = _extract_chat_prompt(msg)
         sampling_overrides = _extract_sampling_overrides(msg)
         check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(msg)
+        personalities = _extract_personalities(msg)
+        # Validate that initial personality is in the personalities list
+        validate_personality_in_list(personality, personalities)
     except ValidationError as err:
         await _close_with_validation_error(ws, err)
         return
@@ -148,6 +153,10 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         check_screen_prefix=check_screen_prefix,
         screen_checked_prefix=screen_checked_prefix,
     )
+    
+    # Store personalities for tool phrase matching
+    if personalities is not None:
+        session_handler.set_personalities(session_id, personalities)
 
     updated_config = session_handler.get_session_config(session_id)
     static_prefix = updated_config.get("chat_prompt") or ""
@@ -213,6 +222,32 @@ def _extract_screen_prefixes(msg: dict[str, Any]) -> tuple[str | None, str | Non
         invalid_error_code="invalid_screen_checked_prefix",
     )
     return check_prefix, screen_checked_prefix
+
+
+def _extract_personalities(msg: dict[str, Any]) -> dict[str, list[str]] | None:
+    """Extract and validate personalities configuration.
+    
+    Required when DEPLOY_TOOL is enabled, optional otherwise.
+    
+    Expected format:
+    {
+        "friendly": ["generic", "normal"],
+        "flirty": ["horny", "sexy"],
+        "religious": [],
+        "delulu": []
+    }
+    """
+    raw_personalities = msg.get("personalities")
+    
+    # If DEPLOY_TOOL is enabled, personalities are required
+    if DEPLOY_TOOL and raw_personalities is None:
+        raise ValidationError(
+            "missing_personalities",
+            "personalities is required - must be an object mapping personality names to synonym arrays"
+        )
+    
+    # Validate format if provided
+    return validate_personalities_list(raw_personalities)
 
 
 def _resolve_history(session_id: str, msg: dict[str, Any]) -> str:
