@@ -366,7 +366,8 @@ TEXT_API_KEY=your_api_key python3 tests/tool.py \
   --server ws://127.0.0.1:8000/ws \
   --timeout 5 \
   --concurrency 4 \
-  --limit 50
+  --limit 50 \
+  --max-steps 20
 ```
 
 - `--timeout`: wait per tool decision (default 5 s)

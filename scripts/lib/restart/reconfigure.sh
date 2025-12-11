@@ -322,7 +322,11 @@ restart_reconfigure_models() {
     log_info "Tool model: ${TOOL_MODEL}"
     log_info "Tool runtime: classifier (PyTorch, float weights)"
   fi
-  log_info "Base quantization: ${QUANTIZATION}"
+  if [ "${deploy_chat}" = "1" ]; then
+    log_info "Base quantization: ${QUANTIZATION}"
+  else
+    log_info "Base quantization: fp16"
+  fi
 
   log_info "Stopping server before redeploy (preserving .venv)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"

@@ -15,7 +15,7 @@ usage() {
   echo "Required Environment Variables (based on DEPLOY_MODELS):"
   echo "  DEPLOY_MODELS=both|chat|tool  (default: both)"
   echo "  If DEPLOY_MODELS=chat  -> CHAT_MODEL required (pre-quantized AWQ/W4A16 repo)"
-  echo "  If DEPLOY_MODELS=tool  -> TOOL_MODEL required (classifier repo, e.g. yapwithai/yap-screenshot-intent-classifier)"
+  echo "  If DEPLOY_MODELS=tool  -> TOOL_MODEL required (classifier repo, e.g. yapwithai/yap-longformer-screenshot-intent)"
   echo "  If DEPLOY_MODELS=both  -> CHAT_MODEL (AWQ) and TOOL_MODEL (classifier) required"
   echo ""
   echo "Optional Environment Variables:"

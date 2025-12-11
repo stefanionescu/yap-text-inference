@@ -105,10 +105,22 @@ async def stop_engines() -> None:
     await shutdown_engines()
 
 
+@app.get("/")
+async def root():
+    """Root endpoint for load balancer health checks."""
+    return {"status": "ok"}
+
+
 @app.get("/healthz")
 async def healthz():
     """Health check endpoint (no authentication required)."""
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", status_code=204)
+async def favicon():
+    """Suppress favicon requests from browsers/probes."""
+    return None
 
 
 @app.websocket("/ws")
