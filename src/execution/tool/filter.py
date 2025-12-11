@@ -1,75 +1,45 @@
-"""Pre-filters for tool calls to avoid unnecessary model invocations."""
+"""Pre-filters for tool calls to avoid unnecessary model invocations.
 
-import re
+This module coordinates pattern matching across different tool types.
+Each tool type has its own module with specific patterns:
+- freestyle.py: Freestyle-related patterns (start_freestyle, stop_freestyle)
+- screenshot.py: Screenshot-related patterns (take_screenshot)
+"""
+
 from typing import Literal
 
-# Patterns that return [] (no tool call)
-# "look/check twice/thrice/multiple times" and similar
-REJECT_PATTERNS = [
-    r"^look\s+twice(?:\s+at\s+this)?[.!?]*$",
-    r"^look\s+thrice(?:\s+at\s+this)?[.!?]*$",
-    r"^look\s+multiple\s+times[.!?]*$",
-    r"^check\s+twice(?:\s+at\s+this)?[.!?]*$",
-    r"^check\s+thrice(?:\s+at\s+this)?[.!?]*$",
-    r"^check\s+multiple\s+times[.!?]*$",
-]
+from .freestyle import match_freestyle_phrase
+from .screenshot import match_screenshot_phrase
 
-# Compiled reject patterns (case insensitive)
-_REJECT_COMPILED = [re.compile(p, re.IGNORECASE) for p in REJECT_PATTERNS]
-
-# Pattern for "take X screenshot(s)" - captures X
-_TAKE_SCREENSHOTS_PATTERN = re.compile(
-    r"^take\s+(\w+)\s+screenshots?[.!?]*$",
-    re.IGNORECASE
-)
-
-# Values of X that trigger a screenshot (singular)
-_TRIGGER_QUANTITIES = {"one", "1", "once", "a"}
-
-# Patterns that return [{"name": "take_screenshot"}] (trigger tool call)
-TRIGGER_PATTERNS = [
-    r"^take\s+screenshots?[.!?]*$",  # "take screenshot", "take screenshots"
-    r"^screenshot\s+this[.!?]*$",  # "screenshot this"
-    r"^sceenshot\s+this[.!?]*$",  # typo: "sceenshot this"
-    r"^lok\s+at\s+this[.!?]*$",  # typo: "lok at this"
-    r"^lock\s+at\s+this[.!?]*$",  # typo: "lock at this"
-    r"^tkae\s+a\s+look[.!?]*$",  # typo: "tkae a look"
-    r"^teak\s+a\s+look[.!?]*$",  # typo: "teak a look"
-]
-
-# Compiled trigger patterns (case insensitive)
-_TRIGGER_COMPILED = [re.compile(p, re.IGNORECASE) for p in TRIGGER_PATTERNS]
+FilterResult = Literal["no_screenshot", "take_screenshot", "start_freestyle", "stop_freestyle", "pass"]
 
 
-def filter_tool_phrase(user_utt: str) -> Literal["reject", "trigger", "pass"]:
+def filter_tool_phrase(user_utt: str) -> FilterResult:
     """
     Check if user utterance matches known patterns for early return.
     
+    Delegates to specialized matchers for each tool type.
+    Order matters: freestyle is checked before screenshot.
+    
     Returns:
-        "reject" - return [] without calling model
-        "trigger" - return [{"name": "take_screenshot"}] without calling model
+        "no_screenshot" - return [] without calling model
+        "take_screenshot" - return [{"name": "take_screenshot"}] without calling model
+        "start_freestyle" - return [{"name": "start_freestyle"}] without calling model
+        "stop_freestyle" - return [{"name": "stop_freestyle"}] without calling model
         "pass" - continue to call the model
     """
     text = user_utt.strip()
     
-    # Check reject patterns first
-    for pattern in _REJECT_COMPILED:
-        if pattern.match(text):
-            return "reject"
+    # Check freestyle patterns FIRST
+    freestyle_result = match_freestyle_phrase(text)
+    if freestyle_result == "start":
+        return "start_freestyle"
+    if freestyle_result == "stop":
+        return "stop_freestyle"
     
-    # Check "take X screenshot(s)" pattern
-    match = _TAKE_SCREENSHOTS_PATTERN.match(text)
-    if match:
-        quantity = match.group(1).lower()
-        if quantity in _TRIGGER_QUANTITIES:
-            return "trigger"
-        else:
-            # Any other quantity (two, three, multiple, etc.) -> reject
-            return "reject"
-    
-    # Check trigger patterns (typos, direct commands)
-    for pattern in _TRIGGER_COMPILED:
-        if pattern.match(text):
-            return "trigger"
+    # Check screenshot patterns
+    screenshot_result = match_screenshot_phrase(text)
+    if screenshot_result is not None:
+        return screenshot_result
     
     return "pass"

@@ -93,14 +93,18 @@ TOOL_DEFAULT_MESSAGES = [
     ("can you snap 1 screenshot?", True),
     ("please snap one screenshot", True),
     ("please snap 1 screenshot", True),
+    ("I need one screenshot", True),
+    ("I need 1 screenshot", True),
+    ("I'd like one screenshot", True),
+    ("I'd like 1 screenshot", True),
+    ("I want one screenshot", True),
+    ("I want 1 screenshot", True),
+
+    # ── SHOULD BE ACCEPTED: Request Screenshot Posed as Question ──────────────────────────
+    ("Can you see my screen?", True),
+    ("Can you watch the screen?", True),
 
     # ── SHOULD BE REJECTED: Weird Screenshot Requests ──────────────────────────
-    ("I need one screenshot", False),
-    ("I need 1 screenshot", False),
-    ("I'd like one screenshot", False),
-    ("I'd like 1 screenshot", False),
-    ("I want one screenshot", False),
-    ("I want 1 screenshot", False),
     ("take one pic", False),
     ("take 1 pic", False),
     ("can you take one pic?", False),
@@ -914,7 +918,6 @@ TOOL_DEFAULT_MESSAGES = [
 
     # ── EDGE CASES: Meta/Tool Discussion (Should be False) ────────────────────────
     ("Do you have eyes?", False),
-    ("Can you see my screen?", False),
     ("How does the screenshot tool work?", False),
 
     # ── EDGE CASES: Typos (Should be True if intent is clear) ─────────────────────
