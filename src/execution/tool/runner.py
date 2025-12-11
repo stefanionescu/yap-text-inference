@@ -66,12 +66,18 @@ async def run_toolcall(
     # Phrase filter: check for known patterns FIRST to avoid model call
     # This must run before language filter to catch typos that might be misclassified as non-English
     phrase_result = filter_tool_phrase(user_utt)
-    if phrase_result == "reject":
-        logger.info("tool_runner: phrase filter reject session_id=%s req_id=%s", session_id, req_id)
+    if phrase_result == "no_screenshot":
+        logger.info("tool_runner: phrase filter no_screenshot session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": "[]"}
-    if phrase_result == "trigger":
-        logger.info("tool_runner: phrase filter trigger session_id=%s req_id=%s", session_id, req_id)
+    if phrase_result == "take_screenshot":
+        logger.info("tool_runner: phrase filter take_screenshot session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "take_screenshot"}]'}
+    if phrase_result == "start_freestyle":
+        logger.info("tool_runner: phrase filter start_freestyle session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": '[{"name": "start_freestyle"}]'}
+    if phrase_result == "stop_freestyle":
+        logger.info("tool_runner: phrase filter stop_freestyle session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": '[{"name": "stop_freestyle"}]'}
 
     # Language filter: skip tool call if message is not mostly English
     # Only check if phrase filter didn't match (to avoid blocking known patterns)
