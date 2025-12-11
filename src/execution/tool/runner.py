@@ -78,6 +78,12 @@ async def run_toolcall(
     if phrase_result == "stop_freestyle":
         logger.info("tool_runner: phrase filter stop_freestyle session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "stop_freestyle"}]'}
+    if phrase_result == "switch_gender_male":
+        logger.info("tool_runner: phrase filter switch_gender_male session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": '[{"name": "switch_gender", "param": "male"}]'}
+    if phrase_result == "switch_gender_female":
+        logger.info("tool_runner: phrase filter switch_gender_female session_id=%s req_id=%s", session_id, req_id)
+        return {"cancelled": False, "text": '[{"name": "switch_gender", "param": "female"}]'}
 
     # Language filter: skip tool call if message is not mostly English
     # Only check if phrase filter didn't match (to avoid blocking known patterns)
