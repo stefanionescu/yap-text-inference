@@ -1,4 +1,4 @@
-"""Microbatched classifier adapter for screenshot intent detection."""
+"""Batched classifier adapter for screenshot intent detection."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import logging
 import torch  # type: ignore[import]
 
 from .backend import TorchClassifierBackend
-from .microbatch import MicrobatchExecutor
+from .batch import BatchExecutor
 from .model_info import ClassifierModelInfo, build_model_info
 
 logger = logging.getLogger(__name__)
@@ -25,8 +25,8 @@ class ClassifierToolAdapter:
         device: str | None = None,
         compile_model: bool = True,
         max_length: int = 1536,
-        microbatch_max_size: int = 2,
-        microbatch_max_delay_ms: float = 5.0,
+        batch_max_size: int = 3,
+        batch_max_delay_ms: float = 10.0,
         request_timeout_s: float = 5.0,
         gpu_memory_frac: float | None = None,
     ) -> None:
@@ -45,25 +45,21 @@ class ClassifierToolAdapter:
             dtype=self.dtype,
             compile_model=compile_model,
         )
-        self._microbatch = MicrobatchExecutor(
+        self._batch = BatchExecutor(
             self._backend.infer,
-            max_batch_size=microbatch_max_size,
-            max_delay_ms=microbatch_max_delay_ms,
+            max_batch_size=batch_max_size,
+            max_delay_ms=batch_max_delay_ms,
         )
 
         logger.info(
-            "classifier: ready model=%s type=%s device=%s backend=%s microbatch=%s/%s",
+            "classifier: ready model=%s type=%s device=%s backend=%s batch=%s/%s",
             model_path,
             self._model_info.model_type,
             self.device,
             self._backend.__class__.__name__,
-            microbatch_max_size,
-            microbatch_max_delay_ms,
+            batch_max_size,
+            batch_max_delay_ms,
         )
-
-    # ------------------------------------------------------------------ #
-    # Lifecycle helpers
-    # ------------------------------------------------------------------ #
 
     # ------------------------------------------------------------------ #
     # Internal helpers
@@ -128,7 +124,7 @@ class ClassifierToolAdapter:
     def classify(self, user_utt: str, user_history: str = "") -> tuple[bool, float]:
         """Return (should_take_screenshot, probability)."""
         text = self._format_input(user_utt, user_history)
-        probs = self._microbatch.classify(text, timeout_s=self.request_timeout_s)
+        probs = self._batch.classify(text, timeout_s=self.request_timeout_s)
 
         if len(probs) < 2:
             p_yes = float(probs[-1])

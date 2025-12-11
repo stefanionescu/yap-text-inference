@@ -21,12 +21,12 @@ from .memory_tuning import (
     get_max_num_seqs_override,
     scale_batching_limits,
 )
-from .quantization_support import (
+from .quantization import (
     detect_quantization_backend,
     log_detected_quantization,
     resolve_model_origin,
 )
-from .tokenizer_support import inject_tokenizer_kwargs
+from .tokenizer import inject_tokenizer_kwargs
 
 __all__ = ["make_engine_args"]
 
@@ -111,10 +111,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         kwargs["gpu_memory_utilization"] = min(gpu_frac, 0.85)
 
     # Resolve max_num_seqs dynamically to avoid warmup OOMs
-    max_num_seqs = get_max_num_seqs_override(True)
+    max_num_seqs = get_max_num_seqs_override()
     if max_num_seqs is None:
         max_num_seqs = auto_max_num_seqs(
-            is_chat=is_chat,
             gpu_frac=kwargs["gpu_memory_utilization"],
             needs_memory_opt=needs_memory_opt,
         )
