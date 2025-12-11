@@ -200,6 +200,20 @@ class SessionHandler:
         prefix = (state.meta.get("screen_checked_prefix") or "").strip()
         return prefix or resolved_default
 
+    def set_personalities(
+        self, session_id: str, personalities: dict[str, list[str]] | None
+    ) -> None:
+        """Store the personalities configuration for a session."""
+        state = self._ensure_state(session_id)
+        state.personalities = personalities
+
+    def get_personalities(self, session_id: str) -> dict[str, list[str]] | None:
+        """Get the personalities configuration for a session."""
+        state = self._get_state(session_id)
+        if not state:
+            return None
+        return state.personalities
+
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""
 

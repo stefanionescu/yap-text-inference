@@ -18,6 +18,7 @@ if _test_dir not in sys.path:
 
 from tests.config import (
     DEFAULT_GENDER,
+    DEFAULT_PERSONALITIES,
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
@@ -104,6 +105,7 @@ def _build_start_payload(
         "session_id": session_id,
         "gender": gender,
         "personality": personality,
+        "personalities": DEFAULT_PERSONALITIES,
         "history_text": "",
         "user_utterance": user_msg,
     }

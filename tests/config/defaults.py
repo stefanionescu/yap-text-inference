@@ -5,6 +5,16 @@ try:  # When /tests is on sys.path
 except ModuleNotFoundError:  # When repo root is on sys.path
     from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
 
+# Default personalities for tool phrase matching
+# Keys are personality names, values are lists of synonyms
+DEFAULT_PERSONALITIES: dict[str, list[str]] = {
+    "friendly": ["generic", "normal"],
+    "flirty": ["horny", "sexy", "turned on"],
+    "religious": ["priest", "pious"],
+    "delulu": ["delooloo", "de loo loo", "delusional"],
+    "savage": ["no cap", "unfiltered"],
+}
+
 WARMUP_FALLBACK_MESSAGE = "hey there! how are you today?"
 BENCHMARK_FALLBACK_MESSAGE = "who was Columbus?"
 
@@ -32,6 +42,7 @@ CHAT_PRESENCE_PENALTY_DEFAULT = 0.20
 CHAT_FREQUENCY_PENALTY_DEFAULT = 0.20
 
 __all__ = [
+    "DEFAULT_PERSONALITIES",
     "WARMUP_FALLBACK_MESSAGE",
     "BENCHMARK_FALLBACK_MESSAGE",
     "BENCHMARK_DEFAULT_REQUESTS",

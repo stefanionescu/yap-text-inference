@@ -27,7 +27,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from tests.config import BENCHMARK_FALLBACK_MESSAGE  # noqa: E402
+from tests.config import BENCHMARK_FALLBACK_MESSAGE, DEFAULT_PERSONALITIES  # noqa: E402
 
 
 @dataclass
@@ -86,6 +86,7 @@ def _build_start_payload(
         "session_id": session_id,
         "gender": gender,
         "personality": style,
+        "personalities": DEFAULT_PERSONALITIES,
         "history_text": "",
         "user_utterance": message,
     }

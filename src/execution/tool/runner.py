@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 import uuid
@@ -63,27 +64,40 @@ async def run_toolcall(
     """Execute a tool call with timeout handling using the classifier adapter."""
     req_id = request_id or f"tool-{uuid.uuid4()}"
 
+    # Get session personalities for personality switch detection
+    personalities = session_handler.get_personalities(session_id)
+
     # Phrase filter: check for known patterns FIRST to avoid model call
     # This must run before language filter to catch typos that might be misclassified as non-English
-    phrase_result = filter_tool_phrase(user_utt)
-    if phrase_result == "no_screenshot":
+    phrase_result = filter_tool_phrase(user_utt, personalities)
+    action = phrase_result.action
+    
+    if action == "no_screenshot":
         logger.info("tool_runner: phrase filter no_screenshot session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": "[]"}
-    if phrase_result == "take_screenshot":
+    if action == "take_screenshot":
         logger.info("tool_runner: phrase filter take_screenshot session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "take_screenshot"}]'}
-    if phrase_result == "start_freestyle":
+    if action == "start_freestyle":
         logger.info("tool_runner: phrase filter start_freestyle session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "start_freestyle"}]'}
-    if phrase_result == "stop_freestyle":
+    if action == "stop_freestyle":
         logger.info("tool_runner: phrase filter stop_freestyle session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "stop_freestyle"}]'}
-    if phrase_result == "switch_gender_male":
+    if action == "switch_gender_male":
         logger.info("tool_runner: phrase filter switch_gender_male session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "switch_gender", "param": "male"}]'}
-    if phrase_result == "switch_gender_female":
+    if action == "switch_gender_female":
         logger.info("tool_runner: phrase filter switch_gender_female session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "switch_gender", "param": "female"}]'}
+    if action == "switch_personality":
+        personality_name = phrase_result.param
+        logger.info(
+            "tool_runner: phrase filter switch_personality=%s session_id=%s req_id=%s",
+            personality_name, session_id, req_id
+        )
+        result = [{"name": "switch_personality", "param": personality_name}]
+        return {"cancelled": False, "text": json.dumps(result)}
 
     # Language filter: skip tool call if message is not mostly English
     # Only check if phrase filter didn't match (to avoid blocking known patterns)

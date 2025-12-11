@@ -29,6 +29,10 @@ CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1650"))
 # Personality validation
 PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
 
+# Personalities list limits
+MAX_PERSONALITIES = int(os.getenv("MAX_PERSONALITIES", "50"))
+MAX_SYNONYMS_PER_PERSONALITY = int(os.getenv("MAX_SYNONYMS_PER_PERSONALITY", "10"))
+
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
@@ -136,6 +140,8 @@ __all__ = [
     "CHAT_FREQUENCY_PENALTY_MAX",
     "CHAT_PROMPT_MAX_TOKENS",
     "PERSONALITY_MAX_LEN",
+    "MAX_PERSONALITIES",
+    "MAX_SYNONYMS_PER_PERSONALITY",
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
     "USER_UTT_MAX_TOKENS",

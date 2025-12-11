@@ -12,6 +12,7 @@ from typing import Any, Callable, Sequence
 import websockets  # type: ignore[import-not-found]
 
 from tests.config import (
+    DEFAULT_PERSONALITIES,
     POST_TOOL_IDLE_MIN_S,
     TOOL_WS_MESSAGE_WINDOW_SECONDS,
     TOOL_WS_MAX_MESSAGES_PER_WINDOW,
@@ -402,6 +403,7 @@ async def _execute_case(ws, session_id: str, case: ToolTestCase, cfg: RunnerConf
             "session_id": session_id,
             "gender": cfg.gender,
             "personality": cfg.personality,
+            "personalities": DEFAULT_PERSONALITIES,
             "history_text": history_text,
             "user_utterance": step.text,
         }
