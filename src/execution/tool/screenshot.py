@@ -3,7 +3,7 @@
 import re
 from typing import Literal
 
-from ...config.tool_patterns import (
+from ...config.tool import (
     SCREENSHOT_REJECT_PATTERNS,
     SCREENSHOT_TAKE_X_PATTERN,
     SCREENSHOT_TRIGGER_QUANTITIES,
