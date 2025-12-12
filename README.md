@@ -85,31 +85,42 @@ This will:
 
 ## Docker Deployment
 
-You can deploy the server in Docker using the stacks in `docker/awq` (pre-quantized AWQ) and `docker/mixed` (embed-only: pre-quantized AWQ and/or float, supports chat/tool/both and mixed quant):
+Deploy the server in Docker using the AWQ stack in `docker/`:
 
 ```bash
-# AWQ (pre-quantized models)
-DOCKER_USERNAME=youruser docker/awq/build.sh
+# Build the image
+DOCKER_USERNAME=youruser DEPLOY_MODELS=both ./docker/build.sh
+
+# Run (chat + classifier)
 docker run -d --gpus all --name yap-awq \
+  -e DEPLOY_MODELS=both \
   -e CHAT_MODEL=yapwithai/impish-12b-awq \
   -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_your_api_token \
   -e MAX_CONCURRENT_CONNECTIONS=32 \
-  -p 8000:8000 youruser/yap-text-inference-awq:latest
+  -p 8000:8000 youruser/yap-text-inference-awq:both
 
-# Base (float/GPTQ, pre-quantized AWQ, or runtime AWQ)
-DOCKER_USERNAME=youruser DEPLOY_MODELS=both CHAT_MODEL=org/chat TOOL_MODEL=org/tool docker/mixed/build.sh  # builds :both-fp8
-docker run -d --gpus all --name yap-mixed \
+# Chat-only
+DOCKER_USERNAME=youruser DEPLOY_MODELS=chat ./docker/build.sh
+docker run -d --gpus all --name yap-chat \
+  -e DEPLOY_MODELS=chat \
+  -e CHAT_MODEL=yapwithai/impish-12b-awq \
   -e TEXT_API_KEY=your_secret_key \
-  -e HF_TOKEN=hf_your_api_token \
-  -e MAX_CONCURRENT_CONNECTIONS=32 \
-  -p 8000:8000 youruser/yap-text-inference-mixed:both-fp8
+  -p 8000:8000 youruser/yap-text-inference-awq:chat
+
+# Classifier-only
+DOCKER_USERNAME=youruser DEPLOY_MODELS=tool ./docker/build.sh
+docker run -d --gpus all --name yap-tool \
+  -e DEPLOY_MODELS=tool \
+  -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
+  -e TEXT_API_KEY=your_secret_key \
+  -p 8000:8000 youruser/yap-text-inference-awq:tool
 ```
 
-> Tool classifiers are just standard PyTorch weights. They’re cached locally (e.g., `$REPO/.run`, `.hf`, or `/app/models/tool` inside Docker) so restarts reuse them instantly even though there’s no AWQ variant.
+> Tool classifiers are standard PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally (e.g., `$REPO/.run`, `.hf`, or `/app/models/tool` inside Docker) so restarts reuse them instantly.
 
-See `docker/awq/README.md` and `docker/mixed/README.md` for build arguments, image behavior, and run options.
+See `docker/README.md` for build arguments, image behavior, and run options.
 
 ## Quantization
 

@@ -37,7 +37,7 @@ from ..tokens import (
 )
 from ..handlers.session import session_handler
 from ..execution.executor import run_execution
-from ..execution.chat_runner import run_chat_generation
+from ..execution.chat.runner import run_chat_generation
 from ..execution.tool.runner import run_toolcall
 from ..execution.tool.parser import parse_tool_result
 from ..handlers.websocket.helpers import stream_chat_response
