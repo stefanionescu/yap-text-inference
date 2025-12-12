@@ -20,7 +20,7 @@ from tests.helpers.setup import setup_repo_path
 
 setup_repo_path()
 
-from tests.helpers.cli import add_connection_args, add_prompt_mode_arg  # noqa: E402
+from tests.helpers.cli import add_connection_args, add_chat_prompt_arg  # noqa: E402
 from tests.helpers.ws import with_api_key  # noqa: E402
 from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
@@ -32,7 +32,7 @@ from tests.logic.tool.runner import run_suite  # noqa: E402
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")
     add_connection_args(parser)
-    add_prompt_mode_arg(parser)
+    add_chat_prompt_arg(parser)
     parser.add_argument(
         "--gender",
         default=DEFAULT_GENDER,
@@ -97,7 +97,7 @@ def main() -> None:
                 concurrency=max(1, args.concurrency),
                 limit=args.limit,
                 show_successes=args.show_successes,
-                prompt_mode=args.prompt_mode,
+                skip_chat_prompt=args.no_chat_prompt,
                 max_steps_per_case=args.max_steps,
             )
         )
@@ -107,4 +107,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

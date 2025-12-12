@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import sys
-import time
 import uuid
 from typing import Any
 
@@ -27,11 +26,7 @@ from tests.config import (
     WARMUP_FALLBACK_MESSAGE,
 )
 from tests.helpers.message import dispatch_message, iter_messages
-from tests.helpers.prompt import (
-    PROMPT_MODE_BOTH,
-    select_chat_prompt,
-    should_send_chat_prompt,
-)
+from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.stream import StreamTracker
 from tests.helpers.util import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
@@ -50,7 +45,7 @@ async def run_once(args) -> None:
     gender = args.gender or gender_env or DEFAULT_GENDER
     personality = args.personality or personality_env or DEFAULT_PERSONALITY
     sampling_overrides = getattr(args, "sampling", None) or None
-    prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
+    skip_chat_prompt = bool(getattr(args, "no_chat_prompt", False))
     double_ttfb = bool(getattr(args, "double_ttfb", False))
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
@@ -59,7 +54,7 @@ async def run_once(args) -> None:
         fallback=WARMUP_FALLBACK_MESSAGE,
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
-    chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
+    chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
     logger.info("Connecting to %s (with API key auth)", server_ws_url)
     async with connect_with_retries(
         lambda: websockets.connect(
@@ -226,5 +221,3 @@ def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) ->
 
 def _phase_prefix(phase_label: str | None) -> str:
     return f"[{phase_label}] " if phase_label else ""
-
-

@@ -36,7 +36,6 @@ from tests.config import (
 )
 from tests.helpers.cli import (
     add_connection_args,
-    add_prompt_mode_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -48,10 +47,6 @@ from tests.logic.live import (
     LiveServerError,
     LiveSession,
     PersonaRegistry,
-)
-from tests.helpers.prompt import (
-    PROMPT_MODE_BOTH,
-    should_send_chat_prompt,
 )
 from tests.logic.live.cli import interactive_loop, print_help
 
@@ -65,7 +60,6 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
-    add_prompt_mode_arg(parser)
     parser.add_argument(
         "message",
         nargs="*",
@@ -101,19 +95,10 @@ async def _run(args: argparse.Namespace) -> None:
         " ".join(args.message).strip() if args.message else "Hey!"
     )
 
-    prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
-    chat_enabled = should_send_chat_prompt(prompt_mode)
-    if not chat_enabled:
-        raise SystemExit("prompt_mode must allow chat prompts for live testing.")
-    if not chat_enabled:
-        logger.warning(
-            "Chat prompts disabled by prompt mode; persona changes and chat streaming will be limited."
-        )
-
     session = LiveSession(
         session_id=f"live-{uuid.uuid4()}",
         persona=persona,
-        include_chat_prompt=chat_enabled,
+        include_chat_prompt=True,
         sampling=args.sampling or None,
     )
 
@@ -164,5 +149,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
