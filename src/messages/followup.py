@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import WebSocket
 
 from ..handlers.session import session_handler
-from ..execution.chat_runner import run_chat_generation
+from ..execution.chat.runner import run_chat_generation
 from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS
 from ..tokens import trim_text_to_token_limit_chat
 from ..handlers.websocket.helpers import safe_send_json

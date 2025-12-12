@@ -26,7 +26,7 @@ from ..config.sampling import (
 from ..config.timeouts import GEN_TIMEOUT_S
 from ..tokens.tokenizer import get_chat_tokenizer
 from ..persona import build_chat_prompt_with_prefix
-from .chat_controller import ChatStreamConfig, ChatStreamController
+from .controller import ChatStreamConfig, ChatStreamController
 
 
 async def run_chat_generation(
