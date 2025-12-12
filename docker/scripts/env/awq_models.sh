@@ -15,7 +15,7 @@ export DEPLOY_CHAT DEPLOY_TOOL
 
 # Only set defaults for the engines that are actually being deployed
 if [ "${DEPLOY_CHAT}" = "1" ]; then
-  export CHAT_MODEL=${CHAT_MODEL:-yapwithai/impish-12b-awq}
+  export CHAT_MODEL=${CHAT_MODEL:-cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit}
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
   export TOOL_MODEL=${TOOL_MODEL:-yapwithai/yap-longformer-screenshot-intent}

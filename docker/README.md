@@ -4,7 +4,7 @@ This Docker setup provides a containerized deployment of Yap's text inference AP
 All artifacts are produced with [`llmcompressor`](https://github.com/vllm-project/llm-compressor) (or [AutoAWQ 0.2.9](https://github.com/AutoAWQ/AutoAWQ) for Qwen2/Qwen3 and Mistral 3 families) and ship as **W4A16 compressed-tensor exports**, so vLLM automatically selects the Marlin kernels (you will see `quantization=compressed-tensors` in the server logs even though `QUANTIZATION=awq` is configured).
 
 **Default Models:**
-- **Chat**: [yapwithai/impish-12b-awq](https://huggingface.co/yapwithai/impish-12b-awq) - AWQ quantized Impish Nemo 12B
+- **Chat**: [cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit](https://huggingface.co/cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit) - AWQ quantized Qwen3 30B-A3B
 - **Tool**: [yapwithai/yap-longformer-screenshot-intent](https://huggingface.co/yapwithai/yap-longformer-screenshot-intent) - Screenshot intent classifier (float)
 
 ## Contents
@@ -83,7 +83,7 @@ docker run -d --gpus all --name yap-tool \
 ### Required
 - `TEXT_API_KEY` – API key handed to the server
 - `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
-- If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `yapwithai/impish-12b-awq`)
+- If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit`)
 - If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/yap-longformer-screenshot-intent`)
 - If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
 

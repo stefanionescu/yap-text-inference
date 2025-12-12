@@ -6,7 +6,8 @@ import threading
 import time
 from dataclasses import dataclass
 from queue import Empty, Queue
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 import torch  # type: ignore[import]
 
@@ -53,7 +54,7 @@ class BatchExecutor:
         self._infer_fn = infer_fn
         self._max_batch = max(1, int(max_batch_size))
         self._max_delay = max(0.0, float(max_delay_ms)) / 1000.0
-        self._queue: "Queue[RequestItem]" = Queue()
+        self._queue: Queue[RequestItem] = Queue()
         self._thread = threading.Thread(target=self._worker_loop, daemon=True)
         self._thread.start()
 

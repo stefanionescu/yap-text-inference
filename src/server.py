@@ -43,7 +43,6 @@ from .vllm import (
     shutdown_engines,
 )
 from .handlers.websocket import handle_websocket_connection
-from .handlers.connection_handler import connection_handler
 
 logger = logging.getLogger(__name__)
 

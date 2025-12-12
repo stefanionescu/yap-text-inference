@@ -7,7 +7,7 @@ import os
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.config.awq import (
+from src.config.model_profiles import (
     get_tokenizer_kwargs,
     model_needs_memory_optimization,
     model_requires_bfloat16,

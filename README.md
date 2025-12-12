@@ -94,18 +94,16 @@ DOCKER_USERNAME=youruser DEPLOY_MODELS=both ./docker/build.sh
 # Run (chat + classifier)
 docker run -d --gpus all --name yap-awq \
   -e DEPLOY_MODELS=both \
-  -e CHAT_MODEL=yapwithai/impish-12b-awq \
   -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_your_api_token \
   -e MAX_CONCURRENT_CONNECTIONS=32 \
   -p 8000:8000 youruser/yap-text-inference-awq:both
 
-# Chat-only
+# Chat-only (uses default model: cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit)
 DOCKER_USERNAME=youruser DEPLOY_MODELS=chat ./docker/build.sh
 docker run -d --gpus all --name yap-chat \
   -e DEPLOY_MODELS=chat \
-  -e CHAT_MODEL=yapwithai/impish-12b-awq \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 youruser/yap-text-inference-awq:chat
 

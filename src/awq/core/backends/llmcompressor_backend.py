@@ -16,8 +16,8 @@ from src.config.awq import (
     canonicalize_dataset_name,
     dataset_fallback,
     dataset_key,
-    get_model_profile,
 )
+from src.config.model_profiles import get_model_profile
 
 from ..calibration import CalibrationConfig
 from ..config_fixes import apply_post_quantization_fixes
