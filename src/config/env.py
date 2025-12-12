@@ -58,7 +58,7 @@ def configure_runtime_env(*, force: bool = False) -> None:
     global _ENV_CONFIGURED
     if _ENV_CONFIGURED and not force:
         return
-    if not force and os.getenv(_SKIP_AUTOCONFIG_FLAG, "0") == "1":
+    if not force and env_flag(_SKIP_AUTOCONFIG_FLAG, False):
         return
 
     # Ensure V1 engine is selected before importing any vLLM modules
@@ -71,7 +71,7 @@ def configure_runtime_env(*, force: bool = False) -> None:
     _ENV_CONFIGURED = True
 
 
-if os.getenv(_AUTO_CONFIG_FLAG, "1") != "0":
+if env_flag(_AUTO_CONFIG_FLAG, True):
     configure_runtime_env()
 
 
@@ -97,7 +97,7 @@ KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
 CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override for chat
 
-if os.getenv("VLLM_USE_V1", "1") == "1":
+if env_flag("VLLM_USE_V1", True):
     kv_lower = (KV_DTYPE or "").strip().lower()
     if kv_lower.startswith("fp8"):
         os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")

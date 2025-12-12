@@ -7,6 +7,31 @@ import time
 from typing import Any
 
 
+def is_awq_dir(path: str) -> bool:
+    """Check if a directory contains a valid AWQ quantized model.
+    
+    Looks for typical AWQ model artifacts:
+    - config.json
+    - model safetensors files
+    - awq_metadata.json (written by our quantizer)
+    """
+    if not path or not os.path.isdir(path):
+        return False
+    
+    config_path = os.path.join(path, "config.json")
+    if not os.path.isfile(config_path):
+        return False
+    
+    # Check for model weights (safetensors or bin)
+    has_weights = any(
+        f.endswith((".safetensors", ".bin"))
+        for f in os.listdir(path)
+        if os.path.isfile(os.path.join(path, f))
+    )
+    
+    return has_weights
+
+
 def resolve_calibration_seqlen(requested: int, model_or_config: Any | None) -> int:
     """Resolve the calibration sequence length based on model or config metadata."""
     requested = max(int(requested), 1)

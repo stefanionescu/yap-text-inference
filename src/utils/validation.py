@@ -1,7 +1,6 @@
 """Validation utilities for input normalization and checks."""
 
-import re
-
+from ..config.filters import LETTERS_ONLY_PATTERN
 from ..config.limits import PERSONALITY_MAX_LEN
 
 
@@ -26,9 +25,6 @@ def is_gender_empty_or_null(val: str | None) -> bool:
     return False
 
 
-_LETTERS_ONLY_RE = re.compile(r"^[A-Za-z]+$")
-
-
 def normalize_personality(val: str | None) -> str | None:
     """Normalize personality: letters-only, length-limited, lowercased.
 
@@ -41,7 +37,7 @@ def normalize_personality(val: str | None) -> str | None:
         return None
     if len(v) > PERSONALITY_MAX_LEN:
         return None
-    if not _LETTERS_ONLY_RE.match(v):
+    if not LETTERS_ONLY_PATTERN.match(v):
         return None
     return v.lower()
 

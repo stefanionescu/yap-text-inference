@@ -1,4 +1,4 @@
-"""Utilities shared by executor workflows."""
+"""WebSocket streaming and communication utilities."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..handlers.session import session_handler
-from ..execution.tool.runner import run_toolcall
+from ..session import session_handler
+from ...execution.tool.runner import run_toolcall
 
 logger = logging.getLogger(__name__)
 
@@ -187,3 +187,4 @@ __all__ = [
     "launch_tool_request",
     "stream_chat_response",
 ]
+

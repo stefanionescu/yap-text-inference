@@ -8,11 +8,11 @@ from functools import lru_cache
 
 from vllm.sampling_params import SamplingParams
 
-from ...vllm import get_engine
-from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
-from ...handlers.session import session_handler
-from ...utils import StreamingSanitizer
-from ...config.sampling import (
+from ..vllm import get_engine
+from ..config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
+from ..handlers.session import session_handler
+from ..utils import StreamingSanitizer
+from ..config.sampling import (
     CHAT_TEMPERATURE,
     CHAT_TOP_P,
     CHAT_TOP_K,
@@ -23,10 +23,10 @@ from ...config.sampling import (
     INFERENCE_STOP,
     CHAT_LOGIT_BIAS,
 )
-from ...config.timeouts import GEN_TIMEOUT_S
-from ...tokens.tokenizer import get_chat_tokenizer
-from ...tokens.prompt_cache import compile_chat_prompt
-from .controller import ChatStreamConfig, ChatStreamController
+from ..config.timeouts import GEN_TIMEOUT_S
+from ..tokens.tokenizer import get_chat_tokenizer
+from ..persona import build_chat_prompt_with_prefix
+from .chat_controller import ChatStreamConfig, ChatStreamController
 
 
 async def run_chat_generation(
@@ -67,12 +67,12 @@ async def run_chat_generation(
         max_tokens=CHAT_MAX_OUT,
         stop=INFERENCE_STOP,
     )
-    compiled_prompt = compile_chat_prompt(static_prefix, runtime_text, history_text, user_utt)
+    prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     stream = ChatStreamController(
         ChatStreamConfig(
             session_id=session_id,
             request_id=req_id,
-            prompt=compiled_prompt.text,
+            prompt=prompt,
             sampling_params=params,
             engine_getter=get_engine,
             timeout_s=float(GEN_TIMEOUT_S),
@@ -121,3 +121,7 @@ def _get_logit_bias_map() -> dict[int, float]:
             if current is None or value < current:
                 id_bias[token_id] = value
     return id_bias
+
+
+__all__ = ["run_chat_generation"]
+

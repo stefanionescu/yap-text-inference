@@ -60,7 +60,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "Qwen/Qwen3-14B-AWQ",
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
-
     "TheBloke/mixtral-8x7b-v0.1-AWQ",
 
     "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, rambles even with conservative params

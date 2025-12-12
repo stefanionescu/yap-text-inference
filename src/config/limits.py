@@ -2,6 +2,8 @@
 
 import os
 
+from ..utils.env import env_flag
+
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # 1650 persona + 3000 history + 350 user + 25 tool reply
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
@@ -57,7 +59,7 @@ WS_MAX_CANCELS_PER_WINDOW = int(os.getenv("WS_MAX_CANCELS_PER_WINDOW", str(WS_MA
 TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "900"))  # Tool model context allocation
 
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
-EXACT_TOKEN_TRIM = os.getenv("EXACT_TOKEN_TRIM", "1") == "1"
+EXACT_TOKEN_TRIM = env_flag("EXACT_TOKEN_TRIM", True)
 
 # Maximum concurrent WebSocket connections (must be provided explicitly)
 _max_concurrent_raw = os.getenv("MAX_CONCURRENT_CONNECTIONS")

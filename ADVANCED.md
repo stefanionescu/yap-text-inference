@@ -263,8 +263,8 @@ export HF_AWQ_PRIVATE=1                        # create repo as private (0 = pub
 export HF_AWQ_ALLOW_CREATE=1                   # create repo automatically (0 = expect it to exist)
 export HF_AWQ_COMMIT_MSG_CHAT="Upload Nemo AWQ build"   # optional commit message override
 
-# full deployment that quantizes + uploads
-scripts/main.sh 4bit <chat_model> <tool_model> --push-quant
+# full deployment that quantizes chat, deploys tool model alongside it + uploads quantized chat model to HF
+bash scripts/main.sh 4bit <chat_model> <tool_model> --push-quant
 
 # restart-only upload (works with or without --reset-models)
 bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 4bit

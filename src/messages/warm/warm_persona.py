@@ -5,8 +5,8 @@ from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT
 from ...utils import sanitize_prompt
+from ...persona import build_chat_warm_prompt
 from .warm_utils import warm_chat_segment
-from ...tokens.prompt_cache import compile_chat_warm_prompt
 
 
 async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
@@ -32,10 +32,10 @@ async def handle_warm_persona_message(ws: WebSocket, msg: dict) -> None:
         await ws.send_text(json.dumps({"type": "error", "message": str(e)}))
         return
 
-    compiled_prompt = compile_chat_warm_prompt(static_prefix, "", "")
+    prompt = build_chat_warm_prompt(static_prefix, "", "")
     await warm_chat_segment(
         ws,
-        compiled_prompt=compiled_prompt,
+        prompt=prompt,
         segment="persona_static",
         byte_count=len(static_prefix),
     )

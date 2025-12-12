@@ -9,7 +9,7 @@ from .tool.parser import parse_tool_result
 from .chat import run_chat_generation
 from ..handlers.session import session_handler
 from ..config.timeouts import TOOL_TIMEOUT_S
-from ..utils.executor import cancel_task, launch_tool_request, send_toolcall, stream_chat_response
+from ..handlers.websocket.helpers import cancel_task, launch_tool_request, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
 
