@@ -19,7 +19,7 @@ usage() {
   echo "  If DEPLOY_MODELS=both  -> CHAT_MODEL (AWQ) and TOOL_MODEL (classifier) required"
   echo ""
   echo "Optional Environment Variables:"
-  echo "  TEXT_API_KEY                     - API key for authentication (required, no default)"
+  echo "  TEXT_API_KEY                    - API key for authentication (required, no default)"
   echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model (default: 0.70 both / 0.90 single)"
   echo "  TOOL_GPU_FRAC                   - GPU memory fraction cap for the classifier (default: 0.20 both / 0.90 single)"
   echo ""

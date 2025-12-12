@@ -19,10 +19,10 @@ WARMUP_DEFAULT_MESSAGES = [
     #     "confidently from the driver’s seat, flaunting her curves and teasing "
     #     "with bold energy."
     # ),
-    (
-        "ON THE SCREEN NOW: A woman dressed in white is squatting confidently on a "
-        "Jenga tower placed on a patio table, wearing heels and sunglasses."
-    ),
+    # (
+    #     "ON THE SCREEN NOW: A woman dressed in white is squatting confidently on a "
+    #     "Jenga tower placed on a patio table, wearing heels and sunglasses."
+    # ),
     # "which apps do you work best with?",
     # "damn I wanna fap to a goat",
     # "ON THE SCREEN NOW: Big ass girl in doggy-style waiting to be rammed by massive black cock",

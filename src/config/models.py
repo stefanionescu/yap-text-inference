@@ -39,6 +39,9 @@ ALLOWED_CHAT_MODELS: list[str] = [
 
     "Qwen/Qwen3-14B",
     "Jinx-org/Jinx-Qwen3-32B",
+    "Jinx-org/Jinx-Qwen3-14B",
+    "ArliAI/Qwen3-30B-A3B-ArliAI-RpR-v4-Fast",
+    "DavidAU/Qwen3-33B-A3B-Stranger-Thoughts-IPONDER",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
