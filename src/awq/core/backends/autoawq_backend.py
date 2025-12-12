@@ -13,7 +13,7 @@ from src.config.model_profiles import get_model_profile
 
 from ..config_fixes import apply_post_quantization_fixes
 from ..metadata import save_quantization_metadata
-from ..utils.model_utils import ensure_autoawq_dependencies
+from ...utils.model_utils import ensure_autoawq_dependencies
 
 
 def _get_safetensors_size(directory: str) -> int:
