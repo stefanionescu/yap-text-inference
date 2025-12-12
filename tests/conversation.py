@@ -38,7 +38,6 @@ from tests.config import (
 )
 from tests.helpers.cli import (
     add_connection_args,
-    add_prompt_mode_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -53,7 +52,6 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
-    add_prompt_mode_arg(parser)
     parser.add_argument(
         "--gender",
         dest="gender",
@@ -91,7 +89,6 @@ def main() -> None:
                 personality=personality,
                 recv_timeout=args.recv_timeout,
                 sampling=args.sampling or None,
-                prompt_mode=args.prompt_mode,
             )
         )
     except KeyboardInterrupt:

@@ -9,11 +9,7 @@ _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
-from tests.helpers.prompt import (  # noqa: E402
-    PROMPT_MODE_BOTH,
-    select_chat_prompt,
-    should_send_chat_prompt,
-)
+from tests.helpers.prompt import select_chat_prompt  # noqa: E402
 from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT  # noqa: E402
 
 from .cases import build_cases
@@ -33,7 +29,7 @@ async def run_suite(
     concurrency: int,
     limit: int | None = None,
     show_successes: bool = False,
-    prompt_mode: str | None = None,
+    skip_chat_prompt: bool = False,
     max_steps_per_case: int | None = None,
 ) -> list[CaseResult]:
     """
@@ -86,8 +82,7 @@ async def run_suite(
     else:
         print("No tool cases to run.")
 
-    normalized_mode = prompt_mode or PROMPT_MODE_BOTH
-    chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(normalized_mode) else None
+    chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
     if chat_prompt is None:
         print("Tool-only suite running without chat prompts.")
 

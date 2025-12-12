@@ -4,7 +4,6 @@ import asyncio
 import json
 import os
 import sys
-import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -12,11 +11,7 @@ from typing import Any
 import websockets
 
 from tests.helpers.message import iter_messages
-from tests.helpers.prompt import (
-    PROMPT_MODE_BOTH,
-    select_chat_prompt,
-    should_send_chat_prompt,
-)
+from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
 from tests.helpers.util import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
@@ -26,6 +21,8 @@ from .reporting import print_report
 _TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
+
+import time
 
 from tests.config import BENCHMARK_FALLBACK_MESSAGE, DEFAULT_PERSONALITIES  # noqa: E402
 
@@ -244,8 +241,8 @@ async def run_benchmark(args) -> None:
     requests, concurrency = _sanitize_workload_args(int(args.requests), int(args.concurrency))
     counts = _distribute_requests(requests, concurrency)
     timeout_s = float(args.timeout)
-    prompt_mode = getattr(args, "prompt_mode", PROMPT_MODE_BOTH)
-    chat_prompt = select_chat_prompt(gender) if should_send_chat_prompt(prompt_mode) else None
+    skip_chat_prompt = bool(getattr(args, "no_chat_prompt", False))
+    chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
     double_ttfb = bool(getattr(args, "double_ttfb", False))
 
     tasks = _launch_worker_tasks(
@@ -318,5 +315,3 @@ def _launch_worker_tasks(
             )
         )
     return tasks
-
-

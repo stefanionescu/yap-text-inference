@@ -14,7 +14,6 @@ from tests.config import (
     CHAT_TOP_K_DEFAULT,
     CHAT_TOP_P_DEFAULT,
 )
-from tests.helpers.prompt import PROMPT_MODE_BOTH, PROMPT_MODE_CHOICES, normalize_prompt_mode
 
 
 def add_connection_args(
@@ -105,44 +104,23 @@ def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, flo
     return payload
 
 
-PROMPT_MODE_ENV_VAR = "PROMPT_MODE"
-
-
-def add_prompt_mode_arg(
-    parser: ArgumentParser,
-    *,
-    default: str = PROMPT_MODE_BOTH,
-    env_var: str = PROMPT_MODE_ENV_VAR,
-) -> None:
+def add_chat_prompt_arg(parser: ArgumentParser) -> None:
     """
-    Register a flag controlling which prompts get sent to the server.
+    Register a flag to skip sending chat prompts on connection start.
 
-    Respects ``env_var`` (default: PROMPT_MODE) for overrides.
+    Use --no-chat-prompt for tool-only deployments where no chat model is available.
     """
-
-    env_override = os.getenv(env_var)
-    resolved_default = default
-    if env_override:
-        try:
-            resolved_default = normalize_prompt_mode(env_override)
-        except ValueError:
-            resolved_default = default
-
     parser.add_argument(
-        "--prompt-mode",
-        choices=PROMPT_MODE_CHOICES,
-        default=resolved_default,
-        help=(
-            "Which prompts to send on connection start "
-            f"(default: {resolved_default}, env {env_var} overrides)"
-        ),
+        "--no-chat-prompt",
+        action="store_true",
+        dest="no_chat_prompt",
+        help="Skip sending chat prompt (for tool-only deployments)",
     )
 
 
 __all__ = [
     "add_connection_args",
     "add_sampling_args",
-    "add_prompt_mode_arg",
+    "add_chat_prompt_arg",
     "build_sampling_payload",
 ]
-

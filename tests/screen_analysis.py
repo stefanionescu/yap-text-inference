@@ -34,7 +34,6 @@ setup_repo_path()
 
 from tests.helpers.cli import (
     add_connection_args,
-    add_prompt_mode_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -49,11 +48,7 @@ from tests.config import (
     DEFAULT_WS_PING_TIMEOUT,
 )
 from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
-from tests.helpers.prompt import (
-    PROMPT_MODE_BOTH,
-    select_chat_prompt,
-    should_send_chat_prompt,
-)
+from tests.helpers.prompt import select_chat_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +107,6 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
-    add_prompt_mode_arg(parser)
     args = parser.parse_args()
     args.sampling = build_sampling_payload(args)
     return args
@@ -122,7 +116,7 @@ async def run_once(
     server: str,
     api_key: str | None,
     sampling: dict[str, float | int] | None,
-    chat_prompt: str | None,
+    chat_prompt: str,
 ) -> None:
     ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
@@ -135,11 +129,8 @@ async def run_once(
         "personalities": DEFAULT_PERSONALITIES,
         "history_text": "",
         "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
+        "chat_prompt": chat_prompt,
     }
-    if chat_prompt is not None:
-        start_payload["chat_prompt"] = chat_prompt
-    if chat_prompt is None:
-        raise ValueError("screen analysis requires chat prompts; set prompt mode to chat or both")
     if sampling:
         start_payload["sampling"] = sampling
 
@@ -171,9 +162,6 @@ async def run_once(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     args = _parse_args()
-    prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
-    if not should_send_chat_prompt(prompt_mode):
-        raise SystemExit("prompt_mode must allow chat prompts for screen analysis.")
     chat_prompt = select_chat_prompt(DEFAULT_GENDER)
 
     asyncio.run(
@@ -184,5 +172,3 @@ if __name__ == "__main__":
             chat_prompt,
         )
     )
-
-

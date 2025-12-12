@@ -31,7 +31,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -44,7 +43,7 @@ setup_repo_path()
 
 from tests.helpers.cli import (
     add_connection_args,
-    add_prompt_mode_arg,
+    add_chat_prompt_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -52,10 +51,12 @@ from tests.helpers.cli import (
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=True)
-    add_connection_args(parser)
     parser.add_argument("message", nargs="*", help="optional user message")
+
+    add_connection_args(parser)
     add_sampling_args(parser)
-    add_prompt_mode_arg(parser)
+    add_chat_prompt_arg(parser)
+
     parser.add_argument(
         "--gender",
         dest="gender",

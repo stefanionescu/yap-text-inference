@@ -35,7 +35,6 @@ setup_repo_path()
 
 from tests.helpers.cli import (
     add_connection_args,
-    add_prompt_mode_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -46,10 +45,6 @@ from tests.config import (
     PERSONALITY_SWITCH_MAX,
     PERSONALITY_SWITCH_MIN,
 )
-from tests.helpers.prompt import (
-    PROMPT_MODE_BOTH,
-    should_send_chat_prompt,
-)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -59,7 +54,6 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
-    add_prompt_mode_arg(parser)
     parser.add_argument(
         "--switches",
         dest="switches",
@@ -86,9 +80,6 @@ def main() -> None:
 
     args = _parse_args()
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
-    prompt_mode = args.prompt_mode or PROMPT_MODE_BOTH
-    if not should_send_chat_prompt(prompt_mode):
-        raise SystemExit("personality test requires chat prompts; set --prompt-mode chat or both.")
     asyncio.run(
         run_test(
             args.server,
@@ -102,4 +93,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
