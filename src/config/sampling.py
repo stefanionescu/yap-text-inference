@@ -1,4 +1,4 @@
-"""Sampling defaults for chat and tool models.
+"""Sampling defaults for chat models.
 
 All values may be overridden via environment variables when applicable.
 Stop sequences are centralized here for consistency.
@@ -8,19 +8,13 @@ import os
 
 
 # --- Chat sampling ---
-CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.9"))
+CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.8"))
 CHAT_TOP_P = float(os.getenv("CHAT_TOP_P", "0.95"))
-CHAT_TOP_K = int(os.getenv("CHAT_TOP_K", "20"))
+CHAT_TOP_K = int(os.getenv("CHAT_TOP_K", "30"))
 CHAT_MIN_P = float(os.getenv("CHAT_MIN_P", "0"))
 CHAT_REPETITION_PENALTY = float(os.getenv("CHAT_REPETITION_PENALTY", "1.0"))
 CHAT_PRESENCE_PENALTY = float(os.getenv("CHAT_PRESENCE_PENALTY", "0"))
 CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
-
-
-# --- Tool sampling ---
-TOOL_TEMPERATURE = float(os.getenv("TOOL_TEMPERATURE", "0"))
-TOOL_TOP_P = float(os.getenv("TOOL_TOP_P", "1.0"))
-TOOL_TOP_K = int(os.getenv("TOOL_TOP_K", "1"))
 
 
 # What words/text to discourage
@@ -116,8 +110,5 @@ __all__ = [
     "CHAT_FREQUENCY_PENALTY",
     "INFERENCE_STOP",
     "CHAT_LOGIT_BIAS",
-    "TOOL_TEMPERATURE",
-    "TOOL_TOP_P",
-    "TOOL_TOP_K",
 ]
 
