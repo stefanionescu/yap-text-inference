@@ -1,6 +1,7 @@
 """Executor: tool-first, then chat."""
 
 import asyncio
+import json
 import logging
 import uuid
 from fastapi import WebSocket
@@ -8,10 +9,33 @@ from fastapi import WebSocket
 from .tool.parser import parse_tool_result
 from .chat import run_chat_generation
 from ..handlers.session import session_handler
+from ..config.filters import CHAT_CONTINUE_TOOLS
 from ..config.timeouts import TOOL_TIMEOUT_S
 from ..handlers.websocket.helpers import cancel_task, launch_tool_request, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
+
+
+def _should_skip_chat(raw_field: list | None) -> bool:
+    """Determine if chat should be skipped based on tool result.
+    
+    Returns True if the tool returned a control function that doesn't need chat.
+    Chat is skipped for: switch_gender, switch_personality, switch_gender_and_personality,
+    start_freestyle, stop_freestyle, etc.
+    
+    Chat continues for: take_screenshot (needs CHECK SCREEN), or empty results.
+    """
+    if not raw_field or not isinstance(raw_field, list):
+        return False
+    
+    # Check if any tool in the result is NOT in the continue set
+    for item in raw_field:
+        if isinstance(item, dict):
+            name = item.get("name")
+            if name and name not in CHAT_CONTINUE_TOOLS:
+                return True
+    
+    return False
 
 
 async def run_execution(
@@ -59,7 +83,7 @@ async def run_execution(
     session_handler.clear_tool_request_id(session_id)
 
     if is_tool:
-        # Tool detected: send toolcall response but continue with chat (CHECK SCREEN)
+        # Tool detected: send toolcall response
         await send_toolcall(ws, "yes", raw_field)
         logger.info("sequential_exec: sent toolcall yes")
     else:
@@ -67,10 +91,19 @@ async def run_execution(
         await send_toolcall(ws, "no", raw_field)
         logger.info("sequential_exec: sent toolcall no")
 
-    # Start chat stream (always runs regardless of tool decision)
+    # Check if we should skip chat (control functions like switch_gender, etc.)
+    if _should_skip_chat(raw_field):
+        # Control function detected - skip chat, send final/done and return
+        logger.info("sequential_exec: control function detected, skipping chat")
+        await ws.send_text(json.dumps({"type": "final", "normalized_text": ""}))
+        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+        logger.info("sequential_exec: done (tool-only, no chat)")
+        return
+
+    # Start chat stream (for take_screenshot or no tool call)
     chat_req_id = f"chat-{uuid.uuid4()}"
     session_handler.set_active_request(session_id, chat_req_id)
-    # If tool said yes, prefix the user utterance with the session-specific CHECK SCREEN hint
+    # If tool said yes (take_screenshot), prefix the user utterance with CHECK SCREEN hint
     if is_tool:
         prefix = session_handler.get_check_screen_prefix(session_id)
         user_utt_for_chat = f"{prefix} {user_utt}".strip()
