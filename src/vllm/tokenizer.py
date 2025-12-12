@@ -8,7 +8,8 @@ from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.config.awq import get_model_profile, normalize_model_id
+from src.config.model_profiles import get_model_profile
+from src.config.awq import normalize_model_id
 
 __all__ = ["inject_tokenizer_kwargs"]
 
@@ -131,7 +132,7 @@ def _normalize_tokenizer_identifier(candidate: Any) -> str:
     """Best-effort normalization for AutoTokenizer inputs."""
     if candidate is None:
         return ""
-    if isinstance(candidate, (str, os.PathLike)):
+    if isinstance(candidate, str | os.PathLike):
         return normalize_model_id(os.fspath(candidate))
 
     name_or_path = getattr(candidate, "name_or_path", None)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import time
@@ -12,6 +13,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 # Use 'spawn' for multiprocessing to avoid CUDA re-initialization issues in forked subprocesses
 os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
 
+from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
 from src.config import (
@@ -22,7 +24,6 @@ from src.config import (
     DEPLOY_CHAT,
 )
 from .args import make_engine_args
-from .awq import create_engine_with_awq_handling
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ async def _ensure_engine() -> AsyncLLMEngine:
             raise RuntimeError("CHAT_MODEL is not configured; cannot start chat engine")
         logger.info("vLLM: building chat engine (model=%s)", CHAT_MODEL)
         engine_args = make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN)
-        _ENGINE = create_engine_with_awq_handling(engine_args)
+        _ENGINE = _create_engine_with_awq_handling(engine_args)
         logger.info("vLLM: chat engine ready")
         return _ENGINE
 
@@ -135,3 +136,40 @@ async def _clean_engine_caches(engine: AsyncLLMEngine) -> None:
         except Exception:
             # Best effort only
             pass
+
+
+# ---------------------------------------------------------------------------
+# AWQ offline mode handling
+# ---------------------------------------------------------------------------
+@contextlib.contextmanager
+def _awq_offline_mode():
+    """Temporarily force offline flags for local AWQ model loading."""
+    original_offline = os.environ.get("HF_HUB_OFFLINE")
+    original_transformers_offline = os.environ.get("TRANSFORMERS_OFFLINE")
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    try:
+        yield
+    finally:
+        if original_offline is not None:
+            os.environ["HF_HUB_OFFLINE"] = original_offline
+        else:
+            os.environ.pop("HF_HUB_OFFLINE", None)
+
+        if original_transformers_offline is not None:
+            os.environ["TRANSFORMERS_OFFLINE"] = original_transformers_offline
+        else:
+            os.environ.pop("TRANSFORMERS_OFFLINE", None)
+
+
+def _create_engine_with_awq_handling(engine_args: AsyncEngineArgs) -> AsyncLLMEngine:
+    """Create an engine honoring AWQ offline requirements."""
+    is_local_awq = getattr(engine_args, "_is_local_awq", False)
+
+    if is_local_awq:
+        if hasattr(engine_args, "_is_local_awq"):
+            delattr(engine_args, "_is_local_awq")
+        with _awq_offline_mode():
+            return AsyncLLMEngine.from_engine_args(engine_args)
+
+    return AsyncLLMEngine.from_engine_args(engine_args)

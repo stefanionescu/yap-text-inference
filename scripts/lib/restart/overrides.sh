@@ -32,7 +32,7 @@ restart_restore_user_env() {
 
   eval "override_value=\${${value_key}:-}"
   printf -v "${var_name}" "%s" "${override_value}"
-  export "${var_name}"
+  export "${var_name?}"
 }
 
 restart_set_snapshot_value() {

@@ -88,13 +88,8 @@ def scale_batching_limits(
         scaled_seqs = max(BATCH_SCALE_MIN_SEQS, int(max_seqs * ratio))
 
     print(
-        "[config] Scaling %s batching limits to %.2fx (free %.1f GiB vs budget %.1f GiB)"
-        % (
-            engine_role,
-            ratio,
-            free_bytes / (1024**3),
-            target_bytes / (1024**3),
-        )
+        f"[config] Scaling {engine_role} batching limits to {ratio:.2f}x "
+        f"(free {free_bytes / (1024**3):.1f} GiB vs budget {target_bytes / (1024**3):.1f} GiB)"
     )
     return scaled_tokens, scaled_seqs
 
@@ -161,9 +156,8 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
         else:
             if not _KV_DTYPE_WARNING_EMITTED:
                 print(
-                    "[config] Warning: kv_cache_dtype=%s is ignored by the V1 engine. "
+                    f"[config] Warning: kv_cache_dtype={normalized} is ignored by the V1 engine. "
                     "Set VLLM_USE_V1=0 to use legacy int8/fp8 switches."
-                    % normalized
                 )
                 _KV_DTYPE_WARNING_EMITTED = True
         return
