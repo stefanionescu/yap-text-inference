@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import signal
 from dataclasses import dataclass
 from collections.abc import Awaitable, Callable
@@ -150,6 +151,8 @@ class InteractiveRunner:
         )
         if self.stdin_task:
             self.stdin_task.cancel()
+        # Force exit: input() blocks in a thread and can't be interrupted
+        os._exit(0)
 
 
 async def interactive_loop(

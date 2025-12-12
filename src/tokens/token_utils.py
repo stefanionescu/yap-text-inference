@@ -140,28 +140,21 @@ def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> s
 def build_user_history_for_tool(
     user_texts: list[str],
     max_tokens: int,
-    *,
-    prefix: str = "USER",
 ) -> str:
     """Format + trim user-only history for the classifier/tool model.
 
     Args:
         user_texts: Raw user utterances (most recent last).
         max_tokens: Maximum token budget for the formatted history.
-        prefix: Line prefix to use (default: "USER").
 
     Returns:
-        A newline-joined string such as:
+        A newline-joined string of raw user utterances:
 
-            USER: hi
-            USER: show me your screen
+            hi
+            show me your screen
 
         trimmed to <= max_tokens using the tool tokenizer for exact counts.
     """
-    normalized_prefix = (prefix or "USER").strip()
-    if not normalized_prefix:
-        normalized_prefix = "USER"
-
     if max_tokens <= 0 or not user_texts:
         return ""
 
@@ -173,14 +166,13 @@ def build_user_history_for_tool(
         stripped = text.strip()
         if not stripped:
             continue
-        line = f"{normalized_prefix}: {stripped}"
-        line_tokens = count_tokens_tool(line)
+        line_tokens = count_tokens_tool(stripped)
         additional = line_tokens
         if selected:
             additional += newline_tokens
         if selected and total_tokens + additional > max_tokens:
             break
-        selected.insert(0, line)
+        selected.insert(0, stripped)
         total_tokens += additional
 
     return "\n".join(selected)

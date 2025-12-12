@@ -13,6 +13,7 @@ from ...config.websocket import (
     WS_IDLE_TIMEOUT_S,
     WS_WATCHDOG_TICK_S,
     WS_CLOSE_IDLE_CODE,
+    WS_CLOSE_IDLE_REASON,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class WebSocketLifecycle:
         self._idle_close_code = (
             idle_close_code if idle_close_code is not None else WS_CLOSE_IDLE_CODE
         )
+        self._idle_close_reason = WS_CLOSE_IDLE_REASON
         self._last_activity = time.monotonic()
         self._stop_event = asyncio.Event()
         self._task: asyncio.Task | None = None
@@ -78,7 +80,7 @@ class WebSocketLifecycle:
 
     async def _close_ws(self) -> None:
         with contextlib.suppress(Exception):
-            await self._ws.close(code=self._idle_close_code)
+            await self._ws.close(code=self._idle_close_code, reason=self._idle_close_reason)
 
 
 __all__ = ["WebSocketLifecycle"]

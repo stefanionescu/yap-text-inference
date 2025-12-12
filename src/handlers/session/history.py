@@ -108,7 +108,6 @@ def render_tool_history_text(turns: list[HistoryTurn]) -> str:
     return build_user_history_for_tool(
         user_texts,
         TOOL_HISTORY_TOKENS,
-        prefix="USER",
     )
 
 

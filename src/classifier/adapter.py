@@ -110,11 +110,8 @@ class ClassifierToolAdapter:
         if history:
             lines.append(history)
         current = user_utt.strip()
-        if current and not current.upper().startswith("USER:"):
-            current = f"USER: {current}"
-        elif not current:
-            current = "USER:"
-        lines.append(current)
+        if current:
+            lines.append(current)
         return "\n".join(lines)
 
     # ------------------------------------------------------------------ #
