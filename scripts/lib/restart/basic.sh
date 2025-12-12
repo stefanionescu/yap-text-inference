@@ -88,9 +88,7 @@ restart_basic() {
   if [ "${DEPLOY_MODELS}" != "tool" ]; then
     display_quant="${QUANTIZATION:-<unset>}"
   fi
-  log_info "Detected last quantization='${display_quant}', deploy='${DEPLOY_MODELS}'"
-  if [ -n "${CHAT_MODEL:-}" ]; then log_info "  Chat model: ${CHAT_MODEL}"; fi
-  if [ -n "${TOOL_MODEL:-}" ]; then log_info "  Tool model: ${TOOL_MODEL}"; fi
+  log_info "Restart mode: basic (quant=${display_quant}, deploy=${DEPLOY_MODELS})"
 
   log_info "Stopping server (preserving models and dependencies)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"

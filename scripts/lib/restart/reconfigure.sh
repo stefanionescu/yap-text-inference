@@ -311,12 +311,6 @@ restart_reconfigure_models() {
   fi
 
   log_info "Restart mode: reconfigure (models reset, deps preserved)"
-  if [ "${deploy_chat}" = "1" ]; then
-    log_info "Chat model: ${CHAT_MODEL} (${QUANTIZATION})"
-  fi
-  if [ "${deploy_tool}" = "1" ]; then
-    log_info "Tool model: ${TOOL_MODEL} (fp32)"
-  fi
 
   log_info "Stopping server before redeploy (preserving .venv)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
