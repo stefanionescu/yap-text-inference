@@ -38,10 +38,12 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "kakaocorp/kanana-1.5-15.7b-a3b-instruct",
 
     "Qwen/Qwen3-14B",
+    "soob3123/GrayLine-Qwen3-14B",
     "Jinx-org/Jinx-Qwen3-32B",
     "Jinx-org/Jinx-Qwen3-14B",
     "ArliAI/Qwen3-30B-A3B-ArliAI-RpR-v4-Fast",
     "DavidAU/Qwen3-33B-A3B-Stranger-Thoughts-IPONDER",
+    "Ewere/Qwen3-30B-A3B-abliterated-erotic",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
