@@ -86,17 +86,26 @@ async def run_toolcall(
         return {"cancelled": False, "text": '[{"name": "stop_freestyle"}]'}
     if action == "switch_gender_male":
         logger.info("tool_runner: phrase filter switch_gender_male session_id=%s req_id=%s", session_id, req_id)
-        return {"cancelled": False, "text": '[{"name": "switch_gender", "param": "male"}]'}
+        return {"cancelled": False, "text": '[{"name": "switch_gender", "params": ["male"]}]'}
     if action == "switch_gender_female":
         logger.info("tool_runner: phrase filter switch_gender_female session_id=%s req_id=%s", session_id, req_id)
-        return {"cancelled": False, "text": '[{"name": "switch_gender", "param": "female"}]'}
+        return {"cancelled": False, "text": '[{"name": "switch_gender", "params": ["female"]}]'}
     if action == "switch_personality":
         personality_name = phrase_result.param
         logger.info(
             "tool_runner: phrase filter switch_personality=%s session_id=%s req_id=%s",
             personality_name, session_id, req_id
         )
-        result = [{"name": "switch_personality", "param": personality_name}]
+        result = [{"name": "switch_personality", "params": [personality_name]}]
+        return {"cancelled": False, "text": json.dumps(result)}
+    if action == "switch_gender_and_personality":
+        gender = phrase_result.param  # "male" or "female"
+        personality_name = phrase_result.param2
+        logger.info(
+            "tool_runner: phrase filter switch_gender_and_personality gender=%s personality=%s session_id=%s req_id=%s",
+            gender, personality_name, session_id, req_id
+        )
+        result = [{"name": "switch_gender_and_personality", "params": [gender, personality_name]}]
         return {"cancelled": False, "text": json.dumps(result)}
 
     # Language filter: skip tool call if message is not mostly English

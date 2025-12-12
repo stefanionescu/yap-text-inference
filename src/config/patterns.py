@@ -85,6 +85,48 @@ PERSONALITY_SWITCH_TEMPLATES = [
 ]
 
 # =============================================================================
+# COMBINED GENDER + PERSONALITY PATTERNS
+# =============================================================================
+
+# Templates for combined gender + personality switches
+# {0} = personality pattern, {1} = gender pattern (male or female)
+# These are used when user wants to change both in one command
+
+# Pattern: "be a {personality} {gender}" - e.g., "be a religious guy", "switch to savage Anna"
+GENDER_PERSONALITY_TEMPLATES = [
+    # Personality first, then gender: "be a religious guy"
+    r"^bee?\s+a\s+{0}\s+{1}[.!?]*$",  # be a religious guy
+    r"^bee?\s+{0}\s+{1}[.!?]*$",  # be religious guy (no article)
+    r"^bee?\s+more\s+{0}\s+{1}[.!?]*$",  # be more religious guy
+    r"^switch\s+to\s+{0}\s+{1}[.!?]*$",  # switch to delulu guy
+    r"^switch\s+to\s+a\s+{0}\s+{1}[.!?]*$",  # switch to a savage Anna
+    r"^change\s+to\s+{0}\s+{1}[.!?]*$",  # change to religious Mark
+    r"^change\s+to\s+a\s+{0}\s+{1}[.!?]*$",  # change to a flirty girl
+    # Gender first, then personality with connector: "be a guy and be flirty"
+    r"^bee?\s+a\s+{1}\s+and\s+bee?\s+{0}[.!?]*$",  # be a guy and be flirty
+    r"^bee?\s+a\s+{1}\s+and\s+bee?\s+more\s+{0}[.!?]*$",  # be a guy and be more religious
+    r"^bee?\s+a\s+{1}\s+and\s+switch\s+to\s+{0}[.!?]*$",  # be a guy and switch to flirty
+    r"^bee?\s+a\s+{1}\s+and\s+change\s+to\s+{0}[.!?]*$",  # be a guy and change to savage
+    r"^bee?\s+{1}\s+and\s+bee?\s+{0}[.!?]*$",  # be guy and be flirty (no article)
+    r"^bee?\s+{1}\s+and\s+bee?\s+more\s+{0}[.!?]*$",  # be guy and be more flirty
+    r"^switch\s+to\s+{1}\s+and\s+bee?\s+{0}[.!?]*$",  # switch to guy and be flirty
+    r"^switch\s+to\s+{1}\s+and\s+bee?\s+more\s+{0}[.!?]*$",  # switch to guy and be more flirty
+    r"^switch\s+to\s+a\s+{1}\s+and\s+bee?\s+{0}[.!?]*$",  # switch to a guy and be flirty
+    r"^change\s+to\s+{1}\s+and\s+bee?\s+{0}[.!?]*$",  # change to guy and be flirty
+    r"^change\s+to\s+a\s+{1}\s+and\s+bee?\s+{0}[.!?]*$",  # change to a guy and be flirty
+    # Personality first with connector: "be more flirty and switch to guy"
+    r"^bee?\s+more\s+{0}\s+and\s+switch\s+to\s+{1}[.!?]*$",  # be more flirty and switch to guy
+    r"^bee?\s+more\s+{0}\s+and\s+bee?\s+a\s+{1}[.!?]*$",  # be more flirty and be a guy
+    r"^bee?\s+more\s+{0}\s+and\s+bee?\s+{1}[.!?]*$",  # be more flirty and be guy
+    r"^bee?\s+{0}\s+and\s+switch\s+to\s+{1}[.!?]*$",  # be flirty and switch to guy
+    r"^bee?\s+{0}\s+and\s+bee?\s+a\s+{1}[.!?]*$",  # be flirty and be a guy
+    r"^bee?\s+{0}\s+and\s+bee?\s+{1}[.!?]*$",  # be flirty and be guy
+    r"^change\s+to\s+being\s+{0}\s+and\s+bee?\s+a\s+{1}[.!?]*$",  # change to being flirty and be a guy
+    r"^change\s+to\s+being\s+{0}\s+and\s+bee?\s+{1}[.!?]*$",  # change to being flirty and be guy
+]
+
+
+# =============================================================================
 # SCREENSHOT PATTERNS
 # =============================================================================
 

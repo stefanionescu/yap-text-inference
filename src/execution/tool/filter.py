@@ -12,12 +12,15 @@ from ...config.patterns import (
     FREESTYLE_STOP_PATTERNS,
     GENDER_MALE_PATTERNS,
     GENDER_FEMALE_PATTERNS,
+    GENDER_MALE_WORD,
+    GENDER_FEMALE_WORD,
+    GENDER_PERSONALITY_TEMPLATES,
     SCREENSHOT_REJECT_PATTERNS,
     SCREENSHOT_TAKE_X_PATTERN,
     SCREENSHOT_TRIGGER_QUANTITIES,
     SCREENSHOT_TRIGGER_PATTERNS,
 )
-from .personality import match_personality_phrase
+from .personality import match_personality_phrase, match_gender_personality_phrase
 
 # =============================================================================
 # Compiled Patterns (module-level for efficiency)
@@ -55,11 +58,14 @@ StaticFilterResult = Literal[
 class FilterResult:
     """Result of tool phrase filtering."""
     
-    action: StaticFilterResult | Literal["switch_personality"]
+    action: StaticFilterResult | Literal["switch_personality", "switch_gender_and_personality"]
     """The action to take based on the matched pattern."""
     
     param: str | None = None
     """Optional parameter (e.g., personality name for switch_personality)."""
+    
+    param2: str | None = None
+    """Second parameter (e.g., gender for switch_gender_and_personality)."""
 
 
 # =============================================================================
@@ -138,7 +144,13 @@ def filter_tool_phrase(
     if freestyle_result == "stop":
         return FilterResult(action="stop_freestyle")
     
-    # Check gender patterns
+    # Check combined gender + personality patterns FIRST (more specific)
+    combined_result = match_gender_personality_phrase(text, personalities)
+    if combined_result is not None:
+        gender, personality = combined_result
+        return FilterResult(action="switch_gender_and_personality", param=gender, param2=personality)
+    
+    # Check gender patterns (only if not combined)
     gender_result = _match_gender(text)
     if gender_result == "male":
         return FilterResult(action="switch_gender_male")

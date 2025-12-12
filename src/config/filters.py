@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import re
 
+# Tool function names that should proceed to chat generation
+# All other tool functions skip chat and return just the tool result
+CHAT_CONTINUE_TOOLS: frozenset[str] = frozenset({"take_screenshot"})
+
 HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 
 EMOJI_PATTERN = re.compile(
@@ -51,6 +55,7 @@ ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
 LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
 
 __all__ = [
+    "CHAT_CONTINUE_TOOLS",
     "HTML_TAG_PATTERN",
     "EMOJI_PATTERN",
     "EMOTICON_PATTERN",
