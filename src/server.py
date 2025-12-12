@@ -91,9 +91,7 @@ async def preload_engines() -> None:
     if not tasks:
         return
 
-    logger.info("preload_engines: initializing %s engine(s)...", len(tasks))
     await asyncio.gather(*tasks)
-    logger.info("preload_engines: all requested engines ready")
 
     _ensure_cache_reset_daemon()
 

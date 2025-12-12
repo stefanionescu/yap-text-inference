@@ -3,7 +3,7 @@
 import re
 from typing import Literal
 
-from ...config.tool_patterns import (
+from ...config.tool import (
     FREESTYLE_START_PATTERNS,
     FREESTYLE_STOP_PATTERNS,
 )

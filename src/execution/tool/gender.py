@@ -3,7 +3,7 @@
 import re
 from typing import Literal
 
-from ...config.tool_patterns import (
+from ...config.tool import (
     GENDER_MALE_PATTERNS,
     GENDER_FEMALE_PATTERNS,
 )

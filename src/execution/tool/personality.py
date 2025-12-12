@@ -3,7 +3,7 @@
 import re
 from functools import lru_cache
 
-from ...config.tool_patterns import PERSONALITY_SWITCH_TEMPLATES
+from ...config.tool import PERSONALITY_SWITCH_TEMPLATES
 
 
 def _build_personality_pattern(all_words: list[str]) -> str:
