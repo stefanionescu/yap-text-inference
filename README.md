@@ -38,7 +38,7 @@ Set the compulsory environment variables before invoking any host script:
 ```bash
 export TEXT_API_KEY="my_super_secret_key"    # Required for every API call
 export HF_TOKEN="hf_your_api_token"          # Required even for private/gated HF repos
-export MAX_CONCURRENT_CONNECTIONS=20         # Required capacity guard
+export MAX_CONCURRENT_CONNECTIONS=32         # Required capacity guard
 ```
 
 `HUGGINGFACE_HUB_TOKEN` is also accepted and will be mirrored into `HF_TOKEN` automatically.
@@ -202,7 +202,7 @@ bash scripts/restart.sh --reset-models --deploy-mode tool \
 
 # Auto-detect pre-quantized repos (AWQ/GPTQ) during reset
 bash scripts/restart.sh --reset-models --deploy-mode chat \
-  --chat-model dreamgen/opus-v1-34b-awq
+  --chat-model cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
 bash scripts/restart.sh --reset-models --deploy-mode chat \
   --chat-model SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
 

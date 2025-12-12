@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import time
+from typing import Callable
 
 TimeFn = Callable[[], float]
 

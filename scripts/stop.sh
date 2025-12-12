@@ -11,7 +11,11 @@ PID_FILE="${ROOT_DIR}/server.pid"
 # Default to deepest cleanup unless explicitly opted out (NUKE_ALL=0)
 NUKE_ALL="${NUKE_ALL:-1}"
 
-log_info "Wiping runtime deps and caches; keeping repo and container services alive"
+if [ "${NUKE_ALL}" = "0" ]; then
+  log_info "Light stop: preserving venv, caches, and models"
+else
+  log_info "Full stop: wiping runtime deps and caches"
+fi
 
 # 0) Stop server + ALL its children (vLLM workers) = free VRAM
 if [ -f "${PID_FILE}" ]; then
@@ -56,8 +60,6 @@ if [ "${NUKE_ALL}" != "0" ]; then
   for d in "${REPO_CACHE_DIRS[@]}"; do
     [ -d "$d" ] && { log_info "Removing repo cache at $d"; rm -rf "$d" || true; }
   done
-else
-  log_info "NUKE_ALL=0: preserving repo caches and models under ${ROOT_DIR}"
 fi
 
 # 1) Verify VRAM is free; if not, kill leftover GPU PIDs
@@ -89,8 +91,6 @@ if [ "${NUKE_ALL}" != "0" ]; then
   for VENV_DIR in "${ROOT_DIR}/.venv" "${ROOT_DIR}/venv" "${ROOT_DIR}/env" "${ROOT_DIR}/.env"; do
     [ -d "$VENV_DIR" ] && { log_info "Removing venv $VENV_DIR"; rm -rf "$VENV_DIR" || true; }
   done
-else
-  log_info "NUKE_ALL=0: preserving virtualenv(s)"
 fi
 
 # 3) Clear Hugging Face caches and config by default (unless NUKE_ALL=0)
@@ -110,8 +110,6 @@ if [ "${NUKE_ALL}" != "0" ]; then
   for HFC in "$HOME/.huggingface" "/root/.huggingface" "$HOME/.config/huggingface" "/root/.config/huggingface" "$HOME/.local/share/huggingface" "/root/.local/share/huggingface"; do
     [ -d "$HFC" ] && { log_warn "Removing HF config at $HFC"; rm -rf "$HFC" || true; }
   done
-else
-  log_info "NUKE_ALL=0: preserving HF caches/config"
 fi
 
 # 4) vLLM / kernel / compiler caches
@@ -141,8 +139,6 @@ if [ "${NUKE_ALL}" != "0" ]; then
   for PIP_CACHE in "$HOME/.cache/pip" "/root/.cache/pip" "${PIP_CACHE_DIR:-}"; do
     [ -n "$PIP_CACHE" ] && [ -d "$PIP_CACHE" ] && { log_info "Removing pip cache at $PIP_CACHE"; rm -rf "$PIP_CACHE" || true; }
   done
-else
-  log_info "NUKE_ALL=0: preserving pip caches"
 fi
 
 for TORCH_CACHE in "$HOME/.cache/torch" "/root/.cache/torch"; do
@@ -177,8 +173,6 @@ if [ "${NUKE_ALL}" != "0" ]; then
     log_warn "Removing XDG cache at ${XDG_CACHE_HOME}"
     rm -rf "${XDG_CACHE_HOME}" || true
   fi
-else
-  log_info "NUKE_ALL=0: preserving home caches"
 fi
 
 # 10) Clean server artifacts
