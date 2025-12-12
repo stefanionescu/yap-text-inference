@@ -27,7 +27,7 @@ from ..config import (
     CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
 )
 from ..vllm import get_engine
-from ..tokens.prompt_cache import compile_chat_warm_prompt
+from ..persona import build_chat_warm_prompt
 from .validators import (
     ValidationError,
     require_prompt,
@@ -140,12 +140,12 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         history_text = trim_history_preserve_messages_chat(history_text, HISTORY_MAX_TOKENS)
         session_handler.set_history_text(session_id, history_text)
 
-    compiled_warm = compile_chat_warm_prompt(chat_prompt, "", history_text)
+    warm_prompt = build_chat_warm_prompt(chat_prompt, "", history_text)
     params = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
     req_id = f"warm-update-{uuid.uuid4()}"
 
     stream = (await get_engine()).generate(
-        prompt=compiled_warm.text,
+        prompt=warm_prompt,
         sampling_params=params,
         request_id=req_id,
         priority=WARM_REQUEST_PRIORITY,

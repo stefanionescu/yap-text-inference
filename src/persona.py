@@ -8,6 +8,7 @@ from collections.abc import Sequence
 
 from .config import CHAT_TEMPLATE_ENABLE_THINKING
 from .tokens.tokenizer import get_chat_tokenizer
+from .handlers.session.history import parse_history_as_tuples
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ def build_chat_prompt_with_prefix(
     user_utt: str,
 ) -> str:
     """Build the chat prompt using the tokenizer's native chat template."""
-    history_turns = _parse_history(history_text)
+    history_turns = parse_history_as_tuples(history_text)
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     messages = _build_messages(system_prompt, history_turns, user_utt)
     return _apply_chat_template(messages, add_generation_prompt=True)
@@ -35,7 +36,7 @@ def build_chat_warm_prompt(
     history_text: str,
 ) -> str:
     """Build a prompt that primes persona + history without a fresh user query."""
-    history_turns = _parse_history(history_text)
+    history_turns = parse_history_as_tuples(history_text)
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     messages = _build_messages(system_prompt, history_turns, user_utt=None)
     return _apply_chat_template(messages, add_generation_prompt=True)
@@ -125,49 +126,6 @@ def _build_chatml_prompt_from_messages(
 def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
     parts = [segment.strip() for segment in (static_prefix, runtime_text) if segment and segment.strip()]
     return "\n\n".join(parts)
-
-
-def _parse_history(history_text: str) -> list[tuple[str, str]]:
-    text = (history_text or "").strip()
-    if not text:
-        return []
-
-    turns: list[tuple[str, str]] = []
-    current_user: list[str] = []
-    current_assistant: list[str] = []
-    mode: str | None = None
-
-    def _flush() -> None:
-        nonlocal current_user, current_assistant, mode
-        if not current_user and not current_assistant:
-            return
-        user_text = "\n".join(current_user).strip()
-        assistant_text = "\n".join(current_assistant).strip()
-        turns.append((user_text, assistant_text))
-        current_user = []
-        current_assistant = []
-        mode = None
-
-    for line in text.splitlines():
-        if line.startswith("User:"):
-            _flush()
-            current_user = [line[len("User:"):].lstrip()]
-            current_assistant = []
-            mode = "user"
-        elif line.startswith("Assistant:"):
-            current_assistant = [line[len("Assistant:"):].lstrip()]
-            mode = "assistant"
-        else:
-            if mode == "assistant":
-                current_assistant.append(line)
-            elif mode == "user":
-                current_user.append(line)
-            elif line.strip():
-                current_user.append(line)
-                mode = "user"
-
-    _flush()
-    return [turn for turn in turns if any(turn)]
 
 
 __all__ = [

@@ -122,6 +122,22 @@ def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
     return [turn.user.strip() for turn in turns if turn.user and turn.user.strip()]
 
 
+def parse_history_as_tuples(history_text: str) -> list[tuple[str, str]]:
+    """Parse history text into (user, assistant) tuples.
+    
+    This is a convenience wrapper around parse_history_text for callers
+    that need the simpler tuple format (e.g., prompt builders).
+    
+    Args:
+        history_text: Raw history in "User: X\nAssistant: Y" format
+        
+    Returns:
+        List of (user_text, assistant_text) tuples
+    """
+    turns = parse_history_text(history_text)
+    return [(turn.user, turn.assistant) for turn in turns]
+
+
 class HistoryController:
     """History operations for SessionState."""
 

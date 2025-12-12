@@ -37,10 +37,10 @@ from ..tokens import (
 )
 from ..handlers.session import session_handler
 from ..execution.executor import run_execution
-from ..execution.chat import run_chat_generation
+from ..execution.chat_runner import run_chat_generation
 from ..execution.tool.runner import run_toolcall
 from ..execution.tool.parser import parse_tool_result
-from ..utils.executor import stream_chat_response
+from ..handlers.websocket.helpers import stream_chat_response
 from ..config.timeouts import TOOL_TIMEOUT_S
 from .validators import (
     ValidationError,

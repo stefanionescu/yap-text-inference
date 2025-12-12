@@ -14,6 +14,7 @@ from src.config.awq import (
     model_requires_fla_runtime,
 )
 from src.config.env import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
+from src.utils.env import env_flag
 from src.config.models import _is_local_model_path
 from .memory_tuning import (
     auto_max_num_seqs,
@@ -124,7 +125,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         # For local AWQ models, ensure the path is absolute so vLLM treats it as local
         kwargs["model"] = os.path.abspath(model)
 
-    use_v1 = (os.getenv("VLLM_USE_V1", "1") == "1")
+    use_v1 = env_flag("VLLM_USE_V1", True)
     configure_kv_cache(kwargs, kv_dtype_value, use_v1)
 
     scaled_tokens, scaled_max_seqs = scale_batching_limits(

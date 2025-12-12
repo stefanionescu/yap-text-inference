@@ -1,22 +1,45 @@
 """Pre-filters for tool calls to avoid unnecessary model invocations.
 
-This module coordinates pattern matching across different tool types.
-Each tool type has its own module with specific patterns:
-- freestyle.py: Freestyle-related patterns (start_freestyle, stop_freestyle)
-- gender.py: Gender switch patterns (switch_gender male/female)
-- personality.py: Personality switch patterns (switch_personality)
-- screenshot.py: Screenshot-related patterns (take_screenshot)
+Handles pattern matching for freestyle, gender, screenshot, and personality commands.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Literal
 
-from .freestyle import match_freestyle_phrase
-from .gender import match_gender_phrase
+from ...config.patterns import (
+    FREESTYLE_START_PATTERNS,
+    FREESTYLE_STOP_PATTERNS,
+    GENDER_MALE_PATTERNS,
+    GENDER_FEMALE_PATTERNS,
+    SCREENSHOT_REJECT_PATTERNS,
+    SCREENSHOT_TAKE_X_PATTERN,
+    SCREENSHOT_TRIGGER_QUANTITIES,
+    SCREENSHOT_TRIGGER_PATTERNS,
+)
 from .personality import match_personality_phrase
-from .screenshot import match_screenshot_phrase
 
-# Static filter results (no parameter needed)
+# =============================================================================
+# Compiled Patterns (module-level for efficiency)
+# =============================================================================
+
+# Freestyle patterns
+_FREESTYLE_START_COMPILED = [re.compile(p, re.IGNORECASE) for p in FREESTYLE_START_PATTERNS]
+_FREESTYLE_STOP_COMPILED = [re.compile(p, re.IGNORECASE) for p in FREESTYLE_STOP_PATTERNS]
+
+# Gender patterns
+_GENDER_MALE_COMPILED = [re.compile(p, re.IGNORECASE) for p in GENDER_MALE_PATTERNS]
+_GENDER_FEMALE_COMPILED = [re.compile(p, re.IGNORECASE) for p in GENDER_FEMALE_PATTERNS]
+
+# Screenshot patterns
+_SCREENSHOT_REJECT_COMPILED = [re.compile(p, re.IGNORECASE) for p in SCREENSHOT_REJECT_PATTERNS]
+_SCREENSHOT_TAKE_X_COMPILED = re.compile(SCREENSHOT_TAKE_X_PATTERN, re.IGNORECASE)
+_SCREENSHOT_TRIGGER_COMPILED = [re.compile(p, re.IGNORECASE) for p in SCREENSHOT_TRIGGER_PATTERNS]
+
+# =============================================================================
+# Types
+# =============================================================================
+
 StaticFilterResult = Literal[
     "no_screenshot",
     "take_screenshot",
@@ -39,6 +62,59 @@ class FilterResult:
     """Optional parameter (e.g., personality name for switch_personality)."""
 
 
+# =============================================================================
+# Pattern Matchers
+# =============================================================================
+
+def _match_freestyle(text: str) -> Literal["start", "stop"] | None:
+    """Check if text matches freestyle start/stop patterns."""
+    for pattern in _FREESTYLE_START_COMPILED:
+        if pattern.match(text):
+            return "start"
+    for pattern in _FREESTYLE_STOP_COMPILED:
+        if pattern.match(text):
+            return "stop"
+    return None
+
+
+def _match_gender(text: str) -> Literal["male", "female"] | None:
+    """Check if text matches gender switch patterns."""
+    for pattern in _GENDER_MALE_COMPILED:
+        if pattern.match(text):
+            return "male"
+    for pattern in _GENDER_FEMALE_COMPILED:
+        if pattern.match(text):
+            return "female"
+    return None
+
+
+def _match_screenshot(text: str) -> Literal["take_screenshot", "no_screenshot"] | None:
+    """Check if text matches screenshot patterns."""
+    # Check reject patterns first
+    for pattern in _SCREENSHOT_REJECT_COMPILED:
+        if pattern.match(text):
+            return "no_screenshot"
+    
+    # Check "take X screenshot(s)" pattern
+    match = _SCREENSHOT_TAKE_X_COMPILED.match(text)
+    if match:
+        quantity = match.group(1).lower()
+        if quantity in SCREENSHOT_TRIGGER_QUANTITIES:
+            return "take_screenshot"
+        return "no_screenshot"
+    
+    # Check trigger patterns (typos, direct commands)
+    for pattern in _SCREENSHOT_TRIGGER_COMPILED:
+        if pattern.match(text):
+            return "take_screenshot"
+    
+    return None
+
+
+# =============================================================================
+# Main Filter
+# =============================================================================
+
 def filter_tool_phrase(
     user_utt: str,
     personalities: dict[str, list[str]] | None = None,
@@ -46,34 +122,24 @@ def filter_tool_phrase(
     """
     Check if user utterance matches known patterns for early return.
     
-    Delegates to specialized matchers for each tool type.
-    
     Args:
         user_utt: The user utterance to check
         personalities: Optional dict mapping personality names to synonyms
         
     Returns:
-        FilterResult with action and optional param:
-        - action="no_screenshot" - return [] without calling model
-        - action="take_screenshot" - return [{"name": "take_screenshot"}]
-        - action="start_freestyle" - return [{"name": "start_freestyle"}]
-        - action="stop_freestyle" - return [{"name": "stop_freestyle"}]
-        - action="switch_gender_male" - return [{"name": "switch_gender", "param": "male"}]
-        - action="switch_gender_female" - return [{"name": "switch_gender", "param": "female"}]
-        - action="switch_personality", param=name - return [{"name": "switch_personality", "param": name}]
-        - action="pass" - continue to call the model
+        FilterResult with action and optional param
     """
     text = user_utt.strip()
     
     # Check freestyle patterns
-    freestyle_result = match_freestyle_phrase(text)
+    freestyle_result = _match_freestyle(text)
     if freestyle_result == "start":
         return FilterResult(action="start_freestyle")
     if freestyle_result == "stop":
         return FilterResult(action="stop_freestyle")
     
     # Check gender patterns
-    gender_result = match_gender_phrase(text)
+    gender_result = _match_gender(text)
     if gender_result == "male":
         return FilterResult(action="switch_gender_male")
     if gender_result == "female":
@@ -85,8 +151,11 @@ def filter_tool_phrase(
         return FilterResult(action="switch_personality", param=personality_result)
     
     # Check screenshot patterns
-    screenshot_result = match_screenshot_phrase(text)
+    screenshot_result = _match_screenshot(text)
     if screenshot_result is not None:
         return FilterResult(action=screenshot_result)
     
     return FilterResult(action="pass")
+
+
+__all__ = ["filter_tool_phrase", "FilterResult"]

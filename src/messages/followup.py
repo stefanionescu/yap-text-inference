@@ -11,11 +11,10 @@ from typing import Any
 from fastapi import WebSocket
 
 from ..handlers.session import session_handler
-from ..execution.chat import run_chat_generation
+from ..execution.chat_runner import run_chat_generation
 from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS
 from ..tokens import trim_text_to_token_limit_chat
-from ..utils.executor import safe_send_json
-from .responses import error_response
+from ..handlers.websocket.helpers import safe_send_json
 
 
 logger = logging.getLogger(__name__)
@@ -32,17 +31,17 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
         - user_utterance: str (ignored for synthesis; may be used by clients)
     """
     if not DEPLOY_CHAT:
-        await safe_send_json(ws, error_response("followup requires chat model deployment"))
+        await safe_send_json(ws, {"type": "error", "message": "followup requires chat model deployment"})
         return
     
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
-        await safe_send_json(ws, error_response("no active session; send 'start' first"))
+        await safe_send_json(ws, {"type": "error", "message": "no active session; send 'start' first"})
         return
 
     analysis_text = (msg.get("analysis_text") or "").strip()
     if not analysis_text:
-        await safe_send_json(ws, error_response("analysis_text is required"))
+        await safe_send_json(ws, {"type": "error", "message": "analysis_text is required"})
         return
 
     history_text = session_handler.get_history_text(session_id)
@@ -51,10 +50,7 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     static_prefix = cfg.get("chat_prompt") or ""
     runtime_text = ""
     if not static_prefix:
-        await safe_send_json(
-            ws,
-            error_response("chat_prompt must be set in session (send in start)"),
-        )
+        await safe_send_json(ws, {"type": "error", "message": "chat_prompt must be set in session (send in start)"})
         return
 
     # Synthesize the follow-up prompt for the chat model
@@ -91,5 +87,3 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
         return
 
     session_handler.append_history_turn(session_id, user_utt, final_text, turn_id=history_turn_id)
-
-

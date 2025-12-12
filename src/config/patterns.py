@@ -115,3 +115,4 @@ SCREENSHOT_TRIGGER_PATTERNS = [
     r"^tkae\s+a\s+look[.!?]*$",  # typo: "tkae a look"
     r"^teak\s+a\s+look[.!?]*$",  # typo: "teak a look"
 ]
+

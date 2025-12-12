@@ -10,7 +10,6 @@ from fastapi import WebSocket
 
 from ...config import WARM_REQUEST_PRIORITY
 from ...vllm import get_engine
-from ...tokens.prompt_cache import CompiledPrompt
 
 _WARM_PARAMS = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
 
@@ -18,14 +17,14 @@ _WARM_PARAMS = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "<
 async def warm_chat_segment(
     ws: WebSocket,
     *,
-    compiled_prompt: CompiledPrompt,
+    prompt: str,
     segment: str,
     byte_count: int,
 ) -> None:
     """Generic warming helper for persona/history segments."""
     req_id = f"warm-{segment}-{uuid.uuid4()}"
     stream = (await get_engine()).generate(
-        prompt=compiled_prompt.text,
+        prompt=prompt,
         sampling_params=_WARM_PARAMS,
         request_id=req_id,
         priority=WARM_REQUEST_PRIORITY,

@@ -48,6 +48,7 @@ ESCAPED_QUOTE_PATTERN = re.compile(r'\\(["\'])')
 DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s*")
 EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
+LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
 
 __all__ = [
     "HTML_TAG_PATTERN",
@@ -62,5 +63,6 @@ __all__ = [
     "DOUBLE_DOT_SPACE_PATTERN",
     "EXAGGERATED_OH_PATTERN",
     "ELLIPSIS_TRAILING_DOT_PATTERN",
+    "LETTERS_ONLY_PATTERN",
 ]
 
