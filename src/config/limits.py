@@ -5,7 +5,7 @@ import os
 from ..utils.env import env_flag
 
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # 2000 persona + 2650 history + 350 user + 25 tool reply
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5525"))  # 2000 persona + 3000 history + 500 user + 25 tool reply
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
 PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
 
@@ -39,8 +39,8 @@ MAX_SYNONYMS_PER_PERSONALITY = int(os.getenv("MAX_SYNONYMS_PER_PERSONALITY", "10
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
 # History and user limits (approximate tokens)
-HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "2650"))
-USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
+HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
+USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "500"))
 
 # Persona update pacing (rolling window)
 CHAT_PROMPT_UPDATE_WINDOW_SECONDS = float(os.getenv("CHAT_PROMPT_UPDATE_WINDOW_SECONDS", "60"))
