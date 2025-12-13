@@ -102,10 +102,6 @@ History With the User: this is the very first time you talk with the user so at 
 User's Local Time: 4PM, late afternoon.
 """
 
-ANNA_RELIGIOUS = """
-
-"""
-
 ANNA_SPIRITUAL = """
 
 """
