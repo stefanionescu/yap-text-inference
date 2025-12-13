@@ -33,10 +33,10 @@ restart_basic() {
 
 
   # If the last snapshot stored explicit per-engine quantization, prefer that over
-  # the generic fallback so we don't misclassify AWQ/GPTQ deployments as fp8.
+  # the generic fallback so we don't misclassify AWQ/GPTQ deployments as 8bit.
   local LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
-  if [ -z "${LAST_QUANT}" ] || [ "${LAST_QUANT}" = "fp8" ]; then
-    if [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "fp8" ]; then
+  if [ -z "${LAST_QUANT}" ] || [ "${LAST_QUANT}" = "fp8" ] || [ "${LAST_QUANT}" = "int8" ] || [ "${LAST_QUANT}" = "8bit" ]; then
+    if [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "fp8" ] && [ "${LAST_CHAT_QUANT}" != "int8" ] && [ "${LAST_CHAT_QUANT}" != "8bit" ]; then
       LAST_QUANT="${LAST_CHAT_QUANT}"
     fi
   fi
@@ -62,7 +62,8 @@ restart_basic() {
   if [ "${DEPLOY_MODELS}" = "tool" ]; then
     unset QUANTIZATION CHAT_QUANTIZATION
   else
-    export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-fp8}}"
+    # Default to "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
+    export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-8bit}}"
   fi
   export DEPLOY_MODELS="${SELECTED_DEPLOY}"
 

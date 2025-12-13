@@ -11,7 +11,7 @@ restart_server_background() {
   fi
 
   local command_string="bash '${ROOT_DIR}/scripts/steps/05_start_server.sh'"
-  local quant_label="${QUANTIZATION:-fp8}"
+  local quant_label="${QUANTIZATION:-8bit}"
   runtime_pipeline_run_background \
     "${ROOT_DIR}" \
     "${command_string}" \

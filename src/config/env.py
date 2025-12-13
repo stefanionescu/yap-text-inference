@@ -94,7 +94,7 @@ else:
     TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
 
 KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
-QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
+QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'int8' | 'gptq' | 'gptq_marlin' | 'awq'
 CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override for chat
 
 if env_flag("VLLM_USE_V1", True):
@@ -143,9 +143,9 @@ def validate_env() -> None:
     if needs_quantization:
         if not QUANTIZATION:
             errors.append("QUANTIZATION environment variable is required for LLM models")
-        elif QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq"}:
+        elif QUANTIZATION not in {"fp8", "int8", "gptq", "gptq_marlin", "awq"}:
             errors.append(
-                "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', or 'awq'"
+                "QUANTIZATION must be one of 'fp8', 'int8', 'gptq', 'gptq_marlin', or 'awq'"
             )
     if errors:
         raise ValueError("; ".join(errors))

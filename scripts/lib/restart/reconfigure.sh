@@ -44,7 +44,8 @@ _restart_autodetect_quantization() {
     fi
   fi
 
-  echo "fp8"
+  # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
+  echo "8bit"
 }
 
 _restart_normalize_quantization_flag() {
@@ -59,7 +60,8 @@ _restart_normalize_quantization_flag() {
       echo "awq"
       ;;
     8bit)
-      echo "fp8"
+      # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
+      echo "8bit"
       ;;
     *)
       echo "${value}"
@@ -70,11 +72,11 @@ _restart_normalize_quantization_flag() {
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
-    fp8|awq|gptq|gptq_marlin)
+    8bit|fp8|int8|awq|gptq|gptq_marlin)
       return 0
       ;;
     *)
-      log_error "Invalid quantization '${value}'. Expected fp8|gptq|gptq_marlin|awq."
+      log_error "Invalid quantization '${value}'. Expected 8bit|fp8|int8|gptq|gptq_marlin|awq."
       return 1
       ;;
   esac
@@ -292,7 +294,8 @@ restart_reconfigure_models() {
     quantization="$(_restart_autodetect_quantization "${chat_model}" "${deploy_chat}")"
   fi
   if [ -z "${quantization}" ]; then
-    quantization="fp8"
+    # Default to 8bit placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
+    quantization="8bit"
   fi
   if ! _restart_validate_quantization "${quantization}"; then
     exit 1

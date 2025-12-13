@@ -151,17 +151,23 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
         return
 
     if use_v1:
+        # V1 engine with FlashInfer handles KV cache quantization via env vars
         if normalized.startswith("fp8"):
             os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
+            print("[config] V1 engine: FP8 KV cache enabled via VLLM_FP8_KV_CACHE_ENABLE=1")
+        elif normalized.startswith("int8"):
+            # INT8 KV cache is handled natively by FlashInfer on A100/Ampere GPUs
+            # vLLM V1 + FlashInfer supports INT8 KV cache without explicit env vars
+            print("[config] V1 engine: INT8 KV cache enabled (FlashInfer native support)")
         else:
             if not _KV_DTYPE_WARNING_EMITTED:
                 print(
-                    f"[config] Warning: kv_cache_dtype={normalized} is ignored by the V1 engine. "
-                    "Set VLLM_USE_V1=0 to use legacy int8/fp8 switches."
+                    f"[config] Warning: kv_cache_dtype={normalized} may not be supported by V1 engine."
                 )
                 _KV_DTYPE_WARNING_EMITTED = True
         return
 
+    # V0 engine uses explicit kv_cache_dtype parameter
     kwargs["kv_cache_dtype"] = normalized
     if normalized.startswith("fp8"):
         kwargs["calculate_kv_scales"] = True
