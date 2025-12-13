@@ -10,6 +10,7 @@ except ModuleNotFoundError:  # When repo root is on sys.path
 DEFAULT_PERSONALITIES: dict[str, list[str]] = {
     "friendly": ["generic", "normal"],
     "flirty": ["horny", "sexy", "turned on"],
+    "flirtytwo": ["flirty two", "flirty 2"],
     "religious": ["priest", "pious"],
     "delulu": ["delooloo", "de loo loo", "delusional"],
     "savage": ["no cap", "unfiltered"],
