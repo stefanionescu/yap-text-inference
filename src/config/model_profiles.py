@@ -19,7 +19,8 @@ class ModelProfile:
     name: str
     markers: tuple[str, ...]
     requires_bfloat16: bool = False
-    requires_fla_runtime: bool = False
+    requires_fla_runtime: bool = False  # Needs fla-core package (Flash Linear Attention)
+    uses_mla: bool = False  # Uses MLA (Multi-Head Latent Attention), incompatible with FlashInfer
     needs_memory_optimization: bool = False
     # Post-quantization config.json overrides (applied after AWQ export)
     config_overrides: Mapping[str, Any] | None = None
@@ -61,13 +62,20 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         markers=("kimi",),
         requires_fla_runtime=True,
     ),
+    # DeepSeek-V2/V3 models use MLA (Multi-Head Latent Attention)
+    # FLASHINFER doesn't support MLA, so we need to unset the backend to allow auto-selection
+    ModelProfile(
+        name="deepseek-v2",
+        markers=("deepseek-v2", "deepseek_v2", "deepseekcoder-v2", "deepseek-v3", "deepseek_v3"),
+        uses_mla=True,
+    ),
     # Moonlight uses DeepSeek V3 architecture with MLA (Multi-Head Latent Attention)
     # FLASHINFER doesn't support MLA, so we need to unset the backend to allow auto-selection
     ModelProfile(
         name="moonlight",
         markers=("moonlight",),
         requires_bfloat16=True,
-        requires_fla_runtime=True,
+        uses_mla=True,
     ),
     # Qwen3-Next uses hybrid DeltaNet + Attention architecture
     # It requires bfloat16 to avoid dtype mismatches in torch.compile
@@ -112,6 +120,12 @@ def model_needs_memory_optimization(model_identifier: str | None) -> bool:
     return bool(profile and profile.needs_memory_optimization)
 
 
+def model_uses_mla(model_identifier: str | None) -> bool:
+    """Check if model uses MLA (Multi-Head Latent Attention), incompatible with FlashInfer."""
+    profile = get_model_profile(model_identifier)
+    return bool(profile and profile.uses_mla)
+
+
 def get_tokenizer_kwargs(model_identifier: str | None) -> dict[str, Any]:
     """Return tokenizer kwargs needed for a model, or empty dict if none needed."""
     profile = get_model_profile(model_identifier)
@@ -127,6 +141,7 @@ __all__ = [
     "model_requires_bfloat16",
     "model_requires_fla_runtime",
     "model_needs_memory_optimization",
+    "model_uses_mla",
     "get_tokenizer_kwargs",
 ]
 
