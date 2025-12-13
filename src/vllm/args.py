@@ -12,6 +12,7 @@ from src.config.model_profiles import (
     model_needs_memory_optimization,
     model_requires_bfloat16,
     model_requires_fla_runtime,
+    model_uses_mla,
 )
 from src.config.env import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
 from src.utils.env import env_flag
@@ -65,12 +66,16 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     model_origin = resolve_model_origin(model)
     needs_bfloat16 = model_requires_bfloat16(model_origin)
     needs_memory_opt = model_needs_memory_optimization(model_origin)
-    needs_mla = model_requires_fla_runtime(model_origin)  # MLA = Multi-Head Latent Attention
-    if needs_mla:
+    needs_fla = model_requires_fla_runtime(model_origin)  # Flash Linear Attention (Kimi)
+    uses_mla = model_uses_mla(model_origin)  # Multi-Head Latent Attention (DeepSeek-V2/V3)
+
+    # FLA models (Kimi) need the fla-core package
+    if needs_fla:
         _ensure_fla_runtime_available(model_origin)
-        # MLA models don't work with XFORMERS or FLASHINFER backends
-        # Unset the backend to let vLLM auto-select the appropriate backend for MLA
-        # vLLM will automatically use FLASH_ATTN when MLA is detected
+
+    # MLA and FLA models don't work with XFORMERS or FLASHINFER backends
+    # Unset the backend to let vLLM auto-select the appropriate backend
+    if uses_mla or needs_fla:
         if os.getenv("VLLM_ATTENTION_BACKEND"):
             os.environ.pop("VLLM_ATTENTION_BACKEND", None)
 
