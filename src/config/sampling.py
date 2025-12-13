@@ -69,6 +69,10 @@ INFERENCE_STOP = [
     "<|im_system|>",
     "[EOS]",
     "[EOT]",
+    # DeepSeek V2/V3 format (uses fullwidth vertical bars)
+    "<｜end▁of▁sentence｜>",
+    "<｜begin▁of▁sentence｜>",
+    "User:",  # DeepSeek uses "User:" prefix
     # General
     "[SYSTEM_PROMPT]",
     "[/SYSTEM_PROMPT]",
