@@ -44,7 +44,9 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "ArliAI/Qwen3-30B-A3B-ArliAI-RpR-v4-Fast",
     "DavidAU/Qwen3-33B-A3B-Stranger-Thoughts-IPONDER",
     "Ewere/Qwen3-30B-A3B-abliterated-erotic",
-    "deepseek-ai/deepseek-moe-16b-chat",
+    "deepseek-ai/DeepSeek-V2-Lite-Chat",
+    "deepseek-ai/DeepSeek-V2-Lite",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
