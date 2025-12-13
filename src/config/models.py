@@ -36,7 +36,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "baidu/ERNIE-4.5-21B-A3B-PT",
     "moonshotai/Moonlight-16B-A3B-Instruct",
     "kakaocorp/kanana-1.5-15.7b-a3b-instruct",
-
     "Qwen/Qwen3-14B",
     "soob3123/GrayLine-Qwen3-14B",
     "Jinx-org/Jinx-Qwen3-32B",
@@ -45,8 +44,6 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "DavidAU/Qwen3-33B-A3B-Stranger-Thoughts-IPONDER",
     "Ewere/Qwen3-30B-A3B-abliterated-erotic",
     "deepseek-ai/DeepSeek-V2-Lite-Chat",
-    "deepseek-ai/DeepSeek-V2-Lite",
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
