@@ -62,6 +62,44 @@ def resolve_calibration_seqlen(requested: int, model_or_config: Any | None) -> i
     return requested
 
 
+def is_moe_model(model_config: Any | None, model_identifier: str) -> bool:
+    """Return True when this model is a Mixture of Experts (MoE) model.
+    
+    MoE models have sparse architectures with expert layers that are not
+    supported by AWQ quantization backends (AutoAWQ or llmcompressor).
+    """
+    # Check config for MoE indicators
+    if model_config is not None:
+        # Standard MoE config attributes
+        num_experts = getattr(model_config, "num_local_experts", None)
+        if num_experts is None:
+            num_experts = getattr(model_config, "num_experts", None)
+        if num_experts is not None and int(num_experts) > 1:
+            return True
+        
+        # Some models use 'moe' in their model_type
+        model_type = (getattr(model_config, "model_type", "") or "").lower()
+        if "moe" in model_type:
+            return True
+    
+    # Fallback: detect MoE from model identifier patterns
+    # Common patterns: "-A3B", "MoE", "Mixtral", etc.
+    from src.config.awq import normalize_model_id  # lazy import to avoid cycles
+    normalized = normalize_model_id(model_identifier)
+    
+    # Qwen3 MoE naming convention: "qwen3-30b-a3b" (30B total, 3B active)
+    # The "-aXb" suffix indicates active parameters in MoE
+    import re
+    if re.search(r"-a\d+b", normalized):
+        return True
+    
+    moe_markers = ("moe", "mixtral")
+    if any(marker in normalized for marker in moe_markers):
+        return True
+    
+    return False
+
+
 def requires_autoawq_backend(model_config: Any | None, model_identifier: str) -> bool:
     """Return True when this model must be quantized with AutoAWQ."""
 

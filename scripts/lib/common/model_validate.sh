@@ -88,7 +88,9 @@ if errors:
         print(f"[ERR ] Model validation failed: {err}", file=sys.stderr)
     sys.exit(1)
 
-print("[INFO] Model validation passed")
+from datetime import datetime, timezone
+ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+print(f"[INFO] {ts} Model validation passed")
 sys.exit(0)
 VALIDATE_SCRIPT
   then
