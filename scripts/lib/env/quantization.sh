@@ -2,23 +2,16 @@
 
 # Apply quantization- and GPU-specific defaults
 
-# Resolve "8bit" placeholder to actual backend (fp8 or int8) based on GPU
+# Resolve "8bit" placeholder to actual backend based on GPU
+# Note: vLLM uses "fp8" for 8-bit weight quantization on ALL GPUs
+# - On H100/Ada: native FP8 compute
+# - On A100: W8A16 emulated mode (FP8 weights, FP16 compute via Marlin)
+# The difference is in KV cache: FP8 on H100/Ada, INT8 on A100
 _resolve_8bit_backend() {
   local gpu_name="${1:-}"
-  case "${gpu_name}" in
-    *H100*|*L40S*|*L40*)
-      # Hopper/Ada: native FP8 support
-      echo "fp8"
-      ;;
-    *A100*)
-      # Ampere: no FP8, use INT8
-      echo "int8"
-      ;;
-    *)
-      # Unknown GPU: default to fp8 (will work in emulated mode on most GPUs)
-      echo "fp8"
-      ;;
-  esac
+  # vLLM only supports "fp8" for on-the-fly 8-bit weight quantization
+  # It works on A100 via W8A16 Marlin (emulated mode)
+  echo "fp8"
 }
 
 apply_quantization_defaults() {
@@ -78,9 +71,9 @@ apply_quantization_defaults() {
           log_info "FP8 mode: Hopper/Ada GPU with native FP8 support"
           ;;
         *A100*)
-          # A100 can't do native FP8, but Marlin can run FP8 weights in W8A16 emulated mode
-          # This shouldn't happen if 8bit was properly resolved to int8, but handle it gracefully
-          log_warn "FP8 requested on A100 (no native FP8). Using W8A16 emulated mode. Consider using INT8 instead."
+          # A100 runs FP8 weights in W8A16 emulated mode via Marlin (stores FP8, computes FP16)
+          # KV cache uses INT8 since A100 doesn't support FP8 KV cache
+          log_info "FP8 mode: A100 with W8A16 emulated mode (FP8 weights, FP16 compute) + INT8 KV cache"
           export KV_DTYPE=${KV_DTYPE:-int8}
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
           if [ "${HAS_FLASHINFER}" = "1" ]; then
@@ -102,49 +95,6 @@ apply_quantization_defaults() {
         *)
           export KV_DTYPE=${KV_DTYPE:-auto}
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
-          ;;
-      esac
-      ;;
-    int8)
-      # INT8 weight quantization (W8A8) - native on A100 and newer
-      case "${gpu_name}" in
-        *A100*)
-          export KV_DTYPE=${KV_DTYPE:-int8}
-          export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
-          if [ "${HAS_FLASHINFER}" = "1" ]; then
-            export VLLM_USE_V1=1
-            export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
-          else
-            export VLLM_USE_V1=0
-            export VLLM_ATTENTION_BACKEND=XFORMERS
-          fi
-          export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
-          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
-          export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-          export CUDA_DEVICE_MAX_CONNECTIONS=1
-          export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-10}
-          export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-1000}
-          export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
-          log_info "INT8 mode: A100 with native INT8 tensor cores"
-          ;;
-        *H100*|*L40S*|*L40*)
-          # H100/L40 can do INT8 too, but FP8 is usually better
-          log_info "INT8 requested on Hopper/Ada GPU (FP8 might be faster, but INT8 works fine)"
-          export KV_DTYPE=${KV_DTYPE:-int8}
-          export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
-          if [[ "${gpu_name}" == *H100* ]]; then
-            export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
-          fi
-          export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-          export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
-          export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
-          export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-          ;;
-        *)
-          export KV_DTYPE=${KV_DTYPE:-int8}
-          export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
-          log_info "INT8 mode: using INT8 weight quantization with INT8 KV cache"
           ;;
       esac
       ;;

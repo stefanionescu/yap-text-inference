@@ -61,10 +61,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         if detected_quant:
             inference_quant = detected_quant
             log_detected_quantization(model, detected_quant, quant_payload)
-    elif raw_quant == "int8":
-        # INT8 W8A8 quantization - native on A100 (Ampere) and newer
-        inference_quant = "int8"
-        print(f"[config] Using INT8 (W8A8) weight quantization for {model}")
 
     model_origin = resolve_model_origin(model)
     needs_bfloat16 = model_requires_bfloat16(model_origin)

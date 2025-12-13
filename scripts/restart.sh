@@ -32,7 +32,7 @@ Usage:
 
   restart.sh --reset-models --deploy-mode both \
              --chat-model <repo_or_path> --tool-model <repo_or_path> \
-             [--chat-quant 4bit|8bit|fp8|int8|gptq|gptq_marlin|awq] \
+             [--chat-quant 4bit|8bit|fp8|gptq|gptq_marlin|awq] \
              [--install-deps]
       Reconfigure which models/quantization are deployed without reinstalling deps.
 
@@ -48,8 +48,8 @@ Key flags:
   --push-quant          Upload cached 4-bit exports to Hugging Face before relaunch
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
-  --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|int8|gptq|gptq_marlin|awq).
-                        `4bit` aliases AWQ. `8bit` uses FP8 on H100/L40 or INT8 on A100.
+  --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|gptq|gptq_marlin|awq).
+                        `4bit` aliases AWQ. `8bit` uses FP8 (native on H100/L40, W8A16 emulated on A100).
                         Pre-quantized repos are detected automatically.
 
 This script always:

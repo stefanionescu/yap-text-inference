@@ -151,14 +151,18 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
         return
 
     if use_v1:
-        # V1 engine with FlashInfer handles KV cache quantization via env vars
+        # V1 engine handles KV cache quantization via env vars
         if normalized.startswith("fp8"):
             os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
             print("[config] V1 engine: FP8 KV cache enabled via VLLM_FP8_KV_CACHE_ENABLE=1")
         elif normalized.startswith("int8"):
-            # INT8 KV cache is handled natively by FlashInfer on A100/Ampere GPUs
-            # vLLM V1 + FlashInfer supports INT8 KV cache without explicit env vars
-            print("[config] V1 engine: INT8 KV cache enabled (FlashInfer native support)")
+            # INT8 KV cache: FlashInfer handles this natively on A100
+            # Note: vLLM V1 may not fully support int8 KV cache yet - using auto instead
+            if not _KV_DTYPE_WARNING_EMITTED:
+                print(
+                    "[config] V1 engine: INT8 KV cache requested. FlashInfer will use fp16 KV cache."
+                )
+                _KV_DTYPE_WARNING_EMITTED = True
         else:
             if not _KV_DTYPE_WARNING_EMITTED:
                 print(

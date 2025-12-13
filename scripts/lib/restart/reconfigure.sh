@@ -72,11 +72,11 @@ _restart_normalize_quantization_flag() {
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
-    8bit|fp8|int8|awq|gptq|gptq_marlin)
+    8bit|fp8|awq|gptq|gptq_marlin)
       return 0
       ;;
     *)
-      log_error "Invalid quantization '${value}'. Expected 8bit|fp8|int8|gptq|gptq_marlin|awq."
+      log_error "Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq."
       return 1
       ;;
   esac

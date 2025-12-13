@@ -35,8 +35,8 @@ restart_basic() {
   # If the last snapshot stored explicit per-engine quantization, prefer that over
   # the generic fallback so we don't misclassify AWQ/GPTQ deployments as 8bit.
   local LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
-  if [ -z "${LAST_QUANT}" ] || [ "${LAST_QUANT}" = "fp8" ] || [ "${LAST_QUANT}" = "int8" ] || [ "${LAST_QUANT}" = "8bit" ]; then
-    if [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "fp8" ] && [ "${LAST_CHAT_QUANT}" != "int8" ] && [ "${LAST_CHAT_QUANT}" != "8bit" ]; then
+  if [ -z "${LAST_QUANT}" ] || [ "${LAST_QUANT}" = "fp8" ] || [ "${LAST_QUANT}" = "8bit" ]; then
+    if [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "fp8" ] && [ "${LAST_CHAT_QUANT}" != "8bit" ]; then
       LAST_QUANT="${LAST_CHAT_QUANT}"
     fi
   fi

@@ -23,7 +23,7 @@ A vLLM text inference server optimized for pairing a chat model with a lightweig
 
 ## Key Features
 - Chat + classifier deployment with optional chat-only or classifier-only modes.
-- Tool-call-first detection: tool decisions fire before chat tokens, while chat still streams for every turn so UX never stalls.
+- Tool-call-first detection: tool decisions fire before chat tokens.
 - Persona/history segmented prompts with prefix caching and FP8/INT8 KV reuse to keep latency low across restarts.
 - Integrated quantization pipeline (FP8 default, AWQ/GPTQ/W4A16 auto-detect, AutoAWQ fallbacks) plus configurable logit bias for banned phrases.
 - Built-in resiliency: interrupts/barge-in, heartbeats, idle watchdog (150 s default), and sliding-window rate limits on both messages and cancels.
@@ -65,10 +65,10 @@ Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-longformer-
 
 Examples:
 ```bash
-# Float chat model (auto → FP8 on H100/L40, INT8 on A100)
+# Float chat model (auto → FP8 quantization, W8A16 emulated on A100)
 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
-# Float roleplay model with classifier routing (auto 8-bit based on GPU)
+# Float roleplay model with classifier routing
 bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-longformer-screenshot-intent
 
 # GPTQ chat model (auto → GPTQ) + classifier
