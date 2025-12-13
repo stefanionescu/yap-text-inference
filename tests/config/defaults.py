@@ -13,7 +13,7 @@ DEFAULT_PERSONALITIES: dict[str, list[str]] = {
     "religious": ["priest", "pious"],
     "delulu": ["delooloo", "de loo loo", "delusional"],
     "savage": ["no cap", "unfiltered"],
-    "savagetwo": ["savage two", "savage 2"],
+    "spiritual": ["zen", "new age", "mystic"],
 }
 
 WARMUP_FALLBACK_MESSAGE = "hey there! how are you today?"
