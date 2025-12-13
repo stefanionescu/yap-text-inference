@@ -5,7 +5,7 @@ import os
 from ..utils.env import env_flag
 
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # 1650 persona + 3000 history + 350 user + 25 tool reply
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # 2000 persona + 2650 history + 350 user + 25 tool reply
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
 PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
 
@@ -26,7 +26,7 @@ CHAT_FREQUENCY_PENALTY_MIN = float(os.getenv("CHAT_FREQUENCY_PENALTY_MIN", "0.0"
 CHAT_FREQUENCY_PENALTY_MAX = float(os.getenv("CHAT_FREQUENCY_PENALTY_MAX", "0.5"))
 
 # Max tokens allowed for incoming prompts (provided by clients)
-CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1650"))
+CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "2000"))
 
 # Personality validation
 PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
@@ -39,7 +39,7 @@ MAX_SYNONYMS_PER_PERSONALITY = int(os.getenv("MAX_SYNONYMS_PER_PERSONALITY", "10
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
 # History and user limits (approximate tokens)
-HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
+HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "2650"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "350"))
 
 # Persona update pacing (rolling window)
