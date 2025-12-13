@@ -65,12 +65,14 @@ usage() {
   echo "  • Use scripts/stop.sh to stop the deployment"
   echo ""
   echo "Quantization:"
-  echo "  Omit flag  → auto-detects GPTQ/AWQ/W4A16 hints; otherwise runs 8bit (FP8/INT8 mix)"
+  echo "  Omit flag  → auto-detects GPTQ/AWQ/W4A16 hints; otherwise runs 8bit"
   echo "  4bit       → force low-bit chat deployment (AWQ or GPTQ depending on the model)"
-  echo "  8bit       → force high-bit chat deployment (FP8 on Hopper/Ada, INT8 on Ampere)"
+  echo "  8bit       → force high-bit chat deployment:"
+  echo "               • H100/L40/Ada: FP8 weights + FP8 KV cache (native FP8 support)"
+  echo "               • A100/Ampere:  INT8 weights + INT8 KV cache (no FP8 support)"
   echo ""
   echo "Chat model options:"
-  echo "  Float models (FP8 auto): SicariusSicariiStuff/Impish_Nemo_12B"
+  echo "  Float models (8bit auto): SicariusSicariiStuff/Impish_Nemo_12B"
   echo "                           SicariusSicariiStuff/Wingless_Imp_8B"
   echo "                           SicariusSicariiStuff/Impish_Mind_8B"
   echo "                           kyx0r/Neona-12B"
@@ -158,7 +160,8 @@ _apply_quantization_selection() {
       ;;
     8bit)
       resolved_mode="8bit"
-      resolved_backend="fp8"
+      # Backend (fp8 vs int8) is resolved later based on GPU architecture
+      resolved_backend="8bit"
       ;;
     auto)
       if [ -n "${chat_hint:-}" ]; then
@@ -166,12 +169,14 @@ _apply_quantization_selection() {
         resolved_backend="${chat_hint}"
       else
         resolved_mode="8bit"
-        resolved_backend="fp8"
+        # Backend (fp8 vs int8) is resolved later based on GPU architecture
+        resolved_backend="8bit"
       fi
       ;;
     *)
       resolved_mode="8bit"
-      resolved_backend="fp8"
+      # Backend (fp8 vs int8) is resolved later based on GPU architecture
+      resolved_backend="8bit"
       ;;
   esac
 

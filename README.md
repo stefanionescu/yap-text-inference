@@ -65,10 +65,10 @@ Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-longformer-
 
 Examples:
 ```bash
-# Float chat model (auto → FP8)
+# Float chat model (auto → FP8 on H100/L40, INT8 on A100)
 bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
-# Float roleplay model (auto → FP8) with classifier routing
+# Float roleplay model with classifier routing (auto 8-bit based on GPU)
 bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-longformer-screenshot-intent
 
 # GPTQ chat model (auto → GPTQ) + classifier
