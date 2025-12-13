@@ -79,7 +79,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     # For other quantized models, prefer fp16 (Marlin performs better with fp16 on SM < 9.0)
     if needs_bfloat16:
         dtype_value = "bfloat16"
-    elif inference_quant in {"awq", "awq_marlin", "compressed-tensors"}:
+    elif inference_quant in {"awq", "awq_marlin", "compressed-tensors", "fp8"}:
+        # Use fp16 for Marlin-based quantization - better performance on A100/Ampere (SM80)
+        # Marlin warns: "running Marlin kernel with bf16 on GPUs before SM90"
         dtype_value = "float16"
 
     # Build kwargs for V1 engine.
