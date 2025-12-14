@@ -19,36 +19,16 @@ CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 
 # What words/text to discourage
 _DEFAULT_LOGIT_BIAS = {
-    "*winks*": -100.0,
-    "*winks*.": -100.0,
-    " *winks*.": -100.0,
-    "*smirks*": -100.0,
-    "*giggles*": -100.0,
-    "*purrs*": -100.0,
-    "*blushes*": -100.0,
-    ":)": -100.0,
-    ";)": -100.0,
-    " ;)": -100,
-    " ;) ": -100,
-    ":D": -100.0,
-    ":(": -100.0,
-    ":P": -100.0,
-    "Oh honey": -100.0,
-    "Oh, honey": -100.0,
-    "Oh honey...": -100.0,
-    "Well honey": -100.0,
-    "Well honey,": -100.0,
-    "Well, well": -100.0,
-    "Well well": -100.0,
-    "Well, well, well": -100.0,
-    "Well, well!": -100.0,
-    "what's really on your mind?": -100.0,
-    "Now let's talk about": -100.0,
+    "*": -100,
+    "(": -100,
+    ")": -100,
     "~": -100.0,
     " - ": -100,
     "-": -100,
+    "Mmh": -100,
+    "hmm": -100,
+    "…": -100.0,
 }
-
 
 # STOP sequences
 INFERENCE_STOP = [
