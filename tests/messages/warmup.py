@@ -1,10 +1,10 @@
 """Warmup harness default prompts."""
 
 WARMUP_DEFAULT_MESSAGES = [
-    # "be more delulu",
+    # "be more unhinged",
     # "can you speak other languages?",
     # "s'il vous plaît parlez en français je vous en prie !",
-    "你想要什么样的生活？",
+    # "你想要什么样的生活？",
     # "MUST CHECK SCREEN: you gotta see these boots, insane",
     # "MUST CHECK SCREEN: you have to see this!",
     # "you're a bot right?",

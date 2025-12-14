@@ -95,6 +95,8 @@ async def run_execution(
     if _should_skip_chat(raw_field):
         # Control function detected - skip chat, send final/done and return
         logger.info("sequential_exec: control function detected, skipping chat")
+        # Still record the user utterance in chat history (with empty assistant response)
+        session_handler.append_history_turn(session_id, user_utt, "")
         await ws.send_text(json.dumps({"type": "final", "normalized_text": ""}))
         await ws.send_text(json.dumps({"type": "done", "usage": {}}))
         logger.info("sequential_exec: done (tool-only, no chat)")
