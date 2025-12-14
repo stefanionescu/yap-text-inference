@@ -30,8 +30,8 @@ PERSONALITY_SWITCH_DELAY_SECONDS = 10
 PERSONALITY_REPLIES_PER_SWITCH = 2
 
 PERSONA_VARIANTS = [
-    ("female", "anna", FEMALE_PROMPT),
-    ("male", "mark", MALE_PROMPT),
+    ("female", "flirty", FEMALE_PROMPT),
+    ("male", "flirty", MALE_PROMPT),
 ]
 
 # Sampling defaults mirrored from src.config.sampling for CLI usage

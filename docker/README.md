@@ -46,19 +46,20 @@ All artifacts are produced with [`llmcompressor`](https://github.com/vllm-projec
 
 ```bash
 # Build the Docker image (tag auto-set by DEPLOY_MODELS)
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=both ./build.sh  # tag :both
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat ./build.sh  # tag :chat
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool ./build.sh  # tag :tool
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=both bash build.sh  # tag :both
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat bash build.sh  # tag :chat
+DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool bash build.sh  # tag :tool
 
 # Run (deploy both models)
 TEXT_API_KEY=your_secret_key \
+HF_TOKEN=hf_xxx \
 DEPLOY_MODELS=both \
 CHAT_MODEL=your-org/chat-awq \
 TOOL_MODEL=your-org/tool-classifier \
 CHAT_GPU_FRAC=0.70 \
 TOOL_GPU_FRAC=0.20 \
   docker run -d --gpus all --name yap-server \
-  -e TEXT_API_KEY -e DEPLOY_MODELS \
+  -e TEXT_API_KEY -e HF_TOKEN -e DEPLOY_MODELS \
   -e CHAT_MODEL -e TOOL_MODEL \
   -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
   -p 8000:8000 \
@@ -66,6 +67,7 @@ TOOL_GPU_FRAC=0.20 \
 
 # Run (chat only)
 docker run -d --gpus all --name yap-chat \
+  -e HF_TOKEN=hf_xxx \
   -e DEPLOY_MODELS=chat \
   -e CHAT_MODEL=your-org/chat-awq \
   -p 8000:8000 \
@@ -73,6 +75,7 @@ docker run -d --gpus all --name yap-chat \
 
 # Run (tool only)
 docker run -d --gpus all --name yap-tool \
+  -e HF_TOKEN=hf_xxx \
   -e DEPLOY_MODELS=tool \
   -e TOOL_MODEL=your-org/tool-classifier \
   -p 8000:8000 \
@@ -82,6 +85,7 @@ docker run -d --gpus all --name yap-tool \
 
 ### Required
 - `TEXT_API_KEY` – API key handed to the server
+- `HF_TOKEN` – Hugging Face access token (required for private models, also accepts `HUGGINGFACE_HUB_TOKEN`)
 - `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
 - If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit`)
 - If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/yap-longformer-screenshot-intent`)
@@ -91,7 +95,7 @@ docker run -d --gpus all --name yap-tool \
 - `CHAT_GPU_FRAC` (default: `0.70` when `DEPLOY_MODELS=both`, `0.90` otherwise)
 - `TOOL_GPU_FRAC` (default: `0.20` when `DEPLOY_MODELS=both`, `0.90` otherwise; caps classifier GPU allocations)
 
-Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports). Make sure `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` is set if you pull private repos.
+Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports).
 
 Note: This AWQ image now supports chat-only, tool-only, or both deployments.
 
@@ -101,28 +105,29 @@ Note: This AWQ image now supports chat-only, tool-only, or both deployments.
 
 ```bash
 # Basic build and push
-DOCKER_USERNAME=yourusername ./build.sh
+DOCKER_USERNAME=yourusername bash build.sh
 
 # Build only (no push)
-./build.sh --build-only
+bash build.sh --build-only
 
 # Multi-platform build
-./build.sh --multi-platform
+bash build.sh --multi-platform
 
 # Build with custom tag
-TAG=v1.0.0 ./build.sh
+TAG=v1.0.0 bash build.sh
 ```
 
-> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it remains compatible with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... ./build.sh` if you need a different release, but keep the manual install pattern. Qwen-family and Mistral 3 exports automatically use AutoAWQ (pinned to `autoawq==0.2.9` in `requirements.txt`) because llmcompressor cannot trace their hybrid forward graphs yet.
+> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it remains compatible with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... bash build.sh` if you need a different release, but keep the manual install pattern. Qwen-family and Mistral 3 exports automatically use AutoAWQ (pinned to `autoawq==0.2.9` in `requirements.txt`) because llmcompressor cannot trace their hybrid forward graphs yet.
 
 ### Running the Container
 
 ```bash
 docker run -d --gpus all --name yap-server \
+  -e HF_TOKEN=hf_xxx \
+  -e TEXT_API_KEY=your_secret_key \
   -e DEPLOY_MODELS=both \
   -e CHAT_MODEL=your-org/chat-awq \
   -e TOOL_MODEL=your-org/tool-classifier \
-  -e TEXT_API_KEY=your_secret_key \
   -e CHAT_GPU_FRAC=0.70 \
   -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \
@@ -157,6 +162,7 @@ docker run -d --gpus all --name yap-server \
   --memory=16g \
   --shm-size=2g \
   --ulimit memlock=-1:-1 \
+  -e HF_TOKEN=hf_xxx \
   -e CHAT_MODEL=your-org/chat-awq \
   -e TOOL_MODEL=your-org/tool-classifier \
   -p 8000:8000 \
@@ -168,6 +174,7 @@ docker run -d --gpus all --name yap-server \
 docker run -d --gpus all --name yap-server \
   -v yap-hf-cache:/app/.hf \
   -v yap-vllm-cache:/app/.vllm_cache \
+  -e HF_TOKEN=hf_xxx \
   -e CHAT_MODEL=your-org/chat-awq \
   -e TOOL_MODEL=your-org/tool-classifier \
   -p 8000:8000 \
@@ -188,6 +195,7 @@ docker run -d --gpus all --name yap-server \
 
 3. **Model loading failures**
    - Verify AWQ model paths are correct
+   - Ensure `HF_TOKEN` is passed via `-e HF_TOKEN=hf_xxx` for private repos
    - Check Hugging Face access permissions
    - Ensure models are properly quantized AWQ format
 
@@ -199,6 +207,7 @@ docker run -d --gpus all --name yap-server \
 ### Debug Mode
 ```bash
 docker run -it --gpus all --rm \
+  -e HF_TOKEN=hf_xxx \
   -e CHAT_MODEL=your-org/chat-awq \
   -e TOOL_MODEL=your-org/tool-classifier \
   yourusername/yap-text-inference-awq:latest \
