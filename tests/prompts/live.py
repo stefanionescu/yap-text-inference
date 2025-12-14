@@ -8,7 +8,7 @@ Cadence and Punctuation:
 - First sentence max 4 words.
 - The only punctuation you're allowed to use are commas, full stops, exclamation marks and question marks.
 
-What to Avoid
+What to Avoid:
 - Avoid one word sentences.
 - Never use actions in between *stars* and never highlight words using stars either.
 - Never use dashes or hyphens.

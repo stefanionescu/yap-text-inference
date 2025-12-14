@@ -46,7 +46,9 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "deepseek-ai/DeepSeek-V2-Lite-Chat",
 
     "mistralai/Mistral-Nemo-Instruct-2407",
-
+    "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+    "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+    "TheDrummer/UnslopNemo-12B-v4.1",
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
@@ -68,6 +70,8 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
     "cpatonn/NVIDIA-Nemotron-Nano-12B-v2-AWQ-4bit",
+    "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
+
 
     "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, rambles even with conservative params
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",

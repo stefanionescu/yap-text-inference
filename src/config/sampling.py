@@ -28,7 +28,8 @@ _DEFAULT_LOGIT_BIAS = {
     "Mmh": -100,
     "hmm": -100,
     "…": -100,
-    "Damn": -100
+    "Damn": -100,
+    "stud": -100,
 }
 
 # STOP sequences
