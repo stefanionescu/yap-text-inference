@@ -214,6 +214,17 @@ class SessionHandler:
             return None
         return state.personalities
 
+    def pick_control_message(self, session_id: str) -> str:
+        """Pick a random control message for this session.
+        
+        Messages are cycled to ensure variety - once all messages
+        have been used in a session, the pool resets.
+        """
+        from src.execution.tool.messages import pick_control_message
+        
+        state = self._ensure_state(session_id)
+        return pick_control_message(state)
+
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""
 
