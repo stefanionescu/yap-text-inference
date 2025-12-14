@@ -84,12 +84,11 @@ async def run_toolcall(
     if action == "stop_freestyle":
         logger.info("tool_runner: phrase filter stop_freestyle session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": '[{"name": "stop_freestyle"}]'}
-    if action == "switch_gender_male":
-        logger.info("tool_runner: phrase filter switch_gender_male session_id=%s req_id=%s", session_id, req_id)
-        return {"cancelled": False, "text": '[{"name": "switch_gender", "params": ["male"]}]'}
-    if action == "switch_gender_female":
-        logger.info("tool_runner: phrase filter switch_gender_female session_id=%s req_id=%s", session_id, req_id)
-        return {"cancelled": False, "text": '[{"name": "switch_gender", "params": ["female"]}]'}
+    if action == "switch_gender":
+        gender = phrase_result.param  # "male" or "female"
+        logger.info("tool_runner: phrase filter switch_gender=%s session_id=%s req_id=%s", gender, session_id, req_id)
+        result = [{"name": "switch_gender", "params": [gender]}]
+        return {"cancelled": False, "text": json.dumps(result)}
     if action == "switch_personality":
         personality_name = phrase_result.param
         logger.info(

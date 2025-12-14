@@ -12,9 +12,6 @@ from ...config.patterns import (
     FREESTYLE_STOP_PATTERNS,
     GENDER_MALE_PATTERNS,
     GENDER_FEMALE_PATTERNS,
-    GENDER_MALE_WORD,
-    GENDER_FEMALE_WORD,
-    GENDER_PERSONALITY_TEMPLATES,
     SCREENSHOT_REJECT_PATTERNS,
     SCREENSHOT_TAKE_X_PATTERN,
     SCREENSHOT_TRIGGER_QUANTITIES,
@@ -48,8 +45,6 @@ StaticFilterResult = Literal[
     "take_screenshot",
     "start_freestyle",
     "stop_freestyle",
-    "switch_gender_male",
-    "switch_gender_female",
     "pass",
 ]
 
@@ -58,7 +53,7 @@ StaticFilterResult = Literal[
 class FilterResult:
     """Result of tool phrase filtering."""
     
-    action: StaticFilterResult | Literal["switch_personality", "switch_gender_and_personality"]
+    action: StaticFilterResult | Literal["switch_gender", "switch_personality", "switch_gender_and_personality"]
     """The action to take based on the matched pattern."""
     
     param: str | None = None
@@ -152,10 +147,8 @@ def filter_tool_phrase(
     
     # Check gender patterns (only if not combined)
     gender_result = _match_gender(text)
-    if gender_result == "male":
-        return FilterResult(action="switch_gender_male")
-    if gender_result == "female":
-        return FilterResult(action="switch_gender_female")
+    if gender_result is not None:
+        return FilterResult(action="switch_gender", param=gender_result)
     
     # Check personality patterns (requires personalities config)
     personality_result = match_personality_phrase(text, personalities)

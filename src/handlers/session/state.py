@@ -39,6 +39,8 @@ class SessionState:
     # Personality mapping: {personality_name: [synonym1, synonym2, ...]}
     # Set on connection via start message
     personalities: dict[str, list[str]] | None = None
+    # Track used control messages to ensure variety (reset when all used)
+    used_control_messages: set[str] = field(default_factory=set)
 
     def touch(self) -> None:
         """Mark the session as active."""

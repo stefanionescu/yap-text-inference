@@ -93,13 +93,17 @@ async def run_execution(
 
     # Check if we should skip chat (control functions like switch_gender, etc.)
     if _should_skip_chat(raw_field):
-        # Control function detected - skip chat, send final/done and return
-        logger.info("sequential_exec: control function detected, skipping chat")
-        # Still record the user utterance in chat history (with empty assistant response)
-        session_handler.append_history_turn(session_id, user_utt, "")
-        await ws.send_text(json.dumps({"type": "final", "normalized_text": ""}))
+        # Control function detected - use hard-coded message instead of chat model
+        logger.info("sequential_exec: control function detected, using hard-coded response")
+        # Pick a cycled control message for variety
+        control_message = session_handler.pick_control_message(session_id)
+        # Send the message as token + final + done
+        await ws.send_text(json.dumps({"type": "token", "text": control_message}))
+        await ws.send_text(json.dumps({"type": "final", "normalized_text": control_message}))
         await ws.send_text(json.dumps({"type": "done", "usage": {}}))
-        logger.info("sequential_exec: done (tool-only, no chat)")
+        # Record both user utterance and control message in history
+        session_handler.append_history_turn(session_id, user_utt, control_message)
+        logger.info("sequential_exec: done (control function, msg=%r)", control_message)
         return
 
     # Start chat stream (for take_screenshot or no tool call)

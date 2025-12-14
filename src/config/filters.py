@@ -8,6 +8,15 @@ import re
 # All other tool functions skip chat and return just the tool result
 CHAT_CONTINUE_TOOLS: frozenset[str] = frozenset({"take_screenshot"})
 
+# Hard-coded messages for control functions (switch_gender, switch_personality, etc.)
+# These are cycled per session to ensure variety
+CONTROL_FUNCTION_MESSAGES: tuple[str, ...] = (
+    "All done",
+    "Yup sure. Done.",
+    "Alright, gimme a second. Done.",
+    "Sure, it's done.",
+)
+
 HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 
 EMOJI_PATTERN = re.compile(
@@ -56,6 +65,7 @@ LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
 
 __all__ = [
     "CHAT_CONTINUE_TOOLS",
+    "CONTROL_FUNCTION_MESSAGES",
     "HTML_TAG_PATTERN",
     "EMOJI_PATTERN",
     "EMOTICON_PATTERN",
