@@ -29,13 +29,8 @@ if [ "${AWQ_TARGET_CHAT}" = "0" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-log_info "Running AWQ quantization process"
 awq_setup_hf_env
-
 awq_should_use_prequant
-if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
-  log_info "Using pre-quantized AWQ models from Hugging Face (when available)"
-fi
 
 # Main quantization logic
 awq_ensure_cache_dir
@@ -48,13 +43,12 @@ if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
     fi
   fi
 else
-  log_info "Starting local AWQ quantization process"
+  log_info "Running AWQ quantization process"
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
     if ! awq_quantize_chat_if_needed; then
       log_error "AWQ quantization pipeline failed while quantizing chat model; aborting."
       exit 1
     fi
   fi
+  log_info "AWQ quantization process completed"
 fi
-
-log_info "AWQ quantization process completed"

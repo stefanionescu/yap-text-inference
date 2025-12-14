@@ -48,7 +48,7 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "mistralai/Mistral-Nemo-Instruct-2407",
     "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
     "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-    "TheDrummer/UnslopNemo-12B-v4.1",
+    "TheDrummer/UnslopNemo-12B-v4.1", # PRETTY GOOD: needs more testing tho
     
     # Pre-quantized GPTQ models
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
@@ -64,14 +64,11 @@ ALLOWED_CHAT_MODELS: list[str] = [
     "Qwen/Qwen3-32B-AWQ",
     "Qwen/Qwen3-14B-AWQ",
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
-    "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
     "TheBloke/mixtral-8x7b-v0.1-AWQ",
 
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
-    "cpatonn/NVIDIA-Nemotron-Nano-12B-v2-AWQ-4bit",
-    "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym",
-
+    "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # EXTREMELY GOOD: might even be better than Qwen3 30B
 
     "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, rambles even with conservative params
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
