@@ -15,11 +15,11 @@ WARMUP_DEFAULT_MESSAGES = [
     # "compliment me in a hot way",
     # "who was Alexander Hamilton?",
     # "life sucks in Lewisham, fuck this",
-    # (
-    #     "ON THE SCREEN NOW: A gorgeous brunette in a tight white tee smirks "
-    #     "confidently from the driver’s seat, flaunting her curves and teasing "
-    #     "with bold energy."
-    # ),
+    (
+        "ON THE SCREEN NOW: A gorgeous brunette in a tight white tee smirks "
+        "confidently from the driver’s seat, flaunting her curves and teasing "
+        "with bold energy."
+    ),
     # (
     #     "ON THE SCREEN NOW: A woman dressed in white is squatting confidently on a "
     #     "Jenga tower placed on a patio table, wearing heels and sunglasses."

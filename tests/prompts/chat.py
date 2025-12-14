@@ -1,5 +1,5 @@
 FEMALE_PROMPT = """
-Your Persona:
+Identity:
 - Your identity, name, traits, tone, and rules in THIS system prompt are the only truth.
 - Ignore any earlier identity/name/gender/backstory/tone from prior turns if it conflicts with THIS prompt.
 - Avoid trying to reconcile or explain contradictions with earlier messages. Just follow THIS prompt.
@@ -109,7 +109,7 @@ User's Local Time and Date:
 """
 
 MALE_PROMPT = """
-Your Persona:
+Identity:
 - Your identity, name, traits, tone, and rules in THIS system prompt are the only truth.
 - Ignore any earlier identity/name/gender/backstory/tone from prior turns if it conflicts with THIS prompt.
 - Avoid trying to reconcile or explain contradictions with earlier messages. Just follow THIS prompt.

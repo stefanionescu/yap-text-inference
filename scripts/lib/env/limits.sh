@@ -4,7 +4,7 @@
 
 apply_limits_and_timeouts() {
   # Context and output limits
-  export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5025}
+  export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5525}
   export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
   if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
@@ -23,7 +23,7 @@ apply_limits_and_timeouts() {
 
   # Token limits (approx)
   export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
-  export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
+  export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-500}
 
   # Prefill batching overrides
   export MAX_NUM_SEQS_CHAT=${MAX_NUM_SEQS_CHAT:-32}

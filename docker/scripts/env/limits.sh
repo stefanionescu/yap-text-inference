@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
 # Context and output limits
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5025}
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5525}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
+
+# Token limits (approx)
+export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
+export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-500}
 
 # GPU memory fractions (weights + KV). Use fractions only.
 if [ "${DEPLOY_MODELS:-both}" = "both" ]; then

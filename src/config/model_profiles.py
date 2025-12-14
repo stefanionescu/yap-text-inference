@@ -91,6 +91,13 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         markers=("qwen3",),
         tokenizer_kwargs={"fix_mistral_regex": True},
     ),
+    # Mistral Small 3.x models have a broken tokenizer regex pattern
+    # See: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84
+    ModelProfile(
+        name="mistral-small-3",
+        markers=("mistral-small-3",),
+        tokenizer_kwargs={"fix_mistral_regex": True},
+    ),
 )
 
 
