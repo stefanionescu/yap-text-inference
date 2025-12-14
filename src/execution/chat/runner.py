@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncGenerator
-from functools import lru_cache
 
 from vllm.sampling_params import SamplingParams
 
@@ -28,6 +27,8 @@ from ...tokens.tokenizer import get_chat_tokenizer
 from ...persona import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
 
+
+_logit_bias_cache: dict[int, float] | None = None
 
 async def run_chat_generation(
     session_id: str,
@@ -101,13 +102,20 @@ async def run_chat_generation(
             yield tail
 
 
-@lru_cache(maxsize=1)
 def _get_logit_bias_map() -> dict[int, float]:
+    """Build logit bias map, retrying if tokenizer wasn't ready before."""
+    global _logit_bias_cache
+    if _logit_bias_cache is not None:
+        return _logit_bias_cache
+
     if not CHAT_LOGIT_BIAS:
-        return {}
+        _logit_bias_cache = {}
+        return _logit_bias_cache
+
     try:
         tokenizer = get_chat_tokenizer()
     except Exception:
+        # Don't cache failure - tokenizer might not be ready yet
         return {}
 
     id_bias: dict[int, float] = {}
@@ -120,6 +128,8 @@ def _get_logit_bias_map() -> dict[int, float]:
             value = float(bias)
             if current is None or value < current:
                 id_bias[token_id] = value
+
+    _logit_bias_cache = id_bias
     return id_bias
 
 
