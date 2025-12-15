@@ -107,6 +107,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         dtype=dtype_value,
         # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
+        # Disable multimodal processing for text-only deployments
+        # This prevents PixtralProcessor initialization issues with Mistral 3 models
+        limit_mm_per_prompt={"image": 0},
     )
 
     # Apply model-specific tokenizer kwargs if supported by vLLM
