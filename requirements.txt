@@ -15,7 +15,7 @@ rich==13.9.4
 loguru==0.7.3
 tqdm==4.67.1
 
-fastapi==0.115.0
+fastapi==0.124.4
 uvicorn[standard]==0.30.6
 websockets==12.0
 orjson==3.10.7
