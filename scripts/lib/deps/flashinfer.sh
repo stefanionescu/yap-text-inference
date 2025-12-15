@@ -43,7 +43,7 @@ PY
 
   if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
     local FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
-    local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.2}"
+    local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
     log_info "Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
     if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
       log_warn "FlashInfer install failed even with extra index; falling back to PyPI only"

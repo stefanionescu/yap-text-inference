@@ -65,7 +65,7 @@ def configure_runtime_env(*, force: bool = False) -> None:
     os.environ.setdefault("VLLM_USE_V1", "1")
     # vLLM docs recommend constraining CUDA streams + allocator defaults for stability
     os.environ.setdefault("CUDA_DEVICE_MAX_CONNECTIONS", "1")
-    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+    os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 
     _select_attention_backend()
     _ENV_CONFIGURED = True
