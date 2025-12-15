@@ -97,6 +97,34 @@ KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto' (fp16) | 'fp8' | 'int8'
 QUANTIZATION = os.getenv("QUANTIZATION")  # Must be explicitly set: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq'
 CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override for chat
 
+# ----------------- Inference Engine Selection -----------------
+# Engine selection: 'vllm' (default) or 'trt' (TensorRT-LLM)
+from .quantization import normalize_engine
+INFERENCE_ENGINE = normalize_engine(os.getenv("INFERENCE_ENGINE", "vllm"))
+
+# ----------------- TRT-LLM Specific Settings -----------------
+# These are only used when INFERENCE_ENGINE='trt'
+TRT_ENGINE_DIR = os.getenv("TRTLLM_ENGINE_DIR", "")
+TRT_CHECKPOINT_DIR = os.getenv("TRT_CHECKPOINT_DIR", "")
+TRT_REPO_DIR = os.getenv("TRTLLM_REPO_DIR", "")  # Path to TensorRT-LLM repo for quantization
+
+# TRT engine build parameters (optimized for L40S by default)
+TRT_MAX_BATCH_SIZE = int(os.getenv("TRT_MAX_BATCH_SIZE", "16"))
+TRT_MAX_INPUT_LEN = int(os.getenv("TRT_MAX_INPUT_LEN", "8192"))
+TRT_MAX_OUTPUT_LEN = int(os.getenv("TRT_MAX_OUTPUT_LEN", "4096"))
+TRT_DTYPE = os.getenv("TRT_DTYPE", "float16")
+
+# TRT KV cache memory management
+TRT_KV_FREE_GPU_FRAC = float(os.getenv("TRT_KV_FREE_GPU_FRAC", "0.92"))
+TRT_KV_ENABLE_BLOCK_REUSE = env_flag("TRT_KV_ENABLE_BLOCK_REUSE", False)
+
+# TRT AWQ quantization parameters
+TRT_AWQ_BLOCK_SIZE = int(os.getenv("TRT_AWQ_BLOCK_SIZE", "128"))
+TRT_CALIB_SIZE = int(os.getenv("TRT_CALIB_SIZE", "256"))
+
+# GPU architecture (L40S = sm89, A100 = sm80, H100 = sm90)
+GPU_SM_ARCH = os.getenv("GPU_SM_ARCH", "")
+
 if env_flag("VLLM_USE_V1", True):
     kv_lower = (KV_DTYPE or "").strip().lower()
     if kv_lower.startswith("fp8"):
@@ -128,6 +156,7 @@ TOOL_MICROBATCH_MAX_DELAY_MS = float(os.getenv("TOOL_MICROBATCH_MAX_DELAY_MS", "
 def validate_env() -> None:
     """Validate required configuration once during startup."""
     from .models import is_classifier_model
+    from .quantization import SUPPORTED_ENGINES
     
     errors: list[str] = []
     if DEPLOY_CHAT and not CHAT_MODEL:
@@ -137,15 +166,29 @@ def validate_env() -> None:
     if DEPLOY_TOOL and TOOL_MODEL and not is_classifier_model(TOOL_MODEL):
         errors.append("TOOL_MODEL must be one of the classifier models (vLLM tool engines are disabled)")
     
+    # Validate engine selection
+    if INFERENCE_ENGINE not in SUPPORTED_ENGINES:
+        errors.append(f"INFERENCE_ENGINE must be one of {SUPPORTED_ENGINES}, got: {INFERENCE_ENGINE}")
+    
+    # TRT-specific validation
+    if INFERENCE_ENGINE == "trt" and DEPLOY_CHAT:
+        if not TRT_ENGINE_DIR:
+            # TRT_ENGINE_DIR can be empty if we're building from scratch
+            pass  # Will be set during quantization/build step
+    
     # Quantization is only required when deploying LLMs (not classifiers)
     # Classifier-only mode (DEPLOY_CHAT=False and TOOL_MODEL is classifier) doesn't need quantization
     needs_quantization = DEPLOY_CHAT or (DEPLOY_TOOL and not is_classifier_model(TOOL_MODEL))
     if needs_quantization:
         if not QUANTIZATION:
             errors.append("QUANTIZATION environment variable is required for LLM models")
-        elif QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq"}:
+        elif INFERENCE_ENGINE == "vllm" and QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq", "8bit", "4bit"}:
             errors.append(
-                "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', or 'awq'"
+                "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', 'awq', '8bit', or '4bit' for VLLM"
+            )
+        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {"fp8", "int8_sq", "int8", "int4_awq", "awq", "8bit", "4bit"}:
+            errors.append(
+                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'awq', '8bit', or '4bit' for TRT"
             )
     if errors:
         raise ValueError("; ".join(errors))
@@ -163,6 +206,21 @@ __all__ = [
     "KV_DTYPE",
     "QUANTIZATION",
     "CHAT_QUANTIZATION",
+    # Engine selection
+    "INFERENCE_ENGINE",
+    # TRT-LLM specific settings
+    "TRT_ENGINE_DIR",
+    "TRT_CHECKPOINT_DIR",
+    "TRT_REPO_DIR",
+    "TRT_MAX_BATCH_SIZE",
+    "TRT_MAX_INPUT_LEN",
+    "TRT_MAX_OUTPUT_LEN",
+    "TRT_DTYPE",
+    "TRT_KV_FREE_GPU_FRAC",
+    "TRT_KV_ENABLE_BLOCK_REUSE",
+    "TRT_AWQ_BLOCK_SIZE",
+    "TRT_CALIB_SIZE",
+    "GPU_SM_ARCH",
     # prefixes
     "DEFAULT_CHECK_SCREEN_PREFIX",
     "DEFAULT_SCREEN_CHECKED_PREFIX",

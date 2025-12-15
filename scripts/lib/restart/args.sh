@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Argument parsing for scripts/restart.sh
-# Requires: none (sets DEPLOY_MODE and INSTALL_DEPS)
+# Requires: none (sets DEPLOY_MODE, INSTALL_DEPS, INFERENCE_ENGINE)
 
 restart_parse_args() {
   DEPLOY_MODE=""
@@ -13,12 +13,32 @@ restart_parse_args() {
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
   RECONFIG_QUANTIZATION="${RECONFIG_QUANTIZATION:-}"
   HF_AWQ_PUSH=0
+  
+  # Engine selection - default from environment or 'trt'
+  INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}"
 
   while [ $# -gt 0 ]; do
     case "$1" in
       both|chat|tool)
         if [ -z "${DEPLOY_MODE}" ]; then DEPLOY_MODE="$1"; fi
         if [ -z "${RECONFIG_DEPLOY_MODE}" ]; then RECONFIG_DEPLOY_MODE="$1"; fi
+        shift
+        ;;
+      --trt)
+        INFERENCE_ENGINE="trt"
+        shift
+        ;;
+      --vllm)
+        INFERENCE_ENGINE="vllm"
+        shift
+        ;;
+      --engine)
+        if [ -z "${2:-}" ]; then return 2; fi
+        INFERENCE_ENGINE="$2"
+        shift 2
+        ;;
+      --engine=*)
+        INFERENCE_ENGINE="${1#*=}"
         shift
         ;;
       --install-deps)
@@ -110,7 +130,18 @@ restart_parse_args() {
   done
 
   DEPLOY_MODE="${DEPLOY_MODE:-both}"
-  export INSTALL_DEPS DEPLOY_MODE
+  
+  # Normalize engine selection
+  case "${INFERENCE_ENGINE}" in
+    trt|TRT|tensorrt|TENSORRT) INFERENCE_ENGINE="trt" ;;
+    vllm|VLLM) INFERENCE_ENGINE="vllm" ;;
+    *)
+      log_warn "Unknown engine '${INFERENCE_ENGINE}', defaulting to 'trt'"
+      INFERENCE_ENGINE="trt"
+      ;;
+  esac
+  
+  export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
   export RECONFIG_CHAT_QUANTIZATION RECONFIG_QUANTIZATION

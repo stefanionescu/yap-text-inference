@@ -18,6 +18,8 @@ ensure_required_env_vars
 
 # Determine whether quantized-model uploads should run this invocation
 PUSH_QUANT=0
+# Default engine from environment or 'trt' (TensorRT-LLM)
+ENGINE_TYPE="${INFERENCE_ENGINE:-trt}"
 PARSED_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -39,6 +41,18 @@ while [ $# -gt 0 ]; do
       PUSH_QUANT=0
       shift
       ;;
+    --engine=*)
+      ENGINE_TYPE="${1#--engine=}"
+      shift
+      ;;
+    --vllm)
+      ENGINE_TYPE="vllm"
+      shift
+      ;;
+    --trt|--tensorrt)
+      ENGINE_TYPE="trt"
+      shift
+      ;;
     *)
       PARSED_ARGS+=("$1")
       shift
@@ -48,28 +62,50 @@ done
 set -- "${PARSED_ARGS[@]}"
 export HF_AWQ_PUSH="${PUSH_QUANT}"
 
+# Normalize engine type
+case "${ENGINE_TYPE}" in
+  vllm|VLLM)
+    ENGINE_TYPE="vllm"
+    ;;
+  trt|TRT|tensorrt|TENSORRT|trtllm|TRTLLM)
+    ENGINE_TYPE="trt"
+    ;;
+  *)
+    log_warn "Unknown engine type '${ENGINE_TYPE}', defaulting to 'vllm'"
+    ENGINE_TYPE="vllm"
+    ;;
+esac
+export INFERENCE_ENGINE="${ENGINE_TYPE}"
+
 # Stop any existing warmup processes before starting deployment
 stop_existing_warmup_processes "${ROOT_DIR}"
 
 # Usage function
 usage() {
   echo "Usage:"
-  echo "  $0 [4bit|8bit] <chat_model> <tool_model> [deploy_mode]"
-  echo "  $0 [4bit|8bit] chat <chat_model>"
-  echo "  $0 [4bit|8bit] tool <tool_model>"
-  echo "  $0 [4bit|8bit] both <chat_model> <tool_model>"
+  echo "  $0 [--vllm|--trt] [4bit|8bit] <chat_model> <tool_model> [deploy_mode]"
+  echo "  $0 [--vllm|--trt] [4bit|8bit] chat <chat_model>"
+  echo "  $0 [--vllm|--trt] [4bit|8bit] tool <tool_model>"
+  echo "  $0 [--vllm|--trt] [4bit|8bit] both <chat_model> <tool_model>"
   echo ""
   echo "Behavior:"
   echo "  • Always runs deployment in background (auto-detached)"
   echo "  • Auto-tails logs (Ctrl+C stops tail, deployment continues)"
   echo "  • Use scripts/stop.sh to stop the deployment"
   echo ""
+  echo "Inference Engines:"
+  echo "  --trt       → Use TensorRT-LLM engine (default, requires CUDA 13.0+)"
+  echo "  --vllm      → Use vLLM engine"
+  echo "  --engine=X  → Explicit engine selection (trt or vllm)"
+  echo ""
   echo "Quantization:"
   echo "  Omit flag  → auto-detects GPTQ/AWQ/W4A16 hints; otherwise runs 8bit"
-  echo "  4bit       → force low-bit chat deployment (AWQ or GPTQ depending on the model)"
-  echo "  8bit       → force FP8 weight quantization:"
-  echo "               • H100/L40/Ada: native FP8 compute + FP8 KV cache"
-  echo "               • A100/Ampere:  W8A16 emulated mode + INT8 KV cache"
+  echo "  4bit       → force low-bit chat deployment:"
+  echo "               • vLLM: AWQ or GPTQ depending on the model"
+  echo "               • TRT:  INT4-AWQ quantization"
+  echo "  8bit       → force 8-bit weight quantization:"
+  echo "               • vLLM: H100/L40/Ada=native FP8, A100=W8A16 emulated"
+  echo "               • TRT:  H100/L40=FP8, A100=INT8-SQ (SmoothQuant)"
   echo ""
   echo "Chat model options:"
   echo "  Float models (8bit auto): SicariusSicariiStuff/Impish_Nemo_12B"
@@ -84,6 +120,11 @@ usage() {
   echo "                           SicariusSicariiStuff/Impish_Mind_8B"
   echo "                           kyx0r/Neona-12B"
   echo ""
+  echo "MoE models (TRT uses quantize_mixed_precision_moe.py):"
+  echo "  Qwen/Qwen3-30B-A3B-Instruct-2507"
+  echo "  ArliAI/Qwen3-30B-A3B-ArliAI-RpR-v4-Fast"
+  echo "  Qwen/Qwen3-Next-80B-A3B-Instruct"
+  echo ""
   echo "Tool model options (classifier-only):"
   echo "  yapwithai/yap-longformer-screenshot-intent"
   echo "  (or any compatible transformers classifier repo/path)"
@@ -95,19 +136,24 @@ usage() {
   echo ""
   echo "Environment options:"
   echo "  DEPLOY_MODELS=both|chat|tool  - Which models to deploy (default: both)"
+  echo "  INFERENCE_ENGINE=trt|vllm     - Inference engine (default: trt)"
+  echo "  GPU_SM_ARCH=sm80|sm89|sm90    - GPU architecture (auto-detected)"
   echo ""
   echo "Examples:"
-  echo "  # Standard deployment (auto-background with log tailing)"
-  echo "  $0 SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent"
+  echo "  # Standard TensorRT-LLM deployment (default, 4-bit AWQ)"
+  echo "  $0 4bit Qwen/Qwen3-30B-A3B-Instruct-2507 yapwithai/yap-longformer-screenshot-intent"
   echo ""
-  echo "  # 8B roleplay model"
-  echo "  $0 SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-longformer-screenshot-intent"
+  echo "  # TensorRT-LLM with 8-bit on L40S (FP8)"
+  echo "  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent"
   echo ""
-  echo "  # 8B highest rated uncensored model"
-  echo "  $0 SicariusSicariiStuff/Impish_Mind_8B yapwithai/yap-longformer-screenshot-intent"
+  echo "  # TensorRT-LLM with 8-bit on A100 (INT8-SQ)"
+  echo "  GPU_SM_ARCH=sm80 $0 8bit SicariusSicariiStuff/Impish_Nemo_12B tool_model"
+  echo ""
+  echo "  # vLLM deployment (alternative engine)"
+  echo "  $0 --vllm SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent"
   echo ""
   echo "  # 4-bit AWQ for chat (tool classifier stays float)"
-  echo "  $0 awq SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent"
+  echo "  $0 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent"
   echo ""
   echo "  # Chat-only deployment"
   echo "  $0 chat SicariusSicariiStuff/Impish_Nemo_12B"
@@ -348,7 +394,10 @@ DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
 DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
 DESIRED_QUANTIZATION="${QUANTIZATION:-}"
 DESIRED_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
+DESIRED_ENGINE="${INFERENCE_ENGINE:-trt}"
+
 # If the server is already running, decide whether to keep caches or reset.
+# NOTE: Engine switch (vllm <-> trt) triggers FULL environment wipe automatically.
 runtime_guard_stop_server_if_needed \
   "${SCRIPT_DIR}" \
   "${ROOT_DIR}" \
@@ -356,17 +405,21 @@ runtime_guard_stop_server_if_needed \
   "${DESIRED_CHAT_MODEL}" \
   "${DESIRED_TOOL_MODEL}" \
   "${DESIRED_QUANTIZATION}" \
-  "${DESIRED_CHAT_QUANT}"
+  "${DESIRED_CHAT_QUANT}" \
+  "${DESIRED_ENGINE}"
 
 # Display configuration
 if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
   log_info "Configuration: quantization=tool-only (classifier runs float16)"
 else
-  log_info "Configuration: quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
+  log_info "Configuration: engine=${INFERENCE_ENGINE}, quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
 fi
 log_info "Deploy mode: ${DEPLOY_MODELS}"
 if [ "${DEPLOY_MODELS}" != "tool" ]; then
   log_info "Chat model: ${CHAT_MODEL_NAME}"
+  if model_detect_is_moe "${CHAT_MODEL_NAME}"; then
+    log_info "  (MoE model detected)"
+  fi
 fi
 if [ "${DEPLOY_MODELS}" != "chat" ]; then
   log_info "Tool model: ${TOOL_MODEL_NAME}"
@@ -376,22 +429,38 @@ log_info "Starting deployment in background (auto-detached)"
 log_info "Ctrl+C stops log tailing only - deployment continues"
 log_info "Use scripts/stop.sh to stop the deployment"
 
-# Define the deployment pipeline command
-DEPLOYMENT_CMD="
-  bash '${SCRIPT_DIR}/steps/01_check_gpu.sh' && \\
-  bash '${SCRIPT_DIR}/steps/02_python_env.sh' && \\
-  bash '${SCRIPT_DIR}/steps/03_install_deps.sh' && \\
-  source '${SCRIPT_DIR}/steps/04_env_defaults.sh' && \\
-  source '${SCRIPT_DIR}/quantization/awq_quantizer.sh' && \\
-  bash '${SCRIPT_DIR}/steps/05_start_server.sh' && \\
-  echo '[INFO] $(date -Iseconds) Deployment process completed successfully' && \\
-  echo '[INFO] $(date -Iseconds) Server is running in the background' && \\
-  echo '[INFO] $(date -Iseconds) Use scripts/stop.sh to stop the server'
-"
+# Define the deployment pipeline command based on engine type
+if [ "${INFERENCE_ENGINE}" = "trt" ]; then
+  # TensorRT-LLM pipeline
+  DEPLOYMENT_CMD="
+    bash '${SCRIPT_DIR}/steps/01_check_gpu.sh' && \\
+    bash '${SCRIPT_DIR}/steps/02_python_env.sh' && \\
+    bash '${SCRIPT_DIR}/steps/03_install_deps.sh' && \\
+    source '${SCRIPT_DIR}/steps/04_env_defaults.sh' && \\
+    source '${SCRIPT_DIR}/quantization/trt_quantizer.sh' && \\
+    bash '${SCRIPT_DIR}/steps/05_start_server.sh' && \\
+    echo '[INFO] \$(date -Iseconds) Deployment process completed successfully' && \\
+    echo '[INFO] \$(date -Iseconds) Server is running in the background (TRT engine)' && \\
+    echo '[INFO] \$(date -Iseconds) Use scripts/stop.sh to stop the server'
+  "
+else
+  # vLLM pipeline
+  DEPLOYMENT_CMD="
+    bash '${SCRIPT_DIR}/steps/01_check_gpu.sh' && \\
+    bash '${SCRIPT_DIR}/steps/02_python_env.sh' && \\
+    bash '${SCRIPT_DIR}/steps/03_install_deps.sh' && \\
+    source '${SCRIPT_DIR}/steps/04_env_defaults.sh' && \\
+    source '${SCRIPT_DIR}/quantization/vllm_quantizer.sh' && \\
+    bash '${SCRIPT_DIR}/steps/05_start_server.sh' && \\
+    echo '[INFO] \$(date -Iseconds) Deployment process completed successfully' && \\
+    echo '[INFO] \$(date -Iseconds) Server is running in the background (vLLM engine)' && \\
+    echo '[INFO] \$(date -Iseconds) Use scripts/stop.sh to stop the server'
+  "
+fi
 
 # Export all environment variables for the background process
 export QUANTIZATION QUANT_MODE DEPLOY_MODELS CHAT_MODEL TOOL_MODEL
-export CHAT_QUANTIZATION
+export CHAT_QUANTIZATION INFERENCE_ENGINE
 export CHAT_MODEL_NAME TOOL_MODEL_NAME  # Also export the display names
 
 runtime_pipeline_run_background \

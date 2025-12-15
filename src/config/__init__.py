@@ -19,6 +19,22 @@ from .env import (
     KV_DTYPE,
     QUANTIZATION,
     CHAT_QUANTIZATION,
+    # Engine selection
+    INFERENCE_ENGINE,
+    # TRT-LLM specific settings
+    TRT_ENGINE_DIR,
+    TRT_CHECKPOINT_DIR,
+    TRT_REPO_DIR,
+    TRT_MAX_BATCH_SIZE,
+    TRT_MAX_INPUT_LEN,
+    TRT_MAX_OUTPUT_LEN,
+    TRT_DTYPE,
+    TRT_KV_FREE_GPU_FRAC,
+    TRT_KV_ENABLE_BLOCK_REUSE,
+    TRT_AWQ_BLOCK_SIZE,
+    TRT_CALIB_SIZE,
+    GPU_SM_ARCH,
+    # Prefixes
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
     CHAT_TEMPLATE_ENABLE_THINKING,
@@ -34,18 +50,35 @@ from .env import (
     TOOL_MICROBATCH_MAX_DELAY_MS,
 )
 from .models import (
+    ALLOWED_BASE_CHAT_MODELS,
+    ALLOWED_BASE_MOE_CHAT_MODELS,
     ALLOWED_CHAT_MODELS,
+    ALLOWED_VLLM_QUANT_CHAT_MODELS,
+    ALLOWED_TRT_QUANT_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
     classify_prequantized_model,
+    classify_trt_prequantized_model,
     is_valid_model as _is_valid_model,
     is_classifier_model,
+    is_moe_model,
+    get_all_base_chat_models,
+    get_allowed_chat_models,
 )
 from .priorities import (
     CHAT_REQUEST_PRIORITY,
     TOOL_REQUEST_PRIORITY,
     WARM_REQUEST_PRIORITY,
 )
-from .quantization import is_awq_model_name
+from .quantization import (
+    SUPPORTED_ENGINES,
+    TRT_FP8_SM_ARCHS,
+    is_awq_model_name,
+    is_trt_awq_model_name,
+    is_trt_prequantized_model,
+    gpu_supports_fp8,
+    normalize_engine,
+    map_quant_mode_to_trt,
+)
 from .limits import (
     CHAT_MAX_LEN,
     CHAT_MAX_OUT,
@@ -156,6 +189,22 @@ __all__ = [
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",
     "TOOL_LANGUAGE_FILTER",
+    # Engine selection
+    "INFERENCE_ENGINE",
+    "SUPPORTED_ENGINES",
+    # TRT-LLM specific settings
+    "TRT_ENGINE_DIR",
+    "TRT_CHECKPOINT_DIR",
+    "TRT_REPO_DIR",
+    "TRT_MAX_BATCH_SIZE",
+    "TRT_MAX_INPUT_LEN",
+    "TRT_MAX_OUTPUT_LEN",
+    "TRT_DTYPE",
+    "TRT_KV_FREE_GPU_FRAC",
+    "TRT_KV_ENABLE_BLOCK_REUSE",
+    "TRT_AWQ_BLOCK_SIZE",
+    "TRT_CALIB_SIZE",
+    "GPU_SM_ARCH",
     # tool classifier settings
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
@@ -167,9 +216,24 @@ __all__ = [
     "DEFAULT_CHECK_SCREEN_PREFIX",
     "DEFAULT_SCREEN_CHECKED_PREFIX",
     # models/validation
+    "ALLOWED_BASE_CHAT_MODELS",
+    "ALLOWED_BASE_MOE_CHAT_MODELS",
     "ALLOWED_CHAT_MODELS",
+    "ALLOWED_VLLM_QUANT_CHAT_MODELS",
+    "ALLOWED_TRT_QUANT_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
     "is_classifier_model",
+    "is_moe_model",
+    "get_all_base_chat_models",
+    "get_allowed_chat_models",
+    # quantization helpers
+    "TRT_FP8_SM_ARCHS",
+    "is_awq_model_name",
+    "is_trt_awq_model_name",
+    "is_trt_prequantized_model",
+    "gpu_supports_fp8",
+    "normalize_engine",
+    "map_quant_mode_to_trt",
     # limits
     "CHAT_MAX_LEN",
     "CHAT_MAX_OUT",

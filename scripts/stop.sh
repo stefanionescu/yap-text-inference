@@ -48,17 +48,29 @@ sleep 1
 # 4) Remove repo-local caches (models and compiled artifacts under the repo)
 if [ "${NUKE_ALL}" != "0" ]; then
   REPO_CACHE_DIRS=(
+    # Common caches
     "${ROOT_DIR}/.hf"
+    "${ROOT_DIR}/.pip_cache"
+    # vLLM caches
     "${ROOT_DIR}/.vllm_cache"
-    "${ROOT_DIR}/.torch_inductor"
-    "${ROOT_DIR}/.triton"
     "${ROOT_DIR}/.flashinfer"
     "${ROOT_DIR}/.xformers"
-    "${ROOT_DIR}/.pip_cache"
     "${ROOT_DIR}/.awq"
+    # TRT-LLM caches
+    "${ROOT_DIR}/.trtllm-repo"
+    "${ROOT_DIR}/models"
+    # Compiler caches
+    "${ROOT_DIR}/.torch_inductor"
+    "${ROOT_DIR}/.triton"
   )
   for d in "${REPO_CACHE_DIRS[@]}"; do
     [ -d "$d" ] && { log_info "Removing repo cache at $d"; rm -rf "$d" || true; }
+  done
+  
+  # Remove engine-specific venvs
+  for venv_suffix in "" "-trt" "-vllm"; do
+    venv_path="${ROOT_DIR}/.venv${venv_suffix}"
+    [ -d "${venv_path}" ] && { log_info "Removing venv at ${venv_path}"; rm -rf "${venv_path}" || true; }
   done
 fi
 
@@ -112,10 +124,15 @@ if [ "${NUKE_ALL}" != "0" ]; then
   done
 fi
 
-# 4) vLLM / kernel / compiler caches
+# 4) vLLM / TRT-LLM / kernel / compiler caches
 CACHE_DIRS=(
+  # vLLM caches
   "$HOME/.cache/vllm" "/root/.cache/vllm"
   "$HOME/.cache/flashinfer" "/root/.cache/flashinfer"
+  # TRT-LLM caches
+  "$HOME/.cache/tensorrt_llm" "/root/.cache/tensorrt_llm"
+  "$HOME/.cache/nvidia" "/root/.cache/nvidia"
+  # Torch / compiler caches
   "$HOME/.cache/torch/inductor" "/root/.cache/torch/inductor"
   "$HOME/.torch_inductor" "/root/.torch_inductor"
   "$HOME/.cache/torch_extensions" "/root/.cache/torch_extensions"
@@ -155,8 +172,8 @@ log_info "Removing __pycache__ and .pytest_cache in repo"
 find "${ROOT_DIR}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
 
-# 8) Temp directories
-rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* /tmp/pip-* /tmp/pip-build-* /tmp/pip-modern-metadata-* /tmp/uvicorn* 2>/dev/null || true
+# 8) Temp directories (vLLM + TRT-LLM)
+rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* /tmp/pip-* /tmp/pip-build-* /tmp/pip-modern-metadata-* /tmp/uvicorn* /tmp/trtllm* /tmp/tensorrt* /tmp/nv* 2>/dev/null || true
 
 # Remove runtime state directory
 if [ -d "${ROOT_DIR}/.run" ]; then
