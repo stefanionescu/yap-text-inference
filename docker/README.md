@@ -195,7 +195,7 @@ docker run -d --gpus all --name yap-server \
 
 3. **CUDA/GPU not available**
    - Ensure nvidia-docker is installed
-   - Check GPU visibility: `docker run --gpus all nvidia/cuda:12.8.0-runtime-ubuntu22.04 nvidia-smi`
+   - Check GPU visibility: `docker run --gpus all nvidia/cuda:13.0.0-runtime-ubuntu24.04 nvidia-smi`
 
 4. **Out of memory errors**
    - Reduce GPU memory fractions: `-e CHAT_GPU_FRAC=0.60`
