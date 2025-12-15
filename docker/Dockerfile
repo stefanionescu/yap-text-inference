@@ -64,14 +64,28 @@ RUN set -eux; \
         pip install --no-cache-dir --no-deps "llmcompressor==${LLMCOMPRESSOR_VERSION}"; \
     fi
 
+# =============================================================================
 # Production stage
+# =============================================================================
 FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
+
+# Model configuration - set at build time, downloaded at runtime
+# These are baked into the image so you don't specify them when running
+ARG DEPLOY_MODELS="both"
+ARG CHAT_MODEL=""
+ARG TOOL_MODEL=""
 
 # Set environment variables for production
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PATH="/opt/venv/bin:$PATH"
+
+# Configured models - these are set at build time and used at runtime
+# The container will automatically download these specific models on startup
+ENV DEPLOY_MODELS=${DEPLOY_MODELS}
+ENV CHAT_MODEL=${CHAT_MODEL}
+ENV TOOL_MODEL=${TOOL_MODEL}
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -90,7 +104,6 @@ WORKDIR /app
 
 # Copy application code from build context
 COPY src/ /app/src/
-COPY prompts/ /app/prompts/
 COPY scripts/ /app/scripts/
 
 # Create necessary directories

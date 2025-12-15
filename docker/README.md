@@ -1,141 +1,143 @@
-# Yap Text Inference Docker Setup (AWQ)
+# Yap Text Inference Docker Setup
 
-This Docker setup provides a containerized deployment of Yap's text inference API using **pre-quantized AWQ models**.  
-All artifacts are produced with [`llmcompressor`](https://github.com/vllm-project/llm-compressor) (or [AutoAWQ 0.2.9](https://github.com/AutoAWQ/AutoAWQ) for Qwen2/Qwen3 and Mistral 3 families) and ship as **W4A16 compressed-tensor exports**, so vLLM automatically selects the Marlin kernels (you will see `quantization=compressed-tensors` in the server logs even though `QUANTIZATION=awq` is configured).
+This Docker setup provides a containerized deployment of Yap's text inference API with **pre-quantized models**.
 
-**Default Models:**
-- **Chat**: [cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit](https://huggingface.co/cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit) - AWQ quantized Qwen3 30B-A3B
-- **Tool**: [yapwithai/yap-longformer-screenshot-intent](https://huggingface.co/yapwithai/yap-longformer-screenshot-intent) - Screenshot intent classifier (float)
+**How it works:**
+1. You build an image specifying which models it should use
+2. When you run the container, it automatically downloads those specific models from HuggingFace
+3. No model specification needed at runtime — just provide your API key
+
+## Supported Models
+
+### Chat Models
+Chat models must be pre-quantized. The build validates that the model name contains one of:
+- `awq` - AWQ quantized models
+- `gptq` - GPTQ quantized models
+- `w4a16`, `nvfp4`, `compressed-tensors`, `autoround` - llmcompressor W4A16 exports
+
+### Tool Models
+Tool models must be from the approved allowlist in `src/config/models.py`.
 
 ## Contents
 
 - [Quick Start](#quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Basic Usage](#basic-usage)
+- [Build and Push](#build-and-push)
+- [Running the Container](#running-the-container)
 - [Environment Variables](#environment-variables)
-  - [Required](#required)
-  - [Optional](#optional)
-- [Build and Deploy](#build-and-deploy)
-  - [Building the Image](#building-the-image)
-  - [Running the Container](#running-the-container)
 - [Monitoring and Health Checks](#monitoring-and-health-checks)
-  - [Health Check](#health-check)
-  - [Server Status (requires API key)](#server-status-requires-api-key)
-  - [View Logs](#view-logs)
-  - [Container Stats](#container-stats)
 - [Advanced Configuration](#advanced-configuration)
-  - [Resource Limits](#resource-limits)
-  - [Persistent Cache Volumes](#persistent-cache-volumes)
 - [Troubleshooting](#troubleshooting)
-  - [Common Issues](#common-issues)
-  - [Debug Mode](#debug-mode)
-- [Updates and Maintenance](#updates-and-maintenance)
-  - [Update Container](#update-container)
-  - [Clean Up](#clean-up)
-- [API Usage](#api-usage)
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker with GPU support (nvidia-docker)
+- Docker with GPU support
 - NVIDIA GPU with CUDA support
-- Pre-quantized AWQ models on Hugging Face
+- Docker Hub account
 
-### Basic Usage
-
-```bash
-# Build the Docker image (tag auto-set by DEPLOY_MODELS)
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=both bash build.sh  # tag :both
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=chat bash build.sh  # tag :chat
-DOCKER_USERNAME=yourusername DEPLOY_MODELS=tool bash build.sh  # tag :tool
-
-# Run (deploy both models)
-TEXT_API_KEY=your_secret_key \
-HF_TOKEN=hf_xxx \
-DEPLOY_MODELS=both \
-CHAT_MODEL=your-org/chat-awq \
-TOOL_MODEL=your-org/tool-classifier \
-CHAT_GPU_FRAC=0.70 \
-TOOL_GPU_FRAC=0.20 \
-  docker run -d --gpus all --name yap-server \
-  -e TEXT_API_KEY -e HF_TOKEN -e DEPLOY_MODELS \
-  -e CHAT_MODEL -e TOOL_MODEL \
-  -e CHAT_GPU_FRAC -e TOOL_GPU_FRAC \
-  -p 8000:8000 \
-  yourusername/yap-text-inference-awq:both
-
-# Run (chat only)
-docker run -d --gpus all --name yap-chat \
-  -e HF_TOKEN=hf_xxx \
-  -e DEPLOY_MODELS=chat \
-  -e CHAT_MODEL=your-org/chat-awq \
-  -p 8000:8000 \
-  yourusername/yap-text-inference-awq:chat
-
-# Run (tool only)
-docker run -d --gpus all --name yap-tool \
-  -e HF_TOKEN=hf_xxx \
-  -e DEPLOY_MODELS=tool \
-  -e TOOL_MODEL=your-org/tool-classifier \
-  -p 8000:8000 \
-  yourusername/yap-text-inference-awq:tool
-
-## Environment Variables
-
-### Required
-- `TEXT_API_KEY` – API key handed to the server
-- `HF_TOKEN` – Hugging Face access token (required for private models, also accepts `HUGGINGFACE_HUB_TOKEN`)
-- `DEPLOY_MODELS` – `both|chat|tool` (default: `both`)
-- If `DEPLOY_MODELS=chat`: `CHAT_MODEL` (default: `cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit`)
-- If `DEPLOY_MODELS=tool`: `TOOL_MODEL` (default: `yapwithai/yap-longformer-screenshot-intent`)
-- If `DEPLOY_MODELS=both`: `CHAT_MODEL` and `TOOL_MODEL`
-
-### Optional
-- `CHAT_GPU_FRAC` (default: `0.70` when `DEPLOY_MODELS=both`, `0.90` otherwise)
-- `TOOL_GPU_FRAC` (default: `0.20` when `DEPLOY_MODELS=both`, `0.90` otherwise; caps classifier GPU allocations)
-
-Engine/attention backend and the precise quantization backend are auto-selected; whether the model path is local or a Hugging Face repo ID, the container inspects `quantization_config.json` and tells vLLM to use the correct backend (`compressed-tensors` for llmcompressor exports).
-
-Note: This AWQ image now supports chat-only, tool-only, or both deployments.
-
-## Build and Deploy
-
-### Building the Image
+### Build and Run
 
 ```bash
-# Basic build and push
-DOCKER_USERNAME=yourusername bash build.sh
+# 1. Build and push image configured for your chat model
+DOCKER_USERNAME=myuser \
+  DEPLOY_MODELS=chat \
+  CHAT_MODEL=jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym \
+  TAG=mistral-24b \
+  bash docker/build.sh
 
-# Build only (no push)
-bash build.sh --build-only
-
-# Multi-platform build
-bash build.sh --multi-platform
-
-# Build with custom tag
-TAG=v1.0.0 bash build.sh
+# 2. Run the container (model downloads automatically on first start)
+docker run -d --gpus all --name yap-server \
+  -e TEXT_API_KEY=your_secret_key \
+  -p 8000:8000 \
+  myuser/yap-text-inference:mistral-24b
 ```
 
-> **llmcompressor pin:** The Dockerfile installs `llmcompressor==0.8.1` with `--no-deps` so it remains compatible with `torch==2.9.0`. Override via `LLMCOMPRESSOR_VERSION=... bash build.sh` if you need a different release, but keep the manual install pattern. Qwen-family and Mistral 3 exports automatically use AutoAWQ (pinned to `autoawq==0.2.9` in `requirements.txt`) because llmcompressor cannot trace their hybrid forward graphs yet.
+## Build and Push
 
-### Running the Container
+### Chat-Only Image
+
+```bash
+DOCKER_USERNAME=myuser \
+  DEPLOY_MODELS=chat \
+  CHAT_MODEL=cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit \
+  TAG=qwen3-30b \
+  bash docker/build.sh
+```
+
+### Tool-Only Image
+
+```bash
+DOCKER_USERNAME=myuser \
+  DEPLOY_MODELS=tool \
+  TOOL_MODEL=yapwithai/your-tool-model \
+  TAG=tool \
+  bash docker/build.sh
+```
+
+### Both Models Image
+
+```bash
+DOCKER_USERNAME=myuser \
+  DEPLOY_MODELS=both \
+  CHAT_MODEL=jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym \
+  TOOL_MODEL=yapwithai/your-tool-model \
+  TAG=mistral-full \
+  bash docker/build.sh
+```
+
+### Build Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DOCKER_USERNAME` | Yes | Your Docker Hub username |
+| `DEPLOY_MODELS` | Yes | `chat`, `tool`, or `both` |
+| `CHAT_MODEL` | If chat/both | Pre-quantized HF model (AWQ/GPTQ/W4A16) |
+| `TOOL_MODEL` | If tool/both | Tool classifier from allowlist |
+| `TAG` | No | Custom image tag (defaults to deploy mode) |
+| `PLATFORM` | No | Target platform (default: `linux/amd64`) |
+
+### Model Validation
+
+The build will **fail** if:
+- Chat model doesn't contain quantization markers (`awq`, `gptq`, `w4a16`, etc.)
+- Tool model is not in the approved allowlist
+
+## Running the Container
+
+Models are configured at build time. Just run with your API key:
 
 ```bash
 docker run -d --gpus all --name yap-server \
-  -e HF_TOKEN=hf_xxx \
   -e TEXT_API_KEY=your_secret_key \
-  -e DEPLOY_MODELS=both \
-  -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-classifier \
-  -e CHAT_GPU_FRAC=0.70 \
-  -e TOOL_GPU_FRAC=0.20 \
   -p 8000:8000 \
-  yourusername/yap-text-inference-awq:latest
-
-# Check logs
-docker logs -f yap-server
+  myuser/yap-text-inference:your-tag
 ```
+
+### With Persistent Cache (Recommended)
+
+Mount a volume so models are cached between container restarts:
+
+```bash
+docker run -d --gpus all --name yap-server \
+  -v yap-cache:/app/.hf \
+  -e TEXT_API_KEY=your_secret_key \
+  -p 8000:8000 \
+  myuser/yap-text-inference:your-tag
+```
+
+First run downloads the model. Subsequent runs start instantly from cache.
+
+### Runtime Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TEXT_API_KEY` | Yes | API key for authentication |
+| `HF_TOKEN` | If private | HuggingFace token for private models |
+| `CHAT_GPU_FRAC` | No | GPU memory fraction for chat (default: 0.90 single, 0.70 both) |
+| `TOOL_GPU_FRAC` | No | GPU memory fraction for tool (default: 0.90 single, 0.20 both) |
+
+**Note:** You don't need to specify `CHAT_MODEL` or `TOOL_MODEL` at runtime — they're configured in the image.
 
 ## Monitoring and Health Checks
 
@@ -162,55 +164,51 @@ docker run -d --gpus all --name yap-server \
   --memory=16g \
   --shm-size=2g \
   --ulimit memlock=-1:-1 \
-  -e HF_TOKEN=hf_xxx \
-  -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-classifier \
+  -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 \
-  yourusername/yap-text-inference-awq:latest
+  myuser/yap-text-inference:your-tag
 ```
 
-### Persistent Cache Volumes
+### Private Models
+
+For private HuggingFace models, pass `HF_TOKEN` at runtime:
+
 ```bash
 docker run -d --gpus all --name yap-server \
-  -v yap-hf-cache:/app/.hf \
-  -v yap-vllm-cache:/app/.vllm_cache \
-  -e HF_TOKEN=hf_xxx \
-  -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-classifier \
+  -e TEXT_API_KEY=your_secret_key \
+  -e HF_TOKEN=hf_xxxxx \
   -p 8000:8000 \
-  yourusername/yap-text-inference-awq:latest
+  myuser/yap-text-inference:your-tag
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **CUDA/GPU not available**
+1. **Build fails: "not a pre-quantized model"**
+   - Chat model name must contain: `awq`, `gptq`, `w4a16`, `nvfp4`, `compressed-tensors`, or `autoround`
+   - Example valid names: `cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit`, `SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32`
+
+2. **Build fails: "not in the allowed list"**
+   - Tool model must be in the allowlist defined in `src/config/models.py`
+
+3. **CUDA/GPU not available**
    - Ensure nvidia-docker is installed
    - Check GPU visibility: `docker run --gpus all nvidia/cuda:12.8.0-runtime-ubuntu22.04 nvidia-smi`
 
-2. **Out of memory errors**
-   - Reduce GPU memory fractions: `CHAT_GPU_FRAC=0.60 TOOL_GPU_FRAC=0.15`
-   - Try int8 KV cache: `KV_DTYPE=int8`
+4. **Out of memory errors**
+   - Reduce GPU memory fractions: `-e CHAT_GPU_FRAC=0.60`
+   - Try int8 KV cache: `-e KV_DTYPE=int8`
 
-3. **Model loading failures**
-   - Verify AWQ model paths are correct
-   - Ensure `HF_TOKEN` is passed via `-e HF_TOKEN=hf_xxx` for private repos
-   - Check Hugging Face access permissions
-   - Ensure models are properly quantized AWQ format
-
-4. **Performance issues**
-   - Sequential execution is always enabled; validate tool routing before chat
-   - Use fp8 KV cache on supported GPUs: `KV_DTYPE=fp8`
-   - Prefer FlashInfer backend when available
+5. **Slow first start**
+   - First run downloads the model from HuggingFace
+   - Use a persistent volume (`-v yap-cache:/app/.hf`) for instant subsequent starts
 
 ### Debug Mode
 ```bash
 docker run -it --gpus all --rm \
-  -e HF_TOKEN=hf_xxx \
-  -e CHAT_MODEL=your-org/chat-awq \
-  -e TOOL_MODEL=your-org/tool-classifier \
-  yourusername/yap-text-inference-awq:latest \
+  -e TEXT_API_KEY=test \
+  myuser/yap-text-inference:your-tag \
   /bin/bash
 ```
 
@@ -218,10 +216,17 @@ docker run -it --gpus all --rm \
 
 ### Update Container
 ```bash
-docker pull yourusername/yap-text-inference-awq:both
+# Pull latest image
+docker pull myuser/yap-text-inference:your-tag
+
+# Replace running container
 docker stop yap-server
 docker rm yap-server
-# Run with new image
+docker run -d --gpus all --name yap-server \
+  -v yap-cache:/app/.hf \
+  -e TEXT_API_KEY=your_secret_key \
+  -p 8000:8000 \
+  myuser/yap-text-inference:your-tag
 ```
 
 ### Clean Up
@@ -230,15 +235,15 @@ docker rm yap-server
 docker stop yap-server && docker rm yap-server
 
 # Remove image
-docker rmi yourusername/yap-text-inference-awq:latest
+docker rmi myuser/yap-text-inference:your-tag
 
-# Clean up volumes (careful!)
+# Clean up volumes
 docker volume prune
 ```
 
 ## API Usage
 
-Once running, the server provides the same API as the non-Docker version:
+Once running, the server provides:
 
 - **Health**: `GET /healthz` (no auth required)
 - **WebSocket**: `ws://localhost:8000/ws?api_key=your_key`

@@ -4,61 +4,60 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
-log_info "Starting Yap Text Inference Docker Container (AWQ Mode)"
+log_info "Starting Yap Text Inference Docker Container"
 
 # Usage function
 usage() {
-  echo "Yap Text Inference Docker Container - AWQ Pre-quantized Models"
+  echo "Yap Text Inference Docker Container - Pre-quantized Models"
   echo ""
-  echo "This container preloads AWQ chat models; tool classifiers remain float."
+  echo "This container is configured at build time with specific models."
+  echo "Models are downloaded from HuggingFace on first run and cached."
   echo ""
-  echo "Required Environment Variables (based on DEPLOY_MODELS):"
-  echo "  DEPLOY_MODELS=both|chat|tool  (default: both)"
-  echo "  If DEPLOY_MODELS=chat  -> CHAT_MODEL required (pre-quantized AWQ/W4A16 repo)"
-  echo "  If DEPLOY_MODELS=tool  -> TOOL_MODEL required (classifier repo, e.g. yapwithai/yap-longformer-screenshot-intent)"
-  echo "  If DEPLOY_MODELS=both  -> CHAT_MODEL (AWQ) and TOOL_MODEL (classifier) required"
+  echo "Required Environment Variables:"
+  echo "  TEXT_API_KEY                    - API key for authentication (required)"
   echo ""
   echo "Optional Environment Variables:"
-  echo "  TEXT_API_KEY                    - API key for authentication (required, no default)"
-  echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model (default: 0.70 both / 0.90 single)"
-  echo "  TOOL_GPU_FRAC                   - GPU memory fraction cap for the classifier (default: 0.20 both / 0.90 single)"
+  echo "  HF_TOKEN                        - HuggingFace token (for private models)"
+  echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model"
+  echo "  TOOL_GPU_FRAC                   - GPU memory fraction for tool classifier"
   echo ""
-  echo "Examples:"
-  echo "  # Both models"
-  echo "  docker run --gpus all -d \\"
-  echo "    -e DEPLOY_MODELS=both \\"
-  echo "    -e CHAT_MODEL=your-org/chat-awq \\"
-  echo "    -e TOOL_MODEL=your-org/tool-classifier IMAGE"
+  echo "Note: CHAT_MODEL and TOOL_MODEL are configured at build time."
+  echo "      You don't need to specify them when running the container."
   echo ""
-  echo "  # Chat only"
+  echo "Example:"
   echo "  docker run --gpus all -d \\"
-  echo "    -e DEPLOY_MODELS=chat \\"
-  echo "    -e CHAT_MODEL=your-org/chat-awq IMAGE"
+  echo "    -e TEXT_API_KEY=your_secret_key \\"
+  echo "    -p 8000:8000 IMAGE"
   echo ""
-  echo "  # Tool only"
+  echo "With persistent cache (faster subsequent starts):"
   echo "  docker run --gpus all -d \\"
-  echo "    -e DEPLOY_MODELS=tool \\"
-  echo "    -e TOOL_MODEL=your-org/tool-classifier IMAGE"
+  echo "    -v yap-cache:/app/.hf \\"
+  echo "    -e TEXT_API_KEY=your_secret_key \\"
+  echo "    -p 8000:8000 IMAGE"
   echo ""
   echo "Health check: curl http://localhost:8000/healthz"
   exit 0
 }
 
-# Check if help is requested (no positional args supported)
+# Check if help is requested
 if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
   usage
 fi
 
 # Validate environment and set defaults
-log_info "Setting up environment defaults..."
+log_info "Setting up environment..."
 source "${SCRIPT_DIR}/bootstrap.sh"
 
 # Display final configuration
 log_info ""
-log_info "=== AWQ Docker Deployment Configuration ==="
+log_info "=== Yap Text Inference Configuration ==="
 log_info "Deploy mode: ${DEPLOY_MODELS}"
-log_info "Chat model: ${CHAT_MODEL:-none}"
-log_info "Tool model: ${TOOL_MODEL:-none}"
+if [ "${DEPLOY_CHAT}" = "1" ]; then
+  log_info "Chat model: ${CHAT_MODEL}"
+fi
+if [ "${DEPLOY_TOOL}" = "1" ]; then
+  log_info "Tool model: ${TOOL_MODEL}"
+fi
 log_info "GPU: ${DETECTED_GPU_NAME:-unknown}"
 if [ -z "${TEXT_API_KEY:-}" ]; then
   log_error "TEXT_API_KEY environment variable is required and must be set"
