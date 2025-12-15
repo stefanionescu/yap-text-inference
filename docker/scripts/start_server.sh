@@ -3,13 +3,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
-log_info "Starting AWQ server on :8000"
+log_info "Starting server on :8000"
 cd /app
 
 # Log key environment variables
 log_info "GPU=${DETECTED_GPU_NAME:-unknown} QUANTIZATION=${QUANTIZATION:-awq}"
 log_info "DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
-log_info "CHAT_MODEL=${CHAT_MODEL:-none} TOOL_MODEL=${TOOL_MODEL:-none}"
+if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
+  log_info "CHAT_MODEL=${CHAT_MODEL:-none}"
+fi
+if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
+  log_info "TOOL_MODEL=${TOOL_MODEL:-none}"
+fi
 log_info "VLLM_USE_V1=${VLLM_USE_V1:-1} KV_DTYPE=${KV_DTYPE:-auto}"
 log_info "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-auto}"
 

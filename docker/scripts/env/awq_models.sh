@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# Deployment selection: allow chat-only, tool-only, or both (default both)
+# Deployment selection: set at build time via Dockerfile ARG/ENV
+# DEPLOY_MODELS, CHAT_MODEL, TOOL_MODEL are configured when the image is built
 export DEPLOY_MODELS=${DEPLOY_MODELS:-both}
 case "${DEPLOY_MODELS}" in
   both|chat|tool) ;;
@@ -13,38 +14,31 @@ if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then DEPL
 if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then DEPLOY_TOOL=1; fi
 export DEPLOY_CHAT DEPLOY_TOOL
 
-# Only set defaults for the engines that are actually being deployed
-if [ "${DEPLOY_CHAT}" = "1" ]; then
-  export CHAT_MODEL=${CHAT_MODEL:-cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit}
+# Models are configured at build time - no defaults, image knows which models to use
+# These ENV vars are set in the Dockerfile during build
+if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
+  log_error "CHAT_MODEL not configured in this image. This image was not built correctly."
+  exit 1
 fi
-if [ "${DEPLOY_TOOL}" = "1" ]; then
-  export TOOL_MODEL=${TOOL_MODEL:-yapwithai/yap-longformer-screenshot-intent}
+if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
+  log_error "TOOL_MODEL not configured in this image. This image was not built correctly."
+  exit 1
 fi
 
 if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "AWQ models configured:"
+  log_info "Configured models (will be downloaded from HuggingFace on first run):"
   if [ "${DEPLOY_CHAT}" = "1" ]; then
-    log_info "  Chat: ${CHAT_MODEL:-none}"
+    log_info "  Chat: ${CHAT_MODEL}"
   fi
   if [ "${DEPLOY_TOOL}" = "1" ]; then
-    log_info "  Tool: ${TOOL_MODEL:-none}"
+    log_info "  Tool: ${TOOL_MODEL}"
   fi
   log_info "  Runtime quantization: Chat runs AWQ (W4A16); tool classifier stays float."
 fi
 
-# Validate models for enabled engines when QUANTIZATION=awq
-if [ "${QUANTIZATION:-awq}" = "awq" ]; then
-  if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
-    log_error "Error: CHAT_MODEL must be set when deploying chat in AWQ mode"
-    exit 1
-  fi
-fi
-
-# Set quantization only for selected engines
+# Set quantization for chat model
 if [ "${QUANTIZATION:-awq}" = "awq" ]; then
   if [ "${DEPLOY_CHAT}" = "1" ]; then
     export CHAT_QUANTIZATION=awq
   fi
 fi
-
-
