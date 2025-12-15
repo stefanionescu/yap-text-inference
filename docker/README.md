@@ -50,7 +50,7 @@ DOCKER_USERNAME=myuser \
 docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 \
-  myuser/yap-text-inference:mistral-24b
+  myuser/yap-text-api:mistral-24b
 ```
 
 ## Build and Push
@@ -91,6 +91,7 @@ DOCKER_USERNAME=myuser \
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DOCKER_USERNAME` | Yes | Your Docker Hub username |
+| `IMAGE_NAME` | No | Docker image name (default: `yap-text-api`) |
 | `DEPLOY_MODELS` | Yes | `chat`, `tool`, or `both` |
 | `CHAT_MODEL` | If chat/both | Pre-quantized HF model (AWQ/GPTQ/W4A16) |
 | `TOOL_MODEL` | If tool/both | Tool classifier from allowlist |
@@ -111,7 +112,7 @@ Models are configured at build time. Just run with your API key:
 docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 \
-  myuser/yap-text-inference:your-tag
+  myuser/yap-text-api:your-tag
 ```
 
 ### With Persistent Cache (Recommended)
@@ -123,7 +124,7 @@ docker run -d --gpus all --name yap-server \
   -v yap-cache:/app/.hf \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 \
-  myuser/yap-text-inference:your-tag
+  myuser/yap-text-api:your-tag
 ```
 
 First run downloads the model. Subsequent runs start instantly from cache.
@@ -166,7 +167,7 @@ docker run -d --gpus all --name yap-server \
   --ulimit memlock=-1:-1 \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 \
-  myuser/yap-text-inference:your-tag
+  myuser/yap-text-api:your-tag
 ```
 
 ### Private Models
@@ -178,7 +179,7 @@ docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_xxxxx \
   -p 8000:8000 \
-  myuser/yap-text-inference:your-tag
+  myuser/yap-text-api:your-tag
 ```
 
 ## Troubleshooting
@@ -208,7 +209,7 @@ docker run -d --gpus all --name yap-server \
 ```bash
 docker run -it --gpus all --rm \
   -e TEXT_API_KEY=test \
-  myuser/yap-text-inference:your-tag \
+  myuser/yap-text-api:your-tag \
   /bin/bash
 ```
 
@@ -217,7 +218,7 @@ docker run -it --gpus all --rm \
 ### Update Container
 ```bash
 # Pull latest image
-docker pull myuser/yap-text-inference:your-tag
+docker pull myuser/yap-text-api:your-tag
 
 # Replace running container
 docker stop yap-server
@@ -226,7 +227,7 @@ docker run -d --gpus all --name yap-server \
   -v yap-cache:/app/.hf \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 \
-  myuser/yap-text-inference:your-tag
+  myuser/yap-text-api:your-tag
 ```
 
 ### Clean Up
@@ -235,7 +236,7 @@ docker run -d --gpus all --name yap-server \
 docker stop yap-server && docker rm yap-server
 
 # Remove image
-docker rmi myuser/yap-text-inference:your-tag
+docker rmi myuser/yap-text-api:your-tag
 
 # Clean up volumes
 docker volume prune

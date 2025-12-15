@@ -8,8 +8,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Docker configuration
 DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
-# Enforce fixed image name
-IMAGE_NAME="yap-text-inference"
+IMAGE_NAME="${IMAGE_NAME:-yap-text-api}"
 
 # Deploy mode: chat|tool|both
 DEPLOY_MODELS_VAL="${DEPLOY_MODELS:-both}"
@@ -53,6 +52,7 @@ usage() {
     echo ""
     echo "Environment Variables:"
     echo "  DOCKER_USERNAME     - Docker Hub username (required)"
+    echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
     echo "  DEPLOY_MODELS       - chat|tool|both (default: both)"
     echo "  CHAT_MODEL          - Pre-quantized chat model HF repo (required for chat/both)"
     echo "                        Must contain: awq, gptq, w4a16, nvfp4, compressed-tensors, or autoround"
@@ -87,7 +87,7 @@ usage() {
     echo "    ./build.sh"
     echo ""
     echo "Running the built image:"
-    echo "  docker run -d --gpus all -e TEXT_API_KEY=xxx -p 8000:8000 myuser/yap-text-inference:TAG"
+    echo "  docker run -d --gpus all -e TEXT_API_KEY=xxx -p 8000:8000 myuser/yap-text-api:TAG"
     exit 0
 }
 
@@ -139,8 +139,7 @@ BUILD_ARGS+=(--build-arg "DEPLOY_MODELS=${DEPLOY_MODELS_VAL}")
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 
 log_success "Docker build completed successfully!"
-log_info "Image size: $(docker images "${FULL_IMAGE_NAME}" --format "{{.Size}}")"
-log_info "Image ID: $(docker images "${FULL_IMAGE_NAME}" --format "{{.ID}}")"
+log_info "Image: ${FULL_IMAGE_NAME}"
 
 # Push the image
 log_info "Pushing image to Docker Hub..."
@@ -162,13 +161,6 @@ log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "Usage:"
 log_info ""
-log_info "# Run the container (models download automatically on first start)"
-log_info "docker run -d --gpus all --name yap-server \\"
-log_info "  -e TEXT_API_KEY=your_secret_key \\"
-log_info "  -p 8000:8000 \\"
-log_info "  ${FULL_IMAGE_NAME}"
-log_info ""
-log_info "# With persistent cache (faster subsequent starts)"
 log_info "docker run -d --gpus all --name yap-server \\"
 log_info "  -v yap-cache:/app/.hf \\"
 log_info "  -e TEXT_API_KEY=your_secret_key \\"
