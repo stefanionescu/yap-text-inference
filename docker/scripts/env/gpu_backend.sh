@@ -25,7 +25,7 @@ case "${GPU_NAME}" in
     export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
     export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
     export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
-    export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    export PYTORCH_ALLOC_CONF=expandable_segments:True
     ;;
   *A100*)
     if [ "${HAS_FLASHINFER}" = "1" ]; then
@@ -41,7 +41,7 @@ case "${GPU_NAME}" in
     export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
     export MAX_NUM_BATCHED_TOKENS_CHAT=${MAX_NUM_BATCHED_TOKENS_CHAT:-256}
     export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
-    export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    export PYTORCH_ALLOC_CONF=expandable_segments:True
     export CUDA_DEVICE_MAX_CONNECTIONS=1
     ;;
   *)
