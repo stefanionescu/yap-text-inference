@@ -1,5 +1,6 @@
 # Multi-stage build for efficient Docker image
-FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 AS builder
+# CUDA 13.0 with Ubuntu 24.04 for VLLM 0.12.0 compatibility
+FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04 AS builder
 
 # Allow overriding FlashInfer version at build time
 ARG FLASHINFER_VERSION_SPEC="==0.5.2"
@@ -14,7 +15,7 @@ ENV TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
 ENV FORCE_CUDA=1
 ENV MAX_JOBS=8
 
-# Install system dependencies
+# Install system dependencies (Ubuntu 24.04 uses python3.12 by default, but we install 3.11 for compatibility)
 RUN apt-get update && apt-get install -y \
     python3.11 \
     python3.11-dev \
@@ -67,7 +68,7 @@ RUN set -eux; \
 # =============================================================================
 # Production stage
 # =============================================================================
-FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu24.04
 
 # Model configuration - set at build time, downloaded at runtime
 # These are baked into the image so you don't specify them when running

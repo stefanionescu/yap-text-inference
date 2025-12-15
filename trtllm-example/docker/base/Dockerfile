@@ -1,0 +1,146 @@
+# Base image: CUDA 13.0.0 cudnn-devel on Ubuntu 24.04 (TRT-LLM 1.2.0rc5 requires torch 2.9.x cu130)
+FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04
+
+# Use bash for RUN lines
+SHELL ["/bin/bash", "-lc"]
+
+# Non-interactive APT
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ----------------------------------------------------------------------------
+# System bootstrap (replicates scripts/setup/bootstrap.sh install set)
+# ----------------------------------------------------------------------------
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates \
+      git wget curl jq \
+      python3.10 python3.10-venv python3.10-dev \
+      python3-venv python3-dev \
+      build-essential gfortran \
+      libopenmpi-dev openmpi-bin \
+      libzmq3-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+## Ensure consistent python and create virtual env (replicates venv setup)
+ENV PYTHON_VERSION=3.10
+ENV VENV_DIR=/opt/venv
+RUN python3.10 -m venv "$VENV_DIR" && \
+    source "$VENV_DIR/bin/activate" && \
+    python -m ensurepip --upgrade || true && \
+    python -m pip install --upgrade --no-cache-dir pip setuptools wheel
+
+# Make venv default
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# ----------------------------------------------------------------------------
+# PyTorch installation (TRT-LLM 1.2.0rc5 requires torch 2.9.x + CUDA 13.0)
+# ----------------------------------------------------------------------------
+ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
+RUN echo "Using PyTorch index: ${PYTORCH_INDEX_URL}" && \
+    pip install --no-cache-dir --index-url "${PYTORCH_INDEX_URL}" \
+      torch==2.9.1+cu130 \
+      torchvision==0.24.1+cu130
+
+# ----------------------------------------------------------------------------
+# App Python dependencies
+# ----------------------------------------------------------------------------
+WORKDIR /app
+COPY requirements.txt /app/requirements.txt
+# Install remaining requirements while keeping the exact CUDA wheel for torch already installed
+RUN grep -Ev '^(torch==|torchvision==)' /app/requirements.txt > /app/requirements-no-torch.txt && \
+    pip install --no-cache-dir -r /app/requirements-no-torch.txt
+# ----------------------------------------------------------------------------
+# Copy server code and runtime scripts into image
+# ----------------------------------------------------------------------------
+COPY server/ /app/server/
+COPY tests/ /app/tests/
+COPY docker/base/scripts/01-quantize-and-build.sh /usr/local/bin/01-quantize-and-build.sh
+COPY docker/base/scripts/02-start-server.sh /usr/local/bin/02-start-server.sh
+COPY docker/base/scripts/run.sh /usr/local/bin/run.sh
+COPY docker/base/scripts/environment.sh /usr/local/bin/environment.sh
+RUN chmod +x /usr/local/bin/01-quantize-and-build.sh /usr/local/bin/02-start-server.sh /usr/local/bin/run.sh /usr/local/bin/environment.sh
+
+# Ensure environment defaults are loaded in all shells
+ENV BASH_ENV=/usr/local/bin/environment.sh
+RUN mkdir -p /etc/profile.d && printf 'test -f /usr/local/bin/environment.sh && . /usr/local/bin/environment.sh\n' > /etc/profile.d/orpheus-env.sh
+
+
+# ----------------------------------------------------------------------------
+# TensorRT-LLM from NVIDIA PyPI (cp311 wheel to match Python 3.11 venv)
+# NOTE: Do NOT use --upgrade - it can replace torch with a different CUDA version
+# from NVIDIA's index, causing CUDA mismatch between torch and torchvision
+# ----------------------------------------------------------------------------
+ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc5
+ARG TRTLLM_WHEEL_URL=
+RUN if [[ -n "${TRTLLM_WHEEL_URL}" ]]; then \
+      pip install --no-cache-dir "${TRTLLM_WHEEL_URL}"; \
+    else \
+      pip install --no-cache-dir \
+        --index-url https://pypi.nvidia.com \
+        --extra-index-url https://pypi.org/simple \
+        "${TRTLLM_PIP_SPEC}"; \
+    fi
+
+# ----------------------------------------------------------------------------
+# Hugging Face model pre-download (REQUIRED at build time; token not persisted)
+# Usage: DOCKER_BUILDKIT=1 HF_TOKEN=... docker build --secret id=HF_TOKEN,env=HF_TOKEN ...
+# ----------------------------------------------------------------------------
+ARG MODEL_ID=yapwithai/fast-orpheus-3b-0.1-ft
+ENV MODEL_ID=${MODEL_ID}
+ENV MODELS_DIR=/opt/models
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+RUN --mount=type=secret,id=HF_TOKEN,required=true <<'BASH'
+set -euo pipefail
+python - <<'PY'
+import os
+from huggingface_hub import snapshot_download
+
+tok_path = "/run/secrets/HF_TOKEN"
+if not os.path.exists(tok_path):
+    raise SystemExit("HF_TOKEN secret missing (required at build-time)")
+token = open(tok_path, "r").read().strip()
+
+model_id = os.environ.get("MODEL_ID", "yapwithai/fast-orpheus-3b-0.1-ft")
+models_dir = os.environ.get("MODELS_DIR", "/opt/models")
+basename = model_id.split("/")[-1]
+local_dir = os.path.join(models_dir, f"{basename}-hf")
+os.makedirs(local_dir, exist_ok=True)
+
+snapshot_download(repo_id=model_id, local_dir=local_dir, local_dir_use_symlinks=False, token=token)
+print(f"\u2713 Downloaded model {model_id} to {local_dir}")
+PY
+BASH
+
+# ----------------------------------------------------------------------------
+# TensorRT-LLM repository: clone and sync to installed wheel version
+# ----------------------------------------------------------------------------
+ARG TRTLLM_REPO_URL=https://github.com/Yap-With-AI/TensorRT-LLM.git
+ARG TRTLLM_TARGET_VERSION=1.2.0rc5
+ENV TRTLLM_REPO_DIR=/opt/TensorRT-LLM
+RUN git clone "${TRTLLM_REPO_URL}" "${TRTLLM_REPO_DIR}" && \
+    git -C "${TRTLLM_REPO_DIR}" fetch --tags && \
+    if ! git -C "${TRTLLM_REPO_DIR}" checkout "v${TRTLLM_TARGET_VERSION}" 2>/dev/null; then \
+      echo "ERROR: Could not checkout version ${TRTLLM_TARGET_VERSION}" >&2; exit 1; \
+    fi
+
+# Match build flow: do not pre-install repo requirements; install quant deps at runtime
+ENV TRTLLM_EXAMPLES_DIR=${TRTLLM_REPO_DIR}/examples/quantization
+
+ARG MODEL_ID=yapwithai/fast-orpheus-3b-0.1-ft
+ENV MODEL_ID=${MODEL_ID}
+ENV MODELS_DIR=/opt/models
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+
+# Default environment knobs carried from custom/environment.sh (safe defaults)
+ENV HF_TRANSFER=1 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
+
+# This is a base image layer; no entrypoint/cmd so it can be reused downstream.
+WORKDIR /app
+
+LABEL org.opencontainers.image.title="Yap Orpheus TTS Base (CUDA 13.0, Py311)" \
+      org.opencontainers.image.description="Prebuilt base with system deps, PyTorch cu130, and TensorRT-LLM to speed up cloud provisioning." \
+      org.opencontainers.image.source="https://github.com/Yap-With-AI/yap-orpheus-tts-api"

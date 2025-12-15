@@ -1,7 +1,7 @@
---extra-index-url https://download.pytorch.org/whl/cu128
+--extra-index-url https://download.pytorch.org/whl/cu130
 
-vllm==0.11.2
-torch==2.9.0 ; sys_platform == 'linux'
+vllm==0.12.0
+torch==2.9.1 ; sys_platform == 'linux'
 llmcompressor==0.8.1
 autoawq==0.2.9
 fla-core>=0.4.0
