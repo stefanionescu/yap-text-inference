@@ -27,14 +27,22 @@ stop_existing_warmup_processes "${ROOT_DIR}"
 usage() {
   cat <<'USAGE'
 Usage:
-  restart.sh [deploy_mode] [--install-deps] [--keep-models]
-      Quick restart that reuses existing AWQ caches (default behavior).
+  restart.sh [deploy_mode] [--trt|--vllm] [--install-deps] [--keep-models]
+      Quick restart that reuses existing quantized caches (default behavior).
 
   restart.sh --reset-models --deploy-mode both \
              --chat-model <repo_or_path> --tool-model <repo_or_path> \
-             [--chat-quant 4bit|8bit|fp8|gptq|gptq_marlin|awq] \
+             [--trt|--vllm] [--chat-quant 4bit|8bit|fp8|gptq|gptq_marlin|awq] \
              [--install-deps]
       Reconfigure which models/quantization are deployed without reinstalling deps.
+
+Inference Engines:
+  --trt           Use TensorRT-LLM engine (default)
+  --vllm          Use vLLM engine
+  --engine=X      Explicit engine selection (trt or vllm)
+
+  NOTE: Switching engines (trt <-> vllm) triggers FULL environment wipe:
+        all HF caches, pip deps, quantized models, and engine artifacts.
 
 Deploy modes:
   both (default)  - Deploy chat + tool engines
@@ -44,12 +52,12 @@ Deploy modes:
 Key flags:
   --install-deps        Reinstall dependencies inside .venv before restart
   --reset-models        Delete cached models/HF data and redeploy new models
-  --keep-models         Reuse existing AWQ caches (default)
+  --keep-models         Reuse existing quantized caches (default)
   --push-quant          Upload cached 4-bit exports to Hugging Face before relaunch
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
   --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|gptq|gptq_marlin|awq).
-                        `4bit` aliases AWQ. `8bit` uses FP8 (native on H100/L40, W8A16 emulated on A100).
+                        `4bit` aliases AWQ. `8bit` uses FP8 (L40S/H100) or INT8-SQ (A100).
                         Pre-quantized repos are detected automatically.
 
 This script always:
@@ -61,14 +69,15 @@ Required environment variables:
   TEXT_API_KEY, HF_TOKEN (or HUGGINGFACE_HUB_TOKEN), MAX_CONCURRENT_CONNECTIONS
 
 Examples:
-  bash scripts/restart.sh                  # Reuse existing AWQ caches (both)
-  bash scripts/restart.sh chat             # Chat-only AWQ restart
+  bash scripts/restart.sh                  # TRT engine with existing caches
+  bash scripts/restart.sh --vllm           # Switch to vLLM (triggers full wipe)
+  bash scripts/restart.sh chat             # Chat-only restart
   bash scripts/restart.sh both --install-deps
   bash scripts/restart.sh --reset-models \
        --deploy-mode both \
        --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
        --tool-model yapwithai/yap-longformer-screenshot-intent \
-       --chat-quant fp8
+       --chat-quant 8bit
 USAGE
   exit 1
 }
@@ -78,7 +87,27 @@ if ! restart_parse_args "$@"; then
   usage
 fi
 case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
-export INSTALL_DEPS DEPLOY_MODE
+export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
+
+# Check for engine switching - this requires FULL environment wipe
+if runtime_guard_engine_changed "${INFERENCE_ENGINE}" "${ROOT_DIR}"; then
+  last_engine="$(runtime_guard_read_last_config_value "INFERENCE_ENGINE" "${ROOT_DIR}")"
+  log_warn "=========================================="
+  log_warn "ENGINE SWITCH DETECTED: ${last_engine} → ${INFERENCE_ENGINE}"
+  log_warn "=========================================="
+  log_warn "Cannot hot-restart with different engine."
+  log_warn "Running full deployment instead..."
+  log_warn "=========================================="
+  
+  # Redirect to main.sh with the new engine
+  exec bash "${SCRIPT_DIR}/main.sh" \
+    "--${INFERENCE_ENGINE}" \
+    "${DEPLOY_MODE}" \
+    "${CHAT_MODEL:-}" \
+    "${TOOL_MODEL:-}"
+fi
+
+log_info "Engine: ${INFERENCE_ENGINE}"
 
 if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
   restart_reconfigure_models
