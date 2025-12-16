@@ -8,7 +8,7 @@ from collections.abc import AsyncGenerator
 from ...engines import get_engine, create_sampling_params
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
 from ...handlers.session import session_handler
-from ...utils import StreamingSanitizer
+from ...messages.sanitize import StreamingSanitizer
 from ...config.sampling import (
     CHAT_TEMPERATURE,
     CHAT_TOP_P,

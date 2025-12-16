@@ -18,7 +18,7 @@ from src.helpers.model_profiles import (
     model_uses_mla,
 )
 from src.config import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
-from src.utils.env import env_flag
+from src.helpers.env import env_flag
 from src.helpers.models import _is_local_model_path
 from .memory_tuning import (
     auto_max_num_seqs,

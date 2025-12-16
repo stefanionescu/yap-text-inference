@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.utils import SlidingWindowRateLimiter
+from ..rate_limit import SlidingWindowRateLimiter
 
 SESSION_IDLE_TTL_SECONDS = int(os.getenv("SESSION_IDLE_TTL_SECONDS", "1800"))
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Final
 
-from src.utils.env import env_flag
+from .env import env_flag
 
 
 _AUTO_CONFIG_FLAG: Final[str] = "YAP_AUTO_CONFIGURE_ENV"

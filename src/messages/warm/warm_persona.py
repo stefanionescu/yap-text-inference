@@ -4,7 +4,7 @@ import json
 from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT
-from ...utils import sanitize_prompt
+from ..sanitize import sanitize_prompt
 from ...persona import build_chat_warm_prompt
 from .warm_utils import warm_chat_segment
 

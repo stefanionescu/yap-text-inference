@@ -2,7 +2,7 @@
 
 import os
 
-from ..utils.env import env_flag
+from ..helpers.env import env_flag
 
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5525"))  # 2000 persona + 3000 history + 500 user + 25 tool reply
