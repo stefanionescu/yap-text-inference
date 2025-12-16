@@ -14,6 +14,7 @@ source "${SCRIPT_DIR}/../lib/common/log.sh"
 
 # Source TRT libraries
 source "${SCRIPT_DIR}/../lib/env/trt.sh"
+source "${SCRIPT_DIR}/../engines/trt/install.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 source "${SCRIPT_DIR}/../engines/trt/quantize.sh"
 source "${SCRIPT_DIR}/../engines/trt/build.sh"
