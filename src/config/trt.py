@@ -21,17 +21,24 @@ TRT_REPO_DIR = os.getenv("TRTLLM_REPO_DIR", "")  # Path to TensorRT-LLM repo for
 # These use sensible defaults that match our limits.py values:
 # - CHAT_MAX_LEN = 5525 (context window)
 # - CHAT_MAX_OUT = 150 (generation limit)
-# - MAX_CONCURRENT_CONNECTIONS = batch size (must be set by user)
 _trt_batch_env = os.getenv("TRT_MAX_BATCH_SIZE")
 _trt_input_env = os.getenv("TRT_MAX_INPUT_LEN")
 _trt_output_env = os.getenv("TRT_MAX_OUTPUT_LEN")
 
-# Batch size: use MAX_CONCURRENT_CONNECTIONS if TRT_MAX_BATCH_SIZE not set
-if _trt_batch_env:
-    TRT_MAX_BATCH_SIZE = int(_trt_batch_env)
-else:
-    _max_conn = os.getenv("MAX_CONCURRENT_CONNECTIONS")
-    TRT_MAX_BATCH_SIZE = int(_max_conn) if _max_conn else 16  # fallback for import-time
+# Batch size for TRT engine
+# NOTE: This is different from MAX_CONCURRENT_CONNECTIONS!
+# - TRT_MAX_BATCH_SIZE: max sequences batched in a single forward pass (baked into engine)
+# - MAX_CONCURRENT_CONNECTIONS: max WebSocket connections (runtime limit)
+#
+# TRT_MAX_BATCH_SIZE is REQUIRED when building an engine, but at runtime we read
+# the baked-in value from engine metadata. If not set here, we use None to indicate
+# it should be read from the engine.
+TRT_MAX_BATCH_SIZE: int | None = int(_trt_batch_env) if _trt_batch_env else None
+
+# Runtime batch size override (must be <= engine's baked-in max)
+# If set, this is the actual batch size to use at runtime
+_trt_runtime_batch = os.getenv("TRT_BATCH_SIZE")
+TRT_RUNTIME_BATCH_SIZE: int | None = int(_trt_runtime_batch) if _trt_runtime_batch else None
 
 # Input length: use CHAT_MAX_LEN default (5525)
 TRT_MAX_INPUT_LEN = int(_trt_input_env) if _trt_input_env else int(os.getenv("CHAT_MAX_LEN", "5525"))
@@ -68,6 +75,7 @@ __all__ = [
     "TRT_CHECKPOINT_DIR",
     "TRT_REPO_DIR",
     "TRT_MAX_BATCH_SIZE",
+    "TRT_RUNTIME_BATCH_SIZE",
     "TRT_MAX_INPUT_LEN",
     "TRT_MAX_OUTPUT_LEN",
     "TRT_DTYPE",
