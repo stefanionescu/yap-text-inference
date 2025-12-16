@@ -1,7 +1,7 @@
-"""Validation utilities for input normalization and checks."""
+"""Input normalization and validation helpers."""
 
-from ..config.filters import LETTERS_ONLY_PATTERN
-from ..config.limits import PERSONALITY_MAX_LEN
+from src.config.filters import LETTERS_ONLY_PATTERN
+from src.config.limits import PERSONALITY_MAX_LEN
 
 
 def normalize_gender(val: str | None) -> str | None:
@@ -57,3 +57,4 @@ __all__ = [
     "normalize_personality",
     "is_personality_empty_or_null",
 ]
+

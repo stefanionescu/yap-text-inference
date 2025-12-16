@@ -11,13 +11,13 @@ import torch
 # Suppress tokenizers parallelism warnings when forking during calibration
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from src.config.awq import (
-    AWQ_DEFAULT_DATASET,
+from src.config.awq import AWQ_DEFAULT_DATASET
+from src.helpers.awq import (
     canonicalize_dataset_name,
     dataset_fallback,
     dataset_key,
 )
-from src.config.model_profiles import get_model_profile
+from src.helpers.model_profiles import get_model_profile
 
 from ..calibration import CalibrationConfig
 from ..config_fixes import apply_post_quantization_fixes

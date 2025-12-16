@@ -1,19 +1,19 @@
 """Aggregator of configuration modules.
 
 This module re-exports the config API from smaller modules:
-- runtime: environment initialization
 - deploy: deployment mode and model selection
 - gpu: GPU memory and architecture
 - engine: inference engine selection
 - trt: TensorRT-LLM specific settings
 - chat: chat behavior settings
 - tool: tool classifier settings
-- models: allowlists and validation helpers
+- models: allowlists
 - limits: token and concurrency limits
 - secrets: secrets like API_KEY
+
+Functions have been moved to src/helpers/.
 """
 
-from .runtime import configure_runtime_env
 from .deploy import (
     DEPLOY_MODELS,
     DEPLOY_CHAT,
@@ -69,13 +69,6 @@ from .models import (
     ALLOWED_VLLM_QUANT_CHAT_MODELS,
     ALLOWED_TRT_QUANT_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
-    classify_prequantized_model,
-    classify_trt_prequantized_model,
-    is_valid_model as _is_valid_model,
-    is_classifier_model,
-    is_moe_model,
-    get_all_base_chat_models,
-    get_allowed_chat_models,
 )
 from .priorities import (
     CHAT_REQUEST_PRIORITY,
@@ -85,12 +78,8 @@ from .priorities import (
 from .quantization import (
     SUPPORTED_ENGINES,
     TRT_FP8_SM_ARCHS,
-    is_awq_model_name,
-    is_trt_awq_model_name,
-    is_trt_prequantized_model,
-    gpu_supports_fp8,
+    LOWBIT_QUANTIZATIONS,
     normalize_engine,
-    map_quant_mode_to_trt,
 )
 from .limits import (
     CHAT_MAX_LEN,
@@ -138,89 +127,106 @@ from .websocket import (
 )
 
 
-# Quantization helpers for override warnings
-def _effective_chat_quantization() -> str:
-    return (CHAT_QUANTIZATION or QUANTIZATION or "").lower()
+# Lazy imports for helper functions to avoid circular imports
+_helpers_cache = None
 
 
-def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
-    if model_type != "chat":
-        return False
-    quant = _effective_chat_quantization()
-    if not model or not quant:
-        return False
-    kind = classify_prequantized_model(model)
-    if not kind:
-        return False
-    if quant == "awq" and kind != "awq":
-        return False
-    if quant.startswith("gptq") and kind != "gptq":
-        return False
-    if kind not in {"awq", "gptq"}:
-        return False
-    print(f"[WARNING] Using pre-quantized {kind.upper()} {model_type} model not in approved list: {model}")
-    return True
+def _get_helper_functions():
+    """Lazy import helper functions to avoid circular imports."""
+    global _helpers_cache
+    if _helpers_cache is not None:
+        return _helpers_cache
+    
+    from src.helpers.runtime import configure_runtime_env
+    from src.helpers.validation import validate_env, _allow_prequantized_override
+    from src.helpers.models import (
+        is_valid_model,
+        is_classifier_model,
+        is_moe_model,
+        get_all_base_chat_models,
+        get_allowed_chat_models,
+        is_local_model_path,
+    )
+    from src.helpers.quantization import (
+        classify_prequantized_model,
+        classify_trt_prequantized_model,
+        is_awq_model_name,
+        is_trt_awq_model_name,
+        is_trt_prequantized_model,
+        gpu_supports_fp8,
+        map_quant_mode_to_trt,
+    )
+    
+    _helpers_cache = {
+        'configure_runtime_env': configure_runtime_env,
+        'validate_env': validate_env,
+        '_allow_prequantized_override': _allow_prequantized_override,
+        '_is_valid_model': is_valid_model,
+        'is_classifier_model': is_classifier_model,
+        'is_moe_model': is_moe_model,
+        'get_all_base_chat_models': get_all_base_chat_models,
+        'get_allowed_chat_models': get_allowed_chat_models,
+        'is_local_model_path': is_local_model_path,
+        'classify_prequantized_model': classify_prequantized_model,
+        'classify_trt_prequantized_model': classify_trt_prequantized_model,
+        'is_awq_model_name': is_awq_model_name,
+        'is_trt_awq_model_name': is_trt_awq_model_name,
+        'is_trt_prequantized_model': is_trt_prequantized_model,
+        'gpu_supports_fp8': gpu_supports_fp8,
+        'map_quant_mode_to_trt': map_quant_mode_to_trt,
+    }
+    return _helpers_cache
 
 
-if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALLOWED_CHAT_MODELS, "chat"):
-    if not _allow_prequantized_override(CHAT_MODEL, "chat"):
-        raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
+def __getattr__(name):
+    """Lazy attribute access for helper functions."""
+    helper_names = {
+        'configure_runtime_env', 'validate_env', '_allow_prequantized_override',
+        '_is_valid_model', 'is_classifier_model', 'is_moe_model',
+        'get_all_base_chat_models', 'get_allowed_chat_models', 'is_local_model_path',
+        'classify_prequantized_model', 'classify_trt_prequantized_model',
+        'is_awq_model_name', 'is_trt_awq_model_name', 'is_trt_prequantized_model',
+        'gpu_supports_fp8', 'map_quant_mode_to_trt',
+    }
+    if name in helper_names:
+        return _get_helper_functions()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-if DEPLOY_TOOL:
-    # Tool models must be classifiers
-    if not is_classifier_model(TOOL_MODEL):
-        raise ValueError("TOOL_MODEL must be a classifier model; vLLM tool engines are no longer supported")
-    # Only validate against allowlist for HuggingFace models, not local paths
-    from .models import _is_local_model_path
-    if not _is_local_model_path(TOOL_MODEL) and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
+
+def _run_startup_validation():
+    """Run model validation checks at startup."""
+    helpers = _get_helper_functions()
+    _is_valid_model = helpers['_is_valid_model']
+    _allow_prequantized_override = helpers['_allow_prequantized_override']
+    is_classifier_model = helpers['is_classifier_model']
+    is_local_model_path = helpers['is_local_model_path']
+    is_awq_model_name = helpers['is_awq_model_name']
+    
+    if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALLOWED_CHAT_MODELS, "chat"):
+        if not _allow_prequantized_override(CHAT_MODEL, "chat"):
+            raise ValueError(f"CHAT_MODEL must be one of: {ALLOWED_CHAT_MODELS}, got: {CHAT_MODEL}")
+
+    if DEPLOY_TOOL:
+        # Tool models must be classifiers
+        if not is_classifier_model(TOOL_MODEL):
+            raise ValueError("TOOL_MODEL must be a classifier model; vLLM tool engines are no longer supported")
+        # Only validate against allowlist for HuggingFace models, not local paths
+        if not is_local_model_path(TOOL_MODEL) and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
+            raise ValueError(
+                f"TOOL_MODEL classifier must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}"
+            )
+
+    # Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
+    if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
+        "GPTQ" in CHAT_MODEL and not is_awq_model_name(CHAT_MODEL)):
         raise ValueError(
-            f"TOOL_MODEL classifier must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}"
+            "For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
+            f"Got: {CHAT_MODEL}. Use a pre-quantized AWQ model or a float model instead."
         )
 
-# Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
-if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
-    "GPTQ" in CHAT_MODEL and not is_awq_model_name(CHAT_MODEL)):
-    raise ValueError(
-        "For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
-        f"Got: {CHAT_MODEL}. Use a pre-quantized AWQ model or a float model instead."
-    )
 
-
-def validate_env() -> None:
-    """Validate required configuration once during startup."""
-    errors: list[str] = []
-    if DEPLOY_CHAT and not CHAT_MODEL:
-        errors.append("CHAT_MODEL is required when DEPLOY_MODELS is 'both' or 'chat'")
-    if DEPLOY_TOOL and not TOOL_MODEL:
-        errors.append("TOOL_MODEL is required when DEPLOY_MODELS is 'both' or 'tool'")
-    if DEPLOY_TOOL and TOOL_MODEL and not is_classifier_model(TOOL_MODEL):
-        errors.append("TOOL_MODEL must be one of the classifier models (vLLM tool engines are disabled)")
-    
-    # Validate engine selection
-    if INFERENCE_ENGINE not in SUPPORTED_ENGINES:
-        errors.append(f"INFERENCE_ENGINE must be one of {SUPPORTED_ENGINES}, got: {INFERENCE_ENGINE}")
-    
-    # TRT-specific validation
-    if INFERENCE_ENGINE == "trt" and DEPLOY_CHAT:
-        if not TRT_ENGINE_DIR:
-            # TRT_ENGINE_DIR can be empty if we're building from scratch
-            pass  # Will be set during quantization/build step
-    
-    # Quantization is only required when deploying LLMs (not classifiers)
-    needs_quantization = DEPLOY_CHAT or (DEPLOY_TOOL and not is_classifier_model(TOOL_MODEL))
-    if needs_quantization:
-        if not QUANTIZATION:
-            errors.append("QUANTIZATION environment variable is required for LLM models")
-        elif INFERENCE_ENGINE == "vllm" and QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq", "8bit", "4bit"}:
-            errors.append(
-                "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', 'awq', '8bit', or '4bit' for VLLM"
-            )
-        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {"fp8", "int8_sq", "int8", "int4_awq", "awq", "8bit", "4bit"}:
-            errors.append(
-                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'awq', '8bit', or '4bit' for TRT"
-            )
-    if errors:
-        raise ValueError("; ".join(errors))
+# Run startup validation (deferred to avoid circular imports)
+_run_startup_validation()
 
 
 __all__ = [
@@ -280,13 +286,15 @@ __all__ = [
     "is_moe_model",
     "get_all_base_chat_models",
     "get_allowed_chat_models",
+    "is_local_model_path",
     # quantization helpers
     "TRT_FP8_SM_ARCHS",
+    "LOWBIT_QUANTIZATIONS",
+    "normalize_engine",
     "is_awq_model_name",
     "is_trt_awq_model_name",
     "is_trt_prequantized_model",
     "gpu_supports_fp8",
-    "normalize_engine",
     "map_quant_mode_to_trt",
     # limits
     "CHAT_MAX_LEN",

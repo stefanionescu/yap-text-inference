@@ -27,9 +27,9 @@ sys.path.insert(0, "${ROOT_DIR}")
 from src.config.models import (
     ALLOWED_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
-    is_valid_model,
 )
-from src.config.quantization import classify_prequantized_model, is_awq_model_name
+from src.helpers.models import is_valid_model
+from src.helpers.quantization import classify_prequantized_model, is_awq_model_name
 
 deploy_mode = "${deploy_mode}"
 chat_model = "${chat_model}" or None
