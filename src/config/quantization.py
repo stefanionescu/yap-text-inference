@@ -18,6 +18,15 @@ TRT_QUANTIZATIONS: set[str] = {"int4_awq", "fp8", "int8_sq"}
 # GPU SM architectures that support native FP8
 TRT_FP8_SM_ARCHS: tuple[str, ...] = ("sm89", "sm90")  # L40S, H100
 
+# Markers in model names that indicate pre-quantized AWQ format
+AWQ_MODEL_MARKERS: tuple[str, ...] = (
+    "awq",
+    "w4a16",
+    "nvfp4",
+    "compressed-tensors",
+    "autoround",
+)
+
 
 def normalize_engine(engine: str | None) -> str:
     """Normalize engine name to lowercase, default to 'vllm'.
@@ -40,5 +49,6 @@ __all__ = [
     "TRT_QUANTIZATIONS",
     "TRT_FP8_SM_ARCHS",
     "LOWBIT_QUANTIZATIONS",
+    "AWQ_MODEL_MARKERS",
     "normalize_engine",
 ]

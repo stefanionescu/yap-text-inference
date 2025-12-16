@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from src.helpers.awq import resolve_total_len, TotalLengthPolicy
+from src.helpers.calibration import resolve_total_len, TotalLengthPolicy
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
