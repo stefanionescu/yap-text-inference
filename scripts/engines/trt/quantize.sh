@@ -67,6 +67,7 @@ print('✓ Downloaded model', file=sys.stderr)
 
 # Quantize a model to TRT-LLM checkpoint format
 # Usage: trt_quantize_model <model_id> <output_dir> [qformat]
+# Follows the pattern from trtllm-example/custom/build/steps/step_quantize.sh
 trt_quantize_model() {
   local model_id="${1:-}"
   local output_dir="${2:-}"
@@ -102,6 +103,10 @@ trt_quantize_model() {
     fi
     log_info "FORCE_REBUILD=true, re-quantizing..."
   fi
+  
+  # Install quantization requirements from TRT-LLM repo BEFORE quantizing
+  # This follows the pattern from trtllm-example/custom/build/steps/step_quantize.sh
+  trt_install_quant_requirements
   
   # Download model if needed
   local local_model_dir
