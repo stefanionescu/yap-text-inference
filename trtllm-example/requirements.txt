@@ -1,9 +1,9 @@
 # NOTE: torch/torchvision are installed via custom/setup/install-dependencies.sh
 # to ensure the wheel matches the installed CUDA toolkit (default: PyTorch 2.9.1+cu130)
-# TensorRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
+# TensorRT-LLM 1.2.0rc4 requires CUDA 13.0 and torch 2.9.x
 
 # NOTE: TensorRT-LLM (installed separately via wheel)
-# tensorrt-llm==1.2.0rc5
+# tensorrt-llm==1.2.0rc4
 
 # Core server dependencies
 fastapi==0.115.4
@@ -11,7 +11,7 @@ uvicorn[standard]==0.30.6
 python-dotenv==1.0.1
 websockets==12.0
 
-# HuggingFace and ML (versions pinned to match TRT-LLM 1.2.0rc5 requirements)
+# HuggingFace and ML (versions pinned to match TRT-LLM 1.2.0rc4 requirements)
 huggingface_hub==0.36.0
 transformers==4.53.1
 numpy==1.26.4

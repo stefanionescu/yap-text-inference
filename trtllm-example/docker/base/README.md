@@ -21,7 +21,7 @@ Large (~100GB) image for research/experimentation and quantization workflows. No
 
 - CUDA 13.0.0 cudnn-devel (Ubuntu 24.04), Python 3.10 venv
 - PyTorch 2.9.1 + torchvision 0.24.1 (cu130 wheels)
-- TensorRT-LLM 1.2.0rc5 wheel (NVIDIA PyPI); TRT-LLM repo cloned and version-synced in `/opt/TensorRT-LLM`
+- TensorRT-LLM 1.2.0rc4 wheel (NVIDIA PyPI); TRT-LLM repo cloned and version-synced in `/opt/TensorRT-LLM`
 - Uses system CUDA libraries only (no pip-provided CUDA runtimes)
 - App code `/app/server/` and `/app/tests/`
 - Runtime scripts in `/usr/local/bin`:
@@ -37,9 +37,9 @@ cd /path/to/yap-orpheus-tts-api
 export HF_TOKEN=hf_xxx                   # optional at build time (as BuildKit secret)
 DOCKER_BUILDKIT=1 bash docker/base/build.sh
 
-# Overrides (optional; cu130 default for TRT-LLM 1.2.0rc5)
+# Overrides (optional; cu130 default for TRT-LLM 1.2.0rc4)
 PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130 \
-TRTLLM_PIP_SPEC="tensorrt_llm==1.2.0rc5" \
+TRTLLM_PIP_SPEC="tensorrt_llm==1.2.0rc4" \
 IMAGE_NAME=sionescu/orpheus-trtllm-base IMAGE_TAG=cu130-py311-trt1.2 \
 bash docker/base/build.sh
 ```

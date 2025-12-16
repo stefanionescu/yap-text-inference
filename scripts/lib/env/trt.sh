@@ -9,7 +9,7 @@
 # TRT-LLM VERSION AND INSTALLATION
 # =============================================================================
 
-TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
+TRT_VERSION="${TRT_VERSION:-1.2.0rc4}"
 TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 

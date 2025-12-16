@@ -15,7 +15,7 @@ Lean, production-focused image. Pulls a pre-quantized Orpheus checkpoint or preb
 
 - CUDA 13.0 runtime + Python 3.10 venv
 - PyTorch 2.9.1 + torchvision 0.24.1 (cu130 wheels)
-- TensorRT-LLM 1.2.0rc5 runtime wheel (from NVIDIA PyPI; no repo clone)
+- TensorRT-LLM 1.2.0rc4 runtime wheel (from NVIDIA PyPI; no repo clone)
 - App code (`/app/server/`) and tests (`/app/tests/`, minus `client.py`)
 - Runtime scripts: `start-server.sh` and `environment.sh`
 
@@ -32,9 +32,9 @@ bash docker/awq/build.sh
 IMAGE_NAME=myregistry/yap-orpheus-tts-trt-api IMAGE_TAG=prod \
 bash docker/awq/build.sh
 
-# Optional: custom PyTorch/TensorRT versions (cu130 default for TRT-LLM 1.2.0rc5)
+# Optional: custom PyTorch/TensorRT versions (cu130 default for TRT-LLM 1.2.0rc4)
 PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130 \
-TRTLLM_PIP_SPEC="tensorrt_llm==1.2.0rc5" \
+TRTLLM_PIP_SPEC="tensorrt_llm==1.2.0rc4" \
 bash docker/awq/build.sh
 
 # Push in one step
@@ -63,7 +63,7 @@ docker run --gpus all --rm -p 8000:8000 \
   -e HF_TOKEN=$HF_TOKEN \
   -e ORPHEUS_API_KEY=$ORPHEUS_API_KEY \
   -e HF_DEPLOY_REPO_ID=yapwithai/orpheus-3b-tts-trt-awq \
-  -e HF_DEPLOY_ENGINE_LABEL=sm89_trt-llm-1.2.0rc5_cuda13.0 \
+  -e HF_DEPLOY_ENGINE_LABEL=sm89_trt-llm-1.2.0rc4_cuda13.0 \
   IMAGE:TAG
 ```
 

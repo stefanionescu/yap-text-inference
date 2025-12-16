@@ -46,7 +46,7 @@ detect_cuda_version() {
 }
 
 # Map CUDA version to PyTorch index URL
-# NOTE: TRT-LLM 1.2.0rc5 requires torch 2.9.x with CUDA 13.0
+# NOTE: TRT-LLM 1.2.0rc4 requires torch 2.9.x with CUDA 13.0
 map_torch_index_url() {
   local cuda_ver="$1"
   local cuda_minor
