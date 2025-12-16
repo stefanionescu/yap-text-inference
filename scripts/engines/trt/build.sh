@@ -264,20 +264,20 @@ trt_quantize_and_build() {
 
 # Push quantized model to HuggingFace
 # Only runs when --push-quant flag is passed (sets HF_AWQ_PUSH=1)
+# Uses unified params: HF_PUSH_REPO_ID, HF_PUSH_PRIVATE
 trt_push_to_hf() {
   local checkpoint_dir="${1:-${TRT_CHECKPOINT_DIR:-}}"
   local engine_dir="${2:-${TRT_ENGINE_DIR:-}}"
-  local repo_id="${3:-${TRT_HF_PUSH_REPO_ID:-}}"
-  local base_model="${4:-${CHAT_MODEL:-}}"
-  local quant_method="${5:-${TRT_QUANT_METHOD:-int4_awq}}"
+  local base_model="${3:-${CHAT_MODEL:-}}"
+  local quant_method="${4:-${TRT_QUANT_METHOD:-int4_awq}}"
   
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     log_info "HF push not enabled (use --push-quant flag to enable)"
     return 0
   fi
   
-  if [ -z "${repo_id}" ]; then
-    log_warn "HF_AWQ_PUSH=1 but TRT_HF_PUSH_REPO_ID not set; skipping push"
+  if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
+    log_warn "--push-quant specified but HF_PUSH_REPO_ID not set; skipping push"
     return 0
   fi
   
@@ -292,16 +292,21 @@ trt_push_to_hf() {
     return 1
   fi
   
-  log_info "Pushing TRT-LLM model to HuggingFace: ${repo_id}"
+  log_info "Pushing TRT-LLM model to HuggingFace: ${HF_PUSH_REPO_ID}"
   
   local python_cmd=(
     "${ROOT_DIR}/.venv/bin/python"
     "-m" "src.engines.trt.awq.hf.hf_push"
     "--checkpoint-dir" "${checkpoint_dir}"
-    "--repo-id" "${repo_id}"
+    "--repo-id" "${HF_PUSH_REPO_ID}"
     "--token" "${token}"
     "--quant-method" "${quant_method}"
   )
+  
+  # Add --private flag if HF_PUSH_PRIVATE=1 (default)
+  if [ "${HF_PUSH_PRIVATE:-1}" = "1" ]; then
+    python_cmd+=("--private")
+  fi
   
   # Add engine dir if it exists
   if [ -n "${engine_dir}" ] && [ -d "${engine_dir}" ]; then

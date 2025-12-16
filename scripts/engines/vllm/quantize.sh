@@ -40,7 +40,7 @@ vllm_awq_quantize_chat_if_needed() {
     log_info "Using existing AWQ chat model at ${out_dir}"
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq
-    vllm_awq_push_to_hf "${out_dir}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
+    vllm_awq_push_to_hf "${out_dir}"
     return 0
   fi
 
@@ -48,7 +48,7 @@ vllm_awq_quantize_chat_if_needed() {
   if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.engines.vllm.awq.quantize --model "${CHAT_MODEL}" --out "${out_dir}"; then
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq
-    vllm_awq_push_to_hf "${out_dir}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
+    vllm_awq_push_to_hf "${out_dir}"
     return 0
   fi
 
