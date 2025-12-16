@@ -25,7 +25,7 @@ from ..config import (
     CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
 )
 from ..engines import get_engine, create_sampling_params
-from ..persona import build_chat_warm_prompt
+from ..helpers.prompts import build_chat_warm_prompt
 from .validators import (
     ValidationError,
     require_prompt,

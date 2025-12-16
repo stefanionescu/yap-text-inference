@@ -1,11 +1,11 @@
-"""Authentication utilities for API key validation."""
+"""Authentication handler."""
 
 import logging
 from fastapi import HTTPException, Security
 from fastapi.security.api_key import APIKeyQuery, APIKeyHeader
 from fastapi import WebSocket
 
-from .config import TEXT_API_KEY
+from ..config import TEXT_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -106,3 +106,4 @@ async def authenticate_websocket(websocket: WebSocket) -> bool:
     
     logger.info("WebSocket connection authenticated successfully")
     return True
+

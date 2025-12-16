@@ -55,6 +55,10 @@ from .input import (
     normalize_personality,
     is_personality_empty_or_null,
 )
+from .prompts import (
+    build_chat_prompt_with_prefix,
+    build_chat_warm_prompt,
+)
 
 __all__ = [
     # models
@@ -104,4 +108,7 @@ __all__ = [
     "is_gender_empty_or_null",
     "normalize_personality",
     "is_personality_empty_or_null",
+    # prompts
+    "build_chat_prompt_with_prefix",
+    "build_chat_warm_prompt",
 ]

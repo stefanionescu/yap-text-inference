@@ -6,9 +6,9 @@ import logging
 from functools import lru_cache
 from collections.abc import Sequence
 
-from .config import CHAT_TEMPLATE_ENABLE_THINKING
-from .tokens.tokenizer import get_chat_tokenizer
-from .handlers.session.history import parse_history_as_tuples
+from ..config import CHAT_TEMPLATE_ENABLE_THINKING
+from ..tokens.tokenizer import get_chat_tokenizer
+from ..handlers.session.history import parse_history_as_tuples
 
 logger = logging.getLogger(__name__)
 
@@ -132,3 +132,4 @@ __all__ = [
     "build_chat_prompt_with_prefix",
     "build_chat_warm_prompt",
 ]
+
