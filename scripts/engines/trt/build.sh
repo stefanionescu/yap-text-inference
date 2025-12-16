@@ -267,8 +267,10 @@ trt_push_to_hf() {
   local checkpoint_dir="${1:-${TRT_CHECKPOINT_DIR:-}}"
   local engine_dir="${2:-${TRT_ENGINE_DIR:-}}"
   local repo_id="${3:-${TRT_HF_PUSH_REPO_ID:-}}"
+  local base_model="${4:-${CHAT_MODEL:-}}"
+  local quant_method="${5:-${TRT_QUANT_METHOD:-int4_awq}}"
   
-  if [ "${TRT_HF_PUSH_ENABLED:-0}" != "1" ]; then
+  if [ "${TRT_HF_PUSH_ENABLED:-0}" != "1" ] && [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     log_info "HF push not enabled (TRT_HF_PUSH_ENABLED=0)"
     return 0
   fi
@@ -278,15 +280,44 @@ trt_push_to_hf() {
     return 0
   fi
   
-  log_info "Pushing to HuggingFace: ${repo_id}"
+  if [ ! -d "${checkpoint_dir}" ]; then
+    log_warn "Checkpoint directory not found: ${checkpoint_dir}"
+    return 1
+  fi
   
-  # This would call the Python push script similar to trtllm-example
-  # For now, log the command that would be run
-  log_info "TODO: Implement TRT HF push script"
-  log_info "  Checkpoint: ${checkpoint_dir}"
-  log_info "  Engine: ${engine_dir}"
-  log_info "  Repo: ${repo_id}"
+  local token="${HF_TOKEN:-}"
+  if [ -z "${token}" ]; then
+    log_warn "HF_TOKEN not set, skipping push"
+    return 1
+  fi
   
-  return 0
+  log_info "Pushing TRT-LLM model to HuggingFace: ${repo_id}"
+  
+  local python_cmd=(
+    "${ROOT_DIR}/.venv/bin/python"
+    "-m" "src.engines.trt.hf.hf_push"
+    "--checkpoint-dir" "${checkpoint_dir}"
+    "--repo-id" "${repo_id}"
+    "--token" "${token}"
+    "--quant-method" "${quant_method}"
+  )
+  
+  # Add engine dir if it exists
+  if [ -n "${engine_dir}" ] && [ -d "${engine_dir}" ]; then
+    python_cmd+=("--engine-dir" "${engine_dir}")
+  fi
+  
+  # Add base model if specified
+  if [ -n "${base_model}" ]; then
+    python_cmd+=("--base-model" "${base_model}")
+  fi
+  
+  if "${python_cmd[@]}"; then
+    log_info "Successfully pushed to HuggingFace"
+    return 0
+  else
+    log_warn "HuggingFace push failed"
+    return 1
+  fi
 }
 

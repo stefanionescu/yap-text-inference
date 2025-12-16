@@ -36,7 +36,7 @@ vllm_awq_push_to_hf() {
 
   local python_cmd=(
     "${ROOT_DIR}/.venv/bin/python"
-    "${ROOT_DIR}/src/awq/hf/hf_push.py"
+    "${ROOT_DIR}/src/engines/vllm/awq/hf/hf_push.py"
     --src "${src_dir}"
     --repo-id "${repo_id}"
     --branch "${HF_AWQ_BRANCH}"
