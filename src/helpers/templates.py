@@ -41,8 +41,59 @@ def _is_qwen_license_model(model_path: str) -> bool:
     return False
 
 
+def fetch_license_from_hf(model_id: str) -> dict[str, str] | None:
+    """Fetch license information from a HuggingFace model repository.
+    
+    Args:
+        model_id: HuggingFace model ID (e.g., "meta-llama/Llama-3.1-8B-Instruct").
+        
+    Returns:
+        Dictionary with license, license_name, license_link keys, or None if fetch fails.
+    """
+    if not model_id or "/" not in model_id:
+        return None
+    
+    try:
+        from huggingface_hub import model_info
+    except ImportError:
+        print("[license] Warning: huggingface_hub not installed, cannot fetch license")
+        return None
+    
+    try:
+        info = model_info(model_id)
+        card_data = info.card_data
+        
+        if not card_data:
+            return None
+        
+        license_val = getattr(card_data, "license", None)
+        if not license_val:
+            return None
+        
+        # license_name and license_link may be specified in the model card
+        license_name = getattr(card_data, "license_name", None) or license_val
+        license_link = getattr(card_data, "license_link", None)
+        
+        # If no explicit link, try to construct one for the base model
+        if not license_link:
+            license_link = f"https://huggingface.co/{model_id}/blob/main/LICENSE"
+        
+        return {
+            "license": license_val,
+            "license_name": license_name,
+            "license_link": license_link,
+        }
+    except Exception as e:
+        print(f"[license] Warning: Could not fetch license from {model_id}: {e}")
+        return None
+
+
 def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> dict[str, str]:
-    """Return license info dict with keys: license, license_name, license_link."""
+    """Return license info dict with keys: license, license_name, license_link.
+    
+    Fetches the license from the original HuggingFace model to ensure quantized
+    models inherit the correct license from their base model.
+    """
     if is_tool:
         return {
             "license": "other",
@@ -59,16 +110,25 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
     if _is_qwen_license_model(model_path):
         return QWEN_LICENSE.copy()
 
-    # Chat models default to Apache 2.0
+    # Try to fetch license from the base model on HuggingFace
+    if is_hf_model:
+        fetched = fetch_license_from_hf(model_path)
+        if fetched:
+            print(f"[license] Using license from base model {model_path}: {fetched['license']}")
+            return fetched
+
+    # Fallback: use 'other' and link to the base model's LICENSE file
+    # This ensures we don't incorrectly assign a license
     return {
-        "license": "apache-2.0",
-        "license_name": "apache-2.0",
-        "license_link": "LICENSE",
+        "license": "other",
+        "license_name": "other",
+        "license_link": _license_link_for(model_path, is_hf_model),
     }
 
 
 __all__ = [
     "resolve_template_name",
     "compute_license_info",
+    "fetch_license_from_hf",
 ]
 
