@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from src.config.models import _is_local_model_path
+from src.helpers.models import _is_local_model_path
 from src.utils.io import read_json_file
 
 __all__ = [

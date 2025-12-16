@@ -9,7 +9,7 @@ import os
 from textwrap import dedent
 from typing import Any
 
-from ...config.templates import resolve_template_name, compute_license_info
+from src.helpers.templates import resolve_template_name, compute_license_info
 
 
 def _parse_quant_summary(quant_summary: str) -> dict[str, Any]:

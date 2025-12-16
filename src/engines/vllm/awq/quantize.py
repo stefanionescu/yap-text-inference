@@ -11,7 +11,7 @@ import os
 import sys
 
 from src.engines.vllm.awq.core import AWQQuantizer, CalibrationConfig
-from src.config.models import is_classifier_model
+from src.helpers.models import is_classifier_model
 
 
 def main() -> int:

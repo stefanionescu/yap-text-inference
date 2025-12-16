@@ -10,7 +10,7 @@ import os
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.config.model_profiles import (
+from src.helpers.model_profiles import (
     get_tokenizer_kwargs,
     model_needs_memory_optimization,
     model_requires_bfloat16,
@@ -19,7 +19,7 @@ from src.config.model_profiles import (
 )
 from src.config import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
 from src.utils.env import env_flag
-from src.config.models import _is_local_model_path
+from src.helpers.models import _is_local_model_path
 from .memory_tuning import (
     auto_max_num_seqs,
     configure_kv_cache,

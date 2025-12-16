@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from src.config.awq import resolve_total_len, TotalLengthPolicy, CHAT_MAX_LEN, CHAT_MAX_OUT
+from src.helpers.awq import resolve_total_len, TotalLengthPolicy
+from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
     is_moe_model,
@@ -20,7 +21,7 @@ from .calibration import CalibrationConfig
 def _is_classifier_model_path(model_path: str) -> bool:
     """Check if model path refers to a classifier model."""
     # Import here to avoid circular imports
-    from src.config.models import is_classifier_model
+    from src.helpers.models import is_classifier_model
     return is_classifier_model(model_path)
 
 
