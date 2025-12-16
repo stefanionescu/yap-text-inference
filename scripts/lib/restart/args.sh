@@ -110,16 +110,6 @@ restart_parse_args() {
         HF_AWQ_PUSH=0
         shift
         ;;
-      --push-awq)
-        log_warn "Flag --push-awq is deprecated; use --push-quant instead."
-        HF_AWQ_PUSH=1
-        shift
-        ;;
-      --no-push-awq)
-        log_warn "Flag --no-push-awq is deprecated; use --no-push-quant instead."
-        HF_AWQ_PUSH=0
-        shift
-        ;;
       --help|-h)
         return 2
         ;;

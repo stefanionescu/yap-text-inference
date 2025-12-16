@@ -89,6 +89,9 @@ fi
 case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
 export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 
+# Validate --push-quant prerequisites early (before any heavy operations)
+validate_push_quant_prereqs "${DEPLOY_MODE}"
+
 # Check for engine switching - this requires FULL environment wipe
 if runtime_guard_engine_changed "${INFERENCE_ENGINE}" "${ROOT_DIR}"; then
   last_engine="$(runtime_guard_read_last_config_value "INFERENCE_ENGINE" "${ROOT_DIR}")"

@@ -27,16 +27,6 @@ main_parse_flags() {
         PUSH_QUANT=0
         shift
         ;;
-      --push-awq)
-        log_warn "Flag --push-awq is deprecated; use --push-quant instead."
-        PUSH_QUANT=1
-        shift
-        ;;
-      --no-push-awq)
-        log_warn "Flag --no-push-awq is deprecated; use --no-push-quant instead."
-        PUSH_QUANT=0
-        shift
-        ;;
       --engine=*)
         ENGINE_TYPE="${1#--engine=}"
         shift

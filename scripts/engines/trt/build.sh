@@ -263,6 +263,7 @@ trt_quantize_and_build() {
 # =============================================================================
 
 # Push quantized model to HuggingFace
+# Only runs when --push-quant flag is passed (sets HF_AWQ_PUSH=1)
 trt_push_to_hf() {
   local checkpoint_dir="${1:-${TRT_CHECKPOINT_DIR:-}}"
   local engine_dir="${2:-${TRT_ENGINE_DIR:-}}"
@@ -270,13 +271,13 @@ trt_push_to_hf() {
   local base_model="${4:-${CHAT_MODEL:-}}"
   local quant_method="${5:-${TRT_QUANT_METHOD:-int4_awq}}"
   
-  if [ "${TRT_HF_PUSH_ENABLED:-0}" != "1" ] && [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
-    log_info "HF push not enabled (TRT_HF_PUSH_ENABLED=0)"
+  if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
+    log_info "HF push not enabled (use --push-quant flag to enable)"
     return 0
   fi
   
   if [ -z "${repo_id}" ]; then
-    log_warn "No HF repo ID specified, skipping push"
+    log_warn "HF_AWQ_PUSH=1 but TRT_HF_PUSH_REPO_ID not set; skipping push"
     return 0
   fi
   
