@@ -41,6 +41,7 @@ import contextlib
 import json
 import logging
 import math
+import random
 from typing import Any
 from collections.abc import Callable
 
@@ -54,6 +55,7 @@ from ...config import (
     WS_MESSAGE_WINDOW_SECONDS,
     CACHE_RESET_MIN_SESSION_SECONDS,
 )
+from ...config.filters import MESSAGE_RATE_LIMIT_MESSAGES
 from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
@@ -162,11 +164,15 @@ async def _consume_limiter(
             f"{label} rate limit: at most {limit_desc} per {window_desc} seconds; "
             f"retry in {retry_in} seconds"
         )
+        extra: dict[str, Any] = {"retry_in": retry_in}
+        # Add friendly message only for message rate limits (not cancel)
+        if label == "message":
+            extra["friendly_message"] = random.choice(MESSAGE_RATE_LIMIT_MESSAGES)
         await send_error(
             ws,
             error_code=f"{label}_rate_limited",
             message=message,
-            extra={"retry_in": retry_in},
+            extra=extra,
         )
         return False
     return True
