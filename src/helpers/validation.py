@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-# Import from submodules to avoid circular imports with config/__init__.py
-from src.config.deploy import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_MODEL, TOOL_MODEL
-from src.config.engine import INFERENCE_ENGINE, QUANTIZATION, CHAT_QUANTIZATION
-from src.config.trt import TRT_ENGINE_DIR
-from src.config.quantization import SUPPORTED_ENGINES
-
 
 def _effective_chat_quantization() -> str:
+    # Lazy import to avoid circular import with config/engine.py
+    from src.config.engine import QUANTIZATION, CHAT_QUANTIZATION
     return (CHAT_QUANTIZATION or QUANTIZATION or "").lower()
 
 
@@ -37,8 +33,12 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
 
 def validate_env() -> None:
     """Validate required configuration once during startup."""
-    # Lazy import to avoid circular import
+    # Lazy imports to avoid circular import with config/engine.py
     from .models import is_classifier_model
+    from src.config.deploy import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_MODEL, TOOL_MODEL
+    from src.config.engine import INFERENCE_ENGINE, QUANTIZATION
+    from src.config.trt import TRT_ENGINE_DIR
+    from src.config.quantization import SUPPORTED_ENGINES
     
     errors: list[str] = []
     if DEPLOY_CHAT and not CHAT_MODEL:
