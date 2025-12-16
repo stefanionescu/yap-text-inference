@@ -5,9 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 
-from vllm.sampling_params import SamplingParams
-
-from ...vllm import get_engine
+from ...engines import get_engine, create_sampling_params
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
 from ...handlers.session import session_handler
 from ...utils import StreamingSanitizer
@@ -29,6 +27,7 @@ from .controller import ChatStreamConfig, ChatStreamController
 
 
 _logit_bias_cache: dict[int, float] | None = None
+
 
 async def run_chat_generation(
     session_id: str,
@@ -56,7 +55,8 @@ async def run_chat_generation(
 
     logit_bias = _get_logit_bias_map()
 
-    params = SamplingParams(
+    # Use unified sampling params factory
+    params = create_sampling_params(
         temperature=temperature,
         top_p=top_p,
         top_k=top_k,
@@ -64,10 +64,11 @@ async def run_chat_generation(
         repetition_penalty=repetition_penalty,
         presence_penalty=presence_penalty,
         frequency_penalty=frequency_penalty,
-        logit_bias=logit_bias if logit_bias else None,
         max_tokens=CHAT_MAX_OUT,
         stop=INFERENCE_STOP,
+        logit_bias=logit_bias if logit_bias else None,
     )
+    
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     stream = ChatStreamController(
         ChatStreamConfig(
@@ -95,7 +96,7 @@ async def run_chat_generation(
                 yield chunk
         normal_completion = True
     finally:
-        pass  # Cleanup if needed, but don't return or yield here
+        pass
     if normal_completion and sanitizer:
         tail = sanitizer.flush()
         if tail:
@@ -115,7 +116,6 @@ def _get_logit_bias_map() -> dict[int, float]:
     try:
         tokenizer = get_chat_tokenizer()
     except Exception:
-        # Don't cache failure - tokenizer might not be ready yet
         return {}
 
     id_bias: dict[int, float] = {}
@@ -134,4 +134,3 @@ def _get_logit_bias_map() -> dict[int, float]:
 
 
 __all__ = ["run_chat_generation"]
-

@@ -5,13 +5,20 @@ from __future__ import annotations
 import json
 import uuid
 
-from vllm.sampling_params import SamplingParams
 from fastapi import WebSocket
 
 from ...config import WARM_REQUEST_PRIORITY
-from ...vllm import get_engine
+from ...engines import get_engine, create_sampling_params
 
-_WARM_PARAMS = SamplingParams(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
+_WARM_PARAMS = None
+
+
+def _get_warm_params():
+    """Lazy initialization of warm params to avoid import-time engine detection."""
+    global _WARM_PARAMS
+    if _WARM_PARAMS is None:
+        _WARM_PARAMS = create_sampling_params(temperature=0.0, max_tokens=1, stop=["<|end|>", "</s>"])
+    return _WARM_PARAMS
 
 
 async def warm_chat_segment(
@@ -23,13 +30,13 @@ async def warm_chat_segment(
 ) -> None:
     """Generic warming helper for persona/history segments."""
     req_id = f"warm-{segment}-{uuid.uuid4()}"
-    stream = (await get_engine()).generate(
+    engine = await get_engine()
+    async for _ in engine.generate_stream(
         prompt=prompt,
-        sampling_params=_WARM_PARAMS,
+        sampling_params=_get_warm_params(),
         request_id=req_id,
         priority=WARM_REQUEST_PRIORITY,
-    )
-    async for _ in stream:
+    ):
         break
 
     await ws.send_text(json.dumps({

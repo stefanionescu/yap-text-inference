@@ -415,7 +415,7 @@ async def abort_session_requests(
 
     if DEPLOY_CHAT and req_info.get("active"):
         try:
-            from src.vllm import get_engine  # local import to avoid cycles
+            from src.engines import get_engine  # local import to avoid cycles
 
             await (await get_engine()).abort(req_info["active"])
         except Exception:  # noqa: BLE001 - best effort

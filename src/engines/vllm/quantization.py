@@ -1,4 +1,4 @@
-"""Quantization metadata helpers used by engine configuration."""
+"""Quantization metadata helpers for vLLM engine configuration."""
 
 from __future__ import annotations
 
@@ -94,8 +94,8 @@ def _detect_remote_quantization_backend(model_path: str) -> tuple[str | None, di
     if not model_path or "/" not in model_path or _is_local_model_path(model_path):
         return None, {}
     try:
-        from huggingface_hub import hf_hub_download  # type: ignore
-    except Exception as exc:  # noqa: BLE001
+        from huggingface_hub import hf_hub_download
+    except Exception as exc:
         print(f"[config] Warning: huggingface_hub not available for remote quantization detection ({exc})")
         return None, {}
 
@@ -176,3 +176,4 @@ def _normalize_quantization_name(name: str | None) -> str | None:
         "autoround": "compressed-tensors",
     }
     return mapping.get(normalized)
+
