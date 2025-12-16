@@ -47,41 +47,14 @@ ensure_pip_in_venv || exit 1
 
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  # ==========================================================================
-  # TensorRT-LLM installation path
-  #   1. Validate CUDA environment
-  #   2. Install PyTorch with CUDA support
-  #   3. Install application dependencies (requirements-trt.txt)
-  #   4. Install TensorRT-LLM LAST
-  #   5. Validate installation
-  # ==========================================================================
-  log_info "Installing TensorRT-LLM dependencies..."
-  
-  # 1. Validate CUDA environment
-  trt_ensure_cuda_home || {
-    log_err "CUDA environment validation failed"
-    exit 1
-  }
-  
-  # 2. Install PyTorch with CUDA support FIRST
-  trt_install_pytorch || {
-    log_err "Failed to install PyTorch for TRT"
-    exit 1
-  }
-  
-  # 3. Install application dependencies (requirements-trt.txt)
+  # Install app requirements first (before TRT-LLM to avoid conflicts)
   filter_requirements_without_flashinfer
   install_requirements_without_flashinfer
   
-  # 4. Install TensorRT-LLM LAST
-  trt_install_tensorrt_llm || {
-    log_err "Failed to install TensorRT-LLM"
+  # Run full TRT-LLM installation (PyTorch -> TRT-LLM -> validate -> clone repo)
+  trt_full_install || {
+    log_err "TensorRT-LLM installation failed"
     exit 1
-  }
-  
-  # 5. Validate TRT installation
-  trt_validate_installation || {
-    log_warn "TRT validation failed, server may not work correctly"
   }
 else
   # vLLM installation path
