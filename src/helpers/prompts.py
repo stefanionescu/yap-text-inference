@@ -6,7 +6,7 @@ import logging
 from functools import lru_cache
 from collections.abc import Sequence
 
-from ..config import CHAT_TEMPLATE_ENABLE_THINKING
+from ..config.chat import CHAT_TEMPLATE_ENABLE_THINKING
 from ..tokens.tokenizer import get_chat_tokenizer
 from ..handlers.session.history import parse_history_as_tuples
 

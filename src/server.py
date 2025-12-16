@@ -67,7 +67,7 @@ from .config import (
     CACHE_RESET_INTERVAL_SECONDS,
     INFERENCE_ENGINE,
 )
-from .helpers import validate_env
+from .helpers.validation import validate_env
 from .config.logging import configure_logging
 from .engines import (
     get_engine,
