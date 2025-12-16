@@ -11,8 +11,8 @@ import torch
 # Suppress tokenizers parallelism warnings when forking during calibration
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from src.config.awq import AWQ_DEFAULT_DATASET
-from src.helpers.awq import (
+from src.config.calibration import CALIB_DEFAULT_DATASET
+from src.helpers.calibration import (
     canonicalize_dataset_name,
     dataset_fallback,
     dataset_key,
@@ -46,7 +46,7 @@ def quantize_with_llmcompressor(
         return False
 
     compressor_version = getattr(llmcompressor, "__version__", "unknown")
-    requested_dataset = calibration_config.dataset or AWQ_DEFAULT_DATASET
+    requested_dataset = calibration_config.dataset or CALIB_DEFAULT_DATASET
     dataset = canonicalize_dataset_name(requested_dataset)
     if dataset != dataset_key(requested_dataset):
         print(f"[awq] Dataset alias detected: '{requested_dataset}' -> '{dataset}'")

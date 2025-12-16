@@ -35,7 +35,7 @@ from .model_profiles import (
     model_uses_mla,
     get_tokenizer_kwargs,
 )
-from .awq import (
+from .calibration import (
     TotalLengthPolicy,
     resolve_total_len,
     canonicalize_dataset_name,
@@ -85,7 +85,7 @@ __all__ = [
     "model_needs_memory_optimization",
     "model_uses_mla",
     "get_tokenizer_kwargs",
-    # awq
+    # calibration
     "TotalLengthPolicy",
     "resolve_total_len",
     "canonicalize_dataset_name",
