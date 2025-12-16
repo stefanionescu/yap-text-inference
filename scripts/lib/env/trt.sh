@@ -106,11 +106,10 @@ TRT_MODELS_DIR="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}"
 # HUGGING FACE PUSH SETTINGS
 # =============================================================================
 # Push is controlled by --push-quant flag (sets HF_AWQ_PUSH=1)
-# TRT_HF_PUSH_REPO_ID must be set when --push-quant is used with TRT engine
+# HF_PUSH_REPO_ID must be set when --push-quant is used
+# HF_PUSH_PRIVATE controls whether repo is private (1) or public (0)
 
-TRT_HF_PUSH_REPO_ID="${TRT_HF_PUSH_REPO_ID:-}"
-TRT_HF_PUSH_PRIVATE="${TRT_HF_PUSH_PRIVATE:-1}"
-TRT_HF_PUSH_WHAT="${TRT_HF_PUSH_WHAT:-both}"  # checkpoints, engines, or both
+# Note: These are defined in common params, just re-export for TRT context
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -246,5 +245,4 @@ trt_export_env() {
   export TRT_KV_FREE_GPU_FRAC TRT_KV_ENABLE_BLOCK_REUSE
   export TRT_AWQ_BLOCK_SIZE TRT_CALIB_SIZE TRT_CALIB_BATCH_SIZE TRT_CALIB_SEQLEN
   export TRT_CHECKPOINT_DIR TRT_ENGINE_DIR TRT_CACHE_DIR TRT_MODELS_DIR
-  export TRT_HF_PUSH_REPO_ID TRT_HF_PUSH_PRIVATE TRT_HF_PUSH_WHAT
 }

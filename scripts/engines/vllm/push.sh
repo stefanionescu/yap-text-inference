@@ -4,24 +4,19 @@
 # =============================================================================
 # Push AWQ quantized models to Hugging Face.
 # Only runs when --push-quant flag is passed (sets HF_AWQ_PUSH=1)
+# Uses unified params: HF_PUSH_REPO_ID, HF_PUSH_PRIVATE
 
 # Push AWQ artifacts to Hugging Face repo
+# Usage: vllm_awq_push_to_hf <src_dir>
 vllm_awq_push_to_hf() {
   local src_dir="$1"
-  local repo_id="$2"
-  local commit_msg="$3"
 
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return
   fi
 
-  if [ -z "${repo_id}" ] || [[ "${repo_id}" == your-org/* ]]; then
-    log_warn "--push-quant specified but HF_AWQ_CHAT_REPO not configured; skipping upload for ${src_dir}"
-    return
-  fi
-
-  if [[ "${repo_id}" == /* ]]; then
-    log_warn "--push-quant specified but repo id '${repo_id}' looks like a local path; skipping upload"
+  if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
+    log_warn "--push-quant specified but HF_PUSH_REPO_ID not configured; skipping upload"
     return
   fi
 
@@ -39,22 +34,17 @@ vllm_awq_push_to_hf() {
     "${ROOT_DIR}/.venv/bin/python"
     "${ROOT_DIR}/src/engines/vllm/awq/hf/hf_push.py"
     --src "${src_dir}"
-    --repo-id "${repo_id}"
-    --branch "${HF_AWQ_BRANCH}"
+    --repo-id "${HF_PUSH_REPO_ID}"
+    --branch main
     --token "${HF_TOKEN}"
   )
-  
-  if [ "${HF_AWQ_PRIVATE}" = "1" ]; then
+
+  # Add --private flag if HF_PUSH_PRIVATE=1 (default)
+  if [ "${HF_PUSH_PRIVATE:-1}" = "1" ]; then
     python_cmd+=(--private)
   fi
-  if [ "${HF_AWQ_ALLOW_CREATE}" != "1" ]; then
-    python_cmd+=(--no-create)
-  fi
-  if [ -n "${commit_msg}" ]; then
-    python_cmd+=(--commit-message "${commit_msg}")
-  fi
 
-  log_info "Uploading AWQ weights from ${src_dir} to Hugging Face repo ${repo_id}"
+  log_info "Uploading AWQ weights from ${src_dir} to Hugging Face repo ${HF_PUSH_REPO_ID}"
   HF_TOKEN="${HF_TOKEN}" "${python_cmd[@]}"
 }
 

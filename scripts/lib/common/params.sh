@@ -59,30 +59,17 @@ validate_push_quant_prereqs() {
     has_errors=1
   fi
   
-  # Check engine-specific repo requirements
-  local engine="${INFERENCE_ENGINE:-vllm}"
+  # HF_PUSH_REPO_ID is required (unified for both engines)
+  if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
+    log_error "--push-quant requires HF_PUSH_REPO_ID to be set."
+    log_error "Set it with: export HF_PUSH_REPO_ID='your-org/model-awq'"
+    has_errors=1
+  fi
   
-  if [ "${engine}" = "trt" ]; then
-    # TRT requires TRT_HF_PUSH_REPO_ID
-    if [ -z "${TRT_HF_PUSH_REPO_ID:-}" ]; then
-      log_error "--push-quant with TRT engine requires TRT_HF_PUSH_REPO_ID to be set."
-      log_error "Set it with: export TRT_HF_PUSH_REPO_ID='your-org/chat-trt-awq'"
-      has_errors=1
-    fi
-  else
-    # vLLM requires HF_AWQ_CHAT_REPO for chat/both modes
-    local need_chat=0
-    case "${deploy_mode}" in
-      both|chat) need_chat=1 ;;
-    esac
-    
-    if [ "${need_chat}" = "1" ]; then
-      if [ -z "${HF_AWQ_CHAT_REPO:-}" ] || [[ "${HF_AWQ_CHAT_REPO}" == your-org/* ]]; then
-        log_error "--push-quant requires HF_AWQ_CHAT_REPO to point to your Hugging Face chat repo."
-        log_error "Set it with: export HF_AWQ_CHAT_REPO='your-org/chat-awq'"
-        has_errors=1
-      fi
-    fi
+  # Validate HF_PUSH_PRIVATE if set (must be 0 or 1)
+  if [ -n "${HF_PUSH_PRIVATE:-}" ] && [[ ! "${HF_PUSH_PRIVATE}" =~ ^[01]$ ]]; then
+    log_error "HF_PUSH_PRIVATE must be 0 (public) or 1 (private), got: ${HF_PUSH_PRIVATE}"
+    has_errors=1
   fi
   
   if [ "${has_errors}" -ne 0 ]; then
@@ -91,7 +78,15 @@ validate_push_quant_prereqs() {
     exit 1
   fi
   
-  log_info "--push-quant enabled: quantized models will be pushed to Hugging Face after build"
+  # Export push params with defaults
+  export HF_PUSH_REPO_ID
+  export HF_PUSH_PRIVATE="${HF_PUSH_PRIVATE:-1}"
+  
+  local visibility="private"
+  if [ "${HF_PUSH_PRIVATE}" = "0" ]; then
+    visibility="public"
+  fi
+  log_info "--push-quant enabled: quantized models will be pushed to ${HF_PUSH_REPO_ID} (${visibility})"
   return 0
 }
 

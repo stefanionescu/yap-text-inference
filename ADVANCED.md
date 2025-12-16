@@ -415,49 +415,31 @@ When `--push-quant` is specified, the script validates required parameters **at 
 
 **Required whenever `--push-quant` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
+- `HF_PUSH_REPO_ID` – target Hugging Face repo (e.g., `your-org/model-awq`)
 
-**For vLLM engine (additionally required for chat/both modes):**
-- `HF_AWQ_CHAT_REPO` – target Hugging Face repo for chat model AWQ weights
+**Optional:**
+- `HF_PUSH_PRIVATE` – `1` for private repo (default), `0` for public
 
-**For TensorRT-LLM engine (additionally required):**
-- `TRT_HF_PUSH_REPO_ID` – target Hugging Face repo for TRT quantized model
+Uploads always push to the `main` branch. Repos are auto-created if they don't exist.
 
-**Optional tuning (defaults shown below):**
-- `HF_AWQ_BRANCH` – upload branch (default `main`)
-- `HF_AWQ_PRIVATE` – create repo as private (`1`) or public (`0`)
-- `HF_AWQ_ALLOW_CREATE` – auto-create repo (`1`) or require it to exist (`0`)
-- `HF_AWQ_COMMIT_MSG_CHAT` – commit message override for chat uploads
-
-**vLLM example:**
+**Example (both engines use the same params):**
 
 ```bash
 export HF_TOKEN="hf_your_api_token"
-export HF_AWQ_CHAT_REPO="your-org/chat-awq"
-export HF_AWQ_BRANCH=main
-export HF_AWQ_PRIVATE=1
-export HF_AWQ_ALLOW_CREATE=1
+export HF_PUSH_REPO_ID="your-org/model-awq"
+export HF_PUSH_PRIVATE=1  # optional, default is private
 
-# Full deployment with HF push
+# vLLM: Full deployment with HF push
 bash scripts/main.sh --vllm 4bit <chat_model> <tool_model> --push-quant
 
-# Restart with quantization and push
-bash scripts/restart.sh --vllm chat --push-quant --chat-model <model> --chat-quant 4bit
-```
-
-**TensorRT-LLM example:**
-
-```bash
-export HF_TOKEN="hf_your_api_token"
-export TRT_HF_PUSH_REPO_ID="your-org/chat-trt-awq"
-
-# Full deployment with HF push
+# TRT: Full deployment with HF push
 bash scripts/main.sh --trt 4bit <chat_model> <tool_model> --push-quant
 
-# Restart with quantization and push
-bash scripts/restart.sh --trt chat --push-quant --chat-model <model> --chat-quant 4bit
+# Restart with quantization and push (either engine)
+bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 4bit
 ```
 
-**Note:** The `--push-quant` flag is the **only** way to enable HF uploads. Environment variables alone (like `HF_AWQ_PUSH`) do not trigger uploads—you must pass `--push-quant` on the command line.
+**Note:** The `--push-quant` flag is the **only** way to enable HF uploads.
 
 The pipeline writes metadata files (`awq_metadata.json` or `build_metadata.json`) and `README.md` into each quantized folder for transparency and reproducibility.
 
