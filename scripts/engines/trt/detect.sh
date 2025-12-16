@@ -207,6 +207,35 @@ trt_check_cuda_compatibility() {
   return 0
 }
 
+# Check that the runtime driver advertises CUDA 13.x (needed for TRT-LLM 1.2.0rc4)
+trt_check_driver_runtime() {
+  if ! command -v nvidia-smi >/dev/null 2>&1; then
+    log_err "nvidia-smi not found; cannot verify CUDA/driver compatibility for TRT-LLM"
+    return 1
+  fi
+
+  local driver_version
+  driver_version=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -n1 | tr -d '[:space:]')
+
+  local cuda_reported
+  cuda_reported=$(timeout 10s nvidia-smi 2>/dev/null | grep -o "CUDA Version: [0-9][0-9]*\.[0-9]*" | awk '{print $3}' | head -n1)
+
+  if [ -z "${cuda_reported}" ]; then
+    log_err "Unable to read CUDA Version from nvidia-smi; TRT-LLM requires a driver advertising CUDA 13.x"
+    return 1
+  fi
+
+  local cuda_major
+  cuda_major=$(echo "${cuda_reported}" | cut -d. -f1)
+  if [ "${cuda_major:-0}" -lt 13 ]; then
+    log_err "TRT-LLM requires CUDA 13.x runtime; nvidia-smi reports CUDA Version ${cuda_reported} (driver ${driver_version:-unknown})"
+    return 1
+  fi
+
+  log_info "Driver check: driver=${driver_version:-unknown}, CUDA Version=${cuda_reported}"
+  return 0
+}
+
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
