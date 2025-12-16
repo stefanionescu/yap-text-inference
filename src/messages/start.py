@@ -11,7 +11,6 @@ from typing import Any
 from fastapi import WebSocket
 
 from ..config import (
-    USER_UTT_MAX_TOKENS,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
     CHAT_PROMPT_MAX_TOKENS,
@@ -162,7 +161,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     static_prefix = updated_config.get("chat_prompt") or ""
     runtime_text = ""
     history_text = _resolve_history(session_id, msg)
-    user_utt = _trim_user_utterance(msg.get("user_utterance", ""))
+    user_utt = _trim_user_utterance(msg.get("user_utterance", ""), session_id)
     # Track user utterance for pairing with assistant response later.
     # Don't re-fetch history_text - it already contains previous turns,
     # and user_utt is passed separately to the prompt builder.
@@ -257,11 +256,15 @@ def _resolve_history(session_id: str, msg: dict[str, Any]) -> str:
     return session_handler.get_history_text(session_id)
 
 
-def _trim_user_utterance(user_utt: str) -> str:
+def _trim_user_utterance(user_utt: str, session_id: str) -> str:
+    # Use effective max tokens that accounts for potential prefix overhead
+    effective_max = session_handler.get_effective_user_utt_max_tokens(
+        session_id, for_followup=False
+    )
     if DEPLOY_CHAT:
-        return trim_text_to_token_limit_chat(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+        return trim_text_to_token_limit_chat(user_utt, max_tokens=effective_max, keep="start")
     if DEPLOY_TOOL:
-        return trim_text_to_token_limit_tool(user_utt, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+        return trim_text_to_token_limit_tool(user_utt, max_tokens=effective_max, keep="start")
     return user_utt or ""
 
 

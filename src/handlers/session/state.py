@@ -41,6 +41,9 @@ class SessionState:
     personalities: dict[str, list[str]] | None = None
     # Track used control messages to ensure variety (reset when all used)
     used_control_messages: set[str] = field(default_factory=set)
+    # Cached token counts for screen prefixes (computed once when prefixes are set)
+    check_screen_prefix_tokens: int = 0
+    screen_checked_prefix_tokens: int = 0
 
     def touch(self) -> None:
         """Mark the session as active."""

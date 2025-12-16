@@ -12,7 +12,7 @@ from fastapi import WebSocket
 
 from ..handlers.session import session_handler
 from ..execution.chat.runner import run_chat_generation
-from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS
+from ..config import DEPLOY_CHAT
 from ..tokens import trim_text_to_token_limit_chat
 from ..handlers.websocket.helpers import safe_send_json
 
@@ -55,8 +55,14 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
 
     # Synthesize the follow-up prompt for the chat model
     prefix = session_handler.get_screen_checked_prefix(session_id)
-    prefixed = f"{prefix} {analysis_text}".strip()
-    user_utt = trim_text_to_token_limit_chat(prefixed, max_tokens=USER_UTT_MAX_TOKENS, keep="start")
+    # Trim analysis_text to fit within budget after prefix is added
+    effective_max = session_handler.get_effective_user_utt_max_tokens(
+        session_id, for_followup=True
+    )
+    trimmed_analysis = trim_text_to_token_limit_chat(
+        analysis_text, max_tokens=effective_max, keep="start"
+    )
+    user_utt = f"{prefix} {trimmed_analysis}".strip()
     # Track user utterance for pairing with assistant response later.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
 
