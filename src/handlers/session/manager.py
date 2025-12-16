@@ -17,7 +17,8 @@ from src.config import (
     USER_UTT_MAX_TOKENS,
 )
 from src.tokens import count_tokens_chat
-from src.utils import RateLimitError, SlidingWindowRateLimiter, format_session_timestamp
+from ..rate_limit import RateLimitError, SlidingWindowRateLimiter
+from .time import format_session_timestamp
 
 from .history import HistoryController
 from .state import SessionState, SESSION_IDLE_TTL_SECONDS

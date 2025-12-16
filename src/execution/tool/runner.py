@@ -12,8 +12,8 @@ from typing import Any
 from ...classifier import get_classifier_adapter
 from ...config import TOOL_LANGUAGE_FILTER
 from ...handlers.session import session_handler
-from ...utils import is_mostly_english
 from .filter import filter_tool_phrase
+from .language import is_mostly_english
 
 logger = logging.getLogger(__name__)
 

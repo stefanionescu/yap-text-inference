@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 from src.helpers.models import _is_local_model_path
-from src.utils.io import read_json_file
+from .io import read_json_file
 
 __all__ = [
     "detect_quantization_backend",

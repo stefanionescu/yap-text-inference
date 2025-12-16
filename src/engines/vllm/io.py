@@ -1,4 +1,4 @@
-"""Lightweight IO helpers shared across subsystems."""
+"""Lightweight IO helpers for vllm engine."""
 
 from __future__ import annotations
 
@@ -19,3 +19,4 @@ def read_json_file(path: str | os.PathLike[str], *, encoding: str = "utf-8") -> 
 
 
 __all__ = ["read_json_file"]
+
