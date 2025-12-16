@@ -14,8 +14,11 @@ source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/deps/reqs.sh"
 
 # Engine-specific install functions
-source "${SCRIPT_DIR}/../engines/vllm/install.sh"
-source "${SCRIPT_DIR}/../engines/trt/install.sh"
+if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
+  source "${SCRIPT_DIR}/../engines/trt/install.sh"
+else
+  source "${SCRIPT_DIR}/../engines/vllm/install.sh"
+fi
 
 log_info "Installing Python dependencies (engine: ${INFERENCE_ENGINE:-vllm})"
 
