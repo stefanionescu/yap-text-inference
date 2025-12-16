@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/../lib/common/log.sh"
 # Shared library functions
 LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/deps/certs.sh"
-source "${LIB_DIR}/deps/system.sh"
+source "${LIB_DIR}/deps/trt.sh"
 source "${LIB_DIR}/env/torch.sh"
 source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/deps/reqs.sh"
