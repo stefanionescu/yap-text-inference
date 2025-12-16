@@ -68,7 +68,7 @@ vLLM-specific environment variables:
 
 **Cache Management:**
 - vLLM periodically resets prefix and multimodal caches to prevent fragmentation
-- Configure interval with `CACHE_RESET_INTERVAL_SECONDS` (default: 300)
+- Configure interval with `CACHE_RESET_INTERVAL_SECONDS` (default: 600)
 - Force immediate reset via `reset_engine_caches()` API
 
 ### TensorRT-LLM Configuration
@@ -332,7 +332,7 @@ vLLM supports multiple quantization backends:
 | `4bit` (Qwen/Mistral3) | AutoAWQ 0.2.9 | Fallback for hybrid architectures |
 | `gptq` / `gptq_marlin` | vLLM GPTQ | For pre-quantized GPTQ repos |
 | `8bit` / `fp8` | vLLM FP8 | L40S/H100 native |
-| `8bit` / `int8` | vLLM INT8 | A100 emulated |
+| `8bit` / `fp8` | vLLM FP8 (W8A16) | A100 emulated (FP8 weights, FP16 compute) |
 
 **Local AWQ quantization tuning:**
 

@@ -11,7 +11,7 @@ from collections.abc import Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ...auth import authenticate_websocket
+from ..auth import authenticate_websocket
 from ...config import (
     WS_CANCEL_WINDOW_SECONDS,
     WS_MAX_CANCELS_PER_WINDOW,
