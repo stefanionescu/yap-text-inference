@@ -4,8 +4,8 @@
 # =============================================================================
 # FlashInfer and vLLM-specific dependency installation.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/detect.sh"
+_VLLM_INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VLLM_INSTALL_DIR}/detect.sh"
 
 # Install FlashInfer if applicable
 vllm_install_flashinfer() {
