@@ -301,7 +301,7 @@ trt_prepare_repo() {
 # =============================================================================
 
 # Complete TRT-LLM installation sequence
-# Order: PyTorch -> requirements.txt -> TensorRT-LLM -> validate
+# Order: PyTorch -> requirements.txt -> TensorRT-LLM -> validate -> clone repo
 trt_full_install() {
   log_info "Starting TensorRT-LLM full installation..."
   
@@ -319,6 +319,9 @@ trt_full_install() {
   
   # 5. Validate installation
   trt_validate_installation || return 1
+  
+  # 6. Clone TensorRT-LLM repo for quantization scripts
+  trt_prepare_repo || return 1
   
   log_info "✓ TensorRT-LLM installation complete"
   return 0
