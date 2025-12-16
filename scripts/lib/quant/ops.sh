@@ -38,7 +38,7 @@ awq_quantize_chat_if_needed() {
   fi
 
   log_info "Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${out_dir}"
-  if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.awq.quantize --model "${CHAT_MODEL}" --out "${out_dir}"; then
+  if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.engines.vllm.awq.quantize --model "${CHAT_MODEL}" --out "${out_dir}"; then
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq
     push_awq_to_hf "${out_dir}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"

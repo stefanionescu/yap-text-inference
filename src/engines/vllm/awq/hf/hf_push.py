@@ -23,7 +23,7 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 from src.config.awq import AWQ_MODEL_MARKERS
-from src.awq.utils.template_utils import generate_readme
+from src.engines.vllm.awq.utils.template_utils import generate_readme
 
 
 def _regenerate_readme(folder: Path, metadata: dict[str, Any]) -> None:

@@ -31,7 +31,7 @@ push_awq_to_hf() {
     return
   fi
 
-  local python_cmd=("${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/awq/hf/hf_push.py" --src "${src_dir}" --repo-id "${repo_id}" --branch "${HF_AWQ_BRANCH}" --token "${HF_TOKEN}")
+  local python_cmd=("${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/src/engines/vllm/awq/hf/hf_push.py" --src "${src_dir}" --repo-id "${repo_id}" --branch "${HF_AWQ_BRANCH}" --token "${HF_TOKEN}")
   if [ "${HF_AWQ_PRIVATE}" = "1" ]; then
     python_cmd+=(--private)
   fi
