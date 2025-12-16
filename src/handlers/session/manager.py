@@ -14,7 +14,9 @@ from src.config import (
     DEPLOY_TOOL,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
+    USER_UTT_MAX_TOKENS,
 )
+from src.tokens import count_tokens_chat
 from src.utils import RateLimitError, SlidingWindowRateLimiter, format_session_timestamp
 
 from .history import HistoryController
@@ -71,6 +73,13 @@ class SessionHandler:
             "screen_checked_prefix": None,
         }
         new_state = SessionState(session_id=session_id, meta=meta)
+        # Cache default prefix token counts
+        new_state.check_screen_prefix_tokens = self._count_prefix_tokens(
+            DEFAULT_CHECK_SCREEN_PREFIX
+        )
+        new_state.screen_checked_prefix_tokens = self._count_prefix_tokens(
+            DEFAULT_SCREEN_CHECKED_PREFIX
+        )
         self._sessions[session_id] = new_state
         new_state.touch()
         return meta
@@ -122,11 +131,17 @@ class SessionHandler:
             normalized = (check_screen_prefix or "").strip() or None
             meta["check_screen_prefix"] = normalized
             changed["check_screen_prefix"] = normalized
+            # Recompute token count: use custom prefix or fall back to default
+            effective_prefix = normalized or DEFAULT_CHECK_SCREEN_PREFIX
+            state.check_screen_prefix_tokens = self._count_prefix_tokens(effective_prefix)
 
         if screen_checked_prefix is not None:
             normalized_checked = (screen_checked_prefix or "").strip() or None
             meta["screen_checked_prefix"] = normalized_checked
             changed["screen_checked_prefix"] = normalized_checked
+            # Recompute token count: use custom prefix or fall back to default
+            effective_prefix = normalized_checked or DEFAULT_SCREEN_CHECKED_PREFIX
+            state.screen_checked_prefix_tokens = self._count_prefix_tokens(effective_prefix)
 
         return changed
 
@@ -366,6 +381,57 @@ class SessionHandler:
         state.active_request_id = None
         state.tool_request_id = None
         return {"active": active_req, "tool": tool_req}
+
+    # ------------------------------------------------------------------ #
+    # Token budget helpers
+    # ------------------------------------------------------------------ #
+    def _count_prefix_tokens(self, prefix: str | None) -> int:
+        """Count tokens for a prefix string (including trailing space)."""
+        if not prefix:
+            return 0
+        # Include the space that will be added when prefixing
+        return count_tokens_chat(f"{prefix.strip()} ")
+
+    def get_effective_user_utt_max_tokens(
+        self,
+        session_id: str | None,
+        *,
+        for_followup: bool = False,
+    ) -> int:
+        """Get the effective max tokens for user utterance after accounting for prefix.
+
+        Args:
+            session_id: The session ID to look up prefix token counts.
+            for_followup: If True, account for screen_checked_prefix (followup messages).
+                          If False, account for check_screen_prefix (start messages
+                          that may trigger screenshot).
+
+        Returns:
+            The adjusted max token count for the user message content.
+        """
+        if not session_id:
+            # No session: use defaults
+            if for_followup:
+                prefix_tokens = self._count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
+            else:
+                prefix_tokens = self._count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
+            return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
+
+        state = self._get_state(session_id)
+        if not state:
+            # Session not found: use defaults
+            if for_followup:
+                prefix_tokens = self._count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
+            else:
+                prefix_tokens = self._count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
+            return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
+
+        if for_followup:
+            prefix_tokens = state.screen_checked_prefix_tokens
+        else:
+            prefix_tokens = state.check_screen_prefix_tokens
+
+        return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
 
     # ------------------------------------------------------------------ #
     # Internal helpers
