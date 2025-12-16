@@ -95,8 +95,14 @@ runtime_guard_force_engine_wipe() {
     "${root_dir}/.venv-trt"
     "${root_dir}/.venv-vllm"
     "${root_dir}/.awq"
+    # TRT-LLM specific
     "${root_dir}/.trtllm-repo"
+    "${root_dir}/.trt_cache"
     "${root_dir}/models"
+    # vLLM specific
+    "${root_dir}/.vllm_cache"
+    "${root_dir}/.flashinfer"
+    "${root_dir}/.xformers"
   )
   for d in "${engine_dirs[@]}"; do
     if [ -d "$d" ]; then
