@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import json
 import math
+import random
 import uuid
 from typing import Any
 from fastapi import WebSocket
 from ..handlers.session import session_handler
 from ..config import DEPLOY_CHAT, WARM_REQUEST_PRIORITY
+from ..config.filters import CHAT_PROMPT_RATE_LIMIT_MESSAGES
 from ..tokens import (
     count_tokens_chat,
     trim_history_preserve_messages_chat,
@@ -123,7 +125,15 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
             f"chat_prompt can be updated at most {CHAT_PROMPT_UPDATE_MAX_PER_WINDOW} times "
             f"every {window_desc} seconds; retry in {retry_in} seconds"
         )
-        await _send_ack_error(ws, ValidationError("chat_prompt_update_rate_limited", message))
+        friendly_message = random.choice(CHAT_PROMPT_RATE_LIMIT_MESSAGES)
+        await ws.send_text(json.dumps({
+            "type": "ack",
+            "for": "chat_prompt",
+            "ok": False,
+            "code": 429,
+            "message": message,
+            "friendly_message": friendly_message,
+        }))
         return
 
     # Update session state

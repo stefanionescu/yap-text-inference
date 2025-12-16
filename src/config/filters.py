@@ -15,6 +15,33 @@ CONTROL_FUNCTION_MESSAGES: tuple[str, ...] = (
     "Yup sure. Done.",
     "Alright, gimme a second. Done.",
     "Sure, it's done.",
+    "That's done for ya.",
+    "Sure thing, done.",
+    "Consider it done.",
+    "Right away. Done.",
+    "There you go.",
+    "No problem, done.",
+    "Easy, done.",
+    "You got it.",
+    "Yep, all set.",
+    "There ya go.",
+    "Cool, all set.",
+)
+
+# Hard-coded messages for message rate limit responses
+MESSAGE_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
+    "Wow you yap a lot, slow down a bit.",
+    "I'm a bit overwhelmed sorry, give me a moment to recover.",
+    "Damn you really talk a lot, give me a second to recover.",
+    "My head's spinning, you're sending too many messages."
+)
+
+# Hard-coded messages for chat prompt update rate limit responses
+CHAT_PROMPT_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
+    "I can't change moods that often, sorry.",
+    "I'm not a robot, wait a bit before you change my personality.",
+    "Nope sorry, you've changed my mood too many times.",
+    "Don't wanna, I'll do it later."
 )
 
 HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
@@ -66,6 +93,8 @@ LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
 __all__ = [
     "CHAT_CONTINUE_TOOLS",
     "CONTROL_FUNCTION_MESSAGES",
+    "MESSAGE_RATE_LIMIT_MESSAGES",
+    "CHAT_PROMPT_RATE_LIMIT_MESSAGES",
     "HTML_TAG_PATTERN",
     "EMOJI_PATTERN",
     "EMOTICON_PATTERN",
