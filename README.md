@@ -1,7 +1,7 @@
 # Yap Text Inference Server
 
-A vLLM text inference server optimized for pairing a chat model with a lightweight screenshot-intent classifier. Chat generations run on vLLM; the tool router is a direct transformers classifier (no vLLM, no quantization). It can run:
-- A vLLM chat engine for roleplay / assistant flows
+A high-performance text inference server supporting **both vLLM and TensorRT-LLM** engines, optimized for pairing a chat model with a lightweight screenshot-intent classifier. It can run:
+- A chat engine (vLLM or TRT-LLM) for roleplay / assistant flows
 - A classifier-only tool router (takes screenshots or skips them)
 - Either engine independently or both together
 - FastAPI + WebSocket streaming
@@ -9,11 +9,13 @@ A vLLM text inference server optimized for pairing a chat model with a lightweig
 ## Contents
 
 - [Key Features](#key-features)
+- [Inference Engines](#inference-engines)
 - [Quickstart](#quickstart)
 - [Docker Deployment](#docker-deployment)
 - [Quantization](#quantization)
-  - [Option 1: Local Quantization](#option-1-local-quantization)
-  - [Option 2: Pre-Quantized Models](#option-2-pre-quantized-models)
+  - [vLLM Quantization](#vllm-quantization)
+  - [TensorRT-LLM Quantization](#tensorrt-llm-quantization)
+  - [Pre-Quantized Models](#pre-quantized-models)
 - [Local Test Dependencies](#local-test-dependencies)
 - [Test Clients](#test-clients)
 - [Stopping and Restarting](#stopping-and-restarting)
@@ -22,12 +24,44 @@ A vLLM text inference server optimized for pairing a chat model with a lightweig
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
+- **Dual-engine support:** Choose between vLLM and TensorRT-LLM based on your deployment needs.
 - Chat + classifier deployment with optional chat-only or classifier-only modes.
 - Tool-call-first detection: tool decisions fire before chat tokens.
-- Persona/history segmented prompts with prefix caching and FP8/INT8 KV reuse to keep latency low across restarts.
-- Integrated quantization pipeline (FP8 default, AWQ/GPTQ/W4A16 auto-detect, AutoAWQ fallbacks) plus configurable logit bias for banned phrases.
-- Built-in resiliency: interrupts/barge-in, heartbeats, idle watchdog (150 s default), and sliding-window rate limits on both messages and cancels.
+- Persona/history segmented prompts with prefix caching (vLLM) or block reuse (TRT-LLM) for low latency.
+- Integrated quantization: AWQ/GPTQ/FP8 for vLLM; INT4-AWQ/FP8/INT8-SQ for TRT-LLM.
+- Built-in resiliency: interrupts/barge-in, heartbeats, idle watchdog (150 s default), and sliding-window rate limits.
 - Secure multi-tenant guardrails via required API keys and a global semaphore driven by `MAX_CONCURRENT_CONNECTIONS`.
+
+## Inference Engines
+
+Yap supports two inference backends:
+
+| Feature | vLLM | TensorRT-LLM |
+|---------|------|--------------|
+| **Default** | No | **Yes** |
+| **Quantization** | AWQ, GPTQ, FP8, INT8 | INT4-AWQ, FP8, INT8-SQ |
+| **Memory Management** | Periodic cache reset | Built-in block reuse |
+| **Pre-built Engines** | No (JIT) | Yes (compiled .engine) |
+| **CUDA Requirement** | 13.x | 13.0+ |
+| **PyTorch** | 2.9.x | 2.9.x |
+| **MoE Support** | Via FLA | Native quantize_moe.py |
+
+Select the engine with CLI flags or environment variable:
+
+```bash
+# TensorRT-LLM (default)
+bash scripts/main.sh 4bit <chat_model> <tool_model>
+bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
+
+# vLLM
+bash scripts/main.sh --vllm 4bit <chat_model> <tool_model>
+
+# Or via environment variable
+export INFERENCE_ENGINE=vllm
+bash scripts/main.sh 4bit <chat_model> <tool_model>
+```
+
+> **Engine switching:** Changing engines (e.g., `--trt` to `--vllm`) triggers a **full environment wipe** including HF caches, pip deps, quantized models, and engine artifacts. This ensures clean state transitions.
 
 ## Quickstart
 
@@ -47,10 +81,10 @@ export MAX_CONCURRENT_CONNECTIONS=32         # Required capacity guard
 
 ```bash
 # Chat + classifier (default) - auto-detached deployment with log tailing
-bash scripts/main.sh [4bit|8bit] <chat_model> <classifier_model>
+bash scripts/main.sh [--trt|--vllm] [4bit|8bit] <chat_model> <classifier_model>
 
 # Chat-only / classifier-only helpers (host scripts only; Docker always runs both)
-bash scripts/main.sh [4bit|8bit] chat <chat_model>
+bash scripts/main.sh [--trt|--vllm] [4bit|8bit] chat <chat_model>
 bash scripts/main.sh tool <classifier_model>
 
 # Ctrl+C stops the log tail only; use scripts/stop.sh to stop the server
@@ -65,21 +99,22 @@ Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-longformer-
 
 Examples:
 ```bash
-# Float chat model (auto → FP8 quantization, W8A16 emulated on A100)
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+# TRT-LLM with INT4-AWQ quantization (default engine)
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
-# Float roleplay model with classifier routing
-bash scripts/main.sh SicariusSicariiStuff/Wingless_Imp_8B yapwithai/yap-longformer-screenshot-intent
+# vLLM with FP8 quantization
+bash scripts/main.sh --vllm 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
-# GPTQ chat model (auto → GPTQ) + classifier
-bash scripts/main.sh SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 yapwithai/yap-longformer-screenshot-intent
+# vLLM with pre-quantized GPTQ model
+bash scripts/main.sh --vllm SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 yapwithai/yap-longformer-screenshot-intent
 ```
 
 This will:
 - Check GPU availability
-- Install Python deps from `requirements.txt`
+- Install Python deps from `requirements-trt.txt` or `requirements-vllm.txt`
 - Export environment defaults
-- Launch `uvicorn src.server:app --port 8000`
+- For TRT-LLM: Quantize → Build engine → Launch server
+- For vLLM: Quantize (if needed) → Launch server
 - Always runs in background with auto-detached process isolation
 - Auto-tails logs (Ctrl+C stops tail only)
 
@@ -122,46 +157,65 @@ See `docker/README.md` for build arguments, image behavior, and run options.
 
 ## Quantization
 
-4-bit mode AWQ/W4A16 via llmcompressor + vLLM (with AutoAWQ fallback for Qwen & Mistral 3).
-Pass `4bit` or `8bit` to the host scripts. The logs will spell out the actual backend that gets selected (`AWQ`, `GPTQ`, `FP8`, `INT8`) so you always know what’s running.
+Pass `4bit` or `8bit` to the host scripts. The logs will spell out the actual backend that gets selected so you always know what's running.
 
-### Option 1: Local Quantization
+### vLLM Quantization
 
-```bash
-# Uses float (non-GPTQ) chat model weights and quantizes the chat engine at load
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
-```
-
-Local quantization runs [`llmcompressor`](https://github.com/vllm-project/llm-compressor) `oneshot()` with the AWQ modifier (pinned at version 0.8.1). Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`, with automatic fallback from `pileval` on older llmcompressor builds).  
-> **AutoAWQ fallback:** Qwen2/Qwen3 and Mistral 3 checkpoints automatically switch to [AutoAWQ 0.2.9](https://github.com/AutoAWQ/AutoAWQ) because llmcompressor cannot yet trace their hybrid forward graphs. Other architectures continue to use llmcompressor.  
-> To coexist with `vllm==0.12.0`/`torch==2.9.0`, the setup scripts install `llmcompressor` with `--no-deps`. If you manage the environment manually, mirror this behavior (`pip install llmcompressor==0.8.1 --no-deps`) after installing the base requirements.
-
-### Option 2: Pre-Quantized Models
-
-The server now auto-detects **any** pre-quantized repo whose name includes common markers:
-- `awq` or explicit W4A16 hints (`w4a16`, `nvfp4`, `compressed-tensors`, `autoround`)
-- `gptq` (including `gptq_marlin` exports)
-
-If the repo path advertises one of these markers, Yap skips runtime quantization and runs it directly—even if the model isn’t on the default allowlist. This matches the config enforcement logic described in `src/config/models.py`.
+vLLM uses llmcompressor for AWQ/W4A16 quantization (with AutoAWQ fallback for Qwen & Mistral 3):
 
 ```bash
-# Pre-quantized AWQ chat + classifier
-bash scripts/main.sh \
-  yapwithai/impish-12b-awq \
-  yapwithai/yap-longformer-screenshot-intent
+# AWQ 4-bit quantization
+bash scripts/main.sh --vllm 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
-# Chat-only AWQ
-bash scripts/main.sh chat yapwithai/impish-12b-awq
-
-# GPTQ-only chat deployment
-bash scripts/main.sh chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
+# FP8 8-bit quantization (L40S/H100) or INT8 (A100)
+bash scripts/main.sh --vllm 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 ```
 
-> **Note on llmcompressor / W4A16 exports:** Whether the chat model lives locally or on Hugging Face, the code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct vLLM backend (e.g., `compressed-tensors` for W4A16/NVFP4 checkpoints). Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos and point `CHAT_MODEL` at the repo ID—no re-quantization step is needed. GPTQ repos are likewise detected automatically and routed through the GPTQ runtime. (Classifier `TOOL_MODEL` repos are loaded via `AutoModelForSequenceClassification` and are never quantized.)
+Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`).
+
+> **AutoAWQ fallback:** Qwen2/Qwen3 and Mistral 3 checkpoints automatically switch to [AutoAWQ 0.2.9](https://github.com/AutoAWQ/AutoAWQ) because llmcompressor cannot yet trace their hybrid forward graphs.
+
+### TensorRT-LLM Quantization
+
+TRT-LLM uses NVIDIA's quantization pipeline with GPU-aware format selection:
+
+```bash
+# INT4-AWQ quantization (all GPUs)
+bash scripts/main.sh --trt 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+
+# 8-bit: FP8 on L40S/H100 (sm89/sm90), INT8-SQ on A100 (sm80)
+bash scripts/main.sh --trt 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+```
+
+TRT-LLM quantization creates a checkpoint, then builds a compiled `.engine` file. The engine is GPU-architecture specific (e.g., H100 engines won't run on A100).
+
+**MoE models** (e.g., Qwen3-30B-A3B) are automatically detected and use `quantize_mixed_precision_moe.py` instead of the standard quantization script.
+
+Override `TRT_CALIB_SIZE`, `TRT_CALIB_SEQLEN`, or `TRT_AWQ_BLOCK_SIZE` to tune calibration.
+
+### Pre-Quantized Models
+
+Both engines auto-detect pre-quantized repos whose names include common markers:
+- `awq`, `w4a16`, `nvfp4`, `compressed-tensors`, `autoround`
+- `gptq`, `gptq_marlin`
+- `trt` + `awq` (TRT-LLM specific)
+
+```bash
+# Pre-quantized AWQ chat + classifier (vLLM)
+bash scripts/main.sh --vllm yapwithai/impish-12b-awq yapwithai/yap-longformer-screenshot-intent
+
+# Pre-quantized TRT-AWQ (TensorRT-LLM)
+bash scripts/main.sh --trt yapwithai/impish-12b-trt-awq yapwithai/yap-longformer-screenshot-intent
+
+# GPTQ-only chat deployment (vLLM)
+bash scripts/main.sh --vllm chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
+```
+
+> **Note:** The code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct backend. Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos—no re-quantization step is needed.
 
 ## Local Test Dependencies
 
-If you just want to run the WebSocket test clients (warmup, live, conversation, etc.) on a laptop or CPU-only machine, don’t install the GPU-heavy `requirements.txt`. Instead:
+If you just want to run the WebSocket test clients (warmup, live, conversation, etc.) on a laptop or CPU-only machine, don't install the GPU-heavy requirements. Instead:
 
 ```bash
 python3 -m venv .venv-local
@@ -169,7 +223,7 @@ source .venv-local/bin/activate
 pip install -r requirements-local.txt
 ```
 
-This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) without pulling CUDA wheels, so macOS users can run `python3 tests/live.py ...` without errors. Use the full `requirements.txt` only when you need to run the actual inference server.
+This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) without pulling CUDA wheels, so macOS users can run `python3 tests/live.py ...` without errors. Use `requirements-trt.txt` or `requirements-vllm.txt` only when you need to run the actual inference server.
 
 ## Test Clients
 
@@ -190,11 +244,15 @@ All of them run on the lightweight `requirements-local.txt` environment describe
 After initial deployment, you can use these commands to stop and/or restart the server:
 
 ```bash
-# Light stop (preserve AWQ models and dependencies)
+# Light stop (preserve models and dependencies)
 NUKE_ALL=0 bash scripts/stop.sh
 
-# Quick restart using existing AWQ models
+# Quick restart using existing quantized models (same engine)
 bash scripts/restart.sh [both|chat|tool]
+
+# Switch engines during restart (triggers full wipe)
+bash scripts/restart.sh --vllm [both|chat|tool]
+bash scripts/restart.sh --trt [both|chat|tool]
 
 # Restart and reinstall dependencies (e.g., refresh venv)
 bash scripts/restart.sh both --install-deps
@@ -203,7 +261,7 @@ bash scripts/restart.sh both --install-deps
 bash scripts/restart.sh --reset-models --deploy-mode both \
   --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
   --tool-model yapwithai/yap-longformer-screenshot-intent \
-  --chat-quant fp8
+  --chat-quant 8bit
 
 # Classifier-only reset (no chat engine)
 bash scripts/restart.sh --reset-models --deploy-mode tool \
@@ -212,18 +270,17 @@ bash scripts/restart.sh --reset-models --deploy-mode tool \
 # Auto-detect pre-quantized repos (AWQ/GPTQ) during reset
 bash scripts/restart.sh --reset-models --deploy-mode chat \
   --chat-model cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
-bash scripts/restart.sh --reset-models --deploy-mode chat \
-  --chat-model SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
 
 # Full stop and restart cycle
-bash scripts/stop.sh && bash scripts/main.sh 4bit <chat_model> <tool_model>
+bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 ```
 
 Key restart knobs:
-- `--keep-models` (default) reuses cached AWQ exports; combine with `NUKE_ALL=0` for sub-minute restarts.
+- `--trt` / `--vllm`: Select inference engine (switching triggers full environment wipe).
+- `--keep-models` (default) reuses cached exports; combine with `NUKE_ALL=0` for sub-minute restarts.
 - `--reset-models` wipes caches before relaunching different repos or quantization.
 - `--install-deps` reinstalls `.venv` before launching.
-- `--push-quant` uploads the cached quantized build to HF; see [`ADVANCED.md#pushing-awq-exports-to-hugging-face`](ADVANCED.md#pushing-awq-exports-to-hugging-face) for required env vars.
+- `--push-quant` uploads the cached quantized build to HF; see [`ADVANCED.md#pushing-quantized-exports-to-hugging-face`](ADVANCED.md#pushing-quantized-exports-to-hugging-face) for required env vars.
 
 Caches are wiped by default during model resets; they are only preserved automatically when the requested models *and* quantization match the previous deployment.
 
@@ -232,7 +289,7 @@ Caches are wiped by default during model resets; they are only preserved automat
 Default behavior (deep clean):
 - Terminates only `uvicorn src.server:app`
 - Removes venv and purges pip caches
-- Clears repo-local caches (`.hf`, `.vllm_cache`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
+- Clears repo-local caches (`.hf`, `.vllm_cache`, `.trt_cache`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
 - Clears HF caches, torch caches, NVIDIA PTX JIT cache, and (by default) `$HOME/.cache`
 - Preserves the repository, the container, and services like Jupyter/web console
 
@@ -251,4 +308,4 @@ curl -s http://127.0.0.1:8000/healthz
 
 ## Advanced Usage and Tips
 
-Looking for logs, status/health endpoints, security configuration, restart flows, environment variables, WebSocket protocol details, or pushing AWQ exports? See `ADVANCED.md`.
+Looking for logs, TensorRT-LLM configuration, vLLM tuning, WebSocket protocol details, or pushing quantized exports? See `ADVANCED.md`.

@@ -1,10 +1,14 @@
 # Yap Text Inference Advanced Guide
 
-This document covers advanced operations, configuration, and deep-dive details.
+This document covers advanced operations, configuration, and deep-dive details for both vLLM and TensorRT-LLM engines.
 
 ## Contents
 
 - [Authentication Coverage](#authentication-coverage)
+- [Inference Engine Configuration](#inference-engine-configuration)
+  - [Engine Selection](#engine-selection)
+  - [vLLM Configuration](#vllm-configuration)
+  - [TensorRT-LLM Configuration](#tensorrt-llm-configuration)
 - [Log Rotation](#log-rotation)
 - [Viewing Logs](#viewing-logs)
 - [Linting](#linting)
@@ -17,7 +21,9 @@ This document covers advanced operations, configuration, and deep-dive details.
   - [What You Receive](#what-you-receive)
   - [Barge-In and Cancellation](#barge-in-and-cancellation)
 - [Quantization Notes](#quantization-notes)
-  - [Pushing AWQ Exports to Hugging Face](#pushing-awq-exports-to-hugging-face)
+  - [vLLM Quantization Details](#vllm-quantization-details)
+  - [TensorRT-LLM Quantization Details](#tensorrt-llm-quantization-details)
+  - [Pushing Quantized Exports to Hugging Face](#pushing-quantized-exports-to-hugging-face)
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
 
@@ -25,6 +31,93 @@ This document covers advanced operations, configuration, and deep-dive details.
 
 - `/healthz` – No authentication required
 - `/ws` – Requires API key
+
+## Inference Engine Configuration
+
+### Engine Selection
+
+Yap supports two inference engines selected at deployment time:
+
+| Environment Variable | CLI Flag | Default |
+|---------------------|----------|---------|
+| `INFERENCE_ENGINE=trt` | `--trt` | **Yes** |
+| `INFERENCE_ENGINE=vllm` | `--vllm` | No |
+
+The engine is locked at startup. Switching engines requires a full restart with environment wipe:
+
+```bash
+# Switch from TRT to vLLM (triggers full wipe)
+bash scripts/restart.sh --vllm both
+
+# Or via main.sh
+bash scripts/main.sh --vllm 4bit <chat_model> <tool_model>
+```
+
+### vLLM Configuration
+
+vLLM-specific environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VLLM_USE_V1` | `1` | Enable vLLM V1 engine |
+| `VLLM_ATTENTION_BACKEND` | auto | Force attention backend (e.g., `FLASH_ATTN`, `FLASHINFER`) |
+| `ENFORCE_EAGER` | `0` | Disable CUDA graphs for debugging |
+| `VLLM_ALLOW_LONG_MAX_MODEL_LEN` | `1` | Allow context lengths beyond model config |
+| `KV_DTYPE` | auto | KV cache dtype (`auto`, `fp8`, `int8`) |
+| `AWQ_CACHE_DIR` | `.awq` | Local cache for AWQ exports |
+
+**Cache Management:**
+- vLLM periodically resets prefix and multimodal caches to prevent fragmentation
+- Configure interval with `CACHE_RESET_INTERVAL_SECONDS` (default: 300)
+- Force immediate reset via `reset_engine_caches()` API
+
+### TensorRT-LLM Configuration
+
+TRT-LLM-specific environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TRTLLM_ENGINE_DIR` | — | Path to compiled TRT engine directory |
+| `TRT_CHECKPOINT_DIR` | — | Path to quantized checkpoint |
+| `TRTLLM_REPO_DIR` | `.trtllm-repo` | TRT-LLM repo clone for quantization scripts |
+| `TRT_MAX_BATCH_SIZE` | `MAX_CONCURRENT_CONNECTIONS` | Engine batch size |
+| `TRT_MAX_INPUT_LEN` | `CHAT_MAX_LEN` (5525) | Maximum input token length |
+| `TRT_MAX_OUTPUT_LEN` | `CHAT_MAX_OUT` (150) | Maximum output token length |
+| `TRT_DTYPE` | `float16` | Compute precision |
+| `TRT_KV_FREE_GPU_FRAC` | `CHAT_GPU_FRAC` | GPU memory fraction for KV cache |
+| `TRT_KV_ENABLE_BLOCK_REUSE` | `0` | Enable KV block reuse (automatic) |
+
+**AWQ Quantization Tuning:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TRT_AWQ_BLOCK_SIZE` | `128` | AWQ quantization group size |
+| `TRT_CALIB_SIZE` | `64` | Number of calibration samples |
+| `TRT_CALIB_SEQLEN` | `CHAT_MAX_LEN + CHAT_MAX_OUT` | Calibration sequence length |
+
+**8-bit Format Selection:**
+
+TRT-LLM auto-selects the 8-bit format based on GPU architecture:
+
+| GPU | SM Arch | 8-bit Format |
+|-----|---------|--------------|
+| H100 | sm90 | FP8 |
+| L40S, RTX 4090 | sm89 | FP8 |
+| A100 | sm80 | INT8-SQ (SmoothQuant) |
+
+Override with `QUANTIZATION=fp8` or `QUANTIZATION=int8_sq`.
+
+**MoE Model Support:**
+
+Mixture-of-Experts models (e.g., Qwen3-30B-A3B) are automatically detected by:
+- Naming convention: `-aXb` suffix (e.g., `qwen3-30b-a3b`)
+- Model type markers: `moe`, `mixtral`, `deepseek-v2/v3`
+
+MoE models use `quantize_mixed_precision_moe.py` instead of the standard quantization script.
+
+**Engine Build Metadata:**
+
+After building, metadata is recorded to `{engine_dir}/build_metadata.json`.
 
 ## Log Rotation
 
@@ -136,7 +229,7 @@ Cancel a turn
 { "type": "cancel" }
 ```
 - Shortcut: send the literal `__CANCEL__` string (configurable via `WS_CANCEL_SENTINEL`) when clients cannot emit JSON.
-- Optional: include `"request_id"` to get it echoed back in the server’s `{"type":"done","cancelled":true}` acknowledgement.
+- Optional: include `"request_id"` to get it echoed back in the server's `{"type":"done","cancelled":true}` acknowledgement.
 
 Gracefully end a session
 
@@ -153,7 +246,7 @@ Keep the connection warm during long pauses
 { "type": "ping" }
 ```
 
-- Server replies with `{"type":"pong"}` and resets the idle timer (default idle timeout: 150 s, set via `WS_IDLE_TIMEOUT_S`).
+- Server replies with `{"type":"pong"}` and resets the idle timer (default idle timeout: 150 s, set via `WS_IDLE_TIMEOUT_S`).
 - Incoming `{"type":"pong"}` frames are treated as no-ops so clients can mirror the heartbeat without extra logic.
 
 Warm persona/history (cache priming; optional)
@@ -213,7 +306,7 @@ Automatic barge-in (recommended for Pipecat):
 
 - New `start` messages automatically cancel any ongoing generation for that session
 - Both chat and tool models are immediately aborted; new response begins streaming right away
-- Always send either a new `start`, `cancel`, or `end` before disconnecting so the connection slot is returned without waiting for the idle watchdog (150 s, configurable).
+- Always send either a new `start`, `cancel`, or `end` before disconnecting so the connection slot is returned without waiting for the idle watchdog (150 s, configurable).
 - Idle sockets are closed with code `4000` (`WS_CLOSE_IDLE_CODE`); periodic `ping` frames keep the session alive indefinitely.
 
 Response handling:
@@ -229,20 +322,62 @@ The defaults are defined in `src/config/limits.py`, but every limiter can be tun
 
 ## Quantization Notes
 
-Notes for AWQ:
-- Local quantization: Provide a float chat model (e.g., `SicariusSicariiStuff/Impish_Nemo_12B`, `kyx0r/Neona-12B`, `SicariusSicariiStuff/Wingless_Imp_8B`, etc.) — do not pass a GPTQ repo
-- Pre-quantized models: Point `CHAT_MODEL` at pre-quantized AWQ or W4A16 repos; Yap skips quantization automatically
-- Smart detection: Any repo name containing `awq`, `w4a16`, `nvfp4`, `compressed-tensors`, or `autoround` is treated as 4-bit and run directly
-- Tool models are lightweight classifiers and always run in float precision (AWQ does not apply)
-- AWQ requires additional wheels (installed automatically via `requirements.txt`)
-- Qwen2/Qwen3 and Mistral 3 checkpoints automatically fall back to AutoAWQ 0.2.9 when quantized because llmcompressor cannot reliably trace their hybrid forward graphs yet. Metadata/readmes flag the backend so downstream consumers know whether AutoAWQ or llmcompressor produced the export.
-- Auth for private/gated repos: Set `HUGGINGFACE_HUB_TOKEN` or `HF_TOKEN`
-- Cache location: This repo standardizes on `HF_HOME` (override with `export HF_HOME=/path/to/cache`)
-- Networking: For script-based deployments, HF transfer acceleration is disabled by default; opt in with `HF_HUB_ENABLE_HF_TRANSFER=1` when supported
+### vLLM Quantization Details
 
-### Pushing AWQ Exports to Hugging Face
+vLLM supports multiple quantization backends:
 
-Uploads only happen when you pass `--push-quant` to the launcher you’re using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—even if you previously exported `HF_AWQ_PUSH`.
+| Mode | Backend | Notes |
+|------|---------|-------|
+| `4bit` / `awq` | llmcompressor + vLLM | Default for most models |
+| `4bit` (Qwen/Mistral3) | AutoAWQ 0.2.9 | Fallback for hybrid architectures |
+| `gptq` / `gptq_marlin` | vLLM GPTQ | For pre-quantized GPTQ repos |
+| `8bit` / `fp8` | vLLM FP8 | L40S/H100 native |
+| `8bit` / `int8` | vLLM INT8 | A100 emulated |
+
+**Local AWQ quantization tuning:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AWQ_CALIB_DATASET` | `open_platypus` | Calibration dataset |
+| `AWQ_NSAMPLES` | `64` | Number of calibration samples |
+| `AWQ_SEQLEN` | `2048` | Calibration sequence length |
+
+**Pre-quantized model detection:**
+- Any repo name containing `awq`, `w4a16`, `nvfp4`, `compressed-tensors`, or `autoround` is treated as 4-bit
+- Any repo name containing `gptq` is treated as GPTQ
+- Tool models are always run in float precision (never quantized)
+
+### TensorRT-LLM Quantization Details
+
+TRT-LLM uses NVIDIA's quantization pipeline with a two-stage process:
+
+1. **Quantization**: Creates a checkpoint with quantized weights
+2. **Engine Build**: Compiles the checkpoint to a GPU-specific `.engine` file
+
+**Quantization formats:**
+
+| Mode | TRT Format | GPU Support |
+|------|------------|-------------|
+| `4bit` / `awq` | `int4_awq` | All GPUs |
+| `8bit` (H100/L40S) | `fp8` | sm89, sm90 |
+| `8bit` (A100) | `int8_sq` | sm80 |
+
+**Engine portability:** TRT engines are GPU-architecture specific. An engine built on H100 will not run on A100 or L40S.
+
+**Force rebuild:**
+
+```bash
+export FORCE_REBUILD=true
+bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
+```
+
+**Pre-quantized TRT models:**
+- Repos containing both `trt` and `awq` in the name are detected as pre-quantized TRT checkpoints
+- The server downloads the checkpoint and builds the engine locally
+
+### Pushing Quantized Exports to Hugging Face
+
+Uploads only happen when you pass `--push-quant` to the launcher you're using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—even if you previously exported `HF_AWQ_PUSH`.
 
 **Required whenever `--push-quant` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
@@ -254,23 +389,34 @@ Uploads only happen when you pass `--push-quant` to the launcher you’re using 
 - `HF_AWQ_ALLOW_CREATE` – auto-create repo (`1`) or require it to exist (`0`)
 - `HF_AWQ_COMMIT_MSG_CHAT` – commit message override for chat uploads
 
+**vLLM example:**
+
 ```bash
-export HF_TOKEN="hf_your_api_token"            # token with write access
-export HF_AWQ_CHAT_REPO="your-org/chat-awq"    # repo for the chat model (required if chat deployed)
-# optional tweaks
-export HF_AWQ_BRANCH=main                      # branch name (default: main)
-export HF_AWQ_PRIVATE=1                        # create repo as private (0 = public)
-export HF_AWQ_ALLOW_CREATE=1                   # create repo automatically (0 = expect it to exist)
-export HF_AWQ_COMMIT_MSG_CHAT="Upload Nemo AWQ build"   # optional commit message override
+export HF_TOKEN="hf_your_api_token"
+export HF_AWQ_CHAT_REPO="your-org/chat-awq"
+export HF_AWQ_BRANCH=main
+export HF_AWQ_PRIVATE=1
+export HF_AWQ_ALLOW_CREATE=1
 
-# full deployment that quantizes chat, deploys tool model alongside it + uploads quantized chat model to HF
-bash scripts/main.sh 4bit <chat_model> <tool_model> --push-quant
+# Full deployment with HF push
+bash scripts/main.sh --vllm 4bit <chat_model> <tool_model> --push-quant
 
-# restart-only upload (works with or without --reset-models)
-bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 4bit
+# Restart-only upload
+bash scripts/restart.sh --vllm chat --push-quant --chat-model <model> --chat-quant 4bit
 ```
 
-The pipeline writes `awq_metadata.json` and `README.md` into each quantized folder for transparency and reproducibility.
+**TensorRT-LLM example:**
+
+```bash
+export HF_TOKEN="hf_your_api_token"
+export TRT_HF_PUSH_REPO_ID="your-org/chat-trt-awq"
+export TRT_HF_PUSH_ENABLED=1
+
+# Full deployment with HF push
+bash scripts/main.sh --trt 4bit <chat_model> <tool_model> --push-quant
+```
+
+The pipeline writes metadata files (`awq_metadata.json` or `build_metadata.json`) and `README.md` into each quantized folder for transparency and reproducibility.
 
 ## Test Clients
 
@@ -370,7 +516,7 @@ TEXT_API_KEY=your_api_key python3 tests/tool.py \
   --max-steps 20
 ```
 
-- `--timeout`: wait per tool decision (default 5 s)
+- `--timeout`: wait per tool decision (default 5 s)
 - `--concurrency`: parallel cases if the tool engine has capacity
 - `--limit`: cap the number of replayed cases for faster smoke runs
 - `--prompt-mode`: limit prompts to `chat` or `tool` so the suite matches the deployment mode (default `both`)
@@ -391,7 +537,8 @@ Pass `--double-ttfb` to keep each connection open for two sequential transaction
 ## Persona and History Behavior
 
 - Chat prompts are rendered using each model's own tokenizer
-- Prefix caching reuses any repeated history/prompts within the process. If you swap a companion's system prompt, history KV stays hot.
+- **vLLM:** Prefix caching reuses any repeated history/prompts within the process. If you swap a companion's system prompt, history KV stays hot.
+- **TensorRT-LLM:** Block reuse provides automatic KV cache management without explicit resets.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
 
 ## GPU Memory Fractions
@@ -406,7 +553,9 @@ Override as needed:
 ```bash
 export CHAT_GPU_FRAC=0.60
 export TOOL_GPU_FRAC=0.25
-bash scripts/stop.sh && bash scripts/main.sh 4bit <chat_model> <tool_model>
+bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 ```
 
-
+**TensorRT-LLM specific:**
+- `TRT_KV_FREE_GPU_FRAC` controls KV cache memory (defaults to `CHAT_GPU_FRAC`)
+- Engine build uses `TRT_MAX_BATCH_SIZE` to pre-allocate KV cache slots
