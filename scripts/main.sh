@@ -50,6 +50,9 @@ fi
 # Export models to environment
 main_export_models
 
+# Validate --push-quant prerequisites early (before any heavy operations)
+validate_push_quant_prereqs "${DEPLOY_MODELS:-both}"
+
 # Early model validation - fail fast before any heavy operations
 log_info "Validating model configuration..."
 if ! validate_models_early; then

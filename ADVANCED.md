@@ -409,11 +409,18 @@ bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 
 ### Pushing Quantized Exports to Hugging Face
 
-Uploads only happen when you pass `--push-quant` to the launcher you're using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—even if you previously exported `HF_AWQ_PUSH`.
+Uploads **only** happen when you pass `--push-quant` to the launcher you're using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—environment variables alone will never trigger a push.
+
+When `--push-quant` is specified, the script validates required parameters **at the very beginning** (before any downloads or heavy operations). If validation fails, the script exits immediately with a clear error message.
 
 **Required whenever `--push-quant` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
-- `HF_AWQ_CHAT_REPO` pointing to your chat AWQ repo whenever chat or both models are deployed
+
+**For vLLM engine (additionally required for chat/both modes):**
+- `HF_AWQ_CHAT_REPO` – target Hugging Face repo for chat model AWQ weights
+
+**For TensorRT-LLM engine (additionally required):**
+- `TRT_HF_PUSH_REPO_ID` – target Hugging Face repo for TRT quantized model
 
 **Optional tuning (defaults shown below):**
 - `HF_AWQ_BRANCH` – upload branch (default `main`)
@@ -433,7 +440,7 @@ export HF_AWQ_ALLOW_CREATE=1
 # Full deployment with HF push
 bash scripts/main.sh --vllm 4bit <chat_model> <tool_model> --push-quant
 
-# Restart-only upload
+# Restart with quantization and push
 bash scripts/restart.sh --vllm chat --push-quant --chat-model <model> --chat-quant 4bit
 ```
 
@@ -442,11 +449,15 @@ bash scripts/restart.sh --vllm chat --push-quant --chat-model <model> --chat-qua
 ```bash
 export HF_TOKEN="hf_your_api_token"
 export TRT_HF_PUSH_REPO_ID="your-org/chat-trt-awq"
-export TRT_HF_PUSH_ENABLED=1
 
 # Full deployment with HF push
 bash scripts/main.sh --trt 4bit <chat_model> <tool_model> --push-quant
+
+# Restart with quantization and push
+bash scripts/restart.sh --trt chat --push-quant --chat-model <model> --chat-quant 4bit
 ```
+
+**Note:** The `--push-quant` flag is the **only** way to enable HF uploads. Environment variables alone (like `HF_AWQ_PUSH`) do not trigger uploads—you must pass `--push-quant` on the command line.
 
 The pipeline writes metadata files (`awq_metadata.json` or `build_metadata.json`) and `README.md` into each quantized folder for transparency and reproducibility.
 

@@ -18,7 +18,6 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "TheDrummer/Tiger-Gemma-12B-v3", # might or might not work depending on vllm setup/version
     "dphn/Dolphin3.0-Llama3.1-8B",
     "ArliAI/DS-R1-Qwen3-8B-ArliAI-RpR-v4-Small",
-    "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     "nvidia/Llama-3_1-Nemotron-51B-Instruct",
     "mistralai/Ministral-8B-Instruct-2410",
     "zerofata/L3.3-GeneticLemonade-Unleashed-v3-70B",

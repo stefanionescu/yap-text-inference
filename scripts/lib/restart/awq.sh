@@ -112,27 +112,12 @@ restart_validate_awq_push_prereqs() {
     return
   fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
-    log_info "HF_AWQ_PUSH=1 but no local AWQ artifacts detected; uploads will be skipped."
+    log_info "--push-quant specified but no local AWQ artifacts detected; uploads will be skipped."
     return
   fi
 
-  if [ -z "${HF_TOKEN:-}" ]; then
-    log_error "HF_AWQ_PUSH=1 requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set before restart."
-    exit 1
-  fi
-
-  local NEED_CHAT=0
-  case "${DEPLOY_MODE}" in
-    both) NEED_CHAT=1 ;;
-    chat) NEED_CHAT=1 ;;
-  esac
-
-  if [ "${NEED_CHAT}" = "1" ]; then
-    if [ -z "${HF_AWQ_CHAT_REPO:-}" ] || [[ "${HF_AWQ_CHAT_REPO}" == your-org/* ]]; then
-      log_error "HF_AWQ_PUSH=1 requires HF_AWQ_CHAT_REPO to point to your Hugging Face chat repo."
-      exit 1
-    fi
-  fi
+  # Note: Main prereqs (HF_TOKEN, repo IDs) are validated early in restart.sh
+  # via validate_push_quant_prereqs(). This function just checks for local models.
 }
 
 restart_push_cached_awq_models() {
@@ -141,7 +126,7 @@ restart_push_cached_awq_models() {
     return
   fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
-    log_info "HF_AWQ_PUSH=1 but no local AWQ artifacts detected; skipping upload."
+    log_info "--push-quant specified but no local AWQ artifacts detected; skipping upload."
     return
   fi
 

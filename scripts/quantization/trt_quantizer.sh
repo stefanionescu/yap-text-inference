@@ -154,9 +154,9 @@ fi
 mkdir -p "${ROOT_DIR}/.run"
 echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR}/.run/trt_engine_dir.env"
 
-# Optional: Push to HuggingFace
-if [ "${TRT_HF_PUSH_ENABLED:-0}" = "1" ] && [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
-  log_info "HuggingFace push requested..."
+# Optional: Push to HuggingFace (only when --push-quant flag is passed)
+if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
+  log_info "HuggingFace push requested (--push-quant)..."
   trt_push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}" "${TRT_HF_PUSH_REPO_ID:-}"
 fi
 

@@ -3,6 +3,7 @@
 # vLLM AWQ Hugging Face Push
 # =============================================================================
 # Push AWQ quantized models to Hugging Face.
+# Only runs when --push-quant flag is passed (sets HF_AWQ_PUSH=1)
 
 # Push AWQ artifacts to Hugging Face repo
 vllm_awq_push_to_hf() {
@@ -10,22 +11,22 @@ vllm_awq_push_to_hf() {
   local repo_id="$2"
   local commit_msg="$3"
 
-  if [ "${HF_AWQ_PUSH}" != "1" ]; then
+  if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return
   fi
 
   if [ -z "${repo_id}" ] || [[ "${repo_id}" == your-org/* ]]; then
-    log_warn "HF_AWQ_PUSH=1 but Hugging Face repo not configured; skipping upload for ${src_dir}"
+    log_warn "--push-quant specified but HF_AWQ_CHAT_REPO not configured; skipping upload for ${src_dir}"
     return
   fi
 
   if [[ "${repo_id}" == /* ]]; then
-    log_warn "HF_AWQ_PUSH=1 but repo id '${repo_id}' looks like a local path; skipping upload"
+    log_warn "--push-quant specified but repo id '${repo_id}' looks like a local path; skipping upload"
     return
   fi
 
   if [ -z "${HF_TOKEN:-}" ]; then
-    log_warn "HF_AWQ_PUSH=1 but no Hugging Face token available; skipping upload"
+    log_warn "--push-quant specified but HF_TOKEN not available; skipping upload"
     return
   fi
 
