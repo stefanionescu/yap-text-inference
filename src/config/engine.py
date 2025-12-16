@@ -1,4 +1,33 @@
-"""Inference engine selection and quantization settings."""
+"""Inference engine selection and quantization settings.
+
+This module configures which inference backend to use and how models
+are quantized. The two supported engines are:
+
+vLLM (default for development):
+    - Dynamic batching with PagedAttention
+    - Supports AWQ, GPTQ, FP8 quantization
+    - Prefix caching for repeated prompts
+    - Requires periodic cache reset
+
+TensorRT-LLM (recommended for production):
+    - Pre-compiled optimized engines
+    - Lower latency, higher throughput
+    - Built-in KV cache block reuse
+    - No runtime compilation
+
+Quantization Options:
+    - awq: 4-bit AWQ (best quality/size tradeoff)
+    - gptq: 4-bit GPTQ 
+    - gptq_marlin: GPTQ with Marlin kernels (faster)
+    - fp8: 8-bit FP8 (requires Ada/Hopper GPUs)
+    - 8bit: Generic 8-bit (maps to fp8 or int8_sq based on GPU)
+    - 4bit: Generic 4-bit (maps to awq)
+
+Environment Variables:
+    INFERENCE_ENGINE: 'vllm' or 'trt' (default: 'trt')
+    QUANTIZATION: Quantization mode (required for LLMs)
+    CHAT_QUANTIZATION: Override quantization for chat model only
+"""
 
 from __future__ import annotations
 
@@ -9,14 +38,28 @@ from .quantization import normalize_engine
 from .gpu import KV_DTYPE
 
 
-# Engine selection: 'trt' (default) or 'vllm'
+# ============================================================================
+# Engine Selection
+# ============================================================================
+# Both engines support the same model formats but have different tradeoffs.
+
 INFERENCE_ENGINE = normalize_engine(os.getenv("INFERENCE_ENGINE", "trt"))
 
-# Quantization mode: 'fp8' | 'gptq' | 'gptq_marlin' | 'awq' | '8bit' | '4bit'
-QUANTIZATION = os.getenv("QUANTIZATION")
-CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional override for chat
+# ============================================================================
+# Quantization Configuration
+# ============================================================================
+# Quantization reduces model size and increases throughput at the cost of
+# some quality. AWQ 4-bit is recommended for most use cases.
 
-# vLLM V1 engine FP8 KV cache enablement
+QUANTIZATION = os.getenv("QUANTIZATION")  # Global default
+CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional chat-specific override
+
+# ============================================================================
+# vLLM V1 FP8 KV Cache Setup
+# ============================================================================
+# V1 engine requires explicit environment variable for FP8 KV cache.
+# This is set automatically when KV_DTYPE=fp8.
+
 if env_flag("VLLM_USE_V1", True):
     kv_lower = (KV_DTYPE or "").strip().lower()
     if kv_lower.startswith("fp8"):

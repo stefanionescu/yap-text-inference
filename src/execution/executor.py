@@ -1,4 +1,29 @@
-"""Executor: tool-first, then chat."""
+"""Executor: tool-first, then chat.
+
+This module implements the main execution workflow that processes user messages
+through a sequential tool-then-chat pipeline:
+
+1. Tool Router Phase:
+   - Launch tool classifier request in parallel
+   - Detect user intent (screenshot request, control function, or none)
+   - Timeout handling with graceful fallback
+
+2. Response Decision:
+   - "take_screenshot": Prefix message with CHECK SCREEN, continue to chat
+   - Control functions (switch_gender, etc.): Send hard-coded response
+   - No tool match: Continue to chat without prefix
+
+3. Chat Generation Phase:
+   - Build prompt with persona + history + user message
+   - Stream response via WebSocket
+   - Record turn in session history
+
+The executor coordinates between:
+- Tool classifier (fast intent detection)
+- Session handler (history, persona, request tracking)
+- Chat engine (streaming text generation)
+- WebSocket helpers (response streaming)
+"""
 
 import asyncio
 import json
@@ -17,13 +42,25 @@ logger = logging.getLogger(__name__)
 
 
 def _should_skip_chat(raw_field: list | None) -> bool:
-    """Determine if chat should be skipped based on tool result.
+    """Determine if chat generation should be skipped based on tool result.
     
-    Returns True if the tool returned a control function that doesn't need chat.
-    Chat is skipped for: switch_gender, switch_personality, switch_gender_and_personality,
-    start_freestyle, stop_freestyle, etc.
+    Control functions like personality/gender switches don't need the chat
+    model - they return hard-coded responses instead. This saves latency
+    and GPU resources for simple control operations.
     
-    Chat continues for: take_screenshot (needs CHECK SCREEN), or empty results.
+    Args:
+        raw_field: Parsed tool result (list of tool dicts).
+        
+    Returns:
+        True if any detected tool is NOT in CHAT_CONTINUE_TOOLS.
+        
+    Chat is skipped for:
+        - switch_gender, switch_personality, switch_gender_and_personality
+        - start_freestyle, stop_freestyle
+        
+    Chat continues for:
+        - take_screenshot (needs CHECK SCREEN prefix)
+        - Empty results (no tool detected)
     """
     if not raw_field or not isinstance(raw_field, list):
         return False
@@ -51,13 +88,21 @@ async def run_execution(
 ) -> None:
     """Execute sequential tool-then-chat workflow.
     
+    This is the main entry point for processing a user message. It:
+    1. Launches tool classifier to detect intent
+    2. Waits for tool result (with timeout)
+    3. Sends toolcall status to client
+    4. Either returns hard-coded response or streams chat generation
+    
     Args:
-        ws: WebSocket connection
-        session_id: Session identifier
-        static_prefix: Static persona prefix
-        runtime_text: Runtime persona text
-        history_text: Conversation history
-        user_utt: User utterance
+        ws: WebSocket connection for sending responses.
+        session_id: Session identifier for history/config lookup.
+        static_prefix: Static persona system prompt prefix.
+        runtime_text: Runtime persona context (timestamps, etc.).
+        history_text: Conversation history in text format.
+        user_utt: The user's message to process.
+        history_turn_id: Optional existing turn ID for streaming updates.
+        sampling_overrides: Optional sampling parameter overrides.
     """
     # Run tool router (do not mark active to avoid clobbering chat req id)
     # Timeout is handled internally by tool_runner.py (mirroring the chat stream)

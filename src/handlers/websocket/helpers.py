@@ -1,4 +1,27 @@
-"""WebSocket streaming and communication utilities."""
+"""WebSocket streaming and communication utilities.
+
+This module provides helper functions for safe WebSocket communication
+and streaming chat responses. It handles:
+
+1. Safe Sending:
+   - Catching WebSocketDisconnect during send operations
+   - Returning boolean success indicators for flow control
+   
+2. Streaming Infrastructure:
+   - Forwarding async chat streams to WebSocket clients
+   - Sending token/final/done message frames
+   - Recording conversation history on completion
+   
+3. Task Management:
+   - Launching and tracking tool/classifier requests
+   - Clean task cancellation with proper await
+
+Message Protocol:
+    Token frame:   {"type": "token", "text": "chunk"}
+    Final frame:   {"type": "final", "normalized_text": "full response"}
+    Done frame:    {"type": "done", "usage": {...}}
+    Toolcall:      {"type": "toolcall", "status": "...", "raw": {...}}
+"""
 
 from __future__ import annotations
 
@@ -20,7 +43,18 @@ logger = logging.getLogger(__name__)
 
 
 async def safe_send_text(ws: WebSocket, text: str) -> bool:
-    """Send text to the client, returning False if the socket is gone."""
+    """Send text to the client, returning False if the socket is gone.
+    
+    Catches WebSocketDisconnect to allow graceful handling of
+    client disconnections during send operations.
+    
+    Args:
+        ws: The WebSocket connection.
+        text: Raw text to send.
+        
+    Returns:
+        True if sent successfully, False if client disconnected.
+    """
     try:
         await ws.send_text(text)
     except WebSocketDisconnect:
@@ -30,11 +64,26 @@ async def safe_send_text(ws: WebSocket, text: str) -> bool:
 
 
 async def safe_send_json(ws: WebSocket, payload: dict[str, Any]) -> bool:
-    """Send a JSON payload, swallowing client disconnects."""
+    """Send a JSON payload, swallowing client disconnects.
+    
+    Args:
+        ws: The WebSocket connection.
+        payload: Dictionary to serialize and send.
+        
+    Returns:
+        True if sent successfully, False if client disconnected.
+    """
     return await safe_send_text(ws, json.dumps(payload))
 
 
 async def send_toolcall(ws: WebSocket, status: str, raw: object) -> None:
+    """Send a toolcall message with status and raw result data.
+    
+    Args:
+        ws: The WebSocket connection.
+        status: Tool call status (e.g., "completed", "error").
+        raw: Raw tool result data to include.
+    """
     await safe_send_json(ws, {
         "type": "toolcall",
         "status": status,
@@ -43,12 +92,26 @@ async def send_toolcall(ws: WebSocket, status: str, raw: object) -> None:
 
 
 async def flush_and_send(ws: WebSocket, buffer_text: str) -> None:
+    """Send buffered text as a token frame if non-empty.
+    
+    Args:
+        ws: The WebSocket connection.
+        buffer_text: Text to send (skipped if empty).
+    """
     if not buffer_text:
         return
     await safe_send_json(ws, {"type": "token", "text": buffer_text})
 
 
 async def cancel_task(task: asyncio.Task | None) -> None:
+    """Cancel an asyncio task and await its completion.
+    
+    Safely handles None tasks and already-completed tasks.
+    Suppresses all exceptions during cancellation.
+    
+    Args:
+        task: The task to cancel, or None.
+    """
     if not task or task.done():
         return
     logger.info("executor: cancelling task %s", repr(task))
@@ -63,7 +126,19 @@ def launch_tool_request(
     user_utt: str,
     history_text: str,
 ) -> tuple[str, Awaitable[dict]]:
-    """Create a tool request coroutine and register its request id."""
+    """Create a tool request coroutine and register its request ID.
+    
+    Generates a unique request ID, registers it with the session handler,
+    and creates an asyncio task for the tool call.
+    
+    Args:
+        session_id: The session to associate the request with.
+        user_utt: The user's utterance to classify.
+        history_text: Conversation history for context.
+        
+    Returns:
+        Tuple of (request_id, asyncio.Task) for the tool call.
+    """
     tool_req_id = f"tool-{uuid.uuid4()}"
     session_handler.set_tool_request(session_id, tool_req_id)
     tool_task = asyncio.create_task(
@@ -80,9 +155,10 @@ def launch_tool_request(
 
 @dataclass
 class _ChatStreamState:
-    final_text: str
-    text_visible: bool
-    interrupted: bool = False
+    """Internal state for stream_chat_response."""
+    final_text: str      # Accumulated response text
+    text_visible: bool   # Whether any text has been sent to client
+    interrupted: bool = False  # Whether streaming was interrupted
 
 
 async def stream_chat_response(
@@ -96,7 +172,29 @@ async def stream_chat_response(
     history_user_utt: str | None = None,
     history_turn_id: str | None = None,
 ) -> str:
-    """Stream chat chunks, emit final/done messages, and record history."""
+    """Stream chat chunks, emit final/done messages, and record history.
+    
+    This is the main function for sending streaming chat responses to clients.
+    It handles:
+    - Optional initial text (e.g., screenshot analysis prefix)
+    - Forwarding stream chunks as token frames
+    - Sending final and done completion frames
+    - Recording the conversation turn in session history
+    - Proper cleanup on cancellation or disconnection
+    
+    Args:
+        ws: The WebSocket connection.
+        stream: Async iterator yielding text chunks from the chat model.
+        session_id: Session for history recording.
+        user_utt: User utterance (for logging/tracking).
+        initial_text: Optional prefix text to include in response.
+        initial_text_already_sent: Whether initial_text was already sent to client.
+        history_user_utt: Override user text for history (if different from user_utt).
+        history_turn_id: Existing turn ID to update (for streaming updates).
+        
+    Returns:
+        The complete response text (initial_text + all stream chunks).
+    """
     history_user = history_user_utt if history_user_utt is not None else user_utt
     state = _ChatStreamState(
         final_text=initial_text,

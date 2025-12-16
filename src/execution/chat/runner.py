@@ -1,4 +1,25 @@
-"""High-level chat generation runner."""
+"""High-level chat generation runner.
+
+This module provides the main interface for streaming chat generation,
+handling:
+
+1. Sampling Parameter Resolution:
+   - Merge default config with per-request overrides
+   - Build engine-specific SamplingParams
+   - Logit bias token ID mapping
+
+2. Prompt Building:
+   - Combine static prefix + runtime context + history + user message
+   - Apply chat template via tokenizer
+
+3. Stream Processing:
+   - Delegate to ChatStreamController for buffering/timeout
+   - Apply streaming sanitization (Unicode normalization, etc.)
+   - Handle cancellation checks
+
+The runner abstracts away engine differences - callers get a simple
+async generator of text chunks regardless of vLLM vs TRT-LLM backend.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +47,7 @@ from ...persona import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
 
 
+# Cache for tokenized logit bias mapping
 _logit_bias_cache: dict[int, float] | None = None
 
 
@@ -39,7 +61,29 @@ async def run_chat_generation(
     *,
     sampling_overrides: dict[str, float | int | bool] | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Stream chat generation with optional micro-coalescing."""
+    """Stream chat generation with optional micro-coalescing.
+    
+    This is the primary interface for generating chat responses. It:
+    1. Resolves sampling parameters (defaults + overrides)
+    2. Builds the full prompt with persona and history
+    3. Streams generation through ChatStreamController
+    4. Applies streaming sanitization (optional)
+    
+    Args:
+        session_id: Session for request tracking and cancellation.
+        static_prefix: Static persona system prompt.
+        runtime_text: Runtime context (time, metadata).
+        history_text: Conversation history.
+        user_utt: User message to respond to.
+        request_id: Optional request ID (auto-generated if None).
+        sampling_overrides: Override default sampling parameters.
+            Supported: temperature, top_p, top_k, min_p,
+            repetition_penalty, presence_penalty, frequency_penalty,
+            sanitize_output (bool).
+            
+    Yields:
+        Text chunks as they're generated, sanitized and buffered.
+    """
     req_id = request_id or f"chat-{uuid.uuid4()}"
     session_handler.set_active_request(session_id, req_id)
 
@@ -104,7 +148,18 @@ async def run_chat_generation(
 
 
 def _get_logit_bias_map() -> dict[int, float]:
-    """Build logit bias map, retrying if tokenizer wasn't ready before."""
+    """Build logit bias map from text tokens to token IDs.
+    
+    The CHAT_LOGIT_BIAS config maps text strings to bias values.
+    This function converts those to token ID -> bias mappings
+    that the engine can use.
+    
+    The result is cached after first successful build.
+    
+    Returns:
+        Dict mapping token IDs to logit bias values.
+        Empty dict if no bias configured or tokenizer unavailable.
+    """
     global _logit_bias_cache
     if _logit_bias_cache is not None:
         return _logit_bias_cache

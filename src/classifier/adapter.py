@@ -1,4 +1,17 @@
-"""Batched classifier adapter for screenshot intent detection."""
+"""Batched classifier adapter for screenshot intent detection.
+
+This module provides the high-level ClassifierToolAdapter that:
+
+1. Manages the classification backend lifecycle
+2. Formats inputs (history + current utterance)
+3. Applies decision thresholds
+4. Enforces GPU memory limits
+5. Coordinates micro-batching for efficiency
+
+The adapter is the main entry point for tool/screenshot classification.
+It uses a separate, lightweight model rather than the full chat model
+for faster inference on intent detection.
+"""
 
 from __future__ import annotations
 
@@ -13,8 +26,23 @@ logger = logging.getLogger(__name__)
 
 
 class ClassifierToolAdapter:
-    """Microbatched classifier adapter for screenshot intent detection."""
+    """Microbatched classifier adapter for screenshot intent detection.
+    
+    This class coordinates between:
+    - The PyTorch inference backend (TorchClassifierBackend)
+    - The batching layer (BatchExecutor)
+    - GPU memory management
+    - Threshold-based decision making
+    
+    Attributes:
+        model_path: Path or HuggingFace ID of the classifier model.
+        threshold: Probability threshold for "take screenshot" decision.
+        device: CUDA device string (e.g., "cuda:0") or "cpu".
+        dtype: Torch dtype (float16 for GPU, float32 for CPU).
+        request_timeout_s: Maximum wait time for batch results.
+    """
 
+    # Track which GPU devices have had memory fraction configured
     _memory_fraction_configured: set[int] = set()
 
     def __init__(
@@ -30,6 +58,19 @@ class ClassifierToolAdapter:
         request_timeout_s: float = 5.0,
         gpu_memory_frac: float | None = None,
     ) -> None:
+        """Initialize the classifier adapter.
+        
+        Args:
+            model_path: HuggingFace model path or local directory.
+            threshold: Probability threshold for positive classification.
+            device: Target device (defaults to cuda if available).
+            compile_model: Whether to use torch.compile() for optimization.
+            max_length: Maximum input sequence length.
+            batch_max_size: Maximum requests per micro-batch.
+            batch_max_delay_ms: Maximum wait time to fill a batch.
+            request_timeout_s: Per-request timeout for classification.
+            gpu_memory_frac: Fraction of GPU memory to reserve (0-1).
+        """
         self.model_path = model_path
         self.threshold = threshold
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -119,7 +160,17 @@ class ClassifierToolAdapter:
     # ------------------------------------------------------------------ #
 
     def classify(self, user_utt: str, user_history: str = "") -> tuple[bool, float]:
-        """Return (should_take_screenshot, probability)."""
+        """Classify whether a screenshot should be taken.
+        
+        Args:
+            user_utt: Current user utterance to classify.
+            user_history: Previous user messages for context.
+            
+        Returns:
+            Tuple of (should_take_screenshot, probability):
+            - should_take_screenshot: True if probability >= threshold
+            - probability: Raw model probability for "take screenshot"
+        """
         text = self._format_input(user_utt, user_history)
         probs = self._batch.classify(text, timeout_s=self.request_timeout_s)
 
@@ -132,6 +183,18 @@ class ClassifierToolAdapter:
         return should_take, p_yes
 
     def run_tool_inference(self, user_utt: str, user_history: str = "") -> str:
+        """Run tool inference and return a JSON result string.
+        
+        This is the main entry point for the tool execution pipeline.
+        
+        Args:
+            user_utt: Current user utterance.
+            user_history: Previous user messages for context.
+            
+        Returns:
+            JSON string: '[{"name": "take_screenshot"}]' if positive,
+            or '[]' if negative.
+        """
         should_take, p_yes = self.classify(user_utt, user_history)
         logger.debug(
             "classifier: result=%s prob=%.3f user=%r",

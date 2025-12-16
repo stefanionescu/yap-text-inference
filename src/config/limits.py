@@ -1,12 +1,45 @@
-"""Token, history, and concurrency limits configuration."""
+"""Token, history, and concurrency limits configuration.
+
+This module defines the various limits that control resource usage and
+protect against abuse. Limits are organized into categories:
+
+Context Limits:
+    - CHAT_MAX_LEN: Maximum input context length (tokens)
+    - CHAT_MAX_OUT: Maximum generation length (tokens)
+    - HISTORY_MAX_TOKENS: Maximum conversation history (tokens)
+    - USER_UTT_MAX_TOKENS: Maximum user utterance (tokens)
+    - CHAT_PROMPT_MAX_TOKENS: Maximum persona prompt (tokens)
+
+Sampling Limits:
+    - Temperature, top_p, top_k, min_p ranges
+    - Repetition, presence, frequency penalty ranges
+    - These constrain client-provided sampling parameters
+
+Rate Limits:
+    - WS_MAX_MESSAGES_PER_WINDOW: Message rate limit
+    - WS_MAX_CANCELS_PER_WINDOW: Cancel rate limit
+    - CHAT_PROMPT_UPDATE_MAX_PER_WINDOW: Prompt update limit
+
+Memory Tuning:
+    - MAX_NUM_SEQS_*: Batch size tuning by GPU size
+    - BATCH_SCALE_*: Dynamic batch scaling parameters
+
+All values can be overridden via environment variables.
+"""
 
 import os
 
 from ..helpers.env import env_flag
 
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5525"))  # 2000 persona + 3000 history + 500 user + 25 tool reply
-CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))
+# ============================================================================
+# Context Window Limits
+# ============================================================================
+# These define the maximum token budget for different components.
+# Total budget breakdown: 2000 persona + 3000 history + 500 user + 25 buffer
+
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5525"))  # Total context window
+CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))   # Max generation tokens
 PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
 
 # Chat sampling override limits (optional client-provided values)

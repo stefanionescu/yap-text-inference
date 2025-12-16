@@ -1,5 +1,34 @@
 """Chat streaming controller - engine agnostic.
 
+This module provides the ChatStreamController, which handles the mechanics
+of streaming text generation from any engine implementing BaseEngine.
+
+Key Features:
+
+1. Engine Abstraction:
+   - Works with both vLLM and TensorRT-LLM
+   - Accepts an engine getter function for lazy initialization
+
+2. Micro-Buffering:
+   - Accumulates small chunks for flush_ms duration
+   - Reduces WebSocket message overhead
+   - Configurable via flush_ms (0 = no buffering)
+
+3. Timeout Handling:
+   - Generation timeout with asyncio.timeout
+   - Automatic request abortion on timeout
+   - TimeoutError propagation for caller handling
+
+4. Cancellation Support:
+   - Cooperative cancellation via cancel_check callback
+   - StreamCancelledError for clean termination
+   - Automatic request abortion on cancel
+
+5. Telemetry:
+   - TTFB (Time To First Byte) tracking
+   - Total generation time logging
+   - Per-request logging with session/request IDs
+
 Works with both vLLM and TensorRT-LLM engines through the BaseEngine interface.
 """
 
@@ -16,18 +45,36 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from ...engines.base import BaseEngine
 
 logger = logging.getLogger(__name__)
-STREAM_LABEL = "chat"
+STREAM_LABEL = "chat"  # Log prefix for chat streams
 
+# Type for cancellation check callbacks
 CancelCheck = Callable[[], bool | Awaitable[bool]] | None
 
 
 class StreamCancelledError(Exception):
-    """Raised when a cooperative cancel check requests termination."""
+    """Raised when a cooperative cancel check requests termination.
+    
+    This exception is used for clean stream termination when the
+    cancel_check callback returns True. It allows callers to
+    distinguish cancellation from other errors.
+    """
 
 
 @dataclass(slots=True)
 class ChatStreamConfig:
-    """Configuration for chat streaming."""
+    """Configuration for chat streaming.
+    
+    Attributes:
+        session_id: Session identifier for logging.
+        request_id: Unique request ID for tracking and abortion.
+        prompt: The formatted prompt to generate from.
+        sampling_params: Engine-specific sampling parameters.
+        engine_getter: Async function returning the engine instance.
+        timeout_s: Maximum seconds for generation.
+        priority: Request priority (higher = more urgent).
+        flush_ms: Minimum milliseconds between buffer flushes.
+        cancel_check: Optional callback to check for cancellation.
+    """
 
     session_id: str
     request_id: str
@@ -43,23 +90,51 @@ class ChatStreamConfig:
 class ChatStreamController:
     """Handles buffering, cancellation, and logging for chat generations.
     
-    This controller works with any engine implementing the BaseEngine interface,
+    This controller provides a clean async iterator interface over engine
+    generation streams, adding:
+    - Micro-buffering for reduced message overhead
+    - Timeout enforcement with automatic abortion
+    - Cancellation support via callback
+    - TTFB and completion telemetry
+    
+    Works with any engine implementing the BaseEngine interface,
     including both vLLM and TensorRT-LLM.
+    
+    Usage:
+        config = ChatStreamConfig(...)
+        controller = ChatStreamController(config)
+        async for chunk in controller:
+            process(chunk)
     """
 
     def __init__(self, config: ChatStreamConfig):
+        """Initialize the stream controller.
+        
+        Args:
+            config: ChatStreamConfig with all stream parameters.
+        """
         self._cfg = config
-        self._full_text: str = ""
-        self._ttfb_ms: float | None = None
-        self._cancelled = False
-        self._buffer: list[str] = []
-        self._last_flush_at = time.perf_counter()
-        self._start_time: float | None = None
+        self._full_text: str = ""  # Cumulative generated text
+        self._ttfb_ms: float | None = None  # Time to first byte
+        self._cancelled = False  # Was stream cancelled?
+        self._buffer: list[str] = []  # Micro-buffering accumulator
+        self._last_flush_at = time.perf_counter()  # Last buffer flush time
+        self._start_time: float | None = None  # Stream start time
 
     def __aiter__(self) -> AsyncGenerator[str, None]:
+        """Enable async iteration: `async for chunk in controller`."""
         return self.iter_text()
 
     async def iter_text(self) -> AsyncGenerator[str, None]:
+        """Main streaming loop with buffering, timeout, and cancellation.
+        
+        Yields:
+            Text chunks (possibly buffered based on flush_ms).
+            
+        Raises:
+            asyncio.TimeoutError: If generation exceeds timeout_s.
+            StreamCancelledError: If cancel_check returns True.
+        """
         start = time.perf_counter()
         cfg = self._cfg
         self._start_time = start

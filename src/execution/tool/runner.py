@@ -1,4 +1,26 @@
-"""Tool execution logic for processing tool calls."""
+"""Tool execution logic for processing tool calls.
+
+This module runs the tool/intent classification pipeline that determines
+whether a user message requires special handling (screenshot, control commands).
+
+Pipeline:
+    1. Phrase Filter: Check for exact pattern matches (fast, regex-based)
+       - Freestyle commands (start/stop)
+       - Gender switches
+       - Personality switches
+       - Screenshot triggers
+       
+    2. Language Filter: Skip non-English messages (optional)
+       - Uses lingua library for language detection
+       - Avoids false positives from non-English text
+       
+    3. Classifier Model: Run lightweight classification model
+       - BERT-style sequence classifier
+       - Returns tool name or empty array
+
+The phrase filter runs first to short-circuit common commands without
+invoking the model. This improves latency for known patterns.
+"""
 
 from __future__ import annotations
 
@@ -61,7 +83,26 @@ async def run_toolcall(
     request_id: str | None = None,
     mark_active: bool = True,
 ) -> dict[str, Any]:
-    """Execute a tool call with timeout handling using the classifier adapter."""
+    """Execute tool classification pipeline.
+    
+    Runs the full tool detection pipeline:
+    1. Phrase filter for known patterns
+    2. Language filter for non-English
+    3. Classifier model for intent detection
+    
+    Args:
+        session_id: Session for history lookup and request tracking.
+        user_utt: User message to classify.
+        history_text: Conversation history (unused, kept for compatibility).
+        request_id: Optional request ID for tracking.
+        mark_active: Whether to mark this as the active request.
+        
+    Returns:
+        Dict with keys:
+        - cancelled: bool (False unless interrupted)
+        - text: JSON string of tool array, e.g. '[{"name": "take_screenshot"}]'
+        - timeout: bool (only if timed out)
+    """
     req_id = request_id or f"tool-{uuid.uuid4()}"
 
     # Get session personalities for personality switch detection

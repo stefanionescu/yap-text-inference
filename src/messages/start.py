@@ -1,4 +1,32 @@
-"""Start message handler."""
+"""Start message handler.
+
+This module handles the 'start' WebSocket message type, which initiates
+a new conversation turn. It performs:
+
+1. Input Validation:
+   - Required fields: gender, personality, chat_prompt (if DEPLOY_CHAT)
+   - Optional: sampling parameters, screen prefixes, personalities list
+   - Token-based length limits on prompts and utterances
+
+2. Session Setup:
+   - Initialize or update session configuration
+   - Store persona (gender, personality, chat_prompt)
+   - Configure sampling overrides
+   - Store personalities mapping for tool filtering
+
+3. History Management:
+   - Parse and store incoming history text
+   - Append user utterance with turn ID for tracking
+
+4. Execution Dispatch:
+   Based on deployment mode:
+   - DEPLOY_CHAT + DEPLOY_TOOL: Sequential tool-then-chat
+   - DEPLOY_CHAT only: Direct chat streaming
+   - DEPLOY_TOOL only: Tool classification only
+
+The handler sends an 'ack' response immediately after validation,
+then dispatches execution as a background task.
+"""
 
 from __future__ import annotations
 
@@ -106,6 +134,20 @@ async def _close_with_validation_error(ws: WebSocket, err: ValidationError) -> N
 
 @dataclass(slots=True)
 class StartPlan:
+    """Validated plan for executing a start message.
+    
+    Contains all the extracted and validated parameters needed
+    to dispatch the appropriate execution path.
+    
+    Attributes:
+        session_id: Session identifier.
+        static_prefix: The chat_prompt/persona text.
+        runtime_text: Runtime context (currently unused).
+        history_text: Rendered conversation history.
+        user_utt: Trimmed user utterance.
+        history_turn_id: Turn ID for streaming update tracking.
+        sampling_overrides: Optional sampling parameter overrides.
+    """
     session_id: str
     static_prefix: str
     runtime_text: str
@@ -116,7 +158,27 @@ class StartPlan:
 
 
 async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
-    """Handle 'start' message type by validating inputs and dispatching execution."""
+    """Handle 'start' message type by validating inputs and dispatching execution.
+    
+    This is the main entry point for processing new conversation turns.
+    
+    Args:
+        ws: WebSocket connection for responses.
+        msg: Parsed message dict containing:
+            - gender: Required, "male" or "female"
+            - personality: Required, personality identifier
+            - chat_prompt: Required if DEPLOY_CHAT, the system prompt
+            - history_text: Optional, previous conversation
+            - user_utterance: The user's message
+            - sampling: Optional sampling parameter overrides
+            - personalities: Required if DEPLOY_TOOL, personality mappings
+        session_id: Session identifier from the message.
+        
+    Side Effects:
+        - Sends 'ack' response on success
+        - Closes connection with error on validation failure
+        - Spawns background task for execution
+    """
     logger.info(
         "handle_start: session_id=%s gender_in=%s personality_in=%s hist_len=%s user_len=%s",
         session_id,

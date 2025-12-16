@@ -1,4 +1,27 @@
-"""Client payload parsing for the WebSocket handler."""
+"""Client payload parsing for the WebSocket handler.
+
+This module handles parsing and normalization of incoming WebSocket messages.
+It supports two formats:
+
+1. Sentinel Strings:
+   - "CANCEL" -> {"type": "cancel"}
+   - "END" -> {"type": "end"}
+   
+2. JSON Objects:
+   - Must contain "type" field (or legacy "cancel"/"end" boolean flags)
+   - Type is normalized to lowercase
+   - request_id is stringified if present
+
+The parser provides consistent internal message format regardless of
+the client's chosen format, allowing handlers to work with a uniform
+dict structure.
+
+Raises ValueError on:
+- Empty messages
+- Invalid JSON
+- Non-object JSON values
+- Missing type field
+"""
 
 from __future__ import annotations
 
@@ -9,7 +32,20 @@ from ...config.websocket import WS_CANCEL_SENTINEL, WS_END_SENTINEL
 
 
 def parse_client_message(raw: str) -> dict[str, Any]:
-    """Normalize client message types to align with Yap TTS server contract."""
+    """Parse and normalize a client WebSocket message.
+    
+    Handles both sentinel strings (CANCEL, END) and JSON objects.
+    Normalizes message type to lowercase and ensures consistent format.
+    
+    Args:
+        raw: Raw message string from WebSocket.
+        
+    Returns:
+        Normalized message dict with "type" field.
+        
+    Raises:
+        ValueError: If message is empty, invalid JSON, or missing type.
+    """
 
     text = (raw or "").strip()
     if not text:

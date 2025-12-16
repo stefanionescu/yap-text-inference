@@ -1,4 +1,28 @@
-"""Public API for token utilities (exact semantics)."""
+"""Public API for token utilities (exact semantics).
+
+This package provides token counting and trimming functions that use
+the actual deployed model tokenizers for exact results. This ensures:
+
+1. Token counts match what the model sees
+2. KV cache budget accounting is accurate
+3. History trimming preserves complete message boundaries
+
+Two sets of functions are provided:
+
+Chat Model Functions (use CHAT_MODEL tokenizer):
+    - count_tokens_chat(): Exact token count
+    - trim_text_to_token_limit_chat(): Trim to token budget
+    - trim_history_preserve_messages_chat(): Trim preserving turn boundaries
+
+Tool Model Functions (use TOOL_MODEL tokenizer):
+    - count_tokens_tool(): Exact token count
+    - trim_text_to_token_limit_tool(): Trim to token budget
+    - trim_history_preserve_messages_tool(): Trim preserving turn boundaries
+    - build_user_history_for_tool(): Format user-only history for classifier
+
+Token counting is critical for staying within model context limits and
+managing GPU memory usage (KV cache sizing).
+"""
 
 from .token_utils import (
     # Chat-specific
