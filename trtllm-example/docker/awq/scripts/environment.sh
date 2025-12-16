@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Fast image environment defaults (mirrors custom/environment.sh params)
+# This file is automatically sourced in all bash shells
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+export HOST=${HOST:-0.0.0.0}
+export PORT=${PORT:-8000}
+export ORPHEUS_API_KEY=${ORPHEUS_API_KEY:?Set ORPHEUS_API_KEY in your environment}
+
+# Model selection and Hugging Face
+# Prefer explicit MODEL_ID; otherwise derive from MODEL_PRESET (canopy|fast)
+export MODEL_PRESET=${MODEL_PRESET:-canopy}
+if [[ -z ${MODEL_ID:-} ]]; then
+  case "${MODEL_PRESET}" in
+    fast) export MODEL_ID="yapwithai/fast-orpheus-3b-0.1-ft" ;;
+    canopy | *) export MODEL_ID="yapwithai/canopy-orpheus-3b-0.1-ft" ;;
+  esac
+fi
+export HF_TOKEN=${HF_TOKEN:-}
+export HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN:-$HF_TOKEN}
+
+# =============================================================================
+# TENSORRT-LLM ENGINE CONFIGURATION
+# =============================================================================
+export TRTLLM_ENGINE_DIR=${TRTLLM_ENGINE_DIR:-}
+export TRTLLM_MAX_INPUT_LEN=${TRTLLM_MAX_INPUT_LEN:-48}
+export TRTLLM_MAX_OUTPUT_LEN=${TRTLLM_MAX_OUTPUT_LEN:-1162}
+export TRTLLM_MAX_BATCH_SIZE=${TRTLLM_MAX_BATCH_SIZE:-16}
+export KV_FREE_GPU_FRAC=${KV_FREE_GPU_FRAC:-0.92}
+export KV_ENABLE_BLOCK_REUSE=${KV_ENABLE_BLOCK_REUSE:-0}
+
+# =============================================================================
+# TTS SYNTHESIS CONFIGURATION
+# =============================================================================
+export ORPHEUS_MAX_TOKENS=${ORPHEUS_MAX_TOKENS:-1162}  # ~14 seconds of audio
+export DEFAULT_TEMPERATURE=${DEFAULT_TEMPERATURE:-0.45}
+export DEFAULT_TOP_P=${DEFAULT_TOP_P:-0.95}
+export DEFAULT_REPETITION_PENALTY=${DEFAULT_REPETITION_PENALTY:-1.15}
+export SNAC_SR=${SNAC_SR:-24000}
+export TTS_DECODE_WINDOW=${TTS_DECODE_WINDOW:-28}
+export TTS_MAX_SEC=${TTS_MAX_SEC:-0}
+export SNAC_TORCH_COMPILE=${SNAC_TORCH_COMPILE:-0}
+export SNAC_MAX_BATCH=${SNAC_MAX_BATCH:-64}
+export SNAC_BATCH_TIMEOUT_MS=${SNAC_BATCH_TIMEOUT_MS:-2}
+export SNAC_GLOBAL_SYNC=${SNAC_GLOBAL_SYNC:-1}
+export WS_END_SENTINEL=${WS_END_SENTINEL:-__END__}
+export WS_CLOSE_BUSY_CODE=${WS_CLOSE_BUSY_CODE:-1013}
+export WS_CLOSE_INTERNAL_CODE=${WS_CLOSE_INTERNAL_CODE:-1011}
+export WS_QUEUE_MAXSIZE=${WS_QUEUE_MAXSIZE:-128}
+export WS_MAX_CONNECTIONS=${WS_MAX_CONNECTIONS:-16}
+export DEFAULT_VOICE=${DEFAULT_VOICE:-tara}
+export YIELD_SLEEP_SECONDS=${YIELD_SLEEP_SECONDS:-0}
+export STREAMING_DEFAULT_MAX_TOKENS=${STREAMING_DEFAULT_MAX_TOKENS:-1162}
+
+# =============================================================================
+# PERFORMANCE OPTIMIZATION
+# =============================================================================
+export CUDA_DEVICE_MAX_CONNECTIONS=${CUDA_DEVICE_MAX_CONNECTIONS:-2}
+export PYTORCH_ALLOC_CONF=${PYTORCH_ALLOC_CONF:-expandable_segments:True,garbage_collection_threshold:0.9,max_split_size_mb:512}
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}
+export MKL_NUM_THREADS=${MKL_NUM_THREADS:-1}
+export OPENBLAS_NUM_THREADS=${OPENBLAS_NUM_THREADS:-1}
+export NUMEXPR_NUM_THREADS=${NUMEXPR_NUM_THREADS:-1}
+export HF_TRANSFER=${HF_TRANSFER:-1}
+export GPU_SM_ARCH=${GPU_SM_ARCH:-}
+
+# Prefer system CUDA libraries only (match @custom)
+export LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}"
+
+# Safety: try to disable DeepGEMM MoE if the package supports it
+export TLLM_DISABLE_DEEP_GEMM=${TLLM_DISABLE_DEEP_GEMM:-1}
+
+# =============================================================================
+# HUGGING FACE REMOTE DEPLOY (PULL) - FAST IMAGE
+# =============================================================================
+export HF_DEPLOY_REPO_ID=${HF_DEPLOY_REPO_ID:-yapwithai/orpheus-3b-tts-trt-awq}
+export HF_DEPLOY_USE=${HF_DEPLOY_USE:-auto}
+export HF_DEPLOY_ENGINE_LABEL=${HF_DEPLOY_ENGINE_LABEL:-}
+export HF_DEPLOY_SKIP_BUILD_IF_ENGINES=${HF_DEPLOY_SKIP_BUILD_IF_ENGINES:-1}
+export HF_DEPLOY_STRICT_ENV_MATCH=${HF_DEPLOY_STRICT_ENV_MATCH:-1}
+export HF_DEPLOY_WORKDIR=${HF_DEPLOY_WORKDIR:-/opt/models/_hf_download}
+export HF_DEPLOY_VALIDATE=${HF_DEPLOY_VALIDATE:-1}
+
+# =============================================================================
+# DIRECTORIES
+# =============================================================================
+export MODELS_DIR=${MODELS_DIR:-/opt/models}
+export ENGINES_DIR=${ENGINES_DIR:-/opt/engines}

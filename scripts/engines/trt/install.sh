@@ -44,13 +44,14 @@ trt_ensure_cuda_home() {
 # Install PyTorch with CUDA support for TRT-LLM
 trt_install_pytorch() {
   local torch_version="${TRT_PYTORCH_VERSION:-2.9.1+cu130}"
+  local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.1+cu130}"
   local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
   
-  log_info "Installing PyTorch ${torch_version} from ${torch_idx}"
+  log_info "Installing PyTorch ${torch_version} + torchvision ${torchvision_version} from ${torch_idx}"
   
   pip install --index-url "${torch_idx}" \
     "torch==${torch_version}" \
-    "torchvision" || {
+    "torchvision==${torchvision_version}" || {
     log_err "Failed to install PyTorch"
     return 1
   }

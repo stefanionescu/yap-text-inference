@@ -51,7 +51,7 @@ This is a {{quant_method_upper}} quantized version of {{source_model_link}}, opt
 
 ```
 trt-llm/
-  checkpoints/              # Quantized TRT-LLM checkpoints (portable)
+  checkpoints/               # Quantized TRT-LLM checkpoints (portable)
     *.safetensors
     config.json
   engines/{{engine_label}}/  # Built TensorRT-LLM engines (hardware-specific)
@@ -142,14 +142,15 @@ Adjust `kv_cache_config.free_gpu_memory_fraction` at runtime.
 
 ---
 
-## License
-
-This quantized model inherits the license from the original: **{{license}}**
-
----
-
 ## Resources
 
 - [TensorRT-LLM Documentation](https://nvidia.github.io/TensorRT-LLM/)
 - [Source Model]({{source_model_link}})
+
+---
+
+## License
+
+This quantized model inherits the license from the original: **{{license}}**
+
 
