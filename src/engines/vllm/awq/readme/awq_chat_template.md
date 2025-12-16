@@ -1,6 +1,6 @@
 ---
 license: {license}
-license_name: {license}
+license_name: {license_name}
 license_link: {license_link}
 base_model: {base_model}
 tags:
@@ -33,3 +33,9 @@ This model was quantized with [{quantizer_name}]({quantizer_link}) from {source_
 ```json
 {quant_summary}
 ```
+
+## License
+
+This quantized model inherits the license from the original base model: **{license_name}**
+
+See the [original model's license]({license_link}) for full terms.

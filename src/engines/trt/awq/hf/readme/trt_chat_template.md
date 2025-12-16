@@ -1,5 +1,7 @@
 ---
 license: {{license}}
+license_name: {{license_name}}
+license_link: {{license_link}}
 base_model: {{base_model}}
 tags:
 - tensorrt-llm
@@ -151,6 +153,8 @@ Adjust `kv_cache_config.free_gpu_memory_fraction` at runtime.
 
 ## License
 
-This quantized model inherits the license from the original: **{{license}}**
+This quantized model inherits the license from the original base model: **{{license_name}}**
+
+See the [original model's license]({{license_link}}) for full terms.
 
 

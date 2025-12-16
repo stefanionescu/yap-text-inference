@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from .readme_renderer import render_trt_readme
+from src.helpers.templates import compute_license_info
 
 
 def push_trt_to_hf(
@@ -208,6 +209,13 @@ def _collect_metadata(
             except Exception:
                 pass
     
+    # Fetch license from the base model on HuggingFace
+    # This ensures the quantized model inherits the correct license
+    # Uses shared logic with vLLM AWQ push
+    is_hf_model = "/" in base_model
+    license_info = compute_license_info(base_model, is_tool=False, is_hf_model=is_hf_model)
+    metadata.update(license_info)
+    
     # Defaults
     metadata.setdefault("sm_arch", os.getenv("GPU_SM_ARCH", "sm89"))
     metadata.setdefault("gpu_name", "NVIDIA GPU")
@@ -222,7 +230,6 @@ def _collect_metadata(
     metadata.setdefault("calib_size", "64")
     metadata.setdefault("calib_seqlen", "2048")
     metadata.setdefault("calib_batch_size", "16")
-    metadata.setdefault("license", "apache-2.0")
     metadata.setdefault("min_compute_capability", "8.0")
     metadata.setdefault("gpu_arch_note", "A100/L40S/H100 or newer")
     metadata.setdefault("quant_portability_note", "INT4-AWQ models are portable across sm89/sm90+ GPUs")
