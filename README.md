@@ -180,14 +180,18 @@ Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibr
 TRT-LLM uses NVIDIA's quantization pipeline with GPU-aware format selection:
 
 ```bash
-# INT4-AWQ quantization (all GPUs)
+# INT4-AWQ quantization (all GPUs) - TRT_MAX_BATCH_SIZE is required
+export TRT_MAX_BATCH_SIZE=32
 bash scripts/main.sh --trt 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
 # 8-bit: FP8 on L40S/H100 (sm89/sm90), INT8-SQ on A100 (sm80)
+export TRT_MAX_BATCH_SIZE=16
 bash scripts/main.sh --trt 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 ```
 
 TRT-LLM quantization creates a checkpoint, then builds a compiled `.engine` file. The engine is GPU-architecture specific (e.g., H100 engines won't run on A100).
+
+> **Required:** `TRT_MAX_BATCH_SIZE` must be set when building a TRT engine (including from pre-quantized TRT checkpoints). This value is baked into the engine and determines how many sequences can be batched together. See `ADVANCED.md` for details on batch size configuration.
 
 **MoE models** (e.g., Qwen3-30B-A3B) are automatically detected and use `quantize_mixed_precision_moe.py` instead of the standard quantization script.
 
@@ -204,7 +208,8 @@ Both engines auto-detect pre-quantized repos whose names include common markers:
 # Pre-quantized AWQ chat + classifier (vLLM)
 bash scripts/main.sh --vllm yapwithai/impish-12b-awq yapwithai/yap-longformer-screenshot-intent
 
-# Pre-quantized TRT-AWQ (TensorRT-LLM)
+# Pre-quantized TRT-AWQ (TensorRT-LLM) - still needs TRT_MAX_BATCH_SIZE for engine build
+export TRT_MAX_BATCH_SIZE=32
 bash scripts/main.sh --trt yapwithai/impish-12b-trt-awq yapwithai/yap-longformer-screenshot-intent
 
 # GPTQ-only chat deployment (vLLM)
@@ -212,6 +217,8 @@ bash scripts/main.sh --vllm chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit
 ```
 
 > **Note:** The code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct backend. Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos—no re-quantization step is needed.
+
+> **TRT pre-quantized models:** These are checkpoints, not pre-built engines. You still need to set `TRT_MAX_BATCH_SIZE` because the engine is built locally from the checkpoint.
 
 ## Local Test Dependencies
 

@@ -20,10 +20,12 @@ This document covers advanced operations, configuration, and deep-dive details f
   - [Messages You Send](#messages-you-send)
   - [What You Receive](#what-you-receive)
   - [Barge-In and Cancellation](#barge-in-and-cancellation)
+  - [Rate Limits](#rate-limits)
 - [Quantization Notes](#quantization-notes)
   - [vLLM Quantization Details](#vllm-quantization-details)
   - [TensorRT-LLM Quantization Details](#tensorrt-llm-quantization-details)
   - [Pushing Quantized Exports to Hugging Face](#pushing-quantized-exports-to-hugging-face)
+- [Test Clients](#test-clients)
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
 
@@ -80,12 +82,42 @@ TRT-LLM-specific environment variables:
 | `TRTLLM_ENGINE_DIR` | — | Path to compiled TRT engine directory |
 | `TRT_CHECKPOINT_DIR` | — | Path to quantized checkpoint |
 | `TRTLLM_REPO_DIR` | `.trtllm-repo` | TRT-LLM repo clone for quantization scripts |
-| `TRT_MAX_BATCH_SIZE` | `MAX_CONCURRENT_CONNECTIONS` | Engine batch size |
+| `TRT_MAX_BATCH_SIZE` | **Required** | Max batch size baked into engine (see below) |
+| `TRT_BATCH_SIZE` | Engine max | Runtime batch size override (optional) |
 | `TRT_MAX_INPUT_LEN` | `CHAT_MAX_LEN` (5525) | Maximum input token length |
 | `TRT_MAX_OUTPUT_LEN` | `CHAT_MAX_OUT` (150) | Maximum output token length |
 | `TRT_DTYPE` | `float16` | Compute precision |
 | `TRT_KV_FREE_GPU_FRAC` | `CHAT_GPU_FRAC` | GPU memory fraction for KV cache |
 | `TRT_KV_ENABLE_BLOCK_REUSE` | `0` | Enable KV block reuse (automatic) |
+
+**Batch Size Configuration:**
+
+TRT-LLM engines have a `max_batch_size` baked in at build time. This determines how many sequences can be batched together in a single forward pass—it is **not** the same as `MAX_CONCURRENT_CONNECTIONS` (WebSocket connections).
+
+| Variable | When Required | Description |
+|----------|---------------|-------------|
+| `TRT_MAX_BATCH_SIZE` | Engine build | **Required** when quantizing or building from a TRT checkpoint. Baked into the compiled engine. |
+| `TRT_BATCH_SIZE` | Runtime | **Optional** override for runtime batch size. Must be ≤ engine's baked-in max. |
+
+**When is `TRT_MAX_BATCH_SIZE` required?**
+
+- ✅ Fresh quantization (on-the-fly): Yes
+- ✅ Pre-quantized TRT checkpoint models: Yes (engine must still be built from checkpoint)
+- ❌ Pre-built engine via `TRTLLM_ENGINE_DIR`: No (already baked in)
+
+**Example:**
+
+```bash
+# Fresh quantization with explicit batch size
+export TRT_MAX_BATCH_SIZE=32
+bash scripts/main.sh --trt 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+
+# Runtime with lower batch size (optional, must be <= 32)
+export TRT_BATCH_SIZE=16
+bash scripts/main.sh --trt 4bit <pre-built-engine-model> <tool_model>
+```
+
+At runtime, the server validates that `TRT_BATCH_SIZE` ≤ engine's max and logs both values at startup.
 
 **AWQ Quantization Tuning:**
 
@@ -558,4 +590,4 @@ bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model
 
 **TensorRT-LLM specific:**
 - `TRT_KV_FREE_GPU_FRAC` controls KV cache memory (defaults to `CHAT_GPU_FRAC`)
-- Engine build uses `TRT_MAX_BATCH_SIZE` to pre-allocate KV cache slots
+- Engine build uses `TRT_MAX_BATCH_SIZE` to pre-allocate KV cache slots (see [TensorRT-LLM Configuration](#tensorrt-llm-configuration) for details)

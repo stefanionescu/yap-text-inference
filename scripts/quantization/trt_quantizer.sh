@@ -41,6 +41,16 @@ log_info "TRT-LLM quantization pipeline starting..."
 # Initialize GPU detection
 trt_init_gpu_detection
 
+# =============================================================================
+# EARLY VALIDATION: TRT_MAX_BATCH_SIZE required for engine build
+# =============================================================================
+# TRT_MAX_BATCH_SIZE is baked into the compiled engine and MUST be set.
+# This is NOT the same as MAX_CONCURRENT_CONNECTIONS (WebSocket connections).
+# Fail early before any heavy operations (downloads, quantization).
+if ! trt_validate_batch_size; then
+  exit 1
+fi
+
 # Export TRT environment
 trt_export_env
 

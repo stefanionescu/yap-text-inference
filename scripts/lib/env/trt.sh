@@ -38,15 +38,15 @@ TRT_FP8_SM_ARCHS="sm89 sm90"
 # ENGINE BUILD PARAMETERS (derived from existing config)
 # =============================================================================
 
-# Batch size = MAX_CONCURRENT_CONNECTIONS (required env var)
-# This MUST be set - we don't provide a default
-if [ -z "${TRT_MAX_BATCH_SIZE:-}" ]; then
-  if [ -n "${MAX_CONCURRENT_CONNECTIONS:-}" ]; then
-    TRT_MAX_BATCH_SIZE="${MAX_CONCURRENT_CONNECTIONS}"
-  else
-    log_err "MAX_CONCURRENT_CONNECTIONS must be set for TRT batch size"
-  fi
-fi
+# Batch size for TRT engine build - MUST be explicitly set
+# This is baked into the compiled engine and cannot be changed at runtime.
+# Do NOT derive from MAX_CONCURRENT_CONNECTIONS - these are different concepts.
+# TRT_MAX_BATCH_SIZE: max sequences batched in a single forward pass
+# MAX_CONCURRENT_CONNECTIONS: max WebSocket connections (users)
+#
+# Validation is done in trt_quantizer.sh before engine build.
+# At this point we just read the value; it may be empty if not building an engine.
+TRT_MAX_BATCH_SIZE="${TRT_MAX_BATCH_SIZE:-}"
 
 # Input length = CHAT_MAX_LEN (default 5525 from limits.py)
 # This is the total context window: persona + history + user input
@@ -202,11 +202,37 @@ trt_resolve_kv_cache_dtype() {
 # Log the derived TRT configuration
 trt_log_config() {
   log_info "TRT-LLM Configuration:"
-  log_info "  Batch size (MAX_CONCURRENT_CONNECTIONS): ${TRT_MAX_BATCH_SIZE}"
-  log_info "  Input length (CHAT_MAX_LEN): ${TRT_MAX_INPUT_LEN}"
-  log_info "  Output length (CHAT_MAX_OUT): ${TRT_MAX_OUTPUT_LEN}"
-  log_info "  GPU fraction (CHAT_GPU_FRAC): ${TRT_KV_FREE_GPU_FRAC}"
+  log_info "  Max batch size: ${TRT_MAX_BATCH_SIZE:-<not set>}"
+  log_info "  Max input length: ${TRT_MAX_INPUT_LEN}"
+  log_info "  Max output length: ${TRT_MAX_OUTPUT_LEN}"
+  log_info "  KV cache GPU fraction: ${TRT_KV_FREE_GPU_FRAC}"
   log_info "  GPU SM arch: ${GPU_SM_ARCH:-auto-detect}"
+}
+
+# Validate TRT_MAX_BATCH_SIZE is set (called before engine build)
+trt_validate_batch_size() {
+  if [ -z "${TRT_MAX_BATCH_SIZE:-}" ]; then
+    log_err "TRT_MAX_BATCH_SIZE must be set when building a TRT engine."
+    log_err "This value is baked into the compiled engine and determines the maximum"
+    log_err "number of sequences that can be batched together in a single forward pass."
+    log_err ""
+    log_err "Example values based on model size:"
+    log_err "  - 7-8B models: 32-64"
+    log_err "  - 13B models: 16-32"
+    log_err "  - 70B+ models: 8-16"
+    log_err ""
+    log_err "Set it via: export TRT_MAX_BATCH_SIZE=<value>"
+    return 1
+  fi
+  
+  # Validate it's a positive integer
+  if ! [[ "${TRT_MAX_BATCH_SIZE}" =~ ^[1-9][0-9]*$ ]]; then
+    log_err "TRT_MAX_BATCH_SIZE must be a positive integer, got: ${TRT_MAX_BATCH_SIZE}"
+    return 1
+  fi
+  
+  log_info "TRT_MAX_BATCH_SIZE=${TRT_MAX_BATCH_SIZE} (will be baked into engine)"
+  return 0
 }
 
 # Export all TRT environment variables
