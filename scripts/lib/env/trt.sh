@@ -2,14 +2,13 @@
 # =============================================================================
 # TRT-LLM Environment Configuration
 # =============================================================================
-# Centralized environment variables for TensorRT-LLM deployments.
-# Target GPU: L40S (sm89) by default, with support for A100 (sm80) and H100 (sm90).
+# Derives TRT parameters from existing config (limits.py, env.py).
+# Does NOT define new defaults - reuses MAX_CONCURRENT_CONNECTIONS, CHAT_MAX_LEN, etc.
 
 # =============================================================================
 # TRT-LLM VERSION AND INSTALLATION
 # =============================================================================
 
-# TensorRT-LLM version (default: 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x)
 TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
 TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
@@ -35,45 +34,77 @@ GPU_SM_ARCH="${GPU_SM_ARCH:-}"
 TRT_FP8_SM_ARCHS="sm89 sm90"
 
 # =============================================================================
-# ENGINE BUILD PARAMETERS
+# ENGINE BUILD PARAMETERS (derived from existing config)
 # =============================================================================
 
-# Default build parameters optimized for L40S chat workloads
-TRT_MAX_BATCH_SIZE="${TRT_MAX_BATCH_SIZE:-16}"
-TRT_MAX_INPUT_LEN="${TRT_MAX_INPUT_LEN:-8192}"
-TRT_MAX_OUTPUT_LEN="${TRT_MAX_OUTPUT_LEN:-4096}"
+# Batch size = MAX_CONCURRENT_CONNECTIONS (required env var)
+# This MUST be set - we don't provide a default
+if [ -z "${TRT_MAX_BATCH_SIZE:-}" ]; then
+  if [ -n "${MAX_CONCURRENT_CONNECTIONS:-}" ]; then
+    TRT_MAX_BATCH_SIZE="${MAX_CONCURRENT_CONNECTIONS}"
+  else
+    log_err "MAX_CONCURRENT_CONNECTIONS must be set for TRT batch size"
+  fi
+fi
+
+# Input length = CHAT_MAX_LEN (default 5525 from limits.py)
+# This is the total context window: persona + history + user input
+if [ -z "${TRT_MAX_INPUT_LEN:-}" ]; then
+  TRT_MAX_INPUT_LEN="${CHAT_MAX_LEN:-5525}"
+fi
+
+# Output length = CHAT_MAX_OUT (default 150 from limits.py)
+if [ -z "${TRT_MAX_OUTPUT_LEN:-}" ]; then
+  TRT_MAX_OUTPUT_LEN="${CHAT_MAX_OUT:-150}"
+fi
+
+# Data type for compute
 TRT_DTYPE="${TRT_DTYPE:-float16}"
 
-# KV cache memory management
-TRT_KV_FREE_GPU_FRAC="${TRT_KV_FREE_GPU_FRAC:-0.92}"
+# KV cache GPU fraction = CHAT_GPU_FRAC
+# 0.70 when both chat+tool deployed, 0.90 when chat-only
+if [ -z "${TRT_KV_FREE_GPU_FRAC:-}" ]; then
+  TRT_KV_FREE_GPU_FRAC="${CHAT_GPU_FRAC:-0.70}"
+fi
+
 TRT_KV_ENABLE_BLOCK_REUSE="${TRT_KV_ENABLE_BLOCK_REUSE:-0}"
 
 # =============================================================================
-# QUANTIZATION PARAMETERS
+# QUANTIZATION PARAMETERS (aligned with vLLM AWQ defaults from calibration.py)
 # =============================================================================
 
-# AWQ quantization defaults (128 block size optimal for quality)
+# AWQ block size (q_group_size): 128 matches vLLM AWQ
 TRT_AWQ_BLOCK_SIZE="${TRT_AWQ_BLOCK_SIZE:-128}"
-TRT_CALIB_SIZE="${TRT_CALIB_SIZE:-256}"
-TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-16}"
+
+# Calibration samples: 64 matches vLLM AWQ nsamples default
+# For larger models or those needing more calibration data, increase
+TRT_CALIB_SIZE="${TRT_CALIB_SIZE:-64}"
+
+# Calibration batch size: dynamically set based on model profile
+# Gemma/heavy models: smaller batch (8), standard models: 16
+TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-}"
+
+# Calibration sequence length: derived from CHAT_MAX_LEN + CHAT_MAX_OUT
+# vLLM default is 2048, but we use our actual context window
+if [ -z "${TRT_CALIB_SEQLEN:-}" ]; then
+  _chat_max_len="${CHAT_MAX_LEN:-5525}"
+  _chat_max_out="${CHAT_MAX_OUT:-150}"
+  TRT_CALIB_SEQLEN=$(( _chat_max_len + _chat_max_out ))
+fi
 
 # =============================================================================
 # DIRECTORY PATHS
 # =============================================================================
 
-# Model and engine directories (will be set based on model during runtime)
 TRT_CHECKPOINT_DIR="${TRT_CHECKPOINT_DIR:-}"
 TRT_ENGINE_DIR="${TRTLLM_ENGINE_DIR:-}"
-
-# Cache directories
 TRT_CACHE_DIR="${TRT_CACHE_DIR:-${ROOT_DIR:-.}/.trt_cache}"
 TRT_MODELS_DIR="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}"
 
 # =============================================================================
-# HUGGING FACE SETTINGS
+# HUGGING FACE PUSH SETTINGS
 # =============================================================================
 
-# Push settings for quantized models
 TRT_HF_PUSH_ENABLED="${TRT_HF_PUSH_ENABLED:-0}"
 TRT_HF_PUSH_REPO_ID="${TRT_HF_PUSH_REPO_ID:-}"
 TRT_HF_PUSH_PRIVATE="${TRT_HF_PUSH_PRIVATE:-1}"
@@ -82,6 +113,32 @@ TRT_HF_PUSH_WHAT="${TRT_HF_PUSH_WHAT:-both}"  # checkpoints, engines, or both
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
+# Resolve calibration batch size based on model characteristics
+# Heavy models (Gemma, large MoE) need smaller batch sizes to avoid OOM
+trt_resolve_calib_batch_size() {
+  local model_id="${1:-}"
+  local default_batch="${2:-16}"
+  
+  # If explicitly set, use that
+  if [ -n "${TRT_CALIB_BATCH_SIZE:-}" ]; then
+    echo "${TRT_CALIB_BATCH_SIZE}"
+    return
+  fi
+  
+  local model_lower
+  model_lower="$(echo "${model_id}" | tr '[:upper:]' '[:lower:]')"
+  
+  # Heavy models that need smaller calibration batch
+  case "${model_lower}" in
+    *gemma*|*mixtral*|*qwen3-next*|*moonlight*|*deepseek*)
+      echo "8"
+      ;;
+    *)
+      echo "${default_batch}"
+      ;;
+  esac
+}
 
 # Check if GPU SM arch supports native FP8
 trt_gpu_supports_fp8() {
@@ -99,6 +156,7 @@ trt_gpu_supports_fp8() {
 }
 
 # Map 4bit/8bit to TRT qformat based on GPU architecture
+# 8bit -> fp8 on L40S/H100, int8_sq on A100
 trt_resolve_qformat() {
   local quant_mode="${1:-4bit}"
   local sm_arch="${2:-${GPU_SM_ARCH:-}}"
@@ -131,19 +189,23 @@ trt_resolve_kv_cache_dtype() {
   local qformat="${1:-int4_awq}"
   
   case "${qformat}" in
-    int4_awq)
-      echo "int8"
-      ;;
     fp8)
       echo "fp8"
-      ;;
-    int8_sq)
-      echo "int8"
       ;;
     *)
       echo "int8"
       ;;
   esac
+}
+
+# Log the derived TRT configuration
+trt_log_config() {
+  log_info "TRT-LLM Configuration:"
+  log_info "  Batch size (MAX_CONCURRENT_CONNECTIONS): ${TRT_MAX_BATCH_SIZE}"
+  log_info "  Input length (CHAT_MAX_LEN): ${TRT_MAX_INPUT_LEN}"
+  log_info "  Output length (CHAT_MAX_OUT): ${TRT_MAX_OUTPUT_LEN}"
+  log_info "  GPU fraction (CHAT_GPU_FRAC): ${TRT_KV_FREE_GPU_FRAC}"
+  log_info "  GPU SM arch: ${GPU_SM_ARCH:-auto-detect}"
 }
 
 # Export all TRT environment variables
@@ -154,8 +216,7 @@ trt_export_env() {
   export GPU_SM_ARCH TRT_FP8_SM_ARCHS
   export TRT_MAX_BATCH_SIZE TRT_MAX_INPUT_LEN TRT_MAX_OUTPUT_LEN TRT_DTYPE
   export TRT_KV_FREE_GPU_FRAC TRT_KV_ENABLE_BLOCK_REUSE
-  export TRT_AWQ_BLOCK_SIZE TRT_CALIB_SIZE TRT_CALIB_BATCH_SIZE
+  export TRT_AWQ_BLOCK_SIZE TRT_CALIB_SIZE TRT_CALIB_BATCH_SIZE TRT_CALIB_SEQLEN
   export TRT_CHECKPOINT_DIR TRT_ENGINE_DIR TRT_CACHE_DIR TRT_MODELS_DIR
   export TRT_HF_PUSH_ENABLED TRT_HF_PUSH_REPO_ID TRT_HF_PUSH_PRIVATE TRT_HF_PUSH_WHAT
 }
-

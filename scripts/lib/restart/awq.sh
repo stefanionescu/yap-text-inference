@@ -148,7 +148,7 @@ restart_push_cached_awq_models() {
   log_info "Uploading cached AWQ artifacts to Hugging Face (restart)"
   local pushed=0
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-    push_awq_to_hf "${CHAT_AWQ_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
+    vllm_awq_push_to_hf "${CHAT_AWQ_DIR}" "${HF_AWQ_CHAT_REPO}" "${HF_AWQ_COMMIT_MSG_CHAT}"
     pushed=1
   fi
 

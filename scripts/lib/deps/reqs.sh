@@ -2,8 +2,22 @@
 
 # Requirements installation helpers (excluding FlashInfer)
 
+# Get the correct requirements file based on inference engine
+get_requirements_file() {
+  local engine="${INFERENCE_ENGINE:-vllm}"
+  case "${engine}" in
+    trt|TRT)
+      echo "${ROOT_DIR}/requirements-trt.txt"
+      ;;
+    *)
+      echo "${ROOT_DIR}/requirements-vllm.txt"
+      ;;
+  esac
+}
+
 filter_requirements_without_flashinfer() {
-  local req_file="${ROOT_DIR}/requirements.txt"
+  local req_file
+  req_file="$(get_requirements_file)"
   local tmp_req_file="${ROOT_DIR}/.venv/.requirements.no_flashinfer.txt"
   if [ -f "${req_file}" ]; then
     grep -v -E '^\s*(flashinfer-python|llmcompressor)(\s|$|==|>=|<=|~=|!=)' "${req_file}" > "${tmp_req_file}" || cp "${req_file}" "${tmp_req_file}" || true
@@ -11,7 +25,8 @@ filter_requirements_without_flashinfer() {
 }
 
 should_skip_requirements_install() {
-  local req_file="${ROOT_DIR}/requirements.txt"
+  local req_file
+  req_file="$(get_requirements_file)"
   local stamp_file="${ROOT_DIR}/.venv/.req_hash"
   if [ "${FORCE_REINSTALL:-0}" != "1" ] && [ -f "${stamp_file}" ] && [ -f "${req_file}" ]; then
     local cur_hash
@@ -35,7 +50,8 @@ install_requirements_without_flashinfer() {
 }
 
 install_llmcompressor_without_deps() {
-  local req_file="${ROOT_DIR}/requirements.txt"
+  local req_file
+  req_file="$(get_requirements_file)"
   if [ ! -f "${req_file}" ]; then
     return
   fi
@@ -84,7 +100,8 @@ PY
 }
 
 record_requirements_hash() {
-  local req_file="${ROOT_DIR}/requirements.txt"
+  local req_file
+  req_file="$(get_requirements_file)"
   local stamp_file="${ROOT_DIR}/.venv/.req_hash"
   if [ -f "${req_file}" ]; then
     sha256sum "${req_file}" | awk '{print $1}' > "${stamp_file}" || true

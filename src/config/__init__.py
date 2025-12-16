@@ -1,27 +1,38 @@
 """Aggregator of configuration modules.
 
 This module re-exports the config API from smaller modules:
-- env: environment initialization and core env values
+- runtime: environment initialization
+- deploy: deployment mode and model selection
+- gpu: GPU memory and architecture
+- engine: inference engine selection
+- trt: TensorRT-LLM specific settings
+- chat: chat behavior settings
+- tool: tool classifier settings
 - models: allowlists and validation helpers
 - limits: token and concurrency limits
 - secrets: secrets like API_KEY
 """
 
-from .env import (
-    configure_runtime_env,
+from .runtime import configure_runtime_env
+from .deploy import (
     DEPLOY_MODELS,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
     CHAT_MODEL,
     TOOL_MODEL,
+)
+from .gpu import (
     CHAT_GPU_FRAC,
     TOOL_GPU_FRAC,
     KV_DTYPE,
+    GPU_SM_ARCH,
+)
+from .engine import (
+    INFERENCE_ENGINE,
     QUANTIZATION,
     CHAT_QUANTIZATION,
-    # Engine selection
-    INFERENCE_ENGINE,
-    # TRT-LLM specific settings
+)
+from .trt import (
     TRT_ENGINE_DIR,
     TRT_CHECKPOINT_DIR,
     TRT_REPO_DIR,
@@ -33,15 +44,17 @@ from .env import (
     TRT_KV_ENABLE_BLOCK_REUSE,
     TRT_AWQ_BLOCK_SIZE,
     TRT_CALIB_SIZE,
-    GPU_SM_ARCH,
-    # Prefixes
+    TRT_CALIB_SEQLEN,
+)
+from .chat import (
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
     CHAT_TEMPLATE_ENABLE_THINKING,
     CACHE_RESET_INTERVAL_SECONDS,
     CACHE_RESET_MIN_SESSION_SECONDS,
+)
+from .tool import (
     TOOL_LANGUAGE_FILTER,
-    # Tool classifier settings
     TOOL_DECISION_THRESHOLD,
     TOOL_COMPILE,
     TOOL_HISTORY_TOKENS,
@@ -172,27 +185,64 @@ if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
         f"Got: {CHAT_MODEL}. Use a pre-quantized AWQ model or a float model instead."
     )
 
+
+def validate_env() -> None:
+    """Validate required configuration once during startup."""
+    errors: list[str] = []
+    if DEPLOY_CHAT and not CHAT_MODEL:
+        errors.append("CHAT_MODEL is required when DEPLOY_MODELS is 'both' or 'chat'")
+    if DEPLOY_TOOL and not TOOL_MODEL:
+        errors.append("TOOL_MODEL is required when DEPLOY_MODELS is 'both' or 'tool'")
+    if DEPLOY_TOOL and TOOL_MODEL and not is_classifier_model(TOOL_MODEL):
+        errors.append("TOOL_MODEL must be one of the classifier models (vLLM tool engines are disabled)")
+    
+    # Validate engine selection
+    if INFERENCE_ENGINE not in SUPPORTED_ENGINES:
+        errors.append(f"INFERENCE_ENGINE must be one of {SUPPORTED_ENGINES}, got: {INFERENCE_ENGINE}")
+    
+    # TRT-specific validation
+    if INFERENCE_ENGINE == "trt" and DEPLOY_CHAT:
+        if not TRT_ENGINE_DIR:
+            # TRT_ENGINE_DIR can be empty if we're building from scratch
+            pass  # Will be set during quantization/build step
+    
+    # Quantization is only required when deploying LLMs (not classifiers)
+    needs_quantization = DEPLOY_CHAT or (DEPLOY_TOOL and not is_classifier_model(TOOL_MODEL))
+    if needs_quantization:
+        if not QUANTIZATION:
+            errors.append("QUANTIZATION environment variable is required for LLM models")
+        elif INFERENCE_ENGINE == "vllm" and QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq", "8bit", "4bit"}:
+            errors.append(
+                "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', 'awq', '8bit', or '4bit' for VLLM"
+            )
+        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {"fp8", "int8_sq", "int8", "int4_awq", "awq", "8bit", "4bit"}:
+            errors.append(
+                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'awq', '8bit', or '4bit' for TRT"
+            )
+    if errors:
+        raise ValueError("; ".join(errors))
+
+
 __all__ = [
     "configure_runtime_env",
-    # env/core
+    "validate_env",
+    # deploy
     "DEPLOY_MODELS",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
     "CHAT_MODEL",
     "TOOL_MODEL",
+    # gpu
     "CHAT_GPU_FRAC",
     "TOOL_GPU_FRAC",
     "KV_DTYPE",
+    "GPU_SM_ARCH",
+    # engine
+    "INFERENCE_ENGINE",
     "QUANTIZATION",
     "CHAT_QUANTIZATION",
-    "CHAT_TEMPLATE_ENABLE_THINKING",
-    "CACHE_RESET_INTERVAL_SECONDS",
-    "CACHE_RESET_MIN_SESSION_SECONDS",
-    "TOOL_LANGUAGE_FILTER",
-    # Engine selection
-    "INFERENCE_ENGINE",
     "SUPPORTED_ENGINES",
-    # TRT-LLM specific settings
+    # trt
     "TRT_ENGINE_DIR",
     "TRT_CHECKPOINT_DIR",
     "TRT_REPO_DIR",
@@ -204,17 +254,21 @@ __all__ = [
     "TRT_KV_ENABLE_BLOCK_REUSE",
     "TRT_AWQ_BLOCK_SIZE",
     "TRT_CALIB_SIZE",
-    "GPU_SM_ARCH",
-    # tool classifier settings
+    "TRT_CALIB_SEQLEN",
+    # chat
+    "DEFAULT_CHECK_SCREEN_PREFIX",
+    "DEFAULT_SCREEN_CHECKED_PREFIX",
+    "CHAT_TEMPLATE_ENABLE_THINKING",
+    "CACHE_RESET_INTERVAL_SECONDS",
+    "CACHE_RESET_MIN_SESSION_SECONDS",
+    # tool
+    "TOOL_LANGUAGE_FILTER",
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",
     "TOOL_MAX_LENGTH",
     "TOOL_MICROBATCH_MAX_SIZE",
     "TOOL_MICROBATCH_MAX_DELAY_MS",
-    # prefixes
-    "DEFAULT_CHECK_SCREEN_PREFIX",
-    "DEFAULT_SCREEN_CHECKED_PREFIX",
     # models/validation
     "ALLOWED_BASE_CHAT_MODELS",
     "ALLOWED_BASE_MOE_CHAT_MODELS",
@@ -263,7 +317,6 @@ __all__ = [
     "WS_MAX_MESSAGES_PER_WINDOW",
     "WS_CANCEL_WINDOW_SECONDS",
     "WS_MAX_CANCELS_PER_WINDOW",
-    "TOOL_HISTORY_TOKENS",
     "EXACT_TOKEN_TRIM",
     "MAX_CONCURRENT_CONNECTIONS",
     "SCREEN_PREFIX_MAX_CHARS",
