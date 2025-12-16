@@ -49,9 +49,10 @@ trt_download_model() {
     log_warn "hf_transfer not installed, using standard downloads"
   fi
   python -c "
+import sys
 from huggingface_hub import snapshot_download
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}', local_dir_use_symlinks=False)
-print('✓ Downloaded model')
+print('✓ Downloaded model', file=sys.stderr)
 " || {
     log_err "Failed to download model ${model_id}"
     return 1
@@ -190,6 +191,7 @@ trt_download_prequantized() {
     log_warn "hf_transfer not installed, using standard downloads"
   fi
   python -c "
+import sys
 from huggingface_hub import snapshot_download
 snapshot_download(
     repo_id='${model_id}',
@@ -197,7 +199,7 @@ snapshot_download(
     local_dir_use_symlinks=False,
     allow_patterns=['trt-llm/checkpoints/**', '*.json', '*.safetensors']
 )
-print('✓ Downloaded pre-quantized checkpoint')
+print('✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
 " || {
     log_err "Failed to download pre-quantized model"
     return 1
