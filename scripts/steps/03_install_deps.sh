@@ -47,20 +47,20 @@ ensure_pip_in_venv || exit 1
 
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  # TensorRT-LLM installation path
+  # TensorRT-LLM installation path (matches trtllm-example order)
   log_info "Installing TensorRT-LLM dependencies..."
   
-  # Install base requirements (includes mpi4py, cuda-python, etc.)
-  filter_requirements_without_flashinfer
-  install_requirements_without_flashinfer
-  
-  # Install PyTorch with CUDA support for TRT
+  # 1. Install PyTorch with CUDA support first
   trt_install_pytorch || {
     log_err "Failed to install PyTorch for TRT"
     exit 1
   }
   
-  # Install TensorRT-LLM
+  # 2. Install application dependencies (requirements-trt.txt)
+  filter_requirements_without_flashinfer
+  install_requirements_without_flashinfer
+  
+  # 3. Install TensorRT-LLM last
   trt_install_tensorrt_llm || {
     log_err "Failed to install TensorRT-LLM"
     exit 1
