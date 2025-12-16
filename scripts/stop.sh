@@ -43,6 +43,15 @@ pkill -f "vllm.v1.engine.core" || true
 pkill -f "EngineCore_0" || true
 pkill -f "python.*vllm" || true
 
+# Kill TensorRT-LLM processes
+pkill -f "python.*tensorrt" || true
+pkill -f "python.*trtllm" || true
+pkill -f "trtllm-build" || true
+pkill -f "quantize.py" || true
+pkill -f "mpirun" || true
+pkill -f "mpi4py" || true
+pkill -f "python.*cuda" || true
+
 sleep 1
 
 # 4) Remove repo-local caches (models and compiled artifacts under the repo)
@@ -58,6 +67,7 @@ if [ "${NUKE_ALL}" != "0" ]; then
     "${ROOT_DIR}/.awq"
     # TRT-LLM caches
     "${ROOT_DIR}/.trtllm-repo"
+    "${ROOT_DIR}/.trt_cache"
     "${ROOT_DIR}/models"
     # Compiler caches
     "${ROOT_DIR}/.torch_inductor"
@@ -131,12 +141,22 @@ CACHE_DIRS=(
   "$HOME/.cache/flashinfer" "/root/.cache/flashinfer"
   # TRT-LLM caches
   "$HOME/.cache/tensorrt_llm" "/root/.cache/tensorrt_llm"
+  "$HOME/.cache/tensorrt" "/root/.cache/tensorrt"
   "$HOME/.cache/nvidia" "/root/.cache/nvidia"
+  "$HOME/.cache/modelopt" "/root/.cache/modelopt"
+  "$HOME/.cache/onnx" "/root/.cache/onnx"
+  "$HOME/.cache/cuda" "/root/.cache/cuda"
+  "$HOME/.cache/pycuda" "/root/.cache/pycuda"
+  "$HOME/.local/share/tensorrt_llm" "/root/.local/share/tensorrt_llm"
   # Torch / compiler caches
   "$HOME/.cache/torch/inductor" "/root/.cache/torch/inductor"
   "$HOME/.torch_inductor" "/root/.torch_inductor"
   "$HOME/.cache/torch_extensions" "/root/.cache/torch_extensions"
   "$HOME/.triton" "/root/.triton"
+  # Container workspace caches (for Docker deployments)
+  "/workspace/.cache/huggingface" "/workspace/.cache/pip"
+  "/workspace/.cache/torch" "/workspace/.cache/tensorrt"
+  "/workspace/.cache/triton" "/workspace/.cache/vllm"
 )
 for d in "${CACHE_DIRS[@]}"; do
   [ -d "$d" ] && { log_info "Removing cache at $d"; rm -rf "$d" || true; }
@@ -162,9 +182,9 @@ for TORCH_CACHE in "$HOME/.cache/torch" "/root/.cache/torch"; do
   [ -d "$TORCH_CACHE" ] && { log_info "Removing torch cache at $TORCH_CACHE"; rm -rf "$TORCH_CACHE" || true; }
 done
 
-# 6) NVIDIA PTX JIT cache
-for NV_CACHE in "$HOME/.nv/ComputeCache" "/root/.nv/ComputeCache"; do
-  [ -d "$NV_CACHE" ] && { log_info "Removing NVIDIA ComputeCache at $NV_CACHE"; rm -rf "$NV_CACHE" || true; }
+# 6) NVIDIA PTX JIT cache and other .nv caches
+for NV_CACHE in "$HOME/.nv" "/root/.nv"; do
+  [ -d "$NV_CACHE" ] && { log_info "Removing NVIDIA cache at $NV_CACHE"; rm -rf "$NV_CACHE" || true; }
 done
 
 # 7) Project __pycache__ / pytest
@@ -172,10 +192,13 @@ log_info "Removing __pycache__ and .pytest_cache in repo"
 find "${ROOT_DIR}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 find "${ROOT_DIR}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
 
-# 8) Temp directories (vLLM + TRT-LLM)
-rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* /tmp/pip-* /tmp/pip-build-* /tmp/pip-modern-metadata-* /tmp/uvicorn* /tmp/trtllm* /tmp/tensorrt* /tmp/nv* 2>/dev/null || true
+# 8a) Temp directories (vLLM + TRT-LLM)
+rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* /tmp/pip-* /tmp/pip-build-* /tmp/pip-modern-metadata-* /tmp/uvicorn* /tmp/trtllm* /tmp/trt* /tmp/tensorrt* /tmp/nv* /tmp/hf* /tmp/cuda* /tmp/modelopt* /tmp/quantiz* 2>/dev/null || true
 
-# Remove runtime state directory
+# 8b) Shared memory (TRT-LLM uses /dev/shm)
+rm -rf /dev/shm/tensorrt* /dev/shm/trt* /dev/shm/torch* /dev/shm/nv* /dev/shm/cuda* /dev/shm/hf* 2>/dev/null || true
+
+# 8c) Remove runtime state directory
 if [ -d "${ROOT_DIR}/.run" ]; then
   log_info "Removing runtime state at ${ROOT_DIR}/.run"
   rm -rf "${ROOT_DIR}/.run" || true

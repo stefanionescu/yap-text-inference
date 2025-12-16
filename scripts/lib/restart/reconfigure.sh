@@ -211,7 +211,15 @@ restart_clear_model_artifacts() {
   local paths=(
     "${ROOT_DIR}/.awq"
     "${ROOT_DIR}/.hf"
+    # vLLM caches
     "${ROOT_DIR}/.vllm_cache"
+    "${ROOT_DIR}/.flashinfer"
+    "${ROOT_DIR}/.xformers"
+    # TRT-LLM caches
+    "${ROOT_DIR}/.trtllm-repo"
+    "${ROOT_DIR}/.trt_cache"
+    "${ROOT_DIR}/models"
+    # HuggingFace caches
     "${HF_HOME:-}"
     "${HUGGINGFACE_HUB_CACHE:-}"
     "${TRANSFORMERS_CACHE:-}"
@@ -332,8 +340,13 @@ restart_reconfigure_models() {
     exit 1
   fi
 
+  # Run quantization pipeline if AWQ is requested
   if _restart_needs_awq_pipeline; then
-    source "${SCRIPT_DIR}/quantization/awq_quantizer.sh"
+    if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
+      source "${SCRIPT_DIR}/quantization/trt_quantizer.sh"
+    else
+      source "${SCRIPT_DIR}/quantization/vllm_quantizer.sh"
+    fi
   fi
 
   restart_server_background
