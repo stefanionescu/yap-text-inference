@@ -4,7 +4,7 @@
 
 timestamp() { date +"%Y-%m-%dT%H:%M:%S%z"; }
 
-log_info() { echo "[INFO] $(timestamp) $*"; }
+log_info() { echo "[INFO] $(timestamp) $*" >&2; }
 log_warn() { echo "[WARN] $(timestamp) $*" >&2; }
 log_err()  { echo "[ERR ] $(timestamp) $*" >&2; }
 
