@@ -13,9 +13,9 @@ source "${SCRIPT_DIR}/lib/restart/args.sh"
 source "${SCRIPT_DIR}/lib/restart/basic.sh"
 source "${SCRIPT_DIR}/lib/restart/reconfigure.sh"
 source "${SCRIPT_DIR}/lib/restart/awq.sh"
-source "${SCRIPT_DIR}/lib/restart/env.sh"
+source "${SCRIPT_DIR}/lib/env/restart.sh"
 source "${SCRIPT_DIR}/lib/restart/launch.sh"
-source "${SCRIPT_DIR}/lib/quant/push.sh"
+source "${SCRIPT_DIR}/vllm/push.sh"
 
 log_info "Restart manager ready (reuse caches or reconfigure models)"
 

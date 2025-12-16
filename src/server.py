@@ -33,7 +33,7 @@ from .config import (
     DEPLOY_TOOL,
     CACHE_RESET_INTERVAL_SECONDS,
 )
-from .config.env import validate_env
+from .config import validate_env
 from .config.logging import configure_logging
 from .vllm import (
     cache_reset_reschedule_event,

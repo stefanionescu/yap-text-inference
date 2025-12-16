@@ -5,11 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 
-# Quantization helpers
-LIB_Q="${SCRIPT_DIR}/../lib/quant"
-source "${LIB_Q}/env.sh"
-source "${LIB_Q}/push.sh"
-source "${LIB_Q}/ops.sh"
+# vLLM quantization helpers
+source "${SCRIPT_DIR}/../lib/env/quantization.sh"
+source "${SCRIPT_DIR}/../engines/vllm/push.sh"
+source "${SCRIPT_DIR}/../engines/vllm/quantize.sh"
 
 # Determine which engines requested AWQ
 AWQ_TARGET_CHAT=0
@@ -30,14 +29,14 @@ if [ "${AWQ_TARGET_CHAT}" = "0" ]; then
 fi
 
 awq_setup_hf_env
-awq_should_use_prequant
+vllm_awq_should_use_prequant
 
 # Main quantization logic
-awq_ensure_cache_dir
+vllm_awq_ensure_cache_dir
 
 if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
-    if ! awq_handle_chat_prequant_or_quantize; then
+    if ! vllm_awq_handle_chat_prequant_or_quantize; then
       log_error "AWQ quantization pipeline failed while preparing chat model; aborting."
       exit 1
     fi
@@ -45,7 +44,7 @@ if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
 else
   log_info "Running AWQ quantization process"
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
-    if ! awq_quantize_chat_if_needed; then
+    if ! vllm_awq_quantize_chat_if_needed; then
       log_error "AWQ quantization pipeline failed while quantizing chat model; aborting."
       exit 1
     fi

@@ -8,10 +8,10 @@ source "${SCRIPT_DIR}/../lib/common/log.sh"
 # Shared library functions
 LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/deps/certs.sh"
-source "${LIB_DIR}/torch/env.sh"
+source "${LIB_DIR}/env/torch.sh"
 source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/deps/reqs.sh"
-source "${LIB_DIR}/deps/flashinfer.sh"
+source "${SCRIPT_DIR}/../engines/vllm/install.sh"
 
 log_info "Installing Python dependencies"
 
@@ -37,6 +37,6 @@ filter_requirements_without_flashinfer
 install_requirements_without_flashinfer
 install_llmcompressor_without_deps
 
-install_flashinfer_if_applicable
+vllm_install_flashinfer
 
 record_requirements_hash

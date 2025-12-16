@@ -13,10 +13,10 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 
 # Source TRT libraries
-source "${SCRIPT_DIR}/../lib/trt/env.sh"
-source "${SCRIPT_DIR}/../lib/trt/detect.sh"
-source "${SCRIPT_DIR}/../lib/trt/quantize.sh"
-source "${SCRIPT_DIR}/../lib/trt/build.sh"
+source "${SCRIPT_DIR}/../lib/env/trt.sh"
+source "${SCRIPT_DIR}/../engines/trt/detect.sh"
+source "${SCRIPT_DIR}/../engines/trt/quantize.sh"
+source "${SCRIPT_DIR}/../engines/trt/build.sh"
 
 # =============================================================================
 # MAIN LOGIC
