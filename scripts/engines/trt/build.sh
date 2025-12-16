@@ -295,7 +295,7 @@ trt_push_to_hf() {
   
   local python_cmd=(
     "${ROOT_DIR}/.venv/bin/python"
-    "-m" "src.engines.trt.hf.hf_push"
+    "-m" "src.engines.trt.awq.hf.hf_push"
     "--checkpoint-dir" "${checkpoint_dir}"
     "--repo-id" "${repo_id}"
     "--token" "${token}"
