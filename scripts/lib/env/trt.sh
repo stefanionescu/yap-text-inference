@@ -15,6 +15,7 @@ TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 
 # PyTorch version matching TRT-LLM requirements
 TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.1+cu130}"
+TRT_TORCHVISION_VERSION="${TRT_TORCHVISION_VERSION:-0.24.1+cu130}"
 TRT_PYTORCH_INDEX_URL="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
 
 # TensorRT-LLM repository for quantization scripts
@@ -211,7 +212,7 @@ trt_log_config() {
 # Export all TRT environment variables
 trt_export_env() {
   export TRT_VERSION TRT_PIP_SPEC TRT_EXTRA_INDEX_URL
-  export TRT_PYTORCH_VERSION TRT_PYTORCH_INDEX_URL
+  export TRT_PYTORCH_VERSION TRT_TORCHVISION_VERSION TRT_PYTORCH_INDEX_URL
   export TRT_REPO_URL TRT_REPO_BRANCH TRT_REPO_DIR
   export GPU_SM_ARCH TRT_FP8_SM_ARCHS
   export TRT_MAX_BATCH_SIZE TRT_MAX_INPUT_LEN TRT_MAX_OUTPUT_LEN TRT_DTYPE

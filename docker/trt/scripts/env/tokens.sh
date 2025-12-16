@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# Token limits (approx)
+export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
+export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-350}
+export TOOL_HISTORY_TOKENS=${TOOL_HISTORY_TOKENS:-900}
+
