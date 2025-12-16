@@ -3,10 +3,9 @@
 # TRT-LLM Installation Utilities
 # =============================================================================
 # Functions for installing TensorRT-LLM and its dependencies.
-# Matches trtllm-example/custom/setup/install-dependencies.sh exactly.
 
 # =============================================================================
-# CONFIGURATION (same defaults as trtllm-example)
+# CONFIGURATION
 # =============================================================================
 
 # TRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
@@ -17,7 +16,7 @@ TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==1.2.0rc5}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 
 # =============================================================================
-# CUDA ENVIRONMENT (from trtllm-example)
+# CUDA ENVIRONMENT
 # =============================================================================
 
 # Ensure CUDA_HOME is set and valid
@@ -56,7 +55,7 @@ trt_ensure_cuda_home() {
 }
 
 # =============================================================================
-# PYTORCH INSTALLATION (from trtllm-example _install_pytorch)
+# PYTORCH INSTALLATION
 # =============================================================================
 
 trt_install_pytorch() {
@@ -80,10 +79,10 @@ trt_install_pytorch() {
 }
 
 # =============================================================================
-# TRT-LLM INSTALLATION (from trtllm-example _install_tensorrt_llm)
+# TRT-LLM INSTALLATION
 # =============================================================================
 
-# pip install with retry (from trtllm-example _pip_install_with_retry)
+# pip install with retry
 _trt_pip_install_with_retry() {
   local max_attempts="${PIP_INSTALL_ATTEMPTS:-5}"
   local delay="${PIP_INSTALL_BACKOFF_SECONDS:-2}"
@@ -106,7 +105,7 @@ _trt_pip_install_with_retry() {
   return 1
 }
 
-# Install TensorRT-LLM from NVIDIA PyPI (matches trtllm-example exactly)
+# Install TensorRT-LLM from NVIDIA PyPI
 trt_install_tensorrt_llm() {
   local nvidia_index="${TRT_EXTRA_INDEX_URL}"
   local target="${TRT_PIP_SPEC}"
@@ -132,10 +131,10 @@ trt_install_tensorrt_llm() {
 }
 
 # =============================================================================
-# VALIDATION (from trtllm-example)
+# VALIDATION
 # =============================================================================
 
-# Validate Python shared library (from trtllm-example _validate_python_libraries)
+# Validate Python shared library
 trt_validate_python_libraries() {
   log_info "Checking Python shared library..."
   python - <<'EOF'
@@ -161,7 +160,7 @@ print("✓ Python shared library OK")
 EOF
 }
 
-# Validate CUDA runtime (from trtllm-example _validate_cuda_runtime)
+# Validate CUDA runtime
 trt_validate_cuda_runtime() {
   log_info "Checking CUDA Python bindings..."
   local check_output
@@ -206,7 +205,7 @@ EOF
   return 0
 }
 
-# Validate MPI runtime (from trtllm-example _validate_mpi_runtime)
+# Validate MPI runtime
 trt_validate_mpi_runtime() {
   local need_mpi="${NEED_MPI:-0}"
 
@@ -298,7 +297,7 @@ trt_prepare_repo() {
 }
 
 # =============================================================================
-# FULL INSTALLATION (matches trtllm-example order exactly)
+# FULL INSTALLATION
 # =============================================================================
 
 # Complete TRT-LLM installation sequence
