@@ -1,4 +1,4 @@
-"""GPU memory heuristics and batching utilities."""
+"""GPU memory heuristics and batching utilities for vLLM."""
 
 from __future__ import annotations
 
@@ -42,8 +42,8 @@ def read_cuda_memory_snapshot() -> tuple[int, int] | None:
     """Return (free_bytes, total_bytes) for the current CUDA device."""
     global _CUDA_MEM_WARNING_EMITTED
     try:
-        import torch  # local import to avoid hard dependency at module import time
-    except Exception as exc:  # noqa: BLE001
+        import torch
+    except Exception as exc:
         if not _CUDA_MEM_WARNING_EMITTED:
             print(f"[config] Warning: torch unavailable for CUDA mem introspection ({exc})")
             _CUDA_MEM_WARNING_EMITTED = True
@@ -57,7 +57,7 @@ def read_cuda_memory_snapshot() -> tuple[int, int] | None:
         with torch.cuda.device(device_index):
             free_bytes, total_bytes = torch.cuda.mem_get_info()
         return int(free_bytes), int(total_bytes)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         if not _CUDA_MEM_WARNING_EMITTED:
             print(f"[config] Warning: unable to read torch.cuda.mem_get_info ({exc})")
             _CUDA_MEM_WARNING_EMITTED = True
@@ -96,11 +96,7 @@ def scale_batching_limits(
 
 def get_max_num_seqs_override() -> int | None:
     """Return env-provided max_num_seqs override for the chat engine."""
-
-    keys = [
-        "MAX_NUM_SEQS_CHAT",
-        "MAX_NUM_SEQS",
-    ]
+    keys = ["MAX_NUM_SEQS_CHAT", "MAX_NUM_SEQS"]
     for key in keys:
         value = os.getenv(key)
         if not value:
@@ -115,8 +111,7 @@ def get_max_num_seqs_override() -> int | None:
 
 
 def auto_max_num_seqs(gpu_frac: float, needs_memory_opt: bool) -> int:
-    """Heuristically choose max_num_seqs for the chat engine based on GPU size and allocation."""
-
+    """Heuristically choose max_num_seqs for the chat engine based on GPU size."""
     baseline = MAX_NUM_SEQS_BASELINE
     min_floor = MAX_NUM_SEQS_MIN_FLOOR
     if needs_memory_opt:
@@ -151,13 +146,10 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
         return
 
     if use_v1:
-        # V1 engine handles KV cache quantization via env vars
         if normalized.startswith("fp8"):
             os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
             print("[config] V1 engine: FP8 KV cache enabled via VLLM_FP8_KV_CACHE_ENABLE=1")
         elif normalized.startswith("int8"):
-            # INT8 KV cache: FlashInfer handles this natively on A100
-            # Note: vLLM V1 may not fully support int8 KV cache yet - using auto instead
             if not _KV_DTYPE_WARNING_EMITTED:
                 print(
                     "[config] V1 engine: INT8 KV cache requested. FlashInfer will use fp16 KV cache."
@@ -171,7 +163,7 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
                 _KV_DTYPE_WARNING_EMITTED = True
         return
 
-    # V0 engine uses explicit kv_cache_dtype parameter
     kwargs["kv_cache_dtype"] = normalized
     if normalized.startswith("fp8"):
         kwargs["calculate_kv_scales"] = True
+

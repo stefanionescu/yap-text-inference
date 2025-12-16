@@ -1,4 +1,7 @@
-"""Engine args builder and related utilities for vLLM engines."""
+"""Engine args builder for vLLM engines.
+
+This is a direct copy from src/vllm/args.py to maintain all existing functionality.
+"""
 
 from __future__ import annotations
 
@@ -45,14 +48,15 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineArgs:
+    """Build vLLM AsyncEngineArgs with all optimizations applied."""
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT", "256"))
 
     # Normalize/validate KV cache dtype
-    kv_dtype_value = (KV_DTYPE or "").strip()  # empty => let vLLM decide
+    kv_dtype_value = (KV_DTYPE or "").strip()
 
     # Select quantization for the chat engine
-    selected_quant = (CHAT_QUANTIZATION or QUANTIZATION)
+    selected_quant = CHAT_QUANTIZATION or QUANTIZATION
 
     raw_quant = selected_quant
     inference_quant = raw_quant
@@ -66,49 +70,37 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     model_origin = resolve_model_origin(model)
     needs_bfloat16 = model_requires_bfloat16(model_origin)
     needs_memory_opt = model_needs_memory_optimization(model_origin)
-    needs_fla = model_requires_fla_runtime(model_origin)  # Flash Linear Attention (Kimi)
-    uses_mla = model_uses_mla(model_origin)  # Multi-Head Latent Attention (DeepSeek-V2/V3)
+    needs_fla = model_requires_fla_runtime(model_origin)
+    uses_mla = model_uses_mla(model_origin)
 
     # FLA models (Kimi) need the fla-core package
     if needs_fla:
         _ensure_fla_runtime_available(model_origin)
 
     # MLA and FLA models don't work with XFORMERS or FLASHINFER backends
-    # Unset the backend to let vLLM auto-select the appropriate backend
     if uses_mla or needs_fla:
         if os.getenv("VLLM_ATTENTION_BACKEND"):
             os.environ.pop("VLLM_ATTENTION_BACKEND", None)
 
     dtype_value = "auto"
-    # Models that require bfloat16 (e.g., Gemma3) must use it even when quantized
-    # For other quantized models, prefer fp16 (Marlin performs better with fp16 on SM < 9.0)
     if needs_bfloat16:
         dtype_value = "bfloat16"
     elif inference_quant in {"awq", "awq_marlin", "compressed-tensors", "fp8"}:
-        # Use fp16 for Marlin-based quantization - better performance on A100/Ampere (SM80)
-        # Marlin warns: "running Marlin kernel with bf16 on GPUs before SM90"
         dtype_value = "float16"
 
-    # Build kwargs for V1 engine.
     kwargs = dict(
         model=model,
         trust_remote_code=True,
         tensor_parallel_size=1,
         max_model_len=max_len,
         gpu_memory_utilization=gpu_frac,
-        # Allow CUDA graphs for better performance
         enforce_eager=False,
         enable_chunked_prefill=True,
         max_num_batched_tokens=max_batched,
-        # Always enable prefix caching for performance
         enable_prefix_caching=True,
-        # Weight quantization (None => float weights)
         quantization=inference_quant,
         dtype=dtype_value,
-        # Enable per-request priorities used by generate(..., priority=...)
         scheduling_policy="priority",
-        # Disable multimodal processing for text-only deployments
-        # This prevents PixtralProcessor initialization issues with Mistral 3 models
         limit_mm_per_prompt={"image": 0},
     )
 
@@ -116,12 +108,11 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     tok_kwargs = get_tokenizer_kwargs(model_origin)
     inject_tokenizer_kwargs(kwargs, tok_kwargs, model_origin)
 
-    # Memory optimization for models prone to OOM (e.g., Gemma)
+    # Memory optimization for models prone to OOM
     if needs_memory_opt and gpu_frac > 0.85:
-        # Slightly reduce GPU memory utilization if not already lowered
         kwargs["gpu_memory_utilization"] = min(gpu_frac, 0.85)
 
-    # Resolve max_num_seqs dynamically to avoid warmup OOMs
+    # Resolve max_num_seqs dynamically
     max_num_seqs = get_max_num_seqs_override()
     if max_num_seqs is None:
         max_num_seqs = auto_max_num_seqs(
@@ -130,9 +121,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         )
     kwargs["max_num_seqs"] = max_num_seqs
 
-    # Special handling for local AWQ models to avoid Hugging Face repo ID validation
+    # Special handling for local AWQ models
     if raw_quant == "awq" and _is_local_model_path(model):
-        # For local AWQ models, ensure the path is absolute so vLLM treats it as local
         kwargs["model"] = os.path.abspath(model)
 
     use_v1 = env_flag("VLLM_USE_V1", True)
@@ -155,3 +145,4 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         engine_args._is_local_awq = True
 
     return engine_args
+

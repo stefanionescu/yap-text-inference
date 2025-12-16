@@ -1,4 +1,4 @@
-"""Tokenizer support helpers shared by engine builders."""
+"""Tokenizer support helpers for vLLM engine builders."""
 
 from __future__ import annotations
 
@@ -91,8 +91,8 @@ def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
     global _FIX_MISTRAL_REGEX_PATCH_INSTALLED, _FIX_MISTRAL_REGEX_MARKERS, _TOKENIZER_PATCH_WARNING_EMITTED
 
     try:
-        from transformers import AutoTokenizer  # type: ignore
-    except Exception as exc:  # noqa: BLE001
+        from transformers import AutoTokenizer
+    except Exception as exc:
         if not _TOKENIZER_PATCH_WARNING_EMITTED:
             print(
                 "[config] Warning: transformers not available to patch tokenizer "
@@ -118,7 +118,7 @@ def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
             kwargs.setdefault("fix_mistral_regex", True)
         return original(cls, pretrained_model_name_or_path, *args, **kwargs)
 
-    AutoTokenizer._yap_original_from_pretrained = original  # type: ignore[attr-defined]
+    AutoTokenizer._yap_original_from_pretrained = original
     AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)
     _FIX_MISTRAL_REGEX_PATCH_INSTALLED = True
     print(
@@ -140,3 +140,4 @@ def _normalize_tokenizer_identifier(candidate: Any) -> str:
         return normalize_model_id(name_or_path)
 
     return normalize_model_id(str(candidate))
+

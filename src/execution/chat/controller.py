@@ -1,4 +1,7 @@
-"""Chat streaming controller built on top of vLLM."""
+"""Chat streaming controller - engine agnostic.
+
+Works with both vLLM and TensorRT-LLM engines through the BaseEngine interface.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
+from ...engines.base import BaseEngine
 
 logger = logging.getLogger(__name__)
 STREAM_LABEL = "chat"
@@ -29,7 +33,7 @@ class ChatStreamConfig:
     request_id: str
     prompt: str
     sampling_params: Any
-    engine_getter: Callable[[], Awaitable[Any]]
+    engine_getter: Callable[[], Awaitable[BaseEngine]]
     timeout_s: float
     priority: int = 0
     flush_ms: float = 0.0
@@ -37,7 +41,11 @@ class ChatStreamConfig:
 
 
 class ChatStreamController:
-    """Handles buffering, cancellation, and logging for chat generations."""
+    """Handles buffering, cancellation, and logging for chat generations.
+    
+    This controller works with any engine implementing the BaseEngine interface,
+    including both vLLM and TensorRT-LLM.
+    """
 
     def __init__(self, config: ChatStreamConfig):
         self._cfg = config
@@ -122,17 +130,23 @@ class ChatStreamController:
     def ttfb_ms(self) -> float | None:
         return self._ttfb_ms
 
-    # ------------------------------------------------------------------ #
-    # Internal helpers
-    # ------------------------------------------------------------------ #
     def _extract_delta(self, output: Any) -> str:
-        if not getattr(output, "outputs", None):
+        """Extract new text delta from engine output.
+        
+        Works with both EngineOutput (unified format) and raw vLLM output.
+        """
+        # Handle unified EngineOutput format
+        if hasattr(output, "text") and isinstance(output.text, str):
+            text = output.text
+        # Handle raw vLLM output format (legacy compatibility)
+        elif hasattr(output, "outputs") and output.outputs:
+            text = output.outputs[0].text
+            if not isinstance(text, str):
+                return ""
+        else:
             return ""
-        text = output.outputs[0].text
-        if not isinstance(text, str):
-            return ""
+        
         if not text.startswith(self._full_text):
-            # Unexpected reset; fall back to newest text.
             delta = text
         else:
             delta = text[len(self._full_text):]
@@ -140,7 +154,7 @@ class ChatStreamController:
             return ""
         self._full_text = text
         if self._ttfb_ms is None:
-            self._ttfb_ms = 0.0  # marker set; actual value computed on emit
+            self._ttfb_ms = 0.0
         return delta
 
     def _emit(self, delta: str) -> list[str]:
@@ -184,7 +198,7 @@ class ChatStreamController:
 
 
 async def _stream_with_timeout(
-    get_engine: Callable[[], Awaitable[Any]],
+    get_engine: Callable[[], Awaitable[BaseEngine]],
     prompt: str,
     sampling_params: Any,
     request_id: str,
@@ -192,8 +206,9 @@ async def _stream_with_timeout(
     timeout_s: float,
     cancel_check: CancelCheck = None,
 ) -> AsyncGenerator[Any, None]:
+    """Stream generation with timeout and cancellation support."""
     engine = await get_engine()
-    stream = engine.generate(
+    stream = engine.generate_stream(
         prompt=prompt,
         sampling_params=sampling_params,
         request_id=request_id,
@@ -205,17 +220,12 @@ async def _stream_with_timeout(
         async with asyncio.timeout(timeout_s):
             async for out in stream:
                 if await cancel_checker.triggered():
-                    await _abort(engine, request_id)
+                    await engine.abort(request_id)
                     raise StreamCancelledError()
                 yield out
     except asyncio.TimeoutError:
-        await _abort(engine, request_id)
-        raise
-
-
-async def _abort(engine: Any, request_id: str) -> None:
-    with contextlib.suppress(Exception):
         await engine.abort(request_id)
+        raise
 
 
 class _CancelChecker:
@@ -236,4 +246,3 @@ __all__ = [
     "ChatStreamController",
     "StreamCancelledError",
 ]
-
