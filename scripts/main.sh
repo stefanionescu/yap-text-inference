@@ -10,6 +10,7 @@ source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
 source "${SCRIPT_DIR}/lib/common/model_detect.sh"
 source "${SCRIPT_DIR}/lib/common/model_validate.sh"
+source "${SCRIPT_DIR}/engines/trt/detect.sh"
 
 # Runtime management
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
@@ -37,6 +38,14 @@ fi
 # Phase 1: Parse engine and push flags
 main_parse_flags "$@"
 set -- "${MAIN_REMAINING_ARGS[@]}"
+
+# If running TRT, ensure driver/CUDA runtime is compatible before heavy work
+if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
+  if ! trt_check_driver_runtime; then
+    log_err "Aborting: incompatible CUDA/driver runtime for TRT-LLM (requires CUDA 13.x)"
+    exit 1
+  fi
+fi
 
 # Phase 2: Parse quantization type
 main_parse_quant_type "$@"

@@ -16,6 +16,7 @@ source "${SCRIPT_DIR}/lib/restart/awq.sh"
 source "${SCRIPT_DIR}/lib/env/restart.sh"
 source "${SCRIPT_DIR}/lib/restart/launch.sh"
 source "${SCRIPT_DIR}/vllm/push.sh"
+source "${SCRIPT_DIR}/engines/trt/detect.sh"
 
 log_info "Restart manager ready (reuse caches or reconfigure models)"
 
@@ -88,6 +89,14 @@ if ! restart_parse_args "$@"; then
 fi
 case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
 export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
+
+# If running TRT, ensure driver/CUDA runtime is compatible before heavy work
+if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
+  if ! trt_check_driver_runtime; then
+    log_err "Aborting: incompatible CUDA/driver runtime for TRT-LLM (requires CUDA 13.x)"
+    exit 1
+  fi
+fi
 
 # Validate --push-quant prerequisites early (before any heavy operations)
 validate_push_quant_prereqs "${DEPLOY_MODE}"
