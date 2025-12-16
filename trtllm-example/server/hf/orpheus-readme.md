@@ -133,7 +133,7 @@ pip install huggingface_hub
 <details>
 <summary><b>Engine not portable</b></summary>
 Engines are specific to GPU SM and TRT/CUDA versions. Rebuild on the target
-system or download a matching `engines/sm80_trt-llm-1.2.0rc5_cuda13.0` variant if provided.
+system or download a matching `engines/sm80_trt-llm-1.2.0rc4_cuda13.0` variant if provided.
 </details>
 
 <details>

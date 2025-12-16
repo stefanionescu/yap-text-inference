@@ -9,10 +9,10 @@
 # CONFIGURATION
 # =============================================================================
 # All versions are centralized here and in scripts/lib/env/trt.sh
-# TRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
+# TRT-LLM 1.2.0rc4 requires CUDA 13.0 and torch 2.9.x
 
 # Centralized TRT-LLM version - THIS IS THE SINGLE SOURCE OF TRUTH
-TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
+TRT_VERSION="${TRT_VERSION:-1.2.0rc4}"
 
 # Derived configurations
 TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.1+cu130}"
@@ -52,10 +52,10 @@ trt_ensure_cuda_home() {
     return 1
   fi
   
-  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc5)
+  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc4)
   if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
-      log_warn "libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
+      log_warn "libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc4 requires CUDA 13.x runtime libraries"
     fi
   fi
   
@@ -294,6 +294,10 @@ trt_prepare_repo() {
   local clone_attempts="${TRT_CLONE_ATTEMPTS}"
   local clone_delay="${TRT_CLONE_BACKOFF_SECONDS}"
   
+  # Enable git tracing for debugging (matches trtllm-example)
+  export GIT_CURL_VERBOSE="${GIT_CURL_VERBOSE:-1}"
+  export GIT_TRACE="${GIT_TRACE:-1}"
+  
   log_info "Target TensorRT-LLM version: ${TRT_VERSION} (tag: ${tag_name})"
   
   # Handle FORCE_REBUILD
@@ -387,6 +391,11 @@ trt_install_quant_requirements() {
     log_info "Installing TRT-LLM quantization requirements from ${quant_reqs}"
     pip install -r "${quant_reqs}" || {
       log_warn "Some quantization requirements failed to install"
+    }
+    # Ensure hf_transfer is present even if a system package blocks uninstall (e.g. Debian blinker)
+    # --ignore-installed avoids RECORD issues from distro packages.
+    pip install --ignore-installed "hf_transfer==0.1.8" || {
+      log_warn "hf_transfer install failed; fast HF downloads will be disabled"
     }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
     pip install 'urllib3>=2.6.0' || true

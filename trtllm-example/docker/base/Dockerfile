@@ -1,4 +1,4 @@
-# Base image: CUDA 13.0.0 cudnn-devel on Ubuntu 24.04 (TRT-LLM 1.2.0rc5 requires torch 2.9.x cu130)
+# Base image: CUDA 13.0.0 cudnn-devel on Ubuntu 24.04 (TRT-LLM 1.2.0rc4 requires torch 2.9.x cu130)
 FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04
 
 # Use bash for RUN lines
@@ -37,7 +37,7 @@ RUN python3.10 -m venv "$VENV_DIR" && \
 ENV PATH="/opt/venv/bin:${PATH}"
 
 # ----------------------------------------------------------------------------
-# PyTorch installation (TRT-LLM 1.2.0rc5 requires torch 2.9.x + CUDA 13.0)
+# PyTorch installation (TRT-LLM 1.2.0rc4 requires torch 2.9.x + CUDA 13.0)
 # ----------------------------------------------------------------------------
 ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 RUN echo "Using PyTorch index: ${PYTORCH_INDEX_URL}" && \
@@ -74,7 +74,7 @@ RUN mkdir -p /etc/profile.d && printf 'test -f /usr/local/bin/environment.sh && 
 # NOTE: Do NOT use --upgrade - it can replace torch with a different CUDA version
 # from NVIDIA's index, causing CUDA mismatch between torch and torchvision
 # ----------------------------------------------------------------------------
-ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc5
+ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc4
 ARG TRTLLM_WHEEL_URL=
 RUN if [[ -n "${TRTLLM_WHEEL_URL}" ]]; then \
       pip install --no-cache-dir "${TRTLLM_WHEEL_URL}"; \
@@ -119,7 +119,7 @@ BASH
 # TensorRT-LLM repository: clone and sync to installed wheel version
 # ----------------------------------------------------------------------------
 ARG TRTLLM_REPO_URL=https://github.com/Yap-With-AI/TensorRT-LLM.git
-ARG TRTLLM_TARGET_VERSION=1.2.0rc5
+ARG TRTLLM_TARGET_VERSION=1.2.0rc4
 ENV TRTLLM_REPO_DIR=/opt/TensorRT-LLM
 RUN git clone "${TRTLLM_REPO_URL}" "${TRTLLM_REPO_DIR}" && \
     git -C "${TRTLLM_REPO_DIR}" fetch --tags && \

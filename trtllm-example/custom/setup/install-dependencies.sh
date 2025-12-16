@@ -88,7 +88,7 @@ _ensure_cuda_home() {
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
       cat >&2 <<'ERR'
 [install] ERROR: libcublasLt.so.13 not found in CUDA library path.
-TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries.
+TensorRT-LLM 1.2.0rc4 requires CUDA 13.x runtime libraries.
 Install the CUDA 13 toolkit and ensure CUDA_HOME points at that installation.
 ERR
       exit 1
@@ -255,12 +255,12 @@ VENV_DIR="${VENV_DIR:-$PWD/.venv}"
 if [ -z "${CUDA_HOME:-}" ] && [ -d "/usr/local/cuda" ]; then
   export CUDA_HOME="/usr/local/cuda"
 fi
-# TRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
+# TRT-LLM 1.2.0rc4 requires CUDA 13.0 and torch 2.9.x
 PYTORCH_VERSION="${PYTORCH_VERSION:-2.9.1+cu130}"
 TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.24.1+cu130}"
 PYTORCH_INDEX_URL="${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
 TRTLLM_WHEEL_URL="${TRTLLM_WHEEL_URL:-}"
-TRTLLM_PIP_SPEC="${TRTLLM_PIP_SPEC:-tensorrt_llm==1.2.0rc5}"
+TRTLLM_PIP_SPEC="${TRTLLM_PIP_SPEC:-tensorrt_llm==1.2.0rc4}"
 TRTLLM_EXTRA_INDEX_URL="${TRTLLM_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 TENSORRT_PIP_EXTRAS="${TENSORRT_PIP_EXTRAS:-}"
 

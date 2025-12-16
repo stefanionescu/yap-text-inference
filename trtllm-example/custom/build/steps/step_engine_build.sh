@@ -57,7 +57,7 @@ else
   printf "#!/usr/bin/env bash\n%s\n" "${build_cmd[*]}" >"$cmd_file"
   chmod +x "$cmd_file"
 
-  default_trtllm_ver="${DEFAULT_TRTLLM_VERSION:-1.2.0rc5}"
+  default_trtllm_ver="${DEFAULT_TRTLLM_VERSION:-1.2.0rc4}"
   trtllm_ver="$(
     ${PYTHON_EXEC} - <<'PY' 2>/dev/null | tail -1 | tr -d '[:space:]'
 import importlib.metadata as md

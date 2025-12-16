@@ -1,7 +1,7 @@
 # TensorRT-LLM requirements
 # NOTE: torch and tensorrt_llm are installed via scripts/engines/trt/install.sh
 # to ensure wheels match the installed CUDA toolkit (default: PyTorch 2.9.1+cu130)
-# TensorRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
+# TensorRT-LLM 1.2.0rc4 requires CUDA 13.0 and torch 2.9.x
 
 # Core server dependencies (same as vLLM)
 fastapi==0.115.4
@@ -12,7 +12,7 @@ pydantic==2.12.0
 httpx==0.27.2
 uvloop==0.19.0
 
-# HuggingFace and ML (versions pinned to match TRT-LLM 1.2.0rc5 requirements)
+# HuggingFace and ML (versions pinned to match TRT-LLM 1.2.0rc4 requirements)
 # NOTE: tokenizers is NOT pinned - let transformers pull the compatible version
 # transformers 4.53.1 requires tokenizers>=0.21,<0.22
 huggingface_hub==0.36.0

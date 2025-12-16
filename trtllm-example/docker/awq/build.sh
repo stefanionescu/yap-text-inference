@@ -35,10 +35,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Build arguments for customization (cu130 for TRT-LLM 1.2.0rc5's torch 2.9.x requirement)
+# Build arguments for customization (cu130 for TRT-LLM 1.2.0rc4's torch 2.9.x requirement)
 BUILD_ARGS=(
   --build-arg "PYTORCH_INDEX_URL=${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
-  --build-arg "TRTLLM_PIP_SPEC=${TRTLLM_PIP_SPEC:-tensorrt_llm==1.2.0rc5}"
+  --build-arg "TRTLLM_PIP_SPEC=${TRTLLM_PIP_SPEC:-tensorrt_llm==1.2.0rc4}"
   --build-arg "TRTLLM_WHEEL_URL=${TRTLLM_WHEEL_URL:-}"
 )
 

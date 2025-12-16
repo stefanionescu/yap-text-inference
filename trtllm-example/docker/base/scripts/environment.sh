@@ -159,7 +159,7 @@ export HF_PUSH_PRIVATE=${HF_PUSH_PRIVATE:-1}
 # What to include: engines, checkpoints, or both
 export HF_PUSH_WHAT=${HF_PUSH_WHAT:-both}
 
-# Optional override for engine folder label (e.g., sm80_trt-llm-1.2.0rc5_cuda13.0)
+# Optional override for engine folder label (e.g., sm80_trt-llm-1.2.0rc4_cuda13.0)
 export HF_PUSH_ENGINE_LABEL=${HF_PUSH_ENGINE_LABEL:-}
 
 # Optional push behavior toggles
