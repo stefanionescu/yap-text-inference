@@ -1,4 +1,28 @@
-"""Classifier inference backend (PyTorch)."""
+"""Classifier inference backend (PyTorch).
+
+This module provides the PyTorch-based inference backend for the
+classifier adapter. It handles:
+
+1. Model Loading:
+   - AutoModelForSequenceClassification for any HuggingFace model
+   - Automatic dtype selection (float16 for GPU, float32 for CPU)
+   - trust_remote_code for custom model implementations
+
+2. Tokenization:
+   - AutoTokenizer with left-side truncation
+   - Batch tokenization with padding
+   - Respect max_length from model config
+
+3. Inference:
+   - BERT-style forward pass
+   - Longformer global attention mask support
+   - torch.inference_mode() for efficiency
+
+4. Optimization:
+   - Optional torch.compile() for speedup
+   - TF32 and cuDNN benchmark for CUDA
+   - Gradient disabled globally
+"""
 
 from __future__ import annotations
 
@@ -17,7 +41,19 @@ logger = logging.getLogger(__name__)
 
 
 class TorchClassifierBackend:
-    """PyTorch backend supporting both BERT-style and Longformer models."""
+    """PyTorch backend supporting both BERT-style and Longformer models.
+    
+    This class handles the actual model loading and inference, supporting
+    various transformer architectures for sequence classification.
+    
+    Attributes:
+        _info: Model metadata (type, max_length, num_labels).
+        _device: Target device string.
+        _dtype: Torch dtype for inference.
+        _tokenizer: HuggingFace tokenizer instance.
+        _model: The loaded classification model.
+        _max_length: Effective max sequence length.
+    """
 
     def __init__(
         self,
@@ -66,6 +102,17 @@ class TorchClassifierBackend:
                 )
 
     def infer(self, texts: list[str]) -> torch.Tensor:
+        """Run inference on a batch of texts.
+        
+        Tokenizes inputs, runs the model, and returns logits.
+        Handles Longformer global attention masks automatically.
+        
+        Args:
+            texts: List of input texts to classify.
+            
+        Returns:
+            Tensor of shape (batch_size, num_labels) containing logits.
+        """
         enc = self._tokenizer(
             texts,
             return_tensors="pt",

@@ -1,4 +1,16 @@
-"""Time classification and formatting utilities."""
+"""Time classification and formatting utilities.
+
+This module provides utilities for working with timestamps in session metadata.
+It generates structured timestamp information that includes:
+
+- ISO 8601 formatted time
+- Human-readable classification (Morning, Afternoon, Evening, etc.)
+- Display string combining ISO and classification
+- Timezone name
+
+The classification allows prompts to reference time of day naturally,
+e.g., "Good morning" vs "Good evening" in system prompts.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +20,16 @@ from datetime import datetime, timezone, tzinfo
 
 @dataclass(frozen=True, slots=True)
 class SessionTimestamp:
-    """Structured representation of a session timestamp."""
+    """Structured representation of a session timestamp.
+    
+    Immutable dataclass holding all time-related metadata for a session.
+    
+    Attributes:
+        iso: ISO 8601 formatted timestamp (e.g., "2024-01-15T14:30:00+00:00").
+        classification: Human-readable time of day (e.g., "Afternoon").
+        display: Combined format for logging (e.g., "2024-01-15T14:30:00+00:00 (Afternoon)").
+        tz: Timezone name (e.g., "UTC", "EST").
+    """
 
     iso: str
     classification: str

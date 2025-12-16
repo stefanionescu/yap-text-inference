@@ -1,5 +1,29 @@
 """Tokenizer access for chat and tool models.
 
+This module provides FastTokenizer instances that wrap either:
+1. A local tokenizer.json file (fastest, using the tokenizers library)
+2. A Hugging Face transformers tokenizer (AutoTokenizer, slower but more compatible)
+
+Key Features:
+
+FastTokenizer Class:
+    - Unified interface for token counting, trimming, and encoding
+    - Thread-safe (uses internal Lock)
+    - Supports both local and remote model loading
+    - AWQ metadata fallback for finding source tokenizers
+    - apply_chat_template() for prompt formatting
+
+Singleton Accessors:
+    - get_chat_tokenizer(): Returns cached tokenizer for CHAT_MODEL
+    - get_tool_tokenizer(): Returns cached tokenizer for TOOL_MODEL
+
+The tokenizers are lazily initialized on first access and cached for
+the lifetime of the process. This ensures consistent tokenization
+across all token-related operations.
+
+Environment Variables:
+    TOKENIZERS_PARALLELISM=false: Set automatically to avoid fork warnings
+
 Provides cached tokenizers for each deployed model so counting/trimming always
 uses the correct tokenizer (chat vs tool).
 """
@@ -26,6 +50,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class TokenizerSource:
+    """Metadata about where to load a tokenizer from.
+    
+    Attributes:
+        original_path: The path/repo provided by the user.
+        is_local: Whether it's a local directory.
+        tokenizer_json_path: Path to tokenizer.json if found.
+        awq_metadata_model: Source model from awq_metadata.json if AWQ.
+    """
     original_path: str
     is_local: bool
     tokenizer_json_path: str | None
@@ -34,11 +66,29 @@ class TokenizerSource:
 
 @dataclass(slots=True)
 class TransformersTarget:
+    """Target for loading a transformers tokenizer.
+    
+    Attributes:
+        identifier: HuggingFace repo ID or local path.
+        local_only: Whether to restrict to local files only.
+    """
     identifier: str
     local_only: bool
 
 
 class FastTokenizer:
+    """High-performance tokenizer wrapper for counting and trimming.
+    
+    This class provides a unified interface over different tokenizer
+    backends (tokenizers library vs transformers). It prefers the
+    faster tokenizers library when tokenizer.json is available.
+    
+    Thread-safe via internal Lock for all public methods.
+    
+    Attributes:
+        tok: The tokenizers.Tokenizer instance (if loaded).
+        _hf_tok: The transformers tokenizer instance (if loaded).
+    """
     def __init__(self, path_or_repo: str, *, load_transformers: bool = True):
         """Create a tokenizer optimized for counting/trimming.
 

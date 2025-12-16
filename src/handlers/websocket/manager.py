@@ -1,4 +1,39 @@
-"""Primary WebSocket connection handler orchestration."""
+"""Primary WebSocket connection handler orchestration.
+
+This module contains the main WebSocket connection handler that serves as
+the entry point for all client connections. It orchestrates:
+
+1. Connection Setup:
+   - API key authentication
+   - Connection admission (capacity check)
+   - Lifecycle watchdog initialization
+   
+2. Message Routing:
+   - Control messages: ping/pong/end
+   - Start messages: Initialize session and dispatch execution
+   - Cancel messages: Abort active requests
+   - Content messages: followup, chat_prompt updates
+   - Warming messages: warm_persona, warm_history
+
+3. Rate Limiting:
+   - Per-connection message rate limiting
+   - Separate rate limit for cancel messages
+   
+4. Cleanup:
+   - Session state cleanup on disconnect
+   - Engine cache reset for long sessions
+   - Connection slot release
+
+Message Types:
+    start       - Initialize session with persona and start generation
+    cancel      - Abort active generation request
+    followup    - Continue conversation (skip tool routing)
+    chat_prompt - Update persona mid-session
+    warm_persona- Pre-warm model with persona prefix
+    warm_history- Pre-warm model with history context
+    ping/pong   - Keep-alive heartbeat
+    end         - Client-initiated disconnect
+"""
 
 from __future__ import annotations
 
@@ -40,13 +75,16 @@ from .parser import parse_client_message
 
 logger = logging.getLogger(__name__)
 
+# Type alias for session-aware message handlers
 SessionHandlerFn = Callable[[WebSocket, dict[str, Any], str | None], Any]
 
+# Handlers that receive (ws, payload, session_id)
 _SESSION_MESSAGE_HANDLERS: dict[str, SessionHandlerFn] = {
     "followup": handle_followup_message,
     "chat_prompt": handle_chat_prompt,
 }
 
+# Handlers that receive only (ws, payload) - no session_id needed
 _PAYLOAD_ONLY_HANDLERS: dict[str, Callable[[WebSocket, dict[str, Any]], Any]] = {
     "warm_persona": handle_warm_persona_message,
     "warm_history": handle_warm_history_message,
@@ -54,6 +92,18 @@ _PAYLOAD_ONLY_HANDLERS: dict[str, Callable[[WebSocket, dict[str, Any]], Any]] = 
 
 
 async def _prepare_connection(ws: WebSocket) -> bool:
+    """Authenticate and admit a WebSocket connection.
+    
+    Performs two checks:
+    1. API key authentication (rejects with 4001 if invalid)
+    2. Capacity check (rejects with 4003 if at max connections)
+    
+    Args:
+        ws: The incoming WebSocket connection.
+        
+    Returns:
+        True if connection was accepted, False if rejected.
+    """
     if not await authenticate_websocket(ws):
         await reject_connection(
             ws,
@@ -175,7 +225,17 @@ async def _cleanup_session(session_id: str | None) -> float:
 
 
 async def handle_websocket_connection(ws: WebSocket) -> None:
-    """Handle WebSocket connection and route messages to appropriate handlers."""
+    """Handle WebSocket connection and route messages to appropriate handlers.
+    
+    This is the main entry point for WebSocket connections. It:
+    1. Authenticates and admits the connection
+    2. Starts idle timeout watchdog
+    3. Loops receiving messages and dispatching to handlers
+    4. Cleans up on disconnect (session state, engine caches, connection slot)
+    
+    Args:
+        ws: The incoming WebSocket connection from FastAPI.
+    """
 
     lifecycle: WebSocketLifecycle | None = None
     admitted = False

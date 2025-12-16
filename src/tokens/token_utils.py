@@ -1,8 +1,25 @@
 """Token utilities built on top of the model-specific tokenizers.
 
-Provides exact token counting, trimming, and history-aware trimming for
-chat and tool models separately, ensuring KV cache accounting matches
-the deployed model tokenizers.
+This module provides exact token counting, trimming, and history-aware
+trimming for chat and tool models separately, ensuring KV cache accounting
+matches the deployed model tokenizers.
+
+Key Functions:
+
+count_tokens_*(): Return exact token count using the model's tokenizer.
+    Used for budget checking and logging.
+
+trim_text_to_token_limit_*(): Trim text to fit within a token budget.
+    Supports keeping "start" (prefix) or "end" (suffix) of text.
+
+trim_history_preserve_messages_*(): Trim conversation history while
+    preserving complete message boundaries. Detects User:/Assistant:
+    markers and paragraph breaks to avoid cutting mid-message.
+
+build_user_history_for_tool(): Format user-only messages (no assistant)
+    for the classifier/tool model, trimmed to fit token budget.
+
+All functions are logged at DEBUG level with input/output metrics.
 """
 
 from __future__ import annotations

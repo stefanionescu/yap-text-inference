@@ -1,4 +1,27 @@
-"""History parsing/rendering utilities for session handling."""
+"""History parsing/rendering utilities for session handling.
+
+This module handles the transformation between structured conversation history
+(HistoryTurn objects) and text representations. It supports:
+
+1. Rendering: Converting structured turns to text format for prompt building
+2. Parsing: Converting text transcripts back to structured turns
+3. Trimming: Keeping history within token budgets for both chat and tool models
+4. Extraction: Getting user-only texts for classifier/tool routing
+
+History Format:
+    User: First user message
+    Assistant: First assistant response
+    
+    User: Second user message
+    Assistant: Second assistant response
+
+Two separate trimming strategies are used:
+- Chat model: Uses HISTORY_MAX_TOKENS with the chat tokenizer
+- Tool model: Uses TOOL_HISTORY_TOKENS and only considers user messages
+
+The HistoryController class provides a clean interface for session-scoped
+history operations, ensuring proper trimming occurs on access.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +39,20 @@ from .state import HistoryTurn, SessionState
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
-    """Render history turns to text: 'User: X\\nAssistant: Y'"""
+    """Render history turns to text format for prompt building.
+    
+    Converts structured HistoryTurn objects into the standard text format:
+        User: <message>
+        Assistant: <response>
+    
+    Each turn is separated by a blank line.
+    
+    Args:
+        turns: List of HistoryTurn objects to render.
+        
+    Returns:
+        Formatted history text, or empty string if no turns.
+    """
     if not turns:
         return ""
     chunks: list[str] = []
@@ -33,7 +69,17 @@ def render_history(turns: list[HistoryTurn]) -> str:
 
 
 def parse_history_text(history_text: str) -> list[HistoryTurn]:
-    """Parse text transcript back into structured turns."""
+    """Parse text transcript back into structured HistoryTurn objects.
+    
+    Handles multi-line messages by accumulating lines until the next
+    role marker (User: or Assistant:) is encountered.
+    
+    Args:
+        history_text: Raw history in "User: X\\nAssistant: Y" format.
+        
+    Returns:
+        List of HistoryTurn objects with generated UUIDs.
+    """
     text = (history_text or "").strip()
     if not text:
         return []
@@ -139,10 +185,27 @@ def parse_history_as_tuples(history_text: str) -> list[tuple[str, str]]:
 
 
 class HistoryController:
-    """History operations for SessionState."""
+    """History operations for SessionState.
+    
+    Provides a clean interface for managing conversation history with
+    automatic trimming. All read operations trigger trimming to ensure
+    the history fits within token budgets.
+    
+    This class is stateless - all state is stored in SessionState objects.
+    A single HistoryController instance is typically shared across sessions.
+    """
 
     def get_text(self, state: SessionState) -> str:
-        """Get full history (User + Assistant)."""
+        """Get full rendered history (User + Assistant turns).
+        
+        Triggers trimming before rendering to ensure budget compliance.
+        
+        Args:
+            state: The session state containing history turns.
+            
+        Returns:
+            Formatted history text.
+        """
         trim_history(state)
         return render_history(state.history_turns)
     

@@ -3,6 +3,25 @@
 This module provides the TRT-LLM engine wrapper implementing the BaseEngine interface.
 Unlike vLLM, TRT-LLM uses pre-built engines and does not need periodic cache resets
 due to its built-in KV cache block reuse mechanism.
+
+Architecture:
+    - TRTEngine: BaseEngine implementation wrapping TensorRT-LLM
+    - Singleton pattern with async-safe initialization via _ENGINE_LOCK
+    - Pre-compiled engines loaded from TRT_ENGINE_DIR
+
+Key Differences from vLLM:
+    1. No JIT compilation - engines must be pre-built
+    2. No cache reset support - block reuse handles memory
+    3. No request priority support
+    4. Abort is best-effort (iterator abandonment)
+
+Required Configuration:
+    TRT_ENGINE_DIR: Directory containing compiled TensorRT engine
+    CHAT_MODEL: HuggingFace model ID (for tokenizer)
+
+Optional Configuration:
+    TRT_KV_FREE_GPU_FRAC: GPU fraction for KV cache
+    TRT_KV_ENABLE_BLOCK_REUSE: Enable cache block reuse
 """
 
 from __future__ import annotations

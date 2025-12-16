@@ -1,7 +1,31 @@
 """Unified inference engine abstraction.
 
-This module provides a factory for creating the appropriate engine
-based on the INFERENCE_ENGINE configuration.
+This module provides a factory-based abstraction layer that supports both
+vLLM and TensorRT-LLM inference backends. The module handles:
+
+1. Engine Factory:
+   - get_engine(): Returns configured engine (vLLM or TRT-LLM)
+   - Lazy initialization on first call
+   - Thread-safe singleton pattern
+
+2. Sampling Parameters:
+   - create_sampling_params(): Engine-agnostic param creation
+   - Handles parameter name/format differences between engines
+
+3. Lifecycle Management:
+   - shutdown_engines(): Clean shutdown of all engines
+   - Used during graceful server termination
+
+4. Cache Management (vLLM only):
+   - reset_engine_caches(): Clear prefix/multimodal caches
+   - cache_reset_reschedule_event(): Event for cache reset daemon
+   - clear_all_engine_caches_on_disconnect(): Cleanup on last client
+   - TRT-LLM uses block reuse instead of explicit cache resets
+
+Engine Selection:
+    Controlled by INFERENCE_ENGINE environment variable:
+    - 'vllm': Use vLLM AsyncLLMEngine (default)
+    - 'trt': Use TensorRT-LLM
 
 Usage:
     from src.engines import get_engine, create_sampling_params

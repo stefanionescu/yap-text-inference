@@ -1,4 +1,28 @@
-"""Sanitization utilities for both user prompts and assistant outputs."""
+"""Sanitization utilities for both user prompts and assistant outputs.
+
+This module provides text sanitization at two levels:
+
+1. User Prompt Sanitization (sanitize_prompt):
+   - Input validation and type checking
+   - Unicode normalization (NFKC)
+   - Mojibake repair via ftfy
+   - Control character removal
+   - Bidi direction marker removal
+   - Size limit enforcement
+
+2. Streaming Output Sanitization (StreamingSanitizer):
+   - Stateful processing for live streaming
+   - Freestyle prefix stripping
+   - Ellipsis normalization
+   - Quote normalization
+   - Emoji/emoticon removal
+   - HTML tag stripping
+   - Capital letter enforcement
+
+The StreamingSanitizer is designed for live streaming where text may
+be incomplete. It buffers "unstable" trailing characters (ellipsis,
+partial words) until more context arrives, ensuring clean output.
+"""
 
 from __future__ import annotations
 
@@ -26,10 +50,13 @@ try:
     from ftfy import fix_text  # type: ignore[import-not-found]
 except Exception:  # pragma: no cover - ftfy is declared in requirements
     def fix_text(text: str) -> str:  # type: ignore
+        """Fallback when ftfy is not available."""
         return text
 
 
+# Control characters except TAB/CR/LF (which are allowed)
 _CTRL_RE = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
+# Bidirectional text control characters (can cause display issues)
 _BIDI_RE = re.compile(r"[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C]")
 
 
@@ -95,7 +122,27 @@ def sanitize_stream_text(text: str) -> str:
 
 
 class StreamingSanitizer:
-    """Stateful sanitizer that emits stable chunks for streaming."""
+    """Stateful sanitizer that emits stable chunks for streaming.
+    
+    This class accumulates raw text and emits sanitized deltas, holding
+    back "unstable" trailing characters that might change with more context.
+    
+    Example:
+        sanitizer = StreamingSanitizer()
+        for chunk in raw_stream:
+            clean = sanitizer.push(chunk)
+            if clean:
+                send_to_client(clean)
+        # Flush any remaining buffered text
+        tail = sanitizer.flush()
+        if tail:
+            send_to_client(tail)
+    
+    Attributes:
+        _raw: Accumulated raw text.
+        _emitted_len: Length of sanitized text already emitted.
+        _last_sanitized: Cached result of last sanitization.
+    """
 
     def __init__(self) -> None:
         self._raw: str = ""
@@ -103,7 +150,17 @@ class StreamingSanitizer:
         self._last_sanitized: str = ""
 
     def push(self, chunk: str) -> str:
-        """Process a new raw chunk and return the sanitized delta."""
+        """Process a new raw chunk and return the sanitized delta.
+        
+        Accumulates the chunk, re-sanitizes the full text, and returns
+        only the new stable portion not yet emitted.
+        
+        Args:
+            chunk: New raw text chunk from the model.
+            
+        Returns:
+            Sanitized delta to emit, or empty string if none stable.
+        """
         if not chunk:
             return ""
         self._raw += chunk

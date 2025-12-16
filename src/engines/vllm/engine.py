@@ -2,6 +2,26 @@
 
 This module wraps the vLLM AsyncLLMEngine with the BaseEngine interface
 while preserving all existing functionality including cache management.
+
+Architecture:
+    - VLLMEngine: BaseEngine implementation wrapping AsyncLLMEngine
+    - Singleton pattern with async-safe initialization via _ENGINE_LOCK
+    - Cache reset with rate limiting via _CACHE_RESET_LOCK and interval check
+
+Key Features:
+    1. Streaming generation with EngineOutput conversion
+    2. Request abortion for cancellation support
+    3. Prefix/multimodal cache reset for memory management
+    4. AWQ offline mode handling for local quantized models
+
+Environment Variables (set as defaults):
+    VLLM_USE_V1=1: Use vLLM V1 engine architecture
+    VLLM_WORKER_MULTIPROC_METHOD=spawn: Use spawn instead of fork
+
+Cache Reset Strategy:
+    - Rate-limited by CACHE_RESET_INTERVAL_SECONDS
+    - Force reset available for critical situations
+    - Event signaling for cache reset daemon coordination
 """
 
 from __future__ import annotations
@@ -33,17 +53,32 @@ from .args import make_engine_args
 
 logger = logging.getLogger(__name__)
 
-_ENGINE: "VLLMEngine | None" = None
-_ENGINE_LOCK = asyncio.Lock()
-_CACHE_RESET_LOCK = asyncio.Lock()
-_CACHE_RESET_EVENT = asyncio.Event()
-_LAST_CACHE_RESET = time.monotonic()
+# Module-level singleton state
+_ENGINE: "VLLMEngine | None" = None  # Singleton engine instance
+_ENGINE_LOCK = asyncio.Lock()  # Guards engine initialization
+_CACHE_RESET_LOCK = asyncio.Lock()  # Guards cache reset operations
+_CACHE_RESET_EVENT = asyncio.Event()  # Signals cache reset to daemon
+_LAST_CACHE_RESET = time.monotonic()  # For rate limiting resets
 
 
 class VLLMEngine(BaseEngine):
-    """vLLM-based inference engine with cache management."""
+    """vLLM-based inference engine with cache management.
+    
+    This class wraps AsyncLLMEngine to provide:
+    - BaseEngine interface compliance
+    - Unified EngineOutput format
+    - Cache reset support for memory management
+    
+    Attributes:
+        _engine: The underlying vLLM AsyncLLMEngine instance.
+    """
     
     def __init__(self, llm_engine: AsyncLLMEngine):
+        """Initialize with a vLLM AsyncLLMEngine.
+        
+        Args:
+            llm_engine: Pre-configured AsyncLLMEngine instance.
+        """
         self._engine = llm_engine
     
     @property
@@ -59,7 +94,17 @@ class VLLMEngine(BaseEngine):
         *,
         priority: int = 0,
     ) -> AsyncGenerator[EngineOutput, None]:
-        """Stream generation using vLLM's generate API."""
+        """Stream generation using vLLM's generate API.
+        
+        Args:
+            prompt: The formatted prompt to generate from.
+            sampling_params: vLLM SamplingParams instance.
+            request_id: Unique identifier for tracking/abortion.
+            priority: Higher values = more urgent (default 0).
+            
+        Yields:
+            EngineOutput with cumulative text and completion status.
+        """
         async for output in self._engine.generate(
             prompt=prompt,
             sampling_params=sampling_params,

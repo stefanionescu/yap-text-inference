@@ -1,6 +1,25 @@
 """Abstract base class for inference engines.
 
-Provides a unified interface for both vLLM and TensorRT-LLM engines.
+This module defines the common interface for all inference backends:
+
+BaseEngine:
+    Abstract base class that both VLLMEngine and TRTEngine implement.
+    Provides:
+    - generate_stream(): Async streaming text generation
+    - abort(): Cancel in-flight requests
+    - shutdown(): Clean engine termination
+    - reset_caches(): Clear prefix caches (vLLM only)
+
+EngineOutput:
+    Unified dataclass for streaming outputs, with factory methods
+    to convert from engine-specific formats (vLLM or TRT-LLM).
+
+Exceptions:
+    EngineNotReadyError: Raised during warmup before engine is ready
+    EngineShutdownError: Raised after engine has been shut down
+
+The abstraction allows the rest of the application to work with either
+backend without engine-specific code paths.
 """
 
 from __future__ import annotations
@@ -16,7 +35,16 @@ if TYPE_CHECKING:
 
 @dataclass(slots=True)
 class EngineOutput:
-    """Unified output format for streaming generation."""
+    """Unified output format for streaming generation.
+    
+    This dataclass provides a common format for generation outputs,
+    abstracting away differences between vLLM and TRT-LLM output structures.
+    
+    Attributes:
+        text: Cumulative generated text (grows with each yield).
+        token_ids: Optional list of token IDs generated so far.
+        finished: True when generation is complete (stop token or max_tokens).
+    """
     
     text: str  # Cumulative generated text
     token_ids: list[int] | None = None  # Token IDs (if available)
@@ -24,7 +52,19 @@ class EngineOutput:
     
     @classmethod
     def from_vllm(cls, output: Any) -> "EngineOutput":
-        """Convert vLLM output to unified format."""
+        """Convert vLLM RequestOutput to unified format.
+        
+        vLLM outputs have structure:
+            output.outputs[0].text -> cumulative text
+            output.outputs[0].token_ids -> list of token IDs
+            output.outputs[0].finished -> completion flag
+        
+        Args:
+            output: vLLM RequestOutput object.
+            
+        Returns:
+            EngineOutput with extracted fields.
+        """
         if not getattr(output, "outputs", None):
             return cls(text="", finished=False)
         out = output.outputs[0]
@@ -36,7 +76,20 @@ class EngineOutput:
     
     @classmethod
     def from_trt(cls, chunk: Any, prev_text: str = "") -> "EngineOutput":
-        """Convert TRT-LLM output to unified format."""
+        """Convert TRT-LLM generation output to unified format.
+        
+        TRT-LLM output format varies by version but typically includes:
+            chunk.outputs[0].text -> generated text (may be incremental)
+            chunk.outputs[0].token_ids or output_token_ids -> token IDs
+            chunk.outputs[0].finished -> completion flag
+        
+        Args:
+            chunk: TRT-LLM generation chunk.
+            prev_text: Previous text for incremental decoding.
+            
+        Returns:
+            EngineOutput with extracted fields.
+        """
         if not getattr(chunk, "outputs", None):
             return cls(text=prev_text, finished=False)
         out = chunk.outputs[0]
@@ -52,7 +105,18 @@ class EngineOutput:
 
 
 class BaseEngine(ABC):
-    """Abstract base class for inference engines."""
+    """Abstract base class for inference engines.
+    
+    This ABC defines the contract that all engine implementations must follow.
+    Both VLLMEngine and TRTEngine implement this interface, allowing the
+    application to use either backend interchangeably.
+    
+    Implementations handle:
+    - Engine initialization and model loading
+    - Streaming text generation with sampling
+    - Request cancellation/abortion
+    - Clean shutdown and resource release
+    """
     
     @abstractmethod
     async def generate_stream(

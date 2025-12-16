@@ -1,5 +1,28 @@
 """Model-family profiles defining special runtime requirements.
 
+Different model families have unique requirements that can't be determined
+from their architecture alone. This module defines profiles that capture:
+
+- Dtype requirements (bfloat16 vs float16)
+- Attention backend compatibility (FlashInfer, XFORMERS)
+- Memory optimization needs
+- Tokenizer fixes
+- Custom package dependencies (e.g., fla-core for Kimi models)
+
+Profiles are matched by checking if any marker string appears in the
+model identifier (case-insensitive). The first matching profile wins.
+
+Example:
+    Model "TheDrummer/gemma-3-27b-it" matches the "gemma3" profile because
+    it contains "gemma-3". This profile enables bfloat16 and memory
+    optimization.
+
+Adding New Profiles:
+    1. Add a new ModelProfile entry to MODEL_PROFILES tuple
+    2. Define marker strings that uniquely identify the model family
+    3. Set appropriate flags for the model's requirements
+    4. More specific profiles should come before generic ones
+
 Functions have been moved to src/helpers/model_profiles.py.
 """
 
@@ -12,20 +35,44 @@ from collections.abc import Mapping
 
 @dataclass(frozen=True)
 class ModelProfile:
-    """Describes special-case requirements for known model families."""
+    """Describes special-case requirements for known model families.
+    
+    Attributes:
+        name: Human-readable profile name (e.g., "gemma3").
+        markers: Tuple of strings to match against model identifiers.
+            A model matches if any marker is found in its identifier.
+        requires_bfloat16: If True, force bfloat16 dtype for this model.
+            Required for some models that have numerical instability in fp16.
+        requires_fla_runtime: If True, requires fla-core package installed.
+            Used by Kimi models with Flash Linear Attention.
+        uses_mla: If True, uses Multi-Head Latent Attention.
+            Incompatible with FlashInfer backend (DeepSeek V2/V3, Moonlight).
+        needs_memory_optimization: If True, reduce GPU memory allocation.
+            Helps with models prone to OOM (Gemma family).
+        config_overrides: Dict of config.json overrides applied after quantization.
+            Used to fix configuration issues in exported models.
+        tokenizer_kwargs: Dict of kwargs passed to AutoTokenizer.from_pretrained.
+            Used to fix tokenizer issues (e.g., fix_mistral_regex).
+    """
 
     name: str
     markers: tuple[str, ...]
     requires_bfloat16: bool = False
-    requires_fla_runtime: bool = False  # Needs fla-core package (Flash Linear Attention)
-    uses_mla: bool = False  # Uses MLA (Multi-Head Latent Attention), incompatible with FlashInfer
+    requires_fla_runtime: bool = False
+    uses_mla: bool = False
     needs_memory_optimization: bool = False
-    # Post-quantization config.json overrides (applied after AWQ export)
     config_overrides: Mapping[str, Any] | None = None
-    # Tokenizer kwargs to pass to vLLM (e.g., fix_mistral_regex for broken tokenizers)
     tokenizer_kwargs: Mapping[str, Any] | None = None
 
     def matches(self, identifier: str) -> bool:
+        """Check if this profile matches the given model identifier.
+        
+        Args:
+            identifier: Model path or HuggingFace ID (lowercased).
+            
+        Returns:
+            True if any marker is found in the identifier.
+        """
         return any(marker in identifier for marker in self.markers)
 
 

@@ -1,6 +1,22 @@
 """Unified sampling parameters factory.
 
 Creates engine-specific SamplingParams based on the configured inference engine.
+
+This module abstracts the differences between vLLM and TensorRT-LLM sampling
+parameter formats:
+
+vLLM SamplingParams:
+    - Uses -1 for disabled top_k
+    - Supports logit_bias directly
+    - All penalty parameters supported
+
+TensorRT-LLM SamplingParams:
+    - Uses None for disabled top_k
+    - No logit_bias support (silently ignored)
+    - Some penalties may not be supported in all versions
+
+The factory function handles these differences, providing a consistent
+interface for callers regardless of the backend engine.
 """
 
 from __future__ import annotations

@@ -1,4 +1,35 @@
-"""Session handler orchestration logic."""
+"""Session handler orchestration logic.
+
+This module implements the central session management for the inference server.
+SessionHandler is responsible for:
+
+1. Session Lifecycle:
+   - Creating new sessions with default metadata
+   - Tracking session activity (last access time)
+   - Evicting idle sessions based on TTL
+
+2. Configuration Management:
+   - Storing and updating persona (gender, personality, chat_prompt)
+   - Managing sampling parameters per session
+   - Handling custom screen prefixes
+
+3. History Management:
+   - Delegating to HistoryController for conversation history
+   - Normalizing user utterances (stripping prefixes)
+   - Providing separate history views for chat vs tool models
+
+4. Request Tracking:
+   - Tracking active chat and tool request IDs
+   - Detecting cancelled requests
+   - Managing asyncio.Task references for cleanup
+
+5. Rate Limiting:
+   - Per-session rate limiters for chat prompt updates
+   - Tracking last update timestamps
+
+The global `session_handler` instance is used throughout the application.
+The `abort_session_requests` helper provides clean shutdown of active work.
+"""
 
 from __future__ import annotations
 
@@ -25,19 +56,39 @@ from .state import SessionState, SESSION_IDLE_TTL_SECONDS
 
 
 class SessionHandler:
-    """Handles session metadata, request tracking, and lifecycle."""
+    """Handles session metadata, request tracking, and lifecycle.
+    
+    This is the central coordinator for per-connection session state.
+    It maintains an in-memory dictionary of SessionState objects keyed
+    by session_id (typically a WebSocket connection identifier).
+    
+    Thread Safety:
+        All operations are designed for single-threaded async code.
+        The handler is not thread-safe for concurrent access.
+    
+    Attributes:
+        CANCELLED_SENTINEL: Special value indicating a cancelled session.
+    """
 
     CANCELLED_SENTINEL = "__CANCELLED__"
 
     def __init__(self, idle_ttl_seconds: int = SESSION_IDLE_TTL_SECONDS):
-        self._sessions: dict[str, SessionState] = {}
+        """Initialize the session handler.
+        
+        Args:
+            idle_ttl_seconds: Time in seconds before idle sessions are evicted.
+                Defaults to SESSION_IDLE_TTL_SECONDS from environment.
+        """
+        self._sessions: dict[str, SessionState] = {}  # session_id -> state
         self._idle_ttl_seconds = idle_ttl_seconds
-        self._history = HistoryController()
+        self._history = HistoryController()  # Shared history helper
 
     def _get_state(self, session_id: str) -> SessionState | None:
+        """Get session state if it exists (without touching)."""
         return self._sessions.get(session_id)
 
     def _ensure_state(self, session_id: str) -> SessionState:
+        """Get or create session state, marking it as accessed."""
         state = self._sessions.get(session_id)
         if state is None:
             self.initialize_session(session_id)

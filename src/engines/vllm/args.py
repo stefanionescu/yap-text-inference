@@ -1,6 +1,28 @@
 """Engine args builder for vLLM engines.
 
-This is a direct copy from src/vllm/args.py to maintain all existing functionality.
+This module constructs AsyncEngineArgs with all optimizations and
+model-specific configurations applied. It handles:
+
+1. Quantization Detection:
+   - AWQ, GPTQ, FP8, compressed-tensors
+   - Automatic backend selection (awq_marlin, etc.)
+   
+2. Model Profile Handling:
+   - bfloat16 requirements (Kimi, DeepSeek)
+   - Memory optimization for OOM-prone models
+   - FLA runtime requirements (Kimi)
+   - MLA attention (DeepSeek)
+   
+3. Memory/Batching Tuning:
+   - Dynamic max_num_seqs based on GPU memory fraction
+   - KV cache dtype configuration
+   - Batched tokens scaling
+   
+4. Tokenizer Configuration:
+   - Model-specific tokenizer kwargs
+   - Trust remote code for custom implementations
+
+The built AsyncEngineArgs is passed to AsyncLLMEngine.from_engine_args().
 """
 
 from __future__ import annotations
@@ -48,7 +70,24 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineArgs:
-    """Build vLLM AsyncEngineArgs with all optimizations applied."""
+    """Build vLLM AsyncEngineArgs with all optimizations applied.
+    
+    This function configures the engine with:
+    - Priority-based scheduling
+    - Chunked prefill for better TTFB
+    - Prefix caching enabled
+    - Dynamic quantization detection
+    - Model-specific dtype/memory settings
+    - Automatic max_num_seqs tuning
+    
+    Args:
+        model: Model identifier (HuggingFace ID or local path).
+        gpu_frac: GPU memory utilization fraction (0.0-1.0).
+        max_len: Maximum model context length.
+        
+    Returns:
+        Configured AsyncEngineArgs ready for engine creation.
+    """
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT", "256"))
 

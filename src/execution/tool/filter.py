@@ -1,6 +1,35 @@
 """Pre-filters for tool calls to avoid unnecessary model invocations.
 
-Handles pattern matching for freestyle, gender, screenshot, and personality commands.
+This module provides fast regex-based pattern matching to detect common
+user commands without invoking the classifier model. This improves latency
+for known patterns and reduces GPU load.
+
+Supported Patterns:
+
+1. Freestyle Mode:
+   - "start freestyle" / "enable freestyle"
+   - "stop freestyle" / "disable freestyle"
+
+2. Gender Switching:
+   - "switch to male" / "be a guy"
+   - "switch to female" / "be a girl"
+
+3. Personality Switching:
+   - "change personality to X" / "be more X"
+   - Combined: "be a X Y" (e.g., "be a male assistant")
+
+4. Screenshot Commands:
+   - "take a screenshot" / "screenshot this"
+   - Rejection patterns: "don't take screenshot"
+   - Quantity patterns: "take 2 screenshots" -> no
+
+Patterns are compiled at module load time for efficiency.
+Case-insensitive matching is used throughout.
+
+The filter returns a FilterResult with:
+- action: What to do (take_screenshot, switch_gender, etc., or "pass")
+- param: Optional first parameter (gender, personality name)
+- param2: Optional second parameter (for combined commands)
 """
 
 import re
@@ -21,6 +50,7 @@ from .personality import match_personality_phrase, match_gender_personality_phra
 
 # =============================================================================
 # Compiled Patterns (module-level for efficiency)
+# Patterns are compiled once at import time to avoid repeated compilation.
 # =============================================================================
 
 # Freestyle patterns
@@ -51,7 +81,23 @@ StaticFilterResult = Literal[
 
 @dataclass(slots=True, frozen=True)
 class FilterResult:
-    """Result of tool phrase filtering."""
+    """Result of tool phrase filtering.
+    
+    Immutable dataclass containing the filter decision and any
+    extracted parameters.
+    
+    Attributes:
+        action: The detected action, one of:
+            - "pass": No pattern matched, continue to classifier
+            - "no_screenshot": Explicit rejection pattern matched
+            - "take_screenshot": Screenshot trigger matched
+            - "start_freestyle" / "stop_freestyle": Freestyle commands
+            - "switch_gender": Gender switch with param=gender
+            - "switch_personality": Personality switch with param=name
+            - "switch_gender_and_personality": Combined with param=gender, param2=name
+        param: First parameter extracted from pattern.
+        param2: Second parameter for combined commands.
+    """
     
     action: StaticFilterResult | Literal["switch_gender", "switch_personality", "switch_gender_and_personality"]
     """The action to take based on the matched pattern."""
