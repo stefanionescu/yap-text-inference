@@ -44,6 +44,8 @@ ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
     "baidu/ERNIE-4.5-21B-A3B-PT",
     "moonshotai/Moonlight-16B-A3B-Instruct",
     "kakaocorp/kanana-1.5-15.7b-a3b-instruct",
+    "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+    "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
 ]
 
 ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
