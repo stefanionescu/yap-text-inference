@@ -298,9 +298,9 @@ trt_prepare_repo() {
   local clone_attempts="${TRT_CLONE_ATTEMPTS}"
   local clone_delay="${TRT_CLONE_BACKOFF_SECONDS}"
   
-  # Enable git tracing for debugging (matches trtllm-example)
-  export GIT_CURL_VERBOSE="${GIT_CURL_VERBOSE:-1}"
-  export GIT_TRACE="${GIT_TRACE:-1}"
+  # Git tracing disabled by default; set GIT_TRACE=1 or GIT_CURL_VERBOSE=1 to debug
+  export GIT_CURL_VERBOSE="${GIT_CURL_VERBOSE:-0}"
+  export GIT_TRACE="${GIT_TRACE:-0}"
   
   log_info "Target TensorRT-LLM version: ${TRT_VERSION} (tag: ${tag_name})"
   

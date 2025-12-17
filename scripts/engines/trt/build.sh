@@ -51,7 +51,7 @@ trt_build_engine() {
     --gemm_plugin auto
     --gpt_attention_plugin float16
     --context_fmha enable
-    --paged_kv_cache enable
+    --kv_cache_type paged
     --remove_input_padding enable
     --max_input_len "${TRT_MAX_INPUT_LEN:-8192}"
     --max_seq_len "${max_seq_len}"
@@ -100,7 +100,7 @@ trtllm-build \\
   --gemm_plugin auto \\
   --gpt_attention_plugin float16 \\
   --context_fmha enable \\
-  --paged_kv_cache enable \\
+  --kv_cache_type paged \\
   --remove_input_padding enable \\
   --max_input_len ${TRT_MAX_INPUT_LEN:-8192} \\
   --max_seq_len $((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN)) \\
