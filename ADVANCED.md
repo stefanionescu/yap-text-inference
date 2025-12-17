@@ -29,6 +29,7 @@ This document covers advanced operations, configuration, and deep-dive details f
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
 - [Known Issues](#known-issues)
+  - [TRT-LLM Python Version Mismatch](#trt-llm-python-version-mismatch)
   - [CUDA 13.0 Requirement](#cuda-130-requirement)
   - [Base Docker Image Selection](#base-docker-image-selection)
 
@@ -570,6 +571,15 @@ Pass `--double-ttfb` to keep each connection open for two sequential transaction
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
 
 ## Known Issues
+
+### TRT-LLM Python Version Mismatch
+
+TensorRT-LLM 1.2.0 (and variations like 1.2.0rc5) documentation claims Python 3.11 support, but **Python 3.11 does not work reliably**. Use **Python 3.10** instead.
+
+**Symptoms with Python 3.11:**
+- Cryptic import errors during TRT-LLM initialization
+- Segmentation faults during engine build
+- Incompatible wheel installations failing silently
 
 ### CUDA 13.0 Requirement
 
