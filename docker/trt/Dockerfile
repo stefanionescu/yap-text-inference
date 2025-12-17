@@ -39,15 +39,16 @@ RUN apt-get update -y && \
       software-properties-common && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update -y && \
+    # openmpi-bin provides orted/mpirun executables required by mpi4py during quantization
     apt-get install -y --no-install-recommends --no-upgrade \
       python3.10 python3.10-venv python3.10-dev \
       python3-venv python3-dev \
-      openmpi-bin \
       libopenmpi3t64=${MPI_VERSION_PIN} \
+      openmpi-bin=${MPI_VERSION_PIN} \
       openmpi-common=${MPI_VERSION_PIN} \
       build-essential \
       libzmq3-dev && \
-    apt-mark hold libopenmpi3t64 openmpi-common && \
+    apt-mark hold libopenmpi3t64 openmpi-bin openmpi-common && \
     rm -rf /var/lib/apt/lists/*
 
 # Create virtual env (Python 3.10 via deadsnakes)
