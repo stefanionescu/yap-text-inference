@@ -7,8 +7,11 @@ source "${SCRIPT_DIR}/../lib/common/log.sh"
 log_info "Checking GPU availability"
 if ! command -v nvidia-smi >/dev/null 2>&1; then
   log_warn "nvidia-smi not found; ensure this RunPod image has NVIDIA drivers."
+elif ! nvidia-smi >/dev/null 2>&1; then
+  log_warn "nvidia-smi failed; GPU may not be available."
 else
-  nvidia-smi || true
+  GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 || echo "Unknown")
+  log_info "GPU detected: ${GPU_NAME}"
 fi
 
 # Print CUDA/Torch ABI hint if available

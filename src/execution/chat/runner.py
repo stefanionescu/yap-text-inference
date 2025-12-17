@@ -43,7 +43,7 @@ from ...config.sampling import (
 )
 from ...config.timeouts import GEN_TIMEOUT_S
 from ...tokens.tokenizer import get_chat_tokenizer
-from ...persona import build_chat_prompt_with_prefix
+from ...helpers.prompts import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
 
 
