@@ -28,6 +28,9 @@ This document covers advanced operations, configuration, and deep-dive details f
 - [Test Clients](#test-clients)
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
+- [Known Issues](#known-issues)
+  - [CUDA 13.0 Requirement](#cuda-130-requirement)
+  - [Base Docker Image Selection](#base-docker-image-selection)
 
 ## Authentication Coverage
 
@@ -565,6 +568,41 @@ Pass `--double-ttfb` to keep each connection open for two sequential transaction
 - **vLLM:** Prefix caching reuses any repeated history/prompts within the process. If you swap a companion's system prompt, history KV stays hot.
 - **TensorRT-LLM:** Block reuse provides automatic KV cache management without explicit resets.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
+
+## Known Issues
+
+### CUDA 13.0 Requirement
+
+TensorRT-LLM 1.2.0rc5+ requires **CUDA 13.0** and **PyTorch 2.9.x**. This project uses CUDA 13.0 with `cu130` PyTorch wheels (2.9.1).
+
+If you see pip dependency resolver warnings about torch versions during installation, ensure you're using:
+- `torch==2.9.1+cu130` with `--index-url https://download.pytorch.org/whl/cu130`
+- `torchvision==0.24.1+cu130` (matching torch 2.9.1)
+
+The build scripts handle this automatically.
+
+### Base Docker Image Selection
+
+**The base Docker image matters a lot.** Installing OpenMPI packages (`libopenmpi3` / `libopenmpi3t64` and `openmpi-common`) via `scripts/setup/bootstrap.sh` can inadvertently **downgrade CUDA below 13.0** depending on the base image's package repositories and pinned versions.
+
+Since TensorRT-LLM requires CUDA 13.0+, this silent downgrade will break deployment with cryptic errors.
+
+**Recommended base images:**
+
+| Platform | Base Image |
+|----------|------------|
+| NVIDIA (general) | `nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04` |
+| RunPod | `runpod/base:1.0.3-dev-dj-new-pytorch-cuda1300-ubuntu2404` |
+
+**Symptoms of CUDA downgrade:**
+- TensorRT-LLM engine build failures
+- Runtime errors about incompatible CUDA versions
+- `nvcc --version` showing < 13.0 after bootstrap
+
+**Workarounds:**
+1. Use a base image with CUDA 13.0 pre-installed and proper apt pinning
+2. Pin MPI package versions explicitly via `MPI_VERSION_PIN` environment variable before running bootstrap
+3. Verify CUDA version after bootstrap: `nvcc --version` should show 13.0+
 
 ## GPU Memory Fractions
 

@@ -72,26 +72,47 @@ _check_mpi_headers() {
 _install_mpi_apt() {
   log_info "Using apt-get to install MPI dependencies..."
   
+  # Select correct MPI runtime package name (t64 on Ubuntu 24.04+, non-t64 otherwise)
+  local MPI_PKG="libopenmpi3"
+  if apt-cache policy libopenmpi3t64 >/dev/null 2>&1; then
+    if apt-cache policy libopenmpi3t64 | grep -q "Candidate:"; then
+      MPI_PKG="libopenmpi3t64"
+    fi
+  fi
+  
+  local MPI_VER_ARG=""
+  if [ -n "${MPI_VERSION_PIN:-}" ]; then
+    MPI_VER_ARG="=${MPI_VERSION_PIN}"
+  fi
+  
   # Try without sudo first (for container environments running as root)
   if [ "$(id -u)" = "0" ]; then
     apt-get update -y || {
       log_warn "apt-get update failed, continuing anyway"
     }
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
-      libopenmpi-dev openmpi-bin python3-dev || {
+    # Install core dependencies (no upgrades; keep CUDA/driver untouched)
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
+      libopenmpi-dev openmpi-bin python3-dev \
+      "${MPI_PKG}${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" || {
       log_warn "Some packages failed to install via apt"
       return 1
     }
+    # Hold MPI runtime to prevent drift
+    apt-mark hold "$MPI_PKG" openmpi-common >/dev/null 2>&1 || true
   else
     # Try with sudo
     sudo -n apt-get update -y 2>/dev/null || {
       log_warn "apt-get update failed (may need sudo), continuing anyway"
     }
-    sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y \
-      libopenmpi-dev openmpi-bin python3-dev 2>/dev/null || {
+    # Install core dependencies (no upgrades; keep CUDA/driver untouched)
+    sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
+      libopenmpi-dev openmpi-bin python3-dev \
+      "${MPI_PKG}${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" 2>/dev/null || {
       log_warn "Some packages failed to install via apt (may need sudo)"
       return 1
     }
+    # Hold MPI runtime to prevent drift
+    sudo -n apt-mark hold "$MPI_PKG" openmpi-common >/dev/null 2>&1 || true
   fi
   
   return 0
