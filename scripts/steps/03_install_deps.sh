@@ -12,10 +12,16 @@ source "${LIB_DIR}/deps/trt.sh"
 source "${LIB_DIR}/env/torch.sh"
 source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/deps/reqs.sh"
+source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 
 # Engine-specific install functions
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
   source "${SCRIPT_DIR}/../engines/trt/install.sh"
+  # Validate CUDA 13.x before installing TRT dependencies
+  if ! trt_assert_cuda13_driver "install_deps"; then
+    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
+    exit 1
+  fi
 else
   source "${SCRIPT_DIR}/../engines/vllm/install.sh"
 fi

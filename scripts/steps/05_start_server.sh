@@ -5,6 +5,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/runtime/restart_guard.sh"
+source "${SCRIPT_DIR}/../engines/trt/detect.sh"
+
+# Validate CUDA 13.x for TRT before starting server
+if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
+  if ! trt_assert_cuda13_driver "start_server"; then
+    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
+    exit 1
+  fi
+fi
 
 log_info "Starting server on :8000 in background"
 cd "${ROOT_DIR}"

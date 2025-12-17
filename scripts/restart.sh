@@ -90,10 +90,10 @@ fi
 case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
 export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 
-# If running TRT, ensure driver/CUDA runtime is compatible before heavy work
+# If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
 if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
-  if ! trt_check_driver_runtime; then
-    log_err "Aborting: incompatible CUDA/driver runtime for TRT-LLM (requires CUDA 13.x)"
+  if ! trt_assert_cuda13_driver "restart"; then
+    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
     exit 1
   fi
 fi

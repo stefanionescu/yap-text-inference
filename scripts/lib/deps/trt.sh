@@ -91,28 +91,30 @@ _install_mpi_apt() {
       log_warn "apt-get update failed, continuing anyway"
     }
     # Install core dependencies (no upgrades; keep CUDA/driver untouched)
+    # openmpi-bin provides orted/mpirun executables required by mpi4py during quantization
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
-      libopenmpi-dev openmpi-bin python3-dev \
-      "${MPI_PKG}${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" || {
+      libopenmpi-dev python3-dev \
+      "${MPI_PKG}${MPI_VER_ARG}" "openmpi-bin${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" || {
       log_warn "Some packages failed to install via apt"
       return 1
     }
     # Hold MPI runtime to prevent drift
-    apt-mark hold "$MPI_PKG" openmpi-common >/dev/null 2>&1 || true
+    apt-mark hold "$MPI_PKG" openmpi-bin openmpi-common >/dev/null 2>&1 || true
   else
     # Try with sudo
     sudo -n apt-get update -y 2>/dev/null || {
       log_warn "apt-get update failed (may need sudo), continuing anyway"
     }
     # Install core dependencies (no upgrades; keep CUDA/driver untouched)
+    # openmpi-bin provides orted/mpirun executables required by mpi4py during quantization
     sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
-      libopenmpi-dev openmpi-bin python3-dev \
-      "${MPI_PKG}${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" 2>/dev/null || {
+      libopenmpi-dev python3-dev \
+      "${MPI_PKG}${MPI_VER_ARG}" "openmpi-bin${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" 2>/dev/null || {
       log_warn "Some packages failed to install via apt (may need sudo)"
       return 1
     }
     # Hold MPI runtime to prevent drift
-    sudo -n apt-mark hold "$MPI_PKG" openmpi-common >/dev/null 2>&1 || true
+    sudo -n apt-mark hold "$MPI_PKG" openmpi-bin openmpi-common >/dev/null 2>&1 || true
   fi
   
   return 0

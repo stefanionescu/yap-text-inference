@@ -15,6 +15,15 @@ source "${LIB_DIR}/env/deploy.sh"
 source "${LIB_DIR}/env/limits.sh"
 source "${LIB_DIR}/env/engine.sh"
 source "${LIB_DIR}/env/awq.sh"
+source "${THIS_SCRIPT_DIR}/../engines/trt/detect.sh"
+
+# Validate CUDA 13.x for TRT before setting environment defaults
+if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
+  if ! trt_assert_cuda13_driver "env_defaults"; then
+    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
+    exit 1
+  fi
+fi
 
 log_info "Setting environment defaults"
 
