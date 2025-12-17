@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/lib/restart/reconfigure.sh"
 source "${SCRIPT_DIR}/lib/restart/awq.sh"
 source "${SCRIPT_DIR}/lib/env/restart.sh"
 source "${SCRIPT_DIR}/lib/restart/launch.sh"
-source "${SCRIPT_DIR}/vllm/push.sh"
+source "${SCRIPT_DIR}/engines/vllm/push.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 
 log_info "Restart manager ready (reuse caches or reconfigure models)"
