@@ -9,14 +9,18 @@
 # TRT-LLM VERSION AND INSTALLATION
 # =============================================================================
 
-TRT_VERSION="${TRT_VERSION:-1.2.0rc4}"
+TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
 TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 
 # PyTorch version matching TRT-LLM requirements
 TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.1+cu130}"
 TRT_TORCHVISION_VERSION="${TRT_TORCHVISION_VERSION:-0.24.1+cu130}"
+TRT_TORCHAUDIO_VERSION="${TRT_TORCHAUDIO_VERSION:-2.9.1+cu130}"
 TRT_PYTORCH_INDEX_URL="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+
+# MPI runtime pin for TRT-LLM (runtime-only, prevents CUDA downgrade)
+MPI_VERSION_PIN="${MPI_VERSION_PIN:-4.1.6-7ubuntu2}"
 
 # TensorRT-LLM repository for quantization scripts
 # IMPORTANT: We always clone a specific tag matching TRT_VERSION, not main branch.
@@ -241,6 +245,7 @@ trt_validate_batch_size() {
 trt_export_env() {
   export TRT_VERSION TRT_PIP_SPEC TRT_EXTRA_INDEX_URL
   export TRT_PYTORCH_VERSION TRT_TORCHVISION_VERSION TRT_PYTORCH_INDEX_URL
+  export MPI_VERSION_PIN
   export TRT_REPO_URL TRT_REPO_TAG TRT_REPO_DIR
   export GPU_SM_ARCH TRT_FP8_SM_ARCHS
   export TRT_MAX_BATCH_SIZE TRT_MAX_INPUT_LEN TRT_MAX_OUTPUT_LEN TRT_DTYPE

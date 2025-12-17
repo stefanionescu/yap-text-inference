@@ -9,10 +9,10 @@
 # CONFIGURATION
 # =============================================================================
 # All versions are centralized here and in scripts/lib/env/trt.sh
-# TRT-LLM 1.2.0rc4 requires CUDA 13.0 and torch 2.9.x
+# TRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
 
 # Centralized TRT-LLM version - THIS IS THE SINGLE SOURCE OF TRUTH
-TRT_VERSION="${TRT_VERSION:-1.2.0rc4}"
+TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
 
 # Derived configurations
 TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.1+cu130}"
@@ -52,10 +52,10 @@ trt_ensure_cuda_home() {
     return 1
   fi
   
-  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc4)
+  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc5)
   if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
-      log_warn "libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc4 requires CUDA 13.x runtime libraries"
+      log_warn "libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
     fi
   fi
   
@@ -76,16 +76,20 @@ trt_ensure_cuda_home() {
 trt_install_pytorch() {
   local torch_version="${TRT_PYTORCH_VERSION}"
   local torchvision_version="${TRT_TORCHVISION_VERSION}"
+  local torchaudio_version="${TRT_TORCHAUDIO_VERSION:-}"
   local torch_idx="${TRT_PYTORCH_INDEX_URL}"
   
-  log_info "Installing PyTorch ${torch_version} + torchvision ${torchvision_version} from ${torch_idx}"
+  log_info "Installing PyTorch ${torch_version} + torchvision ${torchvision_version}${torchaudio_version:+ + torchaudio ${torchaudio_version}} from ${torch_idx}"
   
   local pkgs=("torch==${torch_version}")
   if [ -n "${torchvision_version}" ]; then
     pkgs+=("torchvision==${torchvision_version}")
   fi
+  if [ -n "${torchaudio_version}" ]; then
+    pkgs+=("torchaudio==${torchaudio_version}")
+  fi
   
-  pip install --index-url "${torch_idx}" "${pkgs[@]}" || {
+  pip install --index-url "${torch_idx}" --force-reinstall "${pkgs[@]}" || {
     log_err "Failed to install PyTorch"
     return 1
   }
