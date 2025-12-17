@@ -20,9 +20,18 @@ ARG TRT_ENGINE_REPO=""
 ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc5
 ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 
+# MPI runtime pin for TRT-LLM (prevents CUDA downgrade)
+ARG MPI_VERSION_PIN=4.1.6-7ubuntu2
+
+# Python version (via deadsnakes PPA)
+ENV PYTHON_VERSION=3.10
+ENV VENV_DIR=/opt/venv
+
 # ----------------------------------------------------------------------------
 # System bootstrap (essential dependencies only)
 # ----------------------------------------------------------------------------
+# NOTE: Ubuntu 24.04 uses libopenmpi3t64 (t64 transition packages)
+# We pin MPI versions and use --no-upgrade to prevent CUDA downgrades
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
@@ -30,17 +39,18 @@ RUN apt-get update -y && \
       software-properties-common && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update -y && \
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --no-install-recommends --no-upgrade \
       python3.10 python3.10-venv python3.10-dev \
       python3-venv python3-dev \
-      openmpi-bin libopenmpi3 \
+      openmpi-bin \
+      libopenmpi3t64=${MPI_VERSION_PIN} \
+      openmpi-common=${MPI_VERSION_PIN} \
       build-essential \
       libzmq3-dev && \
+    apt-mark hold libopenmpi3t64 openmpi-common && \
     rm -rf /var/lib/apt/lists/*
 
-# Ensure consistent python and create virtual env (Python 3.10 via deadsnakes)
-ENV PYTHON_VERSION=3.10
-ENV VENV_DIR=/opt/venv
+# Create virtual env (Python 3.10 via deadsnakes)
 RUN python3.10 -m venv "$VENV_DIR" && \
     source "$VENV_DIR/bin/activate" && \
     python -m ensurepip --upgrade || true && \
