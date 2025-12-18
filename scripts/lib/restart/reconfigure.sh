@@ -226,19 +226,33 @@ _restart_can_preserve_cache() {
 }
 
 restart_clear_model_artifacts() {
-  log_info "[restart] Clearing cached AWQ/Hugging Face artifacts for model switch..."
-  local paths=(
+  log_info "[restart] Clearing cached model artifacts for model switch..."
+  
+  # Model-specific artifacts (always clear on model switch)
+  local model_paths=(
     "${ROOT_DIR}/.awq"
-    "${ROOT_DIR}/.hf"
-    # vLLM caches
-    "${ROOT_DIR}/.vllm_cache"
-    "${ROOT_DIR}/.flashinfer"
-    "${ROOT_DIR}/.xformers"
-    # TRT-LLM caches
-    "${ROOT_DIR}/.trtllm-repo"
     "${ROOT_DIR}/.trt_cache"
     "${ROOT_DIR}/models"
-    # HuggingFace caches
+  )
+  
+  # vLLM engine caches (only clear if NOT using vLLM)
+  if [ "${INFERENCE_ENGINE:-vllm}" != "vllm" ]; then
+    model_paths+=(
+      "${ROOT_DIR}/.vllm_cache"
+      "${ROOT_DIR}/.flashinfer"
+      "${ROOT_DIR}/.xformers"
+    )
+  fi
+  
+  # TRT engine infrastructure (only clear if NOT using TRT)
+  # .trtllm-repo contains quantization scripts - preserve if staying on TRT
+  if [ "${INFERENCE_ENGINE:-vllm}" != "trt" ]; then
+    model_paths+=("${ROOT_DIR}/.trtllm-repo")
+  fi
+  
+  # HuggingFace caches (model downloads)
+  local hf_paths=(
+    "${ROOT_DIR}/.hf"
     "${HF_HOME:-}"
     "${HUGGINGFACE_HUB_CACHE:-}"
     "${TRANSFORMERS_CACHE:-}"
@@ -248,7 +262,8 @@ restart_clear_model_artifacts() {
     "$HOME/.config/huggingface"
     "$HOME/.local/share/huggingface"
   )
-  for path in "${paths[@]}"; do
+  
+  for path in "${model_paths[@]}" "${hf_paths[@]}"; do
     if [ -n "${path}" ] && [ -e "${path}" ]; then
       log_info "[restart] Removing ${path}"
       rm -rf "${path}" || true
@@ -346,7 +361,8 @@ restart_reconfigure_models() {
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
   if [ "${preserve_cache}" = "1" ]; then
-    log_info "[restart] Detected identical model + quantization; preserving Hugging Face caches and local AWQ artifacts."
+    log_info "[restart] Detected identical model + quantization; preserving all caches and engines."
+    log_info "[restart] Skipping quantization/build (everything already in place)."
   else
     restart_clear_model_artifacts
   fi
@@ -359,18 +375,20 @@ restart_reconfigure_models() {
     exit 1
   fi
 
-  # Run quantization/build pipeline:
+  # Run quantization/build pipeline (only if we're NOT preserving cache):
   # - vLLM: only needed for AWQ (FP8/INT8 are runtime quantization)
   # - TRT: ALWAYS needed (all quantization modes require compiled engine)
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
-    if _restart_needs_trt_engine_build || _restart_needs_awq_pipeline; then
-      log_info "[restart] Building TRT-LLM engine (required for TRT deployment)..."
-      source "${SCRIPT_DIR}/quantization/trt_quantizer.sh"
-    else
-      log_info "[restart] TRT engine already exists, skipping build"
+  if [ "${preserve_cache}" != "1" ]; then
+    if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+      if _restart_needs_trt_engine_build || _restart_needs_awq_pipeline; then
+        log_info "[restart] Building TRT-LLM engine (required for TRT deployment)..."
+        source "${SCRIPT_DIR}/quantization/trt_quantizer.sh"
+      else
+        log_info "[restart] TRT engine already exists, skipping build"
+      fi
+    elif _restart_needs_awq_pipeline; then
+      source "${SCRIPT_DIR}/quantization/vllm_quantizer.sh"
     fi
-  elif _restart_needs_awq_pipeline; then
-    source "${SCRIPT_DIR}/quantization/vllm_quantizer.sh"
   fi
 
   restart_server_background
