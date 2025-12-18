@@ -5,7 +5,7 @@
 stop_existing_warmup_processes() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   if [ -z "${root_dir}" ]; then
-    log_warn "stop_existing_warmup_processes: ROOT_DIR not set"
+    log_warn "[warmup] stop_existing_warmup_processes: ROOT_DIR not set"
     return 1
   fi
 
@@ -21,13 +21,13 @@ stop_existing_warmup_processes() {
 
   if [ -z "${existing_pid}" ]; then
     # Stale lock file with no PID
-    log_info "Removing stale warmup lock file (no PID)"
+    log_info "[warmup] Removing stale warmup lock file (no PID)"
     rm -f "${lock_file}" || true
     return 0
   fi
 
   if ps -p "${existing_pid}" >/dev/null 2>&1; then
-    log_info "Stopping existing warmup process (PID=${existing_pid})"
+    log_info "[warmup] Stopping existing warmup process (PID=${existing_pid})"
     # Try graceful termination first
     kill -TERM "${existing_pid}" 2>/dev/null || true
     # Wait up to 5 seconds for graceful shutdown
@@ -41,13 +41,13 @@ stop_existing_warmup_processes() {
     done
     # Force kill if still running
     if ps -p "${existing_pid}" >/dev/null 2>&1; then
-      log_warn "Warmup process ${existing_pid} did not terminate gracefully, forcing kill"
+      log_warn "[warmup] Warmup process ${existing_pid} did not terminate gracefully, forcing kill"
       kill -KILL "${existing_pid}" 2>/dev/null || true
       sleep 1
     fi
-    log_info "Warmup process ${existing_pid} stopped"
+    log_info "[warmup] Warmup process ${existing_pid} stopped"
   else
-    log_info "Removing stale warmup lock file (PID ${existing_pid} not running)"
+    log_info "[warmup] Removing stale warmup lock file (PID ${existing_pid} not running)"
   fi
 
   # Clean up lock file

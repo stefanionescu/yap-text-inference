@@ -38,7 +38,7 @@ _resolve_8bit_backend() {
 apply_quantization_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-}"
   if [ "${DEPLOY_CHAT:-0}" != "1" ]; then
-    log_info "Skipping vLLM quantization defaults (chat engine disabled)"
+    log_info "[env] Skipping vLLM quantization defaults (chat engine disabled)"
     return
   fi
   local effective_quant="${QUANTIZATION:-}"
@@ -70,7 +70,7 @@ apply_quantization_defaults() {
     effective_quant="$(_resolve_8bit_backend "${gpu_name}")"
     export QUANTIZATION="${effective_quant}"
     export CHAT_QUANTIZATION="${effective_quant}"
-    log_info "Resolved 8-bit quantization to '${effective_quant}' for GPU: ${gpu_name:-unknown}"
+    log_info "[env] Resolved 8-bit quantization to '${effective_quant}' for GPU: ${gpu_name:-unknown}"
   fi
 
   case "${effective_quant}" in
@@ -89,12 +89,12 @@ apply_quantization_defaults() {
           export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-10}
           export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
           export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
-          log_info "FP8 mode: Hopper/Ada GPU with native FP8 support"
+          log_info "[env] FP8 mode: Hopper/Ada GPU with native FP8 support"
           ;;
         *A100*)
           # A100 runs FP8 weights in W8A16 emulated mode via Marlin (stores FP8, computes FP16)
           # KV cache uses INT8 since A100 doesn't support FP8 KV cache
-          log_info "FP8 mode: A100 with W8A16 emulated mode (FP8 weights, FP16 compute) + INT8 KV cache"
+          log_info "[env] FP8 mode: A100 with W8A16 emulated mode (FP8 weights, FP16 compute) + INT8 KV cache"
           export KV_DTYPE=${KV_DTYPE:-int8}
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
           if [ "${HAS_FLASHINFER}" = "1" ]; then
@@ -128,7 +128,7 @@ apply_quantization_defaults() {
             export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
           else
             export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
-            log_warn "FlashInfer not available; using XFORMERS backend for AWQ."
+            log_warn "[env] FlashInfer not available; using XFORMERS backend for AWQ."
           fi
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
           if [[ "${gpu_name}" == *H100* ]]; then
@@ -177,11 +177,11 @@ apply_quantization_defaults() {
           if [ "${HAS_FLASHINFER}" = "1" ]; then
             export VLLM_USE_V1=1
             export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
-            log_info "A100 4-bit mode: V1 engine + FlashInfer + INT8 KV"
+            log_info "[env] A100 4-bit mode: V1 engine + FlashInfer + INT8 KV"
           else
             export VLLM_USE_V1=0
             export VLLM_ATTENTION_BACKEND=XFORMERS
-            log_info "A100 4-bit mode: V0 engine + XFORMERS + INT8 KV"
+            log_info "[env] A100 4-bit mode: V0 engine + XFORMERS + INT8 KV"
           fi
           ;;
         *H100*|*L40S*|*L40*)
@@ -191,14 +191,14 @@ apply_quantization_defaults() {
           if [[ "${gpu_name}" == *H100* ]]; then
             export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
           fi
-          log_info "Hopper/Ada 4-bit mode: V1 engine preferred; backend decided in Python"
+          log_info "[env] Hopper/Ada 4-bit mode: V1 engine preferred; backend decided in Python"
           ;;
         *)
           export VLLM_USE_V1=0
           export KV_DTYPE=${KV_DTYPE:-auto}
           export VLLM_ATTENTION_BACKEND=XFORMERS
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
-          log_warn "Unknown GPU 4-bit mode: using conservative V0 + fp16 KV"
+          log_warn "[env] Unknown GPU 4-bit mode: using conservative V0 + fp16 KV"
           ;;
       esac
       ;;

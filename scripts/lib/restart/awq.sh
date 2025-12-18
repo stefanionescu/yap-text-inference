@@ -112,7 +112,7 @@ restart_validate_awq_push_prereqs() {
     return
   fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
-    log_info "--push-quant specified but no local AWQ artifacts detected; uploads will be skipped."
+    log_info "[restart] --push-quant specified but no local AWQ artifacts detected; uploads will be skipped."
     return
   fi
 
@@ -126,11 +126,11 @@ restart_push_cached_awq_models() {
     return
   fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
-    log_info "--push-quant specified but no local AWQ artifacts detected; skipping upload."
+    log_info "[restart] --push-quant specified but no local AWQ artifacts detected; skipping upload."
     return
   fi
 
-  log_info "Uploading cached AWQ artifacts to Hugging Face (restart)"
+  log_info "[restart] Uploading cached AWQ artifacts to Hugging Face (restart)"
   local pushed=0
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     vllm_awq_push_to_hf "${CHAT_AWQ_DIR}"
@@ -138,7 +138,7 @@ restart_push_cached_awq_models() {
   fi
 
   if [ "${pushed}" != "1" ]; then
-    log_info "No local AWQ artifacts matched deploy mode '${DEPLOY_MODE}'; nothing to upload."
+    log_info "[restart] No local AWQ artifacts matched deploy mode '${DEPLOY_MODE}'; nothing to upload."
   fi
 }
 

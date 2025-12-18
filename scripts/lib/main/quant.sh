@@ -76,14 +76,14 @@ main_apply_quantization() {
     case "${prequant_kind}" in
       awq)
         if [ "${resolved_backend}" != "awq" ]; then
-          log_warn "Chat model '${CHAT_MODEL_NAME}' is already 4-bit (AWQ/W4A16); overriding to 4bit runtime."
+          log_warn "[quant] Chat model '${CHAT_MODEL_NAME}' is already 4-bit (AWQ/W4A16); overriding to 4bit runtime."
           resolved_mode="4bit"
           resolved_backend="awq"
         fi
         ;;
       gptq)
         if [ "${resolved_backend}" != "gptq_marlin" ]; then
-          log_warn "Chat model '${CHAT_MODEL_NAME}' is GPTQ; overriding to 4bit GPTQ runtime."
+          log_warn "[quant] Chat model '${CHAT_MODEL_NAME}' is GPTQ; overriding to 4bit GPTQ runtime."
           resolved_mode="4bit"
           resolved_backend="gptq_marlin"
         fi

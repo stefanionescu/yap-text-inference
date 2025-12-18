@@ -13,17 +13,17 @@ push_awq_to_hf() {
   fi
 
   if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
-    log_warn "--push-quant specified but HF_PUSH_REPO_ID not configured; skipping upload"
+    log_warn "[hf] --push-quant specified but HF_PUSH_REPO_ID not configured; skipping upload"
     return
   fi
 
   if [ -z "${HF_TOKEN:-}" ]; then
-    log_warn "--push-quant specified but HF_TOKEN not available; skipping upload"
+    log_warn "[hf] --push-quant specified but HF_TOKEN not available; skipping upload"
     return
   fi
 
   if [ ! -d "${src_dir}" ]; then
-    log_warn "HF AWQ push skipped; directory not found: ${src_dir}"
+    log_warn "[hf] AWQ push skipped; directory not found: ${src_dir}"
     return
   fi
 
@@ -41,7 +41,7 @@ push_awq_to_hf() {
     python_cmd+=(--private)
   fi
 
-  log_info "Uploading AWQ weights from ${src_dir} to Hugging Face repo ${HF_PUSH_REPO_ID}"
+  log_info "[hf] Uploading AWQ weights from ${src_dir} to Hugging Face repo ${HF_PUSH_REPO_ID}"
   HF_TOKEN="${HF_TOKEN}" "${python_cmd[@]}"
 }
 

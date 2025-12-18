@@ -2,14 +2,14 @@
 
 require_docker() {
   if ! docker info >/dev/null 2>&1; then
-    log_error "Docker is not running. Please start Docker and try again."
+    log_error "[build] Docker is not running. Please start Docker and try again."
     exit 1
   fi
 }
 
 ensure_docker_login() {
   if docker info 2>/dev/null | grep -q "Username:"; then
-    log_info "Docker login detected."
+    log_info "[build] Docker login detected."
     return
   fi
   if [ -n "${DOCKER_PASSWORD:-}" ]; then
@@ -18,6 +18,6 @@ ensure_docker_login() {
   if [ -n "${DOCKER_TOKEN:-}" ]; then
     echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USERNAME}" --password-stdin && return
   fi
-  log_warn "Not logged in to Docker Hub and no DOCKER_PASSWORD/DOCKER_TOKEN set; push may fail."
+  log_warn "[build] Not logged in to Docker Hub and no DOCKER_PASSWORD/DOCKER_TOKEN set; push may fail."
 }
 

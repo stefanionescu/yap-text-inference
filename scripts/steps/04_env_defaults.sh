@@ -19,13 +19,13 @@ source "${THIS_SCRIPT_DIR}/../engines/trt/detect.sh"
 
 # Validate CUDA 13.x for TRT before setting environment defaults
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  if ! trt_assert_cuda13_driver "env_defaults"; then
-    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
+  if ! trt_assert_cuda13_driver "env"; then
+    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
     exit 1
   fi
 fi
 
-log_info "Setting environment defaults"
+log_info "[env] Setting environment defaults"
 
 # Detect FlashInfer availability for runtime tuning (optional)
 detect_flashinfer
@@ -49,11 +49,11 @@ detect_gpu_name
 # Apply GPU-/quantization-specific defaults
 apply_quantization_defaults
 
-log_info "Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
+log_info "[env] Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 if [ "${DEPLOY_CHAT}" = "1" ]; then
   chat_precision="${CHAT_QUANTIZATION:-${QUANTIZATION:-fp16}}"
-  log_info "Chat model: ${CHAT_MODEL:-<unset>} (${chat_precision})"
+  log_info "[env] Chat model: ${CHAT_MODEL:-<unset>} (${chat_precision})"
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "Tool model: ${TOOL_MODEL:-<unset>} (fp32)"
+  log_info "[env] Tool model: ${TOOL_MODEL:-<unset>} (fp32)"
 fi

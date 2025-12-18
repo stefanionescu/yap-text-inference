@@ -69,7 +69,7 @@ restart_mark_override_if_changed() {
   eval "user_value=\${${value_key}:-}"
 
   if [ "${snapshot_value}" != "${user_value}" ]; then
-    log_info "Override detected for ${human_label}: stored='${snapshot_value:-<unset>}' new='${user_value}'"
+    log_info "[restart] Override detected for ${human_label}: stored='${snapshot_value:-<unset>}' new='${user_value}'"
     RESTART_RUNTIME_SNAPSHOT_DIRTY=1
   fi
 }

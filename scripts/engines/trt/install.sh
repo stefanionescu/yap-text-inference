@@ -42,20 +42,20 @@ trt_ensure_cuda_home() {
     elif [ -d "/usr/local/cuda-13.0" ]; then
       export CUDA_HOME="/usr/local/cuda-13.0"
     else
-      log_err "CUDA_HOME is not set. Install CUDA Toolkit 13.x and export CUDA_HOME."
+      log_err "[trt] CUDA_HOME is not set. Install CUDA Toolkit 13.x and export CUDA_HOME."
       return 1
     fi
   fi
   
   if [ ! -d "${CUDA_HOME}/lib64" ]; then
-    log_err "CUDA_HOME/lib64 not found: ${CUDA_HOME}/lib64"
+    log_err "[trt] CUDA_HOME/lib64 not found: ${CUDA_HOME}/lib64"
     return 1
   fi
   
   # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc5)
   if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
-      log_warn "libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
+      log_warn "[trt] libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
     fi
   fi
   
@@ -65,7 +65,7 @@ trt_ensure_cuda_home() {
     *) export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}" ;;
   esac
   
-  log_info "CUDA_HOME: ${CUDA_HOME}"
+  log_info "[trt] CUDA_HOME: ${CUDA_HOME}"
   return 0
 }
 
@@ -79,7 +79,7 @@ trt_install_pytorch() {
   local torchaudio_version="${TRT_TORCHAUDIO_VERSION:-}"
   local torch_idx="${TRT_PYTORCH_INDEX_URL}"
   
-  log_info "Installing PyTorch ${torch_version} + torchvision ${torchvision_version}${torchaudio_version:+ + torchaudio ${torchaudio_version}} from ${torch_idx}"
+  log_info "[trt] Installing PyTorch ${torch_version} + torchvision ${torchvision_version}${torchaudio_version:+ + torchaudio ${torchaudio_version}} from ${torch_idx}"
   
   local pkgs=("torch==${torch_version}")
   if [ -n "${torchvision_version}" ]; then
@@ -90,7 +90,7 @@ trt_install_pytorch() {
   fi
   
   pip install --index-url "${torch_idx}" --force-reinstall "${pkgs[@]}" || {
-    log_err "Failed to install PyTorch"
+    log_err "[trt] Failed to install PyTorch"
     return 1
   }
   
@@ -108,19 +108,19 @@ _trt_pip_install_with_retry() {
   local attempt=1
 
   while [ "${attempt}" -le "${max_attempts}" ]; do
-    log_info "pip attempt ${attempt}/${max_attempts}: $*"
+    log_info "[trt] pip attempt ${attempt}/${max_attempts}: $*"
     if pip "$@"; then
       return 0
     fi
     attempt=$((attempt + 1))
     if [ "${attempt}" -le "${max_attempts}" ]; then
-      log_warn "pip attempt failed; retrying after ${delay}s..."
+      log_warn "[trt] pip attempt failed; retrying after ${delay}s..."
       sleep "${delay}"
       delay=$((delay * 2))
     fi
   done
 
-  log_err "pip command failed after ${max_attempts} attempts"
+  log_err "[trt] pip command failed after ${max_attempts} attempts"
   return 1
 }
 
@@ -129,7 +129,7 @@ trt_install_tensorrt_llm() {
   local nvidia_index="${TRT_EXTRA_INDEX_URL}"
   local target="${TRT_PIP_SPEC}"
   
-  log_info "Installing TensorRT-LLM: ${target}"
+  log_info "[trt] Installing TensorRT-LLM: ${target}"
   
   # NOTE: Do NOT use --upgrade here - it can replace torch with a different CUDA version
   # from NVIDIA's index, causing CUDA version mismatch between torch and torchvision
@@ -142,7 +142,7 @@ trt_install_tensorrt_llm() {
   )
   
   _trt_pip_install_with_retry "${pip_cmd[@]}" || {
-    log_err "Failed to install TensorRT-LLM"
+    log_err "[trt] Failed to install TensorRT-LLM"
     return 1
   }
   
@@ -155,7 +155,7 @@ trt_install_tensorrt_llm() {
 
 # Validate Python shared library
 trt_validate_python_libraries() {
-  log_info "Checking Python shared library..."
+  log_info "[trt] Checking Python shared library..."
   python - <<'EOF'
 import ctypes
 import ctypes.util
@@ -181,7 +181,7 @@ EOF
 
 # Validate CUDA runtime
 trt_validate_cuda_runtime() {
-  log_info "Checking CUDA Python bindings..."
+  log_info "[trt] Checking CUDA Python bindings..."
   local check_output
   check_output=$(
     python - <<'EOF'
@@ -214,9 +214,9 @@ EOF
   ) || true
 
   if ! echo "$check_output" | grep -q "✓ CUDA runtime OK"; then
-    log_err "CUDA Python bindings not working:"
+    log_err "[trt] CUDA Python bindings not working:"
     echo "$check_output" >&2
-    log_err "Hint: Ensure cuda-python>=13.0 and that CUDA_HOME/lib64 contains CUDA 13 runtime libraries"
+    log_err "[trt] Hint: Ensure cuda-python>=13.0 and that CUDA_HOME/lib64 contains CUDA 13 runtime libraries"
     return 1
   fi
 
@@ -229,7 +229,7 @@ trt_validate_mpi_runtime() {
   local need_mpi="${NEED_MPI:-0}"
 
   if [ "$need_mpi" = "1" ]; then
-    log_info "Checking MPI runtime..."
+    log_info "[trt] Checking MPI runtime..."
     python - <<'EOF'
 import sys
 try:
@@ -242,21 +242,21 @@ except Exception as exc:
     sys.exit(f"MPI runtime error: {exc}")
 EOF
   else
-    log_info "Skipping MPI check (NEED_MPI=0)"
+    log_info "[trt] Skipping MPI check (NEED_MPI=0)"
   fi
 }
 
 # Validate TensorRT-LLM installation
 trt_validate_installation() {
-  log_info "Validating TensorRT-LLM installation..."
+  log_info "[trt] Validating TensorRT-LLM installation..."
   
   # Check TensorRT-LLM version
   local trt_version
   trt_version=$(python -c "import tensorrt_llm; print(tensorrt_llm.__version__)" 2>/dev/null) || {
-    log_err "TensorRT-LLM not installed or not importable"
+    log_err "[trt] TensorRT-LLM not installed or not importable"
     return 1
   }
-  log_info "TensorRT-LLM version: ${trt_version}"
+  log_info "[trt] TensorRT-LLM version: ${trt_version}"
   
   # Validate Python libraries
   trt_validate_python_libraries || return 1
@@ -269,12 +269,12 @@ trt_validate_installation() {
   
   # Check trtllm-build command
   if ! command -v trtllm-build >/dev/null 2>&1; then
-    log_warn "trtllm-build command not found in PATH"
+    log_warn "[trt] trtllm-build command not found in PATH"
   else
-    log_info "trtllm-build: $(which trtllm-build)"
+    log_info "[trt] trtllm-build: $(which trtllm-build)"
   fi
   
-  log_info "✓ TensorRT-LLM installation validated"
+  log_info "[trt] ✓ TensorRT-LLM installation validated"
   return 0
 }
 
@@ -302,17 +302,17 @@ trt_prepare_repo() {
   export GIT_CURL_VERBOSE="${GIT_CURL_VERBOSE:-0}"
   export GIT_TRACE="${GIT_TRACE:-0}"
   
-  log_info "Target TensorRT-LLM version: ${TRT_VERSION} (tag: ${tag_name})"
+  log_info "[trt] Target TensorRT-LLM version: ${TRT_VERSION} (tag: ${tag_name})"
   
   # Handle FORCE_REBUILD
   if [ "${FORCE_REBUILD:-false}" = "true" ] && [ -d "${repo_dir}" ]; then
-    log_info "FORCE_REBUILD=true: removing existing repository"
+    log_info "[trt] FORCE_REBUILD=true: removing existing repository"
     rm -rf "${repo_dir}"
   fi
   
   # Clone if not present
   if [ ! -d "${repo_dir}" ]; then
-    log_info "Cloning TensorRT-LLM repository to ${repo_dir} (tag: ${tag_name})"
+    log_info "[trt] Cloning TensorRT-LLM repository to ${repo_dir} (tag: ${tag_name})"
     
     # Build clone options
     local clone_opts=("--single-branch" "--no-tags" "--branch" "${tag_name}")
@@ -327,12 +327,12 @@ trt_prepare_repo() {
     local attempt=1
     local clone_done=false
     while [ "${attempt}" -le "${clone_attempts}" ]; do
-      log_info "Clone attempt ${attempt}/${clone_attempts}"
+      log_info "[trt] Clone attempt ${attempt}/${clone_attempts}"
       if git -c http.lowSpeedLimit=0 -c http.lowSpeedTime=999999 clone "${clone_opts[@]}" "${repo_url}" "${repo_dir}"; then
         clone_done=true
         break
       fi
-      log_warn "Clone attempt ${attempt} failed; cleaning partial checkout and retrying..."
+      log_warn "[trt] Clone attempt ${attempt} failed; cleaning partial checkout and retrying..."
       rm -rf "${repo_dir}"
       attempt=$((attempt + 1))
       if [ "${attempt}" -le "${clone_attempts}" ]; then
@@ -342,44 +342,44 @@ trt_prepare_repo() {
     done
     
     if [ "${clone_done}" != "true" ]; then
-      log_err "Failed to clone TensorRT-LLM repository after ${clone_attempts} attempts"
+      log_err "[trt] Failed to clone TensorRT-LLM repository after ${clone_attempts} attempts"
       return 1
     fi
   fi
   
   # Ensure we're on the correct tag
-  log_info "Syncing repo to ${tag_name}"
+  log_info "[trt] Syncing repo to ${tag_name}"
   if git -C "${repo_dir}" show-ref --verify --quiet "${tag_ref}"; then
-    log_info "Tag ${tag_name} already present locally"
+    log_info "[trt] Tag ${tag_name} already present locally"
   else
-    log_info "Fetching ${tag_ref}"
+    log_info "[trt] Fetching ${tag_ref}"
     if [ "${clone_depth}" != "full" ]; then
       git -C "${repo_dir}" fetch --depth "${clone_depth}" --force origin "${tag_ref}:${tag_ref}" || {
-        log_err "Unable to fetch ${tag_ref}"
+        log_err "[trt] Unable to fetch ${tag_ref}"
         return 1
       }
     else
       git -C "${repo_dir}" fetch --force origin "${tag_ref}:${tag_ref}" || {
-        log_err "Unable to fetch ${tag_ref}"
+        log_err "[trt] Unable to fetch ${tag_ref}"
         return 1
       }
     fi
   fi
   
   if ! git -C "${repo_dir}" checkout "${tag_name}" 2>/dev/null; then
-    log_err "Could not checkout version ${TRT_VERSION} (tag ${tag_name})"
-    log_err "Hint: ensure ${tag_name} exists in ${repo_url}"
+    log_err "[trt] Could not checkout version ${TRT_VERSION} (tag ${tag_name})"
+    log_err "[trt] Hint: ensure ${tag_name} exists in ${repo_url}"
     return 1
   fi
   
   # Verify quantization examples directory exists
   if [ ! -d "${repo_dir}/examples/quantization" ]; then
-    log_err "Quantization examples not found in ${repo_dir}/examples/quantization"
+    log_err "[trt] Quantization examples not found in ${repo_dir}/examples/quantization"
     ls -la "${repo_dir}/examples/" >&2
     return 1
   fi
   
-  log_info "✓ TensorRT-LLM repository ready at ${repo_dir}"
+  log_info "[trt] ✓ TensorRT-LLM repository ready at ${repo_dir}"
   export TRT_REPO_DIR="${repo_dir}"
   return 0
 }
@@ -392,19 +392,19 @@ trt_install_quant_requirements() {
   local quant_reqs="${repo_dir}/examples/quantization/requirements.txt"
   
   if [ -f "${quant_reqs}" ]; then
-    log_info "Installing TRT-LLM quantization requirements from ${quant_reqs}"
+    log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
     pip install -r "${quant_reqs}" || {
-      log_warn "Some quantization requirements failed to install"
+      log_warn "[trt] Some quantization requirements failed to install"
     }
     # Ensure hf_transfer is present even if a system package blocks uninstall (e.g. Debian blinker)
     # --ignore-installed avoids RECORD issues from distro packages.
     pip install --ignore-installed "hf_transfer==0.1.8" || {
-      log_warn "hf_transfer install failed; fast HF downloads will be disabled"
+      log_warn "[trt] hf_transfer install failed; fast HF downloads will be disabled"
     }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
     pip install 'urllib3>=2.6.0' || true
   else
-    log_warn "Quantization requirements.txt not found at ${quant_reqs}, continuing"
+    log_warn "[trt] Quantization requirements.txt not found at ${quant_reqs}, continuing"
   fi
 }
 
@@ -415,7 +415,7 @@ trt_install_quant_requirements() {
 # Complete TRT-LLM installation sequence
 # Order: PyTorch -> requirements.txt -> TensorRT-LLM -> validate -> clone repo
 trt_full_install() {
-  log_info "Starting TensorRT-LLM full installation..."
+  log_info "[trt] Starting TensorRT-LLM full installation..."
   
   # 1. Ensure CUDA is available
   trt_ensure_cuda_home || return 1
@@ -435,6 +435,6 @@ trt_full_install() {
   # 6. Clone TensorRT-LLM repo for quantization scripts
   trt_prepare_repo || return 1
   
-  log_info "✓ TensorRT-LLM installation complete"
+  log_info "[trt] ✓ TensorRT-LLM installation complete"
   return 0
 }

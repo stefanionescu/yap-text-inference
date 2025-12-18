@@ -15,7 +15,7 @@ DEPLOY_MODELS_VAL="${DEPLOY_MODELS:-both}"
 case "${DEPLOY_MODELS_VAL}" in
   chat|tool|both) ;;
   *)
-    echo "[WARN] Invalid DEPLOY_MODELS='${DEPLOY_MODELS_VAL}', defaulting to 'both'" >&2
+    echo "[build] Invalid DEPLOY_MODELS='${DEPLOY_MODELS_VAL}', defaulting to 'both'" >&2
     DEPLOY_MODELS_VAL="both"
     ;;
 esac
@@ -115,15 +115,15 @@ fi
 
 # Validate configuration
 if [[ "${DOCKER_USERNAME}" == "your-username" ]]; then
-    log_error "Please set DOCKER_USERNAME environment variable"
-    log_info "Example: DOCKER_USERNAME=myuser $0"
+    log_error "[build] Please set DOCKER_USERNAME environment variable"
+    log_info "[build] Example: DOCKER_USERNAME=myuser $0"
     exit 1
 fi
 
 # Validate models based on deploy mode
-log_info "Validating models for DEPLOY_MODELS=${DEPLOY_MODELS_VAL}..."
+log_info "[build] Validating models for DEPLOY_MODELS=${DEPLOY_MODELS_VAL}..."
 if ! validate_models_for_deploy "${DEPLOY_MODELS_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}" "${TRT_ENGINE_REPO}"; then
-    log_error "Model validation failed. Build aborted."
+    log_error "[build] Model validation failed. Build aborted."
     exit 1
 fi
 
@@ -131,22 +131,22 @@ require_docker
 
 ensure_docker_login
 
-log_info "Building Yap Text Inference Docker image (TRT-LLM)"
-log_info "Image: ${FULL_IMAGE_NAME}"
-log_info "Deploy mode: ${DEPLOY_MODELS_VAL}"
-[[ -n "${CHAT_MODEL}" ]] && log_info "Chat model (tokenizer): ${CHAT_MODEL}"
-[[ -n "${TRT_ENGINE_REPO}" ]] && log_info "TRT engine repo: ${TRT_ENGINE_REPO}"
-[[ -z "${TRT_ENGINE_REPO}" ]] && [[ "${DEPLOY_MODELS_VAL}" != "tool" ]] && log_info "TRT engine: <mount required at runtime>"
-[[ -n "${TOOL_MODEL}" ]] && log_info "Tool model: ${TOOL_MODEL}"
-log_info "Platform: ${PLATFORM}"
-log_info "Build context (stack): ${BUILD_CONTEXT}"
-log_info "Dockerfile: ${DOCKERFILE}"
+log_info "[build] Building Yap Text Inference Docker image (TRT-LLM)"
+log_info "[build] Image: ${FULL_IMAGE_NAME}"
+log_info "[build] Deploy mode: ${DEPLOY_MODELS_VAL}"
+[[ -n "${CHAT_MODEL}" ]] && log_info "[build] Chat model (tokenizer): ${CHAT_MODEL}"
+[[ -n "${TRT_ENGINE_REPO}" ]] && log_info "[build] TRT engine repo: ${TRT_ENGINE_REPO}"
+[[ -z "${TRT_ENGINE_REPO}" ]] && [[ "${DEPLOY_MODELS_VAL}" != "tool" ]] && log_info "[build] TRT engine: <mount required at runtime>"
+[[ -n "${TOOL_MODEL}" ]] && log_info "[build] Tool model: ${TOOL_MODEL}"
+log_info "[build] Platform: ${PLATFORM}"
+log_info "[build] Build context (stack): ${BUILD_CONTEXT}"
+log_info "[build] Dockerfile: ${DOCKERFILE}"
 
 # Build the image
-log_info "Preparing build context..."
+log_info "[build] Preparing build context..."
 
 prepare_build_context
-log_info "Starting Docker build from temp context: ${BUILD_CONTEXT}"
+log_info "[build] Starting Docker build from temp context: ${BUILD_CONTEXT}"
 
 init_build_args
 
@@ -158,45 +158,45 @@ BUILD_ARGS+=(--build-arg "DEPLOY_MODELS=${DEPLOY_MODELS_VAL}")
 
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 
-log_success "Docker build completed successfully!"
-log_info "Image: ${FULL_IMAGE_NAME}"
+log_success "[build] Docker build completed successfully!"
+log_info "[build] Image: ${FULL_IMAGE_NAME}"
 
 # Push the image
-log_info "Pushing image to Docker Hub..."
+log_info "[build] Pushing image to Docker Hub..."
 
 # Try push; if unauthorized, attempt non-interactive login and retry once
 if ! docker push "${FULL_IMAGE_NAME}"; then
-    log_warn "Initial docker push failed. Attempting non-interactive login and retry..."
+    log_warn "[build] Initial docker push failed. Attempting non-interactive login and retry..."
     ensure_docker_login || true
     if ! docker push "${FULL_IMAGE_NAME}"; then
-        log_error "Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+        log_error "[build] Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
         exit 1
     fi
 fi
 
-log_success "Image pushed successfully to Docker Hub!"
-log_info "Pull command: docker pull ${FULL_IMAGE_NAME}"
+log_success "[build] Image pushed successfully to Docker Hub!"
+log_info "[build] Pull command: docker pull ${FULL_IMAGE_NAME}"
 
 # Provide usage examples
 log_info ""
-log_info "Usage:"
+log_info "[build] Usage:"
 log_info ""
 if [[ -n "${TRT_ENGINE_REPO}" ]]; then
-    log_info "docker run -d --gpus all --name yap-server \\"
-    log_info "  -v yap-cache:/app/.hf \\"
-    log_info "  -v yap-engines:/opt/engines \\"
-    log_info "  -e TEXT_API_KEY=your_secret_key \\"
-    log_info "  -p 8000:8000 \\"
-    log_info "  ${FULL_IMAGE_NAME}"
+    log_info "[build] docker run -d --gpus all --name yap-server \\"
+    log_info "[build]   -v yap-cache:/app/.hf \\"
+    log_info "[build]   -v yap-engines:/opt/engines \\"
+    log_info "[build]   -e TEXT_API_KEY=your_secret_key \\"
+    log_info "[build]   -p 8000:8000 \\"
+    log_info "[build]   ${FULL_IMAGE_NAME}"
 else
-    log_info "# Engine must be mounted at runtime:"
-    log_info "docker run -d --gpus all --name yap-server \\"
-    log_info "  -v /path/to/trt-engine:/opt/engines/trt-chat \\"
-    log_info "  -e TEXT_API_KEY=your_secret_key \\"
-    log_info "  -p 8000:8000 \\"
-    log_info "  ${FULL_IMAGE_NAME}"
+    log_info "[build] # Engine must be mounted at runtime:"
+    log_info "[build] docker run -d --gpus all --name yap-server \\"
+    log_info "[build]   -v /path/to/trt-engine:/opt/engines/trt-chat \\"
+    log_info "[build]   -e TEXT_API_KEY=your_secret_key \\"
+    log_info "[build]   -p 8000:8000 \\"
+    log_info "[build]   ${FULL_IMAGE_NAME}"
 fi
 log_info ""
-log_info "Health: curl http://localhost:8000/healthz"
-log_success "Build process completed!"
+log_info "[build] Health: curl http://localhost:8000/healthz"
+log_success "[build] Build process completed!"
 

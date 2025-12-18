@@ -45,7 +45,7 @@ install_requirements_without_flashinfer() {
   if ! should_skip_requirements_install; then
     "${ROOT_DIR}/.venv/bin/pip" install --upgrade-strategy only-if-needed -r "${tmp_req_file}"
   else
-    log_info "Dependencies unchanged; skipping main pip install"
+    log_info "[deps] Dependencies unchanged; skipping main pip install"
   fi
 }
 
@@ -65,7 +65,7 @@ install_llmcompressor_without_deps() {
   local version
   version=$(echo "${version_line}" | sed 's/#.*$//' | sed 's/^\s*llmcompressor\s*==\s*//' | tr -d '[:space:]')
   if [ -z "${version}" ]; then
-    log_warn "Unable to parse llmcompressor version from requirements; skipping manual install"
+    log_warn "[deps] Unable to parse llmcompressor version from requirements; skipping manual install"
     return
   fi
 
@@ -88,13 +88,13 @@ if installed == target:
 sys.exit(1)
 PY
   then
-    log_info "llmcompressor==${version} already installed; skipping manual install"
+    log_info "[deps] llmcompressor==${version} already installed; skipping manual install"
     return
   fi
 
-  log_info "Installing llmcompressor==${version} without dependency resolution (torch pin conflict workaround)"
+  log_info "[deps] Installing llmcompressor==${version} without dependency resolution (torch pin conflict workaround)"
   if ! "${ROOT_DIR}/.venv/bin/pip" install --no-deps "llmcompressor==${version}"; then
-    log_error "Failed to install llmcompressor==${version}. Install it manually with --no-deps."
+    log_error "[deps] Failed to install llmcompressor==${version}. Install it manually with --no-deps."
     exit 1
   fi
 }

@@ -54,7 +54,7 @@ def allow_prequantized_override(model, model_type):
         return False
     if kind not in {"awq", "gptq"}:
         return False
-    print(f"[WARNING] Using pre-quantized {kind.upper()} {model_type} model not in approved list: {model}")
+    print(f"[validate] Using pre-quantized {kind.upper()} {model_type} model not in approved list: {model}")
     return True
 
 deploy_chat = deploy_mode in ("both", "chat")
@@ -85,16 +85,14 @@ if quantization == "awq" and deploy_chat and chat_model:
 
 if errors:
     for err in errors:
-        print(f"[ERR ] Model validation failed: {err}", file=sys.stderr)
+        print(f"[validate] Model validation failed: {err}", file=sys.stderr)
     sys.exit(1)
 
-from datetime import datetime, timezone
-ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
-print(f"[INFO] {ts} Model validation passed")
+print("[validate] Model validation passed")
 sys.exit(0)
 VALIDATE_SCRIPT
   then
-    log_err "Model validation failed - check model names and allowlists"
+    log_err "[validate] Model validation failed - check model names and allowlists"
     return 1
   fi
   return 0

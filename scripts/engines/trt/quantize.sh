@@ -14,7 +14,7 @@ trt_download_model() {
   local target_dir="${2:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "Model ID is required"
+    log_err "[model] Model ID is required"
     return 1
   fi
   
@@ -33,12 +33,12 @@ trt_download_model() {
   
   # Download if not already present
   if [ -d "${target_dir}" ] && [ -f "${target_dir}/config.json" ]; then
-    log_info "Using cached model at ${target_dir}"
+    log_info "[model] Using cached model at ${target_dir}"
     echo "${target_dir}"
     return 0
   fi
   
-  log_info "Downloading model ${model_id} to ${target_dir}"
+  log_info "[model] Downloading model ${model_id} to ${target_dir}"
   mkdir -p "${target_dir}"
   
   # Only enable HF_HUB_ENABLE_HF_TRANSFER if hf_transfer is installed
@@ -46,7 +46,7 @@ trt_download_model() {
     export HF_HUB_ENABLE_HF_TRANSFER=1
   else
     export HF_HUB_ENABLE_HF_TRANSFER=0
-    log_warn "hf_transfer not installed, using standard downloads"
+    log_warn "[model] hf_transfer not installed, using standard downloads"
   fi
   python -c "
 import sys
@@ -54,7 +54,7 @@ from huggingface_hub import snapshot_download
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}', local_dir_use_symlinks=False)
 print('✓ Downloaded model', file=sys.stderr)
 " || {
-    log_err "Failed to download model ${model_id}"
+    log_err "[model] Failed to download model ${model_id}"
     return 1
   }
   
@@ -74,12 +74,12 @@ trt_quantize_model() {
   local qformat="${3:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "Model ID is required"
+    log_err "[quant] Model ID is required"
     return 1
   fi
   
   if [ -z "${output_dir}" ]; then
-    log_err "Output directory is required"
+    log_err "[quant] Output directory is required"
     return 1
   fi
   
@@ -91,17 +91,17 @@ trt_quantize_model() {
   local kv_cache_dtype
   kv_cache_dtype=$(trt_resolve_kv_cache_dtype "${qformat}")
   
-  log_info "Quantizing model ${model_id} to ${qformat}"
-  log_info "Output directory: ${output_dir}"
-  log_info "KV cache dtype: ${kv_cache_dtype}"
+  log_info "[quant] Quantizing model ${model_id} to ${qformat}"
+  log_info "[quant] Output directory: ${output_dir}"
+  log_info "[quant] KV cache dtype: ${kv_cache_dtype}"
   
   # Check if already quantized
   if [ -d "${output_dir}" ] && [ -f "${output_dir}/config.json" ]; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
-      log_info "Reusing existing checkpoint at ${output_dir}"
+      log_info "[quant] Reusing existing checkpoint at ${output_dir}"
       return 0
     fi
-    log_info "FORCE_REBUILD=true, re-quantizing..."
+    log_info "[quant] FORCE_REBUILD=true, re-quantizing..."
   fi
   
   # Install quantization requirements from TRT-LLM repo BEFORE quantizing
@@ -117,7 +117,7 @@ trt_quantize_model() {
   quant_script=$(trt_get_quantize_script "${model_id}" "${TRT_REPO_DIR}")
   
   if [ ! -f "${quant_script}" ]; then
-    log_err "Quantization script not found: ${quant_script}"
+    log_err "[quant] Quantization script not found: ${quant_script}"
     return 1
   fi
   
@@ -150,19 +150,19 @@ trt_quantize_model() {
       ;;
   esac
   
-  log_info "Running: ${quant_cmd[*]}"
+  log_info "[quant] Running: ${quant_cmd[*]}"
   "${quant_cmd[@]}" || {
-    log_err "Quantization failed"
+    log_err "[quant] Quantization failed"
     return 1
   }
   
   # Validate output
   if [ ! -f "${output_dir}/config.json" ]; then
-    log_err "Quantization completed but config.json not found in output"
+    log_err "[quant] Quantization completed but config.json not found in output"
     return 1
   fi
   
-  log_info "✓ Quantization complete: ${output_dir}"
+  log_info "[quant] ✓ Quantization complete: ${output_dir}"
   return 0
 }
 
@@ -176,7 +176,7 @@ trt_download_prequantized() {
   local target_dir="${2:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "Model ID is required"
+    log_err "[model] Model ID is required"
     return 1
   fi
   
@@ -186,14 +186,14 @@ trt_download_prequantized() {
     target_dir="${TRT_CACHE_DIR:-${ROOT_DIR:-.}/.trt_cache}/${model_name}"
   fi
   
-  log_info "Downloading pre-quantized TRT model: ${model_id}"
+  log_info "[model] Downloading pre-quantized TRT model: ${model_id}"
   
   # Only enable HF_HUB_ENABLE_HF_TRANSFER if hf_transfer is installed
   if python -c "import hf_transfer" 2>/dev/null; then
     export HF_HUB_ENABLE_HF_TRANSFER=1
   else
     export HF_HUB_ENABLE_HF_TRANSFER=0
-    log_warn "hf_transfer not installed, using standard downloads"
+    log_warn "[model] hf_transfer not installed, using standard downloads"
   fi
   python -c "
 import sys
@@ -206,7 +206,7 @@ snapshot_download(
 )
 print('✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
 " || {
-    log_err "Failed to download pre-quantized model"
+    log_err "[model] Failed to download pre-quantized model"
     return 1
   }
   
@@ -228,17 +228,17 @@ trt_validate_checkpoint() {
   local ckpt_dir="${1:-}"
   
   if [ -z "${ckpt_dir}" ]; then
-    log_err "Checkpoint directory is required"
+    log_err "[quant] Checkpoint directory is required"
     return 1
   fi
   
   if [ ! -d "${ckpt_dir}" ]; then
-    log_err "Checkpoint directory not found: ${ckpt_dir}"
+    log_err "[quant] Checkpoint directory not found: ${ckpt_dir}"
     return 1
   fi
   
   if [ ! -f "${ckpt_dir}/config.json" ]; then
-    log_err "Checkpoint config.json not found: ${ckpt_dir}/config.json"
+    log_err "[quant] Checkpoint config.json not found: ${ckpt_dir}/config.json"
     return 1
   fi
   
@@ -246,12 +246,12 @@ trt_validate_checkpoint() {
   local safetensor_count
   safetensor_count=$(find "${ckpt_dir}" -maxdepth 1 -name "*.safetensors" 2>/dev/null | wc -l)
   if [ "${safetensor_count}" -eq 0 ]; then
-    log_warn "No .safetensors files found in checkpoint directory"
+    log_warn "[quant] No .safetensors files found in checkpoint directory"
   else
-    log_info "Found ${safetensor_count} .safetensors files"
+    log_info "[quant] Found ${safetensor_count} .safetensors files"
   fi
   
-  log_info "✓ Checkpoint validated: ${ckpt_dir}"
+  log_info "[quant] ✓ Checkpoint validated: ${ckpt_dir}"
   return 0
 }
 

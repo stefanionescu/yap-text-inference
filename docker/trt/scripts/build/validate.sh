@@ -26,16 +26,16 @@ is_valid_hf_repo() {
 validate_chat_model() {
     local model="$1"
     if [[ -z "$model" ]]; then
-        echo "[ERROR] CHAT_MODEL is required but not set" >&2
+        echo "[validate] CHAT_MODEL is required but not set" >&2
         return 1
     fi
     
     if ! is_valid_hf_repo "$model"; then
-        echo "[ERROR] CHAT_MODEL '$model' is not a valid HuggingFace repo format (owner/repo)" >&2
+        echo "[validate] CHAT_MODEL '$model' is not a valid HuggingFace repo format (owner/repo)" >&2
         return 1
     fi
     
-    echo "[OK] CHAT_MODEL '$model' validated (will be used for tokenizer)"
+    echo "[validate] CHAT_MODEL '$model' validated (will be used for tokenizer)"
     return 0
 }
 
@@ -45,16 +45,16 @@ validate_trt_engine_repo() {
     
     # Empty is OK - user will mount the engine
     if [[ -z "$repo" ]]; then
-        echo "[INFO] TRT_ENGINE_REPO not set - engine must be mounted at runtime"
+        echo "[validate] TRT_ENGINE_REPO not set - engine must be mounted at runtime"
         return 0
     fi
     
     if ! is_valid_hf_repo "$repo"; then
-        echo "[ERROR] TRT_ENGINE_REPO '$repo' is not a valid HuggingFace repo format (owner/repo)" >&2
+        echo "[validate] TRT_ENGINE_REPO '$repo' is not a valid HuggingFace repo format (owner/repo)" >&2
         return 1
     fi
     
-    echo "[OK] TRT_ENGINE_REPO '$repo' validated"
+    echo "[validate] TRT_ENGINE_REPO '$repo' validated"
     return 0
 }
 
@@ -62,19 +62,19 @@ validate_trt_engine_repo() {
 validate_tool_model() {
     local model="$1"
     if [[ -z "$model" ]]; then
-        echo "[ERROR] TOOL_MODEL is required but not set" >&2
+        echo "[validate] TOOL_MODEL is required but not set" >&2
         return 1
     fi
     
     for allowed in "${ALLOWED_TOOL_MODELS[@]}"; do
         if [[ "$model" == "$allowed" ]]; then
-            echo "[OK] TOOL_MODEL '$model' is in allowlist"
+            echo "[validate] TOOL_MODEL '$model' is in allowlist"
             return 0
         fi
     done
     
-    echo "[ERROR] TOOL_MODEL '$model' is not in the allowed list" >&2
-    echo "[ERROR] See src/config/models.py for allowed tool models" >&2
+    echo "[validate] TOOL_MODEL '$model' is not in the allowed list" >&2
+    echo "[validate] See src/config/models.py for allowed tool models" >&2
     return 1
 }
 
@@ -100,7 +100,7 @@ validate_models_for_deploy() {
             validate_tool_model "$tool_model" || ((errors++))
             ;;
         *)
-            echo "[ERROR] Invalid DEPLOY_MODELS: '$deploy_mode'. Must be chat|tool|both" >&2
+            echo "[validate] Invalid DEPLOY_MODELS: '$deploy_mode'. Must be chat|tool|both" >&2
             ((errors++))
             ;;
     esac

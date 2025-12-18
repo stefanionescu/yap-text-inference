@@ -4,13 +4,13 @@
 
 install_flashinfer_if_applicable() {
   if [ "$(uname -s)" != "Linux" ]; then
-    log_warn "Non-Linux platform detected; skipping FlashInfer GPU wheel install."
+    log_warn "[deps] Non-Linux platform detected; skipping FlashInfer GPU wheel install."
     return 0
   fi
 
   local skip=${SKIP_FLASHINFER:-0}
   if [ "${skip}" = "1" ]; then
-    log_info "Skipping FlashInfer install due to configuration"
+    log_info "[deps] Skipping FlashInfer install due to configuration"
     return 0
   fi
 
@@ -44,16 +44,16 @@ PY
   if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
     local FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
     local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
-    log_info "Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
+    log_info "[deps] Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
     if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
-      log_warn "FlashInfer install failed even with extra index; falling back to PyPI only"
+      log_warn "[deps] FlashInfer install failed even with extra index; falling back to PyPI only"
       if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary "${FI_PKG}"; then
-        log_warn "FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
+        log_warn "[deps] FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi
     fi
-    log_info "FlashInfer wheel source: ${FI_IDX_PRIMARY} (CUDA=${CUDA_NVVER} Torch=${TORCH_MAJMIN})"
+    log_info "[deps] FlashInfer wheel source: ${FI_IDX_PRIMARY} (CUDA=${CUDA_NVVER} Torch=${TORCH_MAJMIN})"
   else
-    log_warn "Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
+    log_warn "[deps] Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
   fi
 }
 

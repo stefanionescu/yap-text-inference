@@ -13,7 +13,7 @@ _restart_resolve_deploy_mode() {
       echo "${candidate}"
       ;;
     *)
-      log_error "Invalid deploy mode '${candidate}'. Use --deploy-mode both|chat|tool."
+      log_error "[restart] Invalid deploy mode '${candidate}'. Use --deploy-mode both|chat|tool."
       return 1
       ;;
   esac
@@ -76,7 +76,7 @@ _restart_validate_quantization() {
       return 0
       ;;
     *)
-      log_error "Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq."
+      log_error "[restart] Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq."
       return 1
       ;;
   esac
@@ -207,7 +207,7 @@ _restart_can_preserve_cache() {
 }
 
 restart_clear_model_artifacts() {
-  log_info "Clearing cached AWQ/Hugging Face artifacts for model switch..."
+  log_info "[restart] Clearing cached AWQ/Hugging Face artifacts for model switch..."
   local paths=(
     "${ROOT_DIR}/.awq"
     "${ROOT_DIR}/.hf"
@@ -231,7 +231,7 @@ restart_clear_model_artifacts() {
   )
   for path in "${paths[@]}"; do
     if [ -n "${path}" ] && [ -e "${path}" ]; then
-      log_info "Removing ${path}"
+      log_info "[restart] Removing ${path}"
       rm -rf "${path}" || true
     fi
   done
@@ -255,13 +255,13 @@ restart_reconfigure_models() {
   local chat_model="${RECONFIG_CHAT_MODEL:-${CHAT_MODEL:-}}"
   local tool_model="${RECONFIG_TOOL_MODEL:-${TOOL_MODEL:-}}"
   if [ "${deploy_chat}" = "1" ] && [ -z "${chat_model}" ]; then
-    log_error "Chat deployment requested but no chat model supplied."
-    log_error "Pass --chat-model <repo_or_path> or export CHAT_MODEL before running --reset-models."
+    log_error "[restart] Chat deployment requested but no chat model supplied."
+    log_error "[restart] Pass --chat-model <repo_or_path> or export CHAT_MODEL before running --reset-models."
     exit 1
   fi
   if [ "${deploy_tool}" = "1" ] && [ -z "${tool_model}" ]; then
-    log_error "Tool deployment requested but no tool model supplied."
-    log_error "Pass --tool-model <repo_or_path> or export TOOL_MODEL before running --reset-models."
+    log_error "[restart] Tool deployment requested but no tool model supplied."
+    log_error "[restart] Pass --tool-model <repo_or_path> or export TOOL_MODEL before running --reset-models."
     exit 1
   fi
 
@@ -321,13 +321,13 @@ restart_reconfigure_models() {
     preserve_cache=1
   fi
 
-  log_info "Restart mode: reconfigure (models reset, deps preserved)"
+  log_info "[restart] Restart mode: reconfigure (models reset, deps preserved)"
 
-  log_info "Stopping server before redeploy (preserving .venv)..."
+  log_info "[restart] Stopping server before redeploy (preserving .venv)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
   if [ "${preserve_cache}" = "1" ]; then
-    log_info "Detected identical model + quantization; preserving Hugging Face caches and local AWQ artifacts."
+    log_info "[restart] Detected identical model + quantization; preserving Hugging Face caches and local AWQ artifacts."
   else
     restart_clear_model_artifacts
   fi
@@ -335,8 +335,8 @@ restart_reconfigure_models() {
   restart_apply_defaults_and_deps
 
   if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    log_error "Virtual environment missing at ${ROOT_DIR}/.venv"
-    log_error "Re-run with --install-deps to rebuild dependencies before reconfigure."
+    log_error "[restart] Virtual environment missing at ${ROOT_DIR}/.venv"
+    log_error "[restart] Re-run with --install-deps to rebuild dependencies before reconfigure."
     exit 1
   fi
 

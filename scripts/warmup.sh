@@ -10,7 +10,7 @@ LOG_FILE="${LOG_DIR}/warmup.log"
 
 log() {
   local line
-  line="[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] $*"
+  line="[warmup] $*"
   echo "${line}" | tee -a "${LOG_FILE}"
 }
 
@@ -34,7 +34,7 @@ elif command -v python3 >/dev/null 2>&1; then
 elif command -v python >/dev/null 2>&1; then
   PY_BIN="$(command -v python)"
 else
-  log "ERROR: Unable to locate python interpreter."
+  log "Unable to locate python interpreter. ✗"
   exit 1
 fi
 
@@ -120,7 +120,7 @@ run_py_tool() {
   return 1
 }
 
-log "Warmup: waiting for server readiness on ${SERVER_ADDR}..."
+log "Waiting for server readiness on ${SERVER_ADDR}..."
 wait_for_ready
 
 log "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
@@ -129,11 +129,11 @@ if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
 fi
 if [[ -z "${max_conn}" || "${max_conn}" =~ [^0-9] ]]; then
-  log "WARNING: MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to 8"
+  log "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to 8 ⚠"
   max_conn=8
 fi
 if (( max_conn <= 0 )); then
-  log "WARNING: MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to 8"
+  log "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to 8 ⚠"
   max_conn=8
 fi
 
@@ -156,7 +156,7 @@ for idx in 1 2; do
   if run_py_tool "${run_log}" "tests/warmup.py" "${PROMPT_MODE_FLAGS[@]}"; then
     log "OK: warmup run ${idx} (see ${run_log})"
   else
-    log "FAIL: warmup run ${idx} (see ${run_log})"
+    log "FAIL: warmup run ${idx} (see ${run_log}) ✗"
     ok=0
   fi
   sleep 1
@@ -167,16 +167,16 @@ for idx in 1 2; do
   if run_py_tool "${run_log}" "tests/bench.py" "${PROMPT_MODE_FLAGS[@]}" "--requests" "${max_conn}" "--concurrency" "${max_conn}"; then
     log "OK: bench run ${idx} (n=${max_conn}, c=${max_conn}) (see ${run_log})"
   else
-    log "FAIL: bench run ${idx} (see ${run_log})"
+    log "FAIL: bench run ${idx} (see ${run_log}) ✗"
     ok=0
   fi
   sleep 1
 done
 
 if [[ "${ok}" -eq 1 ]]; then
-  log "SUCCESS: warmup + bench complete."
+  log "✓ Warmup + bench complete."
 else
-  log "COMPLETE: warmup finished with failures."
+  log "Warmup finished with failures. ⚠"
 fi
 
 exit 0

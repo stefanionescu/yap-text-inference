@@ -15,10 +15,14 @@ restart_basic() {
     LAST_CHAT=$(grep -E "Chat model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Chat model: *(.*)/\1/' || true)
     LAST_TOOL=$(grep -E "Tool model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Tool model: *(.*)/\1/' || true)
     if [ -z "${LAST_CHAT}" ] || [ "${LAST_CHAT}" = "(none)" ]; then
-      LAST_CHAT=$(grep -E "DEPLOY_MODELS=.* CHAT=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*CHAT=([^ ]*).*/\1/' || true)
+      LAST_CHAT=$(grep -E "CHAT=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*CHAT=([^ ]*).*/\1/' || true)
+      # Fallback to MODEL= line when deploying chat-only
+      if [ -z "${LAST_CHAT}" ]; then
+        LAST_CHAT=$(grep -E "MODEL=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*MODEL=([^ ]*).*/\1/' || true)
+      fi
     fi
     if [ -z "${LAST_TOOL}" ] || [ "${LAST_TOOL}" = "(none)" ]; then
-      LAST_TOOL=$(grep -E "DEPLOY_MODELS=.* TOOL=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*TOOL=([^ ]*).*/\1/' || true)
+      LAST_TOOL=$(grep -E "TOOL=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*TOOL=([^ ]*).*/\1/' || true)
     fi
   fi
 
@@ -75,13 +79,13 @@ restart_basic() {
   fi
 
   if [ "${DEPLOY_MODELS}" != "tool" ] && [ -z "${CHAT_MODEL:-}" ]; then
-    log_error "CHAT_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
-    [ -f "${SERVER_LOG}" ] && log_error "Hint: Could not parse chat model from server.log"
+    log_error "[restart] CHAT_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
+    [ -f "${SERVER_LOG}" ] && log_error "[restart] Hint: Could not parse chat model from server.log"
     exit 1
   fi
   if [ "${DEPLOY_MODELS}" != "chat" ] && [ -z "${TOOL_MODEL:-}" ]; then
-    log_error "TOOL_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
-    [ -f "${SERVER_LOG}" ] && log_error "Hint: Could not parse tool model from server.log"
+    log_error "[restart] TOOL_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
+    [ -f "${SERVER_LOG}" ] && log_error "[restart] Hint: Could not parse tool model from server.log"
     exit 1
   fi
 
@@ -89,39 +93,39 @@ restart_basic() {
   if [ "${DEPLOY_MODELS}" != "tool" ]; then
     display_quant="${QUANTIZATION:-<unset>}"
   fi
-  log_info "Restart mode: basic (quant=${display_quant}, deploy=${DEPLOY_MODELS})"
+  log_info "[restart] Quick restart: reusing cached ${display_quant} models (deploy=${DEPLOY_MODELS})"
 
-  log_info "Stopping server (preserving models and dependencies)..."
+  log_info "[restart] Stopping server (preserving models and dependencies)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
-  log_info "Loading environment defaults..."
+  log_info "[restart] Loading environment defaults..."
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 
   if [ "${INSTALL_DEPS}" = "1" ]; then
-    log_info "Installing dependencies as requested (--install-deps)"
+    log_info "[restart] Installing dependencies as requested (--install-deps)"
     "${SCRIPT_DIR}/steps/02_python_env.sh"
     "${SCRIPT_DIR}/steps/03_install_deps.sh"
   else
-    log_info "Skipping dependency installation (default)"
+    log_info "[restart] Skipping dependency installation (default)"
   fi
 
   local SERVER_LOG_PATH="${ROOT_DIR}/server.log"
   touch "${SERVER_LOG_PATH}"
   if [ "${DEPLOY_MODELS}" = "tool" ]; then
-    log_info "Starting server directly with existing models (tool-only classifier deployment)..."
+    log_info "[restart] Starting server directly with existing models (tool-only classifier deployment)..."
   else
-    log_info "Starting server directly with existing models (quant=${QUANTIZATION})..."
+    log_info "[restart] Starting server directly with existing models (quant=${QUANTIZATION})..."
   fi
-  log_info "All logs: tail -f server.log"
-  log_info "To stop: bash scripts/stop.sh"
-  log_info ""
+  log_info "[restart] All logs: tail -f server.log"
+  log_info "[restart] To stop: bash scripts/stop.sh"
+  log_info "[restart] "
 
   mkdir -p "${ROOT_DIR}/.run"
   setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG_PATH}" 2>&1 &
   local BG_PID=$!
   echo "${BG_PID}" > "${ROOT_DIR}/.run/deployment.pid"
 
-  log_info "Server started (PID: ${BG_PID})"
-  log_info "Following logs (Ctrl+C detaches, server continues)..."
+  log_info "[restart] Server started (PID: ${BG_PID})"
+  log_info "[restart] Following logs (Ctrl+C detaches, server continues)..."
   exec tail -n +1 -F "${SERVER_LOG_PATH}"
 }
