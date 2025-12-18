@@ -9,13 +9,13 @@ A high-performance text inference server supporting **both vLLM and TensorRT-LLM
 ## Contents
 
 - [Key Features](#key-features)
-- [Inference Engines](#inference-engines)
 - [Quickstart](#quickstart)
 - [Docker Deployment](#docker-deployment)
 - [Quantization](#quantization)
   - [vLLM Quantization](#vllm-quantization)
   - [TensorRT-LLM Quantization](#tensorrt-llm-quantization)
   - [Pre-Quantized Models](#pre-quantized-models)
+- [Inference Engines](#inference-engines)
 - [Local Test Dependencies](#local-test-dependencies)
 - [Test Clients](#test-clients)
 - [Stopping and Restarting](#stopping-and-restarting)
@@ -31,37 +31,6 @@ A high-performance text inference server supporting **both vLLM and TensorRT-LLM
 - Integrated quantization: AWQ/GPTQ/FP8 for vLLM; INT4-AWQ/FP8/INT8-SQ for TRT-LLM.
 - Built-in resiliency: interrupts/barge-in, heartbeats, idle watchdog (150 s default), and sliding-window rate limits.
 - Secure multi-tenant guardrails via required API keys and a global semaphore driven by `MAX_CONCURRENT_CONNECTIONS`.
-
-## Inference Engines
-
-Yap supports two inference backends:
-
-| Feature | vLLM | TensorRT-LLM |
-|---------|------|--------------|
-| **Default** | No | **Yes** |
-| **Quantization** | AWQ, GPTQ, FP8, INT8 | INT4-AWQ, FP8, INT8-SQ |
-| **Memory Management** | Periodic cache reset | Built-in block reuse |
-| **Pre-built Engines** | No (JIT) | Yes (compiled .engine) |
-| **CUDA Requirement** | 13.x | 13.0+ |
-| **PyTorch** | 2.9.x | 2.9.x |
-| **MoE Support** | Via FLA | Native quantize_moe.py |
-
-Select the engine with CLI flags or environment variable:
-
-```bash
-# TensorRT-LLM (default)
-bash scripts/main.sh 4bit <chat_model> <tool_model>
-bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
-
-# vLLM
-bash scripts/main.sh --vllm 4bit <chat_model> <tool_model>
-
-# Or via environment variable
-export INFERENCE_ENGINE=vllm
-bash scripts/main.sh 4bit <chat_model> <tool_model>
-```
-
-> **Engine switching:** Changing engines (e.g., `--trt` to `--vllm`) triggers a **full environment wipe** including HF caches, pip deps, quantized models, and engine artifacts. This ensures clean state transitions.
 
 ## Quickstart
 
@@ -220,6 +189,37 @@ bash scripts/main.sh --vllm chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit
 > **Note:** The code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct backend. Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos—no re-quantization step is needed.
 
 > **TRT pre-quantized models:** These are checkpoints, not pre-built engines. You still need to set `TRT_MAX_BATCH_SIZE` because the engine is built locally from the checkpoint.
+
+## Inference Engines
+
+Yap supports two inference backends:
+
+| Feature | vLLM | TensorRT-LLM |
+|---------|------|--------------|
+| **Default** | No | **Yes** |
+| **Quantization** | AWQ, GPTQ, FP8, INT8 | INT4-AWQ, FP8, INT8-SQ |
+| **Memory Management** | Periodic cache reset | Built-in block reuse |
+| **Pre-built Engines** | No (JIT) | Yes (compiled .engine) |
+| **CUDA Requirement** | 13.x | 13.0+ |
+| **PyTorch** | 2.9.x | 2.9.x |
+| **MoE Support** | Via FLA | Native quantize_moe.py |
+
+Select the engine with CLI flags or environment variable:
+
+```bash
+# TensorRT-LLM (default)
+bash scripts/main.sh 4bit <chat_model> <tool_model>
+bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
+
+# vLLM
+bash scripts/main.sh --vllm 4bit <chat_model> <tool_model>
+
+# Or via environment variable
+export INFERENCE_ENGINE=vllm
+bash scripts/main.sh 4bit <chat_model> <tool_model>
+```
+
+> **Engine switching:** Changing engines (e.g., `--trt` to `--vllm`) triggers a **full environment wipe** including HF caches, pip deps, quantized models, and engine artifacts. This ensures clean state transitions.
 
 ## Local Test Dependencies
 

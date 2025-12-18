@@ -22,6 +22,9 @@ TRT_PYTORCH_INDEX_URL="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl
 # MPI runtime pin for TRT-LLM (runtime-only, prevents CUDA downgrade)
 MPI_VERSION_PIN="${MPI_VERSION_PIN:-4.1.6-7ubuntu2}"
 
+# MPI is required for TRT-LLM multi-GPU inference and quantization workflows
+NEED_MPI="${NEED_MPI:-1}"
+
 # TensorRT-LLM repository for quantization scripts
 # IMPORTANT: We always clone a specific tag matching TRT_VERSION, not main branch.
 # The tag contains the correct quantization/requirements.txt for that version.
@@ -245,7 +248,7 @@ trt_validate_batch_size() {
 trt_export_env() {
   export TRT_VERSION TRT_PIP_SPEC TRT_EXTRA_INDEX_URL
   export TRT_PYTORCH_VERSION TRT_TORCHVISION_VERSION TRT_PYTORCH_INDEX_URL
-  export MPI_VERSION_PIN
+  export MPI_VERSION_PIN NEED_MPI
   export TRT_REPO_URL TRT_REPO_TAG TRT_REPO_DIR
   export GPU_SM_ARCH TRT_FP8_SM_ARCHS
   export TRT_MAX_BATCH_SIZE TRT_MAX_INPUT_LEN TRT_MAX_OUTPUT_LEN TRT_DTYPE
