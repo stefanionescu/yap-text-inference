@@ -13,6 +13,19 @@ apply_engine_defaults() {
   if [ -n "${VLLM_ATTENTION_BACKEND:-}" ]; then
     export VLLM_ATTENTION_BACKEND
   fi
+
+  # TRT engine: load cached engine directory if available
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+    local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
+    if [ -f "${trt_env_file}" ]; then
+      # shellcheck disable=SC1090
+      source "${trt_env_file}"
+      if [ -n "${TRTLLM_ENGINE_DIR:-}" ]; then
+        export TRT_ENGINE_DIR="${TRTLLM_ENGINE_DIR}"
+        log_info "[engine] Loaded TRT engine path: ${TRT_ENGINE_DIR}"
+      fi
+    fi
+  fi
 }
 
 
