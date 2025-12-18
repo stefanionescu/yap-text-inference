@@ -4,7 +4,7 @@
 
 # VLLM 0.12.0 with CUDA 13.0 support (PyPI wheel is CUDA 12, need cu130 wheel from GitHub)
 vllm @ https://github.com/vllm-project/vllm/releases/download/v0.12.0/vllm-0.12.0+cu130-cp38-abi3-manylinux_2_31_x86_64.whl
-torch==2.9.0 ; sys_platform == 'linux'
+torch==2.9.0+cu130 ; sys_platform == 'linux'
 llmcompressor==0.8.1
 autoawq==0.2.9
 fla-core>=0.4.0

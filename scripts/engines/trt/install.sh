@@ -8,8 +8,8 @@
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-# All versions are centralized here and in scripts/lib/env/trt.sh
 # TRT-LLM 1.2.0rc5 requires CUDA 13.0, torch 2.9.x, and Python 3.10
+# PyTorch version is pinned in requirements-trt.txt (torch==2.9.1+cu130)
 #
 # IMPORTANT: Python 3.11/3.12 do NOT work reliably with TRT-LLM 1.2.0rc5!
 # See ADVANCED.md for details on known issues.
@@ -23,9 +23,6 @@ TRT_REQUIRED_PYTHON_VERSION="${TRT_REQUIRED_PYTHON_VERSION:-3.10}"
 export TRT_REQUIRED_PYTHON_VERSION
 
 # Derived configurations
-TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.1+cu130}"
-TRT_TORCHVISION_VERSION="${TRT_TORCHVISION_VERSION:-0.24.1+cu130}"
-TRT_PYTORCH_INDEX_URL="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
 TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 
@@ -74,34 +71,6 @@ trt_ensure_cuda_home() {
   esac
   
   log_info "[trt] CUDA_HOME: ${CUDA_HOME}"
-  return 0
-}
-
-# =============================================================================
-# PYTORCH INSTALLATION
-# =============================================================================
-
-trt_install_pytorch() {
-  local torch_version="${TRT_PYTORCH_VERSION}"
-  local torchvision_version="${TRT_TORCHVISION_VERSION}"
-  local torchaudio_version="${TRT_TORCHAUDIO_VERSION:-}"
-  local torch_idx="${TRT_PYTORCH_INDEX_URL}"
-  
-  log_info "[trt] Installing PyTorch ${torch_version} + torchvision ${torchvision_version}${torchaudio_version:+ + torchaudio ${torchaudio_version}} from ${torch_idx}"
-  
-  local pkgs=("torch==${torch_version}")
-  if [ -n "${torchvision_version}" ]; then
-    pkgs+=("torchvision==${torchvision_version}")
-  fi
-  if [ -n "${torchaudio_version}" ]; then
-    pkgs+=("torchaudio==${torchaudio_version}")
-  fi
-  
-  pip install --index-url "${torch_idx}" --force-reinstall "${pkgs[@]}" || {
-    log_err "[trt] Failed to install PyTorch"
-    return 1
-  }
-  
   return 0
 }
 
@@ -436,20 +405,18 @@ trt_install_quant_requirements() {
 # =============================================================================
 
 # Complete TRT-LLM installation sequence
-# Order: PyTorch -> requirements.txt -> TensorRT-LLM -> validate -> clone repo
+# Order: requirements.txt (with torch) -> TensorRT-LLM -> validate -> clone repo
+# NOTE: PyTorch is installed via requirements-trt.txt (torch==2.9.1+cu130)
 trt_full_install() {
   log_info "[trt] Starting TensorRT-LLM full installation..."
   
   # 1. Ensure CUDA is available
   trt_ensure_cuda_home || return 1
   
-  # 2. Install PyTorch with CUDA support FIRST
-  trt_install_pytorch || return 1
-  
-  # 3. Install application dependencies (requirements-trt.txt)
+  # 2. Install application dependencies (requirements-trt.txt includes torch==2.9.1+cu130)
   # This is handled by 03_install_deps.sh calling install_requirements_without_flashinfer
   
-  # 4. Install TensorRT-LLM LAST
+  # 3. Install TensorRT-LLM
   trt_install_tensorrt_llm || return 1
   
   # 5. Validate installation
