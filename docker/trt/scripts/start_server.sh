@@ -13,7 +13,7 @@ cd /app
 
 # Log key environment variables
 log_info "[trt] GPU=${DETECTED_GPU_NAME:-unknown}"
-log_info "[trt] DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
+log_info "[trt] DEPLOY_MODE=${DEPLOY_MODE:-both}"
 if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
   log_info "[trt] CHAT_MODEL=${CHAT_MODEL:-none} (tokenizer)"
   log_info "[trt] TRT_ENGINE_REPO=${TRT_ENGINE_REPO:-none}"

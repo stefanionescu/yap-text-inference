@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
 # Deployment selection: set at build time via Dockerfile ARG/ENV
-# DEPLOY_MODELS, CHAT_MODEL, TOOL_MODEL are configured when the image is built
-export DEPLOY_MODELS=${DEPLOY_MODELS:-both}
-case "${DEPLOY_MODELS}" in
+# DEPLOY_MODE, CHAT_MODEL, TOOL_MODEL are configured when the image is built
+export DEPLOY_MODE=${DEPLOY_MODE:-both}
+case "${DEPLOY_MODE}" in
   both|chat|tool) ;;
-  *) log_warn "[trt] Invalid DEPLOY_MODELS='${DEPLOY_MODELS}', defaulting to 'both'"; export DEPLOY_MODELS=both;;
+  *) log_warn "[trt] Invalid DEPLOY_MODE='${DEPLOY_MODE}', defaulting to 'both'"; export DEPLOY_MODE=both;;
 esac
 
 # Convenience flags
 DEPLOY_CHAT=0; DEPLOY_TOOL=0
-if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then DEPLOY_CHAT=1; fi
-if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then DEPLOY_TOOL=1; fi
+if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then DEPLOY_CHAT=1; fi
+if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then DEPLOY_TOOL=1; fi
 export DEPLOY_CHAT DEPLOY_TOOL
 
 # Models are configured at build time - no defaults, image knows which models to use

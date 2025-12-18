@@ -8,7 +8,7 @@ cd /app
 
 # Log key environment variables
 log_info "[vllm] GPU=${DETECTED_GPU_NAME:-unknown} QUANTIZATION=${QUANTIZATION:-awq}"
-log_info "[vllm] DEPLOY_MODELS=${DEPLOY_MODELS:-both}"
+log_info "[vllm] DEPLOY_MODE=${DEPLOY_MODE:-both}"
 if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
   log_info "[vllm] CHAT_MODEL=${CHAT_MODEL:-none}"
 fi

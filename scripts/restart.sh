@@ -141,33 +141,6 @@ if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
   exit 1
 fi
 
-# Check if venv exists (only required for local models or first run)
-if [ ! -d "${ROOT_DIR}/.venv" ]; then
-  log_error "[restart] No virtual environment found at ${ROOT_DIR}/.venv"
-  log_error "[restart] For local models: Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
-  log_error "[restart] For HF or other remote models: run full deployment first to cache AWQ artifacts"
-  exit 1
-fi
-
-# Optional dependency refresh
-if [ "${INSTALL_DEPS}" = "1" ]; then
-  log_info "[restart] Reinstalling all dependencies from scratch (--install-deps)"
-  
-  # Wipe all existing pip dependencies and caches for clean install
-  # Preserves models, HF cache, TRT repo
-  wipe_dependencies_for_reinstall
-  
-  # Ensure correct Python version is available (TRT needs 3.10, vLLM uses system python)
-  # Explicitly pass INFERENCE_ENGINE to subprocess
-  INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
-    log_err "[restart] Failed to set up Python environment"
-    exit 1
-  }
-  
-  # Reinstall all dependencies from scratch (force mode)
-  FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
-fi
-
 # Report detected model sources
 log_info "[restart] Detected model sources for restart:"
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
@@ -181,11 +154,35 @@ if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
   log_info "[restart]   Tool: classifier weights reused directly"
 fi
 
-# Light stop - preserve models and dependencies
+# Light stop - preserve models and dependencies (BEFORE deps install)
 log_info "[restart] Stopping server (preserving models and dependencies)..."
 NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
+# Check if venv exists (skip if --install-deps will create it)
+if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${ROOT_DIR}/.venv" ]; then
+  log_error "[restart] No virtual environment found at ${ROOT_DIR}/.venv"
+  log_error "[restart] Run with --install-deps to create it, or run full deployment first"
+  exit 1
+fi
+
 restart_setup_env_for_awq "${DEPLOY_MODE}"
+# NOTE: restart_apply_defaults_and_deps handles --install-deps for AWQ path
 restart_apply_defaults_and_deps
 restart_push_cached_awq_models "${DEPLOY_MODE}"
+
+# TRT engine: validate engine directory exists before starting server
+if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
+  if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
+    log_error "[restart] TRT engine directory not found or not set."
+    log_error "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
+    log_error "[restart] "
+    log_error "[restart] TensorRT-LLM requires a pre-built engine. Options:"
+    log_error "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
+    log_error "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
+    log_error "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
+    exit 1
+  fi
+  log_info "[restart] TRT engine validated: ${TRT_ENGINE_DIR}"
+fi
+
 restart_server_background

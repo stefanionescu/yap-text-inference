@@ -6,13 +6,13 @@ apply_limits_and_timeouts() {
   # Context and output limits
   export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5525}
   export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
-  if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
+  if [ "${DEPLOY_MODE:-both}" = "both" ]; then
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
   else
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.90}
   fi
 
-  if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
+  if [ "${DEPLOY_MODE:-both}" = "both" ]; then
     export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
   else
     export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.90}

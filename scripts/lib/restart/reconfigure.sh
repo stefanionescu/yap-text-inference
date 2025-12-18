@@ -6,7 +6,7 @@ RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${RESTART_LIB_DIR}/../common/model_detect.sh"
 
 _restart_resolve_deploy_mode() {
-  local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-${DEPLOY_MODELS:-both}}}"
+  local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-both}}"
   candidate="${candidate,,}"
   case "${candidate}" in
     both|chat|tool)
@@ -144,7 +144,7 @@ _restart_load_previous_config() {
   PREV_TOOL_MODEL=""
   PREV_QUANTIZATION=""
   PREV_CHAT_QUANTIZATION=""
-  PREV_DEPLOY_MODELS=""
+  PREV_DEPLOY_MODE=""
   PREV_DEPLOY_CHAT=0
   PREV_DEPLOY_TOOL=0
 
@@ -159,7 +159,7 @@ _restart_load_previous_config() {
   local cur_tool="${TOOL_MODEL:-}"
   local cur_quant="${QUANTIZATION:-}"
   local cur_chat_quant="${CHAT_QUANTIZATION:-}"
-  local cur_deploy="${DEPLOY_MODELS:-}"
+  local cur_deploy="${DEPLOY_MODE:-}"
   # shellcheck disable=SC1090
   source "${last_env}" || true
 
@@ -167,8 +167,8 @@ _restart_load_previous_config() {
   PREV_TOOL_MODEL="${TOOL_MODEL:-}"
   PREV_QUANTIZATION="${QUANTIZATION:-}"
   PREV_CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
-  PREV_DEPLOY_MODELS="${DEPLOY_MODELS:-}"
-  case "${PREV_DEPLOY_MODELS}" in
+  PREV_DEPLOY_MODE="${DEPLOY_MODE:-}"
+  case "${PREV_DEPLOY_MODE}" in
     both) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=1 ;;
     chat) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=0 ;;
     tool) PREV_DEPLOY_CHAT=0; PREV_DEPLOY_TOOL=1 ;;
@@ -179,7 +179,7 @@ _restart_load_previous_config() {
   TOOL_MODEL="${cur_tool}"
   QUANTIZATION="${cur_quant}"
   CHAT_QUANTIZATION="${cur_chat_quant}"
-  DEPLOY_MODELS="${cur_deploy}"
+  DEPLOY_MODE="${cur_deploy}"
 
 }
 
@@ -276,11 +276,11 @@ restart_reconfigure_models() {
 
   local target_deploy
   target_deploy="$(_restart_resolve_deploy_mode)" || exit 1
-  export DEPLOY_MODELS="${target_deploy}"
+  export DEPLOY_MODE="${target_deploy}"
 
   local deploy_chat deploy_tool
   deploy_chat=0; deploy_tool=0
-  case "${DEPLOY_MODELS}" in
+  case "${DEPLOY_MODE}" in
     both) deploy_chat=1; deploy_tool=1 ;;
     chat) deploy_chat=1 ;;
     tool) deploy_tool=1 ;;

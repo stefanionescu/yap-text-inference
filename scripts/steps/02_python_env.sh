@@ -67,11 +67,11 @@ ensure_python_for_engine() {
   if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
     # TRT requires Python 3.10 specifically
     if command -v "python${TRT_REQUIRED_PYTHON_VERSION}" >/dev/null 2>&1; then
-      local py_version
+      local py_version py_full
       py_version=$("python${TRT_REQUIRED_PYTHON_VERSION}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+      py_full=$("python${TRT_REQUIRED_PYTHON_VERSION}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null)
       if [ "${py_version}" = "${TRT_REQUIRED_PYTHON_VERSION}" ]; then
-        log_info "[python] Python ${TRT_REQUIRED_PYTHON_VERSION} available for TRT engine"
-        "python${TRT_REQUIRED_PYTHON_VERSION}" --version
+        log_info "[python] Python ${py_full} available for TRT engine"
         return 0
       fi
     fi
@@ -81,7 +81,6 @@ ensure_python_for_engine() {
     log_info "[python] Attempting to install Python ${TRT_REQUIRED_PYTHON_VERSION}..."
     
     if install_python310_deadsnakes; then
-      "python${TRT_REQUIRED_PYTHON_VERSION}" --version
       return 0
     else
       log_err "[python] Cannot proceed without Python ${TRT_REQUIRED_PYTHON_VERSION}"

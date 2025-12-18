@@ -33,7 +33,7 @@ Environment Variables:
         - QUANTIZATION: Quantization mode (awq, fp8, gptq, etc.)
     
     Optional:
-        - DEPLOY_MODELS: 'both', 'chat', or 'tool' (default: 'both')
+        - DEPLOY_MODE: 'both', 'chat', or 'tool' (default: 'both')
         - INFERENCE_ENGINE: 'vllm' or 'trt' (default: 'trt')
         - TOOL_MODEL: Classifier model for tool routing
 """

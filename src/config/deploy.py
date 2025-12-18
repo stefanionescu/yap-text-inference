@@ -10,7 +10,7 @@ The deployment mode affects:
 - Available WebSocket message handlers
 
 Environment Variables:
-    DEPLOY_MODELS: Deployment mode (default: 'both')
+    DEPLOY_MODE: Deployment mode (default: 'both')
         - 'both': Deploy chat LLM and tool classifier
         - 'chat': Deploy only the chat LLM
         - 'tool': Deploy only the tool classifier
@@ -33,9 +33,9 @@ import os
 # Controls which inference components are loaded. This affects memory usage
 # and available features.
 
-DEPLOY_MODELS = (os.getenv("DEPLOY_MODELS", "both") or "both").lower()
-DEPLOY_CHAT = DEPLOY_MODELS in ("both", "chat")  # Enable chat LLM
-DEPLOY_TOOL = DEPLOY_MODELS in ("both", "tool")  # Enable tool classifier
+DEPLOY_MODE = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
+DEPLOY_CHAT = DEPLOY_MODE in ("both", "chat")  # Enable chat LLM
+DEPLOY_TOOL = DEPLOY_MODE in ("both", "tool")  # Enable tool classifier
 
 # ============================================================================
 # Model Selections
@@ -47,7 +47,7 @@ TOOL_MODEL = os.getenv("TOOL_MODEL")  # Required if DEPLOY_TOOL=True
 
 
 __all__ = [
-    "DEPLOY_MODELS",
+    "DEPLOY_MODE",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
     "CHAT_MODEL",

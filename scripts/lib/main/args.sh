@@ -107,13 +107,13 @@ main_parse_models() {
   # Initialize defaults
   CHAT_MODEL_NAME=""
   TOOL_MODEL_NAME=""
-  DEPLOY_MODE_SELECTED="${DEPLOY_MODELS:-both}"
+  DEPLOY_MODE_SELECTED="${DEPLOY_MODE:-both}"
   
   # Validate initial deploy mode
   case "${DEPLOY_MODE_SELECTED}" in
     both|chat|tool) ;;
     *)
-      log_warn "[main] Invalid DEPLOY_MODELS='${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
+      log_warn "[main] Invalid DEPLOY_MODE='${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
       DEPLOY_MODE_SELECTED="both"
       ;;
   esac
@@ -165,23 +165,32 @@ main_parse_models() {
     return 1
   fi
 
-  # Check for trailing deploy mode override
+  # Check for trailing deploy mode override or warn about unknown trailing args
   if [ ${#args[@]} -gt 0 ]; then
     case "${args[0]}" in
       chat|tool|both)
         DEPLOY_MODE_SELECTED="${args[0]}"
+        args=("${args[@]:1}")
         ;;
     esac
+    # Warn about any remaining unknown args
+    for arg in "${args[@]}"; do
+      if [[ "${arg}" == -* ]]; then
+        log_warn "[main] Unknown flag '${arg}' ignored"
+      else
+        log_warn "[main] Unknown argument '${arg}' ignored"
+      fi
+    done
   fi
 
   # Final normalization
   case "${DEPLOY_MODE_SELECTED:-both}" in
     both|chat|tool)
-      export DEPLOY_MODELS="${DEPLOY_MODE_SELECTED:-both}"
+      export DEPLOY_MODE="${DEPLOY_MODE_SELECTED:-both}"
       ;;
     *)
       log_warn "[main] Invalid deploy_mode '${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
-      export DEPLOY_MODELS=both
+      export DEPLOY_MODE=both
       ;;
   esac
 
@@ -191,10 +200,10 @@ main_parse_models() {
 
 # Export models to environment variables
 main_export_models() {
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     export CHAT_MODEL="${CHAT_MODEL_NAME}"
   fi
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
     export TOOL_MODEL="${TOOL_MODEL_NAME}"
   fi
 }

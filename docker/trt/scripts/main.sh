@@ -56,7 +56,7 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
 else
   log_info "[main] === Yap Text Inference Configuration (Tool Classifier) ==="
 fi
-log_info "[main] Deploy mode: ${DEPLOY_MODELS}"
+log_info "[main] Deploy mode: ${DEPLOY_MODE}"
 if [ "${DEPLOY_CHAT}" = "1" ]; then
   log_info "[main] Chat model (tokenizer): ${CHAT_MODEL}"
   log_info "[main] TRT engine repo: ${TRT_ENGINE_REPO:-<mount required>}"

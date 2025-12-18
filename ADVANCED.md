@@ -455,7 +455,7 @@ All CLI harnesses run against the same WebSocket stack; use them to validate beh
 > `both` (default) sends the chat persona prompt.  
 > `chat` forces chat-only (identical to `both`).  
 > `tool` disables chat prompts entirely (for classifier-only tool deployments).  
-> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. `scripts/warmup.sh` auto-detects `DEPLOY_MODELS` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
+> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. `scripts/warmup.sh` auto-detects `DEPLOY_MODE` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
 
 ### Warmup Test Client
 

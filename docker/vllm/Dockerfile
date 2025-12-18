@@ -72,7 +72,7 @@ FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu24.04
 
 # Model configuration - set at build time, downloaded at runtime
 # These are baked into the image so you don't specify them when running
-ARG DEPLOY_MODELS="both"
+ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
 
@@ -84,7 +84,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Configured models - these are set at build time and used at runtime
 # The container will automatically download these specific models on startup
-ENV DEPLOY_MODELS=${DEPLOY_MODELS}
+ENV DEPLOY_MODE=${DEPLOY_MODE}
 ENV CHAT_MODEL=${CHAT_MODEL}
 ENV TOOL_MODEL=${TOOL_MODEL}
 

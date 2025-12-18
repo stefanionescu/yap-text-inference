@@ -60,7 +60,7 @@ fi
 main_export_models
 
 # Validate --push-quant prerequisites early (before any heavy operations)
-validate_push_quant_prereqs "${DEPLOY_MODELS:-both}"
+validate_push_quant_prereqs "${DEPLOY_MODE:-both}"
 
 # Early model validation - fail fast before any heavy operations
 log_info "[model] Validating model configuration..."
@@ -74,7 +74,7 @@ CHAT_QUANT_HINT="$(main_get_quant_hint)"
 main_apply_quantization "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
 
 # Snapshot desired config for smart restart detection
-DESIRED_DEPLOY_MODE="${DEPLOY_MODELS:-both}"
+DESIRED_DEPLOY_MODE="${DEPLOY_MODE:-both}"
 DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
 DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
 DESIRED_QUANTIZATION="${QUANTIZATION:-}"

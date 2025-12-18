@@ -100,6 +100,28 @@ wipe_dependencies_for_reinstall() {
   log_info "[deps] ✓ All dependency caches wiped. Models, HF cache, TRT repo preserved."
 }
 
+# Shared install-deps handler used by both generic and AWQ restart paths
+restart_run_install_deps_if_needed() {
+  if [ "${INSTALL_DEPS}" != "1" ]; then
+    return 0
+  fi
+  
+  log_info "[restart] Reinstalling all dependencies from scratch (--install-deps)"
+  
+  # Wipe all existing pip dependencies and caches for clean install
+  # Preserves models, HF cache, TRT repo (if same engine)
+  wipe_dependencies_for_reinstall
+  
+  # Ensure correct Python version is available (TRT needs 3.10, vLLM uses system python)
+  INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
+    log_err "[restart] Failed to set up Python environment"
+    exit 1
+  }
+  
+  # Reinstall all dependencies from scratch (force mode)
+  FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
+}
+
 restart_basic() {
   local SERVER_LOG LAST_QUANT LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_ENV_FILE
   SERVER_LOG="${ROOT_DIR}/server.log"
@@ -127,7 +149,7 @@ restart_basic() {
     # shellcheck disable=SC1090
     source "${LAST_ENV_FILE}" || true
     LAST_QUANT="${LAST_QUANT:-${QUANTIZATION:-}}"
-    LAST_DEPLOY="${LAST_DEPLOY:-${DEPLOY_MODELS:-}}"
+    LAST_DEPLOY="${LAST_DEPLOY:-${DEPLOY_MODE:-}}"
     LAST_CHAT="${LAST_CHAT:-${CHAT_MODEL:-}}"
     LAST_TOOL="${LAST_TOOL:-${TOOL_MODEL:-}}"
   fi
@@ -157,85 +179,70 @@ restart_basic() {
   # shellcheck disable=SC2153  # DEPLOY_MODE is set by the caller via env
   local SELECTED_DEPLOY="${DEPLOY_MODE}"
   if [ -z "${SELECTED_DEPLOY}" ] || ! [[ "${SELECTED_DEPLOY}" =~ ^(both|chat|tool)$ ]]; then
-    SELECTED_DEPLOY="${DEPLOY_MODELS:-${LAST_DEPLOY:-both}}"
+    SELECTED_DEPLOY="${DEPLOY_MODE:-${LAST_DEPLOY:-both}}"
   fi
 
-  if [ "${DEPLOY_MODELS}" = "tool" ]; then
+  if [ "${DEPLOY_MODE}" = "tool" ]; then
     unset QUANTIZATION CHAT_QUANTIZATION
   else
     # Default to "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
     export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-8bit}}"
   fi
-  export DEPLOY_MODELS="${SELECTED_DEPLOY}"
+  export DEPLOY_MODE="${SELECTED_DEPLOY}"
 
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "chat" ]; then
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     export CHAT_MODEL="${CHAT_MODEL:-${LAST_CHAT:-}}"
   fi
-  if [ "${DEPLOY_MODELS}" = "both" ] || [ "${DEPLOY_MODELS}" = "tool" ]; then
+  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
     export TOOL_MODEL="${TOOL_MODEL:-${LAST_TOOL:-}}"
   fi
 
-  if [ "${DEPLOY_MODELS}" != "tool" ] && [ -z "${CHAT_MODEL:-}" ]; then
-    log_error "[restart] CHAT_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
+  if [ "${DEPLOY_MODE}" != "tool" ] && [ -z "${CHAT_MODEL:-}" ]; then
+    log_error "[restart] CHAT_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
     [ -f "${SERVER_LOG}" ] && log_error "[restart] Hint: Could not parse chat model from server.log"
     exit 1
   fi
-  if [ "${DEPLOY_MODELS}" != "chat" ] && [ -z "${TOOL_MODEL:-}" ]; then
-    log_error "[restart] TOOL_MODEL is required for DEPLOY_MODELS='${DEPLOY_MODELS}'"
+  if [ "${DEPLOY_MODE}" != "chat" ] && [ -z "${TOOL_MODEL:-}" ]; then
+    log_error "[restart] TOOL_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
     [ -f "${SERVER_LOG}" ] && log_error "[restart] Hint: Could not parse tool model from server.log"
     exit 1
   fi
 
-  local display_quant="${QUANTIZATION:-tool-only}"
-  if [ "${DEPLOY_MODELS}" != "tool" ]; then
-    display_quant="${QUANTIZATION:-<unset>}"
+  if [ "${DEPLOY_MODE}" = "tool" ]; then
+    log_info "[restart] Quick restart: tool-only classifier deployment"
+  else
+    log_info "[restart] Quick restart: reusing cached ${QUANTIZATION:-8bit} models (deploy=${DEPLOY_MODE})"
   fi
-  log_info "[restart] Quick restart: reusing cached ${display_quant} models (deploy=${DEPLOY_MODELS})"
 
+  # 1. Stop server first (before any deps/env work)
   log_info "[restart] Stopping server (preserving models and dependencies)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
+  # 2. Handle --install-deps (wipe and reinstall all dependencies)
+  restart_run_install_deps_if_needed
+
+  # 3. Load environment defaults (after deps are installed)
   log_info "[restart] Loading environment defaults..."
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 
-  # TRT engine: validate engine directory exists before starting server
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODELS}" != "tool" ]; then
+  # 4. TRT engine: validate engine directory exists before starting server
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
     if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
       log_error "[restart] TRT engine directory not found or not set."
       log_error "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
       log_error "[restart] "
       log_error "[restart] TensorRT-LLM requires a pre-built engine. Options:"
       log_error "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
-      log_error "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODELS}"
+      log_error "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
       log_error "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
       exit 1
     fi
     log_info "[restart] TRT engine validated: ${TRT_ENGINE_DIR}"
   fi
 
-  if [ "${INSTALL_DEPS}" = "1" ]; then
-    log_info "[restart] Reinstalling all dependencies from scratch (--install-deps)"
-    
-    # Wipe all existing pip dependencies and caches for clean install
-    # Preserves models, HF cache, TRT repo
-    wipe_dependencies_for_reinstall
-    
-    # Ensure correct Python version is available (TRT needs 3.10, vLLM uses system python)
-    # Explicitly pass INFERENCE_ENGINE to subprocess
-    INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
-      log_err "[restart] Failed to set up Python environment"
-      exit 1
-    }
-    
-    # Reinstall all dependencies from scratch (force mode)
-    FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
-  else
-    log_info "[restart] Skipping dependency installation (default)"
-  fi
-
   local SERVER_LOG_PATH="${ROOT_DIR}/server.log"
   touch "${SERVER_LOG_PATH}"
-  if [ "${DEPLOY_MODELS}" = "tool" ]; then
+  if [ "${DEPLOY_MODE}" = "tool" ]; then
     log_info "[restart] Starting server directly with existing models (tool-only classifier deployment)..."
   else
     log_info "[restart] Starting server directly with existing models (quant=${QUANTIZATION})..."
