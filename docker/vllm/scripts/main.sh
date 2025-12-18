@@ -51,7 +51,7 @@ source "${SCRIPT_DIR}/bootstrap.sh"
 # Display final configuration
 log_info "[main] "
 log_info "[main] === Yap Text Inference Configuration (vLLM) ==="
-log_info "[main] Deploy mode: ${DEPLOY_MODELS}"
+log_info "[main] Deploy mode: ${DEPLOY_MODE}"
 if [ "${DEPLOY_CHAT}" = "1" ]; then
   log_info "[main] Chat model: ${CHAT_MODEL}"
 fi

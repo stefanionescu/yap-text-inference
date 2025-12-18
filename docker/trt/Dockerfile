@@ -9,7 +9,7 @@ SHELL ["/bin/bash", "-lc"]
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Model configuration - set at build time
-ARG DEPLOY_MODELS="both"
+ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
 
@@ -100,7 +100,7 @@ RUN chmod +x /app/scripts/*.sh
 # Production environment setup
 # ----------------------------------------------------------------------------
 # Configure models - these are set at build time and used at runtime
-ENV DEPLOY_MODELS=${DEPLOY_MODELS}
+ENV DEPLOY_MODE=${DEPLOY_MODE}
 ENV CHAT_MODEL=${CHAT_MODEL}
 ENV TOOL_MODEL=${TOOL_MODEL}
 

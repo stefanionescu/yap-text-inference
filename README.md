@@ -125,11 +125,11 @@ Deploy the server in Docker using the AWQ stack in `docker/`:
 
 ```bash
 # Build the image
-DOCKER_USERNAME=youruser DEPLOY_MODELS=both ./docker/build.sh
+DOCKER_USERNAME=youruser DEPLOY_MODE=both ./docker/build.sh
 
 # Run (chat + classifier)
 docker run -d --gpus all --name yap-awq \
-  -e DEPLOY_MODELS=both \
+  -e DEPLOY_MODE=both \
   -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_your_api_token \
@@ -137,16 +137,16 @@ docker run -d --gpus all --name yap-awq \
   -p 8000:8000 youruser/yap-text-inference-awq:both
 
 # Chat-only (uses default model: cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit)
-DOCKER_USERNAME=youruser DEPLOY_MODELS=chat ./docker/build.sh
+DOCKER_USERNAME=youruser DEPLOY_MODE=chat ./docker/build.sh
 docker run -d --gpus all --name yap-chat \
-  -e DEPLOY_MODELS=chat \
+  -e DEPLOY_MODE=chat \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 youruser/yap-text-inference-awq:chat
 
 # Classifier-only
-DOCKER_USERNAME=youruser DEPLOY_MODELS=tool ./docker/build.sh
+DOCKER_USERNAME=youruser DEPLOY_MODE=tool ./docker/build.sh
 docker run -d --gpus all --name yap-tool \
-  -e DEPLOY_MODELS=tool \
+  -e DEPLOY_MODE=tool \
   -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 youruser/yap-text-inference-awq:tool

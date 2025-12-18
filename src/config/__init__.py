@@ -15,7 +15,7 @@ Functions have been moved to src/helpers/.
 """
 
 from .deploy import (
-    DEPLOY_MODELS,
+    DEPLOY_MODE,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
     CHAT_MODEL,
@@ -234,7 +234,7 @@ __all__ = [
     "configure_runtime_env",
     "validate_env",
     # deploy
-    "DEPLOY_MODELS",
+    "DEPLOY_MODE",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
     "CHAT_MODEL",

@@ -147,7 +147,7 @@ if _env_cap is not None:
     BATCH_SCALE_GPU_FRAC_CAP = float(_env_cap)
 else:
     # Replicate CHAT_GPU_FRAC logic to avoid circular import with env.py
-    _deploy_models = (os.getenv("DEPLOY_MODELS", "both") or "both").lower()
+    _deploy_models = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
     _deploy_chat = _deploy_models in ("both", "chat")
     _deploy_tool = _deploy_models in ("both", "tool")
     if _deploy_chat and _deploy_tool:

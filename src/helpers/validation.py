@@ -37,9 +37,9 @@ def validate_env() -> None:
     """Validate required configuration once during startup."""
     errors: list[str] = []
     if DEPLOY_CHAT and not CHAT_MODEL:
-        errors.append("CHAT_MODEL is required when DEPLOY_MODELS is 'both' or 'chat'")
+        errors.append("CHAT_MODEL is required when DEPLOY_MODE is 'both' or 'chat'")
     if DEPLOY_TOOL and not TOOL_MODEL:
-        errors.append("TOOL_MODEL is required when DEPLOY_MODELS is 'both' or 'tool'")
+        errors.append("TOOL_MODEL is required when DEPLOY_MODE is 'both' or 'tool'")
     if DEPLOY_TOOL and TOOL_MODEL and not is_classifier_model(TOOL_MODEL):
         errors.append("TOOL_MODEL must be one of the classifier models (vLLM tool engines are disabled)")
     

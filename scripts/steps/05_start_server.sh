@@ -38,16 +38,16 @@ fi
 # Log key env knobs
 log_info "[server] GPU=${DETECTED_GPU_NAME:-unknown}"
 
-if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
+if [ "${DEPLOY_MODE:-both}" = "both" ]; then
   log_info "[server] CHAT=${CHAT_MODEL:-}"
   log_info "[server] TOOL=${TOOL_MODEL:-}"
-elif [ "${DEPLOY_MODELS:-both}" = "chat" ]; then
+elif [ "${DEPLOY_MODE:-both}" = "chat" ]; then
   log_info "[server] MODEL=${CHAT_MODEL:-}"
 else
   log_info "[server] MODEL=${TOOL_MODEL:-}"
 fi
 
-if [ "${DEPLOY_MODELS:-both}" = "tool" ]; then
+if [ "${DEPLOY_MODE:-both}" = "tool" ]; then
   log_info "[server] QUANT_MODE=tool-only (classifier-only)"
 else
   log_info "[server] QUANT_MODE=${QUANT_MODE:-auto}"

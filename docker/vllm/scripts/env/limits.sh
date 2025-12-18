@@ -9,7 +9,7 @@ export HISTORY_MAX_TOKENS=${HISTORY_MAX_TOKENS:-3000}
 export USER_UTT_MAX_TOKENS=${USER_UTT_MAX_TOKENS:-500}
 
 # GPU memory fractions (weights + KV). Use fractions only.
-if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
+if [ "${DEPLOY_MODE:-both}" = "both" ]; then
     export CHAT_GPU_FRAC=${CHAT_GPU_FRAC:-0.70}
     export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}
 else

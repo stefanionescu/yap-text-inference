@@ -7,7 +7,7 @@ export TRT_ENGINE_DIR=${TRT_ENGINE_DIR:-/opt/engines/trt-chat}
 
 # GPU memory fractions based on deployment mode
 # Same allocation as vLLM: 70%/20% when both, 90% when single
-if [ "${DEPLOY_MODELS:-both}" = "both" ]; then
+if [ "${DEPLOY_MODE:-both}" = "both" ]; then
     # Both models: Chat gets 70%, Tool gets 20%
     export TRT_KV_FREE_GPU_FRAC=${TRT_KV_FREE_GPU_FRAC:-0.70}
     export TOOL_GPU_FRAC=${TOOL_GPU_FRAC:-0.20}

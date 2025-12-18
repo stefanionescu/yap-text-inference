@@ -91,7 +91,7 @@ print(MAX_CONCURRENT_CONNECTIONS)
 }
 
 detect_prompt_mode() {
-  local deploy_mode="${DEPLOY_MODELS:-}"
+  local deploy_mode="${DEPLOY_MODE:-}"
   case "${deploy_mode}" in
     chat) echo "chat"; return 0 ;;
     tool) echo "tool"; return 0 ;;

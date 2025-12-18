@@ -11,21 +11,21 @@ DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
 IMAGE_NAME="${IMAGE_NAME:-yap-text-api}"
 
 # Deploy mode: chat|tool|both
-DEPLOY_MODELS_VAL="${DEPLOY_MODELS:-both}"
-case "${DEPLOY_MODELS_VAL}" in
+DEPLOY_MODE_VAL="${DEPLOY_MODE:-both}"
+case "${DEPLOY_MODE_VAL}" in
   chat|tool|both) ;;
   *)
-    echo "[build] Invalid DEPLOY_MODELS='${DEPLOY_MODELS_VAL}', defaulting to 'both'" >&2
-    DEPLOY_MODELS_VAL="both"
+    echo "[build] Invalid DEPLOY_MODE='${DEPLOY_MODE_VAL}', defaulting to 'both'" >&2
+    DEPLOY_MODE_VAL="both"
     ;;
 esac
 
-# Model configuration (required based on DEPLOY_MODELS)
+# Model configuration (required based on DEPLOY_MODE)
 CHAT_MODEL="${CHAT_MODEL:-}"
 TOOL_MODEL="${TOOL_MODEL:-}"
 
 # Custom tag (optional - defaults to vllm-deploy mode if not set)
-TAG="${TAG:-vllm-${DEPLOY_MODELS_VAL}}"
+TAG="${TAG:-vllm-${DEPLOY_MODE_VAL}}"
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
 # Build configuration
@@ -53,12 +53,12 @@ usage() {
     echo "Environment Variables:"
     echo "  DOCKER_USERNAME     - Docker Hub username (required)"
     echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
-    echo "  DEPLOY_MODELS       - chat|tool|both (default: both)"
+    echo "  DEPLOY_MODE       - chat|tool|both (default: both)"
     echo "  CHAT_MODEL          - Pre-quantized chat model HF repo (required for chat/both)"
     echo "                        Must contain: awq, gptq, w4a16, nvfp4, compressed-tensors, or autoround"
     echo "  TOOL_MODEL          - Tool classifier model HF repo (required for tool/both)"
     echo "                        Must be in the allowlist (see src/config/models.py)"
-    echo "  TAG                 - Custom image tag (default: vllm-<DEPLOY_MODELS>)"
+    echo "  TAG                 - Custom image tag (default: vllm-<DEPLOY_MODE>)"
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
     echo ""
     echo "Options:"
@@ -67,20 +67,20 @@ usage() {
     echo "Examples:"
     echo "  # Build chat-only image"
     echo "  DOCKER_USERNAME=myuser \\"
-    echo "    DEPLOY_MODELS=chat \\"
+    echo "    DEPLOY_MODE=chat \\"
     echo "    CHAT_MODEL=jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym \\"
     echo "    TAG=vllm-mistral-24b \\"
     echo "    ./build.sh"
     echo ""
     echo "  # Build tool-only image"
     echo "  DOCKER_USERNAME=myuser \\"
-    echo "    DEPLOY_MODELS=tool \\"
+    echo "    DEPLOY_MODE=tool \\"
     echo "    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \\"
     echo "    ./build.sh"
     echo ""
     echo "  # Build both models"
     echo "  DOCKER_USERNAME=myuser \\"
-    echo "    DEPLOY_MODELS=both \\"
+    echo "    DEPLOY_MODE=both \\"
     echo "    CHAT_MODEL=cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit \\"
     echo "    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \\"
     echo "    TAG=vllm-qwen3-full \\"
@@ -104,8 +104,8 @@ if [[ "${DOCKER_USERNAME}" == "your-username" ]]; then
 fi
 
 # Validate models based on deploy mode
-log_info "[build] Validating models for DEPLOY_MODELS=${DEPLOY_MODELS_VAL}..."
-if ! validate_models_for_deploy "${DEPLOY_MODELS_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
+log_info "[build] Validating models for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
+if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
     log_error "[build] Model validation failed. Build aborted."
     exit 1
 fi
@@ -116,7 +116,7 @@ ensure_docker_login
 
 log_info "[build] Building Yap Text Inference Docker image (vLLM)"
 log_info "[build] Image: ${FULL_IMAGE_NAME}"
-log_info "[build] Deploy mode: ${DEPLOY_MODELS_VAL}"
+log_info "[build] Deploy mode: ${DEPLOY_MODE_VAL}"
 [[ -n "${CHAT_MODEL}" ]] && log_info "[build] Chat model: ${CHAT_MODEL}"
 [[ -n "${TOOL_MODEL}" ]] && log_info "[build] Tool model: ${TOOL_MODEL}"
 log_info "[build] Platform: ${PLATFORM}"
@@ -132,7 +132,7 @@ log_info "[build] Starting Docker build from temp context: ${BUILD_CONTEXT}"
 init_build_args
 
 # Add model build args - these become ENV vars in the image
-BUILD_ARGS+=(--build-arg "DEPLOY_MODELS=${DEPLOY_MODELS_VAL}")
+BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 [[ -n "${CHAT_MODEL}" ]] && BUILD_ARGS+=(--build-arg "CHAT_MODEL=${CHAT_MODEL}")
 [[ -n "${TOOL_MODEL}" ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
 

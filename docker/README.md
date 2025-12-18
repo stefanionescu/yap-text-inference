@@ -34,7 +34,7 @@ Yap supports two inference engines:
 # vLLM (default) - for pre-quantized AWQ/GPTQ models
 ENGINE=vllm \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=chat \
+  DEPLOY_MODE=chat \
   CHAT_MODEL=cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit \
   TAG=vllm-qwen30b \
   bash docker/build.sh
@@ -42,7 +42,7 @@ ENGINE=vllm \
 # TensorRT-LLM - for maximum performance with pre-built engines
 ENGINE=trt \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=chat \
+  DEPLOY_MODE=chat \
   CHAT_MODEL=Qwen/Qwen3-30B-A3B \
   TRT_ENGINE_REPO=myuser/qwen3-30b-trt-engine \
   TAG=trt-qwen30b \
@@ -78,7 +78,7 @@ Chat models must be pre-quantized. The build validates that the model name conta
 ```bash
 ENGINE=vllm \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=chat \
+  DEPLOY_MODE=chat \
   CHAT_MODEL=jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym \
   TAG=vllm-mistral-24b \
   bash docker/build.sh
@@ -89,7 +89,7 @@ ENGINE=vllm \
 ```bash
 ENGINE=vllm \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=tool \
+  DEPLOY_MODE=tool \
   TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
   TAG=vllm-tool \
   bash docker/build.sh
@@ -100,7 +100,7 @@ ENGINE=vllm \
 ```bash
 ENGINE=vllm \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=both \
+  DEPLOY_MODE=both \
   CHAT_MODEL=cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit \
   TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
   TAG=vllm-qwen3-full \
@@ -113,7 +113,7 @@ ENGINE=vllm \
 |----------|----------|-------------|
 | `ENGINE` | Yes | Set to `vllm` |
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
-| `DEPLOY_MODELS` | Yes | `chat`, `tool`, or `both` |
+| `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
 | `CHAT_MODEL` | If chat/both | Pre-quantized HF model (AWQ/GPTQ/W4A16) |
 | `TOOL_MODEL` | If tool/both | Tool classifier from allowlist |
 | `TAG` | No | Custom tag (default: `vllm-<deploy_mode>`) |
@@ -143,7 +143,7 @@ For **tool-only** deployment:
 ```bash
 ENGINE=trt \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=chat \
+  DEPLOY_MODE=chat \
   CHAT_MODEL=Qwen/Qwen3-30B-A3B \
   TRT_ENGINE_REPO=myuser/qwen3-30b-trt-engine \
   TAG=trt-qwen30b \
@@ -155,7 +155,7 @@ ENGINE=trt \
 ```bash
 ENGINE=trt \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=chat \
+  DEPLOY_MODE=chat \
   CHAT_MODEL=Qwen/Qwen3-30B-A3B \
   TAG=trt-qwen30b-mount \
   bash docker/build.sh
@@ -173,7 +173,7 @@ docker run -d --gpus all --name yap-server \
 ```bash
 ENGINE=trt \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=tool \
+  DEPLOY_MODE=tool \
   TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
   TAG=trt-tool \
   bash docker/build.sh
@@ -184,7 +184,7 @@ ENGINE=trt \
 ```bash
 ENGINE=trt \
   DOCKER_USERNAME=myuser \
-  DEPLOY_MODELS=both \
+  DEPLOY_MODE=both \
   CHAT_MODEL=Qwen/Qwen3-30B-A3B \
   TRT_ENGINE_REPO=myuser/qwen3-30b-trt-engine \
   TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
@@ -214,7 +214,7 @@ The container auto-selects the engine matching your GPU's SM architecture.
 |----------|----------|-------------|
 | `ENGINE` | Yes | Set to `trt` |
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
-| `DEPLOY_MODELS` | Yes | `chat`, `tool`, or `both` |
+| `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
 | `CHAT_MODEL` | If chat/both | HF model for tokenizer |
 | `TRT_ENGINE_REPO` | Optional | HF repo with pre-built engines |
 | `TOOL_MODEL` | If tool/both | Tool classifier from allowlist |

@@ -10,14 +10,14 @@ main_log_config() {
   else
     log_info "[main] Configuration: engine=${INFERENCE_ENGINE}, quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
   fi
-  log_info "[main] Deploy mode: ${DEPLOY_MODELS}"
-  if [ "${DEPLOY_MODELS}" != "tool" ]; then
+  log_info "[main] Deploy mode: ${DEPLOY_MODE}"
+  if [ "${DEPLOY_MODE}" != "tool" ]; then
     log_info "[main] Chat model: ${CHAT_MODEL_NAME}"
     if model_detect_is_moe "${CHAT_MODEL_NAME}"; then
       log_info "[main]   (MoE model detected)"
     fi
   fi
-  if [ "${DEPLOY_MODELS}" != "chat" ]; then
+  if [ "${DEPLOY_MODE}" != "chat" ]; then
     log_info "[main] Tool model: ${TOOL_MODEL_NAME}"
   fi
   log_info ""
@@ -66,7 +66,7 @@ main_build_deploy_cmd() {
 
 # Export all required environment variables for background process
 main_export_all() {
-  export QUANTIZATION QUANT_MODE DEPLOY_MODELS CHAT_MODEL TOOL_MODEL
+  export QUANTIZATION QUANT_MODE DEPLOY_MODE CHAT_MODEL TOOL_MODEL
   export CHAT_QUANTIZATION INFERENCE_ENGINE
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
 }

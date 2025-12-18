@@ -4,7 +4,7 @@
 # Calls Python to check models against allowlists without loading heavy vLLM deps
 
 validate_models_early() {
-  local deploy_mode="${DEPLOY_MODELS:-both}"
+  local deploy_mode="${DEPLOY_MODE:-both}"
   local chat_model="${CHAT_MODEL:-}"
   local tool_model="${TOOL_MODEL:-}"
   local quantization="${QUANTIZATION:-}"
@@ -62,14 +62,14 @@ deploy_tool = deploy_mode in ("both", "tool")
 
 if deploy_chat:
     if not chat_model:
-        errors.append("CHAT_MODEL is required when DEPLOY_MODELS='both' or 'chat'")
+        errors.append("CHAT_MODEL is required when DEPLOY_MODE='both' or 'chat'")
     elif not is_valid_model(chat_model, ALLOWED_CHAT_MODELS, "chat"):
         if not allow_prequantized_override(chat_model, "chat"):
             errors.append(f"CHAT_MODEL must be one of allowed models, got: {chat_model}")
 
 if deploy_tool:
     if not tool_model:
-        errors.append("TOOL_MODEL is required when DEPLOY_MODELS='both' or 'tool'")
+        errors.append("TOOL_MODEL is required when DEPLOY_MODE='both' or 'tool'")
     elif tool_model not in ALLOWED_TOOL_MODELS and not os.path.exists(tool_model):
         errors.append(
             f"TOOL_MODEL must be one of classifier models {ALLOWED_TOOL_MODELS}, got: {tool_model}"

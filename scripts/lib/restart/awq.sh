@@ -76,7 +76,7 @@ restart_detect_awq_models() {
 restart_setup_env_for_awq() {
   local DEPLOY_MODE="$1"
   export QUANTIZATION=awq
-  export DEPLOY_MODELS="${DEPLOY_MODE}"
+  export DEPLOY_MODE="${DEPLOY_MODE}"
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     local chat_source="${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
     export CHAT_MODEL="${chat_source}" CHAT_QUANTIZATION=awq

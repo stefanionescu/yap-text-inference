@@ -18,6 +18,7 @@ source "${SCRIPT_DIR}/../engines/trt/install.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 source "${SCRIPT_DIR}/../engines/trt/quantize.sh"
 source "${SCRIPT_DIR}/../engines/trt/build.sh"
+source "${SCRIPT_DIR}/../engines/trt/push.sh"
 
 # =============================================================================
 # MAIN LOGIC

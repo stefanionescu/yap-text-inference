@@ -11,7 +11,6 @@ restart_parse_args() {
   RECONFIG_CHAT_MODEL="${RECONFIG_CHAT_MODEL:-}"
   RECONFIG_TOOL_MODEL="${RECONFIG_TOOL_MODEL:-}"
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
-  RECONFIG_QUANTIZATION="${RECONFIG_QUANTIZATION:-}"
   HF_AWQ_PUSH=0
   
   # Engine selection - default from environment or 'trt'
@@ -93,15 +92,6 @@ restart_parse_args() {
         RECONFIG_TOOL_MODEL="${1#*=}"
         shift
         ;;
-      --quant)
-        if [ -z "${2:-}" ]; then return 2; fi
-        RECONFIG_QUANTIZATION="$2"
-        shift 2
-        ;;
-      --quant=*)
-        RECONFIG_QUANTIZATION="${1#*=}"
-        shift
-        ;;
       --push-quant)
         HF_AWQ_PUSH=1
         shift
@@ -113,7 +103,12 @@ restart_parse_args() {
       --help|-h)
         return 2
         ;;
+      -*)
+        log_warn "[restart] Unknown flag '$1' ignored"
+        shift
+        ;;
       *)
+        log_warn "[restart] Unknown argument '$1' ignored"
         shift
         ;;
     esac
@@ -134,7 +129,7 @@ restart_parse_args() {
   export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
-  export RECONFIG_CHAT_QUANTIZATION RECONFIG_QUANTIZATION
+  export RECONFIG_CHAT_QUANTIZATION
   export HF_AWQ_PUSH
   return 0
 }

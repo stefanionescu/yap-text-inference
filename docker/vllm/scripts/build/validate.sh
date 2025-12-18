@@ -124,7 +124,7 @@ validate_models_for_deploy() {
             validate_tool_model "$tool_model" || ((errors++))
             ;;
         *)
-            echo "[validate] Invalid DEPLOY_MODELS: '$deploy_mode'. Must be chat|tool|both" >&2
+            echo "[validate] Invalid DEPLOY_MODE: '$deploy_mode'. Must be chat|tool|both" >&2
             ((errors++))
             ;;
     esac
