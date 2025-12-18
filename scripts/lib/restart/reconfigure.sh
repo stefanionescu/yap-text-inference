@@ -92,6 +92,25 @@ _restart_needs_awq_pipeline() {
   return 1
 }
 
+# TRT engine always requires a build step (AWQ, FP8, INT8 - all need compiled engines)
+_restart_needs_trt_engine_build() {
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+    # Check if engine directory exists and is valid
+    local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
+    if [ -f "${trt_env_file}" ]; then
+      # shellcheck disable=SC1090
+      source "${trt_env_file}"
+      if [ -n "${TRTLLM_ENGINE_DIR:-}" ] && [ -d "${TRTLLM_ENGINE_DIR}" ]; then
+        # Engine exists - no need to rebuild
+        return 1
+      fi
+    fi
+    # No valid engine found - need to build
+    return 0
+  fi
+  return 1
+}
+
 _restart_effective_quant() {
   local override="$1"
   local base="$2"
@@ -340,13 +359,18 @@ restart_reconfigure_models() {
     exit 1
   fi
 
-  # Run quantization pipeline if AWQ is requested
-  if _restart_needs_awq_pipeline; then
-    if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
+  # Run quantization/build pipeline:
+  # - vLLM: only needed for AWQ (FP8/INT8 are runtime quantization)
+  # - TRT: ALWAYS needed (all quantization modes require compiled engine)
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+    if _restart_needs_trt_engine_build || _restart_needs_awq_pipeline; then
+      log_info "[restart] Building TRT-LLM engine (required for TRT deployment)..."
       source "${SCRIPT_DIR}/quantization/trt_quantizer.sh"
     else
-      source "${SCRIPT_DIR}/quantization/vllm_quantizer.sh"
+      log_info "[restart] TRT engine already exists, skipping build"
     fi
+  elif _restart_needs_awq_pipeline; then
+    source "${SCRIPT_DIR}/quantization/vllm_quantizer.sh"
   fi
 
   restart_server_background
