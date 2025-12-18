@@ -9,7 +9,7 @@ setup_deploy_mode_and_validate() {
     both|chat|tool)
       ;;
     *)
-      log_warn "Invalid DEPLOY_MODELS='${DEPLOY_MODELS}', defaulting to 'both'"
+      log_warn "[env] Invalid DEPLOY_MODELS='${DEPLOY_MODELS}', defaulting to 'both'"
       export DEPLOY_MODELS=both
       ;;
   esac
@@ -28,16 +28,16 @@ setup_deploy_mode_and_validate() {
 
   # Validate required environment variables are set by main.sh (conditional on deploy mode)
   if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
-    log_warn "Error: CHAT_MODEL must be set when DEPLOY_MODELS='both' or 'chat'"
+    log_warn "[env] CHAT_MODEL must be set when DEPLOY_MODELS='both' or 'chat'"
     return 1
   fi
   if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
-    log_warn "Error: TOOL_MODEL must be set when DEPLOY_MODELS='both' or 'tool'"
+    log_warn "[env] TOOL_MODEL must be set when DEPLOY_MODELS='both' or 'tool'"
     return 1
   fi
 
   if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${QUANTIZATION:-}" ]; then
-    log_warn "Error: QUANTIZATION environment variable must be set by main.sh"
+    log_warn "[env] QUANTIZATION environment variable must be set by main.sh"
     return 1
   fi
 }

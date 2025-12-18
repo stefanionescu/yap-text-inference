@@ -17,7 +17,7 @@ trt_detect_gpu_sm_arch() {
   fi
   
   if ! command -v nvidia-smi >/dev/null 2>&1; then
-    log_warn "nvidia-smi not found, cannot detect GPU architecture"
+    log_warn "[gpu] nvidia-smi not found, cannot detect GPU architecture"
     echo ""
     return 1
   fi
@@ -27,7 +27,7 @@ trt_detect_gpu_sm_arch() {
   gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 | tr '[:upper:]' '[:lower:]')
   
   if [ -z "${gpu_name}" ]; then
-    log_warn "Could not detect GPU name"
+    log_warn "[gpu] Could not detect GPU name"
     echo ""
     return 1
   fi
@@ -54,7 +54,7 @@ trt_detect_gpu_sm_arch() {
       if [ -n "${compute_cap}" ]; then
         sm_arch="sm${compute_cap}"
       else
-        log_warn "Unknown GPU: ${gpu_name}, defaulting to sm89 (L40S)"
+        log_warn "[gpu] Unknown GPU: ${gpu_name}, defaulting to sm89 (L40S)"
         sm_arch="sm89"
       fi
       ;;
@@ -131,7 +131,7 @@ trt_get_quantize_script() {
     if [ -f "${moe_script}" ]; then
       echo "${moe_script}"
     else
-      log_warn "MoE quantize script not found: ${moe_script}, falling back to base script"
+      log_warn "[quant] MoE quantize script not found: ${moe_script}, falling back to base script"
       echo "${base_script}"
     fi
   else
@@ -208,7 +208,7 @@ trt_check_cuda_compatibility() {
   cuda_ver=$(trt_detect_cuda_version)
   
   if [ -z "${cuda_ver}" ]; then
-    log_warn "Could not detect CUDA version"
+    log_warn "[cuda] Could not detect CUDA version"
     return 1
   fi
   
@@ -216,7 +216,7 @@ trt_check_cuda_compatibility() {
   major=$(echo "${cuda_ver}" | cut -d. -f1)
   
   if [ "${major}" -lt 13 ]; then
-    log_warn "TRT-LLM 1.2.0rc5 requires CUDA 13.0+, found ${cuda_ver}"
+    log_warn "[cuda] TRT-LLM 1.2.0rc5 requires CUDA 13.0+, found ${cuda_ver}"
     return 1
   fi
   
@@ -225,14 +225,14 @@ trt_check_cuda_compatibility() {
 
 # Legacy function name for backwards compatibility
 trt_check_driver_runtime() {
-  trt_assert_cuda13_driver "trt"
+  trt_assert_cuda13_driver "cuda"
 }
 
 # Comprehensive CUDA 13.x check: validates BOTH toolkit AND driver
 # Checks: 1) toolkit version via nvcc/env, 2) driver capability via cudaDriverGetVersion or nvidia-smi
 # Usage: trt_assert_cuda13_driver [prefix]
 trt_assert_cuda13_driver() {
-  local prefix="${1:-trt}"
+  local prefix="${1:-cuda}"
   local min_cuda_int=1300
   local toolkit_ver toolkit_int driver_ver driver_int driver_source
 
@@ -326,7 +326,7 @@ trt_init_gpu_detection() {
     GPU_SM_ARCH=$(trt_detect_gpu_sm_arch)
     export GPU_SM_ARCH
     if [ -n "${GPU_SM_ARCH}" ]; then
-      log_info "Detected GPU architecture: ${GPU_SM_ARCH} ($(trt_get_gpu_name))"
+      log_info "[gpu] Detected GPU architecture: ${GPU_SM_ARCH} ($(trt_get_gpu_name))"
     fi
   fi
 }

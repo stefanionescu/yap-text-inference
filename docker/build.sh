@@ -13,7 +13,7 @@ ENGINE="${ENGINE:-vllm}"
 case "${ENGINE}" in
   vllm|trt) ;;
   *)
-    echo "[ERROR] Invalid ENGINE='${ENGINE}'. Must be 'vllm' or 'trt'" >&2
+    echo "[build] Invalid ENGINE='${ENGINE}'. Must be 'vllm' or 'trt'" >&2
     exit 1
     ;;
 esac
@@ -73,12 +73,12 @@ fi
 ENGINE_BUILD_SCRIPT="${SCRIPT_DIR}/${ENGINE}/build.sh"
 
 if [[ ! -f "${ENGINE_BUILD_SCRIPT}" ]]; then
-    echo "[ERROR] Build script not found: ${ENGINE_BUILD_SCRIPT}" >&2
+    echo "[build] Build script not found: ${ENGINE_BUILD_SCRIPT}" >&2
     exit 1
 fi
 
-echo "[INFO] Building with engine: ${ENGINE}"
-echo "[INFO] Delegating to: ${ENGINE_BUILD_SCRIPT}"
+echo "[build] Building with engine: ${ENGINE}"
+echo "[build] Delegating to: ${ENGINE_BUILD_SCRIPT}"
 echo ""
 
 exec "${ENGINE_BUILD_SCRIPT}" "$@"

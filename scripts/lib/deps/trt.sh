@@ -13,15 +13,15 @@ ensure_trt_system_deps() {
     return 0
   fi
   
-  log_info "Checking TensorRT-LLM system dependencies..."
+  log_info "[deps] Checking TensorRT-LLM system dependencies..."
   
   # Check if mpi.h is already available
   if _check_mpi_headers; then
-    log_info "MPI development headers already installed"
+    log_info "[deps] MPI development headers already installed"
     return 0
   fi
   
-  log_info "Installing MPI development libraries for mpi4py compilation..."
+  log_info "[deps] Installing MPI development libraries for mpi4py compilation..."
   
   if command -v apt-get >/dev/null 2>&1; then
     _install_mpi_apt
@@ -32,19 +32,19 @@ ensure_trt_system_deps() {
   elif command -v yum >/dev/null 2>&1; then
     _install_mpi_yum
   else
-    log_warn "No supported package manager found. Please install MPI development libraries manually:"
-    log_warn "  Debian/Ubuntu: apt-get install libopenmpi-dev openmpi-bin"
-    log_warn "  RHEL/CentOS: dnf install openmpi-devel"
-    log_warn "  Alpine: apk add openmpi-dev"
+    log_warn "[deps] No supported package manager found. Please install MPI development libraries manually:"
+    log_warn "[deps]   Debian/Ubuntu: apt-get install libopenmpi-dev openmpi-bin"
+    log_warn "[deps]   RHEL/CentOS: dnf install openmpi-devel"
+    log_warn "[deps]   Alpine: apk add openmpi-dev"
     return 1
   fi
   
   # Verify installation
   if _check_mpi_headers; then
-    log_info "MPI development libraries installed successfully"
+    log_info "[deps] MPI development libraries installed successfully"
     return 0
   else
-    log_err "Failed to install MPI development libraries"
+    log_err "[deps] Failed to install MPI development libraries"
     return 1
   fi
 }
@@ -70,7 +70,7 @@ _check_mpi_headers() {
 
 # Debian/Ubuntu installation
 _install_mpi_apt() {
-  log_info "Using apt-get to install MPI dependencies..."
+  log_info "[deps] Using apt-get to install MPI dependencies..."
   
   # Select correct MPI runtime package name (t64 on Ubuntu 24.04+, non-t64 otherwise)
   local MPI_PKG="libopenmpi3"
@@ -88,14 +88,14 @@ _install_mpi_apt() {
   # Try without sudo first (for container environments running as root)
   if [ "$(id -u)" = "0" ]; then
     apt-get update -y || {
-      log_warn "apt-get update failed, continuing anyway"
+      log_warn "[deps] apt-get update failed, continuing anyway"
     }
     # Install core dependencies (no upgrades; keep CUDA/driver untouched)
     # openmpi-bin provides orted/mpirun executables required by mpi4py during quantization
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
       libopenmpi-dev python3-dev \
       "${MPI_PKG}${MPI_VER_ARG}" "openmpi-bin${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" || {
-      log_warn "Some packages failed to install via apt"
+      log_warn "[deps] Some packages failed to install via apt"
       return 1
     }
     # Hold MPI runtime to prevent drift
@@ -103,14 +103,14 @@ _install_mpi_apt() {
   else
     # Try with sudo
     sudo -n apt-get update -y 2>/dev/null || {
-      log_warn "apt-get update failed (may need sudo), continuing anyway"
+      log_warn "[deps] apt-get update failed (may need sudo), continuing anyway"
     }
     # Install core dependencies (no upgrades; keep CUDA/driver untouched)
     # openmpi-bin provides orted/mpirun executables required by mpi4py during quantization
     sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
       libopenmpi-dev python3-dev \
       "${MPI_PKG}${MPI_VER_ARG}" "openmpi-bin${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" 2>/dev/null || {
-      log_warn "Some packages failed to install via apt (may need sudo)"
+      log_warn "[deps] Some packages failed to install via apt (may need sudo)"
       return 1
     }
     # Hold MPI runtime to prevent drift
@@ -122,7 +122,7 @@ _install_mpi_apt() {
 
 # Alpine installation
 _install_mpi_apk() {
-  log_info "Using apk to install MPI dependencies..."
+  log_info "[deps] Using apk to install MPI dependencies..."
   
   if [ "$(id -u)" = "0" ]; then
     apk add --no-cache openmpi-dev python3-dev || return 1
@@ -135,7 +135,7 @@ _install_mpi_apk() {
 
 # RHEL/Fedora installation
 _install_mpi_dnf() {
-  log_info "Using dnf to install MPI dependencies..."
+  log_info "[deps] Using dnf to install MPI dependencies..."
   
   if [ "$(id -u)" = "0" ]; then
     dnf install -y openmpi-devel python3-devel || return 1
@@ -148,7 +148,7 @@ _install_mpi_dnf() {
 
 # CentOS/older RHEL installation  
 _install_mpi_yum() {
-  log_info "Using yum to install MPI dependencies..."
+  log_info "[deps] Using yum to install MPI dependencies..."
   
   if [ "$(id -u)" = "0" ]; then
     yum install -y openmpi-devel python3-devel || return 1
@@ -164,16 +164,16 @@ verify_mpi_runtime() {
   local need_mpi="${NEED_MPI:-1}"
   
   if [ "${need_mpi}" != "1" ]; then
-    log_info "Skipping MPI runtime verification (NEED_MPI=0)"
+    log_info "[deps] Skipping MPI runtime verification (NEED_MPI=0)"
     return 0
   fi
   
-  log_info "Verifying MPI runtime..."
+  log_info "[deps] Verifying MPI runtime..."
   
   # Check library path
   if ! ldconfig -p 2>/dev/null | grep -q "libmpi.so"; then
-    log_warn "libmpi.so not found in library path"
-    log_warn "Add /usr/lib/x86_64-linux-gnu to LD_LIBRARY_PATH if needed"
+    log_warn "[deps] libmpi.so not found in library path"
+    log_warn "[deps] Add /usr/lib/x86_64-linux-gnu to LD_LIBRARY_PATH if needed"
   fi
   
   return 0

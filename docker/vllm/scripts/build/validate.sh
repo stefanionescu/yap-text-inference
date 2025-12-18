@@ -69,19 +69,19 @@ classify_prequantized_model() {
 validate_chat_model() {
     local model="$1"
     if [[ -z "$model" ]]; then
-        echo "[ERROR] CHAT_MODEL is required but not set" >&2
+        echo "[validate] CHAT_MODEL is required but not set" >&2
         return 1
     fi
     
     if ! is_prequantized_model "$model"; then
-        echo "[ERROR] CHAT_MODEL '$model' is not a pre-quantized model" >&2
-        echo "[ERROR] Chat model name must contain one of: awq, gptq, w4a16, nvfp4, compressed-tensors, autoround" >&2
+        echo "[validate] CHAT_MODEL '$model' is not a pre-quantized model" >&2
+        echo "[validate] Chat model name must contain one of: awq, gptq, w4a16, nvfp4, compressed-tensors, autoround" >&2
         return 1
     fi
     
     local quant_type
     quant_type=$(classify_prequantized_model "$model")
-    echo "[OK] CHAT_MODEL '$model' validated as $quant_type"
+    echo "[validate] CHAT_MODEL '$model' validated as $quant_type"
     return 0
 }
 
@@ -89,19 +89,19 @@ validate_chat_model() {
 validate_tool_model() {
     local model="$1"
     if [[ -z "$model" ]]; then
-        echo "[ERROR] TOOL_MODEL is required but not set" >&2
+        echo "[validate] TOOL_MODEL is required but not set" >&2
         return 1
     fi
     
     for allowed in "${ALLOWED_TOOL_MODELS[@]}"; do
         if [[ "$model" == "$allowed" ]]; then
-            echo "[OK] TOOL_MODEL '$model' is in allowlist"
+            echo "[validate] TOOL_MODEL '$model' is in allowlist"
             return 0
         fi
     done
     
-    echo "[ERROR] TOOL_MODEL '$model' is not in the allowed list" >&2
-    echo "[ERROR] See src/config/models.py for allowed tool models" >&2
+    echo "[validate] TOOL_MODEL '$model' is not in the allowed list" >&2
+    echo "[validate] See src/config/models.py for allowed tool models" >&2
     return 1
 }
 
@@ -124,7 +124,7 @@ validate_models_for_deploy() {
             validate_tool_model "$tool_model" || ((errors++))
             ;;
         *)
-            echo "[ERROR] Invalid DEPLOY_MODELS: '$deploy_mode'. Must be chat|tool|both" >&2
+            echo "[validate] Invalid DEPLOY_MODELS: '$deploy_mode'. Must be chat|tool|both" >&2
             ((errors++))
             ;;
     esac

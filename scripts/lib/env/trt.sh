@@ -207,37 +207,37 @@ trt_resolve_kv_cache_dtype() {
 
 # Log the derived TRT configuration
 trt_log_config() {
-  log_info "TRT-LLM Configuration:"
-  log_info "  Max batch size: ${TRT_MAX_BATCH_SIZE:-<not set>}"
-  log_info "  Max input length: ${TRT_MAX_INPUT_LEN}"
-  log_info "  Max output length: ${TRT_MAX_OUTPUT_LEN}"
-  log_info "  KV cache GPU fraction: ${TRT_KV_FREE_GPU_FRAC}"
-  log_info "  GPU SM arch: ${GPU_SM_ARCH:-auto-detect}"
+  log_info "[trt] TRT-LLM Configuration:"
+  log_info "[trt]   Max batch size: ${TRT_MAX_BATCH_SIZE:-<not set>}"
+  log_info "[trt]   Max input length: ${TRT_MAX_INPUT_LEN}"
+  log_info "[trt]   Max output length: ${TRT_MAX_OUTPUT_LEN}"
+  log_info "[trt]   KV cache GPU fraction: ${TRT_KV_FREE_GPU_FRAC}"
+  log_info "[trt]   GPU SM arch: ${GPU_SM_ARCH:-auto-detect}"
 }
 
 # Validate TRT_MAX_BATCH_SIZE is set (called before engine build)
 trt_validate_batch_size() {
   if [ -z "${TRT_MAX_BATCH_SIZE:-}" ]; then
-    log_err "TRT_MAX_BATCH_SIZE must be set when building a TRT engine."
-    log_err "This value is baked into the compiled engine and determines the maximum"
-    log_err "number of sequences that can be batched together in a single forward pass."
-    log_err ""
-    log_err "Example values based on model size:"
-    log_err "  - 7-8B models: 32-64"
-    log_err "  - 13B models: 16-32"
-    log_err "  - 70B+ models: 8-16"
-    log_err ""
-    log_err "Set it via: export TRT_MAX_BATCH_SIZE=<value>"
+    log_err "[trt] TRT_MAX_BATCH_SIZE must be set when building a TRT engine."
+    log_err "[trt] This value is baked into the compiled engine and determines the maximum"
+    log_err "[trt] number of sequences that can be batched together in a single forward pass."
+    log_err "[trt] "
+    log_err "[trt] Example values based on model size:"
+    log_err "[trt]   - 7-8B models: 32-64"
+    log_err "[trt]   - 13B models: 16-32"
+    log_err "[trt]   - 70B+ models: 8-16"
+    log_err "[trt] "
+    log_err "[trt] Set it via: export TRT_MAX_BATCH_SIZE=<value>"
     return 1
   fi
   
   # Validate it's a positive integer
   if ! [[ "${TRT_MAX_BATCH_SIZE}" =~ ^[1-9][0-9]*$ ]]; then
-    log_err "TRT_MAX_BATCH_SIZE must be a positive integer, got: ${TRT_MAX_BATCH_SIZE}"
+    log_err "[trt] TRT_MAX_BATCH_SIZE must be a positive integer, got: ${TRT_MAX_BATCH_SIZE}"
     return 1
   fi
   
-  log_info "TRT_MAX_BATCH_SIZE=${TRT_MAX_BATCH_SIZE} (will be baked into engine)"
+  log_info "[trt] TRT_MAX_BATCH_SIZE=${TRT_MAX_BATCH_SIZE} (will be baked into engine)"
   return 0
 }
 

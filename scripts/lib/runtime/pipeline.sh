@@ -16,7 +16,7 @@ runtime_pipeline_prepare_log() {
       local tmp_file="${root_dir}/.server.log.trim"
       if tail -c "${max_keep_bytes}" "${server_log}" > "${tmp_file}" 2>/dev/null; then
         mv "${tmp_file}" "${server_log}" 2>/dev/null || true
-        echo "[INFO] $(date -Iseconds) Trimmed server.log to latest 100MB (removed ${offset} bytes)" >> "${server_log}"
+        echo "[server] Trimmed server.log to latest 100MB (removed ${offset} bytes)" >> "${server_log}"
       fi
     fi
   fi
@@ -33,20 +33,20 @@ runtime_pipeline_run_background() {
   local server_log
   server_log="$(runtime_pipeline_prepare_log "${root_dir}")"
 
-  log_info "${start_message}"
-  log_info "Ctrl+C after launch stops log tail only; deployment keeps running."
+  log_info "[main] ${start_message}"
+  log_info "[main] Ctrl+C after launch stops log tail only; deployment keeps running."
 
   setsid nohup bash -lc "${command_string}" </dev/null > "${server_log}" 2>&1 &
   local bg_pid=$!
   echo "${bg_pid}" > "${root_dir}/.run/deployment.pid"
 
-  log_info "Deployment started (PID: ${bg_pid})"
-  log_info "All logs (deployment + server): ${server_log}"
-  log_info "To stop: bash scripts/stop.sh"
+  log_info "[main] Deployment started (PID: ${bg_pid})"
+  log_info "[main] All logs (deployment + server): ${server_log}"
+  log_info "[main] To stop: bash scripts/stop.sh"
 
   if [ "${follow_logs}" = "1" ]; then
-    log_info ""
-    log_info "Following logs (Ctrl+C detaches, background continues)..."
+    log_info "[main] "
+    log_info "[main] Following logs (Ctrl+C detaches, background continues)..."
     touch "${server_log}" || true
     exec tail -n +1 -F "${server_log}"
   fi

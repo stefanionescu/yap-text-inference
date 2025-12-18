@@ -22,7 +22,7 @@ source "${SCRIPT_DIR}/lib/main/args.sh"
 source "${SCRIPT_DIR}/lib/main/quant.sh"
 source "${SCRIPT_DIR}/lib/main/deploy.sh"
 
-log_info "Starting Yap Text Inference Server"
+log_info "[main] Starting Yap Text Inference Server"
 
 ensure_required_env_vars
 
@@ -31,7 +31,7 @@ stop_existing_warmup_processes "${ROOT_DIR}"
 
 # Parse command line arguments
 if [ $# -lt 1 ]; then
-  log_warn "Error: Not enough arguments"
+  log_warn "[main] Not enough arguments"
   main_usage
 fi
 
@@ -42,7 +42,7 @@ set -- "${MAIN_REMAINING_ARGS[@]}"
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
 if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
   if ! trt_assert_cuda13_driver "main"; then
-    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
+    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
     exit 1
   fi
 fi
@@ -63,9 +63,9 @@ main_export_models
 validate_push_quant_prereqs "${DEPLOY_MODELS:-both}"
 
 # Early model validation - fail fast before any heavy operations
-log_info "Validating model configuration..."
+log_info "[model] Validating model configuration..."
 if ! validate_models_early; then
-  log_err "Aborting deployment due to invalid model configuration"
+  log_err "[model] Aborting deployment due to invalid model configuration"
   exit 1
 fi
 

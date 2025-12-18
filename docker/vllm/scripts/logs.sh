@@ -1,20 +1,9 @@
 #!/usr/bin/env bash
 
-# Logging utilities for Docker scripts
+# Logging utilities for Docker scripts (prefix-based)
 
-log_info() {
-  echo "[INFO] $*"
-}
-
-log_warn() {
-  echo "[WARN] $*" >&2
-}
-
-log_error() {
-  echo "[ERROR] $*" >&2
-}
-
-log_success() {
-  echo "[OK] $*"
-}
+log_info() { echo "$*"; }
+log_warn() { echo "$* ⚠" >&2; }
+log_error() { echo "$* ✗" >&2; }
+log_success() { echo "$* ✓"; }
 

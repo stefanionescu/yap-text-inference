@@ -8,14 +8,14 @@ ensure_torch_cuda_arch_list() {
       CAP=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n 1 2>/dev/null || true)
       if [ -n "${CAP}" ]; then
         export TORCH_CUDA_ARCH_LIST="${CAP}"
-        log_info "Detected compute capability: ${TORCH_CUDA_ARCH_LIST}"
+        log_info "[gpu] Detected compute capability: ${TORCH_CUDA_ARCH_LIST}"
       else
         export TORCH_CUDA_ARCH_LIST=8.0
-        log_warn "Could not detect compute capability; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
+        log_warn "[gpu] Could not detect compute capability; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
       fi
     else
       export TORCH_CUDA_ARCH_LIST=8.0
-      log_warn "nvidia-smi not found; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
+      log_warn "[gpu] nvidia-smi not found; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
     fi
   fi
 }

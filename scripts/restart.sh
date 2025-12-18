@@ -18,7 +18,7 @@ source "${SCRIPT_DIR}/lib/restart/launch.sh"
 source "${SCRIPT_DIR}/engines/vllm/push.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 
-log_info "Restart manager ready (reuse caches or reconfigure models)"
+log_info "[restart] Restart manager ready (reuse caches or reconfigure models)"
 
 ensure_required_env_vars
 
@@ -87,13 +87,13 @@ USAGE
 if ! restart_parse_args "$@"; then
   usage
 fi
-case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
+case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "[restart] Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
 export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
 if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
   if ! trt_assert_cuda13_driver "restart"; then
-    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
+    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
     exit 1
   fi
 fi
@@ -104,12 +104,12 @@ validate_push_quant_prereqs "${DEPLOY_MODE}"
 # Check for engine switching - this requires FULL environment wipe
 if runtime_guard_engine_changed "${INFERENCE_ENGINE}" "${ROOT_DIR}"; then
   last_engine="$(runtime_guard_read_last_config_value "INFERENCE_ENGINE" "${ROOT_DIR}")"
-  log_warn "=========================================="
-  log_warn "ENGINE SWITCH DETECTED: ${last_engine} → ${INFERENCE_ENGINE}"
-  log_warn "=========================================="
-  log_warn "Cannot hot-restart with different engine."
-  log_warn "Running full deployment instead..."
-  log_warn "=========================================="
+  log_warn "[restart] =========================================="
+  log_warn "[restart] ENGINE SWITCH DETECTED: ${last_engine} → ${INFERENCE_ENGINE}"
+  log_warn "[restart] =========================================="
+  log_warn "[restart] Cannot hot-restart with different engine."
+  log_warn "[restart] Running full deployment instead..."
+  log_warn "[restart] =========================================="
   
   # Redirect to main.sh with the new engine
   exec bash "${SCRIPT_DIR}/main.sh" \
@@ -119,7 +119,7 @@ if runtime_guard_engine_changed "${INFERENCE_ENGINE}" "${ROOT_DIR}"; then
     "${TOOL_MODEL:-}"
 fi
 
-log_info "Engine: ${INFERENCE_ENGINE}"
+log_info "[restart] Engine: ${INFERENCE_ENGINE}"
 
 if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
   restart_reconfigure_models
@@ -133,43 +133,43 @@ restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
 if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
-  log_error "No AWQ models found for deploy mode '${DEPLOY_MODE}'"
-  log_error ""
-  log_error "Options:"
-  log_error "1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
-  log_error "2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
+  log_error "[restart] No AWQ models found for deploy mode '${DEPLOY_MODE}'"
+  log_error "[restart] "
+  log_error "[restart] Options:"
+  log_error "[restart] 1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
+  log_error "[restart] 2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
   exit 1
 fi
 
 # Check if venv exists (only required for local models or first run)
 if [ ! -d "${ROOT_DIR}/.venv" ]; then
-  log_error "No virtual environment found at ${ROOT_DIR}/.venv"
-  log_error "For local models: Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
-  log_error "For HF or other remote models: run full deployment first to cache AWQ artifacts"
+  log_error "[restart] No virtual environment found at ${ROOT_DIR}/.venv"
+  log_error "[restart] For local models: Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
+  log_error "[restart] For HF or other remote models: run full deployment first to cache AWQ artifacts"
   exit 1
 fi
 
 # Optional dependency refresh
 if [ "${INSTALL_DEPS}" = "1" ]; then
-  log_info "Reinstalling/upgrading dependencies in existing venv (--install-deps)"
+  log_info "[restart] Reinstalling/upgrading dependencies in existing venv (--install-deps)"
   "${SCRIPT_DIR}/steps/03_install_deps.sh"
 fi
 
 # Report detected model sources
-log_info "Detected model sources for restart:"
+log_info "[restart] Detected model sources for restart:"
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
   chat_origin="local cache"
   if [ "${CHAT_AWQ_SOURCE_KIND:-local}" != "local" ]; then
     chat_origin="pre-quantized repo"
   fi
-  log_info "  Chat (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
+  log_info "[restart]   Chat (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
 fi
 if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-  log_info "  Tool: classifier weights reused directly"
+  log_info "[restart]   Tool: classifier weights reused directly"
 fi
 
 # Light stop - preserve models and dependencies
-log_info "Stopping server (preserving models and dependencies)..."
+log_info "[restart] Stopping server (preserving models and dependencies)..."
 NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 restart_setup_env_for_awq "${DEPLOY_MODE}"

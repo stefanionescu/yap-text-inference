@@ -15,12 +15,12 @@ trt_build_engine() {
   local engine_dir="${2:-}"
   
   if [ -z "${checkpoint_dir}" ]; then
-    log_err "Checkpoint directory is required"
+    log_err "[build] Checkpoint directory is required"
     return 1
   fi
   
   if [ -z "${engine_dir}" ]; then
-    log_err "Engine output directory is required"
+    log_err "[build] Engine output directory is required"
     return 1
   fi
   
@@ -30,15 +30,15 @@ trt_build_engine() {
   # Check if engine already exists
   if [ -d "${engine_dir}" ] && ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
-      log_info "Reusing existing engine at ${engine_dir}"
+      log_info "[build] Reusing existing engine at ${engine_dir}"
       return 0
     fi
-    log_info "FORCE_REBUILD=true, rebuilding engine..."
+    log_info "[build] FORCE_REBUILD=true, rebuilding engine..."
   fi
   
-  log_info "Building TensorRT-LLM engine"
-  log_info "Checkpoint: ${checkpoint_dir}"
-  log_info "Engine output: ${engine_dir}"
+  log_info "[build] Building TensorRT-LLM engine"
+  log_info "[build] Checkpoint: ${checkpoint_dir}"
+  log_info "[build] Engine output: ${engine_dir}"
   
   # Calculate max sequence length
   local max_seq_len=$((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN))
@@ -60,22 +60,22 @@ trt_build_engine() {
     --workers "$(nproc --all)"
   )
   
-  log_info "Running: ${build_cmd[*]}"
+  log_info "[build] Running: ${build_cmd[*]}"
   "${build_cmd[@]}" || {
-    log_err "Engine build failed"
+    log_err "[build] Engine build failed"
     return 1
   }
   
   # Validate engine was created
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
-    log_err "Engine build completed but no rank*.engine files found"
+    log_err "[build] Engine build completed but no rank*.engine files found"
     return 1
   fi
   
   # Record build metadata
   trt_record_build_metadata "${engine_dir}" "${checkpoint_dir}"
   
-  log_info "✓ Engine build complete: ${engine_dir}"
+  log_info "[build] ✓ Engine build complete: ${engine_dir}"
   return 0
 }
 
@@ -160,7 +160,7 @@ print(json.dumps(quant))
 }
 EOF
   
-  log_info "Build metadata recorded to ${meta_file}"
+  log_info "[build] Build metadata recorded to ${meta_file}"
 }
 
 # =============================================================================
@@ -172,31 +172,31 @@ trt_validate_engine() {
   local engine_dir="${1:-${TRT_ENGINE_DIR:-}}"
   
   if [ -z "${engine_dir}" ]; then
-    log_err "Engine directory is required"
+    log_err "[build] Engine directory is required"
     return 1
   fi
   
   if [ ! -d "${engine_dir}" ]; then
-    log_err "Engine directory not found: ${engine_dir}"
+    log_err "[build] Engine directory not found: ${engine_dir}"
     return 1
   fi
   
   # Check for engine files
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
-    log_err "No rank*.engine files found in ${engine_dir}"
+    log_err "[build] No rank*.engine files found in ${engine_dir}"
     return 1
   fi
   
   local engine_count
   engine_count=$(ls "${engine_dir}"/rank*.engine 2>/dev/null | wc -l)
-  log_info "Found ${engine_count} engine file(s)"
+  log_info "[build] Found ${engine_count} engine file(s)"
   
   # Check for metadata
   if [ ! -f "${engine_dir}/build_metadata.json" ]; then
-    log_warn "build_metadata.json not found (non-critical)"
+    log_warn "[build] build_metadata.json not found (non-critical)"
   fi
   
-  log_info "✓ Engine validated: ${engine_dir}"
+  log_info "[build] ✓ Engine validated: ${engine_dir}"
   return 0
 }
 
@@ -211,7 +211,7 @@ trt_quantize_and_build() {
   local qformat="${2:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "Model ID is required"
+    log_err "[build] Model ID is required"
     return 1
   fi
   
@@ -220,14 +220,14 @@ trt_quantize_and_build() {
     qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}")
   fi
   
-  log_info "Starting TRT quantize and build pipeline"
-  log_info "Model: ${model_id}"
-  log_info "Format: ${qformat}"
-  log_info "GPU: ${GPU_SM_ARCH:-auto} ($(trt_get_gpu_name))"
+  log_info "[build] Starting TRT quantize and build pipeline"
+  log_info "[build] Model: ${model_id}"
+  log_info "[build] Format: ${qformat}"
+  log_info "[build] GPU: ${GPU_SM_ARCH:-auto} ($(trt_get_gpu_name))"
   
   # Check if this is a pre-quantized model
   if trt_is_prequantized_model "${model_id}"; then
-    log_info "Detected pre-quantized TRT model"
+    log_info "[build] Detected pre-quantized TRT model"
     local ckpt_dir
     ckpt_dir=$(trt_download_prequantized "${model_id}") || return 1
     TRT_CHECKPOINT_DIR="${ckpt_dir}"
@@ -252,8 +252,8 @@ trt_quantize_and_build() {
   mkdir -p "${ROOT_DIR:-.}/.run"
   echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
   
-  log_info "✓ Quantize and build pipeline complete"
-  log_info "Engine directory: ${TRT_ENGINE_DIR}"
+  log_info "[build] ✓ Quantize and build pipeline complete"
+  log_info "[build] Engine directory: ${TRT_ENGINE_DIR}"
   
   return 0
 }
@@ -272,27 +272,27 @@ trt_push_to_hf() {
   local quant_method="${4:-${TRT_QUANT_METHOD:-int4_awq}}"
   
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
-    log_info "HF push not enabled (use --push-quant flag to enable)"
+    log_info "[hf] HF push not enabled (use --push-quant flag to enable)"
     return 0
   fi
   
   if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
-    log_warn "--push-quant specified but HF_PUSH_REPO_ID not set; skipping push"
+    log_warn "[hf] --push-quant specified but HF_PUSH_REPO_ID not set; skipping push"
     return 0
   fi
   
   if [ ! -d "${checkpoint_dir}" ]; then
-    log_warn "Checkpoint directory not found: ${checkpoint_dir}"
+    log_warn "[hf] Checkpoint directory not found: ${checkpoint_dir}"
     return 1
   fi
   
   local token="${HF_TOKEN:-}"
   if [ -z "${token}" ]; then
-    log_warn "HF_TOKEN not set, skipping push"
+    log_warn "[hf] HF_TOKEN not set, skipping push"
     return 1
   fi
   
-  log_info "Pushing TRT-LLM model to HuggingFace: ${HF_PUSH_REPO_ID}"
+  log_info "[hf] Pushing TRT-LLM model to HuggingFace: ${HF_PUSH_REPO_ID}"
   
   local python_cmd=(
     "${ROOT_DIR}/.venv/bin/python"
@@ -319,10 +319,10 @@ trt_push_to_hf() {
   fi
   
   if "${python_cmd[@]}"; then
-    log_info "Successfully pushed to HuggingFace"
+    log_info "[hf] Successfully pushed to HuggingFace"
     return 0
   else
-    log_warn "HuggingFace push failed"
+    log_warn "[hf] HuggingFace push failed"
     return 1
   fi
 }

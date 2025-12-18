@@ -25,7 +25,7 @@ runtime_guard_get_running_server_pid() {
       printf '%s' "${existing_pid}"
       return 0
     fi
-    log_warn "Found stale server.pid entry; removing ${pid_file}"
+    log_warn "[server] Found stale server.pid entry; removing ${pid_file}"
     rm -f "${pid_file}" || true
   fi
   return 1
@@ -76,15 +76,15 @@ runtime_guard_force_engine_wipe() {
   local from_engine="$3"
   local to_engine="$4"
   
-  log_warn "=========================================="
-  log_warn "ENGINE SWITCH DETECTED: ${from_engine} → ${to_engine}"
-  log_warn "=========================================="
-  log_warn "This requires a FULL environment wipe:"
-  log_warn "  - All HF caches"
-  log_warn "  - All pip dependencies"
-  log_warn "  - All quantized model caches"
-  log_warn "  - All engine-specific artifacts"
-  log_warn "=========================================="
+  log_warn "[server] =========================================="
+  log_warn "[server] ENGINE SWITCH DETECTED: ${from_engine} → ${to_engine}"
+  log_warn "[server] =========================================="
+  log_warn "[server] This requires a FULL environment wipe:"
+  log_warn "[server]   - All HF caches"
+  log_warn "[server]   - All pip dependencies"
+  log_warn "[server]   - All quantized model caches"
+  log_warn "[server]   - All engine-specific artifacts"
+  log_warn "[server] =========================================="
   
   # Force full nuke
   NUKE_ALL=1 bash "${script_dir}/stop.sh"
@@ -106,12 +106,12 @@ runtime_guard_force_engine_wipe() {
   )
   for d in "${engine_dirs[@]}"; do
     if [ -d "$d" ]; then
-      log_info "Removing engine artifact: $d"
+      log_info "[cache] Removing engine artifact: $d"
       rm -rf "$d" || true
     fi
   done
   
-  log_info "Engine wipe complete. Ready for fresh ${to_engine} deployment."
+  log_info "[server] Engine wipe complete. Ready for fresh ${to_engine} deployment."
 }
 
 runtime_guard_configs_match() {
@@ -170,7 +170,7 @@ runtime_guard_stop_server_if_needed() {
     norm_last="$(echo "${last_engine}" | tr '[:upper:]' '[:lower:]')"
     
     if [ "${norm_desired}" != "${norm_last}" ]; then
-      log_warn "Engine switch detected: ${norm_last} → ${norm_desired}"
+      log_warn "[server] Engine switch detected: ${norm_last} → ${norm_desired}"
       runtime_guard_force_engine_wipe "${script_dir}" "${root_dir}" "${norm_last}" "${norm_desired}"
       return 0
     fi
@@ -181,7 +181,7 @@ runtime_guard_stop_server_if_needed() {
     return 0
   fi
 
-  log_warn "Server already running (PID=${running_pid}). Evaluating restart strategy..."
+  log_warn "[server] Server already running (PID=${running_pid}). Evaluating restart strategy..."
   if runtime_guard_configs_match \
        "${desired_deploy}" \
        "${desired_chat}" \
@@ -191,10 +191,10 @@ runtime_guard_stop_server_if_needed() {
        "${desired_engine}" \
        "${root_dir}"
   then
-    log_info "Existing server matches requested config; stopping without clearing caches."
+    log_info "[server] Existing server matches requested config; stopping without clearing caches."
     NUKE_ALL=0 bash "${script_dir}/stop.sh"
   else
-    log_info "Requested configuration differs; performing full reset before redeploy."
+    log_info "[server] Requested configuration differs; performing full reset before redeploy."
     NUKE_ALL=1 bash "${script_dir}/stop.sh"
   fi
 }

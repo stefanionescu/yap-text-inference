@@ -6,24 +6,24 @@
 # Log current configuration
 main_log_config() {
   if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
-    log_info "Configuration: quantization=tool-only (classifier runs float16)"
+    log_info "[main] Configuration: quantization=tool-only (classifier runs float16)"
   else
-    log_info "Configuration: engine=${INFERENCE_ENGINE}, quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
+    log_info "[main] Configuration: engine=${INFERENCE_ENGINE}, quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
   fi
-  log_info "Deploy mode: ${DEPLOY_MODELS}"
+  log_info "[main] Deploy mode: ${DEPLOY_MODELS}"
   if [ "${DEPLOY_MODELS}" != "tool" ]; then
-    log_info "Chat model: ${CHAT_MODEL_NAME}"
+    log_info "[main] Chat model: ${CHAT_MODEL_NAME}"
     if model_detect_is_moe "${CHAT_MODEL_NAME}"; then
-      log_info "  (MoE model detected)"
+      log_info "[main]   (MoE model detected)"
     fi
   fi
   if [ "${DEPLOY_MODELS}" != "chat" ]; then
-    log_info "Tool model: ${TOOL_MODEL_NAME}"
+    log_info "[main] Tool model: ${TOOL_MODEL_NAME}"
   fi
   log_info ""
-  log_info "Starting deployment in background (auto-detached)"
-  log_info "Ctrl+C stops log tailing only - deployment continues"
-  log_info "Use scripts/stop.sh to stop the deployment"
+  log_info "[main] Starting deployment in background (auto-detached)"
+  log_info "[main] Ctrl+C stops log tailing only - deployment continues"
+  log_info "[main] Use scripts/stop.sh to stop the deployment"
 }
 
 # Build the deployment command based on engine type
@@ -42,9 +42,9 @@ main_build_deploy_cmd() {
       source '${script_dir}/steps/04_env_defaults.sh' && \\
       source '${script_dir}/quantization/trt_quantizer.sh' && \\
       bash '${script_dir}/steps/05_start_server.sh' && \\
-      echo '[INFO] \$(date -Iseconds) Deployment process completed successfully' && \\
-      echo '[INFO] \$(date -Iseconds) Server is running in the background (TRT engine)' && \\
-      echo '[INFO] \$(date -Iseconds) Use scripts/stop.sh to stop the server'
+      echo '[main] Deployment process completed successfully' && \\
+      echo '[main] Server is running in the background (TRT engine)' && \\
+      echo '[main] Use scripts/stop.sh to stop the server'
     "
   else
     # vLLM pipeline
@@ -55,9 +55,9 @@ main_build_deploy_cmd() {
       source '${script_dir}/steps/04_env_defaults.sh' && \\
       source '${script_dir}/quantization/vllm_quantizer.sh' && \\
       bash '${script_dir}/steps/05_start_server.sh' && \\
-      echo '[INFO] \$(date -Iseconds) Deployment process completed successfully' && \\
-      echo '[INFO] \$(date -Iseconds) Server is running in the background (vLLM engine)' && \\
-      echo '[INFO] \$(date -Iseconds) Use scripts/stop.sh to stop the server'
+      echo '[main] Deployment process completed successfully' && \\
+      echo '[main] Server is running in the background (vLLM engine)' && \\
+      echo '[main] Use scripts/stop.sh to stop the server'
     "
   fi
 

@@ -52,16 +52,16 @@ RUN set -eux; \
     if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then \
         FI_IDX="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"; \
         FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"; \
-        echo "[INFO] Installing ${FI_PKG} from ${FI_IDX}"; \
+        echo "[build] Installing ${FI_PKG} from ${FI_IDX}"; \
         pip install --no-cache-dir --prefer-binary --extra-index-url "${FI_IDX}" "${FI_PKG}" || \
-        (echo "[WARN] FlashInfer install via extra index failed, falling back to PyPI" && pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true); \
+        (echo "[build] FlashInfer install via extra index failed, falling back to PyPI" && pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true); \
     else \
-        echo "[WARN] Torch/CUDA not detected at build-time; attempting PyPI install for FlashInfer with version spec"; \
+        echo "[build] Torch/CUDA not detected at build-time; attempting PyPI install for FlashInfer with version spec"; \
         FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"; \
         pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true; \
     fi; \
     if [ -n "${LLMCOMPRESSOR_VERSION:-}" ]; then \
-        echo "[INFO] Installing llmcompressor==${LLMCOMPRESSOR_VERSION} without deps"; \
+        echo "[build] Installing llmcompressor==${LLMCOMPRESSOR_VERSION} without deps"; \
         pip install --no-cache-dir --no-deps "llmcompressor==${LLMCOMPRESSOR_VERSION}"; \
     fi
 

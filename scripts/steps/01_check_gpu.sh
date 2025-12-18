@@ -4,14 +4,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 
-log_info "Checking GPU availability"
+log_info "[gpu] Checking GPU availability"
 if ! command -v nvidia-smi >/dev/null 2>&1; then
-  log_warn "nvidia-smi not found; ensure this RunPod image has NVIDIA drivers."
+  log_warn "[gpu] nvidia-smi not found; ensure this RunPod image has NVIDIA drivers."
 elif ! nvidia-smi >/dev/null 2>&1; then
-  log_warn "nvidia-smi failed; GPU may not be available."
+  log_warn "[gpu] nvidia-smi failed; GPU may not be available."
 else
   GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 || echo "Unknown")
-  log_info "GPU detected: ${GPU_NAME}"
+  log_info "[gpu] GPU detected: ${GPU_NAME}"
 fi
 
 # Print CUDA/Torch ABI hint if available
@@ -26,7 +26,7 @@ except Exception:
 PY
   )
   if [ -n "${CU_VER:-}" ]; then
-    log_info "Torch CUDA version detected: ${CU_VER}"
+    log_info "[gpu] Torch CUDA version detected: ${CU_VER}"
   fi
 fi
 

@@ -55,7 +55,7 @@ main_parse_flags() {
       ENGINE_TYPE="trt"
       ;;
     *)
-      log_warn "Unknown engine type '${ENGINE_TYPE}', defaulting to 'trt'"
+      log_warn "[main] Unknown engine type '${ENGINE_TYPE}', defaulting to 'trt'"
       ENGINE_TYPE="trt"
       ;;
   esac
@@ -81,12 +81,12 @@ main_parse_quant_type() {
       shift
       ;;
     awq)
-      log_warn "Deprecated 'awq' flag detected; use '4bit' instead."
+      log_warn "[main] Deprecated 'awq' flag detected; use '4bit' instead."
       QUANT_TYPE="4bit"
       shift
       ;;
     fp8)
-      log_warn "Deprecated 'fp8' flag detected; use '8bit' instead."
+      log_warn "[main] Deprecated 'fp8' flag detected; use '8bit' instead."
       QUANT_TYPE="8bit"
       shift
       ;;
@@ -113,7 +113,7 @@ main_parse_models() {
   case "${DEPLOY_MODE_SELECTED}" in
     both|chat|tool) ;;
     *)
-      log_warn "Invalid DEPLOY_MODELS='${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
+      log_warn "[main] Invalid DEPLOY_MODELS='${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
       DEPLOY_MODE_SELECTED="both"
       ;;
   esac
@@ -130,7 +130,7 @@ main_parse_models() {
   case "${DEPLOY_MODE_SELECTED}" in
     chat)
       if [ ${#args[@]} -lt 1 ]; then
-        log_warn "Error: chat-only mode requires <chat_model>"
+        log_warn "[main] chat-only mode requires <chat_model>"
         return 1
       fi
       CHAT_MODEL_NAME="${args[0]}"
@@ -138,7 +138,7 @@ main_parse_models() {
       ;;
     tool)
       if [ ${#args[@]} -lt 1 ]; then
-        log_warn "Error: tool-only mode requires <tool_model>"
+        log_warn "[main] tool-only mode requires <tool_model>"
         return 1
       fi
       TOOL_MODEL_NAME="${args[0]}"
@@ -146,7 +146,7 @@ main_parse_models() {
       ;;
     both)
       if [ ${#args[@]} -lt 2 ]; then
-        log_warn "Error: both mode requires <chat_model> <tool_model>"
+        log_warn "[main] both mode requires <chat_model> <tool_model>"
         return 1
       fi
       CHAT_MODEL_NAME="${args[0]}"
@@ -157,11 +157,11 @@ main_parse_models() {
 
   # Validate required models
   if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_MODEL_NAME}" ]; then
-    log_warn "Error: CHAT_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
+    log_warn "[main] CHAT_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
     return 1
   fi
   if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ -z "${TOOL_MODEL_NAME}" ]; then
-    log_warn "Error: TOOL_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
+    log_warn "[main] TOOL_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
     return 1
   fi
 
@@ -180,7 +180,7 @@ main_parse_models() {
       export DEPLOY_MODELS="${DEPLOY_MODE_SELECTED:-both}"
       ;;
     *)
-      log_warn "Invalid deploy_mode '${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
+      log_warn "[main] Invalid deploy_mode '${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
       export DEPLOY_MODELS=both
       ;;
   esac

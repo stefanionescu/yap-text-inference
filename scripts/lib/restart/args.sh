@@ -126,7 +126,7 @@ restart_parse_args() {
     trt|TRT|tensorrt|TENSORRT) INFERENCE_ENGINE="trt" ;;
     vllm|VLLM) INFERENCE_ENGINE="vllm" ;;
     *)
-      log_warn "Unknown engine '${INFERENCE_ENGINE}', defaulting to 'trt'"
+      log_warn "[restart] Unknown engine '${INFERENCE_ENGINE}', defaulting to 'trt'"
       INFERENCE_ENGINE="trt"
       ;;
   esac

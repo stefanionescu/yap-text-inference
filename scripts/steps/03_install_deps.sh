@@ -18,15 +18,15 @@ source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
   source "${SCRIPT_DIR}/../engines/trt/install.sh"
   # Validate CUDA 13.x before installing TRT dependencies
-  if ! trt_assert_cuda13_driver "install_deps"; then
-    log_err "Aborting: CUDA 13.x required for TensorRT-LLM"
+  if ! trt_assert_cuda13_driver "deps"; then
+    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
     exit 1
   fi
 else
   source "${SCRIPT_DIR}/../engines/vllm/install.sh"
 fi
 
-log_info "Installing Python dependencies (engine: ${INFERENCE_ENGINE:-vllm})"
+log_info "[deps] Installing Python dependencies (engine: ${INFERENCE_ENGINE:-vllm})"
 
 export PIP_ROOT_USER_ACTION=${PIP_ROOT_USER_ACTION:-ignore}
 export PIP_DISABLE_PIP_VERSION_CHECK=${PIP_DISABLE_PIP_VERSION_CHECK:-1}
@@ -41,7 +41,7 @@ export_ca_bundle_env_vars
 
 # Install system-level dependencies (MPI for TRT, etc.)
 ensure_trt_system_deps || {
-  log_warn "System deps installation failed, continuing (may fail later if mpi4py needed)"
+  log_warn "[deps] System deps installation failed, continuing (may fail later if mpi4py needed)"
 }
 
 # Ensure correct CUDA arch is visible during build steps (FlashInfer, etc.)
@@ -59,7 +59,7 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "T
   
   # Run full TRT-LLM installation (PyTorch -> TRT-LLM -> validate -> clone repo)
   trt_full_install || {
-    log_err "TensorRT-LLM installation failed"
+    log_err "[trt] TensorRT-LLM installation failed"
     exit 1
   }
 else

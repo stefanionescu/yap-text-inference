@@ -5,7 +5,7 @@
 export DEPLOY_MODELS=${DEPLOY_MODELS:-both}
 case "${DEPLOY_MODELS}" in
   both|chat|tool) ;;
-  *) log_warn "Invalid DEPLOY_MODELS='${DEPLOY_MODELS}', defaulting to 'both'"; export DEPLOY_MODELS=both;;
+  *) log_warn "[vllm] Invalid DEPLOY_MODELS='${DEPLOY_MODELS}', defaulting to 'both'"; export DEPLOY_MODELS=both;;
 esac
 
 # Convenience flags
@@ -17,23 +17,23 @@ export DEPLOY_CHAT DEPLOY_TOOL
 # Models are configured at build time - no defaults, image knows which models to use
 # These ENV vars are set in the Dockerfile during build
 if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
-  log_error "CHAT_MODEL not configured in this image. This image was not built correctly."
+  log_error "[vllm] CHAT_MODEL not configured in this image. This image was not built correctly."
   exit 1
 fi
 if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
-  log_error "TOOL_MODEL not configured in this image. This image was not built correctly."
+  log_error "[vllm] TOOL_MODEL not configured in this image. This image was not built correctly."
   exit 1
 fi
 
 if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "Configured models (will be downloaded from HuggingFace on first run):"
+  log_info "[vllm] Configured models (will be downloaded from HuggingFace on first run):"
   if [ "${DEPLOY_CHAT}" = "1" ]; then
-    log_info "  Chat: ${CHAT_MODEL}"
+    log_info "[vllm]   Chat: ${CHAT_MODEL}"
   fi
   if [ "${DEPLOY_TOOL}" = "1" ]; then
-    log_info "  Tool: ${TOOL_MODEL}"
+    log_info "[vllm]   Tool: ${TOOL_MODEL}"
   fi
-  log_info "  Runtime quantization: Chat runs AWQ (W4A16); tool classifier stays float."
+  log_info "[vllm]   Runtime quantization: Chat runs AWQ (W4A16); tool classifier stays float."
 fi
 
 # Set quantization for chat model
