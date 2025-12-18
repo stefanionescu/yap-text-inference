@@ -101,6 +101,21 @@ restart_basic() {
   log_info "[restart] Loading environment defaults..."
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 
+  # TRT engine: validate engine directory exists before starting server
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODELS}" != "tool" ]; then
+    if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
+      log_error "[restart] TRT engine directory not found or not set."
+      log_error "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
+      log_error "[restart] "
+      log_error "[restart] TensorRT-LLM requires a pre-built engine. Options:"
+      log_error "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
+      log_error "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODELS}"
+      log_error "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
+      exit 1
+    fi
+    log_info "[restart] TRT engine validated: ${TRT_ENGINE_DIR}"
+  fi
+
   if [ "${INSTALL_DEPS}" = "1" ]; then
     log_info "[restart] Installing dependencies as requested (--install-deps)"
     "${SCRIPT_DIR}/steps/02_python_env.sh"
