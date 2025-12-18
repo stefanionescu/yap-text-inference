@@ -1,7 +1,11 @@
 # TensorRT-LLM requirements
-# NOTE: torch and tensorrt_llm are installed via scripts/engines/trt/install.sh
-# to ensure wheels match the installed CUDA toolkit (default: PyTorch 2.9.1+cu130)
+# NOTE: tensorrt_llm is installed via scripts/engines/trt/install.sh
 # TensorRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
+
+--extra-index-url https://download.pytorch.org/whl/cu130
+
+# PyTorch with CUDA 13.0 (must be pinned to prevent accelerate pulling cu12 from PyPI)
+torch==2.9.1+cu130 ; sys_platform == 'linux'
 
 # Core server dependencies (same as vLLM)
 fastapi==0.115.4
