@@ -3,6 +3,103 @@
 # Generic (non-AWQ) restart path for scripts/restart.sh
 # Requires: SCRIPT_DIR, ROOT_DIR
 
+# Wipe all pip/venv dependencies and caches for a clean reinstall
+# Preserves: HF cache, TRT repo, models, AWQ cache, quantized engines
+wipe_dependencies_for_reinstall() {
+  local root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+  
+  log_info "[deps] Wiping all dependencies for clean reinstall..."
+  
+  # 1. Remove all venvs (all pip packages gone)
+  for venv_path in "${root}/.venv" "${root}/.venv-trt" "${root}/.venv-vllm" "${root}/venv" "${root}/env"; do
+    if [ -d "${venv_path}" ]; then
+      log_info "[deps] Removing venv: ${venv_path}"
+      rm -rf "${venv_path}"
+    fi
+  done
+  
+  # 2. Remove pip caches (wheels, downloaded packages)
+  for pip_cache in "${root}/.pip_cache" "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip"; do
+    if [ -d "${pip_cache}" ]; then
+      log_info "[deps] Removing pip cache: ${pip_cache}"
+      rm -rf "${pip_cache}"
+    fi
+  done
+  
+  # 3. Remove vLLM-specific caches
+  local VLLM_CACHES=(
+    "${root}/.flashinfer"
+    "${root}/.xformers"
+    "${root}/.vllm_cache"
+    "$HOME/.cache/flashinfer" "/root/.cache/flashinfer"
+    "$HOME/.cache/vllm" "/root/.cache/vllm"
+    "/workspace/.cache/vllm"
+  )
+  for cache_dir in "${VLLM_CACHES[@]}"; do
+    if [ -d "${cache_dir}" ]; then
+      log_info "[deps] Removing vLLM cache: ${cache_dir}"
+      rm -rf "${cache_dir}"
+    fi
+  done
+  
+  # 4. Remove TRT-LLM specific caches (wheel caches, compiled engines metadata)
+  local TRT_CACHES=(
+    "${root}/.trt_cache"
+    "$HOME/.cache/tensorrt_llm" "/root/.cache/tensorrt_llm"
+    "$HOME/.cache/tensorrt" "/root/.cache/tensorrt"
+    "$HOME/.cache/nvidia" "/root/.cache/nvidia"
+    "$HOME/.cache/modelopt" "/root/.cache/modelopt"
+    "$HOME/.cache/onnx" "/root/.cache/onnx"
+    "$HOME/.cache/cuda" "/root/.cache/cuda"
+    "$HOME/.cache/pycuda" "/root/.cache/pycuda"
+    "$HOME/.local/share/tensorrt_llm" "/root/.local/share/tensorrt_llm"
+    "/workspace/.cache/tensorrt" "/workspace/.cache/tensorrt_llm"
+  )
+  for cache_dir in "${TRT_CACHES[@]}"; do
+    if [ -d "${cache_dir}" ]; then
+      log_info "[deps] Removing TRT cache: ${cache_dir}"
+      rm -rf "${cache_dir}"
+    fi
+  done
+  
+  # 5. Remove torch/compiler caches (triton, inductor, extensions)
+  local COMPILER_CACHES=(
+    "${root}/.torch_inductor"
+    "${root}/.triton"
+    "$HOME/.cache/torch" "/root/.cache/torch"
+    "$HOME/.cache/torch_extensions" "/root/.cache/torch_extensions"
+    "$HOME/.triton" "/root/.triton"
+    "$HOME/.torch_inductor" "/root/.torch_inductor"
+    "/workspace/.cache/torch" "/workspace/.cache/triton"
+  )
+  for cache_dir in "${COMPILER_CACHES[@]}"; do
+    if [ -d "${cache_dir}" ]; then
+      log_info "[deps] Removing compiler cache: ${cache_dir}"
+      rm -rf "${cache_dir}"
+    fi
+  done
+  
+  # 6. Remove NVIDIA JIT caches
+  for nv_cache in "$HOME/.nv" "/root/.nv"; do
+    if [ -d "${nv_cache}" ]; then
+      log_info "[deps] Removing NVIDIA JIT cache: ${nv_cache}"
+      rm -rf "${nv_cache}"
+    fi
+  done
+  
+  # 7. Remove dep hash markers (forces full reinstall)
+  rm -f "${root}/.venv/.req_hash" 2>/dev/null || true
+  rm -f "${root}/.run/trt_quant_deps_installed" 2>/dev/null || true
+  
+  # 8. Clean temp directories
+  rm -rf /tmp/pip-* /tmp/torch_* /tmp/flashinfer* /tmp/triton* /tmp/trt* /tmp/tensorrt* /tmp/nv* /tmp/cuda* 2>/dev/null || true
+  
+  # 9. Clean shared memory (TRT-LLM uses /dev/shm)
+  rm -rf /dev/shm/tensorrt* /dev/shm/trt* /dev/shm/torch* /dev/shm/nv* /dev/shm/cuda* 2>/dev/null || true
+  
+  log_info "[deps] ✓ All dependency caches wiped. Models, HF cache, TRT repo preserved."
+}
+
 restart_basic() {
   local SERVER_LOG LAST_QUANT LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_ENV_FILE
   SERVER_LOG="${ROOT_DIR}/server.log"
@@ -117,9 +214,21 @@ restart_basic() {
   fi
 
   if [ "${INSTALL_DEPS}" = "1" ]; then
-    log_info "[restart] Installing dependencies as requested (--install-deps)"
-    "${SCRIPT_DIR}/steps/02_python_env.sh"
-    "${SCRIPT_DIR}/steps/03_install_deps.sh"
+    log_info "[restart] Reinstalling all dependencies from scratch (--install-deps)"
+    
+    # Wipe all existing pip dependencies and caches for clean install
+    # Preserves models, HF cache, TRT repo
+    wipe_dependencies_for_reinstall
+    
+    # Ensure correct Python version is available (TRT needs 3.10, vLLM uses system python)
+    # Explicitly pass INFERENCE_ENGINE to subprocess
+    INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
+      log_err "[restart] Failed to set up Python environment"
+      exit 1
+    }
+    
+    # Reinstall all dependencies from scratch (force mode)
+    FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
   else
     log_info "[restart] Skipping dependency installation (default)"
   fi

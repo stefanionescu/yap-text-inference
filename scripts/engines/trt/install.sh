@@ -9,10 +9,18 @@
 # CONFIGURATION
 # =============================================================================
 # All versions are centralized here and in scripts/lib/env/trt.sh
-# TRT-LLM 1.2.0rc5 requires CUDA 13.0 and torch 2.9.x
+# TRT-LLM 1.2.0rc5 requires CUDA 13.0, torch 2.9.x, and Python 3.10
+#
+# IMPORTANT: Python 3.11/3.12 do NOT work reliably with TRT-LLM 1.2.0rc5!
+# See ADVANCED.md for details on known issues.
 
 # Centralized TRT-LLM version - THIS IS THE SINGLE SOURCE OF TRUTH
 TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
+
+# Required Python version for TRT-LLM
+# Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc5
+TRT_REQUIRED_PYTHON_VERSION="${TRT_REQUIRED_PYTHON_VERSION:-3.10}"
+export TRT_REQUIRED_PYTHON_VERSION
 
 # Derived configurations
 TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.1+cu130}"
@@ -298,24 +306,21 @@ trt_prepare_repo() {
   local clone_attempts="${TRT_CLONE_ATTEMPTS}"
   local clone_delay="${TRT_CLONE_BACKOFF_SECONDS}"
   
-  # Git tracing disabled by default; set GIT_TRACE=1 or GIT_CURL_VERBOSE=1 to debug
-  export GIT_CURL_VERBOSE="${GIT_CURL_VERBOSE:-0}"
-  export GIT_TRACE="${GIT_TRACE:-0}"
+  # Force git tracing OFF - unset first to clear any inherited values
+  unset GIT_TRACE GIT_CURL_VERBOSE GIT_TRACE_PACKET GIT_TRACE_PERFORMANCE GIT_TRACE_SETUP
+  export GIT_CURL_VERBOSE=0 GIT_TRACE=0
   
   log_info "[trt] Target TensorRT-LLM version: ${TRT_VERSION} (tag: ${tag_name})"
   
-  # Handle FORCE_REBUILD
-  if [ "${FORCE_REBUILD:-false}" = "true" ] && [ -d "${repo_dir}" ]; then
-    log_info "[trt] FORCE_REBUILD=true: removing existing repository"
-    rm -rf "${repo_dir}"
-  fi
-  
-  # Clone if not present
-  if [ ! -d "${repo_dir}" ]; then
+  # Clone if not present, reuse if exists
+  # Note: FORCE_REBUILD only affects engine/checkpoint builds, not the repo clone
+  if [ -d "${repo_dir}" ]; then
+    log_info "[trt] Reusing existing TensorRT-LLM repository at ${repo_dir}"
+  else
     log_info "[trt] Cloning TensorRT-LLM repository to ${repo_dir} (tag: ${tag_name})"
     
-    # Build clone options
-    local clone_opts=("--single-branch" "--no-tags" "--branch" "${tag_name}")
+    # Build clone options (--quiet suppresses progress, -c advice.detachedHead=false suppresses detached HEAD warning)
+    local clone_opts=("--quiet" "--single-branch" "--no-tags" "--branch" "${tag_name}")
     if [ "${clone_depth}" != "full" ]; then
       clone_opts+=("--depth" "${clone_depth}")
       if [ -n "${clone_filter}" ] && [ "${clone_filter}" != "none" ]; then
@@ -323,12 +328,12 @@ trt_prepare_repo() {
       fi
     fi
     
-    # Clone with retry
+    # Clone with retry (quiet mode, redirect git noise to /dev/null)
     local attempt=1
     local clone_done=false
     while [ "${attempt}" -le "${clone_attempts}" ]; do
       log_info "[trt] Clone attempt ${attempt}/${clone_attempts}"
-      if git -c http.lowSpeedLimit=0 -c http.lowSpeedTime=999999 clone "${clone_opts[@]}" "${repo_url}" "${repo_dir}"; then
+      if git -c http.lowSpeedLimit=0 -c http.lowSpeedTime=999999 -c advice.detachedHead=false clone "${clone_opts[@]}" "${repo_url}" "${repo_dir}" 2>/dev/null; then
         clone_done=true
         break
       fi
@@ -347,26 +352,25 @@ trt_prepare_repo() {
     fi
   fi
   
-  # Ensure we're on the correct tag
-  log_info "[trt] Syncing repo to ${tag_name}"
+  # Ensure we're on the correct tag (all git ops quiet)
   if git -C "${repo_dir}" show-ref --verify --quiet "${tag_ref}"; then
-    log_info "[trt] Tag ${tag_name} already present locally"
+    : # Tag already present
   else
     log_info "[trt] Fetching ${tag_ref}"
     if [ "${clone_depth}" != "full" ]; then
-      git -C "${repo_dir}" fetch --depth "${clone_depth}" --force origin "${tag_ref}:${tag_ref}" || {
+      git -C "${repo_dir}" fetch --quiet --depth "${clone_depth}" --force origin "${tag_ref}:${tag_ref}" 2>/dev/null || {
         log_err "[trt] Unable to fetch ${tag_ref}"
         return 1
       }
     else
-      git -C "${repo_dir}" fetch --force origin "${tag_ref}:${tag_ref}" || {
+      git -C "${repo_dir}" fetch --quiet --force origin "${tag_ref}:${tag_ref}" 2>/dev/null || {
         log_err "[trt] Unable to fetch ${tag_ref}"
         return 1
       }
     fi
   fi
   
-  if ! git -C "${repo_dir}" checkout "${tag_name}" 2>/dev/null; then
+  if ! git -c advice.detachedHead=false -C "${repo_dir}" checkout --quiet "${tag_name}" 2>/dev/null; then
     log_err "[trt] Could not checkout version ${TRT_VERSION} (tag ${tag_name})"
     log_err "[trt] Hint: ensure ${tag_name} exists in ${repo_url}"
     return 1
@@ -387,22 +391,42 @@ trt_prepare_repo() {
 # Install quantization requirements from the TRT-LLM repository
 # This should be called during the quantization step, not during initial install.
 # Follows the pattern from trtllm-example/custom/build/steps/step_quantize.sh
+# Uses a marker file to skip redundant installs on restart.
 trt_install_quant_requirements() {
   local repo_dir="${TRT_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
   local quant_reqs="${repo_dir}/examples/quantization/requirements.txt"
+  local marker_file="${ROOT_DIR:-.}/.run/trt_quant_deps_installed"
+  
+  # Skip if already installed (marker present and requirements.txt unchanged)
+  if [ -f "${marker_file}" ]; then
+    local marker_hash stored_hash
+    if [ -f "${quant_reqs}" ]; then
+      marker_hash=$(md5sum "${quant_reqs}" 2>/dev/null | awk '{print $1}')
+      stored_hash=$(cat "${marker_file}" 2>/dev/null)
+      if [ "${marker_hash}" = "${stored_hash}" ]; then
+        log_info "[trt] Quantization dependencies already installed, skipping"
+        return 0
+      fi
+    fi
+  fi
   
   if [ -f "${quant_reqs}" ]; then
     log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
-    pip install -r "${quant_reqs}" || {
+    pip install --quiet -r "${quant_reqs}" || {
       log_warn "[trt] Some quantization requirements failed to install"
     }
     # Ensure hf_transfer is present even if a system package blocks uninstall (e.g. Debian blinker)
     # --ignore-installed avoids RECORD issues from distro packages.
-    pip install --ignore-installed "hf_transfer==0.1.8" || {
+    pip install --quiet --ignore-installed "hf_transfer==0.1.8" || {
       log_warn "[trt] hf_transfer install failed; fast HF downloads will be disabled"
     }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
-    pip install 'urllib3>=2.6.0' || true
+    pip install --quiet 'urllib3>=2.6.0' || true
+    
+    # Mark as installed (store hash of requirements.txt)
+    mkdir -p "$(dirname "${marker_file}")"
+    md5sum "${quant_reqs}" 2>/dev/null | awk '{print $1}' > "${marker_file}"
+    log_info "[trt] ✓ Quantization dependencies installed"
   else
     log_warn "[trt] Quantization requirements.txt not found at ${quant_reqs}, continuing"
   fi
