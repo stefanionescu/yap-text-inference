@@ -198,10 +198,13 @@ rm -rf /tmp/vllm* /tmp/flashinfer* /tmp/torch_* /tmp/pip-* /tmp/pip-build-* /tmp
 # 8b) Shared memory (TRT-LLM uses /dev/shm)
 rm -rf /dev/shm/tensorrt* /dev/shm/trt* /dev/shm/torch* /dev/shm/nv* /dev/shm/cuda* /dev/shm/hf* 2>/dev/null || true
 
-# 8c) Remove runtime state directory
-if [ -d "${ROOT_DIR}/.run" ]; then
-  log_info "[stop] Removing runtime state at ${ROOT_DIR}/.run"
-  rm -rf "${ROOT_DIR}/.run" || true
+# 8c) Remove runtime state directory (only in full stop mode)
+# Light stop preserves .run/ which contains engine paths, last config, etc.
+if [ "${NUKE_ALL}" != "0" ]; then
+  if [ -d "${ROOT_DIR}/.run" ]; then
+    log_info "[stop] Removing runtime state at ${ROOT_DIR}/.run"
+    rm -rf "${ROOT_DIR}/.run" || true
+  fi
 fi
 
 # 9) Nuke entire home caches by default (heavy-handed; unless NUKE_ALL=0)

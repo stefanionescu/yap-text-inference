@@ -42,6 +42,12 @@ log_info "[quant] TRT-LLM quantization pipeline starting..."
 # Initialize GPU detection
 trt_init_gpu_detection
 
+# Ensure TRT-LLM repository is available (contains quantization scripts)
+if ! trt_prepare_repo; then
+  log_err "[quant] Failed to prepare TensorRT-LLM repository"
+  exit 1
+fi
+
 # =============================================================================
 # EARLY VALIDATION: TRT_MAX_BATCH_SIZE required for engine build
 # =============================================================================
