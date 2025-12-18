@@ -2,21 +2,92 @@
 
 # Virtual environment helpers
 
+# =============================================================================
+# PYTHON VERSION REQUIREMENTS
+# =============================================================================
+# TensorRT-LLM 1.2.0rc5 requires Python 3.10 specifically.
+# Python 3.11 does NOT work reliably (see ADVANCED.md).
+# vLLM works with Python 3.10-3.12.
+
+TRT_REQUIRED_PYTHON_VERSION="3.10"
+
+# Determine the correct Python binary based on engine type
+# Usage: get_python_binary_for_engine
+# Returns: Python binary name (e.g., python3.10, python3)
+get_python_binary_for_engine() {
+  local engine="${INFERENCE_ENGINE:-vllm}"
+  
+  if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
+    # TRT requires Python 3.10 specifically
+    if command -v "python${TRT_REQUIRED_PYTHON_VERSION}" >/dev/null 2>&1; then
+      echo "python${TRT_REQUIRED_PYTHON_VERSION}"
+    elif command -v python3.10 >/dev/null 2>&1; then
+      echo "python3.10"
+    else
+      log_err "[venv] Python ${TRT_REQUIRED_PYTHON_VERSION} required for TRT-LLM but not found"
+      log_err "[venv] Install it first: bash scripts/steps/02_python_env.sh"
+      return 1
+    fi
+  else
+    # vLLM: use system python3
+    if command -v python3 >/dev/null 2>&1; then
+      echo "python3"
+    elif command -v python >/dev/null 2>&1; then
+      echo "python"
+    else
+      log_err "[venv] No Python interpreter found"
+      return 1
+    fi
+  fi
+}
+
+# Validate that the venv Python version matches engine requirements
+# Usage: validate_venv_python_version <venv_path>
+# Returns: 0 if valid, 1 if version mismatch
+validate_venv_python_version() {
+  local venv_path="$1"
+  local venv_python="${venv_path}/bin/python"
+  local engine="${INFERENCE_ENGINE:-vllm}"
+  
+  if [ ! -x "${venv_python}" ]; then
+    return 1
+  fi
+  
+  local current_version
+  current_version=$("${venv_python}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+  
+  if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
+    if [ "${current_version}" != "${TRT_REQUIRED_PYTHON_VERSION}" ]; then
+      log_warn "[venv] TRT requires Python ${TRT_REQUIRED_PYTHON_VERSION} but venv has ${current_version}"
+      return 1
+    fi
+  fi
+  
+  return 0
+}
+
 ensure_virtualenv() {
   local venv_path="${ROOT_DIR}/.venv"
   local venv_python="${venv_path}/bin/python"
+  local engine="${INFERENCE_ENGINE:-vllm}"
 
-  if [ -d "${venv_path}" ] && [ ! -x "${venv_python}" ]; then
-    log_warn "[venv] Existing virtualenv missing python binary; recreating ${venv_path}"
-    rm -rf "${venv_path}"
+  # Check if existing venv has wrong Python version for engine
+  if [ -d "${venv_path}" ]; then
+    if ! validate_venv_python_version "${venv_path}"; then
+      log_warn "[venv] Existing venv has wrong Python version for ${engine} engine; recreating"
+      rm -rf "${venv_path}"
+    elif [ ! -x "${venv_python}" ]; then
+      log_warn "[venv] Existing virtualenv missing python binary; recreating ${venv_path}"
+      rm -rf "${venv_path}"
+    fi
   fi
 
   if [ ! -d "${venv_path}" ]; then
-    log_info "[venv] Creating virtual environment at ${venv_path}"
-    PY_BIN="python3"
-    if ! command -v ${PY_BIN} >/dev/null 2>&1; then
-      PY_BIN="python"
-    fi
+    # Get the correct Python binary for this engine
+    local PY_BIN
+    PY_BIN=$(get_python_binary_for_engine) || return 1
+    
+    log_info "[venv] Creating virtual environment at ${venv_path} with ${PY_BIN}"
 
     if ! ${PY_BIN} -m venv "${venv_path}" >/dev/null 2>&1; then
       log_warn "[venv] python venv failed (ensurepip missing?). Trying virtualenv."
