@@ -183,7 +183,7 @@ try:
 except OSError as exc:
     raise SystemExit(f"Found {lib_name} but failed to load it: {exc}")
 
-print("✓ Python shared library OK")
+print("[trt] ✓ Python shared library OK")
 EOF
 }
 
@@ -217,7 +217,7 @@ if err != 0:
     print(f"CUDART_ERROR: cudaDriverGetVersion -> {err}")
     sys.exit(1)
 
-print("✓ CUDA runtime OK")
+print("[trt] ✓ CUDA runtime OK")
 EOF
   ) || true
 
@@ -228,13 +228,12 @@ EOF
     return 1
   fi
 
-  echo "$check_output"
   return 0
 }
 
 # Validate MPI runtime
 trt_validate_mpi_runtime() {
-  local need_mpi="${NEED_MPI:-0}"
+  local need_mpi="${NEED_MPI}"
 
   if [ "$need_mpi" = "1" ]; then
     log_info "[trt] Checking MPI runtime..."
@@ -243,7 +242,7 @@ import sys
 try:
     from mpi4py import MPI
     MPI.Get_version()
-    print("✓ MPI runtime OK")
+    print("[trt] ✓ MPI runtime OK")
 except ImportError as exc:
     sys.exit(f"mpi4py not installed: {exc}")
 except Exception as exc:
@@ -258,9 +257,9 @@ EOF
 trt_validate_installation() {
   log_info "[trt] Validating TensorRT-LLM installation..."
   
-  # Check TensorRT-LLM version
+  # Check TensorRT-LLM version (suppress library's own version log)
   local trt_version
-  trt_version=$(python -c "import tensorrt_llm; print(tensorrt_llm.__version__)" 2>/dev/null) || {
+  trt_version=$(python -c "import sys, io; sys.stdout = io.StringIO(); import tensorrt_llm; sys.stdout = sys.__stdout__; print(tensorrt_llm.__version__)" 2>/dev/null) || {
     log_err "[trt] TensorRT-LLM not installed or not importable"
     return 1
   }

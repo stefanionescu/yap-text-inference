@@ -249,7 +249,7 @@ restart_basic() {
   fi
   log_info "[restart] All logs: tail -f server.log"
   log_info "[restart] To stop: bash scripts/stop.sh"
-  log_info "[restart] "
+  log_info ""
 
   mkdir -p "${ROOT_DIR}/.run"
   setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG_PATH}" 2>&1 &
