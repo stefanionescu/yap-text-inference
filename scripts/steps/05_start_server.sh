@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/runtime/restart_guard.sh"
+source "${SCRIPT_DIR}/../lib/deps/venv.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 
 # Validate CUDA 13.x for TRT before starting server
@@ -17,10 +18,8 @@ fi
 
 log_info "[server] Starting server on :8000 in background"
 cd "${ROOT_DIR}"
-if [ -d "${ROOT_DIR}/.venv" ]; then
-  # shellcheck disable=SC1091
-  source "${ROOT_DIR}/.venv/bin/activate" || true
-fi
+# Activate venv if available (non-fatal)
+activate_venv "${ROOT_DIR}/.venv" 0 || true
 
 # Double-start guard and stale PID handling
 PID_FILE="${ROOT_DIR}/server.pid"
