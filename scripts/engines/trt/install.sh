@@ -202,7 +202,7 @@ EOF
 
 # Validate MPI runtime
 trt_validate_mpi_runtime() {
-  local need_mpi="${NEED_MPI}"
+  local need_mpi="${NEED_MPI:-0}"
 
   if [ "$need_mpi" = "1" ]; then
     log_info "[trt] Checking MPI runtime..."
