@@ -11,6 +11,36 @@
 
 TRT_REQUIRED_PYTHON_VERSION="3.10"
 
+# =============================================================================
+# VENV PATH HELPERS
+# =============================================================================
+# Centralized functions to get venv paths - use these instead of hardcoding
+
+# Get the venv directory path
+# Usage: get_venv_dir
+# Returns: Path to .venv directory (e.g., /path/to/project/.venv)
+get_venv_dir() {
+  echo "${ROOT_DIR}/.venv"
+}
+
+# Get the venv Python executable path
+# Usage: get_venv_python
+# Returns: Path to venv python binary
+get_venv_python() {
+  echo "${ROOT_DIR}/.venv/bin/python"
+}
+
+# Get the venv pip executable path
+# Usage: get_venv_pip
+# Returns: Path to venv pip binary
+get_venv_pip() {
+  echo "${ROOT_DIR}/.venv/bin/pip"
+}
+
+# =============================================================================
+# PYTHON BINARY SELECTION
+# =============================================================================
+
 # Determine the correct Python binary based on engine type
 # Usage: get_python_binary_for_engine
 # Returns: Python binary name (e.g., python3.10, python3)
