@@ -3,7 +3,7 @@
 # Logging utilities for Docker scripts (prefix-based)
 
 log_info() { echo "$*"; }
-log_warn() { echo "$* ⚠" >&2; }
+log_warn() { echo "$*" >&2; }
 log_error() { echo "$* ✗" >&2; }
 log_success() { echo "$* ✓"; }
 

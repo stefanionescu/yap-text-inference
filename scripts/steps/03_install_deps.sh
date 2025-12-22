@@ -51,6 +51,16 @@ ensure_virtualenv || exit 1
 
 ensure_pip_in_venv || exit 1
 
+# Activate venv so pip/python commands use venv versions
+VENV_DIR="${ROOT_DIR}/.venv"
+if [ -d "${VENV_DIR}" ] && [ -f "${VENV_DIR}/bin/activate" ]; then
+  # shellcheck disable=SC1091
+  source "${VENV_DIR}/bin/activate"
+else
+  log_err "[deps] Virtual environment not found or corrupted at ${VENV_DIR}"
+  exit 1
+fi
+
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
   # Install app requirements first (before TRT-LLM to avoid conflicts)
