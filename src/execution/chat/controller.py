@@ -15,7 +15,7 @@ Key Features:
    - Configurable via flush_ms (0 = no buffering)
 
 3. Timeout Handling:
-   - Generation timeout with asyncio.timeout
+   - Generation timeout with async context manager
    - Automatic request abortion on timeout
    - TimeoutError propagation for caller handling
 
@@ -35,7 +35,6 @@ Works with both vLLM and TensorRT-LLM engines through the BaseEngine interface.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 import time
 from dataclasses import dataclass
@@ -43,6 +42,7 @@ from typing import Any
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
 from ...engines.base import BaseEngine
+from ...helpers.async_compat import timeout as async_timeout
 
 logger = logging.getLogger(__name__)
 STREAM_LABEL = "chat"  # Log prefix for chat streams
@@ -292,7 +292,7 @@ async def _stream_with_timeout(
     cancel_checker = _CancelChecker(cancel_check)
 
     try:
-        async with asyncio.timeout(timeout_s):
+        async with async_timeout(timeout_s):
             async for out in stream:
                 if await cancel_checker.triggered():
                     await engine.abort(request_id)
