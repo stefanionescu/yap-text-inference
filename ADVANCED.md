@@ -597,13 +597,6 @@ The build scripts handle this automatically.
 
 Since TensorRT-LLM requires CUDA 13.0+, this silent downgrade will break deployment with cryptic errors.
 
-**Recommended base images:**
-
-| Platform | Base Image |
-|----------|------------|
-| NVIDIA (general) | `nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04` |
-| RunPod | `runpod/base:1.0.3-dev-dj-new-pytorch-cuda1300-ubuntu2404` |
-
 **Symptoms of CUDA downgrade:**
 - TensorRT-LLM engine build failures
 - Runtime errors about incompatible CUDA versions
