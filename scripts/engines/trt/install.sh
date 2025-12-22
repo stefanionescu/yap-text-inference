@@ -79,17 +79,15 @@ trt_ensure_cuda_home() {
 # =============================================================================
 
 # pip install with retry
-# Uses venv pip explicitly to ensure installation goes to the correct environment
+# Uses venv pip (via PATH after activation)
 _trt_pip_install_with_retry() {
   local max_attempts="${PIP_INSTALL_ATTEMPTS:-5}"
   local delay="${PIP_INSTALL_BACKOFF_SECONDS:-2}"
   local attempt=1
-  local pip_bin
-  pip_bin="$(get_venv_pip)"
 
   while [ "${attempt}" -le "${max_attempts}" ]; do
     log_info "[trt] pip attempt ${attempt}/${max_attempts}: $*"
-    if "${pip_bin}" "$@"; then
+    if pip "$@"; then
       return 0
     fi
     attempt=$((attempt + 1))
@@ -136,9 +134,7 @@ trt_install_tensorrt_llm() {
 # Validate Python shared library
 trt_validate_python_libraries() {
   log_info "[trt] Checking Python shared library..."
-  local python_bin
-  python_bin="$(get_venv_python)"
-  "${python_bin}" - <<'EOF'
+  python - <<'EOF'
 import ctypes
 import ctypes.util
 import sys
@@ -164,11 +160,9 @@ EOF
 # Validate CUDA runtime
 trt_validate_cuda_runtime() {
   log_info "[trt] Checking CUDA Python bindings..."
-  local python_bin
-  python_bin="$(get_venv_python)"
   local check_output
   check_output=$(
-    "${python_bin}" - <<'EOF'
+    python - <<'EOF'
 import sys
 from importlib.metadata import PackageNotFoundError, version
 
@@ -213,9 +207,7 @@ trt_validate_mpi_runtime() {
 
   if [ "$need_mpi" = "1" ]; then
     log_info "[trt] Checking MPI runtime..."
-    local python_bin
-    python_bin="$(get_venv_python)"
-    "${python_bin}" - <<'EOF'
+    python - <<'EOF'
 import sys
 try:
     from mpi4py import MPI
@@ -234,12 +226,10 @@ EOF
 # Validate TensorRT-LLM installation
 trt_validate_installation() {
   log_info "[trt] Validating TensorRT-LLM installation..."
-  local python_bin
-  python_bin="$(get_venv_python)"
   
   # Check TensorRT-LLM version (suppress library's own version log)
   local trt_version
-  trt_version=$("${python_bin}" -c "import sys, io; sys.stdout = io.StringIO(); import tensorrt_llm; sys.stdout = sys.__stdout__; print(tensorrt_llm.__version__)" 2>/dev/null) || {
+  trt_version=$(python -c "import sys, io; sys.stdout = io.StringIO(); import tensorrt_llm; sys.stdout = sys.__stdout__; print(tensorrt_llm.__version__)" 2>/dev/null) || {
     log_err "[trt] TensorRT-LLM not installed or not importable"
     return 1
   }
@@ -391,18 +381,16 @@ trt_install_quant_requirements() {
   
   if [ -f "${quant_reqs}" ]; then
     log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
-    local pip_bin
-    pip_bin="$(get_venv_pip)"
-    "${pip_bin}" install --quiet -r "${quant_reqs}" || {
+    pip install --quiet -r "${quant_reqs}" || {
       log_warn "[trt] Some quantization requirements failed to install"
     }
     # Ensure hf_transfer is present even if a system package blocks uninstall (e.g. Debian blinker)
     # --ignore-installed avoids RECORD issues from distro packages.
-    "${pip_bin}" install --quiet --ignore-installed "hf_transfer==0.1.8" || {
+    pip install --quiet --ignore-installed "hf_transfer==0.1.8" || {
       log_warn "[trt] hf_transfer install failed; fast HF downloads will be disabled"
     }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
-    "${pip_bin}" install --quiet 'urllib3>=2.6.0' || true
+    pip install --quiet 'urllib3>=2.6.0' || true
     
     # Mark as installed (store hash of requirements.txt)
     mkdir -p "$(dirname "${marker_file}")"
