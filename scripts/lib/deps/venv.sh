@@ -199,4 +199,41 @@ ensure_pip_in_venv() {
   fi
 }
 
+# Activate virtual environment
+# Usage: activate_venv [venv_dir] [fail_on_error]
+#   venv_dir: Path to venv directory (defaults to ${ROOT_DIR}/.venv)
+#   fail_on_error: If 1, exit on error; if 0, return error code (default: 1)
+# Returns: 0 on success, 1 on failure
+activate_venv() {
+  local venv_dir="${1:-${ROOT_DIR}/.venv}"
+  local fail_on_error="${2:-1}"
+  
+  if [ ! -d "${venv_dir}" ]; then
+    log_err "[venv] Virtual environment not found at ${venv_dir}"
+    if [ "${fail_on_error}" = "1" ]; then
+      exit 1
+    fi
+    return 1
+  fi
+  
+  if [ ! -f "${venv_dir}/bin/activate" ]; then
+    log_err "[venv] Virtual environment corrupted (no activate script) at ${venv_dir}"
+    if [ "${fail_on_error}" = "1" ]; then
+      exit 1
+    fi
+    return 1
+  fi
+  
+  # shellcheck disable=SC1091
+  source "${venv_dir}/bin/activate" || {
+    log_err "[venv] Failed to activate virtual environment at ${venv_dir}"
+    if [ "${fail_on_error}" = "1" ]; then
+      exit 1
+    fi
+    return 1
+  }
+  
+  return 0
+}
+
 

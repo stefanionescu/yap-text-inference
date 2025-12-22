@@ -8,6 +8,9 @@ mkdir -p "${LOG_DIR}"
 
 LOG_FILE="${LOG_DIR}/warmup.log"
 
+# Source venv helpers
+source "${SCRIPT_DIR}/lib/deps/venv.sh" 2>/dev/null || true
+
 log() {
   local line
   line="[warmup] $*"
@@ -22,10 +25,8 @@ export SERVER_WS_URL
 
 HEALTH_URLS=("http://${SERVER_ADDR}/healthz" "http://${SERVER_ADDR}/health")
 
-if [ -d "${ROOT_DIR}/.venv" ]; then
-  # shellcheck disable=SC1091
-  source "${ROOT_DIR}/.venv/bin/activate" || true
-fi
+# Activate venv if available (non-fatal)
+activate_venv "${ROOT_DIR}/.venv" 0 || true
 
 if [ -x "${ROOT_DIR}/.venv/bin/python" ]; then
   PY_BIN="${ROOT_DIR}/.venv/bin/python"
