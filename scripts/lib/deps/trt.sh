@@ -161,7 +161,7 @@ _install_mpi_yum() {
 
 # Verify MPI runtime is functional
 verify_mpi_runtime() {
-  local need_mpi="${NEED_MPI}"
+  local need_mpi="${NEED_MPI:-0}"
   
   if [ "${need_mpi}" != "1" ]; then
     log_info "[deps] Skipping MPI runtime verification (NEED_MPI=0)"
