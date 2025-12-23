@@ -32,7 +32,39 @@ except Exception:
 # Python Package Version Checks
 # =============================================================================
 
-# Check if PyTorch is installed with correct version
+# Minimal venv existence check (no dependency on other helpers)
+check_venv_exists() {
+  local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
+
+  if [[ ! -d "$venv_dir" ]]; then
+    return 1
+  fi
+  if [[ ! -f "$venv_dir/bin/python" ]]; then
+    return 1
+  fi
+  if [[ ! -f "$venv_dir/bin/activate" ]]; then
+    return 1
+  fi
+  return 0
+}
+
+# Log a human-readable summary of current TRT dep status
+log_trt_dep_status() {
+  local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
+  echo "[deps] Status for venv=${venv_dir}"
+  echo "[deps]   torch:         NEEDS_PYTORCH=${NEEDS_PYTORCH}"
+  echo "[deps]   torchvision:   NEEDS_TORCHVISION=${NEEDS_TORCHVISION}"
+  echo "[deps]   tensorrt_llm:  NEEDS_TRTLLM=${NEEDS_TRTLLM}"
+  echo "[deps]   requirements:  NEEDS_REQUIREMENTS=${NEEDS_REQUIREMENTS}"
+  if [[ ${#REQUIREMENTS_MISSING_PKGS[@]:-0} -gt 0 ]]; then
+    echo "[deps]   Missing pkgs: ${REQUIREMENTS_MISSING_PKGS[*]}"
+  fi
+  if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]:-0} -gt 0 ]]; then
+    echo "[deps]   Wrong version pkgs: ${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
+  fi
+}
+
+# Check if PyTorch is installed with correct version (exact match, including CUDA suffix)
 # Returns: 0 if correct, 1 if missing, 2 if wrong version
 check_pytorch_installed() {
   local required_version="${1:-2.9.0}"
@@ -46,11 +78,7 @@ check_pytorch_installed() {
     return 1
   fi
   
-  # Strip CUDA suffix for comparison (e.g., "2.9.0+cu130" -> "2.9.0")
-  local installed_base="${installed_ver%%+*}"
-  local required_base="${required_version%%+*}"
-  
-  if [[ "$installed_base" != "$required_base" ]]; then
+  if [[ "$installed_ver" != "$required_version" ]]; then
     log_info "[deps] PyTorch version mismatch: installed=$installed_ver, required=$required_version"
     return 2
   fi
@@ -59,7 +87,7 @@ check_pytorch_installed() {
   return 0
 }
 
-# Check if TorchVision is installed with correct version
+# Check if TorchVision is installed with correct version (exact match)
 # Returns: 0 if correct, 1 if missing, 2 if wrong version
 check_torchvision_installed() {
   local required_version="${1:-0.24.0}"
@@ -73,10 +101,7 @@ check_torchvision_installed() {
     return 1
   fi
   
-  local installed_base="${installed_ver%%+*}"
-  local required_base="${required_version%%+*}"
-  
-  if [[ "$installed_base" != "$required_base" ]]; then
+  if [[ "$installed_ver" != "$required_version" ]]; then
     log_info "[deps] TorchVision version mismatch: installed=$installed_ver, required=$required_version"
     return 2
   fi
@@ -127,6 +152,8 @@ check_requirements_installed() {
   
   REQUIREMENTS_MISSING_PKGS=()
   REQUIREMENTS_WRONG_VERSION_PKGS=()
+  REQUIREMENTS_MISSING=false
+  REQUIREMENTS_WRONG=false
   local has_missing=false
   local has_wrong_version=false
   
@@ -156,9 +183,11 @@ check_requirements_installed() {
       if [[ -z "$installed_ver" ]]; then
         REQUIREMENTS_MISSING_PKGS+=("$pkg_name==$required_ver")
         has_missing=true
+        REQUIREMENTS_MISSING=true
       elif [[ "$installed_ver" != "$required_ver" ]]; then
         REQUIREMENTS_WRONG_VERSION_PKGS+=("$pkg_name")
         has_wrong_version=true
+        REQUIREMENTS_WRONG=true
       fi
     fi
   done < "$requirements_file"
