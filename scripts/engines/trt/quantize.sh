@@ -48,15 +48,21 @@ trt_download_model() {
     export HF_HUB_ENABLE_HF_TRANSFER=0
     log_warn "[model] hf_transfer not installed, using standard downloads"
   fi
-  python -c "
+  
+  if ! python -c "
 import sys
 from huggingface_hub import snapshot_download
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
 print('✓ Downloaded model', file=sys.stderr)
-" || {
+"; then
     log_err "[model] Failed to download model ${model_id}"
+    # Cleanup partial download to avoid inconsistent state
+    if [ -d "${target_dir}" ] && [ ! -f "${target_dir}/config.json" ]; then
+      log_warn "[model] Cleaning up partial download at ${target_dir}"
+      rm -rf "${target_dir}"
+    fi
     return 1
-  }
+  fi
   
   echo "${target_dir}"
 }
@@ -125,6 +131,12 @@ trt_quantize_model() {
   rm -rf "${output_dir}"
   mkdir -p "${output_dir}"
   
+  # Cleanup function for partial failures
+  _quant_cleanup_on_failure() {
+    log_warn "[quant] Cleaning up partial output at ${output_dir}"
+    rm -rf "${output_dir}"
+  }
+  
   # Build quantization command
   local quant_cmd=(
     python "${quant_script}"
@@ -151,14 +163,16 @@ trt_quantize_model() {
   esac
   
   log_info "[quant] Running: ${quant_cmd[*]}"
-  "${quant_cmd[@]}" || {
+  if ! "${quant_cmd[@]}"; then
     log_err "[quant] Quantization failed"
+    _quant_cleanup_on_failure
     return 1
-  }
+  fi
   
   # Validate output
   if [ ! -f "${output_dir}/config.json" ]; then
     log_err "[quant] Quantization completed but config.json not found in output"
+    _quant_cleanup_on_failure
     return 1
   fi
   
@@ -187,6 +201,7 @@ trt_download_prequantized() {
   fi
   
   log_info "[model] Downloading pre-quantized TRT model: ${model_id}"
+  mkdir -p "${target_dir}"
   
   # Only enable HF_HUB_ENABLE_HF_TRANSFER if hf_transfer is installed
   if python -c "import hf_transfer" 2>/dev/null; then
@@ -195,7 +210,8 @@ trt_download_prequantized() {
     export HF_HUB_ENABLE_HF_TRANSFER=0
     log_warn "[model] hf_transfer not installed, using standard downloads"
   fi
-  python -c "
+  
+  if ! python -c "
 import sys
 from huggingface_hub import snapshot_download
 snapshot_download(
@@ -204,10 +220,18 @@ snapshot_download(
     allow_patterns=['trt-llm/checkpoints/**', '*.json', '*.safetensors']
 )
 print('✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
-" || {
+"; then
     log_err "[model] Failed to download pre-quantized model"
+    # Cleanup partial download to avoid inconsistent state
+    if [ -d "${target_dir}" ]; then
+      local ckpt_dir="${target_dir}/trt-llm/checkpoints"
+      if [ ! -f "${ckpt_dir}/config.json" ] && [ ! -f "${target_dir}/config.json" ]; then
+        log_warn "[model] Cleaning up partial download at ${target_dir}"
+        rm -rf "${target_dir}"
+      fi
+    fi
     return 1
-  }
+  fi
   
   # Check for checkpoint directory
   local ckpt_dir="${target_dir}/trt-llm/checkpoints"

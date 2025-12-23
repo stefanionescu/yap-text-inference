@@ -11,6 +11,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Source common utilities
 source "${SCRIPT_DIR}/../lib/common/log.sh"
+source "${SCRIPT_DIR}/../lib/common/gpu_detect.sh"
 
 # Source TRT libraries
 source "${SCRIPT_DIR}/../lib/env/trt.sh"
@@ -41,7 +42,7 @@ fi
 log_info "[quant] TRT-LLM quantization pipeline starting..."
 
 # Initialize GPU detection
-trt_init_gpu_detection
+gpu_init_detection "trt-quant"
 
 # Ensure TRT-LLM repository is available (contains quantization scripts)
 if ! trt_prepare_repo; then

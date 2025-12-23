@@ -11,7 +11,7 @@ source "${LIB_DIR}/deps/certs.sh"
 source "${LIB_DIR}/deps/pip.sh"
 source "${LIB_DIR}/deps/trt.sh"
 source "${LIB_DIR}/env/torch.sh"
-source "${LIB_DIR}/env/trt.sh"  # TRT version config including TRT_PYTORCH_* variables
+source "${LIB_DIR}/env/trt.sh"
 source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/deps/reqs.sh"
 source "${LIB_DIR}/deps/check.sh"

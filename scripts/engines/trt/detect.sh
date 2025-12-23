@@ -2,90 +2,14 @@
 # =============================================================================
 # TRT-LLM Detection Utilities
 # =============================================================================
-# GPU architecture detection and TRT pre-quantized model detection.
+# TRT-specific detection: pre-quantized models, CUDA version checks.
+# GPU detection: use lib/common/gpu_detect.sh functions directly.
 
-# =============================================================================
-# GPU ARCHITECTURE DETECTION
-# =============================================================================
+_TRT_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Detect GPU SM architecture from nvidia-smi
-# Returns: sm80 (A100), sm89 (L40S), sm90 (H100), etc.
-trt_detect_gpu_sm_arch() {
-  if [ -n "${GPU_SM_ARCH:-}" ]; then
-    echo "${GPU_SM_ARCH}"
-    return 0
-  fi
-  
-  if ! command -v nvidia-smi >/dev/null 2>&1; then
-    log_warn "[gpu] nvidia-smi not found, cannot detect GPU architecture"
-    echo ""
-    return 1
-  fi
-  
-  # Get GPU name and map to SM architecture
-  local gpu_name
-  gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 | tr '[:upper:]' '[:lower:]')
-  
-  if [ -z "${gpu_name}" ]; then
-    log_warn "[gpu] Could not detect GPU name"
-    echo ""
-    return 1
-  fi
-  
-  # Map GPU name to SM architecture
-  local sm_arch=""
-  case "${gpu_name}" in
-    *"h100"*)
-      sm_arch="sm90"
-      ;;
-    *"l40s"* | *"l40"* | *"rtx 4090"* | *"rtx 4080"* | *"rtx 4070"* | *"ada"*)
-      sm_arch="sm89"
-      ;;
-    *"a100"* | *"a10"* | *"a30"* | *"rtx 3090"* | *"rtx 3080"* | *"ampere"*)
-      sm_arch="sm80"
-      ;;
-    *"v100"* | *"volta"*)
-      sm_arch="sm70"
-      ;;
-    *)
-      # Try to get compute capability directly
-      local compute_cap
-      compute_cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 | tr -d '.')
-      if [ -n "${compute_cap}" ]; then
-        sm_arch="sm${compute_cap}"
-      else
-        log_warn "[gpu] Unknown GPU: ${gpu_name}, defaulting to sm89 (L40S)"
-        sm_arch="sm89"
-      fi
-      ;;
-  esac
-  
-  echo "${sm_arch}"
-}
-
-# Get human-readable GPU name
-trt_get_gpu_name() {
-  if ! command -v nvidia-smi >/dev/null 2>&1; then
-    echo "Unknown"
-    return
-  fi
-  nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 || echo "Unknown"
-}
-
-# Get GPU VRAM in GB
-trt_get_gpu_vram_gb() {
-  if ! command -v nvidia-smi >/dev/null 2>&1; then
-    echo "0"
-    return
-  fi
-  local vram_mb
-  vram_mb=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n1)
-  if [ -n "${vram_mb}" ]; then
-    echo $((vram_mb / 1024))
-  else
-    echo "0"
-  fi
-}
+# Source common GPU detection
+# shellcheck source=../../lib/common/gpu_detect.sh
+source "${_TRT_DETECT_DIR}/../../lib/common/gpu_detect.sh"
 
 # =============================================================================
 # QUANTIZATION SCRIPT
@@ -272,18 +196,4 @@ PY
   return 0
 }
 
-# =============================================================================
-# INITIALIZATION
-# =============================================================================
-
-# Auto-detect GPU SM arch if not set
-trt_init_gpu_detection() {
-  if [ -z "${GPU_SM_ARCH:-}" ]; then
-    GPU_SM_ARCH=$(trt_detect_gpu_sm_arch)
-    export GPU_SM_ARCH
-    if [ -n "${GPU_SM_ARCH}" ]; then
-      log_info "[gpu] Detected GPU architecture: ${GPU_SM_ARCH} ($(trt_get_gpu_name))"
-    fi
-  fi
-}
 
