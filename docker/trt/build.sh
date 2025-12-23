@@ -36,7 +36,7 @@ BUILD_CONTEXT="${SCRIPT_DIR}"
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile"
 
 # Modules
-source "${SCRIPT_DIR}/scripts/build/logs.sh"
+source "${SCRIPT_DIR}/scripts/logs.sh"
 source "${SCRIPT_DIR}/scripts/build/docker.sh"
 source "${SCRIPT_DIR}/scripts/build/args.sh"
 source "${SCRIPT_DIR}/scripts/build/context.sh"
