@@ -5,6 +5,7 @@
 
 # Log current configuration
 main_log_config() {
+  log_info ""
   if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
     log_info "[main] Configuration: quantization=tool-only (classifier runs float16)"
   else

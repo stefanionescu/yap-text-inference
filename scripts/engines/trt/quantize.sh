@@ -51,7 +51,7 @@ trt_download_model() {
   python -c "
 import sys
 from huggingface_hub import snapshot_download
-snapshot_download(repo_id='${model_id}', local_dir='${target_dir}', local_dir_use_symlinks=False)
+snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
 print('✓ Downloaded model', file=sys.stderr)
 " || {
     log_err "[model] Failed to download model ${model_id}"
@@ -201,7 +201,6 @@ from huggingface_hub import snapshot_download
 snapshot_download(
     repo_id='${model_id}',
     local_dir='${target_dir}',
-    local_dir_use_symlinks=False,
     allow_patterns=['trt-llm/checkpoints/**', '*.json', '*.safetensors']
 )
 print('✓ Downloaded pre-quantized checkpoint', file=sys.stderr)

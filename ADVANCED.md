@@ -194,9 +194,11 @@ Create/activate a virtualenv, install runtime + dev deps, then run the integrate
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+bash scripts/activate.sh
+# (inside the activated shell)
 pip install -r requirements-dev.txt
 bash scripts/lint.sh
+# exit the subshell when finished
 ```
 
 `scripts/lint.sh` runs Ruff across `src` and `tests`, then ShellCheck over every tracked `*.sh`, exiting non-zero if anything fails.
@@ -449,7 +451,7 @@ The pipeline writes metadata files (`awq_metadata.json` or `build_metadata.json`
 
 ## Test Clients
 
-All CLI harnesses run against the same WebSocket stack; use them to validate behavior end to end. Unless otherwise noted, activate `.venv` (or the lightweight `.venv-local`) before running the commands below.
+All CLI harnesses run against the same WebSocket stack; use them to validate behavior end to end. Unless otherwise noted, run them through `scripts/activate.sh` so you pick up whichever venv exists (`VENV_DIR`, `/opt/venv`, or repo `.venv`). Example: `bash scripts/activate.sh python3 tests/warmup.py`. For the lightweight CPU-only path described in [Local Test Dependencies](#local-test-dependencies), keep sourcing `.venv-local/bin/activate`.
 
 > **Prompt modes:** every client accepts `--prompt-mode {both,chat,tool}` (or `PROMPT_MODE` env).  
 > `both` (default) sends the chat persona prompt.  
@@ -460,7 +462,7 @@ All CLI harnesses run against the same WebSocket stack; use them to validate beh
 ### Warmup Test Client
 
 ```bash
-source .venv/bin/activate
+# run these after entering the venv via 'bash scripts/activate.sh'
 python3 tests/warmup.py
 python3 tests/warmup.py "who was Columbus?"
 python3 tests/warmup.py --gender male --personality flirty "hello there"
@@ -487,7 +489,7 @@ To compare cold vs warm responses on the exact same connection, append `--double
 ### Interactive Live Client
 
 ```bash
-source .venv/bin/activate
+# run inside the scripts/activate.sh environment
 TEXT_API_KEY=your_api_key python3 tests/live.py \
   --server ws://127.0.0.1:8000 \
   --persona default_live_persona
@@ -504,7 +506,7 @@ Flags:
 ### Personality Switch Test
 
 ```bash
-source .venv/bin/activate
+# run inside the scripts/activate.sh environment
 TEXT_API_KEY=your_api_key python3 tests/personality.py \
   --server ws://127.0.0.1:8000 \
   --switches 3 \
@@ -518,7 +520,7 @@ This client requires chat prompts, so invoke it with `--prompt-mode chat` or `bo
 ### Conversation History Test
 
 ```bash
-source .venv/bin/activate
+# run inside the scripts/activate.sh environment
 TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
 ```
 
@@ -553,7 +555,7 @@ TEXT_API_KEY=your_api_key python3 tests/tool.py \
 ### Benchmark Client
 
 ```bash
-source .venv/bin/activate
+# run inside the scripts/activate.sh environment
 python3 tests/bench.py -n 32 -c 8
 python3 tests/bench.py --gender female --personality flirty "who was Columbus?"
 python3 tests/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
