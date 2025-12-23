@@ -420,6 +420,7 @@ trt_install_quant_requirements() {
   local repo_dir="${TRT_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
   local quant_reqs="${repo_dir}/examples/quantization/requirements.txt"
   local marker_file="${ROOT_DIR:-.}/.run/trt_quant_deps_installed"
+  local filtered_reqs="${ROOT_DIR:-.}/.run/quant_reqs.filtered.txt"
   
   # Skip if already installed (marker present and requirements.txt unchanged)
   if [ -f "${marker_file}" ]; then
@@ -436,7 +437,12 @@ trt_install_quant_requirements() {
   
   if [ -f "${quant_reqs}" ]; then
     log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
-    pip install -r "${quant_reqs}" || {
+
+    # Filter out torch/torchvision and CUDA runtime pins to avoid clobbering preinstalled cu130 wheels
+    # We already install torch/torchvision via trt_install_pytorch.
+    grep -viE '^(torch==|torchvision==|nvidia-cuda-runtime|nvidia-cudnn|nvidia-cublas|nvidia-cusparse|nvidia-cusolver|nvidia-cufft|nvidia-curand|nvidia-nvjitlink|nvidia-nvtx|cuda-toolkit)' "${quant_reqs}" > "${filtered_reqs}" || cp "${quant_reqs}" "${filtered_reqs}"
+
+    pip install -r "${filtered_reqs}" || {
       log_warn "[trt] Some quantization requirements failed to install"
     }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
