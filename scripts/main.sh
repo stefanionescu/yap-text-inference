@@ -11,6 +11,7 @@ source "${SCRIPT_DIR}/lib/common/warmup.sh"
 source "${SCRIPT_DIR}/lib/common/model_detect.sh"
 source "${SCRIPT_DIR}/lib/common/model_validate.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
+source "${SCRIPT_DIR}/lib/common/cuda.sh"
 
 # Runtime management
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
@@ -40,12 +41,7 @@ main_parse_flags "$@"
 set -- "${MAIN_REMAINING_ARGS[@]}"
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
-if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
-  if ! trt_assert_cuda13_driver "main"; then
-    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
-    exit 1
-  fi
-fi
+ensure_cuda_ready_for_engine "main" || exit 1
 
 # Phase 2: Parse quantization type
 main_parse_quant_type "$@"

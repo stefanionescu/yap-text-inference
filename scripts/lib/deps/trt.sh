@@ -49,6 +49,55 @@ ensure_trt_system_deps() {
   fi
 }
 
+trt_determine_dependency_status() {
+  local venv_dir="$1"
+  local pytorch_ver="${2:-${TRT_PYTORCH_VERSION:-2.9.0+cu130}}"
+  local torchvision_ver="${3:-${TRT_TORCHVISION_VERSION:-0.24.0+cu130}}"
+  local trtllm_ver="${4:-${TRT_VERSION:-1.2.0rc5}}"
+  local req_file="${5:-requirements-trt.txt}"
+
+  if check_trt_deps_status "${venv_dir}" "${pytorch_ver}" "${torchvision_ver}" "${trtllm_ver}" "${req_file}"; then
+    log_trt_dep_status "${venv_dir}"
+    return 0
+  fi
+
+  log_trt_dep_status "${venv_dir}"
+  return 1
+}
+
+trt_install_missing_components() {
+  local had_error=0
+
+  if [[ "${NEEDS_PYTORCH}" = "1" || "${NEEDS_TORCHVISION}" = "1" ]]; then
+    trt_install_pytorch || had_error=1
+  else
+    log_info "[trt] PyTorch/TorchVision already correct; skipping"
+  fi
+
+  if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
+    filter_requirements_without_flashinfer
+    install_requirements_without_flashinfer
+  else
+    log_info "[trt] requirements-trt already satisfied; skipping"
+  fi
+
+  if [[ "${NEEDS_TRTLLM}" = "1" ]]; then
+    if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" ]]; then
+      export TRTLLM_NO_DEPS=1
+    else
+      unset TRTLLM_NO_DEPS
+    fi
+    trt_install_tensorrt_llm || had_error=1
+  else
+    log_info "[trt] TensorRT-LLM already correct; skipping"
+  fi
+
+  if [ "${had_error}" = "1" ]; then
+    return 1
+  fi
+  return 0
+}
+
 # Check if MPI headers are available
 _check_mpi_headers() {
   # Check common header locations

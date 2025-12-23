@@ -7,14 +7,10 @@ source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/runtime/restart_guard.sh"
 source "${SCRIPT_DIR}/../lib/deps/venv.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
+source "${SCRIPT_DIR}/../lib/common/cuda.sh"
 
 # Validate CUDA 13.x for TRT before starting server
-if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  if ! trt_assert_cuda13_driver "server"; then
-    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
-    exit 1
-  fi
-fi
+ensure_cuda_ready_for_engine "server" || exit 1
 
 log_info "[server] Starting server on :8000 in background"
 cd "${ROOT_DIR}"

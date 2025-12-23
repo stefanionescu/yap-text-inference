@@ -17,6 +17,7 @@ source "${SCRIPT_DIR}/lib/env/restart.sh"
 source "${SCRIPT_DIR}/lib/restart/launch.sh"
 source "${SCRIPT_DIR}/engines/vllm/push.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
+source "${SCRIPT_DIR}/lib/common/cuda.sh"
 
 log_info "[restart] Restart manager ready (reuse caches or reconfigure models)"
 
@@ -91,12 +92,7 @@ case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "[restart] Invalid dep
 export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
-if [ "${INFERENCE_ENGINE:-trt}" = "trt" ]; then
-  if ! trt_assert_cuda13_driver "restart"; then
-    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
-    exit 1
-  fi
-fi
+ensure_cuda_ready_for_engine "restart" || exit 1
 
 # Validate --push-quant prerequisites early (before any heavy operations)
 validate_push_quant_prereqs "${DEPLOY_MODE}"

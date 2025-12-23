@@ -223,11 +223,6 @@ trt_check_cuda_compatibility() {
   return 0
 }
 
-# Legacy function name for backwards compatibility
-trt_check_driver_runtime() {
-  trt_assert_cuda13_driver "cuda"
-}
-
 # Comprehensive CUDA 13.x check: validates BOTH toolkit AND driver
 # Checks: 1) toolkit version via nvcc/env, 2) driver capability via cudaDriverGetVersion or nvidia-smi
 # Usage: trt_assert_cuda13_driver [prefix]
