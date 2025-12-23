@@ -5,12 +5,14 @@
 
 # Wipe all pip/venv dependencies and caches for a clean reinstall
 # Preserves: HF cache, TRT repo, models, AWQ cache, quantized engines
+# This is ONLY called when --install-deps is passed (explicit user request)
 wipe_dependencies_for_reinstall() {
   local root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   
-  log_info "[deps] Wiping all dependencies for clean reinstall..."
+  log_info "[deps] Wiping all dependencies for clean reinstall (--install-deps)..."
   
   # 1. Remove all venvs (all pip packages gone)
+  # This is intentional - user explicitly requested --install-deps
   for venv_path in "${root}/.venv" "${root}/.venv-trt" "${root}/.venv-vllm" "${root}/venv" "${root}/env"; do
     if [ -d "${venv_path}" ]; then
       log_info "[deps] Removing venv: ${venv_path}"

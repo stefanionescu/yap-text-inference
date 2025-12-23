@@ -8,13 +8,27 @@ source "${SCRIPT_DIR}/lib/common/log.sh"
 HARD_RESET="${HARD_RESET:-0}"   # set HARD_RESET=1 to attempt nvidia-smi --gpu-reset
 PID_FILE="${ROOT_DIR}/server.pid"
 
-# Default to deepest cleanup unless explicitly opted out (NUKE_ALL=0)
+# =============================================================================
+# CLEANUP CONTROL FLAGS
+# =============================================================================
+# NUKE_ALL=0: Light stop - preserve venv, caches, models (for quick restart)
+# NUKE_ALL=1: Full stop - wipe model caches, HF cache, etc. (default)
+# NUKE_VENV=1: Also delete venv (only for --install-deps or engine switch)
+#
+# The venv should be preserved in most cases because:
+# - pip install is slow and deps rarely change
+# - Hash-based skip logic in reqs.sh handles dep updates
+# - Only delete venv when explicitly needed (engine switch, --install-deps)
+# =============================================================================
 NUKE_ALL="${NUKE_ALL:-1}"
+NUKE_VENV="${NUKE_VENV:-0}"  # Default: preserve venv
 
 if [ "${NUKE_ALL}" = "0" ]; then
   log_info "[stop] Light stop: preserving venv, caches, and models"
+elif [ "${NUKE_VENV}" = "1" ]; then
+  log_info "[stop] Full stop: wiping venv, runtime deps, and caches"
 else
-  log_info "[stop] Full stop: wiping runtime deps and caches"
+  log_info "[stop] Model reset: wiping model caches but preserving venv"
 fi
 
 # 0) Stop server + ALL its children (vLLM workers) = free VRAM
@@ -76,8 +90,10 @@ if [ "${NUKE_ALL}" != "0" ]; then
   for d in "${REPO_CACHE_DIRS[@]}"; do
     [ -d "$d" ] && { log_info "[cache] Removing repo cache at $d"; rm -rf "$d" || true; }
   done
-  
-  # Remove engine-specific venvs
+fi
+
+# Remove venvs ONLY when explicitly requested (engine switch or --install-deps)
+if [ "${NUKE_VENV}" = "1" ]; then
   for venv_suffix in "" "-trt" "-vllm"; do
     venv_path="${ROOT_DIR}/.venv${venv_suffix}"
     [ -d "${venv_path}" ] && { log_info "[cache] Removing venv at ${venv_path}"; rm -rf "${venv_path}" || true; }
@@ -108,8 +124,9 @@ else
   log_warn "[stop] nvidia-smi not found; skipping GPU process check"
 fi
 
-# 2) Remove virtual env(s) by default (unless NUKE_ALL=0)
-if [ "${NUKE_ALL}" != "0" ]; then
+# 2) Remove virtual env(s) ONLY when explicitly requested (engine switch or --install-deps)
+# Preserving venv allows hash-based skip logic in reqs.sh to work
+if [ "${NUKE_VENV}" = "1" ]; then
   for VENV_DIR in "${ROOT_DIR}/.venv" "${ROOT_DIR}/venv" "${ROOT_DIR}/env" "${ROOT_DIR}/.env"; do
     [ -d "$VENV_DIR" ] && { log_info "[cache] Removing venv $VENV_DIR"; rm -rf "$VENV_DIR" || true; }
   done

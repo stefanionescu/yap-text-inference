@@ -29,7 +29,7 @@ NEED_MPI="${NEED_MPI:-1}"
 # TensorRT-LLM repository for quantization scripts
 # IMPORTANT: We always clone a specific tag matching TRT_VERSION, not main branch.
 # The tag contains the correct quantization/requirements.txt for that version.
-TRT_REPO_URL="${TRTLLM_REPO_URL:-https://github.com/NVIDIA/TensorRT-LLM.git}"
+TRT_REPO_URL="${TRTLLM_REPO_URL:-https://github.com/Yap-With-AI/TensorRT-LLM.git}"
 TRT_REPO_TAG="${TRTLLM_REPO_TAG:-v${TRT_VERSION}}"
 TRT_REPO_DIR="${TRTLLM_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
 

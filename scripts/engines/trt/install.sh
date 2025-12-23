@@ -27,7 +27,7 @@ TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 
 # TRT-LLM repository configuration
-TRT_REPO_URL="${TRT_REPO_URL:-https://github.com/NVIDIA/TensorRT-LLM.git}"
+TRT_REPO_URL="${TRT_REPO_URL:-https://github.com/Yap-With-AI/TensorRT-LLM.git}"
 TRT_REPO_TAG="${TRT_REPO_TAG:-v${TRT_VERSION}}"
 TRT_REPO_DIR="${TRT_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
 TRT_CLONE_DEPTH="${TRT_CLONE_DEPTH:-1}"
