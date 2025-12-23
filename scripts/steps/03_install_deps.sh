@@ -62,33 +62,42 @@ activate_venv "${VENV_DIR}" || exit 1
 
 # Check existing dependency versions (sets NEEDS_* globals)
 check_trt_deps_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION%%+*}" "${TRT_TORCHVISION_VERSION%%+*}" "${TRT_VERSION:-1.2.0rc5}" "requirements-trt.txt" || true
+ALL_TRTH_DEPS_OK=0
+if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" && "${NEEDS_TRTLLM}" = "0" && "${NEEDS_REQUIREMENTS}" = "0" ]]; then
+  ALL_TRTH_DEPS_OK=1
+fi
 
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  # Install only what is missing/wrong, keep order but skip satisfied steps
-  if [[ "${NEEDS_PYTORCH}" = "1" || "${NEEDS_TORCHVISION}" = "1" ]]; then
-    trt_install_pytorch || {
-      log_err "[trt] PyTorch installation failed"
-      exit 1
-    }
+  # Fast path: everything already correct, just validate and prep repo
+  if [ "${ALL_TRTH_DEPS_OK}" = "1" ]; then
+    log_info "[trt] All dependencies already satisfied in ${VENV_DIR}; skipping installs"
   else
-    log_info "[trt] PyTorch/TorchVision already correct; skipping"
-  fi
-  
-  if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
-    filter_requirements_without_flashinfer
-    install_requirements_without_flashinfer
-  else
-    log_info "[trt] requirements-trt already satisfied; skipping"
-  fi
-  
-  if [[ "${NEEDS_TRTLLM}" = "1" ]]; then
-    trt_install_tensorrt_llm || {
-      log_err "[trt] TensorRT-LLM installation failed"
-      exit 1
-    }
-  else
-    log_info "[trt] TensorRT-LLM already correct; skipping"
+    # Install only what is missing/wrong, keep order but skip satisfied steps
+    if [[ "${NEEDS_PYTORCH}" = "1" || "${NEEDS_TORCHVISION}" = "1" ]]; then
+      trt_install_pytorch || {
+        log_err "[trt] PyTorch installation failed"
+        exit 1
+      }
+    else
+      log_info "[trt] PyTorch/TorchVision already correct; skipping"
+    fi
+    
+    if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
+      filter_requirements_without_flashinfer
+      install_requirements_without_flashinfer
+    else
+      log_info "[trt] requirements-trt already satisfied; skipping"
+    fi
+    
+    if [[ "${NEEDS_TRTLLM}" = "1" ]]; then
+      trt_install_tensorrt_llm || {
+        log_err "[trt] TensorRT-LLM installation failed"
+        exit 1
+      }
+    else
+      log_info "[trt] TensorRT-LLM already correct; skipping"
+    fi
   fi
   
   # Validate and prepare repo
