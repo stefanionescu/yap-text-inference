@@ -16,25 +16,39 @@ TRT_REQUIRED_PYTHON_VERSION="3.10"
 # =============================================================================
 # Centralized functions to get venv paths - use these instead of hardcoding
 
-# Get the venv directory path
-# Usage: get_venv_dir
-# Returns: Path to .venv directory (e.g., /path/to/project/.venv)
-get_venv_dir() {
+# Resolve the venv directory with the following precedence:
+# 1) VENV_DIR env var (explicit override)
+# 2) Prebaked /opt/venv if it exists (TRT base image comes with this)
+# 3) Repo-local .venv
+resolve_venv_dir() {
+  if [ -n "${VENV_DIR:-}" ]; then
+    echo "${VENV_DIR}"
+    return
+  fi
+  if [ -d "/opt/venv" ]; then
+    echo "/opt/venv"
+    return
+  fi
   echo "${ROOT_DIR}/.venv"
+}
+
+# Get the venv directory path (export-friendly)
+get_venv_dir() {
+  echo "$(resolve_venv_dir)"
 }
 
 # Get the venv Python executable path
 # Usage: get_venv_python
 # Returns: Path to venv python binary
 get_venv_python() {
-  echo "${ROOT_DIR}/.venv/bin/python"
+  echo "$(get_venv_dir)/bin/python"
 }
 
 # Get the venv pip executable path
 # Usage: get_venv_pip
 # Returns: Path to venv pip binary
 get_venv_pip() {
-  echo "${ROOT_DIR}/.venv/bin/pip"
+  echo "$(get_venv_dir)/bin/pip"
 }
 
 # =============================================================================
@@ -97,16 +111,26 @@ validate_venv_python_version() {
 }
 
 ensure_virtualenv() {
-  local venv_path="${ROOT_DIR}/.venv"
+  local venv_path
+  venv_path="$(resolve_venv_dir)"
+  export VENV_DIR="${venv_path}"
   local venv_python="${venv_path}/bin/python"
   local engine="${INFERENCE_ENGINE:-vllm}"
 
   # Check if existing venv has wrong Python version for engine
   if [ -d "${venv_path}" ]; then
     if ! validate_venv_python_version "${venv_path}"; then
+      if [ "${venv_path}" = "/opt/venv" ]; then
+        log_err "[venv] /opt/venv exists but has incompatible Python for ${engine}; refusing to delete baked venv"
+        return 1
+      fi
       log_warn "[venv] Existing venv has wrong Python version for ${engine} engine; recreating"
       rm -rf "${venv_path}"
     elif [ ! -x "${venv_python}" ]; then
+      if [ "${venv_path}" = "/opt/venv" ]; then
+        log_err "[venv] /opt/venv missing python binary; refusing to delete baked venv"
+        return 1
+      fi
       log_warn "[venv] Existing virtualenv missing python binary; recreating ${venv_path}"
       rm -rf "${venv_path}"
     fi
@@ -168,7 +192,10 @@ ensure_virtualenv() {
 }
 
 ensure_pip_in_venv() {
-  local venv_python="${ROOT_DIR}/.venv/bin/python"
+  local venv_path
+  venv_path="$(resolve_venv_dir)"
+  export VENV_DIR="${venv_path}"
+  local venv_python="${venv_path}/bin/python"
 
   if [ ! -x "${venv_python}" ]; then
     log_err "[venv] Virtual environment missing python binary; run ensure_virtualenv first."
@@ -205,7 +232,7 @@ ensure_pip_in_venv() {
 #   fail_on_error: If 1, exit on error; if 0, return error code (default: 1)
 # Returns: 0 on success, 1 on failure
 activate_venv() {
-  local venv_dir="${1:-${ROOT_DIR}/.venv}"
+  local venv_dir="${1:-$(resolve_venv_dir)}"
   local fail_on_error="${2:-1}"
   
   if [ ! -d "${venv_dir}" ]; then

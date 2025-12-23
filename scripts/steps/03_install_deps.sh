@@ -13,6 +13,7 @@ source "${LIB_DIR}/env/torch.sh"
 source "${LIB_DIR}/env/trt.sh"  # TRT version config including TRT_PYTORCH_* variables
 source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/deps/reqs.sh"
+source "${LIB_DIR}/deps/check.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 
 # Engine-specific install functions
@@ -28,6 +29,8 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "T
 else
   source "${SCRIPT_DIR}/../engines/vllm/install.sh"
 fi
+
+export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
 
 log_info "[deps] Installing Python dependencies (engine: ${INFERENCE_ENGINE:-vllm})"
 
@@ -55,32 +58,36 @@ ensure_virtualenv || exit 1
 ensure_pip_in_venv || exit 1
 
 # Activate venv so pip/python commands use venv versions
-activate_venv || exit 1
+activate_venv "${VENV_DIR}" || exit 1
+
+# Check existing dependency versions (sets NEEDS_* globals)
+check_trt_deps_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION%%+*}" "${TRT_TORCHVISION_VERSION%%+*}" "${TRT_VERSION:-1.2.0rc5}" "requirements-trt.txt" || true
 
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  # Order matches working-version/scripts/setup/install_dependencies.sh exactly:
-  # 1. PyTorch first (prevents wrong versions from transitive deps)
-  # 2. requirements.txt second
-  # 3. TensorRT-LLM third
+  # If everything is already correct, skip installs but still validate
+  if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" && "${NEEDS_TRTLLM}" = "0" && "${NEEDS_REQUIREMENTS}" = "0" ]] && should_skip_requirements_install; then
+    log_info "[trt] All dependencies already satisfied in ${VENV_DIR}; skipping installs"
+  else
+    # 1. PyTorch first (prevents wrong versions from transitive deps)
+    # 2. requirements.txt second
+    # 3. TensorRT-LLM third
+    
+    trt_install_pytorch || {
+      log_err "[trt] PyTorch installation failed"
+      exit 1
+    }
+    
+    filter_requirements_without_flashinfer
+    install_requirements_without_flashinfer
+    
+    trt_install_tensorrt_llm || {
+      log_err "[trt] TensorRT-LLM installation failed"
+      exit 1
+    }
+  fi
   
-  # 1. Install PyTorch with correct CUDA version FIRST
-  trt_install_pytorch || {
-    log_err "[trt] PyTorch installation failed"
-    exit 1
-  }
-  
-  # 2. Install app requirements (excludes torch, which is already installed)
-  filter_requirements_without_flashinfer
-  install_requirements_without_flashinfer
-  
-  # 3. Install TensorRT-LLM and validate
-  trt_install_tensorrt_llm || {
-    log_err "[trt] TensorRT-LLM installation failed"
-    exit 1
-  }
-  
-  # 4. Validate and prepare repo
+  # Validate and prepare repo
   trt_validate_installation || {
     log_err "[trt] TensorRT-LLM validation failed"
     exit 1

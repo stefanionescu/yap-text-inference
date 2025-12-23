@@ -18,7 +18,9 @@ get_requirements_file() {
 filter_requirements_without_flashinfer() {
   local req_file
   req_file="$(get_requirements_file)"
-  local tmp_req_file="${ROOT_DIR}/.venv/.requirements.no_flashinfer.txt"
+  local venv_dir
+  venv_dir="$(get_venv_dir)"
+  local tmp_req_file="${venv_dir}/.requirements.no_flashinfer.txt"
   if [ -f "${req_file}" ]; then
     grep -v -E '^\s*(flashinfer-python|llmcompressor)(\s|$|==|>=|<=|~=|!=)' "${req_file}" > "${tmp_req_file}" || cp "${req_file}" "${tmp_req_file}" || true
   fi
@@ -27,7 +29,9 @@ filter_requirements_without_flashinfer() {
 should_skip_requirements_install() {
   local req_file
   req_file="$(get_requirements_file)"
-  local stamp_file="${ROOT_DIR}/.venv/.req_hash"
+  local venv_dir
+  venv_dir="$(get_venv_dir)"
+  local stamp_file="${venv_dir}/.req_hash"
   if [ "${FORCE_REINSTALL:-0}" != "1" ] && [ -f "${stamp_file}" ] && [ -f "${req_file}" ]; then
     local cur_hash
     local old_hash
@@ -41,9 +45,11 @@ should_skip_requirements_install() {
 }
 
 install_requirements_without_flashinfer() {
-  local tmp_req_file="${ROOT_DIR}/.venv/.requirements.no_flashinfer.txt"
+  local venv_dir
+  venv_dir="$(get_venv_dir)"
+  local tmp_req_file="${venv_dir}/.requirements.no_flashinfer.txt"
   if ! should_skip_requirements_install; then
-    "${ROOT_DIR}/.venv/bin/pip" install --upgrade-strategy only-if-needed -r "${tmp_req_file}"
+    "${venv_dir}/bin/pip" install --upgrade-strategy only-if-needed -r "${tmp_req_file}"
   else
     log_info "[deps] Dependencies unchanged; skipping main pip install"
   fi
@@ -69,7 +75,7 @@ install_llmcompressor_without_deps() {
     return
   fi
 
-  if TARGET_VERSION="${version}" "${ROOT_DIR}/.venv/bin/python" - <<'PY'
+  if TARGET_VERSION="${version}" "$(get_venv_dir)/bin/python" - <<'PY'
 import os
 import sys
 try:
@@ -93,7 +99,7 @@ PY
   fi
 
   log_info "[deps] Installing llmcompressor==${version} without dependency resolution (torch pin conflict workaround)"
-  if ! "${ROOT_DIR}/.venv/bin/pip" install --no-deps "llmcompressor==${version}"; then
+  if ! "$(get_venv_dir)/bin/pip" install --no-deps "llmcompressor==${version}"; then
     log_error "[deps] Failed to install llmcompressor==${version}. Install it manually with --no-deps."
     exit 1
   fi
@@ -102,7 +108,9 @@ PY
 record_requirements_hash() {
   local req_file
   req_file="$(get_requirements_file)"
-  local stamp_file="${ROOT_DIR}/.venv/.req_hash"
+  local venv_dir
+  venv_dir="$(get_venv_dir)"
+  local stamp_file="${venv_dir}/.req_hash"
   if [ -f "${req_file}" ]; then
     sha256sum "${req_file}" | awk '{print $1}' > "${stamp_file}" || true
   fi
