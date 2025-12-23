@@ -294,19 +294,27 @@ Caches are wiped by default during model resets; they are only preserved automat
 
 ### Stop Script Behavior
 
-Default behavior (deep clean):
-- Terminates only `uvicorn src.server:app`
-- Removes venv and purges pip caches
-- Clears repo-local caches (`.hf`, `.vllm_cache`, `.trt_cache`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
-- Clears HF caches, torch caches, NVIDIA PTX JIT cache, and (by default) `$HOME/.cache`
+Default behavior (`NUKE_ALL=1`, model reset):
+- Terminates `uvicorn src.server:app` and engine workers
+- **Preserves venv** (pip deps) — hash-based skip logic handles dep updates efficiently
+- Clears repo-local caches (`.hf`, `.vllm_cache`, `.trt_cache`, `.awq`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
+- Clears HF caches, torch caches, NVIDIA PTX JIT cache, and `$HOME/.cache`
 - Preserves the repository, the container, and services like Jupyter/web console
 
-Opt-out example:
+Control flags:
 
 ```bash
-# Light clean (keep venv/home caches)
+# Light stop (preserve everything including models)
 NUKE_ALL=0 bash scripts/stop.sh
+
+# Full wipe including venv (for engine switch or fresh install)
+NUKE_VENV=1 bash scripts/stop.sh
+
+# Or combine for maximum cleanup
+NUKE_ALL=1 NUKE_VENV=1 bash scripts/stop.sh
 ```
+
+Note: `--install-deps` and engine switching (`--trt` ↔ `--vllm`) automatically set `NUKE_VENV=1`.
 
 ## Health Check
 
