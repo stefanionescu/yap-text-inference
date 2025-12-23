@@ -574,7 +574,7 @@ Pass `--double-ttfb` to keep each connection open for two sequential transaction
 
 ### TRT-LLM Python Version Mismatch
 
-TensorRT-LLM 1.2.0 (and variations like 1.2.0rc5) documentation claims Python 3.11 support, but **Python 3.11 does not work reliably**. Use **Python 3.10** instead.
+TensorRT-LLM 1.2.0 (and variations like 1.2.0rc6) documentation claims Python 3.11 support, but **Python 3.11 does not work reliably**. Use **Python 3.10** instead.
 
 **Symptoms with Python 3.11:**
 - Cryptic import errors during TRT-LLM initialization
@@ -583,7 +583,7 @@ TensorRT-LLM 1.2.0 (and variations like 1.2.0rc5) documentation claims Python 3.
 
 ### CUDA 13.0 Requirement
 
-TensorRT-LLM 1.2.0rc5 requires **CUDA 13.0** and **PyTorch 2.9.0**. The TRT-LLM package specifies `torch<=2.9.0,>=2.9.0a0` as a dependency constraint.
+TensorRT-LLM 1.2.0rc6 requires **CUDA 13.0** and **PyTorch 2.9.0**. The TRT-LLM package specifies `torch<=2.9.0,>=2.9.0a0` as a dependency constraint.
 
 If you see pip dependency resolver warnings about torch versions during installation, ensure you're using:
 - `torch==2.9.0+cu130` with `--index-url https://download.pytorch.org/whl/cu130`

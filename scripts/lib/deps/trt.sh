@@ -53,7 +53,7 @@ trt_determine_dependency_status() {
   local venv_dir="$1"
   local pytorch_ver="${2:-${TRT_PYTORCH_VERSION:-2.9.0+cu130}}"
   local torchvision_ver="${3:-${TRT_TORCHVISION_VERSION:-0.24.0+cu130}}"
-  local trtllm_ver="${4:-${TRT_VERSION:-1.2.0rc5}}"
+  local trtllm_ver="${4:-${TRT_VERSION:-1.2.0rc6}}"
   local req_file="${5:-requirements-trt.txt}"
 
   if check_trt_deps_status "${venv_dir}" "${pytorch_ver}" "${torchvision_ver}" "${trtllm_ver}" "${req_file}"; then
