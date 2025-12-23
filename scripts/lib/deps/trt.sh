@@ -69,14 +69,21 @@ trt_install_missing_components() {
   local had_error=0
 
   if [[ "${NEEDS_PYTORCH}" = "1" || "${NEEDS_TORCHVISION}" = "1" ]]; then
-    trt_install_pytorch || had_error=1
+    if trt_install_pytorch; then
+      log_info ""
+    else
+      had_error=1
+    fi
   else
     log_info "[trt] PyTorch/TorchVision already correct; skipping"
   fi
 
   if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
-    filter_requirements_without_flashinfer
-    install_requirements_without_flashinfer
+    if filter_requirements_without_flashinfer && install_requirements_without_flashinfer; then
+      log_info ""
+    else
+      had_error=1
+    fi
   else
     log_info "[trt] requirements-trt already satisfied; skipping"
   fi
@@ -87,7 +94,11 @@ trt_install_missing_components() {
     else
       unset TRTLLM_NO_DEPS
     fi
-    trt_install_tensorrt_llm || had_error=1
+    if trt_install_tensorrt_llm; then
+      log_info ""
+    else
+      had_error=1
+    fi
   else
     log_info "[trt] TensorRT-LLM already correct; skipping"
   fi

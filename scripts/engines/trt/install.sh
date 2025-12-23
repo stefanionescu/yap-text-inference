@@ -341,7 +341,7 @@ trt_prepare_repo() {
   if [ -d "${repo_dir}" ]; then
     log_info "[trt] Reusing existing TensorRT-LLM repository at ${repo_dir}"
   else
-    log_info "[trt] Cloning TensorRT-LLM repository to ${repo_dir} (tag: ${tag_name})"
+    log_info "[trt] Cloning repo..."
     
     # Build clone options (--quiet suppresses progress, -c advice.detachedHead=false suppresses detached HEAD warning)
     local clone_opts=("--quiet" "--single-branch" "--no-tags" "--branch" "${tag_name}")
@@ -356,12 +356,10 @@ trt_prepare_repo() {
     local attempt=1
     local clone_done=false
     while [ "${attempt}" -le "${clone_attempts}" ]; do
-      log_info "[trt] Clone attempt ${attempt}/${clone_attempts}"
       if git -c http.lowSpeedLimit=0 -c http.lowSpeedTime=999999 -c advice.detachedHead=false clone "${clone_opts[@]}" "${repo_url}" "${repo_dir}" 2>/dev/null; then
         clone_done=true
         break
       fi
-      log_warn "[trt] Clone attempt ${attempt} failed; cleaning partial checkout and retrying..."
       rm -rf "${repo_dir}"
       attempt=$((attempt + 1))
       if [ "${attempt}" -le "${clone_attempts}" ]; then
@@ -419,6 +417,7 @@ trt_prepare_repo() {
 trt_install_quant_requirements() {
   local repo_dir="${TRT_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
   local quant_reqs="${repo_dir}/examples/quantization/requirements.txt"
+  local constraints_file="${repo_dir}/examples/constraints.txt"
   local marker_file="${ROOT_DIR:-.}/.run/trt_quant_deps_installed"
   local filtered_reqs="${ROOT_DIR:-.}/.run/quant_reqs.filtered.txt"
   
@@ -438,11 +437,23 @@ trt_install_quant_requirements() {
   if [ -f "${quant_reqs}" ]; then
     log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
 
-    # Filter out torch/torchvision and CUDA runtime pins to avoid clobbering preinstalled cu130 wheels
+    # Filter out torch/torchvision, CUDA runtime pins, and relative constraint includes.
     # We already install torch/torchvision via trt_install_pytorch.
-    grep -viE '^(torch==|torchvision==|nvidia-cuda-runtime|nvidia-cudnn|nvidia-cublas|nvidia-cusparse|nvidia-cusolver|nvidia-cufft|nvidia-curand|nvidia-nvjitlink|nvidia-nvtx|cuda-toolkit)' "${quant_reqs}" > "${filtered_reqs}" || cp "${quant_reqs}" "${filtered_reqs}"
+    awk '
+      BEGIN { IGNORECASE = 1 }
+      /^(torch==|torchvision==|nvidia-cuda-runtime|nvidia-cudnn|nvidia-cublas|nvidia-cusparse|nvidia-cusolver|nvidia-cufft|nvidia-curand|nvidia-nvjitlink|nvidia-nvtx|cuda-toolkit)/ { next }
+      /^[[:space:]]*-c[[:space:]]+\.\.\/constraints\.txt/ { next }
+      { print }
+    ' "${quant_reqs}" > "${filtered_reqs}" || cp "${quant_reqs}" "${filtered_reqs}"
 
-    pip install -r "${filtered_reqs}" || {
+    local pip_args=(install -r "${filtered_reqs}")
+    if [ -f "${constraints_file}" ]; then
+      pip_args+=(-c "${constraints_file}")
+    else
+      log_warn "[trt] Constraints file not found at ${constraints_file}; continuing without it"
+    fi
+
+    pip "${pip_args[@]}" || {
       log_warn "[trt] Some quantization requirements failed to install"
     }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37

@@ -127,7 +127,6 @@ try:
     local_path = snapshot_download(
         repo_id=repo_id,
         local_dir=engine_dir,
-        local_dir_use_symlinks=False,
         allow_patterns=download_patterns,
         token=token
     )
