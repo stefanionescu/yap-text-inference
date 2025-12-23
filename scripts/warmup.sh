@@ -8,8 +8,9 @@ mkdir -p "${LOG_DIR}"
 
 LOG_FILE="${LOG_DIR}/warmup.log"
 
-# Source venv helpers
+# Source venv helpers and logging (needed for log_err in helpers)
 source "${SCRIPT_DIR}/lib/deps/venv.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/lib/common/log.sh" 2>/dev/null || true
 
 log() {
   local line
