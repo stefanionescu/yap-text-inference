@@ -98,16 +98,18 @@ ensure_cuda_ready_for_engine "restart" || exit 1
 validate_push_quant_prereqs "${DEPLOY_MODE}"
 
 # Check for engine switching - this requires FULL environment wipe
-if runtime_guard_engine_changed "${INFERENCE_ENGINE}" "${ROOT_DIR}"; then
-  last_engine="$(runtime_guard_read_last_config_value "INFERENCE_ENGINE" "${ROOT_DIR}")"
-  log_warn "[restart] =========================================="
-  log_warn "[restart] ENGINE SWITCH DETECTED: ${last_engine} → ${INFERENCE_ENGINE}"
-  log_warn "[restart] =========================================="
-  log_warn "[restart] Cannot hot-restart with different engine."
-  log_warn "[restart] Running full deployment instead..."
-  log_warn "[restart] =========================================="
-  
-  # Redirect to main.sh with the new engine
+# Uses unified handler to avoid duplicate logic with main.sh
+ENGINE_SWITCH_RESULT=0
+runtime_guard_handle_engine_switch "${SCRIPT_DIR}" "${ROOT_DIR}" "${INFERENCE_ENGINE}" || ENGINE_SWITCH_RESULT=$?
+
+if [ "${ENGINE_SWITCH_RESULT}" = "2" ]; then
+  log_err "[restart] Engine switch failed"
+  exit 1
+fi
+
+# If engine was switched, need full deployment (restart can't handle fresh engine)
+if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
+  log_info "[restart] Engine switch complete. Running full deployment for new engine..."
   exec bash "${SCRIPT_DIR}/main.sh" \
     "--${INFERENCE_ENGINE}" \
     "${DEPLOY_MODE}" \

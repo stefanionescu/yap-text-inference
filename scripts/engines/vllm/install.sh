@@ -6,6 +6,7 @@
 
 _VLLM_INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_VLLM_INSTALL_DIR}/detect.sh"
+source "${_VLLM_INSTALL_DIR}/../../lib/env/flashinfer.sh"
 
 # Install FlashInfer if applicable
 vllm_install_flashinfer() {
@@ -59,7 +60,7 @@ vllm_validate_installation() {
   vllm_ver="$(vllm_get_version "${python_exec}")"
   log_info "[vllm] vLLM version: ${vllm_ver}"
   
-  if vllm_has_flashinfer "${python_exec}"; then
+  if flashinfer_present_py "${python_exec}"; then
     log_info "[vllm] FlashInfer: available"
     export HAS_FLASHINFER=1
   else

@@ -4,6 +4,13 @@
 # =============================================================================
 # Functions for building TensorRT-LLM engines from quantized checkpoints.
 
+_TRT_BUILD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source common GPU detection (if not already sourced)
+if ! type gpu_detect_name >/dev/null 2>&1; then
+  source "${_TRT_BUILD_DIR}/../../lib/common/gpu_detect.sh"
+fi
+
 # =============================================================================
 # ENGINE BUILD
 # =============================================================================
@@ -119,10 +126,10 @@ EOF
   
   # Get GPU info
   local gpu_name
-  gpu_name=$(trt_get_gpu_name 2>/dev/null || echo "unknown")
+  gpu_name=$(gpu_detect_name 2>/dev/null || echo "unknown")
   
   local gpu_vram
-  gpu_vram=$(trt_get_gpu_vram_gb 2>/dev/null || echo "0")
+  gpu_vram=$(gpu_detect_vram_gb 2>/dev/null || echo "0")
   
   # Get NVIDIA driver version
   local nvidia_driver
@@ -223,7 +230,7 @@ trt_quantize_and_build() {
   log_info "[build] Starting TRT quantize and build pipeline"
   log_info "[build] Model: ${model_id}"
   log_info "[build] Format: ${qformat}"
-  log_info "[build] GPU: ${GPU_SM_ARCH:-auto} ($(trt_get_gpu_name))"
+  log_info "[build] GPU: ${GPU_SM_ARCH:-auto} ($(gpu_detect_name))"
   
   # Check if this is a pre-quantized model
   if trt_is_prequantized_model "${model_id}"; then

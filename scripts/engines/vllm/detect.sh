@@ -2,9 +2,19 @@
 # =============================================================================
 # vLLM Detection Utilities
 # =============================================================================
-# Detect FlashInfer availability, CUDA version, and torch compatibility.
+# vLLM-specific detection: CUDA/torch version for FlashInfer wheels, vLLM installation.
+# GPU detection: use lib/common/gpu_detect.sh functions directly.
+# FlashInfer detection: use lib/env/flashinfer.sh functions directly.
 
-# Detect CUDA version from torch
+_VLLM_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source common modules
+# shellcheck source=../../lib/common/gpu_detect.sh
+source "${_VLLM_DETECT_DIR}/../../lib/common/gpu_detect.sh"
+# shellcheck source=../../lib/env/flashinfer.sh
+source "${_VLLM_DETECT_DIR}/../../lib/env/flashinfer.sh"
+
+# Detect CUDA version from torch (for FlashInfer wheel selection)
 vllm_detect_cuda_version() {
   local python_exec="${1:-python}"
   
@@ -21,7 +31,7 @@ except Exception:
 PY
 }
 
-# Detect torch major.minor version
+# Detect torch major.minor version (for FlashInfer wheel selection)
 vllm_detect_torch_version() {
   local python_exec="${1:-python}"
   
@@ -35,16 +45,6 @@ try:
 except Exception:
     sys.exit(1)
 PY
-}
-
-# Check if FlashInfer is available
-vllm_has_flashinfer() {
-  local python_exec="${1:-python}"
-  
-  if "${python_exec}" -c "import flashinfer" 2>/dev/null; then
-    return 0
-  fi
-  return 1
 }
 
 # Check if vLLM is installed
@@ -67,23 +67,6 @@ try:
     print(vllm.__version__)
 except Exception:
     print("unknown")
-PY
-}
-
-# Detect GPU architecture for vLLM
-vllm_detect_gpu_arch() {
-  local python_exec="${1:-python}"
-  
-  "${python_exec}" - <<'PY' 2>/dev/null || true
-import sys
-try:
-    import torch
-    if not torch.cuda.is_available():
-        sys.exit(1)
-    cap = torch.cuda.get_device_capability(0)
-    print(f"sm{cap[0]}{cap[1]}")  # e.g., sm89
-except Exception:
-    sys.exit(1)
 PY
 }
 

@@ -40,7 +40,7 @@ apply_awq_env || exit 1
 # Backend selection remains centralized in Python; env override applied in apply_engine_defaults
 
 # --- GPU detection and optimization ---
-detect_gpu_name
+gpu_init_detection "env"
 
 # Apply GPU-/quantization-specific defaults
 apply_quantization_defaults

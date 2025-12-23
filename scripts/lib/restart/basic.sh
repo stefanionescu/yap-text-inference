@@ -157,14 +157,30 @@ restart_basic() {
   fi
 
 
-  # If the last snapshot stored explicit per-engine quantization, prefer that over
-  # the generic fallback so we don't misclassify AWQ/GPTQ deployments as 8bit.
+  # Resolve quantization with proper precedence:
+  # 1. Explicit CHAT_QUANTIZATION (awq, gptq, gptq_marlin) takes precedence
+  # 2. QUANTIZATION from log/env as fallback
+  # 3. Never override specific quant (fp8) with different specific quant (awq)
+  #
+  # BUG FIX: Previously this would incorrectly override fp8 with awq.
+  # Now we only use CHAT_QUANTIZATION as fallback when LAST_QUANT is empty or
+  # is a generic placeholder (8bit) that needs resolution.
   local LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
-  if [ -z "${LAST_QUANT}" ] || [ "${LAST_QUANT}" = "fp8" ] || [ "${LAST_QUANT}" = "8bit" ]; then
-    if [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "fp8" ] && [ "${LAST_CHAT_QUANT}" != "8bit" ]; then
+  if [ -z "${LAST_QUANT}" ]; then
+    # No quantization found in logs, use CHAT_QUANTIZATION if available
+    if [ -n "${LAST_CHAT_QUANT}" ]; then
       LAST_QUANT="${LAST_CHAT_QUANT}"
     fi
+  elif [ "${LAST_QUANT}" = "8bit" ]; then
+    # 8bit is a placeholder - prefer specific quantization if available
+    # But only use awq/gptq variants, not fp8 (which is also 8-bit precision)
+    case "${LAST_CHAT_QUANT}" in
+      awq|gptq|gptq_marlin)
+        LAST_QUANT="${LAST_CHAT_QUANT}"
+        ;;
+    esac
   fi
+  # For explicit values (fp8, awq, gptq, etc.) - keep as-is, don't override
 
   local SHOULD_USE_GENERIC=0
   if [ -n "${QUANTIZATION:-}" ] && [ "${QUANTIZATION}" != "awq" ]; then

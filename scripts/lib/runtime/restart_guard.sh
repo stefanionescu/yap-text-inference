@@ -51,6 +51,7 @@ runtime_guard_read_last_config_value() {
 }
 
 # Check if engine has changed since last run (requires full wipe)
+# Returns: 0 if engine changed, 1 if same or first run
 runtime_guard_engine_changed() {
   local desired_engine="${1:-trt}"
   local root_dir="${2:-${ROOT_DIR:-}}"
@@ -74,7 +75,8 @@ runtime_guard_engine_changed() {
 }
 
 # Force full environment wipe when switching engines
-runtime_guard_force_engine_wipe() {
+# Internal function - use runtime_guard_handle_engine_switch instead
+_runtime_guard_force_engine_wipe() {
   local script_dir="$1"
   local root_dir="$2"
   local from_engine="$3"
@@ -100,6 +102,54 @@ runtime_guard_force_engine_wipe() {
   cleanup_engine_artifacts "${root_dir}"
   
   log_info "[server] Engine wipe complete. Ready for fresh ${to_engine} deployment."
+}
+
+# Backward compatibility alias
+runtime_guard_force_engine_wipe() {
+  _runtime_guard_force_engine_wipe "$@"
+}
+
+# =============================================================================
+# UNIFIED ENGINE SWITCH HANDLING
+# =============================================================================
+# Single entry point for handling engine switches across all scripts.
+# Call this at the start of main.sh/restart.sh BEFORE any heavy operations.
+#
+# Usage: runtime_guard_handle_engine_switch <script_dir> <root_dir> <desired_engine>
+# Returns: 0 if engine switch was handled (wipe done), 1 if no switch needed
+# Sets: ENGINE_SWITCH_HANDLED=1 if wipe was performed
+#
+runtime_guard_handle_engine_switch() {
+  local script_dir="$1"
+  local root_dir="$2"
+  local desired_engine="${3:-trt}"
+  
+  # Skip if already handled in this session
+  if [ "${ENGINE_SWITCH_HANDLED:-0}" = "1" ]; then
+    return 1  # Already handled
+  fi
+  
+  if ! runtime_guard_engine_changed "${desired_engine}" "${root_dir}"; then
+    return 1  # No engine switch needed
+  fi
+  
+  local last_engine
+  last_engine="$(runtime_guard_read_last_config_value "INFERENCE_ENGINE" "${root_dir}")"
+  
+  # Normalize for display
+  local norm_desired norm_last
+  norm_desired="$(echo "${desired_engine}" | tr '[:upper:]' '[:lower:]')"
+  norm_last="$(echo "${last_engine}" | tr '[:upper:]' '[:lower:]')"
+  
+  # Perform the wipe
+  if ! _runtime_guard_force_engine_wipe "${script_dir}" "${root_dir}" "${norm_last}" "${norm_desired}"; then
+    log_err "[server] Engine switch wipe failed"
+    return 2  # Error
+  fi
+  
+  # Mark as handled so we don't double-wipe
+  export ENGINE_SWITCH_HANDLED=1
+  return 0  # Switch handled
 }
 
 runtime_guard_configs_match() {
@@ -148,21 +198,21 @@ runtime_guard_stop_server_if_needed() {
   local desired_chat_quant="$1"; shift
   local desired_engine="${1:-trt}"
 
-  # First check for engine switching - this requires FULL wipe
-  local last_engine
-  last_engine="$(runtime_guard_read_last_config_value "INFERENCE_ENGINE" "${root_dir}")"
+  # Handle engine switching via unified function (skips if already handled)
+  local switch_result=0
+  runtime_guard_handle_engine_switch "${script_dir}" "${root_dir}" "${desired_engine}" || switch_result=$?
   
-  if [ -n "${last_engine:-}" ]; then
-    local norm_desired norm_last
-    norm_desired="$(echo "${desired_engine}" | tr '[:upper:]' '[:lower:]')"
-    norm_last="$(echo "${last_engine}" | tr '[:upper:]' '[:lower:]')"
-    
-    if [ "${norm_desired}" != "${norm_last}" ]; then
-      log_warn "[server] Engine switch detected: ${norm_last} → ${norm_desired}"
-      runtime_guard_force_engine_wipe "${script_dir}" "${root_dir}" "${norm_last}" "${norm_desired}"
+  case "${switch_result}" in
+    0)
+      # Engine switch was handled (wipe done), continue with deployment
       return 0
-    fi
-  fi
+      ;;
+    2)
+      # Error during engine switch
+      return 1
+      ;;
+    # 1 = no switch needed, continue below
+  esac
 
   local running_pid
   if ! running_pid="$(runtime_guard_get_running_server_pid "${root_dir}")"; then

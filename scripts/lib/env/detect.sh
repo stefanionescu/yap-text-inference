@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Environment Detection Helpers
+# =============================================================================
+# Sources common detection modules and provides HAS_FLASHINFER detection.
 
-# Environment detection helpers (FlashInfer, GPU name)
+_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "${BASH_SOURCE[0]%/*}/flashinfer.sh"
+# Source common modules
+source "${_DETECT_DIR}/flashinfer.sh"
+source "${_DETECT_DIR}/../common/gpu_detect.sh"
 
+# Detect FlashInfer availability and set HAS_FLASHINFER
 detect_flashinfer() {
   local has=0
-  if flashinfer_present_py "${ROOT_DIR}/.venv/bin/python"; then
+  local py_exe="${ROOT_DIR:-.}/.venv/bin/python"
+  
+  if flashinfer_present_py "${py_exe}"; then
     has=1
   fi
   export HAS_FLASHINFER=${has}
-}
-
-detect_gpu_name() {
-  local gpu_name=""
-  if command -v nvidia-smi >/dev/null 2>&1; then
-    gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1 || true)
-  fi
-  export DETECTED_GPU_NAME="${gpu_name}"
 }
 
 
