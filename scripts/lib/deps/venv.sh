@@ -12,6 +12,98 @@
 TRT_REQUIRED_PYTHON_VERSION="3.10"
 
 # =============================================================================
+# PYTHON RUNTIME HELPERS
+# =============================================================================
+
+_venv_install_python310_deadsnakes() {
+  log_info "[python] Installing Python ${TRT_REQUIRED_PYTHON_VERSION} via deadsnakes PPA..."
+
+  if ! command -v apt-get >/dev/null 2>&1; then
+    log_err "[python] apt-get not available. Python ${TRT_REQUIRED_PYTHON_VERSION} installation requires Ubuntu/Debian."
+    log_err "[python] Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually."
+    return 1
+  fi
+
+  local run_apt="apt-get"
+  if [ "$(id -u)" != "0" ]; then
+    run_apt="sudo -n apt-get"
+  fi
+
+  if ! grep -qr "deadsnakes" /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null; then
+    log_info "[python] Adding deadsnakes PPA..."
+    if [ "$(id -u)" = "0" ]; then
+      add-apt-repository -y ppa:deadsnakes/ppa || {
+        log_err "[python] Failed to add deadsnakes PPA"
+        return 1
+      }
+    else
+      sudo -n add-apt-repository -y ppa:deadsnakes/ppa || {
+        log_err "[python] Failed to add deadsnakes PPA (may need sudo)"
+        return 1
+      }
+    fi
+  fi
+
+  ${run_apt} update -y || log_warn "[python] apt-get update failed, continuing anyway"
+
+  DEBIAN_FRONTEND=noninteractive ${run_apt} install -y --no-install-recommends \
+    python3.10 python3.10-venv python3.10-dev || {
+    log_err "[python] Failed to install Python ${TRT_REQUIRED_PYTHON_VERSION}"
+    return 1
+  }
+
+  log_info "[python] ✓ Python ${TRT_REQUIRED_PYTHON_VERSION} installed successfully"
+}
+
+_venv_python_reports_version() {
+  local py_bin="$1"
+  local expected_minor="${2:-${TRT_REQUIRED_PYTHON_VERSION}}"
+
+  if ! command -v "${py_bin}" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local detected_version
+  detected_version=$("${py_bin}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || true)
+  if [ "${detected_version}" = "${expected_minor}" ]; then
+    local full
+    full=$("${py_bin}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null || true)
+    log_info "[python] Python ${full} available (${py_bin})"
+    return 0
+  fi
+  return 1
+}
+
+ensure_python_runtime_for_engine() {
+  local engine="${1:-${INFERENCE_ENGINE:-vllm}}"
+
+  if [[ "${engine,,}" = "trt" ]]; then
+    if _venv_python_reports_version "python${TRT_REQUIRED_PYTHON_VERSION}"; then
+      return 0
+    fi
+
+    log_warn "[python] Python ${TRT_REQUIRED_PYTHON_VERSION} not found. TRT-LLM requires Python ${TRT_REQUIRED_PYTHON_VERSION}."
+    log_info "[python] Attempting to install Python ${TRT_REQUIRED_PYTHON_VERSION}..."
+
+    if _venv_install_python310_deadsnakes; then
+      return 0
+    fi
+
+    log_err "[python] Cannot proceed without Python ${TRT_REQUIRED_PYTHON_VERSION}"
+    log_err "[python] TensorRT-LLM 1.2.0rc5 does NOT work with Python 3.11 or 3.12"
+    log_err "[python] Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually:"
+    log_err "[python]   Ubuntu/Debian: apt install python3.10 python3.10-venv python3.10-dev"
+    log_err "[python]   Or use the Docker image which has Python ${TRT_REQUIRED_PYTHON_VERSION} pre-installed"
+    return 1
+  fi
+
+  log_info "[python] Ensuring python3 + pip available for vLLM path"
+  python3 --version || python --version || true
+  python3 -m pip --version || python -m pip --version || true
+  return 0
+}
+
+# =============================================================================
 # VENV PATH HELPERS
 # =============================================================================
 # Centralized functions to get venv paths - use these instead of hardcoding
@@ -34,21 +126,21 @@ resolve_venv_dir() {
 
 # Get the venv directory path (export-friendly)
 get_venv_dir() {
-  echo "$(resolve_venv_dir)"
+  resolve_venv_dir
 }
 
 # Get the venv Python executable path
 # Usage: get_venv_python
 # Returns: Path to venv python binary
 get_venv_python() {
-  echo "$(get_venv_dir)/bin/python"
+  printf '%s/bin/python\n' "$(get_venv_dir)"
 }
 
 # Get the venv pip executable path
 # Usage: get_venv_pip
 # Returns: Path to venv pip binary
 get_venv_pip() {
-  echo "$(get_venv_dir)/bin/pip"
+  printf '%s/bin/pip\n' "$(get_venv_dir)"
 }
 
 # =============================================================================

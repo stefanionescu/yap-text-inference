@@ -8,6 +8,7 @@ source "${SCRIPT_DIR}/../lib/common/log.sh"
 # Shared library functions
 LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/deps/certs.sh"
+source "${LIB_DIR}/deps/pip.sh"
 source "${LIB_DIR}/deps/trt.sh"
 source "${LIB_DIR}/env/torch.sh"
 source "${LIB_DIR}/env/trt.sh"  # TRT version config including TRT_PYTORCH_* variables
@@ -33,13 +34,7 @@ fi
 export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
 
 log_info "[deps] Installing Python dependencies (engine: ${INFERENCE_ENGINE:-vllm})"
-
-export PIP_ROOT_USER_ACTION=${PIP_ROOT_USER_ACTION:-ignore}
-export PIP_DISABLE_PIP_VERSION_CHECK=${PIP_DISABLE_PIP_VERSION_CHECK:-1}
-export PIP_NO_INPUT=${PIP_NO_INPUT:-1}
-export PIP_PREFER_BINARY=${PIP_PREFER_BINARY:-1}
-# Prefer AOT kernels for FlashInfer to avoid long first-run JIT compiles
-export FLASHINFER_ENABLE_AOT=${FLASHINFER_ENABLE_AOT:-1}
+deps_export_pip
 
 # Ensure CA certificates and export CA bundle environment
 ensure_ca_certificates
@@ -61,11 +56,10 @@ ensure_pip_in_venv || exit 1
 activate_venv "${VENV_DIR}" || exit 1
 
 # Check existing dependency versions (sets NEEDS_* globals)
-check_trt_deps_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION}" "${TRT_TORCHVISION_VERSION}" "${TRT_VERSION:-1.2.0rc5}" "requirements-trt.txt" || true
-log_trt_dep_status "${VENV_DIR}"
-ALL_TRTH_DEPS_OK=0
-if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" && "${NEEDS_TRTLLM}" = "0" && "${NEEDS_REQUIREMENTS}" = "0" ]]; then
+if trt_determine_dependency_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION}" "${TRT_TORCHVISION_VERSION}" "${TRT_VERSION:-1.2.0rc5}" "requirements-trt.txt"; then
   ALL_TRTH_DEPS_OK=1
+else
+  ALL_TRTH_DEPS_OK=0
 fi
 
 # Engine-specific installation
@@ -74,36 +68,9 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "T
   if [ "${ALL_TRTH_DEPS_OK}" = "1" ]; then
     log_info "[trt] All dependencies already satisfied in ${VENV_DIR}; skipping installs"
   else
-    # Install only what is missing/wrong, keep order but skip satisfied steps
-    if [[ "${NEEDS_PYTORCH}" = "1" || "${NEEDS_TORCHVISION}" = "1" ]]; then
-      trt_install_pytorch || {
-        log_err "[trt] PyTorch installation failed"
-        exit 1
-      }
-    else
-      log_info "[trt] PyTorch/TorchVision already correct; skipping"
-    fi
-    
-    if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
-      filter_requirements_without_flashinfer
-      install_requirements_without_flashinfer
-    else
-      log_info "[trt] requirements-trt already satisfied; skipping"
-    fi
-    
-    if [[ "${NEEDS_TRTLLM}" = "1" ]]; then
-      # Avoid pip pulling CPU torch when torch is already correct
-      if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" ]]; then
-        export TRTLLM_NO_DEPS=1
-      else
-        unset TRTLLM_NO_DEPS
-      fi
-      trt_install_tensorrt_llm || {
-        log_err "[trt] TensorRT-LLM installation failed"
-        exit 1
-      }
-    else
-      log_info "[trt] TensorRT-LLM already correct; skipping"
+    if ! trt_install_missing_components; then
+      log_err "[trt] Dependency installation failed"
+      exit 1
     fi
   fi
   

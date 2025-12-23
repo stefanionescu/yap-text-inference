@@ -3,6 +3,10 @@
 # Shared helpers for detecting running deployments and comparing config snapshots.
 # Tracks engine type (vllm/trt) to detect engine switching that requires full wipe.
 
+_RUNTIME_GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/runtime/cleanup.sh
+source "${_RUNTIME_GUARD_DIR}/cleanup.sh"
+
 _runtime_guard_pid_file() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   printf '%s/server.pid' "${root_dir}"
@@ -87,29 +91,13 @@ runtime_guard_force_engine_wipe() {
   log_warn "[server] =========================================="
   
   # Force full nuke INCLUDING venv (engine switch requires fresh deps)
-  NUKE_ALL=1 NUKE_VENV=1 bash "${script_dir}/stop.sh"
+  if ! NUKE_ALL=1 NUKE_VENV=1 bash "${script_dir}/stop.sh"; then
+    log_err "[server] stop.sh failed during engine wipe"
+    return 1
+  fi
   
   # Also remove engine-specific directories
-  local engine_dirs=(
-    "${root_dir}/.venv"
-    "${root_dir}/.venv-trt"
-    "${root_dir}/.venv-vllm"
-    "${root_dir}/.awq"
-    # TRT-LLM specific
-    "${root_dir}/.trtllm-repo"
-    "${root_dir}/.trt_cache"
-    "${root_dir}/models"
-    # vLLM specific
-    "${root_dir}/.vllm_cache"
-    "${root_dir}/.flashinfer"
-    "${root_dir}/.xformers"
-  )
-  for d in "${engine_dirs[@]}"; do
-    if [ -d "$d" ]; then
-      log_info "[cache] Removing engine artifact: $d"
-      rm -rf "$d" || true
-    fi
-  done
+  cleanup_engine_artifacts "${root_dir}"
   
   log_info "[server] Engine wipe complete. Ready for fresh ${to_engine} deployment."
 }
@@ -192,10 +180,16 @@ runtime_guard_stop_server_if_needed() {
        "${root_dir}"
   then
     log_info "[server] Existing server matches requested config; stopping without clearing caches."
-    NUKE_ALL=0 bash "${script_dir}/stop.sh"
+    if ! NUKE_ALL=0 bash "${script_dir}/stop.sh"; then
+      log_err "[server] stop.sh failed during light stop"
+      return 1
+    fi
   else
     log_info "[server] Requested configuration differs; performing full reset before redeploy."
-    NUKE_ALL=1 bash "${script_dir}/stop.sh"
+    if ! NUKE_ALL=1 bash "${script_dir}/stop.sh"; then
+      log_err "[server] stop.sh failed during full reset"
+      return 1
+    fi
   fi
 }
 
