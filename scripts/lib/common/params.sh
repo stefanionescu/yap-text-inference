@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 # Common params validation helpers.
-# Expects log_error/log_warn/log_info to be available from log.sh.
+# Expects log_err/log_warn/log_info to be available from log.sh.
 
 ensure_required_env_vars() {
   local has_errors=0
 
   if [ -z "${TEXT_API_KEY:-}" ]; then
-    log_error "[env] TEXT_API_KEY environment variable is required before running this script."
-    log_error "[env] Set it with: export TEXT_API_KEY='your_server_api_key'"
+    log_err "[env] TEXT_API_KEY environment variable is required before running this script."
+    log_err "[env] Set it with: export TEXT_API_KEY='your_server_api_key'"
     has_errors=1
   fi
 
@@ -16,18 +16,18 @@ ensure_required_env_vars() {
     if [ -n "${HUGGINGFACE_HUB_TOKEN:-}" ]; then
       HF_TOKEN="${HUGGINGFACE_HUB_TOKEN}"
     else
-      log_error "[env] HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) environment variable is required to access Hugging Face models."
-      log_error "[env] Set it with: export HF_TOKEN='hf_xxx'"
+      log_err "[env] HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) environment variable is required to access Hugging Face models."
+      log_err "[env] Set it with: export HF_TOKEN='hf_xxx'"
       has_errors=1
     fi
   fi
 
   if [ -z "${MAX_CONCURRENT_CONNECTIONS:-}" ]; then
-    log_error "[env] MAX_CONCURRENT_CONNECTIONS environment variable must be explicitly set."
-    log_error "[env] Choose a capacity that matches your deployment and run: export MAX_CONCURRENT_CONNECTIONS=<number>"
+    log_err "[env] MAX_CONCURRENT_CONNECTIONS environment variable must be explicitly set."
+    log_err "[env] Choose a capacity that matches your deployment and run: export MAX_CONCURRENT_CONNECTIONS=<number>"
     has_errors=1
   elif ! [[ "${MAX_CONCURRENT_CONNECTIONS}" =~ ^[0-9]+$ ]]; then
-    log_error "[env] MAX_CONCURRENT_CONNECTIONS must be an integer but was '${MAX_CONCURRENT_CONNECTIONS}'."
+    log_err "[env] MAX_CONCURRENT_CONNECTIONS must be an integer but was '${MAX_CONCURRENT_CONNECTIONS}'."
     has_errors=1
   fi
 
@@ -54,27 +54,27 @@ validate_push_quant_prereqs() {
   
   # HF_TOKEN is required for any push
   if [ -z "${HF_TOKEN:-}" ]; then
-    log_error "[env] --push-quant requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set."
-    log_error "[env] Set it with: export HF_TOKEN='hf_xxx'"
+    log_err "[env] --push-quant requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set."
+    log_err "[env] Set it with: export HF_TOKEN='hf_xxx'"
     has_errors=1
   fi
   
   # HF_PUSH_REPO_ID is required (unified for both engines)
   if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
-    log_error "[env] --push-quant requires HF_PUSH_REPO_ID to be set."
-    log_error "[env] Set it with: export HF_PUSH_REPO_ID='your-org/model-awq'"
+    log_err "[env] --push-quant requires HF_PUSH_REPO_ID to be set."
+    log_err "[env] Set it with: export HF_PUSH_REPO_ID='your-org/model-awq'"
     has_errors=1
   fi
   
   # Validate HF_PUSH_PRIVATE if set (must be 0 or 1)
   if [ -n "${HF_PUSH_PRIVATE:-}" ] && [[ ! "${HF_PUSH_PRIVATE}" =~ ^[01]$ ]]; then
-    log_error "[env] HF_PUSH_PRIVATE must be 0 (public) or 1 (private), got: ${HF_PUSH_PRIVATE}"
+    log_err "[env] HF_PUSH_PRIVATE must be 0 (public) or 1 (private), got: ${HF_PUSH_PRIVATE}"
     has_errors=1
   fi
   
   if [ "${has_errors}" -ne 0 ]; then
-    log_error ""
-    log_error "[env] Either provide the required environment variables or remove --push-quant flag."
+    log_err ""
+    log_err "[env] Either provide the required environment variables or remove --push-quant flag."
     exit 1
   fi
   

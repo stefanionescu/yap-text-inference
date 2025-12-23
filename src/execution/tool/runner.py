@@ -79,7 +79,6 @@ async def _run_classifier_toolcall(
 async def run_toolcall(
     session_id: str,
     user_utt: str,
-    history_text: str = "",
     request_id: str | None = None,
     mark_active: bool = True,
 ) -> dict[str, Any]:
@@ -93,7 +92,6 @@ async def run_toolcall(
     Args:
         session_id: Session for history lookup and request tracking.
         user_utt: User message to classify.
-        history_text: Conversation history (unused, kept for compatibility).
         request_id: Optional request ID for tracking.
         mark_active: Whether to mark this as the active request.
         

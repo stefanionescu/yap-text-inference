@@ -67,11 +67,6 @@ async def get_engine() -> BaseEngine:
         return await get_trt_engine()
 
 
-async def get_chat_engine() -> BaseEngine:
-    """Alias for get_engine() for backwards compatibility."""
-    return await get_engine()
-
-
 async def shutdown_engines() -> None:
     """Shutdown all initialized engines."""
     if INFERENCE_ENGINE == "vllm":
@@ -149,7 +144,6 @@ __all__ = [
     "EngineShutdownError",
     # Factory functions
     "get_engine",
-    "get_chat_engine",
     "shutdown_engines",
     "create_sampling_params",
     # Cache management

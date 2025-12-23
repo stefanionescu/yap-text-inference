@@ -36,21 +36,12 @@ if [ $# -lt 1 ]; then
   main_usage
 fi
 
-# Phase 1: Parse engine and push flags
-main_parse_flags "$@"
-set -- "${MAIN_REMAINING_ARGS[@]}"
+if ! main_parse_cli "$@"; then
+  main_usage
+fi
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
 ensure_cuda_ready_for_engine "main" || exit 1
-
-# Phase 2: Parse quantization type
-main_parse_quant_type "$@"
-set -- "${MAIN_REMAINING_ARGS[@]}"
-
-# Phase 3: Parse deploy mode and model names
-if ! main_parse_models; then
-  main_usage
-fi
 
 # Export models to environment
 main_export_models

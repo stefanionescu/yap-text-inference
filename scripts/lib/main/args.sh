@@ -1,200 +1,188 @@
 #!/usr/bin/env bash
 # Argument parsing for main.sh
 #
-# Exports:
-#   ENGINE_TYPE       - 'trt' or 'vllm'
-#   PUSH_QUANT        - 0 or 1
-#   QUANT_TYPE        - '4bit', '8bit', or 'auto'
-#   CHAT_MODEL_NAME   - Chat model path/name
-#   TOOL_MODEL_NAME   - Tool model path/name
-#   DEPLOY_MODE_SELECTED - 'both', 'chat', or 'tool'
+# main_parse_cli performs a single-pass parse that understands every supported
+# switch, quantization shorthand, and deploy-mode override. Parsed values are
+# exported so downstream scripts do not need to re-process argv.
 
-# Parse engine and push flags from arguments
-# Usage: main_parse_flags "$@"
-# Sets: ENGINE_TYPE, PUSH_QUANT, and remaining args via MAIN_REMAINING_ARGS
-main_parse_flags() {
-  PUSH_QUANT=0
-  ENGINE_TYPE="${INFERENCE_ENGINE:-trt}"
-  MAIN_REMAINING_ARGS=()
+main_parse_cli() {
+  local engine="${INFERENCE_ENGINE:-trt}"
+  local push_quant="${HF_AWQ_PUSH:-0}"
+  local quant_type="auto"
+  local deploy_mode="${DEPLOY_MODE:-both}"
+  local deploy_explicit=0
+  local -a positional_args=()
 
   while [ $# -gt 0 ]; do
     case "$1" in
+      -h|--help)
+        main_usage
+        return 1
+        ;;
       --push-quant)
-        PUSH_QUANT=1
-        shift
+        push_quant=1
         ;;
       --no-push-quant)
-        PUSH_QUANT=0
+        push_quant=0
+        ;;
+      --engine)
+        if [ -z "${2:-}" ]; then
+          log_warn "[main] --engine requires a value (trt|vllm)"
+          return 1
+        fi
+        engine="$2"
         shift
         ;;
       --engine=*)
-        ENGINE_TYPE="${1#--engine=}"
-        shift
+        engine="${1#--engine=}"
         ;;
       --vllm)
-        ENGINE_TYPE="vllm"
-        shift
+        engine="vllm"
         ;;
       --trt|--tensorrt)
-        ENGINE_TYPE="trt"
+        engine="trt"
+        ;;
+      --deploy-mode)
+        if [ -z "${2:-}" ]; then
+          log_warn "[main] --deploy-mode requires a value (both|chat|tool)"
+          return 1
+        fi
+        deploy_mode="$2"
+        deploy_explicit=1
         shift
+        ;;
+      --deploy-mode=*)
+        deploy_mode="${1#--deploy-mode=}"
+        deploy_explicit=1
+        ;;
+      4bit|4BIT|4Bit)
+        quant_type="4bit"
+        ;;
+      8bit|8BIT|8Bit)
+        quant_type="8bit"
+        ;;
+      awq|AWQ|fp8|FP8)
+        log_err "[main] '${1}' flag has been removed. Use '4bit' or '8bit' explicitly."
+        return 1
+        ;;
+      chat|tool|both)
+        if [ ${#positional_args[@]} -eq 0 ] && [ "${deploy_explicit}" -eq 0 ]; then
+          deploy_mode="$1"
+          deploy_explicit=1
+        else
+          positional_args+=("$1")
+        fi
+        ;;
+      --*)
+        log_warn "[main] Unknown flag '$1' ignored"
         ;;
       *)
-        MAIN_REMAINING_ARGS+=("$1")
-        shift
+        positional_args+=("$1")
         ;;
     esac
+    shift
   done
 
-  # Normalize engine type
-  case "${ENGINE_TYPE}" in
-    vllm|VLLM)
-      ENGINE_TYPE="vllm"
-      ;;
-    trt|TRT|tensorrt|TENSORRT|trtllm|TRTLLM)
-      ENGINE_TYPE="trt"
-      ;;
-    *)
-      log_warn "[main] Unknown engine type '${ENGINE_TYPE}', defaulting to 'trt'"
-      ENGINE_TYPE="trt"
-      ;;
-  esac
+  if [ "${deploy_explicit}" -eq 0 ] && [ ${#positional_args[@]} -gt 0 ]; then
+    local last_index=$(( ${#positional_args[@]} - 1 ))
+    local maybe_mode="${positional_args[$last_index]}"
+    case "${maybe_mode}" in
+      chat|tool|both)
+        deploy_mode="${maybe_mode}"
+        unset "positional_args[$last_index]"
+        ;;
+    esac
+  fi
 
-  export ENGINE_TYPE PUSH_QUANT
-  export HF_AWQ_PUSH="${PUSH_QUANT}"
-  export INFERENCE_ENGINE="${ENGINE_TYPE}"
-}
-
-# Parse quantization type from first argument
-# Usage: main_parse_quant_type "$@"
-# Sets: QUANT_TYPE, updates MAIN_REMAINING_ARGS
-main_parse_quant_type() {
-  QUANT_TYPE="auto"
-  
-  case "${1:-}" in
-    4bit|4BIT|4Bit)
-      QUANT_TYPE="4bit"
-      shift
-      ;;
-    8bit|8BIT|8Bit)
-      QUANT_TYPE="8bit"
-      shift
-      ;;
-    awq)
-      log_warn "[main] Deprecated 'awq' flag detected; use '4bit' instead."
-      QUANT_TYPE="4bit"
-      shift
-      ;;
-    fp8)
-      log_warn "[main] Deprecated 'fp8' flag detected; use '8bit' instead."
-      QUANT_TYPE="8bit"
-      shift
-      ;;
-  esac
-
-  # Update remaining args
-  MAIN_REMAINING_ARGS=("$@")
-  export QUANT_TYPE
-}
-
-# Parse deploy mode and model names from remaining arguments
-# Usage: main_parse_models
-# Reads from: MAIN_REMAINING_ARGS
-# Sets: CHAT_MODEL_NAME, TOOL_MODEL_NAME, DEPLOY_MODE_SELECTED
-main_parse_models() {
-  local args=("${MAIN_REMAINING_ARGS[@]}")
-  
-  # Initialize defaults
-  CHAT_MODEL_NAME=""
-  TOOL_MODEL_NAME=""
-  DEPLOY_MODE_SELECTED="${DEPLOY_MODE:-both}"
-  
-  # Validate initial deploy mode
-  case "${DEPLOY_MODE_SELECTED}" in
+  case "${deploy_mode}" in
     both|chat|tool) ;;
     *)
-      log_warn "[main] Invalid DEPLOY_MODE='${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
-      DEPLOY_MODE_SELECTED="both"
+      log_warn "[main] Invalid deploy mode '${deploy_mode}', defaulting to 'both'"
+      deploy_mode="both"
       ;;
   esac
 
-  # Check if first arg is a deploy mode keyword
-  case "${args[0]:-}" in
-    chat|tool|both)
-      DEPLOY_MODE_SELECTED="${args[0]}"
-      args=("${args[@]:1}")
+  case "${engine}" in
+    vllm|VLLM)
+      engine="vllm"
+      ;;
+    trt|TRT|tensorrt|TENSORRT|trtllm|TRTLLM)
+      engine="trt"
+      ;;
+    *)
+      log_warn "[main] Unknown engine type '${engine}', defaulting to 'trt'"
+      engine="trt"
       ;;
   esac
 
-  # Parse models based on deploy mode
-  case "${DEPLOY_MODE_SELECTED}" in
-    chat)
-      if [ ${#args[@]} -lt 1 ]; then
-        log_warn "[main] chat-only mode requires <chat_model>"
-        return 1
-      fi
-      CHAT_MODEL_NAME="${args[0]}"
-      args=("${args[@]:1}")
+  case "${quant_type}" in
+    4bit|8bit|auto) ;;
+    *)
+      quant_type="auto"
       ;;
-    tool)
-      if [ ${#args[@]} -lt 1 ]; then
-        log_warn "[main] tool-only mode requires <tool_model>"
-        return 1
-      fi
-      TOOL_MODEL_NAME="${args[0]}"
-      args=("${args[@]:1}")
-      ;;
+  esac
+
+  local chat_model=""
+  local tool_model=""
+
+  case "${deploy_mode}" in
     both)
-      if [ ${#args[@]} -lt 2 ]; then
+      if [ ${#positional_args[@]} -lt 2 ]; then
         log_warn "[main] both mode requires <chat_model> <tool_model>"
         return 1
       fi
-      CHAT_MODEL_NAME="${args[0]}"
-      TOOL_MODEL_NAME="${args[1]}"
-      args=("${args[@]:2}")
-      ;;
-  esac
-
-  # Validate required models
-  if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_MODEL_NAME}" ]; then
-    log_warn "[main] CHAT_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
-    return 1
-  fi
-  if [ "${DEPLOY_MODE_SELECTED}" != "chat" ] && [ -z "${TOOL_MODEL_NAME}" ]; then
-    log_warn "[main] TOOL_MODEL is required for deploy mode '${DEPLOY_MODE_SELECTED}'"
-    return 1
-  fi
-
-  # Check for trailing deploy mode override or warn about unknown trailing args
-  if [ ${#args[@]} -gt 0 ]; then
-    case "${args[0]}" in
-      chat|tool|both)
-        DEPLOY_MODE_SELECTED="${args[0]}"
-        args=("${args[@]:1}")
-        ;;
-    esac
-    # Warn about any remaining unknown args
-    for arg in "${args[@]}"; do
-      if [[ "${arg}" == -* ]]; then
-        log_warn "[main] Unknown flag '${arg}' ignored"
-      else
-        log_warn "[main] Unknown argument '${arg}' ignored"
+      chat_model="${positional_args[0]}"
+      tool_model="${positional_args[1]}"
+      if [ ${#positional_args[@]} -gt 2 ]; then
+        log_warn "[main] Extra arguments ignored after <chat_model> <tool_model>"
       fi
-    done
-  fi
-
-  # Final normalization
-  case "${DEPLOY_MODE_SELECTED:-both}" in
-    both|chat|tool)
-      export DEPLOY_MODE="${DEPLOY_MODE_SELECTED:-both}"
       ;;
-    *)
-      log_warn "[main] Invalid deploy_mode '${DEPLOY_MODE_SELECTED}', defaulting to 'both'"
-      export DEPLOY_MODE=both
+    chat)
+      if [ ${#positional_args[@]} -lt 1 ]; then
+        log_warn "[main] chat-only mode requires <chat_model>"
+        return 1
+      fi
+      chat_model="${positional_args[0]}"
+      if [ ${#positional_args[@]} -gt 1 ]; then
+        log_warn "[main] Extra arguments ignored after <chat_model>"
+      fi
+      ;;
+    tool)
+      if [ ${#positional_args[@]} -lt 1 ]; then
+        log_warn "[main] tool-only mode requires <tool_model>"
+        return 1
+      fi
+      tool_model="${positional_args[0]}"
+      if [ ${#positional_args[@]} -gt 1 ]; then
+        log_warn "[main] Extra arguments ignored after <tool_model>"
+      fi
       ;;
   esac
 
-  export CHAT_MODEL_NAME TOOL_MODEL_NAME DEPLOY_MODE_SELECTED
+  if [ "${deploy_mode}" != "tool" ] && [ -z "${chat_model}" ]; then
+    log_warn "[main] CHAT_MODEL is required for deploy mode '${deploy_mode}'"
+    return 1
+  fi
+  if [ "${deploy_mode}" != "chat" ] && [ -z "${tool_model}" ]; then
+    log_warn "[main] TOOL_MODEL is required for deploy mode '${deploy_mode}'"
+    return 1
+  fi
+
+  ENGINE_TYPE="${engine}"
+  INFERENCE_ENGINE="${engine}"
+  PUSH_QUANT="${push_quant}"
+  HF_AWQ_PUSH="${push_quant}"
+  QUANT_TYPE="${quant_type}"
+  DEPLOY_MODE="${deploy_mode}"
+  DEPLOY_MODE_SELECTED="${deploy_mode}"
+  CHAT_MODEL_NAME="${chat_model}"
+  TOOL_MODEL_NAME="${tool_model}"
+
+  export ENGINE_TYPE INFERENCE_ENGINE
+  export PUSH_QUANT HF_AWQ_PUSH
+  export QUANT_TYPE DEPLOY_MODE DEPLOY_MODE_SELECTED
+  export CHAT_MODEL_NAME TOOL_MODEL_NAME
+
   return 0
 }
 

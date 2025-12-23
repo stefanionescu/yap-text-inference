@@ -41,7 +41,7 @@ from src.helpers.model_profiles import (
 )
 from src.config import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
 from src.helpers.env import env_flag
-from src.helpers.models import _is_local_model_path
+from src.helpers.models import is_local_model_path
 from .memory_tuning import (
     auto_max_num_seqs,
     configure_kv_cache,
@@ -161,7 +161,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     kwargs["max_num_seqs"] = max_num_seqs
 
     # Special handling for local AWQ models
-    if raw_quant == "awq" and _is_local_model_path(model):
+    if raw_quant == "awq" and is_local_model_path(model):
         kwargs["model"] = os.path.abspath(model)
 
     use_v1 = env_flag("VLLM_USE_V1", True)
@@ -180,7 +180,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     engine_args = AsyncEngineArgs(**kwargs)
 
     # Add flag for local AWQ handling in engine creation
-    if raw_quant == "awq" and _is_local_model_path(model):
+    if raw_quant == "awq" and is_local_model_path(model):
         engine_args._is_local_awq = True
 
     return engine_args

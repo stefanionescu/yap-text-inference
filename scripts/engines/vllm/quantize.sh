@@ -52,7 +52,7 @@ vllm_awq_quantize_chat_if_needed() {
     return 0
   fi
 
-  log_error "[quant] AWQ quantization failed for chat model (${CHAT_MODEL}); aborting deployment."
+  log_err "[quant] AWQ quantization failed for chat model (${CHAT_MODEL}); aborting deployment."
   return 1
 }
 

@@ -78,8 +78,8 @@ PY
 then
   CMD=("python" "-m" "uvicorn" "${CMD_ARGS[@]}")
 else
-  log_error "[server] uvicorn is not installed in .venv or system."
-  log_error "[server] Run: bash scripts/steps/03_install_deps.sh"
+  log_err "[server] uvicorn is not installed in .venv or system."
+  log_err "[server] Run: bash scripts/steps/03_install_deps.sh"
   exit 127
 fi
 

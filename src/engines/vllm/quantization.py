@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from src.helpers.models import _is_local_model_path
+from src.helpers.models import is_local_model_path
 from .io import read_json_file
 
 __all__ = [
@@ -61,7 +61,7 @@ def resolve_model_origin(model_path: str) -> str:
     """Best effort to determine the underlying HF repo for local AWQ exports."""
     if not model_path:
         return ""
-    if _is_local_model_path(model_path):
+    if is_local_model_path(model_path):
         meta_path = os.path.join(model_path, _AWQ_METADATA_FILE)
         payload = read_json_file(meta_path)
         if isinstance(payload, dict):
@@ -73,7 +73,7 @@ def resolve_model_origin(model_path: str) -> str:
 
 def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect local model files to detect the quantization backend."""
-    if not _is_local_model_path(model_path):
+    if not is_local_model_path(model_path):
         return None, {}
 
     for filename in _QUANT_CONFIG_CANDIDATES:
@@ -91,7 +91,7 @@ def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dic
 
 def _detect_remote_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect remote Hugging Face repos for quantization metadata."""
-    if not model_path or "/" not in model_path or _is_local_model_path(model_path):
+    if not model_path or "/" not in model_path or is_local_model_path(model_path):
         return None, {}
     try:
         from huggingface_hub import hf_hub_download
