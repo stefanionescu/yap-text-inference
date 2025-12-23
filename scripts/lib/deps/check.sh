@@ -8,6 +8,9 @@
 # Usage: source "scripts/lib/deps/check.sh"
 # =============================================================================
 
+# Load shared FlashInfer helper
+source "${BASH_SOURCE[0]%/*}/../env/flashinfer.sh"
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -62,6 +65,9 @@ log_trt_dep_status() {
   echo "[deps]   torchvision:   NEEDS_TORCHVISION=${NEEDS_TORCHVISION}"
   echo "[deps]   tensorrt_llm:  NEEDS_TRTLLM=${NEEDS_TRTLLM}"
   echo "[deps]   requirements:  NEEDS_REQUIREMENTS=${NEEDS_REQUIREMENTS}"
+  if [[ -n "${NEEDS_FLASHINFER:-}" ]]; then
+    echo "[deps]   flashinfer:    NEEDS_FLASHINFER=${NEEDS_FLASHINFER}"
+  fi
   if [[ ${#REQUIREMENTS_MISSING_PKGS[@]} -gt 0 ]]; then
     echo "[deps]   Missing pkgs: ${REQUIREMENTS_MISSING_PKGS[*]}"
   fi
@@ -137,6 +143,18 @@ check_trtllm_installed() {
   
   log_info "[deps] TensorRT-LLM OK: $installed_ver"
   return 0
+}
+
+check_flashinfer_installed() {
+  local py_exe="${1:-python}"
+
+  if flashinfer_present_py "$py_exe"; then
+    log_info "[deps] flashinfer OK"
+    return 0
+  fi
+
+  log_info "[deps] flashinfer NOT installed"
+  return 1
 }
 
 # Check if requirements.txt packages are installed with correct versions
@@ -268,6 +286,7 @@ check_trt_deps_status() {
   NEEDS_TORCHVISION=1
   NEEDS_TRTLLM=1
   NEEDS_REQUIREMENTS=1
+  NEEDS_FLASHINFER=1
   
   if ! check_venv_exists "${venv_dir}" 2>/dev/null; then
     return 1
@@ -290,9 +309,13 @@ check_trt_deps_status() {
   if check_requirements_installed "${req_file}" "${venv_py}"; then
     NEEDS_REQUIREMENTS=0
   fi
+
+  if check_flashinfer_installed "${venv_py}"; then
+    NEEDS_FLASHINFER=0
+  fi
   
   # Return 0 if all satisfied
-  if [[ "$NEEDS_PYTORCH" == "0" && "$NEEDS_TORCHVISION" == "0" && "$NEEDS_TRTLLM" == "0" && "$NEEDS_REQUIREMENTS" == "0" ]]; then
+  if [[ "$NEEDS_PYTORCH" == "0" && "$NEEDS_TORCHVISION" == "0" && "$NEEDS_TRTLLM" == "0" && "$NEEDS_REQUIREMENTS" == "0" && "$NEEDS_FLASHINFER" == "0" ]]; then
     return 0
   fi
   

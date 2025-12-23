@@ -16,7 +16,9 @@ case "${GPU_NAME}" in
       export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
     else
       export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
-      log_warn "[vllm] FlashInfer not available; using XFORMERS backend for AWQ."
+      if [ "${INFERENCE_ENGINE:-vllm}" != "trt" ]; then
+        log_warn "[vllm] FlashInfer not available; using XFORMERS backend for AWQ."
+      fi
     fi
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
     if [[ "${GPU_NAME}" == *H100* ]]; then

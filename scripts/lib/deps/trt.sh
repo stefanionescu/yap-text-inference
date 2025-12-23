@@ -88,8 +88,12 @@ trt_install_missing_components() {
     log_info "[trt] requirements-trt already satisfied; skipping"
   fi
 
-  if [[ "${NEEDS_TRTLLM}" = "1" ]]; then
-    if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" ]]; then
+  # Install TRT-LLM if missing OR if flashinfer is missing (allow deps so flashinfer installs)
+  if [[ "${NEEDS_TRTLLM}" = "1" || "${NEEDS_FLASHINFER}" = "1" ]]; then
+    # Only suppress dependencies when we aren't trying to pull flashinfer from the TRT wheel
+    if [[ "${NEEDS_FLASHINFER}" = "1" ]]; then
+      unset TRTLLM_NO_DEPS
+    elif [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" ]]; then
       export TRTLLM_NO_DEPS=1
     else
       unset TRTLLM_NO_DEPS

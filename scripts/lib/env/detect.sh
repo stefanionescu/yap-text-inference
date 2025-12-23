@@ -2,18 +2,12 @@
 
 # Environment detection helpers (FlashInfer, GPU name)
 
+source "${BASH_SOURCE[0]%/*}/flashinfer.sh"
+
 detect_flashinfer() {
   local has=0
-  if [ -f "${ROOT_DIR}/.venv/bin/python" ]; then
-    if "${ROOT_DIR}/.venv/bin/python" - <<'PY' >/dev/null 2>&1
-try:
-    import flashinfer  # noqa: F401
-except Exception:
-    raise SystemExit(1)
-PY
-    then
-      has=1
-    fi
+  if flashinfer_present_py "${ROOT_DIR}/.venv/bin/python"; then
+    has=1
   fi
   export HAS_FLASHINFER=${has}
 }
