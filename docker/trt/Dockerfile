@@ -65,8 +65,8 @@ ENV PATH="/opt/venv/bin:${PATH}"
 # ----------------------------------------------------------------------------
 RUN echo "Using PyTorch index: ${PYTORCH_INDEX_URL}" && \
     pip install --no-cache-dir --index-url "${PYTORCH_INDEX_URL}" \
-      torch==2.9.1+cu130 \
-      torchvision==0.24.1+cu130
+      torch==2.9.0+cu130 \
+      torchvision==0.24.0+cu130
 
 # ----------------------------------------------------------------------------
 # App Python dependencies

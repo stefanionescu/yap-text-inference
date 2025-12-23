@@ -8,8 +8,8 @@
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-# TRT-LLM 1.2.0rc5 requires CUDA 13.0, torch 2.9.x, and Python 3.10
-# PyTorch version is pinned in requirements-trt.txt (torch==2.9.1+cu130)
+# TRT-LLM 1.2.0rc5 requires CUDA 13.0, torch 2.9.0, and Python 3.10
+# PyTorch version is pinned to torch==2.9.0+cu130 (TRT-LLM requires <=2.9.0)
 #
 # IMPORTANT: Python 3.11/3.12 do NOT work reliably with TRT-LLM 1.2.0rc5!
 # See ADVANCED.md for details on known issues.
@@ -407,14 +407,14 @@ trt_install_quant_requirements() {
 
 # Complete TRT-LLM installation sequence
 # Order: requirements.txt (with torch) -> TensorRT-LLM -> validate -> clone repo
-# NOTE: PyTorch is installed via requirements-trt.txt (torch==2.9.1+cu130)
+# NOTE: PyTorch torch==2.9.0+cu130 is required (TRT-LLM 1.2.0rc5 requires <=2.9.0)
 trt_full_install() {
   log_info "[trt] Starting TensorRT-LLM full installation..."
   
   # 1. Ensure CUDA is available
   trt_ensure_cuda_home || return 1
   
-  # 2. Install application dependencies (requirements-trt.txt includes torch==2.9.1+cu130)
+  # 2. Install application dependencies (torch==2.9.0+cu130, NOT 2.9.1)
   # This is handled by 03_install_deps.sh calling install_requirements_without_flashinfer
   
   # 3. Install TensorRT-LLM
