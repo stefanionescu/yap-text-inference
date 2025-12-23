@@ -64,14 +64,10 @@ fi
 
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  # Fast path: everything already correct, just validate and prep repo
-  if [ "${ALL_TRTH_DEPS_OK}" = "1" ]; then
-    log_info "[trt] All dependencies already satisfied in ${VENV_DIR}; skipping installs"
-  else
-    if ! trt_install_missing_components; then
-      log_err "[trt] Dependency installation failed"
-      exit 1
-    fi
+  # Even if core deps look satisfied, install missing TRT extras (e.g., flashinfer)
+  if ! trt_install_missing_components; then
+    log_err "[trt] Dependency installation failed"
+    exit 1
   fi
   
   # Validate and prepare repo
