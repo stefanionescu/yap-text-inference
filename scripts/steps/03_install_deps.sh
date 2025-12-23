@@ -65,26 +65,30 @@ check_trt_deps_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION%%+*}" "${TRT_TORCHVIS
 
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  # If everything is already correct, skip installs but still validate
-  if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" && "${NEEDS_TRTLLM}" = "0" && "${NEEDS_REQUIREMENTS}" = "0" ]] && should_skip_requirements_install; then
-    log_info "[trt] All dependencies already satisfied in ${VENV_DIR}; skipping installs"
-  else
-    # 1. PyTorch first (prevents wrong versions from transitive deps)
-    # 2. requirements.txt second
-    # 3. TensorRT-LLM third
-    
+  # Install only what is missing/wrong, keep order but skip satisfied steps
+  if [[ "${NEEDS_PYTORCH}" = "1" || "${NEEDS_TORCHVISION}" = "1" ]]; then
     trt_install_pytorch || {
       log_err "[trt] PyTorch installation failed"
       exit 1
     }
-    
+  else
+    log_info "[trt] PyTorch/TorchVision already correct; skipping"
+  fi
+  
+  if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
     filter_requirements_without_flashinfer
     install_requirements_without_flashinfer
-    
+  else
+    log_info "[trt] requirements-trt already satisfied; skipping"
+  fi
+  
+  if [[ "${NEEDS_TRTLLM}" = "1" ]]; then
     trt_install_tensorrt_llm || {
       log_err "[trt] TensorRT-LLM installation failed"
       exit 1
     }
+  else
+    log_info "[trt] TensorRT-LLM already correct; skipping"
   fi
   
   # Validate and prepare repo
