@@ -2,7 +2,7 @@
 # =============================================================================
 # TRT-LLM Detection Utilities
 # =============================================================================
-# GPU architecture detection, MoE model detection, and TRT pre-quantized model detection.
+# GPU architecture detection and TRT pre-quantized model detection.
 
 # =============================================================================
 # GPU ARCHITECTURE DETECTION
@@ -88,55 +88,16 @@ trt_get_gpu_vram_gb() {
 }
 
 # =============================================================================
-# MOE MODEL DETECTION
+# QUANTIZATION SCRIPT
 # =============================================================================
 
-# Check if model is a Mixture of Experts (MoE) model
-# MoE models require quantize_mixed_precision_moe.py instead of quantize.py
-trt_is_moe_model() {
-  local model="${1:-}"
-  if [ -z "${model}" ]; then
-    return 1
-  fi
-  
-  local lowered
-  lowered=$(echo "${model}" | tr '[:upper:]' '[:lower:]')
-  
-  # Check for Qwen3 MoE naming convention: -aXb suffix (e.g., qwen3-30b-a3b)
-  if echo "${lowered}" | grep -qE -- '-a[0-9]+b'; then
-    return 0
-  fi
-  
-  # Check for common MoE markers
-  local moe_markers="moe mixtral deepseek-v2 deepseek-v3 ernie-4.5"
-  local marker
-  for marker in ${moe_markers}; do
-    if echo "${lowered}" | grep -q "${marker}"; then
-      return 0
-    fi
-  done
-  
-  return 1
-}
-
-# Get the appropriate quantization script for a model
+# Get the quantization script for a model
+# Uses the standard quantize.py for all models (including MoE)
 trt_get_quantize_script() {
   local model="${1:-}"
   local trtllm_repo="${2:-${TRT_REPO_DIR}}"
   
-  local base_script="${trtllm_repo}/examples/quantization/quantize.py"
-  local moe_script="${trtllm_repo}/examples/quantization/quantize_mixed_precision_moe.py"
-  
-  if trt_is_moe_model "${model}"; then
-    if [ -f "${moe_script}" ]; then
-      echo "${moe_script}"
-    else
-      log_warn "[quant] MoE quantize script not found: ${moe_script}, falling back to base script"
-      echo "${base_script}"
-    fi
-  else
-    echo "${base_script}"
-  fi
+  echo "${trtllm_repo}/examples/quantization/quantize.py"
 }
 
 # =============================================================================

@@ -149,7 +149,7 @@ Mixture-of-Experts models (e.g., Qwen3-30B-A3B) are automatically detected by:
 - Naming convention: `-aXb` suffix (e.g., `qwen3-30b-a3b`)
 - Model type markers: `moe`, `mixtral`, `deepseek-v2/v3`
 
-MoE models use `quantize_mixed_precision_moe.py` instead of the standard quantization script.
+MoE models use the standard `quantize.py` script with weight-only quantization (int4_awq, fp8, int8_sq).
 
 **Engine Build Metadata:**
 

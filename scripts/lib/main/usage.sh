@@ -40,7 +40,7 @@ main_usage() {
   echo "                           SicariusSicariiStuff/Impish_Mind_8B"
   echo "                           kyx0r/Neona-12B"
   echo ""
-  echo "MoE models (TRT uses quantize_mixed_precision_moe.py):"
+  echo "MoE models:"
   echo "  Qwen/Qwen3-30B-A3B-Instruct-2507"
   echo "  ArliAI/Qwen3-30B-A3B-ArliAI-RpR-v4-Fast"
   echo "  Qwen/Qwen3-Next-80B-A3B-Instruct"

@@ -89,12 +89,6 @@ if trt_is_prequantized_model "${MODEL_ID}"; then
   
   log_info "[quant] Using pre-quantized checkpoint: ${TRT_CHECKPOINT_DIR}"
 else
-  # Check if model is MoE (requires special handling)
-  if trt_is_moe_model "${MODEL_ID}"; then
-    log_info "[quant] Detected MoE model: ${MODEL_ID}"
-    log_info "[quant] Will use quantize_mixed_precision_moe.py for quantization"
-  fi
-  
   # Get checkpoint directory
   CHECKPOINT_DIR=$(trt_get_checkpoint_dir "${MODEL_ID}" "${QFORMAT}")
   

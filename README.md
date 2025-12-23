@@ -163,7 +163,7 @@ TRT-LLM quantization creates a checkpoint, then builds a compiled `.engine` file
 
 > **Required:** `TRT_MAX_BATCH_SIZE` must be set when building a TRT engine (including from pre-quantized TRT checkpoints). This value is baked into the engine and determines how many sequences can be batched together. See `ADVANCED.md` for details on batch size configuration.
 
-**MoE models** (e.g., Qwen3-30B-A3B) are automatically detected and use `quantize_mixed_precision_moe.py` instead of the standard quantization script.
+**MoE models** (e.g., Qwen3-30B-A3B) are automatically detected and quantized with the standard `quantize.py` script.
 
 Override `TRT_CALIB_SIZE`, `TRT_CALIB_SEQLEN`, or `TRT_AWQ_BLOCK_SIZE` to tune calibration.
 
@@ -202,7 +202,7 @@ Yap supports two inference backends:
 | **Pre-built Engines** | No (JIT) | Yes (compiled .engine) |
 | **CUDA Requirement** | 13.x | 13.0+ |
 | **PyTorch** | 2.9.x | 2.9.x |
-| **MoE Support** | Via FLA | Native quantize_moe.py |
+| **MoE Support** | Via FLA | Via quantize.py |
 
 Select the engine with CLI flags or environment variable:
 
