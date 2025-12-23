@@ -145,6 +145,7 @@ _trt_pip_install_with_retry() {
 trt_install_tensorrt_llm() {
   local nvidia_index="${TRT_EXTRA_INDEX_URL}"
   local target="${TRT_PIP_SPEC}"
+  local trt_no_deps="${TRTLLM_NO_DEPS:-0}"
   
   log_info "[trt] Installing TensorRT-LLM: ${target}"
   
@@ -155,8 +156,11 @@ trt_install_tensorrt_llm() {
     install --no-cache-dir --timeout 120 --retries 20
     --index-url "${nvidia_index}"
     --extra-index-url "https://pypi.org/simple"
-    "${target}"
   )
+  if [ "${trt_no_deps}" = "1" ]; then
+    pip_cmd+=(--no-deps)
+  fi
+  pip_cmd+=("${target}")
   
   _trt_pip_install_with_retry "${pip_cmd[@]}" || {
     log_err "[trt] Failed to install TensorRT-LLM"
@@ -268,8 +272,20 @@ trt_validate_installation() {
   
   # Check TensorRT-LLM version (suppress library's own version log)
   local trt_version
-  trt_version=$(python -c "import sys, io; sys.stdout = io.StringIO(); import tensorrt_llm; sys.stdout = sys.__stdout__; print(tensorrt_llm.__version__)" 2>/dev/null) || {
-    log_err "[trt] TensorRT-LLM not installed or not importable"
+  trt_version=$(python - <<'PY' 2>/dev/null
+import sys, io
+try:
+    sys.stdout = io.StringIO()
+    import tensorrt_llm
+    sys.stdout = sys.__stdout__
+    print(tensorrt_llm.__version__)
+except Exception as exc:
+    sys.stdout = sys.__stdout__
+    print(f"IMPORT_ERROR: {type(exc).__name__}: {exc}")
+    sys.exit(1)
+PY
+  ) || {
+    log_err "[trt] TensorRT-LLM not installed or not importable: ${trt_version}"
     return 1
   }
   log_info "[trt] TensorRT-LLM version: ${trt_version}"

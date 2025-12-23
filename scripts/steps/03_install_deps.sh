@@ -62,6 +62,7 @@ activate_venv "${VENV_DIR}" || exit 1
 
 # Check existing dependency versions (sets NEEDS_* globals)
 check_trt_deps_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION%%+*}" "${TRT_TORCHVISION_VERSION%%+*}" "${TRT_VERSION:-1.2.0rc5}" "requirements-trt.txt" || true
+log_trt_dep_status "${VENV_DIR}"
 ALL_TRTH_DEPS_OK=0
 if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" && "${NEEDS_TRTLLM}" = "0" && "${NEEDS_REQUIREMENTS}" = "0" ]]; then
   ALL_TRTH_DEPS_OK=1
@@ -91,6 +92,12 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "T
     fi
     
     if [[ "${NEEDS_TRTLLM}" = "1" ]]; then
+      # Avoid pip pulling CPU torch when torch is already correct
+      if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" ]]; then
+        export TRTLLM_NO_DEPS=1
+      else
+        unset TRTLLM_NO_DEPS
+      fi
       trt_install_tensorrt_llm || {
         log_err "[trt] TensorRT-LLM installation failed"
         exit 1
