@@ -146,7 +146,8 @@ def _get_engine_label(engine_path: Path) -> str:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             sm = meta.get("sm_arch", "sm89")
             trt_ver = meta.get("tensorrt_llm_version", "unknown")
-            cuda_ver = meta.get("cuda_version", "unknown")
+            # Note: build_metadata.json uses "cuda_toolkit" field name
+            cuda_ver = meta.get("cuda_toolkit", meta.get("cuda_version", "unknown"))
             return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
         except Exception:
             pass
@@ -203,7 +204,8 @@ def _collect_metadata(
                 metadata.update({
                     "sm_arch": meta.get("sm_arch", "unknown"),
                     "gpu_name": meta.get("gpu_name", "unknown"),
-                    "cuda_toolkit": meta.get("cuda_version", "unknown"),
+                    # Note: build_metadata.json uses "cuda_toolkit" field name
+                    "cuda_toolkit": meta.get("cuda_toolkit", meta.get("cuda_version", "unknown")),
                     "tensorrt_llm_version": meta.get("tensorrt_llm_version", "unknown"),
                 })
             except Exception:
