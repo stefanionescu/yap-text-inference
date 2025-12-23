@@ -7,7 +7,6 @@
 
 # Core server dependencies - versions must match TRT-LLM 1.2.0rc5 requirements
 fastapi==0.121.3
-orjson==3.10.7
 starlette==0.49.1
 uvicorn[standard]==0.34.0
 python-dotenv==1.0.1

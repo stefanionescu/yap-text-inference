@@ -59,7 +59,7 @@ os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")  # Faster startup
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", os.environ.get("CUDA_VISIBLE_DEVICES", "0"))
 
 from fastapi import FastAPI, WebSocket
-from fastapi.responses import JSONResponse
+from fastapi.responses import ORJSONResponse
 
 from .config import (
     DEPLOY_CHAT,
@@ -81,7 +81,7 @@ from .handlers.websocket import handle_websocket_connection
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(default_response_class=JSONResponse)
+app = FastAPI(default_response_class=ORJSONResponse)
 
 configure_logging()
 validate_env()
