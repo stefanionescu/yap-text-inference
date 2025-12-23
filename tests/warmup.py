@@ -47,6 +47,7 @@ from tests.helpers.cli import (
     add_sampling_args,
     build_sampling_payload,
 )
+from tests.logic.warmup.runner import run_once
 
 
 def _parse_args() -> argparse.Namespace:
@@ -78,17 +79,11 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
-async def _run_once(args: argparse.Namespace) -> None:
-    from tests.logic.warmup.runner import run_once
-
-    await run_once(args)
-
-
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
     try:
-        asyncio.run(_run_once(args))
+        asyncio.run(run_once(args))
     except KeyboardInterrupt:
         pass
 
