@@ -583,11 +583,13 @@ TensorRT-LLM 1.2.0 (and variations like 1.2.0rc5) documentation claims Python 3.
 
 ### CUDA 13.0 Requirement
 
-TensorRT-LLM 1.2.0rc5+ requires **CUDA 13.0** and **PyTorch 2.9.x**. This project uses CUDA 13.0 with `cu130` PyTorch wheels (2.9.1).
+TensorRT-LLM 1.2.0rc5 requires **CUDA 13.0** and **PyTorch 2.9.0**. The TRT-LLM package specifies `torch<=2.9.0,>=2.9.0a0` as a dependency constraint.
 
 If you see pip dependency resolver warnings about torch versions during installation, ensure you're using:
-- `torch==2.9.1+cu130` with `--index-url https://download.pytorch.org/whl/cu130`
-- `torchvision==0.24.1+cu130` (matching torch 2.9.1)
+- `torch==2.9.0+cu130` with `--index-url https://download.pytorch.org/whl/cu130`
+- `torchvision==0.24.0+cu130` (matching torch 2.9.0)
+
+**WARNING**: Using `torch==2.9.1` will cause TRT-LLM's pip install to replace it with a different torch build from NVIDIA's index (often CUDA 12.8), causing CUDA version mismatches.
 
 The build scripts handle this automatically.
 
