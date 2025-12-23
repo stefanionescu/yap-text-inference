@@ -32,6 +32,12 @@ except Exception:
 # Python Package Version Checks
 # =============================================================================
 
+# Array defaults
+declare -a REQUIREMENTS_MISSING_PKGS
+declare -a REQUIREMENTS_WRONG_VERSION_PKGS
+REQUIREMENTS_MISSING=false
+REQUIREMENTS_WRONG=false
+
 # Minimal venv existence check (no dependency on other helpers)
 check_venv_exists() {
   local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
@@ -56,10 +62,10 @@ log_trt_dep_status() {
   echo "[deps]   torchvision:   NEEDS_TORCHVISION=${NEEDS_TORCHVISION}"
   echo "[deps]   tensorrt_llm:  NEEDS_TRTLLM=${NEEDS_TRTLLM}"
   echo "[deps]   requirements:  NEEDS_REQUIREMENTS=${NEEDS_REQUIREMENTS}"
-  if [[ ${#REQUIREMENTS_MISSING_PKGS[@]:-0} -gt 0 ]]; then
+  if [[ ${#REQUIREMENTS_MISSING_PKGS[@]} -gt 0 ]]; then
     echo "[deps]   Missing pkgs: ${REQUIREMENTS_MISSING_PKGS[*]}"
   fi
-  if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]:-0} -gt 0 ]]; then
+  if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]} -gt 0 ]]; then
     echo "[deps]   Wrong version pkgs: ${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
   fi
 }
