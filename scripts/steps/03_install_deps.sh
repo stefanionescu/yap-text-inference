@@ -10,12 +10,15 @@ LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/deps/certs.sh"
 source "${LIB_DIR}/deps/trt.sh"
 source "${LIB_DIR}/env/torch.sh"
+source "${LIB_DIR}/env/trt.sh"  # TRT version config including TRT_PYTORCH_* variables
 source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/deps/reqs.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 
 # Engine-specific install functions
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
+  # Export TRT environment variables (TRT_PYTORCH_VERSION, etc.) for install.sh to use
+  trt_export_env
   source "${SCRIPT_DIR}/../engines/trt/install.sh"
   # Validate CUDA 13.x before installing TRT dependencies
   if ! trt_assert_cuda13_driver "deps"; then
@@ -56,15 +59,39 @@ activate_venv || exit 1
 
 # Engine-specific installation
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] || [ "${INFERENCE_ENGINE:-vllm}" = "TRT" ]; then
-  # Install app requirements first (before TRT-LLM to avoid conflicts)
+  # Order matches working-version/scripts/setup/install_dependencies.sh exactly:
+  # 1. PyTorch first (prevents wrong versions from transitive deps)
+  # 2. requirements.txt second
+  # 3. TensorRT-LLM third
+  
+  # 1. Install PyTorch with correct CUDA version FIRST
+  trt_install_pytorch || {
+    log_err "[trt] PyTorch installation failed"
+    exit 1
+  }
+  
+  # 2. Install app requirements (excludes torch, which is already installed)
   filter_requirements_without_flashinfer
   install_requirements_without_flashinfer
   
-  # Run full TRT-LLM installation (PyTorch -> TRT-LLM -> validate -> clone repo)
-  trt_full_install || {
+  # 3. Install TensorRT-LLM and validate
+  trt_install_tensorrt_llm || {
     log_err "[trt] TensorRT-LLM installation failed"
     exit 1
   }
+  
+  # 4. Validate and prepare repo
+  trt_validate_installation || {
+    log_err "[trt] TensorRT-LLM validation failed"
+    exit 1
+  }
+  
+  trt_prepare_repo || {
+    log_err "[trt] TensorRT-LLM repo preparation failed"
+    exit 1
+  }
+  
+  log_info "[trt] ✓ TensorRT-LLM installation complete"
 else
   # vLLM installation path
   filter_requirements_without_flashinfer

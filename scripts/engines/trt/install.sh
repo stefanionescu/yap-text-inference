@@ -75,6 +75,45 @@ trt_ensure_cuda_home() {
 }
 
 # =============================================================================
+# PYTORCH INSTALLATION
+# =============================================================================
+
+# Install PyTorch and TorchVision with matching CUDA versions
+# MUST be done BEFORE TensorRT-LLM to prevent version conflicts
+trt_install_pytorch() {
+  local torch_version="${TRT_PYTORCH_VERSION:-2.9.0+cu130}"
+  local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
+  local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+  
+  log_info "[trt] Installing PyTorch ${torch_version} and TorchVision ${torchvision_version}"
+  log_info "[trt] Using index: ${torch_idx}"
+  
+  # Install torch and torchvision together from the SAME index to ensure CUDA version match
+  local pip_cmd=(
+    install --no-cache-dir
+    --index-url "${torch_idx}"
+    "torch==${torch_version}"
+    "torchvision==${torchvision_version}"
+  )
+  
+  _trt_pip_install_with_retry "${pip_cmd[@]}" || {
+    log_err "[trt] Failed to install PyTorch"
+    return 1
+  }
+  
+  # Verify torch CUDA version matches what we expect
+  local torch_cuda
+  torch_cuda=$(python -c "import torch; print(torch.version.cuda or '')" 2>/dev/null || true)
+  if [ -n "${torch_cuda}" ]; then
+    log_info "[trt] PyTorch CUDA version: ${torch_cuda}"
+  else
+    log_warn "[trt] Could not detect PyTorch CUDA version"
+  fi
+  
+  return 0
+}
+
+# =============================================================================
 # TRT-LLM INSTALLATION
 # =============================================================================
 
@@ -381,16 +420,11 @@ trt_install_quant_requirements() {
   
   if [ -f "${quant_reqs}" ]; then
     log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
-    pip install --quiet -r "${quant_reqs}" || {
+    pip install -r "${quant_reqs}" || {
       log_warn "[trt] Some quantization requirements failed to install"
     }
-    # Ensure hf_transfer is present even if a system package blocks uninstall (e.g. Debian blinker)
-    # --ignore-installed avoids RECORD issues from distro packages.
-    pip install --quiet --ignore-installed "hf_transfer==0.1.8" || {
-      log_warn "[trt] hf_transfer install failed; fast HF downloads will be disabled"
-    }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
-    pip install --quiet 'urllib3>=2.6.0' || true
+    pip install 'urllib3>=2.6.0' || true
     
     # Mark as installed (store hash of requirements.txt)
     mkdir -p "$(dirname "${marker_file}")"
@@ -401,31 +435,3 @@ trt_install_quant_requirements() {
   fi
 }
 
-# =============================================================================
-# FULL INSTALLATION
-# =============================================================================
-
-# Complete TRT-LLM installation sequence
-# Order: requirements.txt (with torch) -> TensorRT-LLM -> validate -> clone repo
-# NOTE: PyTorch torch==2.9.0+cu130 is required (TRT-LLM 1.2.0rc5 requires <=2.9.0)
-trt_full_install() {
-  log_info "[trt] Starting TensorRT-LLM full installation..."
-  
-  # 1. Ensure CUDA is available
-  trt_ensure_cuda_home || return 1
-  
-  # 2. Install application dependencies (torch==2.9.0+cu130, NOT 2.9.1)
-  # This is handled by 03_install_deps.sh calling install_requirements_without_flashinfer
-  
-  # 3. Install TensorRT-LLM
-  trt_install_tensorrt_llm || return 1
-  
-  # 5. Validate installation
-  trt_validate_installation || return 1
-  
-  # 6. Clone TensorRT-LLM repo for quantization scripts
-  trt_prepare_repo || return 1
-  
-  log_info "[trt] ✓ TensorRT-LLM installation complete"
-  return 0
-}
