@@ -56,6 +56,7 @@ main_usage() {
   echo ""
   echo "Environment options:"
   echo "  DEPLOY_MODE=both|chat|tool    - Which models to deploy (default: both)"
+  echo "  --deploy-mode=both|chat|tool  - CLI override for DEPLOY_MODE"
   echo "  INFERENCE_ENGINE=trt|vllm     - Inference engine (default: trt)"
   echo "  GPU_SM_ARCH=sm80|sm89|sm90    - GPU architecture (auto-detected)"
   echo ""

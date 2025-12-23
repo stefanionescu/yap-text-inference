@@ -7,6 +7,3 @@ log_info() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
 log_warn() { [ -z "$*" ] && echo >&2 || echo "$* ⚠" >&2; }
 log_err()  { [ -z "$*" ] && echo >&2 || echo "$* ✗" >&2; }
 
-# Back-compat alias used by some scripts
-log_error() { log_err "$@"; }
-

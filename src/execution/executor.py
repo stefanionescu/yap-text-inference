@@ -106,7 +106,7 @@ async def run_execution(
     """
     # Run tool router (do not mark active to avoid clobbering chat req id)
     # Timeout is handled internally by tool_runner.py (mirroring the chat stream)
-    tool_req_id, tool_coro = launch_tool_request(session_id, user_utt, history_text)
+    tool_req_id, tool_coro = launch_tool_request(session_id, user_utt)
     logger.info(f"sequential_exec: tool start req_id={tool_req_id}")
 
     try:

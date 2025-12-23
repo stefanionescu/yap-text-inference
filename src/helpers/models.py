@@ -36,10 +36,6 @@ def is_local_model_path(value: str | None) -> bool:
         return False
 
 
-# Keep underscore alias for backward compatibility
-_is_local_model_path = is_local_model_path
-
-
 def is_classifier_model(model: str | None) -> bool:
     """Check if model is a classifier (not autoregressive LLM).
     
@@ -135,7 +131,6 @@ def get_allowed_chat_models(engine: str = "vllm") -> list[str]:
 
 __all__ = [
     "is_local_model_path",
-    "_is_local_model_path",
     "is_classifier_model",
     "is_valid_model",
     "is_moe_model",

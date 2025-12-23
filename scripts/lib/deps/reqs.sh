@@ -100,7 +100,7 @@ PY
 
   log_info "[deps] Installing llmcompressor==${version} without dependency resolution (torch pin conflict workaround)"
   if ! "$(get_venv_dir)/bin/pip" install --no-deps "llmcompressor==${version}"; then
-    log_error "[deps] Failed to install llmcompressor==${version}. Install it manually with --no-deps."
+    log_err "[deps] Failed to install llmcompressor==${version}. Install it manually with --no-deps."
     exit 1
   fi
 }

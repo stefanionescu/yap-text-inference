@@ -219,10 +219,6 @@ async def get_engine() -> VLLMEngine:
     return await _ensure_engine()
 
 
-# Alias for backwards compatibility
-get_chat_engine = get_engine
-
-
 async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
     """Reset prefix/MM caches if interval elapsed (or force)."""
     global _LAST_CACHE_RESET

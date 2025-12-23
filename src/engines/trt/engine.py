@@ -279,10 +279,6 @@ async def get_engine() -> TRTEngine:
     return await _ensure_engine()
 
 
-# Alias for compatibility with vLLM interface
-get_chat_engine = get_engine
-
-
 async def shutdown_engines() -> None:
     """Shut down the TRT chat engine if it has been initialized."""
     global _ENGINE

@@ -124,7 +124,6 @@ async def cancel_task(task: asyncio.Task | None) -> None:
 def launch_tool_request(
     session_id: str,
     user_utt: str,
-    history_text: str,
 ) -> tuple[str, Awaitable[dict]]:
     """Create a tool request coroutine and register its request ID.
     
@@ -134,7 +133,6 @@ def launch_tool_request(
     Args:
         session_id: The session to associate the request with.
         user_utt: The user's utterance to classify.
-        history_text: Conversation history for context.
         
     Returns:
         Tuple of (request_id, asyncio.Task) for the tool call.
@@ -145,7 +143,6 @@ def launch_tool_request(
         run_toolcall(
             session_id,
             user_utt,
-            history_text,
             request_id=tool_req_id,
             mark_active=False,
         )

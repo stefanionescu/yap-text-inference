@@ -8,7 +8,7 @@ VLLMEngine:
     generation, request abortion, and cache management.
 
 Factory Functions:
-    get_engine() / get_chat_engine(): Return singleton engine instance
+    get_engine(): Return singleton engine instance
     shutdown_engines(): Clean shutdown of all engines
 
 Cache Management:
@@ -24,7 +24,6 @@ The engine uses vLLM V1 by default (VLLM_USE_V1=1) and spawned workers
 from .engine import (
     VLLMEngine,
     get_engine,
-    get_chat_engine,
     shutdown_engines,
     reset_engine_caches,
     cache_reset_reschedule_event,
@@ -35,7 +34,6 @@ from .engine import (
 __all__ = [
     "VLLMEngine",
     "get_engine",
-    "get_chat_engine",
     "shutdown_engines",
     "reset_engine_caches",
     "cache_reset_reschedule_event",

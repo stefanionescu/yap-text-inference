@@ -8,7 +8,7 @@ TRTEngine:
     engine files for inference.
 
 Factory Functions:
-    get_engine() / get_chat_engine(): Return singleton engine instance
+    get_engine(): Return singleton engine instance
     shutdown_engines(): Clean shutdown of the engine
 
 Key Differences from vLLM:
@@ -26,14 +26,12 @@ Configuration:
 from .engine import (
     TRTEngine,
     get_engine,
-    get_chat_engine,
     shutdown_engines,
 )
 
 __all__ = [
     "TRTEngine",
     "get_engine",
-    "get_chat_engine",
     "shutdown_engines",
 ]
 

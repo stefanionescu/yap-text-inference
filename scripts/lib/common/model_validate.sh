@@ -25,7 +25,7 @@ import os
 sys.path.insert(0, "${ROOT_DIR}")
 
 from src.config.models import (
-    ALLOWED_CHAT_MODELS,
+    ALL_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
 )
 from src.helpers.models import is_valid_model
@@ -63,7 +63,7 @@ deploy_tool = deploy_mode in ("both", "tool")
 if deploy_chat:
     if not chat_model:
         errors.append("CHAT_MODEL is required when DEPLOY_MODE='both' or 'chat'")
-    elif not is_valid_model(chat_model, ALLOWED_CHAT_MODELS, "chat"):
+    elif not is_valid_model(chat_model, ALL_CHAT_MODELS, "chat"):
         if not allow_prequantized_override(chat_model, "chat"):
             errors.append(f"CHAT_MODEL must be one of allowed models, got: {chat_model}")
 

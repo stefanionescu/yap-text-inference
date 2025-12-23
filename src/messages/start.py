@@ -464,7 +464,7 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
         logger.info("handle_start: tool-only routing session_id=%s", plan.session_id)
         try:
             tool_res = await asyncio.wait_for(
-                run_toolcall(plan.session_id, plan.user_utt, plan.history_text, mark_active=False),
+                run_toolcall(plan.session_id, plan.user_utt, mark_active=False),
                 timeout=TOOL_TIMEOUT_S,
             )
         except asyncio.TimeoutError:

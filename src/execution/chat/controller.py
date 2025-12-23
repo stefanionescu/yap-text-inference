@@ -210,16 +210,9 @@ class ChatStreamController:
         
         Works with both EngineOutput (unified format) and raw vLLM output.
         """
-        # Handle unified EngineOutput format
-        if hasattr(output, "text") and isinstance(output.text, str):
-            text = output.text
-        # Handle raw vLLM output format (legacy compatibility)
-        elif hasattr(output, "outputs") and output.outputs:
-            text = output.outputs[0].text
-            if not isinstance(text, str):
-                return ""
-        else:
+        if not hasattr(output, "text") or not isinstance(output.text, str):
             return ""
+        text = output.text
         
         if not text.startswith(self._full_text):
             delta = text

@@ -7,6 +7,7 @@ LOG_DIR="${ROOT_DIR}/logs"
 RUN_DIR="${ROOT_DIR}/.run"
 LOG_FILE="${LOG_DIR}/warmup.log"
 LOCK_FILE="${RUN_DIR}/warmup.lock"
+HEALTH_CHECK_SCRIPT="${SCRIPT_DIR}/lib/common/health.sh"
 mkdir -p "${LOG_DIR}" "${RUN_DIR}"
 
 # Source venv helpers and logging (needed for log_err in helpers)
@@ -73,23 +74,9 @@ export PYTHONPATH
 
 wait_for_ready() {
   local deadline=$((SECONDS + WARMUP_TIMEOUT_SECS))
+  local urls=("${HEALTH_URLS[@]}")
   while (( SECONDS <= deadline )); do
-    if "${PY_BIN}" - "${HEALTH_URLS[@]}" <<'PY' >/dev/null 2>&1; then
-import sys
-import urllib.request
-
-def check(urls):
-    for url in urls:
-        try:
-            with urllib.request.urlopen(url, timeout=2) as resp:
-                if resp.status == 200:
-                    return True
-        except Exception:
-            continue
-    return False
-
-raise SystemExit(0 if check(sys.argv[1:]) else 1)
-PY
+    if bash "${HEALTH_CHECK_SCRIPT}" "${urls[@]}" >/dev/null 2>&1; then
       return 0
     fi
     sleep 2
@@ -163,11 +150,11 @@ if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
 fi
 if [[ -z "${max_conn}" || "${max_conn}" =~ [^0-9] ]]; then
-  log_warmup "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to 8 ⚠"
+  log_warmup "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to 8"
   max_conn=8
 fi
 if (( max_conn <= 0 )); then
-  log_warmup "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to 8 ⚠"
+  log_warmup "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to 8"
   max_conn=8
 fi
 
@@ -207,8 +194,8 @@ done
 
 if [[ "${ok}" -eq 1 ]]; then
   log_warmup "✓ Warmup + bench complete."
-else
-  log_warmup "Warmup finished with failures. ⚠"
+  exit 0
 fi
 
-exit 0
+log_warmup "Warmup finished with failures."
+exit 1

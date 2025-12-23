@@ -129,11 +129,11 @@ restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
 if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
-  log_error "[restart] No AWQ models found for deploy mode '${DEPLOY_MODE}'"
-  log_error "[restart] "
-  log_error "[restart] Options:"
-  log_error "[restart] 1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
-  log_error "[restart] 2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
+  log_err "[restart] No AWQ models found for deploy mode '${DEPLOY_MODE}'"
+  log_err "[restart] "
+  log_err "[restart] Options:"
+  log_err "[restart] 1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
+  log_err "[restart] 2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
   exit 1
 fi
 
@@ -156,8 +156,8 @@ NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 # Check if venv exists (skip if --install-deps will create it)
 if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${ROOT_DIR}/.venv" ]; then
-  log_error "[restart] No virtual environment found at ${ROOT_DIR}/.venv"
-  log_error "[restart] Run with --install-deps to create it, or run full deployment first"
+  log_err "[restart] No virtual environment found at ${ROOT_DIR}/.venv"
+  log_err "[restart] Run with --install-deps to create it, or run full deployment first"
   exit 1
 fi
 
@@ -169,13 +169,13 @@ restart_push_cached_awq_models "${DEPLOY_MODE}"
 # TRT engine: validate engine directory exists before starting server
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
   if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
-    log_error "[restart] TRT engine directory not found or not set."
-    log_error "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
-    log_error "[restart] "
-    log_error "[restart] TensorRT-LLM requires a pre-built engine. Options:"
-    log_error "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
-    log_error "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
-    log_error "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
+    log_err "[restart] TRT engine directory not found or not set."
+    log_err "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
+    log_err "[restart] "
+    log_err "[restart] TensorRT-LLM requires a pre-built engine. Options:"
+    log_err "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
+    log_err "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
+    log_err "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
     exit 1
   fi
   log_info "[restart] TRT engine validated: ${TRT_ENGINE_DIR}"
