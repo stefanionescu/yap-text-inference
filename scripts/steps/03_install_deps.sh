@@ -61,7 +61,7 @@ ensure_pip_in_venv || exit 1
 activate_venv "${VENV_DIR}" || exit 1
 
 # Check existing dependency versions (sets NEEDS_* globals)
-check_trt_deps_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION%%+*}" "${TRT_TORCHVISION_VERSION%%+*}" "${TRT_VERSION:-1.2.0rc5}" "requirements-trt.txt" || true
+check_trt_deps_status "${VENV_DIR}" "${TRT_PYTORCH_VERSION}" "${TRT_TORCHVISION_VERSION}" "${TRT_VERSION:-1.2.0rc5}" "requirements-trt.txt" || true
 log_trt_dep_status "${VENV_DIR}"
 ALL_TRTH_DEPS_OK=0
 if [[ "${NEEDS_PYTORCH}" = "0" && "${NEEDS_TORCHVISION}" = "0" && "${NEEDS_TRTLLM}" = "0" && "${NEEDS_REQUIREMENTS}" = "0" ]]; then
