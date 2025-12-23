@@ -9,12 +9,12 @@
 # TRT-LLM VERSION AND INSTALLATION
 # =============================================================================
 
-TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
+TRT_VERSION="${TRT_VERSION:-1.2.0rc6}"
 TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
 
 # PyTorch version matching TRT-LLM requirements
-# TensorRT-LLM 1.2.0rc5 requires torch<=2.9.0
+# TensorRT-LLM 1.2.0rc6 requires torch<=2.9.0
 TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.0+cu130}"
 TRT_TORCHVISION_VERSION="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
 TRT_TORCHAUDIO_VERSION="${TRT_TORCHAUDIO_VERSION:-2.9.0+cu130}"

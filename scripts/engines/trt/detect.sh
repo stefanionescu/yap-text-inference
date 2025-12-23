@@ -202,7 +202,7 @@ trt_detect_cuda_version() {
   fi
 }
 
-# Check if CUDA version is compatible with TRT-LLM 1.2.0rc5 (requires CUDA 13.0)
+# Check if CUDA version is compatible with TRT-LLM 1.2.0rc6 (requires CUDA 13.0)
 trt_check_cuda_compatibility() {
   local cuda_ver
   cuda_ver=$(trt_detect_cuda_version)
@@ -216,7 +216,7 @@ trt_check_cuda_compatibility() {
   major=$(echo "${cuda_ver}" | cut -d. -f1)
   
   if [ "${major}" -lt 13 ]; then
-    log_warn "[cuda] TRT-LLM 1.2.0rc5 requires CUDA 13.0+, found ${cuda_ver}"
+    log_warn "[cuda] TRT-LLM 1.2.0rc6 requires CUDA 13.0+, found ${cuda_ver}"
     return 1
   fi
   
