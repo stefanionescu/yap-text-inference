@@ -25,15 +25,58 @@ if [ ! -f "${activate_script}" ]; then
   exit 1
 fi
 
-# shellcheck disable=SC1091
-source "${activate_script}"
-
 if [ "$#" -gt 0 ]; then
+  # shellcheck disable=SC1091
+  source "${activate_script}"
   log_info "[activate] Running inside ${venv_dir}: $*"
   exec "$@"
 fi
 
 target_shell="${SHELL:-/bin/bash}"
-log_info "[activate] Dropping into ${target_shell} with ${venv_dir} activated"
-exec "${target_shell}" -i
+shell_name="$(basename "${target_shell}")"
+RUN_DIR="${ROOT_DIR}/.run"
+mkdir -p "${RUN_DIR}"
+
+launch_bash_shell() {
+  local rc_file="${RUN_DIR}/activate.bashrc"
+  cat > "${rc_file}" <<EOF
+if [ -f "\${HOME}/.bashrc" ]; then
+  source "\${HOME}/.bashrc"
+fi
+source "${activate_script}"
+EOF
+  log_info "[activate] Dropping into bash with ${venv_dir} activated"
+  exec /bin/bash --rcfile "${rc_file}" -i
+}
+
+case "${shell_name}" in
+  bash)
+    rc_file="${RUN_DIR}/activate.bashrc"
+    cat > "${rc_file}" <<EOF
+if [ -f "\${HOME}/.bashrc" ]; then
+  source "\${HOME}/.bashrc"
+fi
+source "${activate_script}"
+EOF
+    log_info "[activate] Dropping into bash with ${venv_dir} activated"
+    exec "${target_shell}" --rcfile "${rc_file}" -i
+    ;;
+  zsh)
+    zdotdir="${RUN_DIR}/activate-zdotdir"
+    mkdir -p "${zdotdir}"
+    cat > "${zdotdir}/.zshrc" <<EOF
+if [ -f "\${HOME}/.zshrc" ]; then
+  source "\${HOME}/.zshrc"
+fi
+source "${activate_script}"
+EOF
+    export ZDOTDIR="${zdotdir}"
+    log_info "[activate] Dropping into zsh with ${venv_dir} activated"
+    exec "${target_shell}" -i
+    ;;
+  *)
+    log_warn "[activate] Shell '${shell_name}' not recognized; falling back to bash."
+    launch_bash_shell
+    ;;
+esac
 

@@ -190,12 +190,11 @@ Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tai
 
 ## Linting
 
-Create/activate a virtualenv, install runtime + dev deps, then run the integrated lint script:
+Use the existing repo virtualenv (the same one that `scripts/main.sh` / `scripts/steps/03_install_deps.sh` provision). If you're on a fresh machine and that env isn't there yet, run `bash scripts/steps/03_install_deps.sh` first. Then install the dev extras and run the integrated lint script:
 
 ```bash
-python3 -m venv .venv
+# ensure you're inside the repo venv
 bash scripts/activate.sh
-# (inside the activated shell)
 pip install -r requirements-dev.txt
 bash scripts/lint.sh
 # exit the subshell when finished
