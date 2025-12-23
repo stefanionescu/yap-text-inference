@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-
-# System dependencies installation helpers
-# Handles OS-level packages required for TensorRT-LLM (MPI, dev headers, etc.)
+# =============================================================================
+# TRT-LLM Dependency Installation
+# =============================================================================
+# System dependencies and pip packages for TensorRT-LLM.
 
 # Install system dependencies required for TensorRT-LLM
 # This includes OpenMPI development libraries needed for mpi4py compilation
@@ -243,4 +244,43 @@ verify_mpi_runtime() {
   return 0
 }
 
+# =============================================================================
+# MAIN ENTRY POINT
+# =============================================================================
 
+# Main entry point for TRT-LLM dependency installation
+# Call this after venv is set up and activated
+# Requires: TRT_PYTORCH_VERSION, TRT_TORCHVISION_VERSION, TRT_VERSION to be set
+trt_install_deps() {
+  local venv_dir="${1:-${VENV_DIR:-}}"
+  
+  log_info "[trt] Installing TRT-LLM dependencies..."
+  
+  # Check existing dependency versions (sets NEEDS_* globals)
+  trt_determine_dependency_status "${venv_dir}" \
+    "${TRT_PYTORCH_VERSION}" \
+    "${TRT_TORCHVISION_VERSION}" \
+    "${TRT_VERSION:-1.2.0rc6}" \
+    "requirements-trt.txt" || true
+  
+  # Install missing components
+  if ! trt_install_missing_components; then
+    log_err "[trt] Dependency installation failed"
+    return 1
+  fi
+  
+  # Validate installation
+  if ! trt_validate_installation; then
+    log_err "[trt] TensorRT-LLM validation failed"
+    return 1
+  fi
+  
+  # Prepare repo for quantization scripts
+  if ! trt_prepare_repo; then
+    log_err "[trt] TensorRT-LLM repo preparation failed"
+    return 1
+  fi
+  
+  log_info "[trt] ✓ TensorRT-LLM dependencies installed"
+  return 0
+}
