@@ -33,6 +33,10 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "mistralai/Mistral-Small-24B-Instruct-2501",
     "mistralai/Magistral-Small-2509",
     "TheDrummer/UnslopNemo-12B-v4.1", # PRETTY GOOD: needs more testing tho
+    "nvidia/Mistral-NeMo-12B-Instruct",
+    "SicariusSicariiStuff/Impish_Bloodmoon_12B",
+    "SicariusSicariiStuff/Angelic_Eclipse_12B",
+    "flammenai/Mahou-1.3-mistral-nemo-12B",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
@@ -67,6 +71,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # EXTREMELY GOOD: might even be better than Qwen3 30B
+
     "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, rambles even with conservative params
     "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
     "yapwithai/thedrummer-theia-21B-v2-w4a16",

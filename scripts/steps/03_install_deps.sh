@@ -11,6 +11,7 @@ source "${LIB_DIR}/common/log.sh"
 source "${LIB_DIR}/deps/certs.sh"
 source "${LIB_DIR}/deps/pip.sh"
 source "${LIB_DIR}/deps/venv.sh"
+source "${LIB_DIR}/deps/fla.sh"
 source "${LIB_DIR}/env/torch.sh"
 
 # Engine detection
@@ -75,5 +76,8 @@ if [ "${ENGINE_LOWER}" = "trt" ]; then
 else
   vllm_install_deps || exit 1
 fi
+
+# Model-specific dependencies (e.g., fla-core for Kimi models)
+ensure_fla_core_if_needed || exit 1
 
 record_requirements_hash
