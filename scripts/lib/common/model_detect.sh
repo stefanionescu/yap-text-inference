@@ -162,29 +162,4 @@ model_detect_classify_trt() {
   echo ""
 }
 
-# =============================================================================
-# MODEL-SPECIFIC DEPENDENCIES
-# =============================================================================
-
-# Check if model is a Kimi Linear model (requires fla-core)
-model_detect_needs_fla_core() {
-  local value="${1:-}"
-  if [ -z "${value}" ]; then
-    return 1
-  fi
-  local lowered
-  lowered="$(_model_detect_lower "${value}")"
-  
-  # Match Kimi-Linear models (moonshotai/Kimi-Linear-*, cerebras/Kimi-Linear-*)
-  if [[ "${lowered}" == *"kimi-linear"* ]] || [[ "${lowered}" == *"kimi_linear"* ]]; then
-    return 0
-  fi
-  
-  # Also match "kimi" with "linear" nearby
-  if [[ "${lowered}" == *"kimi"* ]] && [[ "${lowered}" == *"linear"* ]]; then
-    return 0
-  fi
-  
-  return 1
-}
 

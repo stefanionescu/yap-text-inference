@@ -162,8 +162,23 @@ trt_quantize_model() {
       ;;
   esac
   
+  # Apply transformers patch for Python 3.10 + union type compatibility
+  # This patches auto_docstring to handle types.UnionType gracefully (Kimi models)
+  local patch_script="${ROOT_DIR}/src/helpers/transformers.py"
+  if [ -f "${patch_script}" ]; then
+    export TRANSFORMERS_PATCH_SCRIPT="${patch_script}"
+  fi
+  
   log_info "[quant] Running: ${quant_cmd[*]}"
-  if ! "${quant_cmd[@]}"; then
+  # Run with patch applied via -c wrapper
+  if ! python -c "
+import os, sys, runpy
+patch = os.environ.get('TRANSFORMERS_PATCH_SCRIPT')
+if patch:
+    exec(open(patch).read())
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name='__main__')
+" "${quant_cmd[@]:1}"; then
     log_err "[quant] Quantization failed"
     _quant_cleanup_on_failure
     return 1
