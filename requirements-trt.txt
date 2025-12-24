@@ -20,6 +20,9 @@ numpy==1.26.4
 snac==1.2.1
 triton==3.5.0
 
+# Model-specific dependencies
+fla-core==0.4.0  # Required for Kimi Linear models
+
 # Audio processing
 soundfile==0.12.1
 
