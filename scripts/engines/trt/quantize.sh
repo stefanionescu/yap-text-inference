@@ -164,7 +164,7 @@ trt_quantize_model() {
   
   # Apply transformers patch for Python 3.10 + union type compatibility
   # This patches auto_docstring to handle types.UnionType gracefully (Kimi models)
-  local patch_script="${ROOT_DIR}/src/helpers/transformers.py"
+  local patch_script="${ROOT_DIR}/src/scripts/transformers.py"
   if [ -f "${patch_script}" ]; then
     export TRANSFORMERS_PATCH_SCRIPT="${patch_script}"
   fi
