@@ -8,17 +8,17 @@
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-# TRT-LLM 1.2.0rc6 requires CUDA 13.0, torch 2.9.0, and Python 3.10
+# TRT-LLM 1.2.0rc4 requires CUDA 13.0, torch 2.9.0, and Python 3.10
 # PyTorch version is pinned to torch==2.9.0+cu130 (TRT-LLM requires <=2.9.0)
 #
-# IMPORTANT: Python 3.11/3.12 do NOT work reliably with TRT-LLM 1.2.0rc6!
+# IMPORTANT: Python 3.11/3.12 do NOT work reliably with TRT-LLM 1.2.0rc4!
 # See ADVANCED.md for details on known issues.
 
 # Centralized TRT-LLM version - THIS IS THE SINGLE SOURCE OF TRUTH
-TRT_VERSION="${TRT_VERSION:-1.2.0rc6}"
+TRT_VERSION="${TRT_VERSION:-1.2.0rc4}"
 
 # Required Python version for TRT-LLM
-# Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc6
+# Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc4
 TRT_REQUIRED_PYTHON_VERSION="${TRT_REQUIRED_PYTHON_VERSION:-3.10}"
 export TRT_REQUIRED_PYTHON_VERSION
 
@@ -57,10 +57,10 @@ trt_ensure_cuda_home() {
     return 1
   fi
   
-  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc6)
+  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc4)
   if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
-      log_warn "[trt] libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc6 requires CUDA 13.x runtime libraries"
+      log_warn "[trt] libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc4 requires CUDA 13.x runtime libraries"
     fi
   fi
   
