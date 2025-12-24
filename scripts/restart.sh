@@ -18,10 +18,16 @@ source "${SCRIPT_DIR}/lib/restart/launch.sh"
 source "${SCRIPT_DIR}/engines/vllm/push.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
+source "${SCRIPT_DIR}/lib/common/torch.sh"
 
 log_info "[restart] Restart manager ready (reuse caches or reconfigure models)"
 
 ensure_required_env_vars
+
+# Check PyTorch and torchvision compatibility before proceeding
+if ! check_torch_compatibility "restart"; then
+  exit 1
+fi
 
 # Stop any existing warmup processes before restarting
 stop_existing_warmup_processes "${ROOT_DIR}"
