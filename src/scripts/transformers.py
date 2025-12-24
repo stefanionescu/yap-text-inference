@@ -20,7 +20,6 @@ Usage:
 from __future__ import annotations
 
 import sys
-from types import UnionType
 
 
 def patch_transformers_auto_docstring() -> bool:
@@ -47,21 +46,15 @@ def patch_transformers_auto_docstring() -> bool:
 
     original_func = ad._process_parameter_type
 
-    def patched_process_parameter_type(param):
+    def patched_process_parameter_type(*args, **kwargs):
         """Wrapped version that handles types.UnionType gracefully."""
         try:
-            return original_func(param)
+            return original_func(*args, **kwargs)
         except AttributeError as e:
             if "UnionType" in str(e) or "__name__" in str(e):
                 # UnionType doesn't have __name__, return a safe fallback
-                # Check if param.annotation is a UnionType
-                import inspect
-                if param.annotation == inspect.Parameter.empty:
-                    return "", False
-                if isinstance(param.annotation, UnionType):
-                    return "Any", True
-                # Try to get string representation
-                return str(param.annotation), True
+                # Return type string and optional flag
+                return "Any", True
             raise
 
     ad._process_parameter_type = patched_process_parameter_type
