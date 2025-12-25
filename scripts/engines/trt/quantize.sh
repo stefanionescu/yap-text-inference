@@ -380,13 +380,14 @@ PY
 )
 
   log_warn "[modelopt] Rebuilding modelopt CUDA extension for ${sm:-unknown} (TORCH_CUDA_ARCH_LIST=${torch_arch})"
+  # Uninstall only modelopt; do not touch other deps
   pip uninstall -y nvidia-modelopt modelopt >/dev/null 2>&1 || true
   if [ -n "${modelopt_ver}" ]; then
     TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
-      pip install --no-cache-dir --no-binary nvidia-modelopt "nvidia-modelopt==${modelopt_ver}"
+      pip install --no-deps --no-cache-dir --no-binary nvidia-modelopt "nvidia-modelopt==${modelopt_ver}"
   else
     TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
-      pip install --no-cache-dir --no-binary nvidia-modelopt
+      pip install --no-deps --no-cache-dir --no-binary nvidia-modelopt
   fi
 
   export MODELOPT_REBUILT=1
