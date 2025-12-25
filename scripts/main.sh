@@ -10,6 +10,7 @@ source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
 source "${SCRIPT_DIR}/lib/common/model_detect.sh"
 source "${SCRIPT_DIR}/lib/common/model_validate.sh"
+source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
 source "${SCRIPT_DIR}/lib/common/torch.sh"
@@ -27,6 +28,10 @@ source "${SCRIPT_DIR}/lib/main/deploy.sh"
 log_info "[main] Starting Yap Text Inference Server"
 
 ensure_required_env_vars
+
+# Detect GPU and export arch flags early (needed for modelopt/TRT builds)
+gpu_init_detection "gpu"
+gpu_apply_env_defaults
 
 # Check PyTorch and torchvision compatibility before proceeding
 if ! check_torch_compatibility "main"; then

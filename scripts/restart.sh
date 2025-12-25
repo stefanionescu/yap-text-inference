@@ -17,12 +17,17 @@ source "${SCRIPT_DIR}/lib/env/restart.sh"
 source "${SCRIPT_DIR}/lib/restart/launch.sh"
 source "${SCRIPT_DIR}/engines/vllm/push.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
+source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
 source "${SCRIPT_DIR}/lib/common/torch.sh"
 
 log_info "[restart] Restart manager ready (reuse caches or reconfigure models)"
 
 ensure_required_env_vars
+
+# Detect GPU and export arch flags early
+gpu_init_detection "gpu"
+gpu_apply_env_defaults
 
 # Check PyTorch and torchvision compatibility before proceeding
 if ! check_torch_compatibility "restart"; then
