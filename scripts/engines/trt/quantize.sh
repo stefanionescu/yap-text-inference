@@ -164,7 +164,10 @@ trt_quantize_model() {
 
   # Ensure modelopt CUDA extension has kernels for this GPU; rebuild if needed (e.g., sm90/H100)
   if ! check_modelopt_for_gpu; then
-    rebuild_modelopt_for_gpu
+    if ! rebuild_modelopt_for_gpu; then
+      log_err "[modelopt] Failed to prepare modelopt for this GPU; aborting quantization"
+      return 1
+    fi
   fi
   
   # Apply transformers patch for Python 3.10 + union type compatibility
@@ -381,19 +384,29 @@ PY
 
   log_warn "[modelopt] Rebuilding modelopt CUDA extension for ${sm:-unknown} (TORCH_CUDA_ARCH_LIST=${torch_arch})"
   # Attempt reinstall in-place (no deps, force rebuild, use NVIDIA index), fallback to latest if pinned version missing
-  local pip_base=(pip install --quiet --force-reinstall --no-deps --no-cache-dir --no-binary nvidia-modelopt --extra-index-url https://pypi.nvidia.com)
+  # Try NVIDIA PyPI, then NGC PyPI, suppress noisy output
   local install_ok=0
+  _pip_install_modelopt() {
+    TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
+      pip install --quiet --force-reinstall --no-deps --no-cache-dir --no-binary nvidia-modelopt "$@"
+  }
+
   if [ -n "${modelopt_ver}" ]; then
-    if TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
-      "${pip_base[@]}" "nvidia-modelopt==${modelopt_ver}"; then
+    if _pip_install_modelopt --extra-index-url https://pypi.nvidia.com "nvidia-modelopt==${modelopt_ver}"; then
       install_ok=1
     else
-      log_warn "[modelopt] Version ${modelopt_ver} not available; retrying latest"
+      log_warn "[modelopt] Version ${modelopt_ver} not available on NVIDIA PyPI; retrying latest/NGC"
     fi
   fi
+
   if [ "${install_ok}" = "0" ]; then
-    if TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
-      "${pip_base[@]}" nvidia-modelopt; then
+    if _pip_install_modelopt --extra-index-url https://pypi.nvidia.com nvidia-modelopt; then
+      install_ok=1
+    fi
+  fi
+
+  if [ "${install_ok}" = "0" ]; then
+    if _pip_install_modelopt --index-url https://pypi.ngc.nvidia.com --extra-index-url https://pypi.org/simple nvidia-modelopt; then
       install_ok=1
     fi
   fi
@@ -403,7 +416,7 @@ PY
     return 0
   fi
 
-  log_error "[modelopt] Rebuild failed; quantization may fail (modelopt missing)"
+  log_err "[modelopt] Rebuild failed; modelopt not available from NVIDIA indexes"
   return 1
 }
 
