@@ -12,7 +12,7 @@ source "${SCRIPT_DIR}/env/python_flashinfer.sh"
 source "${SCRIPT_DIR}/env/awq_models.sh"
 source "${SCRIPT_DIR}/env/limits.sh"
 source "${SCRIPT_DIR}/env/tokens.sh"
-source "${SCRIPT_DIR}/env/gpu_backend.sh"
+source "${SCRIPT_DIR}/env/gpu_detect.sh"
 source "${SCRIPT_DIR}/env/final_defaults.sh"
 
 log_info "[vllm] Docker vLLM Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
