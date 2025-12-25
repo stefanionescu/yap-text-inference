@@ -360,7 +360,9 @@ restart_reconfigure_models() {
 
   log_info "[restart] Restart mode: reconfigure (models reset, deps preserved)"
 
-  log_info "[restart] Stopping server before redeploy (preserving .venv)..."
+  local resolved_venv="${VENV_DIR:-$(get_venv_dir)}"
+
+  log_info "[restart] Stopping server before redeploy (preserving ${resolved_venv})..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
   if [ "${preserve_cache}" = "1" ]; then
@@ -372,8 +374,8 @@ restart_reconfigure_models() {
 
   restart_apply_defaults_and_deps
 
-  if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    log_err "[restart] Virtual environment missing at ${ROOT_DIR}/.venv"
+  if [ ! -d "${resolved_venv}" ]; then
+    log_err "[restart] Virtual environment missing at ${resolved_venv}"
     log_err "[restart] Re-run with --install-deps to rebuild dependencies before reconfigure."
     exit 1
   fi
