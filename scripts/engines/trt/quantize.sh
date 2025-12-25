@@ -380,16 +380,30 @@ PY
 )
 
   log_warn "[modelopt] Rebuilding modelopt CUDA extension for ${sm:-unknown} (TORCH_CUDA_ARCH_LIST=${torch_arch})"
-  # Uninstall only modelopt; do not touch other deps
-  pip uninstall -y nvidia-modelopt modelopt >/dev/null 2>&1 || true
+  # Attempt reinstall in-place (no deps, force rebuild, use NVIDIA index), fallback to latest if pinned version missing
+  local pip_base=(pip install --force-reinstall --no-deps --no-cache-dir --no-binary nvidia-modelopt --extra-index-url https://pypi.nvidia.com)
+  local install_ok=0
   if [ -n "${modelopt_ver}" ]; then
-    TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
-      pip install --no-deps --no-cache-dir --no-binary nvidia-modelopt "nvidia-modelopt==${modelopt_ver}"
-  else
-    TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
-      pip install --no-deps --no-cache-dir --no-binary nvidia-modelopt
+    if TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
+      "${pip_base[@]}" "nvidia-modelopt==${modelopt_ver}"; then
+      install_ok=1
+    else
+      log_warn "[modelopt] Version ${modelopt_ver} not available; retrying latest"
+    fi
+  fi
+  if [ "${install_ok}" = "0" ]; then
+    if TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
+      "${pip_base[@]}" nvidia-modelopt; then
+      install_ok=1
+    fi
   fi
 
-  export MODELOPT_REBUILT=1
+  if [ "${install_ok}" = "1" ]; then
+    export MODELOPT_REBUILT=1
+    return 0
+  fi
+
+  log_error "[modelopt] Rebuild failed; quantization may fail (modelopt missing)"
+  return 1
 }
 

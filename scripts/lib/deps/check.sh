@@ -61,18 +61,27 @@ check_venv_exists() {
 log_trt_dep_status() {
   local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
   echo "[deps] Status for venv=${venv_dir}"
-  echo "[deps]   torch:         NEEDS_PYTORCH=${NEEDS_PYTORCH}"
-  echo "[deps]   torchvision:   NEEDS_TORCHVISION=${NEEDS_TORCHVISION}"
-  echo "[deps]   tensorrt_llm:  NEEDS_TRTLLM=${NEEDS_TRTLLM}"
-  echo "[deps]   requirements:  NEEDS_REQUIREMENTS=${NEEDS_REQUIREMENTS}"
+  local mark ok="[✓]" bad="[✗]"
+  _status_line() {
+    local label="$1" need="$2"
+    if [[ "${need}" == "0" ]]; then
+      printf "[deps] %s %s\n" "${ok}" "${label}"
+    else
+      printf "[deps] %s %s\n" "${bad}" "${label}"
+    fi
+  }
+  _status_line "torch" "${NEEDS_PYTORCH}"
+  _status_line "torchvision" "${NEEDS_TORCHVISION}"
+  _status_line "tensorrt_llm" "${NEEDS_TRTLLM}"
+  _status_line "requirements" "${NEEDS_REQUIREMENTS}"
   if [[ -n "${NEEDS_FLASHINFER:-}" ]]; then
-    echo "[deps]   flashinfer:    NEEDS_FLASHINFER=${NEEDS_FLASHINFER}"
+    _status_line "flashinfer" "${NEEDS_FLASHINFER}"
   fi
   if [[ ${#REQUIREMENTS_MISSING_PKGS[@]} -gt 0 ]]; then
-    echo "[deps]   Missing pkgs: ${REQUIREMENTS_MISSING_PKGS[*]}"
+    printf "[deps] %s missing: %s\n" "${bad}" "${REQUIREMENTS_MISSING_PKGS[*]}"
   fi
   if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]} -gt 0 ]]; then
-    echo "[deps]   Wrong version pkgs: ${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
+    printf "[deps] %s wrong version: %s\n" "${bad}" "${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
   fi
 }
 
