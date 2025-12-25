@@ -131,6 +131,19 @@ gpu_detect_cudaarchs() {
   esac
 }
 
+# Map SM arch to TORCH_CUDA_ARCH_LIST value (e.g., sm89 -> 8.9+PTX)
+gpu_sm_to_torch_arch_list() {
+  local sm="${1:-}"
+  case "${sm}" in
+    sm90) echo "9.0+PTX" ;;
+    sm89) echo "8.9+PTX" ;;
+    sm80) echo "8.0+PTX" ;;
+    sm75) echo "7.5+PTX" ;;
+    sm70) echo "7.0+PTX" ;;
+    *)    echo "" ;;
+  esac
+}
+
 # Check if GPU supports native FP8 (Hopper, Ada Lovelace)
 # Usage: gpu_supports_fp8
 gpu_supports_fp8() {
@@ -173,15 +186,31 @@ gpu_init_detection() {
 # Usage: gpu_apply_env_defaults
 gpu_apply_env_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-$(gpu_detect_name)}"
+  local sm_arch="${GPU_SM_ARCH:-}"
+  
+  # Reuse detected SM arch if available; fall back to detection
+  if [ -z "${sm_arch}" ]; then
+    sm_arch=$(gpu_detect_sm_arch)
+    if [ -n "${sm_arch}" ]; then
+      GPU_SM_ARCH="${sm_arch}"
+      export GPU_SM_ARCH
+    fi
+  fi
   
   # Set TORCH_CUDA_ARCH_LIST if not already set
   if [ -z "${TORCH_CUDA_ARCH_LIST:-}" ]; then
-    export TORCH_CUDA_ARCH_LIST="$(gpu_detect_torch_arch_list)"
+    local torch_arch_list=""
+    # Prefer exact SM-based mapping to avoid name mismatches
+    torch_arch_list=$(gpu_sm_to_torch_arch_list "${sm_arch}")
+    if [ -z "${torch_arch_list}" ]; then
+      torch_arch_list="$(gpu_detect_torch_arch_list)"
+    fi
+    export TORCH_CUDA_ARCH_LIST="${torch_arch_list}"
   fi
 
   # Set CUDAARCHS to match SM arch (needed for building extensions, e.g., modelopt)
   if [ -z "${CUDAARCHS:-}" ]; then
-    export CUDAARCHS="$(gpu_detect_cudaarchs)"
+    export CUDAARCHS="$(gpu_detect_cudaarchs "${sm_arch}")"
   fi
   
   # Set memory allocation config for modern GPUs
