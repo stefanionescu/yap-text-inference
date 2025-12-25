@@ -8,14 +8,14 @@
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-# TRT-LLM 1.2.0rc4 requires CUDA 13.0, torch 2.9.0, and Python 3.10
+# TRT-LLM 1.2.0rc5 requires CUDA 13.0, torch 2.9.0, and Python 3.10
 # PyTorch version is pinned to torch==2.9.0+cu130 (TRT-LLM requires <=2.9.0)
 #
-# IMPORTANT: Python 3.11/3.12 do NOT work reliably with TRT-LLM 1.2.0rc4!
+# IMPORTANT: Python 3.11/3.12 do NOT work reliably with TRT-LLM 1.2.0rc5!
 # See ADVANCED.md for details on known issues.
 
 # Centralized TRT-LLM version - THIS IS THE SINGLE SOURCE OF TRUTH
-TRT_VERSION="${TRT_VERSION:-1.2.0rc4}"
+TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
 
 # Required Python version for TRT-LLM
 # Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc4

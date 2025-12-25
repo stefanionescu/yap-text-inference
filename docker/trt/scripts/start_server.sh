@@ -26,164 +26,142 @@ if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
 fi
 
 # ============================================================================
-# Download TRT engines from HuggingFace if not already present
+# Download TRT engines/checkpoints from HuggingFace if not already present
+# If a checkpoint is found, build an engine inside the container.
 # ============================================================================
 if [ "${DEPLOY_CHAT}" = "1" ]; then
   if [ -n "${TRT_ENGINE_REPO:-}" ]; then
-    # Check if engine already exists
-    if [ -f "${TRT_ENGINE_DIR}/rank0.engine" ] && [ -f "${TRT_ENGINE_DIR}/config.json" ]; then
-      log_info "[trt] TRT engine already present at ${TRT_ENGINE_DIR}"
-    else
-      log_info "[trt] Downloading TRT engine from ${TRT_ENGINE_REPO}..."
-      
-      # Detect GPU SM architecture for engine selection
-      GPU_SM=""
-      if command -v nvidia-smi >/dev/null 2>&1; then
-        cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 || true)
-        if [ -n "${cap}" ]; then
-          GPU_SM="sm${cap/./}"
-          log_info "[trt] Detected GPU SM architecture: ${GPU_SM}"
-        fi
+    # Detect GPU SM architecture for variant selection
+    GPU_SM=""
+    if command -v nvidia-smi >/dev/null 2>&1; then
+      cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 || true)
+      if [ -n "${cap}" ]; then
+        GPU_SM="sm${cap/./}"
+        log_info "[trt] Detected GPU SM architecture: ${GPU_SM}"
       fi
-      
-      # Download engine from HuggingFace
-      python - <<PYPULL
-import os
-import sys
-from pathlib import Path
-from huggingface_hub import snapshot_download, hf_hub_download, list_repo_tree
+    fi
 
-repo_id = os.environ.get('TRT_ENGINE_REPO', '')
-engine_dir = os.environ.get('TRT_ENGINE_DIR', '/opt/engines/trt-chat')
-gpu_sm = os.environ.get('GPU_SM', '${GPU_SM}')
-token = os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_HUB_TOKEN') or None
+    log_info "[trt] Resolving artifacts from ${TRT_ENGINE_REPO} (engines or checkpoints)..."
+    py_out=$(
+      python - <<'PYPULL'
+import os
+from pathlib import Path
+from huggingface_hub import snapshot_download, list_repo_tree
+
+repo_id=os.environ.get('TRT_ENGINE_REPO','').strip()
+engine_dir=os.environ.get('TRT_ENGINE_DIR','/opt/engines/trt-chat')
+gpu_sm=os.environ.get('GPU_SM','').strip()
+token=os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_HUB_TOKEN') or None
+engine_label=os.environ.get('TRT_ENGINE_LABEL','').strip()
 
 if not repo_id:
-    print("[trt-download] TRT_ENGINE_REPO not set", file=sys.stderr)
-    sys.exit(1)
+    print("MODE=none")
+    raise SystemExit(0)
 
-os.makedirs(engine_dir, exist_ok=True)
+files=list(list_repo_tree(repo_id, token=token))
+paths=[f.path for f in files]
 
-try:
-    # Try to find engines directory structure
-    files = list(list_repo_tree(repo_id, token=token))
-    file_paths = [f.path for f in files]
-    
-    # Look for engines in various patterns
-    engine_patterns = []
-    
-    # Pattern 1: trt-llm/engines/<sm_arch>/
-    for f in file_paths:
-        if f.startswith('trt-llm/engines/'):
-            parts = f.split('/')
-            if len(parts) >= 3:
-                engine_patterns.append(parts[2])
-    
-    # Pattern 2: engines/<sm_arch>/
-    for f in file_paths:
-        if f.startswith('engines/') and not f.startswith('engines/'):
-            parts = f.split('/')
-            if len(parts) >= 2:
-                engine_patterns.append(parts[1])
-    
-    # Pattern 3: root level engine files
-    has_root_engine = any('rank0.engine' in f for f in file_paths)
-    
-    selected_pattern = None
-    download_patterns = None
-    
-    if engine_patterns:
-        engine_patterns = list(set(engine_patterns))
-        print(f"[trt-download] Found engine variants: {engine_patterns}")
-        
-        # Try to match GPU SM arch
-        if gpu_sm:
-            matches = [p for p in engine_patterns if p.startswith(gpu_sm)]
-            if matches:
-                selected_pattern = matches[0]
-                print(f"[trt-download] Selected engine variant: {selected_pattern}")
-        
-        if not selected_pattern and len(engine_patterns) == 1:
-            selected_pattern = engine_patterns[0]
-            print(f"[trt-download] Using only available variant: {selected_pattern}")
-        
-        if selected_pattern:
-            # Try trt-llm/engines/ first
-            download_patterns = [f"trt-llm/engines/{selected_pattern}/**"]
-            if not any(f.startswith(f'trt-llm/engines/{selected_pattern}') for f in file_paths):
-                download_patterns = [f"engines/{selected_pattern}/**"]
-    
-    elif has_root_engine:
-        # Engine files at root level
-        download_patterns = ["*.engine", "*.json", "*.safetensors"]
-        print("[trt-download] Downloading root-level engine files")
-    
-    if not download_patterns:
-        # Fall back to downloading entire repo
-        print("[trt-download] No specific engine pattern found, downloading entire repo")
-        download_patterns = None
-    
-    # Download
-    local_path = snapshot_download(
+# Collect available engine labels
+engine_labels=set()
+for p in paths:
+    if p.startswith("trt-llm/engines/"):
+        parts=p.split("/")
+        if len(parts)>=4:
+            engine_labels.add(parts[3])
+
+selected=""
+if engine_labels:
+    if engine_label and engine_label in engine_labels:
+        selected=engine_label
+    elif len(engine_labels)==1:
+        selected=next(iter(engine_labels))
+    elif gpu_sm:
+        matches=[lab for lab in sorted(engine_labels) if lab.startswith(gpu_sm)]
+        if len(matches)==1:
+            selected=matches[0]
+
+if selected:
+    local=snapshot_download(
         repo_id=repo_id,
         local_dir=engine_dir,
-        allow_patterns=download_patterns,
-        token=token
+        allow_patterns=[f"trt-llm/engines/{selected}/**", "trt-llm/engines/**/build_metadata.json"],
+        token=token,
     )
-    
-    # Find the actual engine directory
-    engine_path = Path(local_path)
-    
-    # Check various possible locations
-    possible_paths = [
-        engine_path,
-        engine_path / 'trt-llm' / 'engines' / (selected_pattern or ''),
-        engine_path / 'engines' / (selected_pattern or ''),
-    ]
-    
-    for p in possible_paths:
-        if p.exists() and (p / 'rank0.engine').exists():
-            if str(p) != engine_dir:
-                # Move files to expected location
-                import shutil
-                for f in p.iterdir():
-                    dest = Path(engine_dir) / f.name
-                    if f.is_file():
-                        shutil.copy2(f, dest)
-                    elif f.is_dir():
-                        if dest.exists():
-                            shutil.rmtree(dest)
-                        shutil.copytree(f, dest)
-            print(f"[trt-download] Engine ready at {engine_dir}")
-            sys.exit(0)
-    
-    print(f"[trt-download] Could not find engine files after download", file=sys.stderr)
-    print(f"[trt-download] Contents of {local_path}:", file=sys.stderr)
-    for item in Path(local_path).rglob('*'):
-        print(f"  {item}", file=sys.stderr)
-    sys.exit(1)
-    
-except Exception as e:
-    print(f"[trt-download] Failed to download TRT engine: {e}", file=sys.stderr)
-    sys.exit(1)
+    eng_dir=str(Path(local)/"trt-llm"/"engines"/selected)
+    print("MODE=engines")
+    print(f"ENGINE_DIR={eng_dir}")
+    print(f"ENGINE_LABEL={selected}")
+    raise SystemExit(0)
+
+# Fallback to checkpoints
+if any(p.startswith("trt-llm/checkpoints/") for p in paths):
+    local=snapshot_download(
+        repo_id=repo_id,
+        local_dir=engine_dir,
+        allow_patterns=["trt-llm/checkpoints/**"],
+        token=token,
+    )
+    ckpt_dir=str(Path(local)/"trt-llm"/"checkpoints")
+    if (Path(ckpt_dir)/"config.json").is_file():
+        print("MODE=checkpoints")
+        print(f"CHECKPOINT_DIR={ckpt_dir}")
+        raise SystemExit(0)
+
+print("MODE=none")
 PYPULL
-      
-      if [ $? -ne 0 ]; then
-        log_error "[trt] Failed to download TRT engine. Exiting."
+    )
+
+    mode=$(echo "$py_out" | awk -F= '/^MODE=/{print $2; exit}')
+    if [ "$mode" = "engines" ]; then
+      TRT_ENGINE_DIR=$(echo "$py_out" | awk -F= '/^ENGINE_DIR=/{print $2; exit}')
+      if [ -f "${TRT_ENGINE_DIR}/rank0.engine" ]; then
+        log_info "[trt] Using downloaded engine: ${TRT_ENGINE_DIR}"
+      else
+        log_error "[trt] Downloaded engine missing rank0.engine"
         exit 1
       fi
+    elif [ "$mode" = "checkpoints" ]; then
+      CHECKPOINT_DIR=$(echo "$py_out" | awk -F= '/^CHECKPOINT_DIR=/{print $2; exit}')
+      if [ -z "${CHECKPOINT_DIR}" ] || [ ! -f "${CHECKPOINT_DIR}/config.json" ]; then
+        log_error "[trt] Downloaded checkpoint invalid (missing config.json)"
+        exit 1
+      fi
+      # Build engine from checkpoint
+      : "${TRT_ENGINE_DIR:=/opt/engines/trt-chat}"
+      MAX_IN="${TRT_MAX_INPUT_LEN:-${TRTLLM_MAX_INPUT_LEN:-60}}"
+      MAX_OUT="${TRT_MAX_OUTPUT_LEN:-${TRTLLM_MAX_OUTPUT_LEN:-4096}}"
+      MAX_BATCH="${TRT_MAX_BATCH_SIZE:-${TRTLLM_MAX_BATCH_SIZE:-16}}"
+      log_info "[trt] Building engine from checkpoint: ${CHECKPOINT_DIR}"
+      trtllm-build \
+        --checkpoint_dir "${CHECKPOINT_DIR}" \
+        --output_dir "${TRT_ENGINE_DIR}" \
+        --gemm_plugin auto \
+        --gpt_attention_plugin float16 \
+        --context_fmha enable \
+        --kv_cache_type paged \
+        --remove_input_padding enable \
+        --max_input_len "${MAX_IN}" \
+        --max_seq_len "$((MAX_IN + MAX_OUT))" \
+        --max_batch_size "${MAX_BATCH}" \
+        --log_level info \
+        --workers "$(nproc --all)" || {
+          log_error "[trt] trtllm-build failed from checkpoint"
+          exit 1
+        }
+    else
+      log_warn "[trt] No engines or checkpoints found in repo; expecting mounted engine"
     fi
   else
     log_warn "[trt] TRT_ENGINE_REPO not set - expecting engine to be mounted at ${TRT_ENGINE_DIR}"
   fi
-  
+
   # Final validation
   if [ ! -f "${TRT_ENGINE_DIR}/rank0.engine" ]; then
     log_error "[trt] TRT engine not found at ${TRT_ENGINE_DIR}/rank0.engine"
     log_error "[trt] Either set TRT_ENGINE_REPO or mount an engine directory"
     exit 1
   fi
-  
+
   log_success "[trt] TRT engine validated at ${TRT_ENGINE_DIR}"
 fi
 
