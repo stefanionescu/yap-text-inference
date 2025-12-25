@@ -29,7 +29,7 @@ soundfile==0.12.1
 # TensorRT-LLM dependencies
 cuda-python==13.0.0
 hf_transfer==0.1.8
-nvidia-ml-py==12.560.30
+nvidia-ml-py==13
 
 # Build tools - setuptools MUST be <80 for TRT-LLM 1.2.0rc5
 ninja==1.13.0

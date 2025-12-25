@@ -384,6 +384,7 @@ PY
 
   log_warn "[modelopt] Rebuilding modelopt CUDA extension for ${sm:-unknown} (TORCH_CUDA_ARCH_LIST=${torch_arch})"
   # Attempt reinstall in-place (no deps, force rebuild, use NVIDIA index), fallback to latest if pinned version missing
+  local required_modelopt="${REQUIRED_MODELOPT_VERSION:-0.37.0}"
   # Try NVIDIA PyPI, then NGC PyPI, suppress noisy output
   local install_ok=0
   _pip_install_modelopt() {
@@ -392,7 +393,7 @@ PY
   }
 
   if [ -n "${modelopt_ver}" ]; then
-    if _pip_install_modelopt --extra-index-url https://pypi.nvidia.com "nvidia-modelopt==${modelopt_ver}"; then
+    if _pip_install_modelopt --extra-index-url https://pypi.nvidia.com "nvidia-modelopt[torch]==${modelopt_ver}"; then
       install_ok=1
     else
       log_warn "[modelopt] Version ${modelopt_ver} not available on NVIDIA PyPI; retrying latest/NGC"
@@ -400,13 +401,13 @@ PY
   fi
 
   if [ "${install_ok}" = "0" ]; then
-    if _pip_install_modelopt --extra-index-url https://pypi.nvidia.com nvidia-modelopt; then
+    if _pip_install_modelopt --extra-index-url https://pypi.nvidia.com "nvidia-modelopt[torch]==${required_modelopt}"; then
       install_ok=1
     fi
   fi
 
   if [ "${install_ok}" = "0" ]; then
-    if _pip_install_modelopt --index-url https://pypi.ngc.nvidia.com --extra-index-url https://pypi.org/simple nvidia-modelopt; then
+    if _pip_install_modelopt --index-url https://pypi.ngc.nvidia.com --extra-index-url https://pypi.org/simple "nvidia-modelopt[torch]==${required_modelopt}"; then
       install_ok=1
     fi
   fi
