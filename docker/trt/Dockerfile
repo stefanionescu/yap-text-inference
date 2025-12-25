@@ -1,5 +1,5 @@
 # TensorRT-LLM production image for pre-quantized models
-# CUDA 13.0 with Ubuntu 24.04 (TRT-LLM 1.2.0rc4 requires torch 2.9.x cu130)
+# CUDA 13.0 with Ubuntu 24.04 (TRT-LLM 1.2.0rc5 requires torch 2.9.x cu130)
 FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04
 
 # Use bash for RUN lines
@@ -17,7 +17,7 @@ ARG TOOL_MODEL=""
 ARG TRT_ENGINE_REPO=""
 
 # TensorRT-LLM version configuration
-ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc4
+ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc5
 ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 
 # MPI runtime pin for TRT-LLM (prevents CUDA downgrade)
@@ -61,7 +61,7 @@ RUN python3.10 -m venv "$VENV_DIR" && \
 ENV PATH="/opt/venv/bin:${PATH}"
 
 # ----------------------------------------------------------------------------
-# PyTorch installation (TRT-LLM 1.2.0rc4 requires torch 2.9.x + CUDA 13.0)
+# PyTorch installation (TRT-LLM 1.2.0rc5 requires torch 2.9.x + CUDA 13.0)
 # ----------------------------------------------------------------------------
 RUN echo "Using PyTorch index: ${PYTORCH_INDEX_URL}" && \
     pip install --no-cache-dir --index-url "${PYTORCH_INDEX_URL}" \
@@ -84,10 +84,13 @@ ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
 # TensorRT-LLM installation (runtime wheel only)
 # NOTE: Do NOT use --upgrade - it can replace torch with a different CUDA version
 # ----------------------------------------------------------------------------
-RUN pip install --no-cache-dir \
+RUN printf "torch==2.9.0+cu130\ntorchvision==0.24.0+cu130\n" > /tmp/trt-constraints.txt && \
+    pip install --no-cache-dir \
+      -c /tmp/trt-constraints.txt \
       --index-url https://pypi.nvidia.com \
       --extra-index-url https://pypi.org/simple \
-      "${TRTLLM_PIP_SPEC}"
+      "${TRTLLM_PIP_SPEC}" && \
+    rm -f /tmp/trt-constraints.txt
 
 # ----------------------------------------------------------------------------
 # Copy application code and runtime scripts
