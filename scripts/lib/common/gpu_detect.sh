@@ -101,17 +101,33 @@ gpu_detect_torch_arch_list() {
   
   case "${gpu_name}" in
     *H100*|*H200*)
-      echo "9.0"
+      echo "9.0+PTX"
       ;;
     *L40S*|*L40*|*RTX\ 4090*|*RTX\ 4080*)
-      echo "8.9"
+      echo "8.9+PTX"
       ;;
     *A100*|*A10*|*A30*|*RTX\ 3090*|*RTX\ 3080*)
-      echo "8.0"
+      echo "8.0+PTX"
       ;;
     *)
-      echo "8.0"
+      echo "8.0+PTX"
       ;;
+  esac
+}
+
+# Map SM arch to CUDAARCHS numeric string (e.g., sm90 -> 90)
+gpu_detect_cudaarchs() {
+  local sm="${1:-${GPU_SM_ARCH:-}}"
+  if [ -z "${sm}" ]; then
+    sm=$(gpu_detect_sm_arch)
+  fi
+  case "${sm}" in
+    sm90) echo "90" ;;
+    sm89) echo "89" ;;
+    sm80) echo "80" ;;
+    sm70) echo "70" ;;
+    sm75) echo "75" ;;
+    *)    echo "" ;;
   esac
 }
 
@@ -159,7 +175,14 @@ gpu_apply_env_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-$(gpu_detect_name)}"
   
   # Set TORCH_CUDA_ARCH_LIST if not already set
-  export TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-$(gpu_detect_torch_arch_list)}"
+  if [ -z "${TORCH_CUDA_ARCH_LIST:-}" ]; then
+    export TORCH_CUDA_ARCH_LIST="$(gpu_detect_torch_arch_list)"
+  fi
+
+  # Set CUDAARCHS to match SM arch (needed for building extensions, e.g., modelopt)
+  if [ -z "${CUDAARCHS:-}" ]; then
+    export CUDAARCHS="$(gpu_detect_cudaarchs)"
+  fi
   
   # Set memory allocation config for modern GPUs
   case "${gpu_name}" in
