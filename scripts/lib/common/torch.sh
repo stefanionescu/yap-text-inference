@@ -41,12 +41,9 @@ except RuntimeError as e:
     fi
   fi
   
-  # Success case - log the output
+  # Success case - only log mismatch info; suppress version chatter
   if [ "${exit_code}" -eq 0 ]; then
-    echo "${check_output}" | while IFS= read -r line; do
-      log_info "[${phase}] ${line}"
-    done
-    log_info "[${phase}] PyTorch and torchvision compatibility check passed"
+    log_info "[${phase}] PyTorch/torchvision compatibility check passed"
     return 0
   fi
   

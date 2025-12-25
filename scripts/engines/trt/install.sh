@@ -18,7 +18,7 @@
 TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
 
 # Required Python version for TRT-LLM
-# Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc4
+# Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc5
 TRT_REQUIRED_PYTHON_VERSION="${TRT_REQUIRED_PYTHON_VERSION:-3.10}"
 export TRT_REQUIRED_PYTHON_VERSION
 
@@ -57,10 +57,10 @@ trt_ensure_cuda_home() {
     return 1
   fi
   
-  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc4)
+  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc5)
   if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
-      log_warn "[trt] libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc4 requires CUDA 13.x runtime libraries"
+      log_warn "[trt] libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
     fi
   fi
   

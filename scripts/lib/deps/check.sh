@@ -134,7 +134,7 @@ check_torchvision_installed() {
 # Check if TensorRT-LLM is installed with correct version
 # Returns: 0 if correct, 1 if missing, 2 if wrong version
 check_trtllm_installed() {
-  local required_version="${1:-1.2.0rc4}"
+  local required_version="${1:-1.2.0rc5}"
   local py_exe="${2:-python}"
   
   local installed_ver
@@ -288,7 +288,7 @@ check_trt_deps_status() {
   local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
   local pytorch_ver="${2:-2.9.0}"
   local torchvision_ver="${3:-0.24.0}"
-  local trtllm_ver="${4:-1.2.0rc4}"
+  local trtllm_ver="${4:-1.2.0rc5}"
   local req_file="${5:-requirements-trt.txt}"
   
   NEEDS_PYTORCH=1
