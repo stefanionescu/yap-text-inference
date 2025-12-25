@@ -610,6 +610,21 @@ Since TensorRT-LLM requires CUDA 13.0+, this silent downgrade will break deploym
 2. Pin MPI package versions explicitly via `MPI_VERSION_PIN` environment variable before running bootstrap
 3. Verify CUDA version after bootstrap: `nvcc --version` should show 13.0+
 
+### CUDA Device Unavailable
+
+Symptom:
+- During TRT quantization or Torch smoke tests, Torch logs `Device 0 seems unavailable` or `cudaErrorDevicesUnavailable`, even though `nvidia-smi` shows the GPU (e.g., H100 PCIe) and `TORCH_CUDA_ARCH_LIST` is set.
+
+Root causes:
+- Container is mapped to the wrong device node (e.g., only `/dev/nvidia7` present, no `/dev/nvidia0`).
+- Stale or wedged GPU assignment from the scheduler; MIG or device numbering mismatch.
+- GPU is in a bad state (needs reset/reboot).
+
+Fixes:
+- Restart the container with a clean GPU mapping: `--gpus all` or `--gpus '"device=0"'` (or the specific UUID). Verify `/dev/nvidia0` exists inside the container.
+- If the assigned GPU stays bad, switch to a different GPU/instance (e.g a different H100 flavor worked when a particular H100 PCIe stayed wedged).
+- As a last resort, reset the GPU (`nvidia-smi --gpu-reset -i 0`) or reboot the host if safe.
+
 ## GPU Memory Fractions
 
 GPU memory is allocated based on deployment mode:
