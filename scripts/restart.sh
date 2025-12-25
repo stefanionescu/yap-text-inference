@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
+source "${SCRIPT_DIR}/lib/deps/venv.sh"
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
 source "${SCRIPT_DIR}/lib/runtime/pipeline.sh"
 source "${SCRIPT_DIR}/lib/restart/overrides.sh"
@@ -24,6 +25,9 @@ source "${SCRIPT_DIR}/lib/common/torch.sh"
 log_info "[restart] Restart manager ready (reuse caches or reconfigure models)"
 
 ensure_required_env_vars
+
+# Resolve venv path the same way main does (supports baked /opt/venv)
+export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
 
 # Detect GPU and export arch flags early
 gpu_init_detection "gpu"
@@ -168,8 +172,9 @@ log_info "[restart] Stopping server (preserving models and dependencies)..."
 NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 # Check if venv exists (skip if --install-deps will create it)
-if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${ROOT_DIR}/.venv" ]; then
-  log_err "[restart] No virtual environment found at ${ROOT_DIR}/.venv"
+venv_dir="${VENV_DIR:-$(get_venv_dir)}"
+if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${venv_dir}" ]; then
+  log_err "[restart] No virtual environment found at ${venv_dir}"
   log_err "[restart] Run with --install-deps to create it, or run full deployment first"
   exit 1
 fi
