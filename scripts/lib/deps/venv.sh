@@ -5,7 +5,7 @@
 # =============================================================================
 # PYTHON VERSION REQUIREMENTS
 # =============================================================================
-# TensorRT-LLM 1.2.0rc4 requires Python 3.10 specifically.
+# TensorRT-LLM 1.2.0rc5 requires Python 3.10 specifically.
 # Python 3.11 does NOT work reliably (see ADVANCED.md).
 # vLLM works with Python 3.10-3.12.
 
@@ -90,7 +90,7 @@ ensure_python_runtime_for_engine() {
     fi
 
     log_err "[python] Cannot proceed without Python ${TRT_REQUIRED_PYTHON_VERSION}"
-    log_err "[python] TensorRT-LLM 1.2.0rc4 does NOT work with Python 3.11 or 3.12"
+    log_err "[python] TensorRT-LLM 1.2.0rc5 does NOT work with Python 3.11 or 3.12"
     log_err "[python] Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually:"
     log_err "[python]   Ubuntu/Debian: apt install python3.10 python3.10-venv python3.10-dev"
     log_err "[python]   Or use the Docker image which has Python ${TRT_REQUIRED_PYTHON_VERSION} pre-installed"
