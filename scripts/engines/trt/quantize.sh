@@ -161,6 +161,11 @@ trt_quantize_model() {
       quant_cmd+=(--kv_cache_dtype int8)
       ;;
   esac
+
+  # Ensure modelopt CUDA extension has kernels for this GPU; rebuild if needed (e.g., sm90/H100)
+  if ! check_modelopt_for_gpu; then
+    rebuild_modelopt_for_gpu
+  fi
   
   # Apply transformers patch for Python 3.10 + union type compatibility
   # This patches auto_docstring to handle types.UnionType gracefully (Kimi models)
@@ -317,5 +322,73 @@ trt_get_engine_dir() {
   model_name=$(basename "${model_id}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
   
   echo "${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}/${model_name}-trt-${qformat}"
+}
+
+# =============================================================================
+# MODELOPT EXTENSION CHECK + REBUILD (GPU-SPECIFIC)
+# =============================================================================
+
+# Return 0 if no rebuild needed; return 1 if rebuild is required.
+check_modelopt_for_gpu() {
+  # Skip if already rebuilt in this run
+  if [ "${MODELOPT_REBUILT:-0}" = "1" ]; then
+    return 0
+  fi
+
+  local sm="${GPU_SM_ARCH:-}"
+  if [ -z "${sm}" ] && command -v nvidia-smi >/dev/null 2>&1; then
+    local cap
+    cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 || true)
+    if [ -n "${cap}" ]; then
+      sm="sm${cap/./}"
+      export GPU_SM_ARCH="${sm}"
+    fi
+  fi
+
+  case "${sm}" in
+    sm90|sm89) return 1 ;;  # need rebuild for these arches
+    *) return 0 ;;
+  esac
+}
+
+rebuild_modelopt_for_gpu() {
+  # Avoid repeated rebuilds
+  if [ "${MODELOPT_REBUILT:-0}" = "1" ]; then
+    return 0
+  fi
+
+  local sm="${GPU_SM_ARCH:-}"
+  local arch_digits torch_arch
+  arch_digits="${sm#sm}"
+  if [ -n "${arch_digits}" ]; then
+    torch_arch="$(printf "%s.%s" "${arch_digits:0:1}" "${arch_digits:1}")"
+  else
+    torch_arch="9.0"
+    arch_digits="90"
+  fi
+
+  local modelopt_ver
+  modelopt_ver=$(python - <<'PY' 2>/dev/null || true
+import importlib.metadata as md
+for name in ("nvidia-modelopt", "modelopt"):
+    try:
+        print(md.version(name))
+        break
+    except md.PackageNotFoundError:
+        continue
+PY
+)
+
+  log_warn "[modelopt] Rebuilding modelopt CUDA extension for ${sm:-unknown} (TORCH_CUDA_ARCH_LIST=${torch_arch})"
+  pip uninstall -y nvidia-modelopt modelopt >/dev/null 2>&1 || true
+  if [ -n "${modelopt_ver}" ]; then
+    TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
+      pip install --no-cache-dir --no-binary nvidia-modelopt "nvidia-modelopt==${modelopt_ver}"
+  else
+    TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \
+      pip install --no-cache-dir --no-binary nvidia-modelopt
+  fi
+
+  export MODELOPT_REBUILT=1
 }
 
