@@ -381,7 +381,7 @@ PY
 
   log_warn "[modelopt] Rebuilding modelopt CUDA extension for ${sm:-unknown} (TORCH_CUDA_ARCH_LIST=${torch_arch})"
   # Attempt reinstall in-place (no deps, force rebuild, use NVIDIA index), fallback to latest if pinned version missing
-  local pip_base=(pip install --force-reinstall --no-deps --no-cache-dir --no-binary nvidia-modelopt --extra-index-url https://pypi.nvidia.com)
+  local pip_base=(pip install --quiet --force-reinstall --no-deps --no-cache-dir --no-binary nvidia-modelopt --extra-index-url https://pypi.nvidia.com)
   local install_ok=0
   if [ -n "${modelopt_ver}" ]; then
     if TORCH_CUDA_ARCH_LIST="${torch_arch}" CUDAARCHS="${arch_digits}" \

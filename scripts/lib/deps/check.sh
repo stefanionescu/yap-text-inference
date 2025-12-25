@@ -61,13 +61,13 @@ check_venv_exists() {
 log_trt_dep_status() {
   local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
   echo "[deps] Status for venv=${venv_dir}"
-  local mark ok="[✓]" bad="[✗]"
+  local ok="✓" bad="✗"
   _status_line() {
     local label="$1" need="$2"
     if [[ "${need}" == "0" ]]; then
-      printf "[deps] %s %s\n" "${ok}" "${label}"
+      printf "[deps]   %-14s %s\n" "${label}:" "${ok}"
     else
-      printf "[deps] %s %s\n" "${bad}" "${label}"
+      printf "[deps]   %-14s %s\n" "${label}:" "${bad}"
     fi
   }
   _status_line "torch" "${NEEDS_PYTORCH}"
@@ -78,10 +78,10 @@ log_trt_dep_status() {
     _status_line "flashinfer" "${NEEDS_FLASHINFER}"
   fi
   if [[ ${#REQUIREMENTS_MISSING_PKGS[@]} -gt 0 ]]; then
-    printf "[deps] %s missing: %s\n" "${bad}" "${REQUIREMENTS_MISSING_PKGS[*]}"
+    printf "[deps]   %-14s %s %s\n" "missing" "${bad}" "${REQUIREMENTS_MISSING_PKGS[*]}"
   fi
   if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]} -gt 0 ]]; then
-    printf "[deps] %s wrong version: %s\n" "${bad}" "${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
+    printf "[deps]   %-14s %s %s\n" "wrong version" "${bad}" "${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
   fi
 }
 

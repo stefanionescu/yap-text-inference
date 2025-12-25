@@ -191,8 +191,6 @@ PY
     return 1
   fi
 
-  # Success - log what we found
-  log_info "[${prefix}] CUDA OK: toolkit=${toolkit_ver}, driver=${driver_ver} (via ${driver_source})"
   return 0
 }
 

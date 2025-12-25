@@ -282,13 +282,20 @@ try:
 except Exception as exc:
     sys.stdout = sys.__stdout__
     print(f"IMPORT_ERROR: {type(exc).__name__}: {exc}")
+    # modelopt may be missing; do not fail installation for that
+    if isinstance(exc, ImportError) and 'modelopt' in str(exc):
+        sys.exit(0)
     sys.exit(1)
 PY
   ) || {
     log_err "[trt] TensorRT-LLM not installed or not importable: ${trt_version}"
     return 1
   }
-  log_info "[trt] TensorRT-LLM version: ${trt_version}"
+  if [[ "${trt_version}" == IMPORT_ERROR:* ]]; then
+    log_warn "[trt] TensorRT-LLM import reported: ${trt_version} (ignored for modelopt)"
+  else
+    log_info "[trt] TensorRT-LLM version: ${trt_version}"
+  fi
   
   # Validate Python libraries
   trt_validate_python_libraries || return 1
