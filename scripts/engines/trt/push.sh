@@ -37,8 +37,27 @@ trt_push_to_hf() {
   
   log_info "[hf] Pushing TRT-LLM model to HuggingFace: ${HF_PUSH_REPO_ID}"
   
+  # Pick a python interpreter (prefer venv, then system)
+  local python_exe="${HF_PYTHON:-}"
+  if [ -n "${python_exe}" ] && [ ! -x "${python_exe}" ]; then
+    log_warn "[hf] HF_PYTHON=${python_exe} not executable; falling back"
+    python_exe=""
+  fi
+  if [ -z "${python_exe}" ]; then
+    if [ -x "${ROOT_DIR}/.venv/bin/python" ]; then
+      python_exe="${ROOT_DIR}/.venv/bin/python"
+    elif command -v python3 >/dev/null 2>&1; then
+      python_exe="$(command -v python3)"
+    elif command -v python >/dev/null 2>&1; then
+      python_exe="$(command -v python)"
+    else
+      log_err "[hf] No python interpreter found (.venv, python3, python)"
+      return 1
+    fi
+  fi
+  
   local python_cmd=(
-    "${ROOT_DIR}/.venv/bin/python"
+    "${python_exe}"
     "-m" "src.engines.trt.awq.hf.hf_push"
     "--checkpoint-dir" "${checkpoint_dir}"
     "--repo-id" "${HF_PUSH_REPO_ID}"
