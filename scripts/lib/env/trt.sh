@@ -166,15 +166,28 @@ trt_gpu_supports_fp8() {
   return 1
 }
 
-# Map 4bit/8bit to TRT qformat based on GPU architecture
-# 8bit -> fp8 on L40S/H100, int8_sq on A100
+# Map 4bit/8bit to TRT qformat based on GPU architecture and model type
+# For MoE models: 4bit -> nvfp4, 8bit -> fp8
+# For dense models: 4bit -> int4_awq, 8bit -> fp8 (L40S/H100) or int8_sq (A100)
 trt_resolve_qformat() {
   local quant_mode="${1:-4bit}"
   local sm_arch="${2:-${GPU_SM_ARCH:-}}"
+  local model_id="${3:-${CHAT_MODEL:-}}"
+  
+  # Check if model is MoE for special quantization handling
+  local is_moe=0
+  if [ -n "${model_id}" ] && model_detect_is_moe "${model_id}"; then
+    is_moe=1
+  fi
   
   case "${quant_mode}" in
-    4bit|awq|int4_awq)
-      echo "int4_awq"
+    4bit|awq|int4_awq|nvfp4)
+      if [ "${is_moe}" = "1" ]; then
+        # MoE models use NVFP4 (4-bit floating point) instead of INT4 AWQ
+        echo "nvfp4"
+      else
+        echo "int4_awq"
+      fi
       ;;
     8bit)
       if trt_gpu_supports_fp8 "${sm_arch}"; then
@@ -190,7 +203,11 @@ trt_resolve_qformat() {
       echo "int8_sq"
       ;;
     *)
-      echo "int4_awq"
+      if [ "${is_moe}" = "1" ]; then
+        echo "nvfp4"
+      else
+        echo "int4_awq"
+      fi
       ;;
   esac
 }
@@ -200,7 +217,8 @@ trt_resolve_kv_cache_dtype() {
   local qformat="${1:-int4_awq}"
   
   case "${qformat}" in
-    fp8)
+    fp8|nvfp4)
+      # FP8 KV cache for both fp8 and nvfp4 quantization
       echo "fp8"
       ;;
     *)

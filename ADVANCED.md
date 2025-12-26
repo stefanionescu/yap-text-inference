@@ -147,9 +147,13 @@ Override with `QUANTIZATION=fp8` or `QUANTIZATION=int8_sq`.
 
 Mixture-of-Experts models (e.g., Qwen3-30B-A3B) are automatically detected by:
 - Naming convention: `-aXb` suffix (e.g., `qwen3-30b-a3b`)
-- Model type markers: `moe`, `mixtral`, `deepseek-v2/v3`
+- Model type markers: `moe`, `mixtral`, `deepseek-v2/v3`, `ernie-4.5`
 
-MoE models use the standard `quantize.py` script with weight-only quantization (int4_awq, fp8, int8_sq).
+MoE models use different quantization formats than dense models:
+- **4-bit:** NVFP4 (4-bit floating point)
+- **8-bit:** FP8 (same as dense models on supported GPUs)
+
+This automatic detection ensures optimal quantization quality for sparse expert architectures.
 
 **Engine Build Metadata:**
 
@@ -393,12 +397,23 @@ TRT-LLM uses NVIDIA's quantization pipeline with a two-stage process:
 
 **Quantization formats:**
 
-| Mode | TRT Format | GPU Support |
-|------|------------|-------------|
-| `4bit` / `awq` | `int4_awq` | All GPUs |
-| `8bit` (H100/L40S) | `fp8` | sm89, sm90 |
-| `8bit` (A100) | `int8_sq` | sm80 |
+| Mode | TRT Format | Model Type | GPU Support |
+|------|------------|------------|-------------|
+| `4bit` / `awq` | `int4_awq` | Dense models | All GPUs |
+| `4bit` / `awq` | `nvfp4` | MoE models | All GPUs |
+| `8bit` (H100/L40S) | `fp8` | All models | sm89, sm90 |
+| `8bit` (A100) | `int8_sq` | All models | sm80 |
 
+**NVFP4 for MoE Models:**
+
+MoE (Mixture of Experts) models automatically use NVFP4 (4-bit floating point) instead of INT4 AWQ for 4-bit quantization. This is because:
+- AWQ's activation-aware approach doesn't benefit sparse expert layers
+- NVFP4 provides better quality for expert routing and gating
+- FP8 KV cache is used with NVFP4 for optimal performance
+
+The detection is automatic based on model name patterns (e.g., `-a3b` suffix, `mixtral`, `deepseek-v2/v3`).
+
+**A100 Limitation:** NVFP4 requires native FP4 support which A100 (sm80) lacks. MoE models **cannot** use TRT-LLM on A100. Use vLLM instead (`--vllm`).
 **Engine portability:** TRT engines are GPU-architecture specific. An engine built on H100 will not run on A100 or L40S.
 
 **Force rebuild:**

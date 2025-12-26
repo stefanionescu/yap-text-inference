@@ -147,12 +147,16 @@ Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibr
 
 ### TensorRT-LLM Quantization
 
-TRT-LLM uses NVIDIA's quantization pipeline with GPU-aware format selection:
+TRT-LLM uses NVIDIA's quantization pipeline with GPU-aware and model-aware format selection:
 
 ```bash
-# INT4-AWQ quantization (all GPUs) - TRT_MAX_BATCH_SIZE is required
+# Dense models: INT4-AWQ quantization (all GPUs)
 export TRT_MAX_BATCH_SIZE=32
 bash scripts/main.sh --trt 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+
+# MoE models: Automatically uses NVFP4 (4-bit floating point)
+export TRT_MAX_BATCH_SIZE=32
+bash scripts/main.sh --trt 4bit Qwen/Qwen3-30B-A3B-Instruct-2507 yapwithai/yap-longformer-screenshot-intent
 
 # 8-bit: FP8 on L40S/H100 (sm89/sm90), INT8-SQ on A100 (sm80)
 export TRT_MAX_BATCH_SIZE=16
@@ -163,7 +167,9 @@ TRT-LLM quantization creates a checkpoint, then builds a compiled `.engine` file
 
 > **Required:** `TRT_MAX_BATCH_SIZE` must be set when building a TRT engine (including from pre-quantized TRT checkpoints). This value is baked into the engine and determines how many sequences can be batched together. See `ADVANCED.md` for details on batch size configuration.
 
-**MoE models** (e.g., Qwen3-30B-A3B) are automatically detected and quantized with the standard `quantize.py` script.
+**MoE models** (e.g., Qwen3-30B-A3B) are automatically detected and use NVFP4 (4-bit floating point) instead of INT4 AWQ for 4-bit quantization. This provides better quality for sparse expert architectures. The detection is based on model name patterns like `-a3b` suffix, `mixtral`, `deepseek-v2/v3`, etc.
+
+> **A100 Note:** NVFP4 requires native FP4 support. MoE models cannot use TRT-LLM on A100 (sm80). Use `--vllm` instead.
 
 Override `TRT_CALIB_SIZE`, `TRT_CALIB_SEQLEN`, or `TRT_AWQ_BLOCK_SIZE` to tune calibration.
 
@@ -197,12 +203,12 @@ Yap supports two inference backends:
 | Feature | vLLM | TensorRT-LLM |
 |---------|------|--------------|
 | **Default** | No | **Yes** |
-| **Quantization** | AWQ, GPTQ, FP8, INT8 | INT4-AWQ, FP8, INT8-SQ |
+| **Quantization** | AWQ, GPTQ, FP8, INT8 | INT4-AWQ (dense), NVFP4 (MoE), FP8, INT8-SQ |
 | **Memory Management** | Periodic cache reset | Built-in block reuse |
 | **Pre-built Engines** | No (JIT) | Yes (compiled .engine) |
 | **CUDA Requirement** | 13.x | 13.0+ |
 | **PyTorch** | 2.9.x | 2.9.x |
-| **MoE Support** | Via FLA | Via quantize.py |
+| **MoE Support** | Via FLA | Via NVFP4 quantization |
 
 Select the engine with CLI flags or environment variable:
 

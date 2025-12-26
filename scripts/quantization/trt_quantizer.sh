@@ -12,8 +12,9 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # Source common utilities
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/common/gpu_detect.sh"
+source "${SCRIPT_DIR}/../lib/common/model_detect.sh"
 
-# Source TRT libraries
+# Source TRT libraries (must come after model_detect.sh for MoE detection)
 source "${SCRIPT_DIR}/../lib/env/trt.sh"
 source "${SCRIPT_DIR}/../engines/trt/install.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
@@ -44,6 +45,47 @@ log_info "[quant] Starting TRT-LLM quantization..."
 # Initialize GPU detection
 gpu_init_detection "trt-quant"
 
+# =============================================================================
+# EARLY VALIDATION: Block NVFP4/MOE on A100 (sm80)
+# =============================================================================
+# NVFP4 quantization requires native FP4 support which A100 lacks.
+# Block early before any downloads or heavy operations.
+_check_nvfp4_a100_compat() {
+  local model_id="${CHAT_MODEL:-}"
+  local sm_arch="${GPU_SM_ARCH:-}"
+  
+  if [ "${sm_arch}" != "sm80" ]; then
+    return 0
+  fi
+  
+  # Check for pre-quantized NVFP4 models
+  if model_detect_is_nvfp4 "${model_id}"; then
+    log_err "[quant] ✗ NVFP4 models cannot run on A100 (sm80)."
+    log_err "[quant]   NVFP4 requires native FP4 support."
+    log_err "[quant]   Model: ${model_id}"
+    log_err "[quant]   Use an INT4-AWQ quantized model instead."
+    return 1
+  fi
+  
+  # Check for MoE models (would use NVFP4 quantization)
+  if model_detect_is_moe "${model_id}"; then
+    log_err "[quant] ✗ MoE models cannot be quantized with TRT-LLM on A100 (sm80)."
+    log_err "[quant]   MoE 4-bit quantization uses NVFP4 which requires native FP4."
+    log_err "[quant]   Model: ${model_id}"
+    log_err "[quant]   Options:"
+    log_err "[quant]     - Use vLLM engine instead (--vllm)"
+    log_err "[quant]     - Deploy on L40S/H100 with native FP4 support"
+    log_err "[quant]     - Use a pre-quantized AWQ model for vLLM"
+    return 1
+  fi
+  
+  return 0
+}
+
+if ! _check_nvfp4_a100_compat; then
+  exit 1
+fi
+
 # Ensure TRT-LLM repository is available (contains quantization scripts)
 if ! trt_prepare_repo; then
   log_err "[quant] ✗ Failed to prepare TensorRT-LLM repository"
@@ -70,8 +112,8 @@ if [ -z "${MODEL_ID}" ]; then
   exit 1
 fi
 
-# Resolve quantization format
-QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}")
+# Resolve quantization format (pass model ID for MoE detection)
+QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
 log_info "[quant] Quantization format: ${QFORMAT}"
 
 # Check if model is already TRT pre-quantized
