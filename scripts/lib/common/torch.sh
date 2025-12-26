@@ -33,10 +33,10 @@ except RuntimeError as e:
   # If exit code is 1, check if it's a CUDA mismatch
   if [ "${exit_code}" -eq 1 ]; then
     if echo "${check_output}" | grep -q "CUDA_MISMATCH:"; then
-      log_err "[${phase}] PyTorch and torchvision CUDA version mismatch detected"
-      log_err "[${phase}] $(echo "${check_output}" | grep "CUDA_MISMATCH:" | sed 's/CUDA_MISMATCH: //')"
-      log_err "[${phase}] Please reinstall torchvision to match your PyTorch CUDA version"
-      log_err "[${phase}] Aborting ${phase} due to incompatible CUDA versions"
+      log_err "[${phase}] ✗ PyTorch and torchvision CUDA version mismatch detected"
+      log_err "[${phase}] ✗ $(echo "${check_output}" | grep "CUDA_MISMATCH:" | sed 's/CUDA_MISMATCH: //')"
+      log_err "[${phase}] ✗ Please reinstall torchvision to match your PyTorch CUDA version"
+      log_err "[${phase}] ✗ Aborting ${phase} due to incompatible CUDA versions"
       return 1
     fi
   fi
@@ -48,7 +48,7 @@ except RuntimeError as e:
   fi
   
   # Other errors (like ImportError) - don't fail here, let it fail later if needed
-  log_warn "[${phase}] PyTorch/torchvision check encountered an error (may not be installed yet)"
+  log_warn "[${phase}] ⚠ PyTorch/torchvision check encountered an error (may not be installed yet)"
   return 0
 }
 

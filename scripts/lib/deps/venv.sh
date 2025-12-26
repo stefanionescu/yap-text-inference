@@ -19,8 +19,8 @@ _venv_install_python310_deadsnakes() {
   log_info "[python] Installing Python ${TRT_REQUIRED_PYTHON_VERSION} via deadsnakes PPA..."
 
   if ! command -v apt-get >/dev/null 2>&1; then
-    log_err "[python] apt-get not available. Python ${TRT_REQUIRED_PYTHON_VERSION} installation requires Ubuntu/Debian."
-    log_err "[python] Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually."
+    log_err "[python] ✗ apt-get not available. Python ${TRT_REQUIRED_PYTHON_VERSION} installation requires Ubuntu/Debian."
+    log_err "[python] ✗ Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually."
     return 1
   fi
 
@@ -33,22 +33,22 @@ _venv_install_python310_deadsnakes() {
     log_info "[python] Adding deadsnakes PPA..."
     if [ "$(id -u)" = "0" ]; then
       add-apt-repository -y ppa:deadsnakes/ppa || {
-        log_err "[python] Failed to add deadsnakes PPA"
+        log_err "[python] ✗ Failed to add deadsnakes PPA"
         return 1
       }
     else
       sudo -n add-apt-repository -y ppa:deadsnakes/ppa || {
-        log_err "[python] Failed to add deadsnakes PPA (may need sudo)"
+        log_err "[python] ✗ Failed to add deadsnakes PPA (may need sudo)"
         return 1
       }
     fi
   fi
 
-  ${run_apt} update -y || log_warn "[python] apt-get update failed, continuing anyway"
+  ${run_apt} update -y || log_warn "[python] ⚠ apt-get update failed, continuing anyway"
 
   DEBIAN_FRONTEND=noninteractive ${run_apt} install -y --no-install-recommends \
     python3.10 python3.10-venv python3.10-dev || {
-    log_err "[python] Failed to install Python ${TRT_REQUIRED_PYTHON_VERSION}"
+    log_err "[python] ✗ Failed to install Python ${TRT_REQUIRED_PYTHON_VERSION}"
     return 1
   }
 
@@ -82,18 +82,18 @@ ensure_python_runtime_for_engine() {
       return 0
     fi
 
-    log_warn "[python] Python ${TRT_REQUIRED_PYTHON_VERSION} not found. TRT-LLM requires Python ${TRT_REQUIRED_PYTHON_VERSION}."
+    log_warn "[python] ⚠ Python ${TRT_REQUIRED_PYTHON_VERSION} not found. TRT-LLM requires Python ${TRT_REQUIRED_PYTHON_VERSION}."
     log_info "[python] Attempting to install Python ${TRT_REQUIRED_PYTHON_VERSION}..."
 
     if _venv_install_python310_deadsnakes; then
       return 0
     fi
 
-    log_err "[python] Cannot proceed without Python ${TRT_REQUIRED_PYTHON_VERSION}"
-    log_err "[python] TensorRT-LLM 1.2.0rc5 does NOT work with Python 3.11 or 3.12"
-    log_err "[python] Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually:"
-    log_err "[python]   Ubuntu/Debian: apt install python3.10 python3.10-venv python3.10-dev"
-    log_err "[python]   Or use the Docker image which has Python ${TRT_REQUIRED_PYTHON_VERSION} pre-installed"
+    log_err "[python] ✗ Cannot proceed without Python ${TRT_REQUIRED_PYTHON_VERSION}"
+    log_err "[python] ✗ TensorRT-LLM 1.2.0rc5 does NOT work with Python 3.11 or 3.12"
+    log_err "[python] ✗ Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually:"
+    log_err "[python] ✗   Ubuntu/Debian: apt install python3.10 python3.10-venv python3.10-dev"
+    log_err "[python] ✗   Or use the Docker image which has Python ${TRT_REQUIRED_PYTHON_VERSION} pre-installed"
     return 1
   fi
 
@@ -160,8 +160,8 @@ get_python_binary_for_engine() {
     elif command -v python3.10 >/dev/null 2>&1; then
       echo "python3.10"
     else
-      log_err "[venv] Python ${TRT_REQUIRED_PYTHON_VERSION} required for TRT-LLM but not found"
-      log_err "[venv] Install it first: bash scripts/steps/02_python_env.sh"
+      log_err "[venv] ✗ Python ${TRT_REQUIRED_PYTHON_VERSION} required for TRT-LLM but not found"
+      log_err "[venv] ✗ Install it first: bash scripts/steps/02_python_env.sh"
       return 1
     fi
   else
@@ -171,7 +171,7 @@ get_python_binary_for_engine() {
     elif command -v python >/dev/null 2>&1; then
       echo "python"
     else
-      log_err "[venv] No Python interpreter found"
+      log_err "[venv] ✗ No Python interpreter found"
       return 1
     fi
   fi
@@ -194,7 +194,7 @@ validate_venv_python_version() {
   
   if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
     if [ "${current_version}" != "${TRT_REQUIRED_PYTHON_VERSION}" ]; then
-      log_warn "[venv] TRT requires Python ${TRT_REQUIRED_PYTHON_VERSION} but venv has ${current_version}"
+      log_warn "[venv] ⚠ TRT requires Python ${TRT_REQUIRED_PYTHON_VERSION} but venv has ${current_version}"
       return 1
     fi
   fi
@@ -213,17 +213,17 @@ ensure_virtualenv() {
   if [ -d "${venv_path}" ]; then
     if ! validate_venv_python_version "${venv_path}"; then
       if [ "${venv_path}" = "/opt/venv" ]; then
-        log_err "[venv] /opt/venv exists but has incompatible Python for ${engine}; refusing to delete baked venv"
+        log_err "[venv] ✗ /opt/venv exists but has incompatible Python for ${engine}; refusing to delete baked venv"
         return 1
       fi
-      log_warn "[venv] Existing venv has wrong Python version for ${engine} engine; recreating"
+      log_warn "[venv] ⚠ Existing venv has wrong Python version for ${engine} engine; recreating"
       rm -rf "${venv_path}"
     elif [ ! -x "${venv_python}" ]; then
       if [ "${venv_path}" = "/opt/venv" ]; then
-        log_err "[venv] /opt/venv missing python binary; refusing to delete baked venv"
+        log_err "[venv] ✗ /opt/venv missing python binary; refusing to delete baked venv"
         return 1
       fi
-      log_warn "[venv] Existing virtualenv missing python binary; recreating ${venv_path}"
+      log_warn "[venv] ⚠ Existing virtualenv missing python binary; recreating ${venv_path}"
       rm -rf "${venv_path}"
     fi
   fi
@@ -236,9 +236,9 @@ ensure_virtualenv() {
     log_info "[venv] Creating virtual environment at ${venv_path} with ${PY_BIN}"
 
     if ! ${PY_BIN} -m venv "${venv_path}" >/dev/null 2>&1; then
-      log_warn "[venv] python venv failed (ensurepip missing?). Trying virtualenv."
+      log_warn "[venv] ⚠ python venv failed (ensurepip missing?). Trying virtualenv."
       if ! ${PY_BIN} -m pip --version >/dev/null 2>&1; then
-        log_warn "[venv] pip is not available; attempting to bootstrap pip."
+        log_warn "[venv] ⚠ pip is not available; attempting to bootstrap pip."
         TMP_PIP="${ROOT_DIR}/.get-pip.py"
         if command -v curl >/dev/null 2>&1; then
           curl -fsSL -o "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
@@ -252,10 +252,10 @@ ensure_virtualenv() {
       fi
 
       if ! ${PY_BIN} -m pip install --upgrade pip >/dev/null 2>&1; then
-        log_warn "[venv] Failed to upgrade pip; continuing."
+        log_warn "[venv] ⚠ Failed to upgrade pip; continuing."
       fi
       if ! ${PY_BIN} -m pip install virtualenv >/dev/null 2>&1; then
-        log_warn "[venv] virtualenv install failed via pip. Attempting OS package for venv."
+        log_warn "[venv] ⚠ virtualenv install failed via pip. Attempting OS package for venv."
         if command -v apt-get >/dev/null 2>&1; then
           sudo -n apt-get update >/dev/null 2>&1 || true
           sudo -n apt-get install -y python3-venv >/dev/null 2>&1 || true
@@ -276,7 +276,7 @@ ensure_virtualenv() {
           virtualenv -p "${PY_BIN}" "${venv_path}"
         fi
       else
-        log_err "[venv] Failed to create a virtual environment. Install python3-venv or virtualenv and retry."
+        log_err "[venv] ✗ Failed to create a virtual environment. Install python3-venv or virtualenv and retry."
         return 1
       fi
     fi
@@ -290,12 +290,12 @@ ensure_pip_in_venv() {
   local venv_python="${venv_path}/bin/python"
 
   if [ ! -x "${venv_python}" ]; then
-    log_err "[venv] Virtual environment missing python binary; run ensure_virtualenv first."
+    log_err "[venv] ✗ Virtual environment missing python binary; run ensure_virtualenv first."
     return 1
   fi
 
   if ! "${venv_python}" -m pip --version >/dev/null 2>&1; then
-    log_warn "[venv] pip missing in virtual environment; bootstrapping pip."
+    log_warn "[venv] ⚠ pip missing in virtual environment; bootstrapping pip."
     if ! "${venv_python}" -m ensurepip --upgrade >/dev/null 2>&1; then
       TMP_PIP="${ROOT_DIR}/.get-pip.py"
       if command -v curl >/dev/null 2>&1; then
@@ -313,7 +313,7 @@ ensure_pip_in_venv() {
   if "${venv_python}" -m pip --version >/dev/null 2>&1; then
     "${venv_python}" -m pip install --upgrade pip
   else
-    log_err "[venv] pip is not available in the virtual environment; please install python3-venv or virtualenv and retry."
+    log_err "[venv] ✗ pip is not available in the virtual environment; please install python3-venv or virtualenv and retry."
     return 1
   fi
 }
@@ -328,7 +328,7 @@ activate_venv() {
   local fail_on_error="${2:-1}"
   
   if [ ! -d "${venv_dir}" ]; then
-    log_err "[venv] Virtual environment not found at ${venv_dir}"
+    log_err "[venv] ✗ Virtual environment not found at ${venv_dir}"
     if [ "${fail_on_error}" = "1" ]; then
       exit 1
     fi
@@ -336,7 +336,7 @@ activate_venv() {
   fi
   
   if [ ! -f "${venv_dir}/bin/activate" ]; then
-    log_err "[venv] Virtual environment corrupted (no activate script) at ${venv_dir}"
+    log_err "[venv] ✗ Virtual environment corrupted (no activate script) at ${venv_dir}"
     if [ "${fail_on_error}" = "1" ]; then
       exit 1
     fi
@@ -345,7 +345,7 @@ activate_venv() {
   
   # shellcheck disable=SC1091
   source "${venv_dir}/bin/activate" || {
-    log_err "[venv] Failed to activate virtual environment at ${venv_dir}"
+    log_err "[venv] ✗ Failed to activate virtual environment at ${venv_dir}"
     if [ "${fail_on_error}" = "1" ]; then
       exit 1
     fi

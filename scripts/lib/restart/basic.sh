@@ -116,7 +116,7 @@ restart_run_install_deps_if_needed() {
   
   # Ensure correct Python version is available (TRT needs 3.10, vLLM uses system python)
   INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
-    log_err "[restart] Failed to set up Python environment"
+    log_err "[restart] ✗ Failed to set up Python environment"
     exit 1
   }
   
@@ -216,13 +216,13 @@ restart_basic() {
   fi
 
   if [ "${DEPLOY_MODE}" != "tool" ] && [ -z "${CHAT_MODEL:-}" ]; then
-    log_err "[restart] CHAT_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
-    [ -f "${SERVER_LOG}" ] && log_err "[restart] Hint: Could not parse chat model from server.log"
+    log_err "[restart] ✗ CHAT_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
+    [ -f "${SERVER_LOG}" ] && log_err "[restart] ✗ Hint: Could not parse chat model from server.log"
     exit 1
   fi
   if [ "${DEPLOY_MODE}" != "chat" ] && [ -z "${TOOL_MODEL:-}" ]; then
-    log_err "[restart] TOOL_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
-    [ -f "${SERVER_LOG}" ] && log_err "[restart] Hint: Could not parse tool model from server.log"
+    log_err "[restart] ✗ TOOL_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
+    [ -f "${SERVER_LOG}" ] && log_err "[restart] ✗ Hint: Could not parse tool model from server.log"
     exit 1
   fi
 
@@ -251,9 +251,9 @@ restart_basic() {
   # 4. TRT engine: validate engine directory exists before starting server
   if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
     if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
-      log_err "[restart] TRT engine directory not found or not set."
+      log_err "[restart] ✗ TRT engine directory not found or not set."
       log_err "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
-      log_err "[restart] "
+      log_err "[restart]"
       log_err "[restart] TensorRT-LLM requires a pre-built engine. Options:"
       log_err "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
       log_err "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"

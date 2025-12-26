@@ -10,7 +10,7 @@ ensure_cuda_ready_for_engine() {
   case "${engine,,}" in
     trt)
       if ! trt_assert_cuda13_driver "${phase}"; then
-        log_err "[${phase}] CUDA 13.x required for TensorRT-LLM"
+        log_err "[${phase}] ✗ CUDA 13.x required for TensorRT-LLM"
         return 1
       fi
       ;;

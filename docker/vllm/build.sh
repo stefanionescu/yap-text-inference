@@ -98,7 +98,7 @@ fi
 
 # Validate configuration
 if [[ "${DOCKER_USERNAME}" == "your-username" ]]; then
-    log_error "[build] Please set DOCKER_USERNAME environment variable"
+    log_error "[build] ✗ Please set DOCKER_USERNAME environment variable"
     log_info "[build] Example: DOCKER_USERNAME=myuser $0"
     exit 1
 fi
@@ -106,7 +106,7 @@ fi
 # Validate models based on deploy mode
 log_info "[build] Validating models for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
 if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
-    log_error "[build] Model validation failed. Build aborted."
+    log_error "[build] ✗ Model validation failed. Build aborted."
     exit 1
 fi
 
@@ -138,7 +138,7 @@ BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 
-log_success "[build] Docker build completed successfully!"
+log_success "[build] ✓ Docker build completed successfully!"
 log_info "[build] Image: ${FULL_IMAGE_NAME}"
 
 # Push the image
@@ -146,15 +146,15 @@ log_info "[build] Pushing image to Docker Hub..."
 
 # Try push; if unauthorized, attempt non-interactive login and retry once
 if ! docker push "${FULL_IMAGE_NAME}"; then
-    log_warn "[build] Initial docker push failed. Attempting non-interactive login and retry..."
+    log_warn "[build] ⚠ Initial docker push failed. Attempting non-interactive login and retry..."
     ensure_docker_login || true
     if ! docker push "${FULL_IMAGE_NAME}"; then
-        log_error "[build] Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+        log_error "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
         exit 1
     fi
 fi
 
-log_success "[build] Image pushed successfully to Docker Hub!"
+log_success "[build] ✓ Image pushed successfully to Docker Hub!"
 log_info "[build] Pull command: docker pull ${FULL_IMAGE_NAME}"
 
 # Provide usage examples
@@ -168,5 +168,5 @@ log_info "[build]   -p 8000:8000 \\"
 log_info "[build]   ${FULL_IMAGE_NAME}"
 log_info ""
 log_info "[build] Health: curl http://localhost:8000/healthz"
-log_success "[build] Build process completed!"
+log_success "[build] ✓ Build process completed!"
 

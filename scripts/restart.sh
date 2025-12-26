@@ -105,7 +105,7 @@ USAGE
 if ! restart_parse_args "$@"; then
   usage
 fi
-case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "[restart] Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
+case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "[restart] ⚠ Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
 export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
@@ -120,7 +120,7 @@ ENGINE_SWITCH_RESULT=0
 runtime_guard_handle_engine_switch "${SCRIPT_DIR}" "${ROOT_DIR}" "${INFERENCE_ENGINE}" || ENGINE_SWITCH_RESULT=$?
 
 if [ "${ENGINE_SWITCH_RESULT}" = "2" ]; then
-  log_err "[restart] Engine switch failed"
+  log_err "[restart] ✗ Engine switch failed"
   exit 1
 fi
 
@@ -148,11 +148,11 @@ restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
 if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
-  log_err "[restart] No AWQ models found for deploy mode '${DEPLOY_MODE}'"
-  log_err "[restart] "
-  log_err "[restart] Options:"
-  log_err "[restart] 1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
-  log_err "[restart] 2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
+  log_err "[restart] ✗ No AWQ models found for deploy mode '${DEPLOY_MODE}'"
+  log_err "[restart] ✗ "
+  log_err "[restart] ✗ Options:"
+  log_err "[restart] ✗ 1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
+  log_err "[restart] ✗ 2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
   exit 1
 fi
 
@@ -176,8 +176,8 @@ NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 # Check if venv exists (skip if --install-deps will create it)
 venv_dir="${VENV_DIR:-$(get_venv_dir)}"
 if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${venv_dir}" ]; then
-  log_err "[restart] No virtual environment found at ${venv_dir}"
-  log_err "[restart] Run with --install-deps to create it, or run full deployment first"
+  log_err "[restart] ✗ No virtual environment found at ${venv_dir}"
+  log_err "[restart] ✗ Run with --install-deps to create it, or run full deployment first"
   exit 1
 fi
 
@@ -193,13 +193,13 @@ restart_push_cached_awq_models "${DEPLOY_MODE}"
 # TRT engine: validate engine directory exists before starting server
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
   if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
-    log_err "[restart] TRT engine directory not found or not set."
-    log_err "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
-    log_err "[restart] "
-    log_err "[restart] TensorRT-LLM requires a pre-built engine. Options:"
-    log_err "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
-    log_err "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
-    log_err "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
+    log_err "[restart] ✗ TRT engine directory not found or not set."
+    log_err "[restart] ✗ TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
+    log_err "[restart] ✗ "
+    log_err "[restart] ✗ TensorRT-LLM requires a pre-built engine. Options:"
+    log_err "[restart] ✗   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
+    log_err "[restart] ✗   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
+    log_err "[restart] ✗   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
     exit 1
   fi
   log_info "[restart] TRT engine validated: ${TRT_ENGINE_DIR}"

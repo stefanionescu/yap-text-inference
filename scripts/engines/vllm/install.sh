@@ -11,7 +11,7 @@ source "${_VLLM_INSTALL_DIR}/../../lib/env/flashinfer.sh"
 # Install FlashInfer if applicable
 vllm_install_flashinfer() {
   if [ "$(uname -s)" != "Linux" ]; then
-    log_warn "[vllm] Non-Linux platform detected; skipping FlashInfer GPU wheel install."
+    log_warn "[vllm] ⚠ Non-Linux platform detected; skipping FlashInfer GPU wheel install."
     return 0
   fi
 
@@ -34,14 +34,14 @@ vllm_install_flashinfer() {
     
     log_info "[vllm] Installing ${fi_pkg} (extra-index: ${fi_index})"
     if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${fi_index}" "${fi_pkg}"; then
-      log_warn "[vllm] FlashInfer install failed with extra index; falling back to PyPI only"
+      log_warn "[vllm] ⚠ FlashInfer install failed with extra index; falling back to PyPI only"
       if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary "${fi_pkg}"; then
-        log_warn "[vllm] FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
+        log_warn "[vllm] ⚠ FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi
     fi
     log_info "[vllm] FlashInfer wheel source: ${fi_index} (CUDA=${cuda_ver} Torch=${torch_ver})"
   else
-    log_warn "[vllm] Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
+    log_warn "[vllm] ⚠ Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
   fi
 }
 
@@ -52,7 +52,7 @@ vllm_validate_installation() {
   log_info "[vllm] Validating vLLM installation..."
   
   if ! vllm_is_installed "${python_exec}"; then
-    log_err "[vllm] vLLM not installed or not importable"
+    log_err "[vllm] ✗ vLLM not installed or not importable"
     return 1
   fi
   

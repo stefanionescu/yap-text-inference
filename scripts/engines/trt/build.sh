@@ -22,12 +22,12 @@ trt_build_engine() {
   local engine_dir="${2:-}"
   
   if [ -z "${checkpoint_dir}" ]; then
-    log_err "[build] Checkpoint directory is required"
+    log_err "[build] ✗ Checkpoint directory is required"
     return 1
   fi
   
   if [ -z "${engine_dir}" ]; then
-    log_err "[build] Engine output directory is required"
+    log_err "[build] ✗ Engine output directory is required"
     return 1
   fi
   
@@ -69,13 +69,13 @@ trt_build_engine() {
   
   log_info "[build] Running: ${build_cmd[*]}"
   "${build_cmd[@]}" || {
-    log_err "[build] Engine build failed"
+    log_err "[build] ✗ Engine build failed"
     return 1
   }
   
   # Validate engine was created
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
-    log_err "[build] Engine build completed but no rank*.engine files found"
+    log_err "[build] ✗ Engine build completed but no rank*.engine files found"
     return 1
   fi
   
@@ -190,18 +190,18 @@ trt_validate_engine() {
   local engine_dir="${1:-${TRT_ENGINE_DIR:-}}"
   
   if [ -z "${engine_dir}" ]; then
-    log_err "[build] Engine directory is required"
+    log_err "[build] ✗ Engine directory is required"
     return 1
   fi
   
   if [ ! -d "${engine_dir}" ]; then
-    log_err "[build] Engine directory not found: ${engine_dir}"
+    log_err "[build] ✗ Engine directory not found: ${engine_dir}"
     return 1
   fi
   
   # Check for engine files
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
-    log_err "[build] No rank*.engine files found in ${engine_dir}"
+    log_err "[build] ✗ No rank*.engine files found in ${engine_dir}"
     return 1
   fi
   
@@ -211,7 +211,7 @@ trt_validate_engine() {
   
   # Check for metadata
   if [ ! -f "${engine_dir}/build_metadata.json" ]; then
-    log_warn "[build] build_metadata.json not found (non-critical)"
+    log_warn "[build] ⚠ build_metadata.json not found (non-critical)"
   fi
   
   log_info "[build] ✓ Engine validated: ${engine_dir}"
@@ -229,7 +229,7 @@ trt_quantize_and_build() {
   local qformat="${2:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "[build] Model ID is required"
+    log_err "[build] ✗ Model ID is required"
     return 1
   fi
   

@@ -14,7 +14,7 @@ trt_download_model() {
   local target_dir="${2:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "[model] Model ID is required"
+    log_err "[model] ✗ Model ID is required"
     return 1
   fi
   
@@ -46,7 +46,7 @@ trt_download_model() {
     export HF_HUB_ENABLE_HF_TRANSFER=1
   else
     export HF_HUB_ENABLE_HF_TRANSFER=0
-    log_warn "[model] hf_transfer not installed, using standard downloads"
+    log_warn "[model] ⚠ hf_transfer not installed, using standard downloads"
   fi
   
   if ! python -c "
@@ -55,10 +55,10 @@ from huggingface_hub import snapshot_download
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
 print('✓ Downloaded model', file=sys.stderr)
 "; then
-    log_err "[model] Failed to download model ${model_id}"
+    log_err "[model] ✗ Failed to download model ${model_id}"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ] && [ ! -f "${target_dir}/config.json" ]; then
-      log_warn "[model] Cleaning up partial download at ${target_dir}"
+      log_warn "[model] ⚠ Cleaning up partial download at ${target_dir}"
       rm -rf "${target_dir}"
     fi
     return 1
@@ -80,12 +80,12 @@ trt_quantize_model() {
   local qformat="${3:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "[quant] Model ID is required"
+    log_err "[quant] ✗ Model ID is required"
     return 1
   fi
   
   if [ -z "${output_dir}" ]; then
-    log_err "[quant] Output directory is required"
+    log_err "[quant] ✗ Output directory is required"
     return 1
   fi
   
@@ -123,7 +123,7 @@ trt_quantize_model() {
   quant_script=$(trt_get_quantize_script "${model_id}" "${TRT_REPO_DIR}")
   
   if [ ! -f "${quant_script}" ]; then
-    log_err "[quant] Quantization script not found: ${quant_script}"
+    log_err "[quant] ✗ Quantization script not found: ${quant_script}"
     return 1
   fi
   
@@ -133,7 +133,7 @@ trt_quantize_model() {
   
   # Cleanup function for partial failures
   _quant_cleanup_on_failure() {
-    log_warn "[quant] Cleaning up partial output at ${output_dir}"
+    log_warn "[quant] ⚠ Cleaning up partial output at ${output_dir}"
     rm -rf "${output_dir}"
   }
   
@@ -179,14 +179,14 @@ if patch:
 sys.argv = sys.argv[1:]
 runpy.run_path(sys.argv[0], run_name='__main__')
 " "${quant_cmd[@]:1}"; then
-    log_err "[quant] Quantization failed"
+    log_err "[quant] ✗ Quantization failed"
     _quant_cleanup_on_failure
     return 1
   fi
   
   # Validate output
   if [ ! -f "${output_dir}/config.json" ]; then
-    log_err "[quant] Quantization completed but config.json not found in output"
+    log_err "[quant] ✗ Quantization completed but config.json not found in output"
     _quant_cleanup_on_failure
     return 1
   fi
@@ -205,7 +205,7 @@ trt_download_prequantized() {
   local target_dir="${2:-}"
   
   if [ -z "${model_id}" ]; then
-    log_err "[model] Model ID is required"
+    log_err "[model] ✗ Model ID is required"
     return 1
   fi
   
@@ -223,7 +223,7 @@ trt_download_prequantized() {
     export HF_HUB_ENABLE_HF_TRANSFER=1
   else
     export HF_HUB_ENABLE_HF_TRANSFER=0
-    log_warn "[model] hf_transfer not installed, using standard downloads"
+    log_warn "[model] ⚠ hf_transfer not installed, using standard downloads"
   fi
   
   if ! python -c "
@@ -236,12 +236,12 @@ snapshot_download(
 )
 print('✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
 "; then
-    log_err "[model] Failed to download pre-quantized model"
+    log_err "[model] ✗ Failed to download pre-quantized model"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ]; then
       local ckpt_dir="${target_dir}/trt-llm/checkpoints"
       if [ ! -f "${ckpt_dir}/config.json" ] && [ ! -f "${target_dir}/config.json" ]; then
-        log_warn "[model] Cleaning up partial download at ${target_dir}"
+        log_warn "[model] ⚠ Cleaning up partial download at ${target_dir}"
         rm -rf "${target_dir}"
       fi
     fi
@@ -266,17 +266,17 @@ trt_validate_checkpoint() {
   local ckpt_dir="${1:-}"
   
   if [ -z "${ckpt_dir}" ]; then
-    log_err "[quant] Checkpoint directory is required"
+    log_err "[quant] ✗ Checkpoint directory is required"
     return 1
   fi
   
   if [ ! -d "${ckpt_dir}" ]; then
-    log_err "[quant] Checkpoint directory not found: ${ckpt_dir}"
+    log_err "[quant] ✗ Checkpoint directory not found: ${ckpt_dir}"
     return 1
   fi
   
   if [ ! -f "${ckpt_dir}/config.json" ]; then
-    log_err "[quant] Checkpoint config.json not found: ${ckpt_dir}/config.json"
+    log_err "[quant] ✗ Checkpoint config.json not found: ${ckpt_dir}/config.json"
     return 1
   fi
   
@@ -284,7 +284,7 @@ trt_validate_checkpoint() {
   local safetensor_count
   safetensor_count=$(find "${ckpt_dir}" -maxdepth 1 -name "*.safetensors" 2>/dev/null | wc -l)
   if [ "${safetensor_count}" -eq 0 ]; then
-    log_warn "[quant] No .safetensors files found in checkpoint directory"
+    log_warn "[quant] ⚠ No .safetensors files found in checkpoint directory"
   else
     log_info "[quant] Found ${safetensor_count} .safetensors files"
   fi

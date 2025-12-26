@@ -46,7 +46,7 @@ gpu_init_detection "trt-quant"
 
 # Ensure TRT-LLM repository is available (contains quantization scripts)
 if ! trt_prepare_repo; then
-  log_err "[quant] Failed to prepare TensorRT-LLM repository"
+  log_err "[quant] ✗ Failed to prepare TensorRT-LLM repository"
   exit 1
 fi
 
@@ -66,7 +66,7 @@ trt_export_env
 # Determine the model to quantize
 MODEL_ID="${CHAT_MODEL:-}"
 if [ -z "${MODEL_ID}" ]; then
-  log_err "[quant] CHAT_MODEL is not set"
+  log_err "[quant] ✗ CHAT_MODEL is not set"
   exit 1
 fi
 
@@ -81,7 +81,7 @@ if trt_is_prequantized_model "${MODEL_ID}"; then
   # Download pre-quantized checkpoint
   CHECKPOINT_DIR=$(trt_download_prequantized "${MODEL_ID}")
   if [ -z "${CHECKPOINT_DIR}" ]; then
-    log_err "[quant] Failed to download pre-quantized model"
+    log_err "[quant] ✗ Failed to download pre-quantized model"
     exit 1
   fi
   
@@ -108,7 +108,7 @@ else
   if [ -z "${TRT_CHECKPOINT_DIR:-}" ]; then
     log_info "[quant] Quantizing model ${MODEL_ID}..."
     if ! trt_quantize_model "${MODEL_ID}" "${CHECKPOINT_DIR}" "${QFORMAT}"; then
-      log_err "[quant] Quantization failed"
+      log_err "[quant] ✗ Quantization failed"
       exit 1
     fi
     TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
@@ -118,7 +118,7 @@ fi
 
 # Validate checkpoint
 if ! trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}"; then
-  log_err "[quant] Checkpoint validation failed"
+  log_err "[quant] ✗ Checkpoint validation failed"
   exit 1
 fi
 
@@ -140,7 +140,7 @@ fi
 if [ -z "${TRT_ENGINE_DIR:-}" ]; then
   log_info "[build] Building TRT engine..."
   if ! trt_build_engine "${TRT_CHECKPOINT_DIR}" "${ENGINE_DIR}"; then
-    log_err "[build] Engine build failed"
+    log_err "[build] ✗ Engine build failed"
     exit 1
   fi
   TRT_ENGINE_DIR="${ENGINE_DIR}"
@@ -149,7 +149,7 @@ fi
 
 # Validate engine
 if ! trt_validate_engine "${TRT_ENGINE_DIR}"; then
-  log_err "[build] Engine validation failed"
+  log_err "[build] ✗ Engine validation failed"
   exit 1
 fi
 

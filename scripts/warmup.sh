@@ -30,9 +30,9 @@ fi
 export SERVER_WS_URL
 
 log_warmup() {
-  local line
-  line="[warmup] $*"
-  echo "${line}" | tee -a "${LOG_FILE}"
+  local line="[warmup] $*"
+  log_info "${line}"
+  echo "${line}" >> "${LOG_FILE}"
 }
 
 write_lock() {
@@ -45,7 +45,9 @@ cleanup_lock() {
 }
 
 choose_python() {
-  local venv_py="${ROOT_DIR}/.venv/bin/python"
+  local venv_dir
+  venv_dir="$(resolve_venv_dir 2>/dev/null || echo "${ROOT_DIR}/.venv")"
+  local venv_py="${venv_dir}/bin/python"
   if [ -x "${venv_py}" ]; then
     echo "${venv_py}"
     return 0
@@ -62,10 +64,10 @@ choose_python() {
 }
 
 # Activate venv if available (non-fatal)
-activate_venv "${ROOT_DIR}/.venv" 0 || true
+activate_venv "" 0 || true
 
 if ! PY_BIN="$(choose_python)"; then
-  log_warmup "Unable to locate python interpreter. ✗"
+  log_warmup "✗ Unable to locate python interpreter."
   exit 1
 fi
 
@@ -140,7 +142,7 @@ trap cleanup_lock EXIT INT TERM
 
 log_warmup "Waiting for server readiness on ${SERVER_ADDR} (timeout ${WARMUP_TIMEOUT_SECS}s)..."
 if ! wait_for_ready; then
-  log_warmup "Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s ✗"
+  log_warmup "✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
   exit 1
 fi
 
@@ -175,7 +177,7 @@ for (( idx=1; idx<=WARMUP_RETRIES; idx++ )); do
   if run_py_tool "${run_log}" "tests/warmup.py" "${PROMPT_MODE_FLAGS[@]}"; then
     log_warmup "OK: warmup run ${idx} (see ${run_log})"
   else
-    log_warmup "FAIL: warmup run ${idx} (see ${run_log}) ✗"
+    log_warmup "✗ FAIL: warmup run ${idx} (see ${run_log})"
     ok=0
   fi
   sleep 1
@@ -186,7 +188,7 @@ for (( idx=1; idx<=WARMUP_RETRIES; idx++ )); do
   if run_py_tool "${run_log}" "tests/bench.py" "${PROMPT_MODE_FLAGS[@]}" "--requests" "${max_conn}" "--concurrency" "${max_conn}"; then
     log_warmup "OK: bench run ${idx} (n=${max_conn}, c=${max_conn}) (see ${run_log})"
   else
-    log_warmup "FAIL: bench run ${idx} (see ${run_log}) ✗"
+    log_warmup "✗ FAIL: bench run ${idx} (see ${run_log})"
     ok=0
   fi
   sleep 1

@@ -117,13 +117,13 @@ PYPULL
       if [ -f "${TRT_ENGINE_DIR}/rank0.engine" ]; then
         log_info "[trt] Using downloaded engine: ${TRT_ENGINE_DIR}"
       else
-        log_error "[trt] Downloaded engine missing rank0.engine"
+        log_error "[trt] ✗ Downloaded engine missing rank0.engine"
         exit 1
       fi
     elif [ "$mode" = "checkpoints" ]; then
       CHECKPOINT_DIR=$(echo "$py_out" | awk -F= '/^CHECKPOINT_DIR=/{print $2; exit}')
       if [ -z "${CHECKPOINT_DIR}" ] || [ ! -f "${CHECKPOINT_DIR}/config.json" ]; then
-        log_error "[trt] Downloaded checkpoint invalid (missing config.json)"
+        log_error "[trt] ✗ Downloaded checkpoint invalid (missing config.json)"
         exit 1
       fi
       # Build engine from checkpoint
@@ -145,24 +145,24 @@ PYPULL
         --max_batch_size "${MAX_BATCH}" \
         --log_level info \
         --workers "$(nproc --all)" || {
-          log_error "[trt] trtllm-build failed from checkpoint"
+          log_error "[trt] ✗ trtllm-build failed from checkpoint"
           exit 1
         }
     else
-      log_warn "[trt] No engines or checkpoints found in repo; expecting mounted engine"
+      log_warn "[trt] ⚠ No engines or checkpoints found in repo; expecting mounted engine"
     fi
   else
-    log_warn "[trt] TRT_ENGINE_REPO not set - expecting engine to be mounted at ${TRT_ENGINE_DIR}"
+    log_warn "[trt] ⚠ TRT_ENGINE_REPO not set - expecting engine to be mounted at ${TRT_ENGINE_DIR}"
   fi
 
   # Final validation
   if [ ! -f "${TRT_ENGINE_DIR}/rank0.engine" ]; then
-    log_error "[trt] TRT engine not found at ${TRT_ENGINE_DIR}/rank0.engine"
-    log_error "[trt] Either set TRT_ENGINE_REPO or mount an engine directory"
+    log_error "[trt] ✗ TRT engine not found at ${TRT_ENGINE_DIR}/rank0.engine"
+    log_error "[trt] ✗ Either set TRT_ENGINE_REPO or mount an engine directory"
     exit 1
   fi
 
-  log_success "[trt] TRT engine validated at ${TRT_ENGINE_DIR}"
+  log_success "[trt] ✓ TRT engine validated at ${TRT_ENGINE_DIR}"
 fi
 
 # ============================================================================
@@ -177,7 +177,7 @@ elif command -v python >/dev/null 2>&1 && python -c "import uvicorn" 2>/dev/null
 elif command -v python3 >/dev/null 2>&1 && python3 -c "import uvicorn" 2>/dev/null; then
   UVICORN_CMD=(python3 -m uvicorn src.server:app --host 0.0.0.0 --port 8000 --workers 1)
 else
-  log_error "[trt] uvicorn not found in container. Ensure dependencies are installed."
+  log_error "[trt] ✗ uvicorn not found in container. Ensure dependencies are installed."
   exit 127
 fi
 

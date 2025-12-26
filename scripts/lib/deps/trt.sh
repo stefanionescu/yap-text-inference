@@ -33,10 +33,10 @@ ensure_trt_system_deps() {
   elif command -v yum >/dev/null 2>&1; then
     _install_mpi_yum
   else
-    log_warn "[deps] No supported package manager found. Please install MPI development libraries manually:"
-    log_warn "[deps]   Debian/Ubuntu: apt-get install libopenmpi-dev openmpi-bin"
-    log_warn "[deps]   RHEL/CentOS: dnf install openmpi-devel"
-    log_warn "[deps]   Alpine: apk add openmpi-dev"
+    log_warn "[deps] ⚠ No supported package manager found. Please install MPI development libraries manually:"
+    log_warn "[deps] ⚠   Debian/Ubuntu: apt-get install libopenmpi-dev openmpi-bin"
+    log_warn "[deps] ⚠   RHEL/CentOS: dnf install openmpi-devel"
+    log_warn "[deps] ⚠   Alpine: apk add openmpi-dev"
     return 1
   fi
   
@@ -45,7 +45,7 @@ ensure_trt_system_deps() {
     log_info "[deps] MPI development libraries installed successfully"
     return 0
   else
-    log_err "[deps] Failed to install MPI development libraries"
+    log_err "[deps] ✗ Failed to install MPI development libraries"
     return 1
   fi
 }
@@ -153,14 +153,14 @@ _install_mpi_apt() {
   # Try without sudo first (for container environments running as root)
   if [ "$(id -u)" = "0" ]; then
     apt-get update -y || {
-      log_warn "[deps] apt-get update failed, continuing anyway"
+      log_warn "[deps] ⚠ apt-get update failed, continuing anyway"
     }
     # Install core dependencies (no upgrades; keep CUDA/driver untouched)
     # openmpi-bin provides orted/mpirun executables required by mpi4py during quantization
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
       libopenmpi-dev python3-dev \
       "${MPI_PKG}${MPI_VER_ARG}" "openmpi-bin${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" || {
-      log_warn "[deps] Some packages failed to install via apt"
+      log_warn "[deps] ⚠ Some packages failed to install via apt"
       return 1
     }
     # Hold MPI runtime to prevent drift
@@ -168,14 +168,14 @@ _install_mpi_apt() {
   else
     # Try with sudo
     sudo -n apt-get update -y 2>/dev/null || {
-      log_warn "[deps] apt-get update failed (may need sudo), continuing anyway"
+      log_warn "[deps] ⚠ apt-get update failed (may need sudo), continuing anyway"
     }
     # Install core dependencies (no upgrades; keep CUDA/driver untouched)
     # openmpi-bin provides orted/mpirun executables required by mpi4py during quantization
     sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade --no-install-recommends \
       libopenmpi-dev python3-dev \
       "${MPI_PKG}${MPI_VER_ARG}" "openmpi-bin${MPI_VER_ARG}" "openmpi-common${MPI_VER_ARG}" 2>/dev/null || {
-      log_warn "[deps] Some packages failed to install via apt (may need sudo)"
+      log_warn "[deps] ⚠ Some packages failed to install via apt (may need sudo)"
       return 1
     }
     # Hold MPI runtime to prevent drift
@@ -237,8 +237,8 @@ verify_mpi_runtime() {
   
   # Check library path
   if ! ldconfig -p 2>/dev/null | grep -q "libmpi.so"; then
-    log_warn "[deps] libmpi.so not found in library path"
-    log_warn "[deps] Add /usr/lib/x86_64-linux-gnu to LD_LIBRARY_PATH if needed"
+    log_warn "[deps] ⚠ libmpi.so not found in library path"
+    log_warn "[deps] ⚠ Add /usr/lib/x86_64-linux-gnu to LD_LIBRARY_PATH if needed"
   fi
   
   return 0
@@ -265,19 +265,19 @@ trt_install_deps() {
   
   # Install missing components
   if ! trt_install_missing_components; then
-    log_err "[trt] Dependency installation failed"
+    log_err "[trt] ✗ Dependency installation failed"
     return 1
   fi
   
   # Validate installation
   if ! trt_validate_installation; then
-    log_err "[trt] TensorRT-LLM validation failed"
+    log_err "[trt] ✗ TensorRT-LLM validation failed"
     return 1
   fi
   
   # Prepare repo for quantization scripts
   if ! trt_prepare_repo; then
-    log_err "[trt] TensorRT-LLM repo preparation failed"
+    log_err "[trt] ✗ TensorRT-LLM repo preparation failed"
     return 1
   fi
   

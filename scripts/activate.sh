@@ -20,8 +20,8 @@ venv_dir="$(resolve_venv_dir)"
 activate_script="${venv_dir}/bin/activate"
 
 if [ ! -f "${activate_script}" ]; then
-  log_err "[activate] Virtual environment missing at ${venv_dir}"
-  log_err "[activate] Run 'bash scripts/steps/03_install_deps.sh' (or the main launcher) to create it."
+  log_err "[activate] ✗ Virtual environment missing at ${venv_dir}"
+  log_err "[activate] ✗ Run 'bash scripts/steps/03_install_deps.sh' (or the main launcher) to create it."
   exit 1
 fi
 
@@ -75,7 +75,7 @@ EOF
     exec "${target_shell}" -i
     ;;
   *)
-    log_warn "[activate] Shell '${shell_name}' not recognized; falling back to bash."
+    log_warn "[activate] ⚠ Shell '${shell_name}' not recognized; falling back to bash."
     launch_bash_shell
     ;;
 esac

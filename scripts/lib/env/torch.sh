@@ -11,11 +11,11 @@ ensure_torch_cuda_arch_list() {
         log_info "[gpu] Detected compute capability: ${TORCH_CUDA_ARCH_LIST}"
       else
         export TORCH_CUDA_ARCH_LIST=8.0
-        log_warn "[gpu] Could not detect compute capability; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
+        log_warn "[gpu] ⚠ Could not detect compute capability; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
       fi
     else
       export TORCH_CUDA_ARCH_LIST=8.0
-      log_warn "[gpu] nvidia-smi not found; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
+      log_warn "[gpu] ⚠ nvidia-smi not found; defaulting TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
     fi
   fi
 }

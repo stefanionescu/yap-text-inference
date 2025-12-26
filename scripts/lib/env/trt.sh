@@ -222,22 +222,22 @@ trt_log_config() {
 # Validate TRT_MAX_BATCH_SIZE is set (called before engine build)
 trt_validate_batch_size() {
   if [ -z "${TRT_MAX_BATCH_SIZE:-}" ]; then
-    log_err "[trt] TRT_MAX_BATCH_SIZE must be set when building a TRT engine."
-    log_err "[trt] This value is baked into the compiled engine and determines the maximum"
-    log_err "[trt] number of sequences that can be batched together in a single forward pass."
-    log_err "[trt] "
-    log_err "[trt] Example values based on model size:"
-    log_err "[trt]   - 7-8B models: 32-64"
-    log_err "[trt]   - 13B models: 16-32"
-    log_err "[trt]   - 70B+ models: 8-16"
-    log_err "[trt] "
-    log_err "[trt] Set it via: export TRT_MAX_BATCH_SIZE=<value>"
+    log_err "[trt] ✗ TRT_MAX_BATCH_SIZE must be set when building a TRT engine."
+    log_err "[trt] ✗ This value is baked into the compiled engine and determines the maximum"
+    log_err "[trt] ✗ number of sequences that can be batched together in a single forward pass."
+    log_err "[trt] ✗ "
+    log_err "[trt] ✗ Example values based on model size:"
+    log_err "[trt] ✗   - 7-8B models: 32-64"
+    log_err "[trt] ✗   - 13B models: 16-32"
+    log_err "[trt] ✗   - 70B+ models: 8-16"
+    log_err "[trt] ✗ "
+    log_err "[trt] ✗ Set it via: export TRT_MAX_BATCH_SIZE=<value>"
     return 1
   fi
   
   # Validate it's a positive integer
   if ! [[ "${TRT_MAX_BATCH_SIZE}" =~ ^[1-9][0-9]*$ ]]; then
-    log_err "[trt] TRT_MAX_BATCH_SIZE must be a positive integer, got: ${TRT_MAX_BATCH_SIZE}"
+    log_err "[trt] ✗ TRT_MAX_BATCH_SIZE must be a positive integer, got: ${TRT_MAX_BATCH_SIZE}"
     return 1
   fi
   

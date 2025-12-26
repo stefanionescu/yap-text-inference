@@ -16,17 +16,17 @@ vllm_awq_push_to_hf() {
   fi
 
   if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
-    log_warn "[hf] --push-quant specified but HF_PUSH_REPO_ID not configured; skipping upload"
+    log_warn "[hf] ⚠ --push-quant specified but HF_PUSH_REPO_ID not configured; skipping upload"
     return
   fi
 
   if [ -z "${HF_TOKEN:-}" ]; then
-    log_warn "[hf] --push-quant specified but HF_TOKEN not available; skipping upload"
+    log_warn "[hf] ⚠ --push-quant specified but HF_TOKEN not available; skipping upload"
     return
   fi
 
   if [ ! -d "${src_dir}" ]; then
-    log_warn "[hf] AWQ push skipped; directory not found: ${src_dir}"
+    log_warn "[hf] ⚠ AWQ push skipped; directory not found: ${src_dir}"
     return
   fi
 

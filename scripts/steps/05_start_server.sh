@@ -15,17 +15,20 @@ ensure_cuda_ready_for_engine "server" || exit 1
 log_info "[server] Starting server on :8000 in background"
 cd "${ROOT_DIR}"
 # Activate venv if available (non-fatal)
-activate_venv "${ROOT_DIR}/.venv" 0 || true
+activate_venv "" 0 || true
+
+# Resolve venv directory once for consistent use
+VENV_DIR="$(resolve_venv_dir)"
 
 # Double-start guard and stale PID handling
 PID_FILE="${ROOT_DIR}/server.pid"
 if [ -f "${PID_FILE}" ]; then
   OLD_PID="$(cat "${PID_FILE}" 2>/dev/null || true)"
   if [ -n "${OLD_PID}" ] && ps -p "${OLD_PID}" >/dev/null 2>&1; then
-    log_warn "[server] Server already running (PID=${OLD_PID}). Aborting start."
+    log_warn "[server] ⚠ Server already running (PID=${OLD_PID}). Aborting start."
     exit 1
   else
-    log_warn "[server] Stale PID file found; removing ${PID_FILE}"
+    log_warn "[server] ⚠ Stale PID file found; removing ${PID_FILE}"
     rm -f "${PID_FILE}" || true
   fi
 fi
@@ -57,14 +60,14 @@ runtime_guard_write_snapshot "${ROOT_DIR}"
 # Resolve uvicorn launcher robustly (prefer venv python -m, then venv binary, then system)
 CMD_ARGS=("src.server:app" "--host" "0.0.0.0" "--port" "8000" "--workers" "1")
 
-if [ -x "${ROOT_DIR}/.venv/bin/python" ] && "${ROOT_DIR}/.venv/bin/python" - <<'PY' >/dev/null 2>&1
+if [ -x "${VENV_DIR}/bin/python" ] && "${VENV_DIR}/bin/python" - <<'PY' >/dev/null 2>&1
 import uvicorn
 PY
 then
   # Prefer venv python -m uvicorn to ensure correct Python interpreter
-  CMD=("${ROOT_DIR}/.venv/bin/python" "-m" "uvicorn" "${CMD_ARGS[@]}")
-elif [ -x "${ROOT_DIR}/.venv/bin/uvicorn" ]; then
-  CMD=("${ROOT_DIR}/.venv/bin/uvicorn" "${CMD_ARGS[@]}")
+  CMD=("${VENV_DIR}/bin/python" "-m" "uvicorn" "${CMD_ARGS[@]}")
+elif [ -x "${VENV_DIR}/bin/uvicorn" ]; then
+  CMD=("${VENV_DIR}/bin/uvicorn" "${CMD_ARGS[@]}")
 elif command -v uvicorn >/dev/null 2>&1; then
   CMD=("$(command -v uvicorn)" "${CMD_ARGS[@]}")
 elif command -v python3 >/dev/null 2>&1 && python3 - <<'PY' >/dev/null 2>&1
@@ -78,8 +81,8 @@ PY
 then
   CMD=("python" "-m" "uvicorn" "${CMD_ARGS[@]}")
 else
-  log_err "[server] uvicorn is not installed in .venv or system."
-  log_err "[server] Run: bash scripts/steps/03_install_deps.sh"
+  log_err "[server] ✗ uvicorn is not installed in venv (${VENV_DIR}) or system."
+  log_err "[server] ✗ Run: bash scripts/steps/03_install_deps.sh"
   exit 127
 fi
 
@@ -98,9 +101,9 @@ WARMUP_SCRIPT="${ROOT_DIR}/scripts/warmup.sh"
 if [ -x "${WARMUP_SCRIPT}" ]; then
   log_info "[warmup] Running warmup validation script..."
   if ! "${WARMUP_SCRIPT}"; then
-    log_warn "[warmup] Warmup script detected issues (see logs/warmup.log)"
+    log_warn "[warmup] ⚠ Warmup script detected issues (see logs/warmup.log)"
   fi
 else
-  log_warn "[warmup] Warmup script not found at ${WARMUP_SCRIPT}"
+  log_warn "[warmup] ⚠ Warmup script not found at ${WARMUP_SCRIPT}"
 fi
 

@@ -104,11 +104,11 @@ restart_parse_args() {
         return 2
         ;;
       -*)
-        log_warn "[restart] Unknown flag '$1' ignored"
+        log_warn "[restart] ⚠ Unknown flag '$1' ignored"
         shift
         ;;
       *)
-        log_warn "[restart] Unknown argument '$1' ignored"
+        log_warn "[restart] ⚠ Unknown argument '$1' ignored"
         shift
         ;;
     esac
@@ -121,7 +121,7 @@ restart_parse_args() {
     trt|TRT|tensorrt|TENSORRT) INFERENCE_ENGINE="trt" ;;
     vllm|VLLM) INFERENCE_ENGINE="vllm" ;;
     *)
-      log_warn "[restart] Unknown engine '${INFERENCE_ENGINE}', defaulting to 'trt'"
+      log_warn "[restart] ⚠ Unknown engine '${INFERENCE_ENGINE}', defaulting to 'trt'"
       INFERENCE_ENGINE="trt"
       ;;
   esac

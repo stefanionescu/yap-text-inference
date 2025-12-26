@@ -5,7 +5,7 @@
 export DEPLOY_MODE=${DEPLOY_MODE:-both}
 case "${DEPLOY_MODE}" in
   both|chat|tool) ;;
-  *) log_warn "[vllm] Invalid DEPLOY_MODE='${DEPLOY_MODE}', defaulting to 'both'"; export DEPLOY_MODE=both;;
+  *) log_warn "[vllm] ⚠ Invalid DEPLOY_MODE='${DEPLOY_MODE}', defaulting to 'both'"; export DEPLOY_MODE=both;;
 esac
 
 # Convenience flags
@@ -17,11 +17,11 @@ export DEPLOY_CHAT DEPLOY_TOOL
 # Models are configured at build time - no defaults, image knows which models to use
 # These ENV vars are set in the Dockerfile during build
 if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
-  log_error "[vllm] CHAT_MODEL not configured in this image. This image was not built correctly."
+  log_error "[vllm] ✗ CHAT_MODEL not configured in this image. This image was not built correctly."
   exit 1
 fi
 if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
-  log_error "[vllm] TOOL_MODEL not configured in this image. This image was not built correctly."
+  log_error "[vllm] ✗ TOOL_MODEL not configured in this image. This image was not built correctly."
   exit 1
 fi
 

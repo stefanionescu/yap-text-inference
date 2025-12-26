@@ -27,7 +27,7 @@ main_parse_cli() {
         ;;
       --engine)
         if [ -z "${2:-}" ]; then
-          log_warn "[main] --engine requires a value (trt|vllm)"
+          log_warn "[main] ⚠ --engine requires a value (trt|vllm)"
           return 1
         fi
         engine="$2"
@@ -44,7 +44,7 @@ main_parse_cli() {
         ;;
       --deploy-mode)
         if [ -z "${2:-}" ]; then
-          log_warn "[main] --deploy-mode requires a value (both|chat|tool)"
+          log_warn "[main] ⚠ --deploy-mode requires a value (both|chat|tool)"
           return 1
         fi
         deploy_mode="$2"
@@ -62,7 +62,7 @@ main_parse_cli() {
         quant_type="8bit"
         ;;
       awq|AWQ|fp8|FP8)
-        log_err "[main] '${1}' flag has been removed. Use '4bit' or '8bit' explicitly."
+        log_err "[main] ✗ '${1}' flag has been removed. Use '4bit' or '8bit' explicitly."
         return 1
         ;;
       chat|tool|both)
@@ -74,7 +74,7 @@ main_parse_cli() {
         fi
         ;;
       --*)
-        log_warn "[main] Unknown flag '$1' ignored"
+        log_warn "[main] ⚠ Unknown flag '$1' ignored"
         ;;
       *)
         positional_args+=("$1")
@@ -97,7 +97,7 @@ main_parse_cli() {
   case "${deploy_mode}" in
     both|chat|tool) ;;
     *)
-      log_warn "[main] Invalid deploy mode '${deploy_mode}', defaulting to 'both'"
+      log_warn "[main] ⚠ Invalid deploy mode '${deploy_mode}', defaulting to 'both'"
       deploy_mode="both"
       ;;
   esac
@@ -110,7 +110,7 @@ main_parse_cli() {
       engine="trt"
       ;;
     *)
-      log_warn "[main] Unknown engine type '${engine}', defaulting to 'trt'"
+      log_warn "[main] ⚠ Unknown engine type '${engine}', defaulting to 'trt'"
       engine="trt"
       ;;
   esac
@@ -128,43 +128,43 @@ main_parse_cli() {
   case "${deploy_mode}" in
     both)
       if [ ${#positional_args[@]} -lt 2 ]; then
-        log_warn "[main] both mode requires <chat_model> <tool_model>"
+        log_warn "[main] ⚠ both mode requires <chat_model> <tool_model>"
         return 1
       fi
       chat_model="${positional_args[0]}"
       tool_model="${positional_args[1]}"
       if [ ${#positional_args[@]} -gt 2 ]; then
-        log_warn "[main] Extra arguments ignored after <chat_model> <tool_model>"
+        log_warn "[main] ⚠ Extra arguments ignored after <chat_model> <tool_model>"
       fi
       ;;
     chat)
       if [ ${#positional_args[@]} -lt 1 ]; then
-        log_warn "[main] chat-only mode requires <chat_model>"
+        log_warn "[main] ⚠ chat-only mode requires <chat_model>"
         return 1
       fi
       chat_model="${positional_args[0]}"
       if [ ${#positional_args[@]} -gt 1 ]; then
-        log_warn "[main] Extra arguments ignored after <chat_model>"
+        log_warn "[main] ⚠ Extra arguments ignored after <chat_model>"
       fi
       ;;
     tool)
       if [ ${#positional_args[@]} -lt 1 ]; then
-        log_warn "[main] tool-only mode requires <tool_model>"
+        log_warn "[main] ⚠ tool-only mode requires <tool_model>"
         return 1
       fi
       tool_model="${positional_args[0]}"
       if [ ${#positional_args[@]} -gt 1 ]; then
-        log_warn "[main] Extra arguments ignored after <tool_model>"
+        log_warn "[main] ⚠ Extra arguments ignored after <tool_model>"
       fi
       ;;
   esac
 
   if [ "${deploy_mode}" != "tool" ] && [ -z "${chat_model}" ]; then
-    log_warn "[main] CHAT_MODEL is required for deploy mode '${deploy_mode}'"
+    log_warn "[main] ⚠ CHAT_MODEL is required for deploy mode '${deploy_mode}'"
     return 1
   fi
   if [ "${deploy_mode}" != "chat" ] && [ -z "${tool_model}" ]; then
-    log_warn "[main] TOOL_MODEL is required for deploy mode '${deploy_mode}'"
+    log_warn "[main] ⚠ TOOL_MODEL is required for deploy mode '${deploy_mode}'"
     return 1
   fi
 
