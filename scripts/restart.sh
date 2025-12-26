@@ -75,8 +75,9 @@ Key flags:
   --push-quant          Upload cached 4-bit exports to Hugging Face before relaunch
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
-  --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|gptq|gptq_marlin|awq).
-                        `4bit` aliases AWQ. `8bit` uses FP8 (L40S/H100) or INT8-SQ (A100).
+  --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|gptq|gptq_marlin|awq|nvfp4).
+                        `4bit` uses NVFP4 for MoE models (TRT) or AWQ for dense models.
+                        `8bit` uses FP8 (L40S/H100) or INT8-SQ (A100).
                         Pre-quantized repos are detected automatically.
 
 This script always:

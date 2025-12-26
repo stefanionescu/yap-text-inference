@@ -225,9 +225,9 @@ trt_quantize_and_build() {
     return 1
   fi
   
-  # Resolve qformat
+  # Resolve qformat (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
-    qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}")
+    qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
   
   log_info "[build] Starting TRT quantize and build pipeline..."

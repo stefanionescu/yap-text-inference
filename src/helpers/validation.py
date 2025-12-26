@@ -62,9 +62,9 @@ def validate_env() -> None:
             errors.append(
                 "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', 'awq', '8bit', or '4bit' for VLLM"
             )
-        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {"fp8", "int8_sq", "int8", "int4_awq", "awq", "8bit", "4bit"}:
+        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {"fp8", "int8_sq", "int8", "int4_awq", "nvfp4", "awq", "8bit", "4bit"}:
             errors.append(
-                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'awq', '8bit', or '4bit' for TRT"
+                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'nvfp4', 'awq', '8bit', or '4bit' for TRT"
             )
     if errors:
         raise ValueError("; ".join(errors))
