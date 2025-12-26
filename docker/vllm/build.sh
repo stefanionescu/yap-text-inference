@@ -114,20 +114,10 @@ require_docker
 
 ensure_docker_login
 
-log_info "[build] Building Yap Text Inference Docker image (vLLM)"
-log_info "[build] Image: ${FULL_IMAGE_NAME}"
-log_info "[build] Deploy mode: ${DEPLOY_MODE_VAL}"
-[[ -n "${CHAT_MODEL}" ]] && log_info "[build] Chat model: ${CHAT_MODEL}"
-[[ -n "${TOOL_MODEL}" ]] && log_info "[build] Tool model: ${TOOL_MODEL}"
-log_info "[build] Platform: ${PLATFORM}"
-log_info "[build] Build context (stack): ${BUILD_CONTEXT}"
-log_info "[build] Dockerfile: ${DOCKERFILE}"
+log_info "[build] Building Docker image: ${FULL_IMAGE_NAME}..."
 
 # Build the image
-log_info "[build] Preparing build context..."
-
 prepare_build_context
-log_info "[build] Starting Docker build from temp context: ${BUILD_CONTEXT}"
 
 init_build_args
 
@@ -138,11 +128,8 @@ BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 
-log_success "[build] ✓ Docker build completed successfully!"
-log_info "[build] Image: ${FULL_IMAGE_NAME}"
-
-# Push the image
-log_info "[build] Pushing image to Docker Hub..."
+log_success "[build] ✓ Docker build complete"
+log_info "[build] Pushing to Docker Hub..."
 
 # Try push; if unauthorized, attempt non-interactive login and retry once
 if ! docker push "${FULL_IMAGE_NAME}"; then
@@ -154,19 +141,5 @@ if ! docker push "${FULL_IMAGE_NAME}"; then
     fi
 fi
 
-log_success "[build] ✓ Image pushed successfully to Docker Hub!"
-log_info "[build] Pull command: docker pull ${FULL_IMAGE_NAME}"
-
-# Provide usage examples
-log_info ""
-log_info "[build] Usage:"
-log_info ""
-log_info "[build] docker run -d --gpus all --name yap-server \\"
-log_info "[build]   -v yap-cache:/app/.hf \\"
-log_info "[build]   -e TEXT_API_KEY=your_secret_key \\"
-log_info "[build]   -p 8000:8000 \\"
-log_info "[build]   ${FULL_IMAGE_NAME}"
-log_info ""
-log_info "[build] Health: curl http://localhost:8000/healthz"
-log_success "[build] ✓ Build process completed!"
+log_success "[build] ✓ Pushed: docker pull ${FULL_IMAGE_NAME}"
 

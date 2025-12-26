@@ -70,7 +70,6 @@ trt_ensure_cuda_home() {
     *) export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}" ;;
   esac
   
-  log_info "[trt] CUDA_HOME: ${CUDA_HOME}"
   return 0
 }
 
@@ -85,8 +84,7 @@ trt_install_pytorch() {
   local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
   local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
   
-  log_info "[trt] Installing PyTorch ${torch_version} and TorchVision ${torchvision_version}"
-  log_info "[trt] Using index: ${torch_idx}"
+  log_info "[trt] Installing PyTorch ${torch_version}..."
   
   # Install torch and torchvision together from the SAME index to ensure CUDA version match
   local pip_cmd=(
@@ -100,15 +98,6 @@ trt_install_pytorch() {
     log_err "[trt] ✗ Failed to install PyTorch"
     return 1
   }
-  
-  # Verify torch CUDA version matches what we expect
-  local torch_cuda
-  torch_cuda=$(python -c "import torch; print(torch.version.cuda or '')" 2>/dev/null || true)
-  if [ -n "${torch_cuda}" ]; then
-    log_info "[trt] PyTorch CUDA version: ${torch_cuda}"
-  else
-    log_warn "[trt] ⚠ Could not detect PyTorch CUDA version"
-  fi
   
   return 0
 }
@@ -125,7 +114,6 @@ _trt_pip_install_with_retry() {
   local attempt=1
 
   while [ "${attempt}" -le "${max_attempts}" ]; do
-    log_info "[trt] pip attempt ${attempt}/${max_attempts}: $*"
     if pip "$@"; then
       return 0
     fi

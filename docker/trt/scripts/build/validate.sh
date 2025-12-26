@@ -35,7 +35,7 @@ validate_chat_model() {
         return 1
     fi
     
-    echo "[validate] CHAT_MODEL '$model' validated (will be used for tokenizer)"
+    echo "[validate] ✓ CHAT_MODEL: $model"
     return 0
 }
 
@@ -54,7 +54,7 @@ validate_trt_engine_repo() {
         return 1
     fi
     
-    echo "[validate] TRT_ENGINE_REPO '$repo' validated"
+    echo "[validate] ✓ TRT_ENGINE_REPO: $repo"
     return 0
 }
 
@@ -68,7 +68,7 @@ validate_tool_model() {
     
     for allowed in "${ALLOWED_TOOL_MODELS[@]}"; do
         if [[ "$model" == "$allowed" ]]; then
-            echo "[validate] TOOL_MODEL '$model' is in allowlist"
+            echo "[validate] ✓ TOOL_MODEL: $model"
             return 0
         fi
     done

@@ -7,10 +7,7 @@ _cleanup_remove_dirs() {
   local dir
   for dir in "$@"; do
     [ -z "${dir}" ] && continue
-    if [ -e "${dir}" ]; then
-      log_info "[cache] Removing ${label}: ${dir}"
-      rm -rf "${dir}" || true
-    fi
+    [ -e "${dir}" ] && rm -rf "${dir}" || true
   done
 }
 
@@ -22,19 +19,15 @@ cleanup_stop_server_session() {
     local pid
     pid="$(cat "${pid_file}" 2>/dev/null || true)"
     if [ -n "${pid}" ] && ps -p "${pid}" >/dev/null 2>&1; then
-      log_info "[stop] Stopping server session (PID ${pid})"
       kill -TERM -"${pid}" || true
       for _ in {1..10}; do
         ps -p "${pid}" >/dev/null 2>&1 || break
         sleep 1
       done
       ps -p "${pid}" >/dev/null 2>&1 && kill -KILL -"${pid}" || true
-    else
-      log_info "[stop] Stale server.pid entry removed"
     fi
     rm -f "${pid_file}" || true
   else
-    log_info "[stop] No server.pid; best-effort kill by pattern"
     pkill -f "uvicorn src.server:app" || true
   fi
 }
@@ -70,10 +63,7 @@ cleanup_repo_caches() {
 
 cleanup_runtime_state() {
   local root_dir="$1"
-  if [ -d "${root_dir}/.run" ]; then
-    log_info "[stop] Removing runtime state at ${root_dir}/.run"
-    rm -rf "${root_dir}/.run" || true
-  fi
+  [ -d "${root_dir}/.run" ] && rm -rf "${root_dir}/.run" || true
 }
 
 cleanup_venvs() {
@@ -153,16 +143,11 @@ cleanup_pip_caches() {
 
 cleanup_gpu_processes() {
   local hard_reset="${1:-0}"
-  if ! command -v nvidia-smi >/dev/null 2>&1; then
-    log_warn "[stop] ⚠ nvidia-smi not found; skipping GPU process check"
-    return 0
-  fi
+  command -v nvidia-smi >/dev/null 2>&1 || return 0
 
-  log_info "[stop] Checking for leftover GPU processes"
   local -a gpids=()
   mapfile -t gpids < <(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | awk '{print $1}' | grep -E '^[0-9]+$' || true)
   if [ "${#gpids[@]}" -gt 0 ]; then
-    log_warn "[stop] ⚠ Killing stray GPU PIDs: ${gpids[*]}"
     local p
     for p in "${gpids[@]}"; do
       kill -TERM "$p" 2>/dev/null || true
@@ -173,10 +158,7 @@ cleanup_gpu_processes() {
     done
   fi
 
-  if [ "${hard_reset}" = "1" ]; then
-    log_warn "[stop] ⚠ Attempting GPU reset"
-    nvidia-smi --gpu-reset || true
-  fi
+  [ "${hard_reset}" = "1" ] && nvidia-smi --gpu-reset || true
 }
 
 cleanup_tmp_dirs() {
@@ -189,15 +171,11 @@ cleanup_tmp_dirs() {
 
 cleanup_home_cache_roots() {
   _cleanup_remove_dirs "cache root" "$HOME/.cache" "/root/.cache"
-  if [ -n "${XDG_CACHE_HOME:-}" ] && [ -d "${XDG_CACHE_HOME}" ]; then
-    log_warn "[cache] ⚠ Removing XDG cache at ${XDG_CACHE_HOME}"
-    rm -rf "${XDG_CACHE_HOME}" || true
-  fi
+  [ -n "${XDG_CACHE_HOME:-}" ] && [ -d "${XDG_CACHE_HOME}" ] && rm -rf "${XDG_CACHE_HOME}" || true
 }
 
 cleanup_python_artifacts() {
   local root_dir="$1"
-  log_info "[stop] Removing __pycache__ and .pytest_cache in repo"
   find "${root_dir}" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
   find "${root_dir}" -type d -name ".pytest_cache" -prune -exec rm -rf {} + 2>/dev/null || true
 }

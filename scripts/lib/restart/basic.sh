@@ -9,23 +9,16 @@
 wipe_dependencies_for_reinstall() {
   local root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   
-  log_info "[deps] Wiping all dependencies for clean reinstall (--install-deps)..."
+  log_info "[deps] Wiping all dependencies for clean reinstall..."
   
   # 1. Remove all venvs (all pip packages gone)
-  # This is intentional - user explicitly requested --install-deps
   for venv_path in "${root}/.venv" "${root}/.venv-trt" "${root}/.venv-vllm" "${root}/venv" "${root}/env"; do
-    if [ -d "${venv_path}" ]; then
-      log_info "[deps] Removing venv: ${venv_path}"
-      rm -rf "${venv_path}"
-    fi
+    [ -d "${venv_path}" ] && rm -rf "${venv_path}"
   done
   
   # 2. Remove pip caches (wheels, downloaded packages)
   for pip_cache in "${root}/.pip_cache" "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip"; do
-    if [ -d "${pip_cache}" ]; then
-      log_info "[deps] Removing pip cache: ${pip_cache}"
-      rm -rf "${pip_cache}"
-    fi
+    [ -d "${pip_cache}" ] && rm -rf "${pip_cache}"
   done
   
   # 3. Remove vLLM-specific caches
@@ -38,10 +31,7 @@ wipe_dependencies_for_reinstall() {
     "/workspace/.cache/vllm"
   )
   for cache_dir in "${VLLM_CACHES[@]}"; do
-    if [ -d "${cache_dir}" ]; then
-      log_info "[deps] Removing vLLM cache: ${cache_dir}"
-      rm -rf "${cache_dir}"
-    fi
+    [ -d "${cache_dir}" ] && rm -rf "${cache_dir}"
   done
   
   # 4. Remove TRT-LLM specific caches (wheel caches, compiled engines metadata)
@@ -58,10 +48,7 @@ wipe_dependencies_for_reinstall() {
     "/workspace/.cache/tensorrt" "/workspace/.cache/tensorrt_llm"
   )
   for cache_dir in "${TRT_CACHES[@]}"; do
-    if [ -d "${cache_dir}" ]; then
-      log_info "[deps] Removing TRT cache: ${cache_dir}"
-      rm -rf "${cache_dir}"
-    fi
+    [ -d "${cache_dir}" ] && rm -rf "${cache_dir}"
   done
   
   # 5. Remove torch/compiler caches (triton, inductor, extensions)
@@ -75,18 +62,12 @@ wipe_dependencies_for_reinstall() {
     "/workspace/.cache/torch" "/workspace/.cache/triton"
   )
   for cache_dir in "${COMPILER_CACHES[@]}"; do
-    if [ -d "${cache_dir}" ]; then
-      log_info "[deps] Removing compiler cache: ${cache_dir}"
-      rm -rf "${cache_dir}"
-    fi
+    [ -d "${cache_dir}" ] && rm -rf "${cache_dir}"
   done
   
   # 6. Remove NVIDIA JIT caches
   for nv_cache in "$HOME/.nv" "/root/.nv"; do
-    if [ -d "${nv_cache}" ]; then
-      log_info "[deps] Removing NVIDIA JIT cache: ${nv_cache}"
-      rm -rf "${nv_cache}"
-    fi
+    [ -d "${nv_cache}" ] && rm -rf "${nv_cache}"
   done
   
   # 7. Remove dep hash markers (forces full reinstall)
@@ -108,7 +89,7 @@ restart_run_install_deps_if_needed() {
     return 0
   fi
   
-  log_info "[restart] Reinstalling all dependencies from scratch (--install-deps)"
+  log_info "[restart] Reinstalling all dependencies from scratch..."
   
   # Wipe all existing pip dependencies and caches for clean install
   # Preserves models, HF cache, TRT repo (if same engine)
@@ -245,7 +226,6 @@ restart_basic() {
   restart_run_install_deps_if_needed
 
   # 3. Load environment defaults (after deps are installed)
-  log_info "[restart] Loading environment defaults..."
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 
   # 4. TRT engine: validate engine directory exists before starting server
@@ -279,7 +259,6 @@ restart_basic() {
   local BG_PID=$!
   echo "${BG_PID}" > "${ROOT_DIR}/.run/deployment.pid"
 
-  log_info "[restart] Server started (PID: ${BG_PID})"
-  log_info "[restart] Following logs (Ctrl+C detaches, server continues)..."
+  log_info "[restart] Server started (PID: ${BG_PID}). Logs: tail -f server.log"
   exec tail -n +1 -F "${SERVER_LOG_PATH}"
 }

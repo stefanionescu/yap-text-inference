@@ -25,16 +25,6 @@ if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
   exit 1
 fi
 
-if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "[vllm] Configured models (will be downloaded from HuggingFace on first run):"
-  if [ "${DEPLOY_CHAT}" = "1" ]; then
-    log_info "[vllm]   Chat: ${CHAT_MODEL}"
-  fi
-  if [ "${DEPLOY_TOOL}" = "1" ]; then
-    log_info "[vllm]   Tool: ${TOOL_MODEL}"
-  fi
-  log_info "[vllm]   Runtime quantization: Chat runs AWQ (W4A16); tool classifier stays float."
-fi
 
 # Set quantization for chat model
 if [ "${QUANTIZATION:-awq}" = "awq" ]; then

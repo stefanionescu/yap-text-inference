@@ -35,7 +35,7 @@ trt_push_to_hf() {
     return 1
   fi
   
-  log_info "[hf] Pushing TRT-LLM model to HuggingFace: ${HF_PUSH_REPO_ID}"
+  log_info "[hf] Pushing to HuggingFace: ${HF_PUSH_REPO_ID}..."
   
   # Pick a python interpreter (prefer venv, then system)
   local python_exe="${HF_PYTHON:-}"
@@ -82,7 +82,7 @@ trt_push_to_hf() {
   fi
   
   if "${python_cmd[@]}"; then
-    log_info "[hf] Successfully pushed to HuggingFace"
+    log_info "[hf] ✓ Pushed to HuggingFace"
     return 0
   else
     log_warn "[hf] ⚠ HuggingFace push failed"

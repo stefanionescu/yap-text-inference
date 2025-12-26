@@ -4,26 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
-if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
-  log_info "[trt] Starting TRT-LLM server on :8000"
-else
-  log_info "[trt] Starting server on :8000 (tool classifier only)"
-fi
 cd /app
-
-# Log key environment variables
-log_info "[trt] GPU=${DETECTED_GPU_NAME:-unknown}"
-log_info "[trt] DEPLOY_MODE=${DEPLOY_MODE:-both}"
-if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
-  log_info "[trt] CHAT_MODEL=${CHAT_MODEL:-none} (tokenizer)"
-  log_info "[trt] TRT_ENGINE_REPO=${TRT_ENGINE_REPO:-none}"
-  log_info "[trt] TRT_ENGINE_DIR=${TRT_ENGINE_DIR:-/opt/engines/trt-chat}"
-  log_info "[trt] TRT_KV_FREE_GPU_FRAC=${TRT_KV_FREE_GPU_FRAC:-0.92}"
-  log_info "[trt] TRT_KV_ENABLE_BLOCK_REUSE=${TRT_KV_ENABLE_BLOCK_REUSE:-1}"
-fi
-if [ "${DEPLOY_TOOL:-0}" = "1" ]; then
-  log_info "[trt] TOOL_MODEL=${TOOL_MODEL:-none} (PyTorch classifier)"
-fi
 
 # ============================================================================
 # Download TRT engines/checkpoints from HuggingFace if not already present
@@ -37,11 +18,10 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
       cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 || true)
       if [ -n "${cap}" ]; then
         GPU_SM="sm${cap/./}"
-        log_info "[trt] Detected GPU SM architecture: ${GPU_SM}"
       fi
     fi
 
-    log_info "[trt] Resolving artifacts from ${TRT_ENGINE_REPO} (engines or checkpoints)..."
+    log_info "[trt] Resolving artifacts from ${TRT_ENGINE_REPO}..."
     py_out=$(
       python - <<'PYPULL'
 import os
@@ -181,12 +161,11 @@ else
   exit 127
 fi
 
-log_info "[trt] Starting uvicorn server..."
+log_info "[trt] Starting server..."
 "${UVICORN_CMD[@]}" &
 SERVER_PID=$!
 
 # Run warmup in background
-log_info "[trt] Running warmup validation in background..."
 "${SCRIPT_DIR}/warmup.sh" &
 
 # Wait on server (container stays alive)

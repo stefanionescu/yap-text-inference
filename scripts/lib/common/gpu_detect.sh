@@ -177,9 +177,6 @@ gpu_init_detection() {
     export DETECTED_GPU_NAME
   fi
   
-  if [ -n "${GPU_SM_ARCH}" ] && type log_info >/dev/null 2>&1; then
-    log_info "[${prefix}] Detected GPU: ${DETECTED_GPU_NAME} (${GPU_SM_ARCH})"
-  fi
 }
 
 # Set GPU-specific environment defaults

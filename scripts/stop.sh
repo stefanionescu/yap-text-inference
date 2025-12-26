@@ -24,7 +24,7 @@ NUKE_ALL="${NUKE_ALL:-1}"
 NUKE_VENV="${NUKE_VENV:-0}"  # Default: preserve venv
 
 if [ "${NUKE_ALL}" = "0" ]; then
-  log_info "[stop] Light stop: preserving venv, caches, and models"
+  log_info "[stop] Light stop: preserving venv, caches, and models..."
 elif [ "${NUKE_VENV}" = "1" ]; then
   log_info "[stop] Full stop: wiping venv, runtime deps, and caches"
 else
@@ -57,11 +57,11 @@ if [ "${NUKE_ALL}" != "0" ]; then
 fi
 
 for TORCH_CACHE in "$HOME/.cache/torch" "/root/.cache/torch"; do
-  [ -d "$TORCH_CACHE" ] && { log_info "[cache] Removing torch cache at $TORCH_CACHE"; rm -rf "$TORCH_CACHE" || true; }
+  [ -d "$TORCH_CACHE" ] && rm -rf "$TORCH_CACHE" || true
 done
 
 for NV_CACHE in "$HOME/.nv" "/root/.nv"; do
-  [ -d "$NV_CACHE" ] && { log_info "[cache] Removing NVIDIA cache at $NV_CACHE"; rm -rf "$NV_CACHE" || true; }
+  [ -d "$NV_CACHE" ] && rm -rf "$NV_CACHE" || true
 done
 
 cleanup_python_artifacts "${ROOT_DIR}"

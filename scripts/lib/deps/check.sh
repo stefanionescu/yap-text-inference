@@ -80,9 +80,6 @@ log_trt_dep_status() {
   if [[ ${#REQUIREMENTS_MISSING_PKGS[@]} -gt 0 ]]; then
     printf "[deps]   %-14s %s %s\n" "missing" "${bad}" "${REQUIREMENTS_MISSING_PKGS[*]}"
   fi
-  if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]} -gt 0 ]]; then
-    printf "[deps]   %-14s %s %s\n" "wrong version" "${bad}" "${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
-  fi
 }
 
 # Check if PyTorch is installed with correct version (exact match, including CUDA suffix)
@@ -104,7 +101,6 @@ check_pytorch_installed() {
     return 2
   fi
   
-  log_info "[deps] PyTorch OK: $installed_ver"
   return 0
 }
 
@@ -127,7 +123,6 @@ check_torchvision_installed() {
     return 2
   fi
   
-  log_info "[deps] TorchVision OK: $installed_ver"
   return 0
 }
 
@@ -150,7 +145,6 @@ check_trtllm_installed() {
     return 2
   fi
   
-  log_info "[deps] TensorRT-LLM OK: $installed_ver"
   return 0
 }
 
@@ -158,7 +152,6 @@ check_flashinfer_installed() {
   local py_exe="${1:-python}"
 
   if flashinfer_present_py "$py_exe"; then
-    log_info "[deps] flashinfer OK"
     return 0
   fi
 
@@ -226,16 +219,13 @@ check_requirements_installed() {
   done < "$requirements_file"
   
   if $has_missing; then
-    log_info "[deps] Missing packages: ${REQUIREMENTS_MISSING_PKGS[*]}"
     return 1
   fi
   
   if $has_wrong_version; then
-    log_info "[deps] Wrong version packages: ${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
     return 2
   fi
   
-  log_info "[deps] All requirements.txt packages OK"
   return 0
 }
 
@@ -244,7 +234,7 @@ uninstall_wrong_requirements_packages() {
   local py_exe="${1:-python}"
   
   if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]} -gt 0 ]]; then
-    log_info "[deps] Uninstalling wrong version packages: ${REQUIREMENTS_WRONG_VERSION_PKGS[*]}"
+    log_info "[deps] Uninstalling wrong version packages..."
     for pkg in "${REQUIREMENTS_WRONG_VERSION_PKGS[@]}"; do
       $py_exe -m pip uninstall -y "$pkg" 2>/dev/null || true
     done
@@ -269,7 +259,6 @@ uninstall_pip_pkg_if_wrong_version() {
   local required_base="${required_version%%+*}"
   
   if [[ "$installed_base" != "$required_base" ]]; then
-    log_info "[deps] Uninstalling $pkg $installed_ver (need $required_version)"
     $py_exe -m pip uninstall -y "$pkg" 2>/dev/null || true
     return 0
   fi
