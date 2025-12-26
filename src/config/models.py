@@ -27,13 +27,12 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "Jinx-org/Jinx-Qwen3-32B",
     "Jinx-org/Jinx-Qwen3-14B",
     "deepseek-ai/DeepSeek-V2-Lite-Chat",
-    "mistralai/Mistral-Nemo-Instruct-2407",
+    "mistralai/Mistral-Nemo-Instruct-2407", 
     "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
     "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     "mistralai/Mistral-Small-24B-Instruct-2501",
     "mistralai/Magistral-Small-2509",
-    "TheDrummer/UnslopNemo-12B-v4.1", # PRETTY GOOD: needs more testing tho
-    "nvidia/Mistral-NeMo-12B-Instruct",
+    "TheDrummer/UnslopNemo-12B-v4.1", # PRETTY GOOD: needs more testing tho # TRYING NOW
     "SicariusSicariiStuff/Impish_Bloodmoon_12B",
     "SicariusSicariiStuff/Angelic_Eclipse_12B",
     "flammenai/Mahou-1.3-mistral-nemo-12B",
