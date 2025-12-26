@@ -66,7 +66,7 @@ def push_trt_to_hf(
         base_model = _detect_base_model(checkpoint_path)
     
     # Collect metadata for README
-    metadata = _collect_metadata(checkpoint_path, engine_path, base_model, quant_method)
+    metadata = _collect_metadata(checkpoint_path, engine_path, base_model, repo_id, quant_method)
     
     # Render README
     readme_content = render_trt_readme(metadata)
@@ -161,11 +161,16 @@ def _collect_metadata(
     checkpoint_path: Path,
     engine_path: Path,
     base_model: str,
+    repo_id: str,
     quant_method: str,
 ) -> dict[str, Any]:
     """Collect metadata for README rendering."""
     metadata = {
         "base_model": base_model,
+        "repo_id": repo_id,
+        # Use the original base model as the display name for the README header.
+        # Fall back to the HF repo name if base_model is unknown.
+        "model_name": base_model if base_model else (repo_id.split("/")[-1] if "/" in repo_id else repo_id),
         "source_model_link": f"https://huggingface.co/{base_model}" if "/" in base_model else base_model,
         "quant_method": quant_method,
         "quant_method_upper": quant_method.upper().replace("_", "-"),
@@ -208,6 +213,13 @@ def _collect_metadata(
                     "cuda_toolkit": meta.get("cuda_toolkit", meta.get("cuda_version", "unknown")),
                     "tensorrt_llm_version": meta.get("tensorrt_llm_version", "unknown"),
                 })
+                # Prefer build metadata values for limits if present
+                metadata["max_batch_size"] = meta.get("max_batch_size", metadata.get("max_batch_size", "N/A"))
+                metadata["max_input_len"] = meta.get("max_input_len", metadata.get("max_input_len", "N/A"))
+                metadata["max_output_len"] = meta.get("max_seq_len", metadata.get("max_output_len", "N/A"))
+                # Some builders may record kv cache dtype
+                if "kv_cache_dtype" in meta:
+                    metadata["kv_cache_dtype"] = meta["kv_cache_dtype"]
             except Exception:
                 pass
     
@@ -234,7 +246,10 @@ def _collect_metadata(
     metadata.setdefault("calib_batch_size", "16")
     metadata.setdefault("min_compute_capability", "8.0")
     metadata.setdefault("gpu_arch_note", "A100/L40S/H100 or newer")
-    metadata.setdefault("quant_portability_note", "INT4-AWQ models are portable across sm89/sm90+ GPUs")
+    metadata.setdefault(
+        "quant_portability_note",
+        "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX)",
+    )
     
     return metadata
 

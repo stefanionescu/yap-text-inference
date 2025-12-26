@@ -47,7 +47,7 @@ export TRT_MAX_BATCH_SIZE=32                 # Required for TRT: max sequences p
 
 `HUGGINGFACE_HUB_TOKEN` is also accepted and will be mirrored into `HF_TOKEN` automatically.
 
-1) Install deps and start the server
+Then you can run:
 
 ```bash
 # Chat + classifier (default) - auto-detached deployment with log tailing
