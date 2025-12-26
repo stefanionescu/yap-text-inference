@@ -9,6 +9,7 @@ validate_models_early() {
   local tool_model="${TOOL_MODEL:-}"
   local quantization="${QUANTIZATION:-}"
   local chat_quant="${CHAT_QUANTIZATION:-}"
+  local engine="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}"
 
   # Find Python - prefer venv if available
   local python_cmd="python3"
@@ -25,47 +26,41 @@ import os
 sys.path.insert(0, "${ROOT_DIR}")
 
 from src.config.models import (
-    ALL_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
 )
-from src.helpers.models import is_valid_model
-from src.helpers.quantization import classify_prequantized_model, is_awq_model_name
+from src.helpers.models import get_allowed_chat_models
+from src.helpers.quantization import (
+    classify_prequantized_model,
+    classify_trt_prequantized_model,
+    is_awq_model_name,
+)
 
 deploy_mode = "${deploy_mode}"
 chat_model = "${chat_model}" or None
 tool_model = "${tool_model}" or None
 quantization = "${quantization}" or None
 chat_quant = "${chat_quant}" or None
+engine = "${engine}".lower() or "trt"
+if engine not in ("trt", "vllm"):
+    engine = "trt"
 
 errors = []
 
-def allow_prequantized_override(model, model_type):
-    if model_type != "chat":
-        return False
-    quant = (chat_quant or quantization or "").lower()
-    if not model or not quant:
-        return False
-    kind = classify_prequantized_model(model)
-    if not kind:
-        return False
-    if quant == "awq" and kind != "awq":
-        return False
-    if quant.startswith("gptq") and kind != "gptq":
-        return False
-    if kind not in {"awq", "gptq"}:
-        return False
-    print(f"[validate] Using pre-quantized {kind.upper()} {model_type} model not in approved list: {model}")
-    return True
-
 deploy_chat = deploy_mode in ("both", "chat")
 deploy_tool = deploy_mode in ("both", "tool")
+allowed_chat_models = get_allowed_chat_models(engine)
 
 if deploy_chat:
     if not chat_model:
         errors.append("CHAT_MODEL is required when DEPLOY_MODE='both' or 'chat'")
-    elif not is_valid_model(chat_model, ALL_CHAT_MODELS, "chat"):
-        if not allow_prequantized_override(chat_model, "chat"):
-            errors.append(f"CHAT_MODEL must be one of allowed models, got: {chat_model}")
+    else:
+        chat_allowlisted = os.path.exists(chat_model) or chat_model in allowed_chat_models
+        if not chat_allowlisted:
+            detected = classify_trt_prequantized_model(chat_model) or classify_prequantized_model(chat_model)
+            suffix = f" (detected pre-quantized '{detected}')" if detected else ""
+            errors.append(
+                f"CHAT_MODEL must be allowlisted for engine '{engine}' or a local path{suffix}: {chat_model}"
+            )
 
 if deploy_tool:
     if not tool_model:

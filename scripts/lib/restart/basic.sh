@@ -226,6 +226,11 @@ restart_basic() {
     exit 1
   fi
 
+  # Validate models against allowlists before any heavy work
+  if ! validate_models_early; then
+    exit 1
+  fi
+
   if [ "${DEPLOY_MODE}" = "tool" ]; then
     log_info "[restart] Quick restart: tool-only classifier deployment"
   else
