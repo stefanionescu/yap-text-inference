@@ -37,7 +37,7 @@ if [ "${ENGINE_LOWER}" = "trt" ]; then
   trt_export_env
   
   if ! trt_assert_cuda13_driver "deps"; then
-    log_err "[cuda] CUDA 13.x required for TensorRT-LLM"
+    log_err "[cuda] ✗ CUDA 13.x required for TensorRT-LLM"
     exit 1
   fi
 else
@@ -58,7 +58,7 @@ export_ca_bundle_env_vars
 
 # System deps (MPI for TRT - no-op for vLLM)
 ensure_trt_system_deps || {
-  log_warn "[deps] System deps installation failed, continuing"
+  log_warn "[deps] ⚠ System deps installation failed, continuing"
 }
 
 ensure_torch_cuda_arch_list

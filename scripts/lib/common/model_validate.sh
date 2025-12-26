@@ -87,7 +87,7 @@ print("[validate] Model validation passed")
 sys.exit(0)
 VALIDATE_SCRIPT
   then
-    log_err "[validate] Model validation failed - check model names and allowlists"
+    log_err "[validate] ✗ Model validation failed - check model names and allowlists"
     return 1
   fi
   return 0

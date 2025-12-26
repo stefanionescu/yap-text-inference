@@ -37,7 +37,7 @@ vllm_awq_ensure_cache_dir
 if [ "${USE_PREQUANT_AWQ}" = "1" ]; then
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
     if ! vllm_awq_handle_chat_prequant_or_quantize; then
-      log_err "[quant] AWQ quantization pipeline failed while preparing chat model; aborting."
+      log_err "[quant] ✗ AWQ quantization pipeline failed while preparing chat model; aborting."
       exit 1
     fi
   fi
@@ -45,7 +45,7 @@ else
   log_info "[quant] Running AWQ quantization process"
   if [ "${AWQ_TARGET_CHAT}" = "1" ]; then
     if ! vllm_awq_quantize_chat_if_needed; then
-      log_err "[quant] AWQ quantization pipeline failed while quantizing chat model; aborting."
+      log_err "[quant] ✗ AWQ quantization pipeline failed while quantizing chat model; aborting."
       exit 1
     fi
   fi

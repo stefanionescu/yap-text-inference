@@ -129,7 +129,7 @@ apply_quantization_defaults() {
           else
             export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-XFORMERS}
             if [ "${INFERENCE_ENGINE:-vllm}" != "trt" ]; then
-              log_warn "[env] FlashInfer not available; using XFORMERS backend for AWQ."
+              log_warn "[env] ⚠ FlashInfer not available; using XFORMERS backend for AWQ."
             fi
           fi
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
@@ -200,7 +200,7 @@ apply_quantization_defaults() {
           export KV_DTYPE=${KV_DTYPE:-auto}
           export VLLM_ATTENTION_BACKEND=XFORMERS
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
-          log_warn "[env] Unknown GPU 4-bit mode: using conservative V0 + fp16 KV"
+          log_warn "[env] ⚠ Unknown GPU 4-bit mode: using conservative V0 + fp16 KV"
           ;;
       esac
       ;;

@@ -13,7 +13,7 @@ _restart_resolve_deploy_mode() {
       echo "${candidate}"
       ;;
     *)
-      log_err "[restart] Invalid deploy mode '${candidate}'. Use --deploy-mode both|chat|tool."
+      log_err "[restart] ✗ Invalid deploy mode '${candidate}'. Use --deploy-mode both|chat|tool."
       return 1
       ;;
   esac
@@ -76,7 +76,7 @@ _restart_validate_quantization() {
       return 0
       ;;
     *)
-      log_err "[restart] Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq."
+      log_err "[restart] ✗ Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq."
       return 1
       ;;
   esac
@@ -292,13 +292,13 @@ restart_reconfigure_models() {
   local chat_model="${RECONFIG_CHAT_MODEL:-${CHAT_MODEL:-}}"
   local tool_model="${RECONFIG_TOOL_MODEL:-${TOOL_MODEL:-}}"
   if [ "${deploy_chat}" = "1" ] && [ -z "${chat_model}" ]; then
-    log_err "[restart] Chat deployment requested but no chat model supplied."
-    log_err "[restart] Pass --chat-model <repo_or_path> or export CHAT_MODEL before running --reset-models."
+    log_err "[restart] ✗ Chat deployment requested but no chat model supplied."
+    log_err "[restart] ✗ Pass --chat-model <repo_or_path> or export CHAT_MODEL before running --reset-models."
     exit 1
   fi
   if [ "${deploy_tool}" = "1" ] && [ -z "${tool_model}" ]; then
-    log_err "[restart] Tool deployment requested but no tool model supplied."
-    log_err "[restart] Pass --tool-model <repo_or_path> or export TOOL_MODEL before running --reset-models."
+    log_err "[restart] ✗ Tool deployment requested but no tool model supplied."
+    log_err "[restart] ✗ Pass --tool-model <repo_or_path> or export TOOL_MODEL before running --reset-models."
     exit 1
   fi
 
@@ -380,8 +380,8 @@ restart_reconfigure_models() {
   restart_apply_defaults_and_deps
 
   if [ ! -d "${resolved_venv}" ]; then
-    log_err "[restart] Virtual environment missing at ${resolved_venv}"
-    log_err "[restart] Re-run with --install-deps to rebuild dependencies before reconfigure."
+    log_err "[restart] ✗ Virtual environment missing at ${resolved_venv}"
+    log_err "[restart] ✗ Re-run with --install-deps to rebuild dependencies before reconfigure."
     exit 1
   fi
 

@@ -66,7 +66,7 @@ if [ "${DEPLOY_TOOL}" = "1" ]; then
 fi
 log_info "[main] GPU: ${DETECTED_GPU_NAME:-unknown}"
 if [ -z "${TEXT_API_KEY:-}" ]; then
-  log_error "[main] TEXT_API_KEY environment variable is required and must be set"
+  log_error "[main] ✗ TEXT_API_KEY environment variable is required and must be set"
   exit 1
 fi
 log_info "[main] API Key: ${TEXT_API_KEY}"
@@ -79,7 +79,7 @@ log_info "[server] Starting server..."
 # Robust path resolution for start script
 START_SCRIPT="${SCRIPT_DIR}/start_server.sh"
 if [ ! -x "${START_SCRIPT}" ]; then
-  log_error "[server] start_server.sh not found at ${START_SCRIPT}"
+  log_error "[server] ✗ start_server.sh not found at ${START_SCRIPT}"
   ls -la "${SCRIPT_DIR}" || true
   exit 1
 fi

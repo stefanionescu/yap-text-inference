@@ -143,10 +143,10 @@ restart_push_cached_awq_models() {
         trt_push_to_hf "${ckpt_dir}" "${engine_dir}" "${CHAT_MODEL:-}" "${qformat}"
         return
       else
-        log_warn "[restart] TRT checkpoint directory not found for push: ${ckpt_dir}"
+        log_warn "[restart] ⚠ TRT checkpoint directory not found for push: ${ckpt_dir}"
       fi
     else
-      log_warn "[restart] TRT engine directory not found for push: ${engine_dir}"
+      log_warn "[restart] ⚠ TRT engine directory not found for push: ${engine_dir}"
     fi
     # Even if TRT push fails, fall through to AWQ push logic
   fi

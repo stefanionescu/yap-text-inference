@@ -13,7 +13,7 @@ ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
   if curl -sf http://localhost:8000/healthz >/dev/null 2>&1; then
-    log_success "[vllm-warmup] Server is healthy after ${ELAPSED}s"
+    log_success "[vllm-warmup] ✓ Server is healthy after ${ELAPSED}s"
     break
   fi
   sleep $WAIT_INTERVAL
@@ -21,7 +21,7 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
 done
 
 if [ $ELAPSED -ge $MAX_WAIT ]; then
-  log_warn "[vllm-warmup] Server did not become healthy within ${MAX_WAIT}s"
+  log_warn "[vllm-warmup] ⚠ Server did not become healthy within ${MAX_WAIT}s"
   exit 0
 fi
 

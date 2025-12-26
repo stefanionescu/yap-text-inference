@@ -20,18 +20,18 @@ trt_push_to_hf() {
   fi
   
   if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
-    log_warn "[hf] --push-quant specified but HF_PUSH_REPO_ID not set; skipping push"
+    log_warn "[hf] ⚠ --push-quant specified but HF_PUSH_REPO_ID not set; skipping push"
     return 0
   fi
   
   if [ ! -d "${checkpoint_dir}" ]; then
-    log_warn "[hf] Checkpoint directory not found: ${checkpoint_dir}"
+    log_warn "[hf] ⚠ Checkpoint directory not found: ${checkpoint_dir}"
     return 1
   fi
   
   local token="${HF_TOKEN:-}"
   if [ -z "${token}" ]; then
-    log_warn "[hf] HF_TOKEN not set, skipping push"
+    log_warn "[hf] ⚠ HF_TOKEN not set, skipping push"
     return 1
   fi
   
@@ -40,7 +40,7 @@ trt_push_to_hf() {
   # Pick a python interpreter (prefer venv, then system)
   local python_exe="${HF_PYTHON:-}"
   if [ -n "${python_exe}" ] && [ ! -x "${python_exe}" ]; then
-    log_warn "[hf] HF_PYTHON=${python_exe} not executable; falling back"
+    log_warn "[hf] ⚠ HF_PYTHON=${python_exe} not executable; falling back"
     python_exe=""
   fi
   if [ -z "${python_exe}" ]; then
@@ -51,7 +51,7 @@ trt_push_to_hf() {
     elif command -v python >/dev/null 2>&1; then
       python_exe="$(command -v python)"
     else
-      log_err "[hf] No python interpreter found (.venv, python3, python)"
+      log_err "[hf] ✗ No python interpreter found (.venv, python3, python)"
       return 1
     fi
   fi
@@ -85,7 +85,7 @@ trt_push_to_hf() {
     log_info "[hf] Successfully pushed to HuggingFace"
     return 0
   else
-    log_warn "[hf] HuggingFace push failed"
+    log_warn "[hf] ⚠ HuggingFace push failed"
     return 1
   fi
 }

@@ -31,7 +31,7 @@ vllm_awq_quantize_chat_if_needed() {
   local out_dir="${AWQ_CACHE_DIR}/chat_awq"
   
   if [[ "${CHAT_MODEL}" == *GPTQ* ]]; then
-    log_warn "[quant] AWQ selected but GPTQ chat model provided; refusing."
+    log_warn "[quant] ⚠ AWQ selected but GPTQ chat model provided; refusing."
     exit 1
   fi
 
@@ -52,7 +52,7 @@ vllm_awq_quantize_chat_if_needed() {
     return 0
   fi
 
-  log_err "[quant] AWQ quantization failed for chat model (${CHAT_MODEL}); aborting deployment."
+  log_err "[quant] ✗ AWQ quantization failed for chat model (${CHAT_MODEL}); aborting deployment."
   return 1
 }
 

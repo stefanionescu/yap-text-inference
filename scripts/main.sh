@@ -43,7 +43,7 @@ stop_existing_warmup_processes "${ROOT_DIR}"
 
 # Parse command line arguments
 if [ $# -lt 1 ]; then
-  log_warn "[main] Not enough arguments"
+  log_warn "[main] ⚠ Not enough arguments"
   main_usage
 fi
 
@@ -63,7 +63,7 @@ validate_push_quant_prereqs "${DEPLOY_MODE:-both}"
 # Early model validation - fail fast before any heavy operations
 log_info "[model] Validating model configuration..."
 if ! validate_models_early; then
-  log_err "[model] Aborting deployment due to invalid model configuration"
+  log_err "[model] ✗ Aborting deployment due to invalid model configuration"
   exit 1
 fi
 

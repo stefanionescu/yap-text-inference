@@ -93,7 +93,7 @@ trt_check_cuda_compatibility() {
   cuda_ver=$(trt_detect_cuda_version)
   
   if [ -z "${cuda_ver}" ]; then
-    log_warn "[cuda] Could not detect CUDA version"
+    log_warn "[cuda] ⚠ Could not detect CUDA version"
     return 1
   fi
   
@@ -101,7 +101,7 @@ trt_check_cuda_compatibility() {
   major=$(echo "${cuda_ver}" | cut -d. -f1)
   
   if [ "${major}" -lt 13 ]; then
-    log_warn "[cuda] TRT-LLM 1.2.0rc5 requires CUDA 13.0+, found ${cuda_ver}"
+    log_warn "[cuda] ⚠ TRT-LLM 1.2.0rc5 requires CUDA 13.0+, found ${cuda_ver}"
     return 1
   fi
   
@@ -123,14 +123,14 @@ trt_assert_cuda13_driver() {
   toolkit_int=$(_trt_version_to_int "$toolkit_ver") || toolkit_int=0
 
   if [ "$toolkit_int" -eq 0 ]; then
-    log_err "[${prefix}] Could not detect CUDA toolkit version."
-    log_err "[${prefix}] Ensure CUDA 13.x is installed and nvcc is in PATH, or set CUDA_VERSION env var."
+    log_err "[${prefix}] ✗ Could not detect CUDA toolkit version."
+    log_err "[${prefix}] ✗ Ensure CUDA 13.x is installed and nvcc is in PATH, or set CUDA_VERSION env var."
     return 1
   fi
 
   if [ "$toolkit_int" -lt "$min_cuda_int" ]; then
-    log_err "[${prefix}] CUDA toolkit 13.x required. Detected: '${toolkit_ver}' (int=${toolkit_int})"
-    log_err "[${prefix}] Hint: Install CUDA 13 toolkit and ensure nvcc is in PATH."
+    log_err "[${prefix}] ✗ CUDA toolkit 13.x required. Detected: '${toolkit_ver}' (int=${toolkit_int})"
+    log_err "[${prefix}] ✗ Hint: Install CUDA 13 toolkit and ensure nvcc is in PATH."
     return 1
   fi
 
@@ -176,18 +176,18 @@ PY
   fi
 
   if [ -z "$driver_ver" ]; then
-    log_warn "[${prefix}] Could not query driver CUDA capability (no cuda-python, nvidia-smi failed)."
-    log_warn "[${prefix}] Proceeding with toolkit version only - runtime errors may occur if driver is too old."
+    log_warn "[${prefix}] ⚠ Could not query driver CUDA capability (no cuda-python, nvidia-smi failed)."
+    log_warn "[${prefix}] ⚠ Proceeding with toolkit version only - runtime errors may occur if driver is too old."
     return 0
   fi
 
   driver_int=$(_trt_version_to_int "$driver_ver") || driver_int=0
 
   if [ "$driver_int" -lt "$min_cuda_int" ]; then
-    log_err "[${prefix}] NVIDIA driver only supports up to CUDA ${driver_ver} (need 13.x+)."
-    log_err "[${prefix}] Source: ${driver_source}"
-    log_err "[${prefix}] Hint: Upgrade to a newer NVIDIA driver that supports CUDA 13.x."
-    log_err "[${prefix}] Your toolkit is CUDA ${toolkit_ver}, but the driver can't run CUDA 13 code."
+    log_err "[${prefix}] ✗ NVIDIA driver only supports up to CUDA ${driver_ver} (need 13.x+)."
+    log_err "[${prefix}] ✗ Source: ${driver_source}"
+    log_err "[${prefix}] ✗ Hint: Upgrade to a newer NVIDIA driver that supports CUDA 13.x."
+    log_err "[${prefix}] ✗ Your toolkit is CUDA ${toolkit_ver}, but the driver can't run CUDA 13 code."
     return 1
   fi
 

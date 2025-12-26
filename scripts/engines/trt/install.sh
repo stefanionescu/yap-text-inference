@@ -47,20 +47,20 @@ trt_ensure_cuda_home() {
     elif [ -d "/usr/local/cuda-13.0" ]; then
       export CUDA_HOME="/usr/local/cuda-13.0"
     else
-      log_err "[trt] CUDA_HOME is not set. Install CUDA Toolkit 13.x and export CUDA_HOME."
+      log_err "[trt] ✗ CUDA_HOME is not set. Install CUDA Toolkit 13.x and export CUDA_HOME."
       return 1
     fi
   fi
   
   if [ ! -d "${CUDA_HOME}/lib64" ]; then
-    log_err "[trt] CUDA_HOME/lib64 not found: ${CUDA_HOME}/lib64"
+    log_err "[trt] ✗ CUDA_HOME/lib64 not found: ${CUDA_HOME}/lib64"
     return 1
   fi
   
   # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc5)
   if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
-      log_warn "[trt] libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
+      log_warn "[trt] ⚠ libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
     fi
   fi
   
@@ -97,7 +97,7 @@ trt_install_pytorch() {
   )
   
   _trt_pip_install_with_retry "${pip_cmd[@]}" || {
-    log_err "[trt] Failed to install PyTorch"
+    log_err "[trt] ✗ Failed to install PyTorch"
     return 1
   }
   
@@ -107,7 +107,7 @@ trt_install_pytorch() {
   if [ -n "${torch_cuda}" ]; then
     log_info "[trt] PyTorch CUDA version: ${torch_cuda}"
   else
-    log_warn "[trt] Could not detect PyTorch CUDA version"
+    log_warn "[trt] ⚠ Could not detect PyTorch CUDA version"
   fi
   
   return 0
@@ -131,13 +131,13 @@ _trt_pip_install_with_retry() {
     fi
     attempt=$((attempt + 1))
     if [ "${attempt}" -le "${max_attempts}" ]; then
-      log_warn "[trt] pip attempt failed; retrying after ${delay}s..."
+      log_warn "[trt] ⚠ pip attempt failed; retrying after ${delay}s..."
       sleep "${delay}"
       delay=$((delay * 2))
     fi
   done
 
-  log_err "[trt] pip command failed after ${max_attempts} attempts"
+  log_err "[trt] ✗ pip command failed after ${max_attempts} attempts"
   return 1
 }
 
@@ -163,7 +163,7 @@ trt_install_tensorrt_llm() {
   pip_cmd+=("${target}")
   
   _trt_pip_install_with_retry "${pip_cmd[@]}" || {
-    log_err "[trt] Failed to install TensorRT-LLM"
+    log_err "[trt] ✗ Failed to install TensorRT-LLM"
     return 1
   }
   
@@ -235,9 +235,9 @@ EOF
   ) || true
 
   if ! echo "$check_output" | grep -q "✓ CUDA runtime OK"; then
-    log_err "[trt] CUDA Python bindings not working:"
+    log_err "[trt] ✗ CUDA Python bindings not working:"
     echo "$check_output" >&2
-    log_err "[trt] Hint: Ensure cuda-python>=13.0 and that CUDA_HOME/lib64 contains CUDA 13 runtime libraries"
+    log_err "[trt] ✗ Hint: Ensure cuda-python>=13.0 and that CUDA_HOME/lib64 contains CUDA 13 runtime libraries"
     return 1
   fi
 
@@ -288,11 +288,11 @@ except Exception as exc:
     sys.exit(1)
 PY
   ) || {
-    log_err "[trt] TensorRT-LLM not installed or not importable: ${trt_version}"
+    log_err "[trt] ✗ TensorRT-LLM not installed or not importable: ${trt_version}"
     return 1
   }
   if [[ "${trt_version}" == IMPORT_ERROR:* ]]; then
-    log_warn "[trt] TensorRT-LLM import reported: ${trt_version} (ignored for modelopt)"
+    log_warn "[trt] ⚠ TensorRT-LLM import reported: ${trt_version} (ignored for modelopt)"
   else
     log_info "[trt] TensorRT-LLM version: ${trt_version}"
   fi
@@ -308,7 +308,7 @@ PY
   
   # Check trtllm-build command
   if ! command -v trtllm-build >/dev/null 2>&1; then
-    log_warn "[trt] trtllm-build command not found in PATH"
+    log_warn "[trt] ⚠ trtllm-build command not found in PATH"
   else
     log_info "[trt] trtllm-build: $(which trtllm-build)"
   fi
@@ -376,7 +376,7 @@ trt_prepare_repo() {
     done
     
     if [ "${clone_done}" != "true" ]; then
-      log_err "[trt] Failed to clone TensorRT-LLM repository after ${clone_attempts} attempts"
+      log_err "[trt] ✗ Failed to clone TensorRT-LLM repository after ${clone_attempts} attempts"
       return 1
     fi
   fi
@@ -388,26 +388,26 @@ trt_prepare_repo() {
     log_info "[trt] Fetching ${tag_ref}"
     if [ "${clone_depth}" != "full" ]; then
       git -C "${repo_dir}" fetch --quiet --depth "${clone_depth}" --force origin "${tag_ref}:${tag_ref}" 2>/dev/null || {
-        log_err "[trt] Unable to fetch ${tag_ref}"
+        log_err "[trt] ✗ Unable to fetch ${tag_ref}"
         return 1
       }
     else
       git -C "${repo_dir}" fetch --quiet --force origin "${tag_ref}:${tag_ref}" 2>/dev/null || {
-        log_err "[trt] Unable to fetch ${tag_ref}"
+        log_err "[trt] ✗ Unable to fetch ${tag_ref}"
         return 1
       }
     fi
   fi
   
   if ! git -c advice.detachedHead=false -C "${repo_dir}" checkout --quiet "${tag_name}" 2>/dev/null; then
-    log_err "[trt] Could not checkout version ${TRT_VERSION} (tag ${tag_name})"
-    log_err "[trt] Hint: ensure ${tag_name} exists in ${repo_url}"
+    log_err "[trt] ✗ Could not checkout version ${TRT_VERSION} (tag ${tag_name})"
+    log_err "[trt] ✗ Hint: ensure ${tag_name} exists in ${repo_url}"
     return 1
   fi
   
   # Verify quantization examples directory exists
   if [ ! -d "${repo_dir}/examples/quantization" ]; then
-    log_err "[trt] Quantization examples not found in ${repo_dir}/examples/quantization"
+    log_err "[trt] ✗ Quantization examples not found in ${repo_dir}/examples/quantization"
     ls -la "${repo_dir}/examples/" >&2
     return 1
   fi
@@ -457,11 +457,11 @@ trt_install_quant_requirements() {
     if [ -f "${constraints_file}" ]; then
       pip_args+=(-c "${constraints_file}")
     else
-      log_warn "[trt] Constraints file not found at ${constraints_file}; continuing without it"
+      log_warn "[trt] ⚠ Constraints file not found at ${constraints_file}; continuing without it"
     fi
 
     pip "${pip_args[@]}" || {
-      log_warn "[trt] Some quantization requirements failed to install"
+      log_warn "[trt] ⚠ Some quantization requirements failed to install"
     }
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
     pip install 'urllib3>=2.6.0' || true
@@ -471,7 +471,7 @@ trt_install_quant_requirements() {
     md5sum "${quant_reqs}" 2>/dev/null | awk '{print $1}' > "${marker_file}"
     log_info "[trt] ✓ Quantization dependencies installed"
   else
-    log_warn "[trt] Quantization requirements.txt not found at ${quant_reqs}, continuing"
+    log_warn "[trt] ⚠ Quantization requirements.txt not found at ${quant_reqs}, continuing"
   fi
 }
 

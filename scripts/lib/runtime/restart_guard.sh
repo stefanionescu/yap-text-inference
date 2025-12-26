@@ -29,7 +29,7 @@ runtime_guard_get_running_server_pid() {
       printf '%s' "${existing_pid}"
       return 0
     fi
-    log_warn "[server] Found stale server.pid entry; removing ${pid_file}"
+    log_warn "[server] ⚠ Found stale server.pid entry; removing ${pid_file}"
     rm -f "${pid_file}" || true
   fi
   return 1
@@ -82,19 +82,19 @@ _runtime_guard_force_engine_wipe() {
   local from_engine="$3"
   local to_engine="$4"
   
-  log_warn "[server] =========================================="
-  log_warn "[server] ENGINE SWITCH DETECTED: ${from_engine} → ${to_engine}"
-  log_warn "[server] =========================================="
-  log_warn "[server] This requires a FULL environment wipe:"
-  log_warn "[server]   - All HF caches"
-  log_warn "[server]   - All pip dependencies (venv)"
-  log_warn "[server]   - All quantized model caches"
-  log_warn "[server]   - All engine-specific artifacts"
-  log_warn "[server] =========================================="
+  log_warn "[server] ⚠ =========================================="
+  log_warn "[server] ⚠ ENGINE SWITCH DETECTED: ${from_engine} → ${to_engine}"
+  log_warn "[server] ⚠ =========================================="
+  log_warn "[server] ⚠ This requires a FULL environment wipe:"
+  log_warn "[server] ⚠   - All HF caches"
+  log_warn "[server] ⚠   - All pip dependencies (venv)"
+  log_warn "[server] ⚠   - All quantized model caches"
+  log_warn "[server] ⚠   - All engine-specific artifacts"
+  log_warn "[server] ⚠ =========================================="
   
   # Force full nuke INCLUDING venv (engine switch requires fresh deps)
   if ! NUKE_ALL=1 NUKE_VENV=1 bash "${script_dir}/stop.sh"; then
-    log_err "[server] stop.sh failed during engine wipe"
+    log_err "[server] ✗ stop.sh failed during engine wipe"
     return 1
   fi
   
@@ -143,7 +143,7 @@ runtime_guard_handle_engine_switch() {
   
   # Perform the wipe
   if ! _runtime_guard_force_engine_wipe "${script_dir}" "${root_dir}" "${norm_last}" "${norm_desired}"; then
-    log_err "[server] Engine switch wipe failed"
+    log_err "[server] ✗ Engine switch wipe failed"
     return 2  # Error
   fi
   
@@ -219,7 +219,7 @@ runtime_guard_stop_server_if_needed() {
     return 0
   fi
 
-  log_warn "[server] Server already running (PID=${running_pid}). Evaluating restart strategy..."
+  log_warn "[server] ⚠ Server already running (PID=${running_pid}). Evaluating restart strategy..."
   if runtime_guard_configs_match \
        "${desired_deploy}" \
        "${desired_chat}" \
@@ -231,13 +231,13 @@ runtime_guard_stop_server_if_needed() {
   then
     log_info "[server] Existing server matches requested config; stopping without clearing caches."
     if ! NUKE_ALL=0 bash "${script_dir}/stop.sh"; then
-      log_err "[server] stop.sh failed during light stop"
+      log_err "[server] ✗ stop.sh failed during light stop"
       return 1
     fi
   else
     log_info "[server] Requested configuration differs; performing full reset before redeploy."
     if ! NUKE_ALL=1 bash "${script_dir}/stop.sh"; then
-      log_err "[server] stop.sh failed during full reset"
+      log_err "[server] ✗ stop.sh failed during full reset"
       return 1
     fi
   fi
