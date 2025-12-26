@@ -147,6 +147,13 @@ print(json.dumps(quant))
 " 2>/dev/null || echo "{}")
   fi
   
+  # Determine KV cache dtype based on quantization format
+  local kv_cache_dtype="int8"
+  case "${TRT_QFORMAT:-int4_awq}" in
+    fp8) kv_cache_dtype="fp8" ;;
+    *) kv_cache_dtype="int8" ;;
+  esac
+  
   # Write metadata
   local meta_file="${engine_dir}/build_metadata.json"
   cat >"${meta_file}" <<EOF
@@ -163,6 +170,10 @@ print(json.dumps(quant))
   "gpu_name": "${gpu_name}",
   "gpu_vram_gb": ${gpu_vram},
   "nvidia_driver": "${nvidia_driver}",
+  "kv_cache_dtype": "${kv_cache_dtype}",
+  "awq_block_size": ${TRT_AWQ_BLOCK_SIZE:-128},
+  "calib_size": ${TRT_CALIB_SIZE:-256},
+  "calib_batch_size": ${TRT_CALIB_BATCH_SIZE:-16},
   "built_at": "$(date -Iseconds)"
 }
 EOF

@@ -157,6 +157,27 @@ def _get_engine_label(engine_path: Path) -> str:
     return f"{sm}_default"
 
 
+def _get_compute_capability_info(sm_arch: str) -> dict[str, str]:
+    """Derive compute capability info from SM architecture."""
+    # Map SM arch to compute capability and GPU generation
+    sm_map = {
+        "sm89": ("8.9", "Ada Lovelace / RTX 40 series"),
+        "sm90": ("9.0", "Hopper / H100"),
+        "sm100": ("10.0", "Blackwell / B200"),
+    }
+    
+    # Extract numeric part from sm_arch (e.g., "sm90" -> "90")
+    sm_num = sm_arch.replace("sm", "") if sm_arch.startswith("sm") else sm_arch
+    sm_key = f"sm{sm_num}"
+    
+    if sm_key in sm_map:
+        cc, note = sm_map[sm_key]
+        return {"min_compute_capability": cc, "gpu_arch_note": note}
+    
+    # Default fallback
+    return {"min_compute_capability": "8.9", "gpu_arch_note": "Ada Lovelace+"}
+
+
 def _collect_metadata(
     checkpoint_path: Path,
     engine_path: Path,
@@ -206,20 +227,27 @@ def _collect_metadata(
         if meta_path.is_file():
             try:
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                sm_arch = meta.get("sm_arch", "unknown")
                 metadata.update({
-                    "sm_arch": meta.get("sm_arch", "unknown"),
+                    "sm_arch": sm_arch,
                     "gpu_name": meta.get("gpu_name", "unknown"),
                     # Note: build_metadata.json uses "cuda_toolkit" field name
                     "cuda_toolkit": meta.get("cuda_toolkit", meta.get("cuda_version", "unknown")),
                     "tensorrt_llm_version": meta.get("tensorrt_llm_version", "unknown"),
+                    # Quantization parameters
+                    "kv_cache_dtype": meta.get("kv_cache_dtype", "int8"),
+                    "awq_block_size": meta.get("awq_block_size", 128),
+                    "calib_size": meta.get("calib_size", 256),
+                    "calib_seqlen": meta.get("calib_seqlen", 2048),
+                    "calib_batch_size": meta.get("calib_batch_size", 16),
                 })
                 # Prefer build metadata values for limits if present
                 metadata["max_batch_size"] = meta.get("max_batch_size", metadata.get("max_batch_size", "N/A"))
                 metadata["max_input_len"] = meta.get("max_input_len", metadata.get("max_input_len", "N/A"))
                 metadata["max_output_len"] = meta.get("max_seq_len", metadata.get("max_output_len", "N/A"))
-                # Some builders may record kv cache dtype
-                if "kv_cache_dtype" in meta:
-                    metadata["kv_cache_dtype"] = meta["kv_cache_dtype"]
+                
+                # Derive compute capability from SM arch
+                metadata.update(_get_compute_capability_info(sm_arch))
             except Exception:
                 pass
     
