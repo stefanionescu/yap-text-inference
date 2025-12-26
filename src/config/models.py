@@ -31,7 +31,7 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
     "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     "mistralai/Mistral-Small-24B-Instruct-2501",
-    "mistralai/Magistral-Small-2509",
+    "mistralai/Magistral-Small-2509",s
     "TheDrummer/UnslopNemo-12B-v4.1", # PRETTY GOOD: needs more testing tho # TRYING NOW
     "SicariusSicariiStuff/Impish_Bloodmoon_12B",
     "SicariusSicariiStuff/Angelic_Eclipse_12B",

@@ -13,7 +13,7 @@ language:
 pipeline_tag: text-generation
 ---
 
-# {{model_name}} — {{quant_method_upper}} {{w_bit}}-bit (TensorRT-LLM)
+# {{model_name}} — {{quant_method_upper}} (TensorRT-LLM)
 
 This is a {{quant_method_upper}} quantized version of {{source_model_link}}, optimized for TensorRT-LLM inference.
 
@@ -63,43 +63,6 @@ trt-llm/
 
 ---
 
-## Quick Start
-
-### Download (Python)
-
-```python
-from huggingface_hub import snapshot_download
-
-# Download checkpoints only (portable across systems)
-path = snapshot_download(
-    repo_id="{{repo_id}}",
-    allow_patterns=["trt-llm/checkpoints/**"],
-)
-
-# Or download pre-built engines for your GPU
-path = snapshot_download(
-    repo_id="{{repo_id}}",
-    allow_patterns=["trt-llm/engines/{{engine_label}}/**"],
-)
-```
-
-### Load with TensorRT-LLM
-
-```python
-from tensorrt_llm._tensorrt_engine import LLM
-
-llm = LLM(
-    model="/path/to/trt-llm/engines/{{engine_label}}",
-    tokenizer="{{base_model}}",
-)
-
-# Generate
-for output in llm.generate_async("Hello, how are you?", sampling_params, streaming=True):
-    print(output.outputs[0].text)
-```
-
----
-
 ## Quantization Details
 
 | Parameter | Value |
@@ -121,8 +84,8 @@ for output in llm.generate_async("Hello, how are you?", sampling_params, streami
 - **Python**: 3.10+
 
 ### Portability Notes
-- **Checkpoints**: Portable across systems with compatible TensorRT-LLM versions
-- **Engines**: Hardware-specific (rebuild for different GPU/CUDA versions)
+- **Checkpoints**: Portable across systems with compatible TensorRT-LLM versions; rebuild engines on the target GPU
+- **Engines**: Hardware-specific (rebuild for different GPU/CUDA versions/SMs, e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX)
 - **{{quant_portability_note}}**
 
 ---
@@ -132,6 +95,7 @@ for output in llm.generate_async("Hello, how are you?", sampling_params, streami
 <details>
 <summary><b>Engine fails to load on different GPU</b></summary>
 Engines are compiled for specific SM architecture and CUDA version. Either:
+
 1. Use the checkpoints and rebuild the engine on your target system
 2. Download an engine matching your GPU from the `engines/` subdirectories
 </details>
