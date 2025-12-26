@@ -34,10 +34,13 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "Gryphe/Pantheon-RP-1.6.2-22b-Small",
     "Gryphe/Pantheon-RP-1.8-24b-Small-3.1",
     "mistralai/Magistral-Small-2509",
-    "TheDrummer/UnslopNemo-12B-v4.1", # PRETTY GOOD: needs more testing tho # TRYING NOW
+    "TheDrummer/UnslopNemo-12B-v4.1", # PRETTY GOOD: needs more testing tho
     "SicariusSicariiStuff/Impish_Bloodmoon_12B",
     "SicariusSicariiStuff/Angelic_Eclipse_12B",
     "flammenai/Mahou-1.3-mistral-nemo-12B",
+    "zai-org/GLM-4-32B-0414",
+    "zai-org/GLM-4-32B-Base-0414",
+    "Qwen/Qwen3-32B",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
@@ -51,6 +54,7 @@ ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
     "kakaocorp/kanana-1.5-15.7b-a3b-instruct",
     "moonshotai/Kimi-Linear-48B-A3B-Instruct",
     "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
+    "meta-llama/Llama-4-Scout-17B-16E-Instruct",
 ]
 
 ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
