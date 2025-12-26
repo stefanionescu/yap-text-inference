@@ -53,10 +53,10 @@ This is a {{quant_method_upper}} quantized version of {{source_model_link}}, opt
 
 ```
 trt-llm/
-  checkpoints/               # Quantized TRT-LLM checkpoints (portable)
+  checkpoints/
     *.safetensors
     config.json
-  engines/{{engine_label}}/  # Built TensorRT-LLM engines (hardware-specific)
+  engines/{{engine_label}}/ 
     rank*.engine
     config.json
 ```

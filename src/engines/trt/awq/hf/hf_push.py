@@ -229,23 +229,7 @@ def _collect_metadata(
     is_hf_model = "/" in base_model
     license_info = compute_license_info(base_model, is_tool=False, is_hf_model=is_hf_model)
     metadata.update(license_info)
-    
-    # Defaults
-    metadata.setdefault("sm_arch", os.getenv("GPU_SM_ARCH", "sm89"))
-    metadata.setdefault("gpu_name", "NVIDIA GPU")
-    metadata.setdefault("cuda_toolkit", "12.0+")
-    metadata.setdefault("tensorrt_llm_version", "0.17+")
-    metadata.setdefault("engine_label", f"{metadata['sm_arch']}_default")
-    metadata.setdefault("max_batch_size", "16")
-    metadata.setdefault("max_input_len", "4096")
-    metadata.setdefault("max_output_len", "512")
-    metadata.setdefault("kv_cache_dtype", "fp8" if "fp8" in quant_method else "int8")
-    metadata.setdefault("awq_block_size", "128")
-    metadata.setdefault("calib_size", "64")
-    metadata.setdefault("calib_seqlen", "2048")
-    metadata.setdefault("calib_batch_size", "16")
-    metadata.setdefault("min_compute_capability", "8.0")
-    metadata.setdefault("gpu_arch_note", "A100/L40S/H100 or newer")
+
     metadata.setdefault(
         "quant_portability_note",
         "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX)",
