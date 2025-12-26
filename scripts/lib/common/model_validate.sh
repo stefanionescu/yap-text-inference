@@ -10,6 +10,34 @@ validate_models_early() {
   local quantization="${QUANTIZATION:-}"
   local chat_quant="${CHAT_QUANTIZATION:-}"
   local engine="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}"
+  local sm_arch="${GPU_SM_ARCH:-}"
+
+  # Early check: Block NVFP4/MOE on A100 for TRT-LLM
+  # This check runs before Python to fail as fast as possible
+  if [ "${engine}" = "trt" ] && [ "${sm_arch}" = "sm80" ]; then
+    if [ -n "${chat_model}" ]; then
+      # Check for pre-quantized NVFP4 models
+      if model_detect_is_nvfp4 "${chat_model}"; then
+        log_err "[validate] ✗ NVFP4 models cannot run on A100 (sm80)."
+        log_err "[validate]   NVFP4 requires native FP4 support (L40S sm89, H100 sm90)."
+        log_err "[validate]   Model: ${chat_model}"
+        log_err "[validate]   Options:"
+        log_err "[validate]     - Use vLLM engine (--vllm) with this model"
+        log_err "[validate]     - Use an INT4-AWQ quantized model for TRT on A100"
+        return 1
+      fi
+      
+      # Check for MoE models (would use NVFP4 with TRT)
+      if model_detect_is_moe "${chat_model}"; then
+        log_err "[validate] ✗ MoE models cannot use TRT-LLM on A100 (sm80)."
+        log_err "[validate]   TRT-LLM uses NVFP4 for MoE which requires native FP4."
+        log_err "[validate]   Model: ${chat_model}"
+        log_err "[validate]   Options:"
+        log_err "[validate]     - Use vLLM engine instead (--vllm)"
+        return 1
+      fi
+    fi
+  fi
 
   # Find Python - prefer venv if available
   local python_cmd="python3"

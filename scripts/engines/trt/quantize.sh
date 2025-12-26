@@ -154,6 +154,11 @@ trt_quantize_model() {
       quant_cmd+=(--awq_block_size "${TRT_AWQ_BLOCK_SIZE:-128}")
       quant_cmd+=(--kv_cache_dtype int8)
       ;;
+    nvfp4)
+      # NVFP4: 4-bit floating point quantization for MoE models
+      # Uses FP8 KV cache for better quality with sparse expert layers
+      quant_cmd+=(--kv_cache_dtype fp8)
+      ;;
     fp8)
       quant_cmd+=(--kv_cache_dtype fp8)
       ;;
