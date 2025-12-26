@@ -50,6 +50,7 @@ _restart_autodetect_quantization() {
 
 _restart_normalize_quantization_flag() {
   local value="${1:-}"
+  local model="${2:-${CHAT_MODEL:-}}"
   if [ -z "${value}" ]; then
     echo ""
     return
@@ -57,7 +58,12 @@ _restart_normalize_quantization_flag() {
   local lowered="${value,,}"
   case "${lowered}" in
     4bit)
-      echo "awq"
+      # For MoE models on TRT, 4-bit means nvfp4; for dense models, it's awq
+      if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && model_detect_is_moe "${model}"; then
+        echo "nvfp4"
+      else
+        echo "awq"
+      fi
       ;;
     8bit)
       # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
@@ -72,11 +78,11 @@ _restart_normalize_quantization_flag() {
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
-    8bit|fp8|awq|gptq|gptq_marlin)
+    8bit|fp8|awq|nvfp4|gptq|gptq_marlin)
       return 0
       ;;
     *)
-      log_err "[restart] ✗ Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq."
+      log_err "[restart] ✗ Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq|nvfp4."
       return 1
       ;;
   esac
@@ -317,11 +323,11 @@ restart_reconfigure_models() {
 
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
   if [ -n "${chat_quant}" ]; then
-    chat_quant="$(_restart_normalize_quantization_flag "${chat_quant}")"
+    chat_quant="$(_restart_normalize_quantization_flag "${chat_quant}" "${chat_model}")"
   fi
   local quantization="${QUANTIZATION:-}"
   if [ -n "${quantization}" ]; then
-    quantization="$(_restart_normalize_quantization_flag "${quantization}")"
+    quantization="$(_restart_normalize_quantization_flag "${quantization}" "${chat_model}")"
   fi
 
   if [ "${deploy_chat}" = "1" ] && [ -z "${chat_quant}" ]; then

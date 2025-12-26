@@ -34,26 +34,24 @@ if [ -f "${PID_FILE}" ]; then
 fi
 
 # Log key env knobs
-log_info "[server] GPU=${DETECTED_GPU_NAME:-unknown}"
+log_info "[server]   GPU=${DETECTED_GPU_NAME:-unknown}"
 
 if [ "${DEPLOY_MODE:-both}" = "both" ]; then
-  log_info "[server] CHAT=${CHAT_MODEL:-}"
-  log_info "[server] TOOL=${TOOL_MODEL:-}"
+  log_info "[server]   CHAT=${CHAT_MODEL:-}"
+  log_info "[server]   TOOL=${TOOL_MODEL:-}"
 elif [ "${DEPLOY_MODE:-both}" = "chat" ]; then
-  log_info "[server] MODEL=${CHAT_MODEL:-}"
+  log_info "[server]   MODEL=${CHAT_MODEL:-}"
 else
-  log_info "[server] MODEL=${TOOL_MODEL:-}"
+  log_info "[server]   MODEL=${TOOL_MODEL:-}"
 fi
 
 if [ "${DEPLOY_MODE:-both}" = "tool" ]; then
-  log_info "[server] QUANT_MODE=tool-only (classifier-only)"
+  log_info "[server]   QUANT_MODE=tool-only (classifier-only)"
 else
-  log_info "[server] QUANT_MODE=${QUANT_MODE:-auto}"
-  log_info "[server] BACKEND=${QUANTIZATION:-}"
-  log_info "[server] KV_DTYPE=${KV_DTYPE:-}"
+  log_info "[server]   QUANT_MODE=${QUANT_MODE:-auto}"
+  log_info "[server]   BACKEND=${QUANTIZATION:-}"
+  log_info "[server]   KV_DTYPE=${KV_DTYPE:-}"
 fi
-
-log_info "[server] TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-} VLLM_USE_V1=${VLLM_USE_V1:-} ENFORCE_EAGER=${ENFORCE_EAGER:-}"
 
 runtime_guard_write_snapshot "${ROOT_DIR}"
 

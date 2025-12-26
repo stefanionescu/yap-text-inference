@@ -89,9 +89,9 @@ trt_quantize_model() {
     return 1
   fi
   
-  # Resolve qformat if not specified
+  # Resolve qformat if not specified (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
-    qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}")
+    qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
   
   local kv_cache_dtype
