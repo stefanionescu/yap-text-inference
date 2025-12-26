@@ -28,7 +28,7 @@ def _is_mistral_research_model(model_path: str) -> bool:
 def _license_link_for(model_path: str, is_hf_model: bool) -> str:
     if not is_hf_model:
         return "LICENSE"
-    return f"https://huggingface.co/{model_path}/blob/main/LICENSE"
+    return f"https://huggingface.co/{model_path}"
 
 
 def _is_qwen_license_model(model_path: str) -> bool:
@@ -76,7 +76,7 @@ def fetch_license_from_hf(model_id: str) -> dict[str, str] | None:
         
         # If no explicit link, try to construct one for the base model
         if not license_link:
-            license_link = f"https://huggingface.co/{model_id}/blob/main/LICENSE"
+            license_link = f"https://huggingface.co/{model_id}"
         
         return {
             "license": license_val,
