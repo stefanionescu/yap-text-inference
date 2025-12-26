@@ -125,6 +125,32 @@ restart_push_cached_awq_models() {
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return
   fi
+
+  # If using TRT engine, push the TRT artifacts (checkpoint + engine)
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+    local engine_dir="${TRT_ENGINE_DIR:-}"
+    if [ -d "${engine_dir}" ]; then
+      # Derive checkpoint dir from engine dir name and qformat
+      local qformat="${TRT_QUANT_METHOD:-int4_awq}"
+      local engine_base
+      engine_base="$(basename "${engine_dir}")"
+      # engine dir pattern: <model>-trt-<qformat>
+      local base="${engine_base%-${qformat}}"
+      base="${base%-trt}"
+      local ckpt_dir="${TRT_CACHE_DIR:-${ROOT_DIR}/.trt_cache}/${base}-${qformat}-ckpt"
+      if [ -d "${ckpt_dir}" ]; then
+        log_info "[restart] Uploading TRT artifacts to Hugging Face (restart)"
+        trt_push_to_hf "${ckpt_dir}" "${engine_dir}" "${CHAT_MODEL:-}" "${qformat}"
+        return
+      else
+        log_warn "[restart] TRT checkpoint directory not found for push: ${ckpt_dir}"
+      fi
+    else
+      log_warn "[restart] TRT engine directory not found for push: ${engine_dir}"
+    fi
+    # Even if TRT push fails, fall through to AWQ push logic
+  fi
+
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
     log_info "[restart] --push-quant specified but no local AWQ artifacts detected; skipping upload."
     return
