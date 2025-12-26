@@ -12,16 +12,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
-import os
-import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
+from ..core.metadata import collect_metadata, detect_base_model, get_engine_label
 from .readme_renderer import render_trt_readme
-from src.helpers.templates import compute_license_info
 
 
 def push_trt_to_hf(
@@ -63,10 +58,10 @@ def push_trt_to_hf(
     
     # Detect base model from checkpoint config
     if not base_model:
-        base_model = _detect_base_model(checkpoint_path)
+        base_model = detect_base_model(checkpoint_path)
     
     # Collect metadata for README
-    metadata = _collect_metadata(checkpoint_path, engine_path, base_model, repo_id, quant_method)
+    metadata = collect_metadata(checkpoint_path, engine_path, base_model, repo_id, quant_method)
     
     # Render README
     readme_content = render_trt_readme(metadata)
@@ -108,7 +103,7 @@ def push_trt_to_hf(
     
     # Upload engines if they exist
     if engine_path.is_dir():
-        engine_label = _get_engine_label(engine_path)
+        engine_label = get_engine_label(engine_path)
         print(f"[trt-hf] Uploading engines from {engine_dir} as {engine_label}")
         api.upload_folder(
             folder_path=str(engine_path),
@@ -120,150 +115,6 @@ def push_trt_to_hf(
     
     print(f"[trt-hf] Successfully pushed to https://huggingface.co/{repo_id}")
     return True
-
-
-def _detect_base_model(checkpoint_path: Path) -> str:
-    """Detect base model from checkpoint config."""
-    config_path = checkpoint_path / "config.json"
-    if config_path.is_file():
-        try:
-            config = json.loads(config_path.read_text(encoding="utf-8"))
-            # TRT-LLM config may have pretrained_config with model info
-            pretrained = config.get("pretrained_config", {})
-            if "model_name" in pretrained:
-                return pretrained["model_name"]
-        except Exception:
-            pass
-    return "unknown"
-
-
-def _get_engine_label(engine_path: Path) -> str:
-    """Generate engine label from build metadata."""
-    # Try to read build metadata
-    meta_path = engine_path / "build_metadata.json"
-    if meta_path.is_file():
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            sm = meta.get("sm_arch", "sm89")
-            trt_ver = meta.get("tensorrt_llm_version", "unknown")
-            # Note: build_metadata.json uses "cuda_toolkit" field name
-            cuda_ver = meta.get("cuda_toolkit", meta.get("cuda_version", "unknown"))
-            return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
-        except Exception:
-            pass
-    
-    # Fallback: use directory name or generate from env
-    sm = os.getenv("GPU_SM_ARCH", "sm89")
-    return f"{sm}_default"
-
-
-def _get_compute_capability_info(sm_arch: str) -> dict[str, str]:
-    """Derive compute capability info from SM architecture."""
-    # Map SM arch to compute capability and GPU generation
-    sm_map = {
-        "sm89": ("8.9", "Ada Lovelace / RTX 40 series"),
-        "sm90": ("9.0", "Hopper / H100"),
-        "sm100": ("10.0", "Blackwell / B200"),
-    }
-    
-    # Extract numeric part from sm_arch (e.g., "sm90" -> "90")
-    sm_num = sm_arch.replace("sm", "") if sm_arch.startswith("sm") else sm_arch
-    sm_key = f"sm{sm_num}"
-    
-    if sm_key in sm_map:
-        cc, note = sm_map[sm_key]
-        return {"min_compute_capability": cc, "gpu_arch_note": note}
-    
-    # Default fallback
-    return {"min_compute_capability": "8.9", "gpu_arch_note": "Ada Lovelace+"}
-
-
-def _collect_metadata(
-    checkpoint_path: Path,
-    engine_path: Path,
-    base_model: str,
-    repo_id: str,
-    quant_method: str,
-) -> dict[str, Any]:
-    """Collect metadata for README rendering."""
-    metadata = {
-        "base_model": base_model,
-        "repo_id": repo_id,
-        # Use the original base model as the display name for the README header.
-        # Fall back to the HF repo name if base_model is unknown.
-        "model_name": base_model if base_model else (repo_id.split("/")[-1] if "/" in repo_id else repo_id),
-        "source_model_link": f"https://huggingface.co/{base_model}" if "/" in base_model else base_model,
-        "quant_method": quant_method,
-        "quant_method_upper": quant_method.upper().replace("_", "-"),
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-    }
-    
-    # Detect w_bit from quant method
-    if "int4" in quant_method or "awq" in quant_method:
-        metadata["w_bit"] = "4"
-    elif "int8" in quant_method:
-        metadata["w_bit"] = "8"
-    elif "fp8" in quant_method:
-        metadata["w_bit"] = "8 (FP8)"
-    else:
-        metadata["w_bit"] = "unknown"
-    
-    # Read checkpoint config
-    config_path = checkpoint_path / "config.json"
-    if config_path.is_file():
-        try:
-            config = json.loads(config_path.read_text(encoding="utf-8"))
-            build_cfg = config.get("build_config", {})
-            metadata["max_batch_size"] = build_cfg.get("max_batch_size", "N/A")
-            metadata["max_input_len"] = build_cfg.get("max_input_len", "N/A")
-            metadata["max_output_len"] = build_cfg.get("max_seq_len", "N/A")
-        except Exception:
-            pass
-    
-    # Engine metadata
-    if engine_path.is_dir():
-        metadata["engine_label"] = _get_engine_label(engine_path)
-        meta_path = engine_path / "build_metadata.json"
-        if meta_path.is_file():
-            try:
-                meta = json.loads(meta_path.read_text(encoding="utf-8"))
-                sm_arch = meta.get("sm_arch", "unknown")
-                metadata.update({
-                    "sm_arch": sm_arch,
-                    "gpu_name": meta.get("gpu_name", "unknown"),
-                    # Note: build_metadata.json uses "cuda_toolkit" field name
-                    "cuda_toolkit": meta.get("cuda_toolkit", meta.get("cuda_version", "unknown")),
-                    "tensorrt_llm_version": meta.get("tensorrt_llm_version", "unknown"),
-                    # Quantization parameters
-                    "kv_cache_dtype": meta.get("kv_cache_dtype", "int8"),
-                    "awq_block_size": meta.get("awq_block_size", 128),
-                    "calib_size": meta.get("calib_size", 256),
-                    "calib_seqlen": meta.get("calib_seqlen", 2048),
-                    "calib_batch_size": meta.get("calib_batch_size", 16),
-                })
-                # Prefer build metadata values for limits if present
-                metadata["max_batch_size"] = meta.get("max_batch_size", metadata.get("max_batch_size", "N/A"))
-                metadata["max_input_len"] = meta.get("max_input_len", metadata.get("max_input_len", "N/A"))
-                metadata["max_output_len"] = meta.get("max_seq_len", metadata.get("max_output_len", "N/A"))
-                
-                # Derive compute capability from SM arch
-                metadata.update(_get_compute_capability_info(sm_arch))
-            except Exception:
-                pass
-    
-    # Fetch license from the base model on HuggingFace
-    # This ensures the quantized model inherits the correct license
-    # Uses shared logic with vLLM AWQ push
-    is_hf_model = "/" in base_model
-    license_info = compute_license_info(base_model, is_tool=False, is_hf_model=is_hf_model)
-    metadata.update(license_info)
-
-    metadata.setdefault(
-        "quant_portability_note",
-        "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX)",
-    )
-    
-    return metadata
 
 
 def main() -> int:
@@ -294,4 +145,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
