@@ -226,7 +226,7 @@ _restart_can_preserve_cache() {
 }
 
 restart_clear_model_artifacts() {
-  log_info "[restart] Clearing cached model artifacts for model switch..."
+  log_info "[restart] Clearing cached model artifacts..."
   
   # Clear stale TRT engine path reference
   rm -f "${ROOT_DIR}/.run/trt_engine_dir.env" 2>/dev/null || true
@@ -268,7 +268,6 @@ restart_clear_model_artifacts() {
   
   for path in "${model_paths[@]}" "${hf_paths[@]}"; do
     if [ -n "${path}" ] && [ -e "${path}" ]; then
-      log_info "[restart] Removing ${path}"
       rm -rf "${path}" || true
     fi
   done
@@ -363,17 +362,12 @@ restart_reconfigure_models() {
     preserve_cache=1
   fi
 
-  log_info "[restart] Restart mode: reconfigure (models reset, deps preserved)"
+  log_info "[restart] Reconfiguring models..."
 
   local resolved_venv="${VENV_DIR:-$(get_venv_dir)}"
-
-  log_info "[restart] Stopping server before redeploy (preserving ${resolved_venv})..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
-  if [ "${preserve_cache}" = "1" ]; then
-    log_info "[restart] Detected identical model + quantization; preserving all caches and engines."
-    log_info "[restart] Skipping quantization/build (everything already in place)."
-  else
+  if [ "${preserve_cache}" != "1" ]; then
     restart_clear_model_artifacts
   fi
 
@@ -391,10 +385,8 @@ restart_reconfigure_models() {
   if [ "${preserve_cache}" != "1" ]; then
     if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
       if _restart_needs_trt_engine_build || _restart_needs_awq_pipeline; then
-        log_info "[restart] Building TRT-LLM engine (required for TRT deployment)..."
+        log_info "[restart] Building TRT-LLM engine..."
         source "${SCRIPT_DIR}/quantization/trt_quantizer.sh"
-      else
-        log_info "[restart] TRT engine already exists, skipping build"
       fi
     elif _restart_needs_awq_pipeline; then
       source "${SCRIPT_DIR}/quantization/vllm_quantizer.sh"

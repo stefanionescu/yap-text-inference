@@ -43,9 +43,9 @@ trt_build_engine() {
     log_info "[build] FORCE_REBUILD=true, rebuilding engine..."
   fi
   
-  log_info "[build] Building TensorRT-LLM engine"
-  log_info "[build] Checkpoint: ${checkpoint_dir}"
-  log_info "[build] Engine output: ${engine_dir}"
+  log_info "[build] Building TensorRT-LLM engine..."
+  log_info "[build]   Checkpoint: ${checkpoint_dir}"
+  log_info "[build]   Output: ${engine_dir}"
   
   # Calculate max sequence length
   local max_seq_len=$((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN))
@@ -67,7 +67,6 @@ trt_build_engine() {
     --workers "$(nproc --all)"
   )
   
-  log_info "[build] Running: ${build_cmd[*]}"
   "${build_cmd[@]}" || {
     log_err "[build] ✗ Engine build failed"
     return 1
@@ -207,14 +206,7 @@ trt_validate_engine() {
   
   local engine_count
   engine_count=$(ls "${engine_dir}"/rank*.engine 2>/dev/null | wc -l)
-  log_info "[build] Found ${engine_count} engine file(s)"
-  
-  # Check for metadata
-  if [ ! -f "${engine_dir}/build_metadata.json" ]; then
-    log_warn "[build] ⚠ build_metadata.json not found (non-critical)"
-  fi
-  
-  log_info "[build] ✓ Engine validated: ${engine_dir}"
+  log_info "[build] ✓ Engine validated (${engine_count} file(s)): ${engine_dir}"
   return 0
 }
 
@@ -238,10 +230,10 @@ trt_quantize_and_build() {
     qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}")
   fi
   
-  log_info "[build] Starting TRT quantize and build pipeline"
-  log_info "[build] Model: ${model_id}"
-  log_info "[build] Format: ${qformat}"
-  log_info "[build] GPU: ${GPU_SM_ARCH:-auto} ($(gpu_detect_name))"
+  log_info "[build] Starting TRT quantize and build pipeline..."
+  log_info "[build]   Model: ${model_id}"
+  log_info "[build]   Format: ${qformat}"
+  log_info "[build]   GPU: ${GPU_SM_ARCH:-auto} ($(gpu_detect_name))"
   
   # Check if this is a pre-quantized model
   if trt_is_prequantized_model "${model_id}"; then
@@ -270,8 +262,7 @@ trt_quantize_and_build() {
   mkdir -p "${ROOT_DIR:-.}/.run"
   echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
   
-  log_info "[build] ✓ Quantize and build pipeline complete"
-  log_info "[build] Engine directory: ${TRT_ENGINE_DIR}"
+  log_info "[build] ✓ Pipeline complete: ${TRT_ENGINE_DIR}"
   
   return 0
 }

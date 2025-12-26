@@ -5,7 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
 # Warmup script - waits for server to be ready and runs initial validation
-log_info "[vllm-warmup] Waiting for server to be ready..."
 
 MAX_WAIT=300
 WAIT_INTERVAL=5
@@ -25,5 +24,5 @@ if [ $ELAPSED -ge $MAX_WAIT ]; then
   exit 0
 fi
 
-log_info "[vllm-warmup] Warmup complete"
+log_success "[warmup] ✓ Ready"
 

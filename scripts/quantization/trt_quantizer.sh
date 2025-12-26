@@ -39,7 +39,7 @@ if [ "${TRT_TARGET_CHAT}" = "0" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-log_info "[quant] TRT-LLM quantization pipeline starting..."
+log_info "[quant] Starting TRT-LLM quantization..."
 
 # Initialize GPU detection
 gpu_init_detection "trt-quant"
@@ -163,6 +163,5 @@ if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
   trt_push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}"
 fi
 
-log_info "[quant] TRT-LLM quantization pipeline complete"
-log_info "[quant] Engine directory: ${TRT_ENGINE_DIR}"
+log_info "[quant] ✓ Complete: ${TRT_ENGINE_DIR}"
 

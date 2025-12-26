@@ -81,7 +81,7 @@ validate_chat_model() {
     
     local quant_type
     quant_type=$(classify_prequantized_model "$model")
-    echo "[validate] CHAT_MODEL '$model' validated as $quant_type"
+    echo "[validate] ✓ CHAT_MODEL: $model ($quant_type)"
     return 0
 }
 
@@ -95,7 +95,7 @@ validate_tool_model() {
     
     for allowed in "${ALLOWED_TOOL_MODELS[@]}"; do
         if [[ "$model" == "$allowed" ]]; then
-            echo "[validate] TOOL_MODEL '$model' is in allowlist"
+            echo "[validate] ✓ TOOL_MODEL: $model"
             return 0
         fi
     done

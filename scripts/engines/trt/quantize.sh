@@ -38,7 +38,7 @@ trt_download_model() {
     return 0
   fi
   
-  log_info "[model] Downloading model ${model_id} to ${target_dir}"
+  log_info "[model] Downloading model ${model_id} to ${target_dir}..."
   mkdir -p "${target_dir}"
   
   # Only enable HF_HUB_ENABLE_HF_TRANSFER if hf_transfer is installed
@@ -97,9 +97,9 @@ trt_quantize_model() {
   local kv_cache_dtype
   kv_cache_dtype=$(trt_resolve_kv_cache_dtype "${qformat}")
   
-  log_info "[quant] Quantizing model ${model_id} to ${qformat}"
-  log_info "[quant] Output directory: ${output_dir}"
-  log_info "[quant] KV cache dtype: ${kv_cache_dtype}"
+  log_info "[quant] Quantizing model ${model_id} to ${qformat}..."
+  log_info "[quant]   Output: ${output_dir}"
+  log_info "[quant]   KV cache: ${kv_cache_dtype}"
   
   # Check if already quantized
   if [ -d "${output_dir}" ] && [ -f "${output_dir}/config.json" ]; then
@@ -169,7 +169,6 @@ trt_quantize_model() {
     export TRANSFORMERS_PATCH_SCRIPT="${patch_script}"
   fi
   
-  log_info "[quant] Running: ${quant_cmd[*]}"
   # Run with patch applied via -c wrapper
   if ! python -c "
 import os, sys, runpy

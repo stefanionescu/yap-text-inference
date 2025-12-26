@@ -24,7 +24,7 @@ source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
 source "${SCRIPT_DIR}/lib/common/torch.sh"
 
-log_info "[restart] Restart manager ready (reuse caches or reconfigure models)"
+log_info "[restart] Restarting server..."
 
 ensure_required_env_vars
 
@@ -156,21 +156,8 @@ if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
   exit 1
 fi
 
-# Report detected model sources
-log_info "[restart] Detected model sources for restart:"
-if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-  chat_origin="local cache"
-  if [ "${CHAT_AWQ_SOURCE_KIND:-local}" != "local" ]; then
-    chat_origin="pre-quantized repo"
-  fi
-  log_info "[restart]   Chat (${chat_origin}): ${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
-fi
-if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-  log_info "[restart]   Tool: classifier weights reused directly"
-fi
-
 # Light stop - preserve models and dependencies (BEFORE deps install)
-log_info "[restart] Stopping server (preserving models and dependencies)..."
+log_info "[restart] Stopping server..."
 NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 # Check if venv exists (skip if --install-deps will create it)

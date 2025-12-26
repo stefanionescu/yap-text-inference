@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
-log_info "[main] Starting Yap Text Inference Docker Container (TensorRT-LLM)"
+log_info "[main] Starting Yap Text Inference (TensorRT-LLM)..."
 
 # Usage function
 usage() {
@@ -46,35 +46,14 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
 fi
 
 # Validate environment and set defaults
-log_info "[main] Setting up environment..."
 source "${SCRIPT_DIR}/bootstrap.sh"
 
-# Display final configuration
-log_info "[main] "
-if [ "${DEPLOY_CHAT}" = "1" ]; then
-  log_info "[main] === Yap Text Inference Configuration (TRT-LLM) ==="
-else
-  log_info "[main] === Yap Text Inference Configuration (Tool Classifier) ==="
-fi
-log_info "[main] Deploy mode: ${DEPLOY_MODE}"
-if [ "${DEPLOY_CHAT}" = "1" ]; then
-  log_info "[main] Chat model (tokenizer): ${CHAT_MODEL}"
-  log_info "[main] TRT engine repo: ${TRT_ENGINE_REPO:-<mount required>}"
-fi
-if [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "[main] Tool model: ${TOOL_MODEL} (PyTorch classifier)"
-fi
-log_info "[main] GPU: ${DETECTED_GPU_NAME:-unknown}"
 if [ -z "${TEXT_API_KEY:-}" ]; then
-  log_error "[main] ✗ TEXT_API_KEY environment variable is required and must be set"
+  log_error "[main] ✗ TEXT_API_KEY is required"
   exit 1
 fi
-log_info "[main] API Key: ${TEXT_API_KEY}"
-log_info "[main] =========================================="
-log_info "[main] "
 
 # Start the server
-log_info "[server] Starting server..."
 
 # Robust path resolution for start script
 START_SCRIPT="${SCRIPT_DIR}/start_server.sh"

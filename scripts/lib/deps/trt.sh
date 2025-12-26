@@ -18,7 +18,6 @@ ensure_trt_system_deps() {
   
   # Check if mpi.h is already available
   if _check_mpi_headers; then
-    log_info "[deps] MPI development headers already installed"
     return 0
   fi
   
@@ -42,7 +41,7 @@ ensure_trt_system_deps() {
   
   # Verify installation
   if _check_mpi_headers; then
-    log_info "[deps] MPI development libraries installed successfully"
+    log_info "[deps] ✓ MPI installed"
     return 0
   else
     log_err "[deps] ✗ Failed to install MPI development libraries"
@@ -75,8 +74,6 @@ trt_install_missing_components() {
     else
       had_error=1
     fi
-  else
-    log_info "[trt] PyTorch/TorchVision already correct; skipping"
   fi
 
   if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
@@ -85,8 +82,6 @@ trt_install_missing_components() {
     else
       had_error=1
     fi
-  else
-    log_info "[trt] requirements-trt already satisfied; skipping"
   fi
 
   # Install TRT-LLM if missing OR if flashinfer is missing (allow deps so flashinfer installs)
@@ -104,8 +99,6 @@ trt_install_missing_components() {
     else
       had_error=1
     fi
-  else
-    log_info "[trt] TensorRT-LLM already correct; skipping"
   fi
 
   if [ "${had_error}" = "1" ]; then
@@ -281,6 +274,6 @@ trt_install_deps() {
     return 1
   fi
   
-  log_info "[trt] ✓ TensorRT-LLM dependencies installed"
+  log_info "[trt] ✓ TRT-LLM ready"
   return 0
 }

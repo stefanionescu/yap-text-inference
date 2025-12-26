@@ -86,7 +86,7 @@ validate_push_quant_prereqs() {
   if [ "${HF_PUSH_PRIVATE}" = "0" ]; then
     visibility="public"
   fi
-  log_info "[env] --push-quant enabled: quantized models will be pushed to ${HF_PUSH_REPO_ID} (${visibility})"
+  log_info "[env] Quantized model will be pushed to ${HF_PUSH_REPO_ID} (${visibility})"
   return 0
 }
 
