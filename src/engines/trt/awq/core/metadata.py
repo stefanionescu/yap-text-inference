@@ -174,7 +174,8 @@ def collect_metadata(
                     "calib_batch_size": meta.get("calib_batch_size", metadata["calib_batch_size"]),
                     "max_batch_size": meta.get("max_batch_size", metadata["max_batch_size"]),
                     "max_input_len": meta.get("max_input_len", metadata["max_input_len"]),
-                    "max_output_len": meta.get("max_seq_len", metadata["max_output_len"]),
+                    # build_metadata.json uses max_output_len; accept max_seq_len fallback
+                    "max_output_len": meta.get("max_output_len", meta.get("max_seq_len", metadata["max_output_len"])),
                 })
                 metadata.update(get_compute_capability_info(sm_arch))
             except Exception:
