@@ -9,6 +9,7 @@ source "${SCRIPT_DIR}/lib/common/warmup.sh"
 source "${SCRIPT_DIR}/lib/deps/venv.sh"
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
 source "${SCRIPT_DIR}/lib/runtime/pipeline.sh"
+source "${SCRIPT_DIR}/lib/common/model_validate.sh"
 source "${SCRIPT_DIR}/lib/restart/overrides.sh"
 source "${SCRIPT_DIR}/lib/restart/args.sh"
 source "${SCRIPT_DIR}/lib/restart/basic.sh"
@@ -180,6 +181,10 @@ if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${venv_dir}" ]; then
 fi
 
 restart_setup_env_for_awq "${DEPLOY_MODE}"
+# Validate model selections early for AWQ path before heavy work
+if ! validate_models_early; then
+  exit 1
+fi
 # NOTE: restart_apply_defaults_and_deps handles --install-deps for AWQ path
 restart_apply_defaults_and_deps
 restart_push_cached_awq_models "${DEPLOY_MODE}"

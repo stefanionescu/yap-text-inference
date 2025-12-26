@@ -18,6 +18,23 @@ from ..utils.detection import (
 )
 
 
+def _env_int(name: str, default: int) -> int:
+    """Get int from env var, handling empty strings."""
+    val = os.getenv(name, "")
+    if not val:
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+
+def _env_str(name: str, default: str) -> str:
+    """Get string from env var, handling empty strings."""
+    val = os.getenv(name, "")
+    return val if val else default
+
+
 def detect_base_model(checkpoint_path: Path) -> str:
     """Detect base model from checkpoint config.
     
@@ -117,9 +134,9 @@ def collect_metadata(
             pass
     
     # Set defaults from environment/runtime detection
-    sm_arch = os.getenv("GPU_SM_ARCH", "sm90")
+    sm_arch = _env_str("GPU_SM_ARCH", "sm90")
     trt_version = detect_tensorrt_llm_version()
-    cuda_version = os.getenv("CUDA_VERSION", detect_cuda_version())
+    cuda_version = _env_str("CUDA_VERSION", detect_cuda_version())
     
     metadata.update({
         "sm_arch": sm_arch,
@@ -127,13 +144,13 @@ def collect_metadata(
         "cuda_toolkit": cuda_version,
         "tensorrt_llm_version": trt_version,
         "kv_cache_dtype": "int8",
-        "awq_block_size": int(os.getenv("TRT_AWQ_BLOCK_SIZE", "128")),
-        "calib_size": int(os.getenv("TRT_CALIB_SIZE", "256")),
+        "awq_block_size": _env_int("TRT_AWQ_BLOCK_SIZE", 128),
+        "calib_size": _env_int("TRT_CALIB_SIZE", 256),
         "calib_seqlen": 2048,
-        "calib_batch_size": int(os.getenv("TRT_CALIB_BATCH_SIZE", "16")),
-        "max_batch_size": os.getenv("TRT_MAX_BATCH_SIZE", metadata.get("max_batch_size", "N/A")),
-        "max_input_len": os.getenv("TRT_MAX_INPUT_LEN", metadata.get("max_input_len", "N/A")),
-        "max_output_len": os.getenv("TRT_MAX_OUTPUT_LEN", metadata.get("max_output_len", "N/A")),
+        "calib_batch_size": _env_int("TRT_CALIB_BATCH_SIZE", 16),
+        "max_batch_size": _env_str("TRT_MAX_BATCH_SIZE", str(metadata.get("max_batch_size", "N/A"))),
+        "max_input_len": _env_str("TRT_MAX_INPUT_LEN", str(metadata.get("max_input_len", "N/A"))),
+        "max_output_len": _env_str("TRT_MAX_OUTPUT_LEN", str(metadata.get("max_output_len", "N/A"))),
     })
     metadata.update(get_compute_capability_info(sm_arch))
     

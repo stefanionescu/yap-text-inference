@@ -353,6 +353,11 @@ restart_reconfigure_models() {
     unset CHAT_QUANTIZATION
   fi
 
+  # Validate selections against allowlists before continuing
+  if ! validate_models_early; then
+    exit 1
+  fi
+
   local preserve_cache=0
   if _restart_can_preserve_cache "${deploy_chat}" "${deploy_tool}"; then
     preserve_cache=1
