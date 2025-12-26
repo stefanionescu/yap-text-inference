@@ -58,6 +58,7 @@ trt_push_to_hf() {
   
   local python_cmd=(
     "${python_exe}"
+    "-W" "ignore::RuntimeWarning"
     "-m" "src.engines.trt.awq.hf.hf_push"
     "--checkpoint-dir" "${checkpoint_dir}"
     "--repo-id" "${HF_PUSH_REPO_ID}"
