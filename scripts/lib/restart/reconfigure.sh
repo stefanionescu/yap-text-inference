@@ -399,5 +399,11 @@ restart_reconfigure_models() {
     fi
   fi
 
+  # Push to HuggingFace if requested (even when preserving cache)
+  # The quantizer scripts above handle push for fresh builds; this handles cached artifacts
+  if [ "${HF_AWQ_PUSH:-0}" = "1" ] && [ "${preserve_cache}" = "1" ]; then
+    restart_push_cached_awq_models "${DEPLOY_MODE}"
+  fi
+
   restart_server_background
 }
