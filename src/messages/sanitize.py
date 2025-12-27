@@ -106,6 +106,8 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1)
     if cleaned != text:
         cleaned = cleaned.lstrip(": ").lstrip()
+    cleaned = _strip_leading_newline_tokens(cleaned)
+    cleaned = _strip_asterisks(cleaned)
     cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
     cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("...", cleaned)
@@ -118,6 +120,7 @@ def sanitize_stream_text(text: str) -> str:
     # Strip HTML tags and unescape entities
     cleaned = HTML_TAG_PATTERN.sub("", cleaned)
     cleaned = html.unescape(cleaned)
+    cleaned = _collapse_spaces(cleaned)
     return _ensure_leading_capital(cleaned)
 
 
@@ -246,14 +249,34 @@ def _normalize_escaped_quote(match: re.Match[str]) -> str:
     return char
 
 
+def _strip_leading_newline_tokens(text: str) -> str:
+    """Remove leading newline tokens without inserting padding."""
+    if not text:
+        return ""
+    return re.sub(r"^(?:\s*(?:\\n|/n|\r?\n)+\s*)", "", text)
+
+
+def _collapse_spaces(text: str) -> str:
+    """Collapse runs of spaces/tabs into a single space."""
+    if not text:
+        return ""
+    return re.sub(r"[ \t]{2,}", " ", text)
+
+
+def _strip_asterisks(text: str) -> str:
+    """Remove asterisk markers used for emphasis."""
+    if not text:
+        return ""
+    return text.replace("*", " ")
+
+
 def _strip_emoji_like_tokens(text: str) -> str:
     """Remove unicode emojis and ASCII emoticons while collapsing spacing."""
     if not text:
         return ""
     text = EMOJI_PATTERN.sub(" ", text)
     text = EMOTICON_PATTERN.sub(" ", text)
-    text = re.sub(r"[ \t]{2,}", " ", text)
-    return text
+    return _collapse_spaces(text)
 
 
 __all__ = [

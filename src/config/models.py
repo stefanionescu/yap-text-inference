@@ -101,6 +101,13 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/qwen3-32B-trt-awq",
     "yapwithai/jinx-qwen3-14B-trt-awq",
     "yapwithai/jinx-qwen3-32B-trt-awq",
+    "yapwithai/zerofata-ms3.2-paintedfantasy-visage-33B-trt-awq",
+    "yapwithai/delta-vector-rei-24B-kto-trt-awq",
+    "yapwithai/readyart-broken-tutu-24B-unslop-v2.0-trt-awq",
+    "yapwithai/arliai-mistral-small-22B-arliai-rpmax-v1.1-trt-awq",
+    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq",
+    "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
+    "yapwithai/naphula-goetia-24B-v1.1-trt-awq",
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
