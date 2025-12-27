@@ -1,7 +1,4 @@
-"""Template and license constants for AWQ README generation.
-
-Functions have been moved to src/helpers/templates.py.
-"""
+"""Template and license constants for AWQ README generation."""
 
 from __future__ import annotations
 

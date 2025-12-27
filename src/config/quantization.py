@@ -1,8 +1,4 @@
-"""Quantization constants.
-
-Most functions have been moved to src/helpers/quantization.py.
-Only normalize_engine is kept here as it's needed at config load time.
-"""
+"""Quantization constants."""
 
 # Supported inference engines
 SUPPORTED_ENGINES: tuple[str, ...] = ("vllm", "trt")

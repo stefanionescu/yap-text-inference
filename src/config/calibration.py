@@ -1,7 +1,4 @@
-"""Quantization calibration constants.
-
-Functions have been moved to src/helpers/calibration.py.
-"""
+"""Quantization calibration constants."""
 
 from __future__ import annotations
 

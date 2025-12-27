@@ -259,7 +259,7 @@ trt_validate_batch_size() {
     return 1
   fi
   
-  log_info "[trt] TRT_MAX_BATCH_SIZE=${TRT_MAX_BATCH_SIZE} (will be baked into engine)"
+  log_info "  [trt] TRT_MAX_BATCH_SIZE=${TRT_MAX_BATCH_SIZE}"
   return 0
 }
 
