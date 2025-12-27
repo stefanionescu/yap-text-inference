@@ -39,6 +39,15 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "zai-org/GLM-4-32B-Base-0414",
     "Qwen/Qwen3-32B",
     "mistralai/Mistral-Small-Instruct-2409",
+    "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
+    "Delta-Vector/Rei-24B-KTO",
+    "TheDrummer/Big-Tiger-Gemma-27B-v3",
+    "ArliAI/Qwen2.5-32B-ArliAI-RPMax-v1.3",
+    "ArliAI/InternLM2_5-20B-ArliAI-RPMax-v1.1",
+    "ArliAI/Mistral-Small-22B-ArliAI-RPMax-v1.1",
+    "ArliAI/Mistral-Small-24B-ArliAI-RPMax-v1.4",
+    "Naphula/Goetia-24B-v1.1",
+    "ToastyPigeon/Gemma-3-Starshine-12B",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
@@ -83,7 +92,19 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # stupid, output is a bit messed up, ignores instructions
 ]
 
-ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = []
+ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
+    "yapwithai/mistral-small-instruct-2409-trt-awq",
+    "yapwithai/flammenai-mahou-1.3-mistral-nemo-12B-trt-awq",
+    "yapwithai/soob3123-grayline-qwen3-14B-trt-awq",
+    "yapwithai/anthracite-org-magnum-v2-32b-trt-awq",
+    "yapwithai/thedrummer-unslopnemo-12B-v4.1-trt-awq",
+    "yapwithai/qwen3-14B-trt-awq",
+    "yapwithai/mistral-small-24B-instruct-2501-trt-awq",
+    "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small",
+    "yapwithai/qwen3-32B-trt-awq",
+    "yapwithai/jinx-qwen3-14B-trt-awq",
+    "yapwithai/jinx-qwen3-32B-trt-awq",
+]
 
 ALLOWED_TOOL_MODELS: list[str] = [
     "yapwithai/yap-longformer-screenshot-intent",

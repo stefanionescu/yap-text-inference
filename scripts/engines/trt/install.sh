@@ -334,7 +334,7 @@ trt_prepare_repo() {
   local clone_attempts="${TRT_CLONE_ATTEMPTS}"
   local clone_delay="${TRT_CLONE_BACKOFF_SECONDS}"
   
-  log_info "[trt] Target TensorRT-LLM version: ${TRT_VERSION} (tag: ${tag_name})"
+  log_info "[trt] Target TensorRT-LLM version: ${TRT_VERSION}"
   
   # Clone if not present, reuse if exists
   # Note: FORCE_REBUILD only affects engine/checkpoint builds, not the repo clone
