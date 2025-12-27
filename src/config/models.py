@@ -41,13 +41,10 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "mistralai/Mistral-Small-Instruct-2409",
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
     "Delta-Vector/Rei-24B-KTO",
-    "TheDrummer/Big-Tiger-Gemma-27B-v3",
     "ArliAI/Qwen2.5-32B-ArliAI-RPMax-v1.3",
-    "ArliAI/InternLM2_5-20B-ArliAI-RPMax-v1.1",
     "ArliAI/Mistral-Small-22B-ArliAI-RPMax-v1.1",
     "ArliAI/Mistral-Small-24B-ArliAI-RPMax-v1.4",
     "Naphula/Goetia-24B-v1.1",
-    "ToastyPigeon/Gemma-3-Starshine-12B",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [

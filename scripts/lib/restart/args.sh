@@ -11,6 +11,7 @@ restart_parse_args() {
   RECONFIG_CHAT_MODEL="${RECONFIG_CHAT_MODEL:-}"
   RECONFIG_TOOL_MODEL="${RECONFIG_TOOL_MODEL:-}"
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
+  HF_AWQ_PUSH_REQUESTED="${HF_AWQ_PUSH_REQUESTED:-0}"
   HF_AWQ_PUSH=0
   
   # Engine selection - default from environment or 'trt'
@@ -93,11 +94,11 @@ restart_parse_args() {
         shift
         ;;
       --push-quant)
-        HF_AWQ_PUSH=1
+        HF_AWQ_PUSH_REQUESTED=1
         shift
         ;;
       --no-push-quant)
-        HF_AWQ_PUSH=0
+        HF_AWQ_PUSH_REQUESTED=0
         shift
         ;;
       --help|-h)
@@ -130,7 +131,7 @@ restart_parse_args() {
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
   export RECONFIG_CHAT_QUANTIZATION
-  export HF_AWQ_PUSH
+  export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   return 0
 }
 

@@ -113,8 +113,6 @@ export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 ensure_cuda_ready_for_engine "restart" || exit 1
 
 # Validate --push-quant prerequisites early (before any heavy operations)
-validate_push_quant_prereqs "${DEPLOY_MODE}"
-
 # Check for engine switching - this requires FULL environment wipe
 # Uses unified handler to avoid duplicate logic with main.sh
 ENGINE_SWITCH_RESULT=0
@@ -145,7 +143,6 @@ fi
 # Generic path may start and tail the server; if not applicable, it returns
 restart_basic
 restart_detect_awq_models "${DEPLOY_MODE}"
-restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 
 # Validate we have at least one valid source
 if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
@@ -170,6 +167,10 @@ if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${venv_dir}" ]; then
 fi
 
 restart_setup_env_for_awq "${DEPLOY_MODE}"
+# Enable/disable push now that quantization is set (only allow 4-bit exports)
+push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"
+validate_push_quant_prereqs "${DEPLOY_MODE}"
+restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 # Validate model selections early for AWQ path before heavy work
 if ! validate_models_early; then
   exit 1

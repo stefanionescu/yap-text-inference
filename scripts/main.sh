@@ -58,7 +58,7 @@ ensure_cuda_ready_for_engine "main" || exit 1
 main_export_models
 
 # Validate --push-quant prerequisites early (before any heavy operations)
-validate_push_quant_prereqs "${DEPLOY_MODE:-both}"
+# NOTE: actual push enablement is deferred until quantization is resolved
 
 # Early model validation - fail fast before any heavy operations
 log_info "[model] Validating model configuration..."
@@ -70,6 +70,10 @@ fi
 # Determine quantization hint and apply selection
 CHAT_QUANT_HINT="$(main_get_quant_hint)"
 main_apply_quantization "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
+
+# Enable/disable push based on quantization (only allow 4-bit exports)
+push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "main"
+validate_push_quant_prereqs "${DEPLOY_MODE:-both}"
 
 # Snapshot desired config for smart restart detection
 DESIRED_DEPLOY_MODE="${DEPLOY_MODE:-both}"

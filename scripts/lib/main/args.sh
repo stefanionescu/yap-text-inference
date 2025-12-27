@@ -7,7 +7,7 @@
 
 main_parse_cli() {
   local engine="${INFERENCE_ENGINE:-trt}"
-  local push_quant="${HF_AWQ_PUSH:-0}"
+  local push_quant_requested="${HF_AWQ_PUSH:-0}"
   local quant_type="auto"
   local deploy_mode="${DEPLOY_MODE:-both}"
   local deploy_explicit=0
@@ -20,10 +20,10 @@ main_parse_cli() {
         return 1
         ;;
       --push-quant)
-        push_quant=1
+        push_quant_requested=1
         ;;
       --no-push-quant)
-        push_quant=0
+        push_quant_requested=0
         ;;
       --engine)
         if [ -z "${2:-}" ]; then
@@ -170,8 +170,9 @@ main_parse_cli() {
 
   ENGINE_TYPE="${engine}"
   INFERENCE_ENGINE="${engine}"
-  PUSH_QUANT="${push_quant}"
-  HF_AWQ_PUSH="${push_quant}"
+  PUSH_QUANT="${push_quant_requested}"
+  HF_AWQ_PUSH_REQUESTED="${push_quant_requested}"
+  HF_AWQ_PUSH=0
   QUANT_TYPE="${quant_type}"
   DEPLOY_MODE="${deploy_mode}"
   DEPLOY_MODE_SELECTED="${deploy_mode}"
@@ -179,7 +180,7 @@ main_parse_cli() {
   TOOL_MODEL_NAME="${tool_model}"
 
   export ENGINE_TYPE INFERENCE_ENGINE
-  export PUSH_QUANT HF_AWQ_PUSH
+  export PUSH_QUANT HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   export QUANT_TYPE DEPLOY_MODE DEPLOY_MODE_SELECTED
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
 

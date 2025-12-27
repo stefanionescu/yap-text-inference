@@ -40,6 +40,52 @@ ensure_required_env_vars() {
   export MAX_CONCURRENT_CONNECTIONS
 }
 
+# Determine whether the selected quantization represents a 4-bit export
+# Accepts explicit quant values (awq, gptq_marlin, nvfp4, int4_*)
+# and falls back to QUANT_MODE=4bit when specific quant strings are unset.
+push_quant_is_4bit() {
+  local quant="${1:-${QUANTIZATION:-}}"
+  local chat_quant="${2:-${CHAT_QUANTIZATION:-}}"
+
+  case "${quant}" in
+    awq|gptq|gptq_marlin|nvfp4|4bit|int4_*|fp4) return 0 ;;
+  esac
+  case "${chat_quant}" in
+    awq|gptq|gptq_marlin|nvfp4|4bit|int4_*|fp4) return 0 ;;
+  esac
+  if [ "${QUANT_MODE:-}" = "4bit" ]; then
+    return 0
+  fi
+  return 1
+}
+
+# Honor --push-quant only when a 4-bit quantization is selected.
+# Sets HF_AWQ_PUSH to 1 only when requested AND quantization is 4-bit.
+# Otherwise HF_AWQ_PUSH is forced to 0 and a skip message is logged.
+push_quant_apply_policy() {
+  local quant="${1:-${QUANTIZATION:-}}"
+  local chat_quant="${2:-${CHAT_QUANTIZATION:-}}"
+  local context="${3:-push}"
+  local requested="${HF_AWQ_PUSH_REQUESTED:-${HF_AWQ_PUSH:-0}}"
+
+  if [ "${requested}" != "1" ]; then
+    HF_AWQ_PUSH=0
+    export HF_AWQ_PUSH
+    return 1
+  fi
+
+  if ! push_quant_is_4bit "${quant}" "${chat_quant}"; then
+    HF_AWQ_PUSH=0
+    export HF_AWQ_PUSH
+    log_info "[${context}] --push-quant requested but quantization is not 4bit; skipping Hugging Face push."
+    return 1
+  fi
+
+  HF_AWQ_PUSH=1
+  export HF_AWQ_PUSH
+  return 0
+}
+
 # Validate required params when --push-quant flag is set
 # Must be called after HF_AWQ_PUSH and INFERENCE_ENGINE are set
 # Usage: validate_push_quant_prereqs <deploy_mode>
