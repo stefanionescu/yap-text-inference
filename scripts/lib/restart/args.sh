@@ -33,7 +33,10 @@ restart_parse_args() {
         shift
         ;;
       --engine)
-        if [ -z "${2:-}" ]; then return 2; fi
+        if [ -z "${2:-}" ]; then
+          log_err "[restart] ✗ --engine requires a value (trt|vllm)"
+          return 1
+        fi
         INFERENCE_ENGINE="$2"
         shift 2
         ;;
@@ -58,7 +61,10 @@ restart_parse_args() {
         shift
         ;;
       --deploy-mode)
-        if [ -z "${2:-}" ]; then return 2; fi
+        if [ -z "${2:-}" ]; then
+          log_err "[restart] ✗ --deploy-mode requires a value (both|chat|tool)"
+          return 1
+        fi
         RECONFIG_DEPLOY_MODE="$2"
         shift 2
         ;;
@@ -67,7 +73,10 @@ restart_parse_args() {
         shift
         ;;
       --chat-quant)
-        if [ -z "${2:-}" ]; then return 2; fi
+        if [ -z "${2:-}" ]; then
+          log_err "[restart] ✗ --chat-quant requires a value (4bit|8bit|fp8|gptq|gptq_marlin|awq|nvfp4)"
+          return 1
+        fi
         RECONFIG_CHAT_QUANTIZATION="$2"
         shift 2
         ;;
@@ -76,7 +85,10 @@ restart_parse_args() {
         shift
         ;;
       --chat-model)
-        if [ -z "${2:-}" ]; then return 2; fi
+        if [ -z "${2:-}" ]; then
+          log_err "[restart] ✗ --chat-model requires a value"
+          return 1
+        fi
         RECONFIG_CHAT_MODEL="$2"
         shift 2
         ;;
@@ -85,7 +97,10 @@ restart_parse_args() {
         shift
         ;;
       --tool-model)
-        if [ -z "${2:-}" ]; then return 2; fi
+        if [ -z "${2:-}" ]; then
+          log_err "[restart] ✗ --tool-model requires a value"
+          return 1
+        fi
         RECONFIG_TOOL_MODEL="$2"
         shift 2
         ;;
@@ -105,25 +120,32 @@ restart_parse_args() {
         return 2
         ;;
       -*)
-        log_warn "[restart] ⚠ Unknown flag '$1' ignored"
-        shift
+        log_err "[restart] ✗ Unknown flag '$1'. See --help for supported options."
+        return 1
         ;;
       *)
-        log_warn "[restart] ⚠ Unknown argument '$1' ignored"
-        shift
+        log_err "[restart] ✗ Unknown argument '$1'."
+        return 1
         ;;
     esac
   done
 
   DEPLOY_MODE="${DEPLOY_MODE:-both}"
+  case "${DEPLOY_MODE}" in
+    both|chat|tool) ;;
+    *)
+      log_err "[restart] ✗ Invalid deploy mode '${DEPLOY_MODE}'. Expected both|chat|tool."
+      return 1
+      ;;
+  esac
   
   # Normalize engine selection
   case "${INFERENCE_ENGINE}" in
     trt|TRT|tensorrt|TENSORRT) INFERENCE_ENGINE="trt" ;;
     vllm|VLLM) INFERENCE_ENGINE="vllm" ;;
     *)
-      log_warn "[restart] ⚠ Unknown engine '${INFERENCE_ENGINE}', defaulting to 'trt'"
-      INFERENCE_ENGINE="trt"
+      log_err "[restart] ✗ Unknown engine '${INFERENCE_ENGINE}'. Expected trt|vllm."
+      return 1
       ;;
   esac
   

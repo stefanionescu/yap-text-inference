@@ -27,7 +27,7 @@ main_parse_cli() {
         ;;
       --engine)
         if [ -z "${2:-}" ]; then
-          log_warn "[main] ⚠ --engine requires a value (trt|vllm)"
+          log_err "[main] ✗ --engine requires a value (trt|vllm)"
           return 1
         fi
         engine="$2"
@@ -44,7 +44,7 @@ main_parse_cli() {
         ;;
       --deploy-mode)
         if [ -z "${2:-}" ]; then
-          log_warn "[main] ⚠ --deploy-mode requires a value (both|chat|tool)"
+          log_err "[main] ✗ --deploy-mode requires a value (both|chat|tool)"
           return 1
         fi
         deploy_mode="$2"
@@ -74,7 +74,8 @@ main_parse_cli() {
         fi
         ;;
       --*)
-        log_warn "[main] ⚠ Unknown flag '$1' ignored"
+        log_err "[main] ✗ Unknown flag '$1'. See --help for supported options."
+        return 1
         ;;
       *)
         positional_args+=("$1")
@@ -97,8 +98,8 @@ main_parse_cli() {
   case "${deploy_mode}" in
     both|chat|tool) ;;
     *)
-      log_warn "[main] ⚠ Invalid deploy mode '${deploy_mode}', defaulting to 'both'"
-      deploy_mode="both"
+      log_err "[main] ✗ Invalid deploy mode '${deploy_mode}'. Expected both|chat|tool."
+      return 1
       ;;
   esac
 
@@ -110,8 +111,8 @@ main_parse_cli() {
       engine="trt"
       ;;
     *)
-      log_warn "[main] ⚠ Unknown engine type '${engine}', defaulting to 'trt'"
-      engine="trt"
+      log_err "[main] ✗ Unknown engine type '${engine}'. Expected trt|vllm."
+      return 1
       ;;
   esac
 
@@ -134,7 +135,8 @@ main_parse_cli() {
       chat_model="${positional_args[0]}"
       tool_model="${positional_args[1]}"
       if [ ${#positional_args[@]} -gt 2 ]; then
-        log_warn "[main] ⚠ Extra arguments ignored after <chat_model> <tool_model>"
+        log_err "[main] ✗ Extra arguments provided after <chat_model> <tool_model>: ${positional_args[*]:2}"
+        return 1
       fi
       ;;
     chat)
@@ -144,7 +146,8 @@ main_parse_cli() {
       fi
       chat_model="${positional_args[0]}"
       if [ ${#positional_args[@]} -gt 1 ]; then
-        log_warn "[main] ⚠ Extra arguments ignored after <chat_model>"
+        log_err "[main] ✗ Extra arguments provided after <chat_model>: ${positional_args[*]:1}"
+        return 1
       fi
       ;;
     tool)
