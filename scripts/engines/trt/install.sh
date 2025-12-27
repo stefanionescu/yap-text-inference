@@ -36,6 +36,15 @@ TRT_CLONE_ATTEMPTS="${TRT_CLONE_ATTEMPTS:-5}"
 TRT_CLONE_BACKOFF_SECONDS="${TRT_CLONE_BACKOFF_SECONDS:-2}"
 
 # =============================================================================
+# SUPPRESS GIT TRACE LOGGING
+# =============================================================================
+# Disable git's verbose curl/trace logging globally for this script.
+# This affects both direct git commands AND pip's internal git operations
+# (e.g. when pip installs packages from git URLs like python-etcd3).
+unset GIT_TRACE GIT_CURL_VERBOSE GIT_TRACE_CURL GIT_TRACE_PACKET GIT_TRACE_PERFORMANCE GIT_TRACE_SETUP
+export GIT_CURL_VERBOSE=0 GIT_TRACE=0 GIT_TRACE_CURL=0
+
+# =============================================================================
 # CUDA ENVIRONMENT
 # =============================================================================
 
@@ -325,10 +334,6 @@ trt_prepare_repo() {
   local clone_attempts="${TRT_CLONE_ATTEMPTS}"
   local clone_delay="${TRT_CLONE_BACKOFF_SECONDS}"
   
-  # Force git tracing OFF - unset first to clear any inherited values
-  unset GIT_TRACE GIT_CURL_VERBOSE GIT_TRACE_PACKET GIT_TRACE_PERFORMANCE GIT_TRACE_SETUP
-  export GIT_CURL_VERBOSE=0 GIT_TRACE=0
-  
   log_info "[trt] Target TensorRT-LLM version: ${TRT_VERSION} (tag: ${tag_name})"
   
   # Clone if not present, reuse if exists
@@ -400,7 +405,7 @@ trt_prepare_repo() {
     return 1
   fi
   
-  log_info "[trt] ✓ TensorRT-LLM repository ready at ${repo_dir}"
+  log_info "[trt] TensorRT-LLM repository ready at ${repo_dir}"
   export TRT_REPO_DIR="${repo_dir}"
   return 0
 }

@@ -41,8 +41,8 @@ Set the compulsory environment variables before invoking any host script:
 ```bash
 export TEXT_API_KEY="my_super_secret_key"    # Required for every API call
 export HF_TOKEN="hf_your_api_token"          # Required even for private/gated HF repos
-export MAX_CONCURRENT_CONNECTIONS=32         # Required capacity guard
-export TRT_MAX_BATCH_SIZE=32                 # Required for TRT: max sequences per forward pass (baked into engine)
+export MAX_CONCURRENT_CONNECTIONS=64         # Required capacity guard
+export TRT_MAX_BATCH_SIZE=64                 # Required for TRT: max sequences per forward pass (baked into engine)
 ```
 
 `HUGGINGFACE_HUB_TOKEN` is also accepted and will be mirrored into `HF_TOKEN` automatically.

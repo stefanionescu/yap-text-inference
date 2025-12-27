@@ -148,7 +148,6 @@ else
   
   # Quantize if needed
   if [ -z "${TRT_CHECKPOINT_DIR:-}" ]; then
-    log_info "[quant] Quantizing model ${MODEL_ID}..."
     if ! trt_quantize_model "${MODEL_ID}" "${CHECKPOINT_DIR}" "${QFORMAT}"; then
       log_err "[quant] ✗ Quantization failed"
       exit 1

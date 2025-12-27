@@ -10,8 +10,6 @@ This module re-exports the config API from smaller modules:
 - models: allowlists
 - limits: token and concurrency limits
 - secrets: secrets like API_KEY
-
-Functions have been moved to src/helpers/.
 """
 
 from .deploy import (

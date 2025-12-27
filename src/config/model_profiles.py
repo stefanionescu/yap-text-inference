@@ -22,8 +22,6 @@ Adding New Profiles:
     2. Define marker strings that uniquely identify the model family
     3. Set appropriate flags for the model's requirements
     4. More specific profiles should come before generic ones
-
-Functions have been moved to src/helpers/model_profiles.py.
 """
 
 from __future__ import annotations

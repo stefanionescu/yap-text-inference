@@ -1,7 +1,4 @@
-"""Model allowlists.
-
-Functions have been moved to src/helpers/models.py.
-"""
+"""Model allowlists."""
 
 ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable above 0.8 temp; decent <=0.6
