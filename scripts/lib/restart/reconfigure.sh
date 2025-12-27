@@ -358,6 +358,10 @@ restart_reconfigure_models() {
     unset CHAT_QUANTIZATION
   fi
 
+  # Honor --push-quant only when using a 4-bit quantization
+  push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"
+  validate_push_quant_prereqs "${DEPLOY_MODE}"
+
   # Validate selections against allowlists before continuing
   if ! validate_models_early; then
     exit 1
