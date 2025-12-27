@@ -28,6 +28,7 @@ def push_trt_to_hf(
     branch: str = "main",
     base_model: str | None = None,
     quant_method: str = "int4_awq",
+    private: bool = False,
 ) -> bool:
     """Push TRT-LLM checkpoints and engines to HuggingFace.
     
@@ -39,6 +40,7 @@ def push_trt_to_hf(
         branch: Branch to push to.
         base_model: Base model ID (auto-detected if not provided).
         quant_method: Quantization method (int4_awq, fp8, int8_sq).
+        private: Create repo as private if it doesn't exist.
         
     Returns:
         True if push succeeded, False otherwise.
@@ -77,7 +79,7 @@ def push_trt_to_hf(
     # Create/get repo
     api = HfApi(token=token)
     try:
-        create_repo(repo_id, token=token, exist_ok=True, repo_type="model")
+        create_repo(repo_id, token=token, exist_ok=True, repo_type="model", private=private)
     except Exception as e:
         print(f"[trt-hf] Warning: Could not create repo: {e}")
     
@@ -127,6 +129,7 @@ def main() -> int:
     parser.add_argument("--branch", default="main", help="Branch to push to")
     parser.add_argument("--base-model", default="", help="Base model ID (auto-detected)")
     parser.add_argument("--quant-method", default="int4_awq", help="Quantization method")
+    parser.add_argument("--private", action="store_true", help="Create repo as private if it doesn't exist")
     
     args = parser.parse_args()
     
@@ -138,6 +141,7 @@ def main() -> int:
         branch=args.branch,
         base_model=args.base_model or None,
         quant_method=args.quant_method,
+        private=args.private,
     )
     
     return 0 if success else 1
