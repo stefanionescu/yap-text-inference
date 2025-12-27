@@ -139,7 +139,7 @@ restart_push_cached_awq_models() {
       base="${base%-trt}"
       local ckpt_dir="${TRT_CACHE_DIR:-${ROOT_DIR}/.trt_cache}/${base}-${qformat}-ckpt"
       if [ -d "${ckpt_dir}" ]; then
-        log_info "[restart] Uploading TRT artifacts to Hugging Face (restart)"
+        log_info "[restart] Uploading TRT artifacts to Hugging Face"
         trt_push_to_hf "${ckpt_dir}" "${engine_dir}" "${CHAT_MODEL:-}" "${qformat}"
         return
       else
@@ -156,7 +156,7 @@ restart_push_cached_awq_models() {
     return
   fi
 
-  log_info "[restart] Uploading cached AWQ artifacts to Hugging Face (restart)"
+  log_info "[restart] Uploading cached AWQ artifacts to Hugging Face"
   local pushed=0
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     vllm_awq_push_to_hf "${CHAT_AWQ_DIR}"
