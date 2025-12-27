@@ -71,14 +71,14 @@ push_quant_apply_policy() {
   if [ "${requested}" != "1" ]; then
     HF_AWQ_PUSH=0
     export HF_AWQ_PUSH
-    return 1
+    return 0
   fi
 
   if ! push_quant_is_4bit "${quant}" "${chat_quant}"; then
     HF_AWQ_PUSH=0
     export HF_AWQ_PUSH
     log_info "[${context}] --push-quant requested but quantization is not 4bit; skipping Hugging Face push."
-    return 1
+    return 0
   fi
 
   HF_AWQ_PUSH=1
