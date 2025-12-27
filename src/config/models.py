@@ -38,6 +38,7 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "zai-org/GLM-4-32B-0414",
     "zai-org/GLM-4-32B-Base-0414",
     "Qwen/Qwen3-32B",
+    "mistralai/Mistral-Small-Instruct-2409",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [

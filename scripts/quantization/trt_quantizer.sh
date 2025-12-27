@@ -200,7 +200,6 @@ echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR}/.run/trt_engi
 
 # Optional: Push to HuggingFace (only when --push-quant flag is passed)
 if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
-  log_info "[hf] HuggingFace push requested (--push-quant)..."
   trt_push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}"
 fi
 

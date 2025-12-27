@@ -115,9 +115,9 @@ trtllm-build \\
 EOF
   chmod +x "${cmd_file}"
   
-  # Get TensorRT-LLM version
+  # Get TensorRT-LLM version (suppress TRT-LLM's import banner by only taking last line)
   local trtllm_ver
-  trtllm_ver=$(python -c "import tensorrt_llm; print(tensorrt_llm.__version__)" 2>/dev/null || echo "unknown")
+  trtllm_ver=$(python -c "import tensorrt_llm; print(tensorrt_llm.__version__)" 2>/dev/null | tail -n1 || echo "unknown")
   
   # Get CUDA version
   local cuda_ver
