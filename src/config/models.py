@@ -57,7 +57,6 @@ ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
     "moonshotai/Kimi-Linear-48B-A3B-Instruct",
     "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
     "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-
     "bgg1996/Melinoe-30B-A3B-Thinking",
 ]
 

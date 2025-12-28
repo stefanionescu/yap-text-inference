@@ -2,6 +2,9 @@
 
 # FlashInfer installation helper
 
+_FI_DEP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_FI_DEP_DIR}/venv.sh"
+
 install_flashinfer_if_applicable() {
   if [ "$(uname -s)" != "Linux" ]; then
     log_warn "[deps] ⚠ Non-Linux platform detected; skipping FlashInfer GPU wheel install."
@@ -14,8 +17,12 @@ install_flashinfer_if_applicable() {
     return 0
   fi
 
+  local venv_python venv_pip
+  venv_python="$(get_venv_python)"
+  venv_pip="$(get_venv_pip)"
+
   local CUDA_NVVER
-  CUDA_NVVER=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
+  CUDA_NVVER=$("${venv_python}" - <<'PY' || true
 import sys
 try:
     import torch
@@ -29,7 +36,7 @@ PY
   )
 
   local TORCH_MAJMIN
-  TORCH_MAJMIN=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
+  TORCH_MAJMIN=$("${venv_python}" - <<'PY' || true
 import sys
 try:
     import torch
@@ -45,9 +52,9 @@ PY
     local FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
     local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
     log_info "[deps] Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
-    if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
+    if ! "${venv_pip}" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
       log_warn "[deps] ⚠ FlashInfer install failed even with extra index; falling back to PyPI only"
-      if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary "${FI_PKG}"; then
+      if ! "${venv_pip}" install --prefer-binary "${FI_PKG}"; then
         log_warn "[deps] ⚠ FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi
     fi
