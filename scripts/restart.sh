@@ -126,11 +126,38 @@ fi
 # If engine was switched, need full deployment (restart can't handle fresh engine)
 if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   log_info "[restart] Engine switch complete. Running full deployment for new engine..."
-  exec bash "${SCRIPT_DIR}/main.sh" \
-    "--${INFERENCE_ENGINE}" \
-    "${DEPLOY_MODE}" \
-    "${CHAT_MODEL:-}" \
-    "${TOOL_MODEL:-}"
+  
+  # Build main.sh args, preserving all flags from restart invocation
+  declare -a main_args=("--${INFERENCE_ENGINE}" "--deploy-mode" "${DEPLOY_MODE}")
+  
+  # Pass quantization if specified
+  if [ -n "${RECONFIG_CHAT_QUANTIZATION:-}" ]; then
+    case "${RECONFIG_CHAT_QUANTIZATION}" in
+      4bit|4BIT) main_args+=("4bit") ;;
+      8bit|8BIT) main_args+=("8bit") ;;
+    esac
+  fi
+  
+  # Pass push-quant flag if requested
+  if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ]; then
+    main_args+=("--push-quant")
+  fi
+  
+  # Add model(s) based on deploy mode
+  case "${DEPLOY_MODE}" in
+    chat)
+      main_args+=("${RECONFIG_CHAT_MODEL:-${CHAT_MODEL:-}}")
+      ;;
+    tool)
+      main_args+=("${RECONFIG_TOOL_MODEL:-${TOOL_MODEL:-}}")
+      ;;
+    both)
+      main_args+=("${RECONFIG_CHAT_MODEL:-${CHAT_MODEL:-}}")
+      main_args+=("${RECONFIG_TOOL_MODEL:-${TOOL_MODEL:-}}")
+      ;;
+  esac
+  
+  exec bash "${SCRIPT_DIR}/main.sh" "${main_args[@]}"
 fi
 
 log_info "[restart] Engine: ${INFERENCE_ENGINE}"
@@ -159,10 +186,10 @@ fi
 # Validate we have at least one valid source
 if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
   log_err "[restart] ✗ No AWQ models found for deploy mode '${DEPLOY_MODE}'"
-  log_err "[restart] ✗ "
-  log_err "[restart] ✗ Options:"
-  log_err "[restart] ✗ 1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
-  log_err "[restart] ✗ 2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
+  log_err ""
+  log_err "[restart] Options:"
+  log_err "[restart]   1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
+  log_err "[restart]   2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
   exit 1
 fi
 
@@ -195,12 +222,12 @@ restart_push_cached_awq_models "${DEPLOY_MODE}"
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
   if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
     log_err "[restart] ✗ TRT engine directory not found or not set."
-    log_err "[restart] ✗ TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
-    log_err "[restart] ✗ "
-    log_err "[restart] ✗ TensorRT-LLM requires a pre-built engine. Options:"
-    log_err "[restart] ✗   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
-    log_err "[restart] ✗   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
-    log_err "[restart] ✗   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
+    log_err "[restart]   TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
+    log_err ""
+    log_err "[restart]   TensorRT-LLM requires a pre-built engine. Options:"
+    log_err "[restart]     1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
+    log_err "[restart]     2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
+    log_err "[restart]     3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
     exit 1
   fi
   log_info "[restart] TRT engine validated: ${TRT_ENGINE_DIR}"

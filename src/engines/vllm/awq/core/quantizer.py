@@ -9,7 +9,6 @@ from src.helpers.calibration import resolve_total_len, TotalLengthPolicy
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
-    is_moe_model,
     load_model_config,
     prefetch_model,
     requires_autoawq_backend,
@@ -83,15 +82,6 @@ class AWQQuantizer:
 
         model_config = load_model_config(resolved_model_path)
         hf_model_type = getattr(model_config, "model_type", "") if model_config is not None else ""
-        
-        # Block MoE models - AWQ quantization doesn't support expert layers
-        if is_moe_model(model_config, model_path):
-            raise ValueError(
-                f"Cannot quantize MoE model '{model_path}'. "
-                "Mixture of Experts (MoE) models use sparse expert layers (mlp.experts.*) "
-                "that are not supported by AWQ quantization. "
-                "Consider using a pre-quantized version (e.g., GGUF/GGML) or a dense model instead."
-            )
         
         requires_autoawq = requires_autoawq_backend(model_config, model_path)
 

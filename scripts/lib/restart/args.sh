@@ -130,7 +130,8 @@ restart_parse_args() {
     esac
   done
 
-  DEPLOY_MODE="${DEPLOY_MODE:-both}"
+  # Inherit from --deploy-mode flag if DEPLOY_MODE wasn't set as positional
+  DEPLOY_MODE="${DEPLOY_MODE:-${RECONFIG_DEPLOY_MODE:-both}}"
   case "${DEPLOY_MODE}" in
     both|chat|tool) ;;
     *)
