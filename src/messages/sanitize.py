@@ -202,7 +202,8 @@ class StreamingSanitizer:
             return ""
         tail = sanitized[self._emitted_len:]
         self._emitted_len = len(sanitized)
-        return tail
+        # Strip trailing whitespace since generation is complete
+        return tail.rstrip()
 
     @property
     def full_text(self) -> str:

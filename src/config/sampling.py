@@ -86,6 +86,7 @@ INFERENCE_STOP = [
     # ChatML format
     "<|im_end|>",
     "|im_end|>",
+    "<|im_start|>",
     "<|assistant|>",
     "<|user|>",
     "<|end|>",

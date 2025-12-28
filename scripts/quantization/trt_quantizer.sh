@@ -116,12 +116,6 @@ else
   fi
 fi
 
-# Validate checkpoint
-if ! trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}"; then
-  log_err "[quant] ✗ Checkpoint validation failed"
-  exit 1
-fi
-
 # Get engine directory
 ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")
 
