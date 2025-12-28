@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/runtime/cleanup.sh"
 
-HARD_RESET="${HARD_RESET:-0}"   # set HARD_RESET=1 to attempt nvidia-smi --gpu-reset
+HARD_RESET="${HARD_RESET:-0}" # set HARD_RESET=1 to attempt nvidia-smi --gpu-reset
 
 # =============================================================================
 # CLEANUP CONTROL FLAGS
@@ -19,7 +19,7 @@ NUKE_ALL="${NUKE_ALL:-1}"
 if [ "${NUKE_ALL}" = "0" ]; then
   log_info "[stop] Light stop: preserving venv, caches, and models..."
 else
-  log_info "[stop] Full stop: nuking venv, caches, models - everything"
+  log_info "[stop] Full stop: nuking venv, caches, models..."
 fi
 
 cleanup_stop_server_session "${ROOT_DIR}"

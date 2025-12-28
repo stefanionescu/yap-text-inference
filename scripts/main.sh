@@ -13,7 +13,6 @@ source "${SCRIPT_DIR}/lib/common/model_validate.sh"
 source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
-source "${SCRIPT_DIR}/lib/common/torch.sh"
 
 # Runtime management
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
@@ -32,11 +31,6 @@ ensure_required_env_vars
 # Detect GPU and export arch flags early (needed for modelopt/TRT builds)
 gpu_init_detection "gpu"
 gpu_apply_env_defaults
-
-# Check PyTorch and torchvision compatibility before proceeding
-if ! check_torch_compatibility "main"; then
-  exit 1
-fi
 
 # Stop any existing warmup processes before starting deployment
 stop_existing_warmup_processes "${ROOT_DIR}"
