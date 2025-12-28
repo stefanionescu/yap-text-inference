@@ -20,8 +20,11 @@ _vllm_install_quant_env() {
 
   local quant_venv
   quant_venv="$(get_quant_venv_dir)"
-  log_info "[vllm] Preparing AWQ quantization environment at ${quant_venv}"
-  ensure_virtualenv "${quant_venv}" || return 1
+  local quant_python
+  quant_python="$(get_quant_python_binary)" || return 1
+
+  log_info "[vllm] Preparing AWQ quantization environment at ${quant_venv} (python=${quant_python})"
+  ensure_virtualenv "${quant_venv}" "${quant_python}" || return 1
   ensure_pip_in_venv "${quant_venv}" || return 1
   install_quant_requirements "${quant_venv}" "${req_file}" || return 1
   log_info "[vllm] ✓ Quantization virtualenv ready (${quant_venv})"
