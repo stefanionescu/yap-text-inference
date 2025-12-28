@@ -59,6 +59,9 @@ main_export_models
 
 # Validate --push-quant prerequisites early (before any heavy operations)
 # NOTE: actual push enablement is deferred until quantization is resolved
+if ! model_detect_validate_push_quant_prequant "${CHAT_MODEL:-}" "${TOOL_MODEL:-}" "${HF_AWQ_PUSH_REQUESTED:-0}" "[main]"; then
+  exit 1
+fi
 
 # Early model validation - fail fast before any heavy operations
 log_info "[model] Validating model configuration..."

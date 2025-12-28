@@ -144,6 +144,18 @@ fi
 restart_basic
 restart_detect_awq_models "${DEPLOY_MODE}"
 
+# Validate --push-quant is not used with prequantized models (non-reconfigure path)
+if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ] && [ "${CHAT_AWQ_SOURCE_KIND:-}" = "prequant" ]; then
+  log_err "[restart] ✗ Cannot use --push-quant with a prequantized model."
+  log_err "[restart]   Model '${CHAT_AWQ_SOURCE:-}' is already quantized."
+  log_err "[restart]   There are no local quantization artifacts to upload."
+  log_err ""
+  log_err "[restart]   Options:"
+  log_err "[restart]     1. Remove --push-quant to use the prequantized model directly"
+  log_err "[restart]     2. Use a base (non-quantized) model if you want to quantize and push"
+  exit 1
+fi
+
 # Validate we have at least one valid source
 if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
   log_err "[restart] ✗ No AWQ models found for deploy mode '${DEPLOY_MODE}'"

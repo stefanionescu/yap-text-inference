@@ -11,6 +11,11 @@ if ! type gpu_detect_name >/dev/null 2>&1; then
   source "${_TRT_BUILD_DIR}/../../lib/common/gpu_detect.sh"
 fi
 
+# Source TRT detection utilities (for pre-built engine discovery)
+if ! type trt_find_compatible_engine >/dev/null 2>&1; then
+  source "${_TRT_BUILD_DIR}/detect.sh"
+fi
+
 # =============================================================================
 # ENGINE BUILD
 # =============================================================================
@@ -237,6 +242,38 @@ trt_quantize_and_build() {
   # Check if this is a pre-quantized model
   if trt_is_prequantized_model "${model_id}"; then
     log_info "[build] Detected pre-quantized TRT model"
+    
+    # Check for pre-built engine in the HF repo FIRST
+    local prebuilt_engine_label
+    prebuilt_engine_label=$(trt_find_compatible_engine "${model_id}") || true
+    
+    if [ -n "${prebuilt_engine_label}" ]; then
+      # Download the pre-built engine - skip quantization entirely
+      log_info "[build] Using pre-built engine: ${prebuilt_engine_label}"
+      local engine_dir
+      engine_dir=$(trt_download_prebuilt_engine "${model_id}" "${prebuilt_engine_label}") || {
+        log_warn "[build] ⚠ Failed to download pre-built engine, falling back to build from checkpoint"
+        prebuilt_engine_label=""
+      }
+      
+      if [ -n "${prebuilt_engine_label}" ] && [ -n "${engine_dir}" ]; then
+        # Also download checkpoint for tokenizer and config
+        local ckpt_dir
+        ckpt_dir=$(trt_download_prequantized "${model_id}") || return 1
+        TRT_CHECKPOINT_DIR="${ckpt_dir}"
+        TRT_ENGINE_DIR="${engine_dir}"
+        export TRT_ENGINE_DIR TRT_CHECKPOINT_DIR
+        
+        # Save engine dir for later use
+        mkdir -p "${ROOT_DIR:-.}/.run"
+        echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
+        
+        log_info "[build] ✓ Using pre-built engine: ${TRT_ENGINE_DIR}"
+        return 0
+      fi
+    fi
+    
+    # No compatible pre-built engine found - download checkpoint and build
     local ckpt_dir
     ckpt_dir=$(trt_download_prequantized "${model_id}") || return 1
     TRT_CHECKPOINT_DIR="${ckpt_dir}"
