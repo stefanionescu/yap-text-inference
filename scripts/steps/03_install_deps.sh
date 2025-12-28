@@ -17,8 +17,6 @@ source "${LIB_DIR}/env/torch.sh"
 ENGINE="${INFERENCE_ENGINE:-vllm}"
 ENGINE_LOWER="$(echo "${ENGINE}" | tr '[:upper:]' '[:lower:]')"
 
-log_info "[deps] Installing dependencies for engine: ${ENGINE}"
-
 # =============================================================================
 # ENGINE-SPECIFIC SETUP
 # =============================================================================

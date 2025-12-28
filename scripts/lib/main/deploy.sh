@@ -7,9 +7,9 @@
 main_log_config() {
   log_info ""
   if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
-    log_info "[main] Configuration: quantization=tool-only (classifier runs float16)"
+    log_info "[main] Configuration:, tool-only, precision=float16"
   else
-    log_info "[main] Configuration: engine=${INFERENCE_ENGINE}, quantization=${QUANT_MODE:-auto} (backend=${QUANTIZATION:-<unset>}, flag=${QUANT_TYPE})"
+    log_info "[main] Configuration: engine=${INFERENCE_ENGINE}, quantization=${QUANT_MODE:-auto}"
   fi
   log_info "[main] Deploy mode: ${DEPLOY_MODE}"
   if [ "${DEPLOY_MODE}" != "tool" ]; then
@@ -20,8 +20,6 @@ main_log_config() {
   fi
   log_info ""
   log_info "[main] Starting deployment in background (auto-detached)"
-  log_info "[main] Ctrl+C stops log tailing only - deployment continues"
-  log_info "[main] Use scripts/stop.sh to stop the deployment"
 }
 
 # Build the deployment command based on engine type
