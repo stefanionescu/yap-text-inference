@@ -159,6 +159,22 @@ get_quant_venv_pip() {
   printf '%s/bin/pip\n' "$(get_quant_venv_dir)"
 }
 
+get_quant_python_binary() {
+  if [ -n "${QUANT_PYTHON_BIN:-}" ]; then
+    echo "${QUANT_PYTHON_BIN}"
+    return 0
+  fi
+  if command -v python3.10 >/dev/null 2>&1; then
+    echo "python3.10"
+    return 0
+  fi
+  if command -v python3.11 >/dev/null 2>&1; then
+    echo "python3.11"
+    return 0
+  fi
+  get_python_binary_for_engine
+}
+
 # =============================================================================
 # PYTHON BINARY SELECTION
 # =============================================================================
@@ -308,10 +324,9 @@ _venv_create_with_virtualenv() {
   return 1
 }
 
-_venv_create_new() {
+_venv_create_new_with_python() {
   local venv_path="$1"
-  local py_bin
-  py_bin=$(get_python_binary_for_engine) || return 1
+  local py_bin="$2"
 
   log_info "[venv] Creating virtual environment at ${venv_path} with ${py_bin}"
   if "${py_bin}" -m venv "${venv_path}" >/dev/null 2>&1; then
@@ -330,6 +345,7 @@ _venv_create_new() {
 
 ensure_virtualenv() {
   local requested_path="${1:-}"
+  local py_bin_override="${2:-}"
   local venv_path
   if [ -n "${requested_path}" ]; then
     venv_path="${requested_path}"
@@ -344,7 +360,11 @@ ensure_virtualenv() {
   fi
 
   if [ ! -d "${venv_path}" ]; then
-    _venv_create_new "${venv_path}" || return 1
+    local py_bin="${py_bin_override}" 
+    if [ -z "${py_bin}" ]; then
+      py_bin="$(get_python_binary_for_engine)" || return 1
+    fi
+    _venv_create_new_with_python "${venv_path}" "${py_bin}" || return 1
   fi
 }
 
