@@ -106,10 +106,8 @@ class AWQQuantizer:
 
             capped_nsamples = min(self.config.nsamples, _MOE_NSAMPLES_LIMIT)
             if capped_nsamples < self.config.nsamples:
-                print(
-                    "[awq] MoE model detected; reducing calibration samples "
-                    f"from {self.config.nsamples} to {capped_nsamples}"
-                )
+                print("[awq] MoE model detected")
+                print(f"[awq] Reducing calibration samples from {self.config.nsamples} to {capped_nsamples}...")
                 self.config.nsamples = capped_nsamples
 
         requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
@@ -117,7 +115,7 @@ class AWQQuantizer:
         if target_seqlen != requested_seqlen:
             print(f"[awq] {calibration_kind} model calibration seqlen adjusted to {target_seqlen}")
         else:
-            print(f"[awq] {calibration_kind} model calibration seqlen = {target_seqlen}")
+            print(f"[awq] {calibration_kind} model calibration seqlen: {target_seqlen}")
 
 
         return quantize_with_llmcompressor(
