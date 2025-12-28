@@ -2,6 +2,10 @@
 
 # Shared cleanup helpers used by stop.sh and runtime guard utilities.
 
+_CLEANUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_CLEANUP_DIR}/../common/log.sh"
+source "${_CLEANUP_DIR}/../deps/venv.sh"
+
 _cleanup_remove_dirs() {
   local label="$1"; shift
   local dir
@@ -68,6 +72,18 @@ cleanup_runtime_state() {
 
 cleanup_venvs() {
   local root_dir="$1"
+  
+  # Use resolve_venv_dir() to detect the actual venv location (handles /opt/venv for Docker)
+  local detected_venv
+  detected_venv="$(resolve_venv_dir)"
+  
+  # Clean detected venv first (could be /opt/venv or repo-local)
+  if [ -n "${detected_venv}" ] && [ -d "${detected_venv}" ]; then
+    log_info "[cleanup] Removing detected venv: ${detected_venv}"
+    rm -rf "${detected_venv}" || true
+  fi
+  
+  # Also clean all possible repo-local venv locations
   _cleanup_remove_dirs "venv" \
     "${root_dir}/.venv" \
     "${root_dir}/.venv-trt" \
@@ -75,6 +91,12 @@ cleanup_venvs() {
     "${root_dir}/venv" \
     "${root_dir}/env" \
     "${root_dir}/.env"
+  
+  # Clean /opt/venv if it exists (Docker prebaked venv)
+  if [ -d "/opt/venv" ]; then
+    log_info "[cleanup] Removing Docker venv: /opt/venv"
+    rm -rf "/opt/venv" || true
+  fi
 }
 
 cleanup_hf_caches() {
@@ -95,6 +117,11 @@ cleanup_hf_caches() {
 
 cleanup_engine_artifacts() {
   local root_dir="$1"
+  
+  # Use resolve_venv_dir() to detect the actual venv location
+  local detected_venv
+  detected_venv="$(resolve_venv_dir)"
+  
   _cleanup_remove_dirs "engine artifact" \
     "${root_dir}/.awq" \
     "${root_dir}/.trtllm-repo" \
@@ -105,7 +132,9 @@ cleanup_engine_artifacts() {
     "${root_dir}/.xformers" \
     "${root_dir}/.venv" \
     "${root_dir}/.venv-trt" \
-    "${root_dir}/.venv-vllm"
+    "${root_dir}/.venv-vllm" \
+    "${detected_venv}" \
+    "/opt/venv"
 }
 
 cleanup_misc_caches() {
@@ -130,12 +159,27 @@ cleanup_misc_caches() {
 }
 
 cleanup_pip_caches() {
-  if command -v python >/dev/null 2>&1; then
-    python -m pip cache purge >/dev/null 2>&1 || true
+  # Use the detected venv python if available
+  local venv_python
+  venv_python="$(get_venv_python)"
+  
+  # Try venv python first, then fall back to system python
+  local py_cmd=""
+  if [ -x "${venv_python}" ]; then
+    py_cmd="${venv_python}"
+  elif command -v python3 >/dev/null 2>&1; then
+    py_cmd="python3"
+  elif command -v python >/dev/null 2>&1; then
+    py_cmd="python"
+  fi
+  
+  if [ -n "${py_cmd}" ]; then
+    "${py_cmd}" -m pip cache purge >/dev/null 2>&1 || true
     local sys_cache
-    sys_cache=$(python -m pip cache dir 2>/dev/null || true)
+    sys_cache=$("${py_cmd}" -m pip cache dir 2>/dev/null || true)
     [ -n "${sys_cache}" ] && [ -d "${sys_cache}" ] && rm -rf "${sys_cache}" || true
   fi
+  
   _cleanup_remove_dirs "pip cache" \
     "$HOME/.cache/pip" "/root/.cache/pip" "${PIP_CACHE_DIR:-}"
 }
