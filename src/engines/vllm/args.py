@@ -74,7 +74,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     """Build vLLM AsyncEngineArgs with all optimizations applied.
     
     This function configures the engine with:
-    - Priority-based scheduling
     - Chunked prefill for better TTFB
     - Prefix caching enabled
     - Dynamic quantization detection
@@ -145,7 +144,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         enable_prefix_caching=True,
         quantization=inference_quant,
         dtype=dtype_value,
-        scheduling_policy="priority",
         limit_mm_per_prompt={"image": 0},
     )
 

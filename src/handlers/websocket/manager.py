@@ -142,6 +142,13 @@ def _select_rate_limiter(
     message_limiter: SlidingWindowRateLimiter,
     cancel_limiter: SlidingWindowRateLimiter,
 ) -> tuple[SlidingWindowRateLimiter | None, str]:
+    """Pick which limiter applies to the message type (if any).
+
+    Cancel messages receive their own bucket so a burst of cancel attempts
+    cannot starve regular messaging. Control traffic (ping/pong/end) is
+    exempt from rate checks because it is either connection liveness or
+    teardown bookkeeping.
+    """
     if msg_type == "cancel":
         return cancel_limiter, "cancel"
     if msg_type in {"ping", "pong", "end"}:
@@ -154,6 +161,7 @@ async def _consume_limiter(
     limiter: SlidingWindowRateLimiter,
     label: str,
 ) -> bool:
+    """Attempt to consume a limiter token, sending an error on failure."""
     try:
         limiter.consume()
     except RateLimitError as err:
@@ -183,6 +191,7 @@ async def _handle_control_message(
     msg_type: str,
     session_id: str | None,
 ) -> bool:
+    """Process ping/pong/end messages; return True if connection should close."""
     if msg_type == "ping":
         await ws.send_text(json.dumps({"type": "pong"}))
         return False

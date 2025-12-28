@@ -71,7 +71,6 @@ class ChatStreamConfig:
         sampling_params: Engine-specific sampling parameters.
         engine_getter: Async function returning the engine instance.
         timeout_s: Maximum seconds for generation.
-        priority: Request priority (higher = more urgent).
         flush_ms: Minimum milliseconds between buffer flushes.
         cancel_check: Optional callback to check for cancellation.
     """
@@ -82,7 +81,6 @@ class ChatStreamConfig:
     sampling_params: Any
     engine_getter: Callable[[], Awaitable[BaseEngine]]
     timeout_s: float
-    priority: int = 0
     flush_ms: float = 0.0
     cancel_check: CancelCheck = None
 
@@ -153,7 +151,6 @@ class ChatStreamController:
                 prompt=cfg.prompt,
                 sampling_params=cfg.sampling_params,
                 request_id=cfg.request_id,
-                priority=cfg.priority,
                 timeout_s=cfg.timeout_s,
                 cancel_check=cfg.cancel_check,
             ):
@@ -270,7 +267,6 @@ async def _stream_with_timeout(
     prompt: str,
     sampling_params: Any,
     request_id: str,
-    priority: int,
     timeout_s: float,
     cancel_check: CancelCheck = None,
 ) -> AsyncGenerator[Any, None]:
@@ -280,7 +276,6 @@ async def _stream_with_timeout(
         prompt=prompt,
         sampling_params=sampling_params,
         request_id=request_id,
-        priority=priority,
     )
     cancel_checker = _CancelChecker(cancel_check)
 

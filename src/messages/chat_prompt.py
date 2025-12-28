@@ -14,7 +14,7 @@ import uuid
 from typing import Any
 from fastapi import WebSocket
 from ..handlers.session import session_handler
-from ..config import DEPLOY_CHAT, WARM_REQUEST_PRIORITY
+from ..config import DEPLOY_CHAT
 from ..config.filters import CHAT_PROMPT_RATE_LIMIT_MESSAGES
 from ..tokens import (
     count_tokens_chat,
@@ -157,7 +157,6 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         prompt=warm_prompt,
         sampling_params=params,
         request_id=req_id,
-        priority=WARM_REQUEST_PRIORITY,
     ):
         break
 
@@ -170,5 +169,4 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         "gender": g,
         "personality": norm_personality,
     }))
-
 

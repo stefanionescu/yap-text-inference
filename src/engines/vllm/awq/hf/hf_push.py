@@ -16,11 +16,13 @@ except Exception as exc:  # pragma: no cover - import error path
     print(f"[hf-push] huggingface_hub is required: {exc}", file=sys.stderr)
     sys.exit(1)
 
-# Add project root to path so we can import src modules
+# Add repo root (and src) to path so we can import src modules even when run directly
 _script_dir = Path(__file__).resolve().parent
-_project_root = _script_dir.parent.parent.parent
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
+_project_root = _script_dir.parents[4]  # .../src/engines/vllm/awq/hf -> repo root
+_src_root = _project_root / "src"
+for _path in (_project_root, _src_root):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 from src.config.quantization import AWQ_MODEL_MARKERS
 from src.engines.vllm.awq.utils.template_utils import generate_readme

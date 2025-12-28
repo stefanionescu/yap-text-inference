@@ -93,8 +93,6 @@ class VLLMEngine(BaseEngine):
         prompt: str,
         sampling_params: Any,
         request_id: str,
-        *,
-        priority: int = 0,
     ) -> AsyncGenerator[EngineOutput, None]:
         """Stream generation using vLLM's generate API.
         
@@ -102,7 +100,6 @@ class VLLMEngine(BaseEngine):
             prompt: The formatted prompt to generate from.
             sampling_params: vLLM SamplingParams instance.
             request_id: Unique identifier for tracking/abortion.
-            priority: Higher values = more urgent (default 0).
             
         Yields:
             EngineOutput with cumulative text and completion status.
@@ -111,7 +108,6 @@ class VLLMEngine(BaseEngine):
             prompt=prompt,
             sampling_params=sampling_params,
             request_id=request_id,
-            priority=priority,
         ):
             yield EngineOutput.from_vllm(output)
     
@@ -204,19 +200,35 @@ def _create_engine_with_awq_handling(engine_args: AsyncEngineArgs) -> AsyncLLMEn
 
 
 def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> AsyncEngineArgs | None:
-    """Rebuild engine args without legacy quant dtype fields if present."""
-    annotations = getattr(engine_args.__class__, "__annotations__", {})
-    if not annotations:
-        return None
+    """Rebuild engine args without legacy quant dtype fields if present.
+
+    vLLM V1 rejects ``scale_dtype`` and ``zp_dtype`` in ``VllmConfig``. Some
+    quantized exports still carry these keys (sometimes nested under
+    ``quantization_config``), so we defensively strip them and retry.
+    """
+    annotations = getattr(engine_args.__class__, "__annotations__", {}) or {}
+    # Prefer annotated fields (the constructor accepts them); fall back to the
+    # instance dict if annotations are missing on this version of vLLM.
+    source_names = list(annotations) or list(getattr(engine_args, "__dict__", {}).keys())
 
     filtered_kwargs: dict[str, Any] = {}
     removed = False
-    for name in annotations:
+
+    for name in source_names:
         if name in _UNSUPPORTED_QUANT_FIELDS:
             removed = True
             continue
-        if hasattr(engine_args, name):
-            filtered_kwargs[name] = getattr(engine_args, name)
+        if not hasattr(engine_args, name):
+            continue
+
+        value = getattr(engine_args, name)
+        if name == "quantization_config" and isinstance(value, dict):
+            cleaned = {k: v for k, v in value.items() if k not in _UNSUPPORTED_QUANT_FIELDS}
+            if cleaned != value:
+                removed = True
+            value = cleaned
+
+        filtered_kwargs[name] = value
 
     if not removed:
         return None

@@ -27,7 +27,7 @@ import uuid
 from collections.abc import AsyncGenerator
 
 from ...engines import get_engine, create_sampling_params
-from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS, CHAT_REQUEST_PRIORITY
+from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...handlers.session import session_handler
 from ...messages.sanitize import StreamingSanitizer
 from ...config.sampling import (
@@ -115,18 +115,17 @@ async def run_chat_generation(
     
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     stream = ChatStreamController(
-        ChatStreamConfig(
-            session_id=session_id,
-            request_id=req_id,
-            prompt=prompt,
-            sampling_params=params,
-            engine_getter=get_engine,
-            timeout_s=float(GEN_TIMEOUT_S),
-            priority=CHAT_REQUEST_PRIORITY,
-            flush_ms=float(STREAM_FLUSH_MS),
-            cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
+            ChatStreamConfig(
+                session_id=session_id,
+                request_id=req_id,
+                prompt=prompt,
+                sampling_params=params,
+                engine_getter=get_engine,
+                timeout_s=float(GEN_TIMEOUT_S),
+                flush_ms=float(STREAM_FLUSH_MS),
+                cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
+            )
         )
-    )
 
     sanitizer = StreamingSanitizer() if sanitize_output else None
     normal_completion = False

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Clean AWQ quantization script using the new modular structure.
+AWQ quantization script.
 
 Usage:
     python -m quant.quantize --model MODEL_PATH --out OUTPUT_DIR [options]

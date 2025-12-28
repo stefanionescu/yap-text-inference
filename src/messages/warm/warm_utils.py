@@ -7,7 +7,6 @@ import uuid
 
 from fastapi import WebSocket
 
-from ...config import WARM_REQUEST_PRIORITY
 from ...engines import get_engine, create_sampling_params
 
 _WARM_PARAMS = None
@@ -35,7 +34,6 @@ async def warm_chat_segment(
         prompt=prompt,
         sampling_params=_get_warm_params(),
         request_id=req_id,
-        priority=WARM_REQUEST_PRIORITY,
     ):
         break
 
@@ -47,4 +45,3 @@ async def warm_chat_segment(
 
 
 __all__ = ["warm_chat_segment"]
-
