@@ -64,7 +64,6 @@ from .tool import (
 from .models import (
     ALLOWED_BASE_CHAT_MODELS,
     ALLOWED_BASE_MOE_CHAT_MODELS,
-    ALL_CHAT_MODELS,
     ALLOWED_VLLM_QUANT_CHAT_MODELS,
     ALLOWED_TRT_QUANT_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
@@ -195,8 +194,10 @@ def _run_startup_validation():
     is_classifier_model = helpers['is_classifier_model']
     is_local_model_path = helpers['is_local_model_path']
     is_awq_model_name = helpers['is_awq_model_name']
+    get_allowed_chat_models = helpers['get_allowed_chat_models']
+    allowed_chat_models = get_allowed_chat_models(INFERENCE_ENGINE)
     
-    if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALL_CHAT_MODELS, "chat"):
+    if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, allowed_chat_models, "chat"):
         if not _allow_prequantized_override(CHAT_MODEL, "chat"):
             raise ValueError(f"CHAT_MODEL must be allowlisted, got: {CHAT_MODEL}")
 
@@ -273,7 +274,6 @@ __all__ = [
     # models/validation
     "ALLOWED_BASE_CHAT_MODELS",
     "ALLOWED_BASE_MOE_CHAT_MODELS",
-    "ALL_CHAT_MODELS",
     "ALLOWED_VLLM_QUANT_CHAT_MODELS",
     "ALLOWED_TRT_QUANT_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",

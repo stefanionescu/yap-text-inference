@@ -124,6 +124,8 @@ class StreamingSanitizer:
         # Flags for one-shot behaviors
         self._prefix_pending = True
         self._capital_pending = True
+        # Whether we've dropped the true stream start from the raw tail window
+        self._trimmed_stream_start = False
 
     def push(self, chunk: str) -> str:
         """Process a new raw chunk and return the sanitized delta."""
@@ -132,12 +134,16 @@ class StreamingSanitizer:
 
         self._raw_tail += chunk
 
-        sanitized, self._prefix_pending, self._capital_pending = _sanitize_stream_chunk(
+        prefix_ctx = self._prefix_pending or (not self._trimmed_stream_start)
+        capital_ctx = self._capital_pending or (not self._trimmed_stream_start)
+        sanitized, prefix_state, capital_state = _sanitize_stream_chunk(
             self._raw_tail,
-            prefix_pending=self._prefix_pending,
-            capital_pending=self._capital_pending,
-            strip_leading_ws=self._prefix_pending,
+            prefix_pending=prefix_ctx,
+            capital_pending=capital_ctx,
+            strip_leading_ws=prefix_ctx,
         )
+        self._prefix_pending = prefix_state
+        self._capital_pending = capital_state
 
         stable_len, tail_len = _split_stable_and_tail_lengths(
             raw_tail=self._raw_tail,
@@ -157,7 +163,9 @@ class StreamingSanitizer:
 
         self._sanitized_tail = sanitized[stable_len:stable_len + tail_len]
         # Keep only the raw portion that maps to the retained tail window
-        self._raw_tail = self._raw_tail[-self._MAX_TAIL :]
+        if len(self._raw_tail) > self._MAX_TAIL:
+            self._trimmed_stream_start = True
+            self._raw_tail = self._raw_tail[-self._MAX_TAIL :]
 
         return delta
 
@@ -166,12 +174,16 @@ class StreamingSanitizer:
         if not self._raw_tail and not self._sanitized_tail:
             return ""
 
-        sanitized, self._prefix_pending, self._capital_pending = _sanitize_stream_chunk(
+        prefix_ctx = self._prefix_pending or (not self._trimmed_stream_start)
+        capital_ctx = self._capital_pending or (not self._trimmed_stream_start)
+        sanitized, prefix_state, capital_state = _sanitize_stream_chunk(
             self._raw_tail,
-            prefix_pending=self._prefix_pending,
-            capital_pending=self._capital_pending,
-            strip_leading_ws=self._prefix_pending,
+            prefix_pending=prefix_ctx,
+            capital_pending=capital_ctx,
+            strip_leading_ws=prefix_ctx,
         )
+        self._prefix_pending = prefix_state
+        self._capital_pending = capital_state
 
         emitted_text = "".join(self._emitted_parts)
         # Never trim more prefix than the portion we know is still buffered
@@ -186,22 +198,13 @@ class StreamingSanitizer:
             self._emitted_parts.append(tail)
         self._sanitized_tail = ""
         self._raw_tail = ""
+        self._trimmed_stream_start = False
         return tail
 
     @property
     def full_text(self) -> str:
         """Return the fully sanitized text accumulated so far."""
         return "".join(self._emitted_parts) + self._sanitized_tail
-
-
-def _ensure_leading_capital(text: str) -> str:
-    """Ensure the first alphabetic character is uppercase."""
-    for idx, char in enumerate(text):
-        if char.isalpha():
-            if char.islower():
-                return f"{text[:idx]}{char.upper()}{text[idx + 1:]}"
-            break
-    return text
 
 
 def _ensure_leading_capital_stream(text: str, capital_pending: bool) -> tuple[str, bool]:
