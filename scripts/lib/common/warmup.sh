@@ -27,7 +27,7 @@ stop_existing_warmup_processes() {
   fi
 
   if ps -p "${existing_pid}" >/dev/null 2>&1; then
-    log_info "[warmup] Stopping existing warmup process (PID=${existing_pid})"
+    log_info "[warmup] Stopping existing warmup process..."
     # Try graceful termination first
     kill -TERM "${existing_pid}" 2>/dev/null || true
     # Wait up to 5 seconds for graceful shutdown
@@ -45,7 +45,7 @@ stop_existing_warmup_processes() {
       kill -KILL "${existing_pid}" 2>/dev/null || true
       sleep 1
     fi
-    log_info "[warmup] Warmup process ${existing_pid} stopped"
+    log_info "[warmup] Warmup process stopped"
   else
     log_info "[warmup] Removing stale warmup lock file (PID ${existing_pid} not running)"
   fi
