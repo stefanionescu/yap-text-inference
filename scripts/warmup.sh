@@ -45,17 +45,28 @@ cleanup_lock() {
 }
 
 choose_python() {
-  local venv_dir
-  if command -v get_venv_dir >/dev/null 2>&1; then
-    venv_dir="$(get_venv_dir)"
-  else
-    venv_dir="${ROOT_DIR}/.venv"
+  local venv_py=""
+  if command -v get_venv_python >/dev/null 2>&1; then
+    venv_py="$(get_venv_python 2>/dev/null || true)"
+  elif command -v get_venv_dir >/dev/null 2>&1; then
+    local fallback_dir
+    fallback_dir="$(get_venv_dir)"
+    venv_py="${fallback_dir}/bin/python"
   fi
-  local venv_py="${venv_dir}/bin/python"
-  if [ -x "${venv_py}" ]; then
+  if [ -n "${venv_py}" ] && [ -x "${venv_py}" ]; then
     echo "${venv_py}"
     return 0
   fi
+
+  if command -v get_python_binary_for_engine >/dev/null 2>&1; then
+    local engine_py
+    engine_py="$(get_python_binary_for_engine 2>/dev/null || true)"
+    if [ -n "${engine_py}" ] && command -v "${engine_py}" >/dev/null 2>&1; then
+      command -v "${engine_py}"
+      return 0
+    fi
+  fi
+
   if command -v python3 >/dev/null 2>&1; then
     command -v python3
     return 0

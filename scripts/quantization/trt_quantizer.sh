@@ -13,6 +13,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/../lib/common/model_detect.sh"
+source "${SCRIPT_DIR}/../lib/common/hf.sh"
 
 # Source TRT libraries (must come after model_detect.sh for MoE detection)
 source "${SCRIPT_DIR}/../lib/env/trt.sh"
@@ -76,7 +77,7 @@ QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODE
 log_info "[quant] Quantization format: ${QFORMAT}"
 
 # Check if model is already TRT pre-quantized
-if trt_is_prequantized_model "${MODEL_ID}"; then
+if model_detect_is_trt_prequant "${MODEL_ID}"; then
   log_info "[quant] Detected pre-quantized TRT model: ${MODEL_ID}"
   
   # Download pre-quantized checkpoint
@@ -157,4 +158,3 @@ if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
 fi
 
 log_info "[quant] ✓ Complete: ${TRT_ENGINE_DIR}"
-

@@ -41,13 +41,7 @@ trt_download_model() {
   log_info "[model] Downloading model ${model_id} to ${target_dir}..."
   mkdir -p "${target_dir}"
   
-  # Only enable HF_HUB_ENABLE_HF_TRANSFER if hf_transfer is installed
-  if python -c "import hf_transfer" 2>/dev/null; then
-    export HF_HUB_ENABLE_HF_TRANSFER=1
-  else
-    export HF_HUB_ENABLE_HF_TRANSFER=0
-    log_warn "[model] ⚠ hf_transfer not installed, using standard downloads"
-  fi
+  hf_enable_transfer "[model]" "python" || true
   
   if ! python -c "
 import sys
@@ -217,13 +211,7 @@ trt_download_prequantized() {
   log_info "[model] Downloading pre-quantized TRT model: ${model_id}"
   mkdir -p "${target_dir}"
   
-  # Only enable HF_HUB_ENABLE_HF_TRANSFER if hf_transfer is installed
-  if python -c "import hf_transfer" 2>/dev/null; then
-    export HF_HUB_ENABLE_HF_TRANSFER=1
-  else
-    export HF_HUB_ENABLE_HF_TRANSFER=0
-    log_warn "[model] ⚠ hf_transfer not installed, using standard downloads"
-  fi
+  hf_enable_transfer "[model]" "python" || true
   
   if ! python -c "
 import sys

@@ -16,6 +16,10 @@ if ! type trt_find_compatible_engine >/dev/null 2>&1; then
   source "${_TRT_BUILD_DIR}/detect.sh"
 fi
 
+if ! type model_detect_is_trt_prequant >/dev/null 2>&1; then
+  source "${_TRT_BUILD_DIR}/../../lib/common/model_detect.sh"
+fi
+
 # =============================================================================
 # ENGINE BUILD
 # =============================================================================
@@ -258,7 +262,7 @@ trt_quantize_and_build() {
   log_info "[build]   GPU: ${GPU_SM_ARCH} (${DETECTED_GPU_NAME:-$(gpu_detect_name)})"
   
   # Check if this is a pre-quantized model
-  if trt_is_prequantized_model "${model_id}"; then
+  if model_detect_is_trt_prequant "${model_id}"; then
     log_info "[build] Detected pre-quantized TRT model"
     
     # Check for pre-built engine in the HF repo FIRST

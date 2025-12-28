@@ -15,6 +15,66 @@ _cleanup_remove_dirs() {
   done
 }
 
+cleanup_repo_hf_cache() {
+  local root_dir="$1"
+  _cleanup_remove_dirs "repo hf cache" "${root_dir}/.hf"
+}
+
+cleanup_repo_pip_cache() {
+  local root_dir="$1"
+  _cleanup_remove_dirs "repo pip cache" "${root_dir}/.pip_cache"
+}
+
+cleanup_repo_runtime_caches() {
+  local root_dir="$1"
+  _cleanup_remove_dirs "repo runtime cache" \
+    "${root_dir}/.vllm_cache" \
+    "${root_dir}/.flashinfer" \
+    "${root_dir}/.xformers" \
+    "${root_dir}/.trt_cache" \
+    "${root_dir}/.torch_inductor" \
+    "${root_dir}/.triton"
+}
+
+cleanup_repo_engine_artifacts() {
+  local root_dir="$1"
+  _cleanup_remove_dirs "engine artifact" \
+    "${root_dir}/.awq" \
+    "${root_dir}/.trtllm-repo" \
+    "${root_dir}/models"
+}
+
+cleanup_system_vllm_caches() {
+  _cleanup_remove_dirs "cache" \
+    "$HOME/.cache/vllm" "/root/.cache/vllm" "/workspace/.cache/vllm" \
+    "$HOME/.cache/flashinfer" "/root/.cache/flashinfer" "/workspace/.cache/flashinfer"
+}
+
+cleanup_system_trt_caches() {
+  _cleanup_remove_dirs "cache" \
+    "$HOME/.cache/tensorrt_llm" "/root/.cache/tensorrt_llm" \
+    "$HOME/.cache/tensorrt" "/root/.cache/tensorrt" \
+    "$HOME/.cache/nvidia" "/root/.cache/nvidia" \
+    "$HOME/.cache/modelopt" "/root/.cache/modelopt" \
+    "$HOME/.cache/onnx" "/root/.cache/onnx" \
+    "$HOME/.cache/cuda" "/root/.cache/cuda" \
+    "$HOME/.cache/pycuda" "/root/.cache/pycuda" \
+    "$HOME/.local/share/tensorrt_llm" "/root/.local/share/tensorrt_llm" \
+    "/workspace/.cache/tensorrt" "/workspace/.cache/tensorrt_llm"
+}
+
+cleanup_system_compiler_caches() {
+  _cleanup_remove_dirs "cache" \
+    "$HOME/.cache/torch" "/root/.cache/torch" "/workspace/.cache/torch" \
+    "$HOME/.cache/torch_extensions" "/root/.cache/torch_extensions" \
+    "$HOME/.torch_inductor" "/root/.torch_inductor" "/workspace/.cache/triton" \
+    "$HOME/.triton" "/root/.triton"
+}
+
+cleanup_system_nvidia_caches() {
+  _cleanup_remove_dirs "cache" "$HOME/.nv" "/root/.nv"
+}
+
 cleanup_stop_server_session() {
   local root_dir="$1"
   local pid_file="${root_dir}/server.pid"
@@ -51,18 +111,10 @@ cleanup_kill_engine_processes() {
 
 cleanup_repo_caches() {
   local root_dir="$1"
-  _cleanup_remove_dirs "repo cache" \
-    "${root_dir}/.hf" \
-    "${root_dir}/.pip_cache" \
-    "${root_dir}/.vllm_cache" \
-    "${root_dir}/.flashinfer" \
-    "${root_dir}/.xformers" \
-    "${root_dir}/.awq" \
-    "${root_dir}/.trtllm-repo" \
-    "${root_dir}/.trt_cache" \
-    "${root_dir}/models" \
-    "${root_dir}/.torch_inductor" \
-    "${root_dir}/.triton"
+  cleanup_repo_hf_cache "${root_dir}"
+  cleanup_repo_pip_cache "${root_dir}"
+  cleanup_repo_runtime_caches "${root_dir}"
+  cleanup_repo_engine_artifacts "${root_dir}"
 }
 
 cleanup_runtime_state() {
@@ -135,47 +187,19 @@ cleanup_hf_caches() {
 
 cleanup_engine_artifacts() {
   local root_dir="$1"
-  
-  # Use get_venv_dir() to detect the actual venv location
-  local detected_venv
-  detected_venv="$(get_venv_dir)"
-  
-  _cleanup_remove_dirs "engine artifact" \
-    "${root_dir}/.awq" \
-    "${root_dir}/.trtllm-repo" \
-    "${root_dir}/.trt_cache" \
-    "${root_dir}/models" \
-    "${root_dir}/.vllm_cache" \
-    "${root_dir}/.flashinfer" \
-    "${root_dir}/.xformers" \
-    "${root_dir}/.venv" \
-    "${root_dir}/.venv-trt" \
-    "${root_dir}/.venv-vllm" \
-    "${root_dir}/.venv-quant" \
-    "${detected_venv}" \
-    "/opt/venv" \
-    "/opt/venv-quant"
+  cleanup_repo_engine_artifacts "${root_dir}"
+  cleanup_repo_runtime_caches "${root_dir}"
+  cleanup_venvs "${root_dir}"
 }
 
 cleanup_misc_caches() {
+  cleanup_system_vllm_caches
+  cleanup_system_trt_caches
+  cleanup_system_compiler_caches
+  cleanup_system_nvidia_caches
   _cleanup_remove_dirs "cache" \
-    "$HOME/.cache/vllm" "/root/.cache/vllm" \
-    "$HOME/.cache/flashinfer" "/root/.cache/flashinfer" \
-    "$HOME/.cache/tensorrt_llm" "/root/.cache/tensorrt_llm" \
-    "$HOME/.cache/tensorrt" "/root/.cache/tensorrt" \
-    "$HOME/.cache/nvidia" "/root/.cache/nvidia" \
-    "$HOME/.cache/modelopt" "/root/.cache/modelopt" \
-    "$HOME/.cache/onnx" "/root/.cache/onnx" \
-    "$HOME/.cache/cuda" "/root/.cache/cuda" \
-    "$HOME/.cache/pycuda" "/root/.cache/pycuda" \
-    "$HOME/.local/share/tensorrt_llm" "/root/.local/share/tensorrt_llm" \
-    "$HOME/.cache/torch/inductor" "/root/.cache/torch/inductor" \
-    "$HOME/.torch_inductor" "/root/.torch_inductor" \
-    "$HOME/.cache/torch_extensions" "/root/.cache/torch_extensions" \
-    "$HOME/.triton" "/root/.triton" \
-    "/workspace/.cache/huggingface" "/workspace/.cache/pip" \
-    "/workspace/.cache/torch" "/workspace/.cache/tensorrt" \
-    "/workspace/.cache/triton" "/workspace/.cache/vllm"
+    "/workspace/.cache/huggingface" \
+    "/workspace/.cache/pip"
 }
 
 cleanup_pip_caches() {
@@ -201,7 +225,7 @@ cleanup_pip_caches() {
   fi
   
   _cleanup_remove_dirs "pip cache" \
-    "$HOME/.cache/pip" "/root/.cache/pip" "${PIP_CACHE_DIR:-}"
+    "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip" "${PIP_CACHE_DIR:-}"
 }
 
 cleanup_gpu_processes() {

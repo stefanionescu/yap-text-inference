@@ -5,3 +5,5 @@
 # Core AWQ stack (llmcompressor + torch CUDA 13 build)
 torch==2.9.0+cu130 ; sys_platform == 'linux'
 llmcompressor==0.9.0
+compressed-tensors==0.13.0
+hf_transfer==0.1.8
