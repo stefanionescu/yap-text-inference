@@ -124,7 +124,6 @@ def prefetch_model(model_path: str) -> str | None:
                 repo_id=model_path,
                 token=token,
                 local_files_only=False,
-                resume_download=True,
                 cache_dir=cache_dir,
             )
             last_err = None
