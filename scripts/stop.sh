@@ -12,23 +12,14 @@ HARD_RESET="${HARD_RESET:-0}"   # set HARD_RESET=1 to attempt nvidia-smi --gpu-r
 # CLEANUP CONTROL FLAGS
 # =============================================================================
 # NUKE_ALL=0: Light stop - preserve venv, caches, models (for quick restart)
-# NUKE_ALL=1: Full stop - wipe model caches, HF cache, etc. (default)
-# NUKE_VENV=1: Also delete venv (only for --install-deps or engine switch)
-#
-# The venv should be preserved in most cases because:
-# - pip install is slow and deps rarely change
-# - Hash-based skip logic in reqs.sh handles dep updates
-# - Only delete venv when explicitly needed (engine switch, --install-deps)
+# NUKE_ALL=1: Full stop - wipe EVERYTHING: venv, caches, models, all of it
 # =============================================================================
 NUKE_ALL="${NUKE_ALL:-1}"
-NUKE_VENV="${NUKE_VENV:-0}"  # Default: preserve venv
 
 if [ "${NUKE_ALL}" = "0" ]; then
   log_info "[stop] Light stop: preserving venv, caches, and models..."
-elif [ "${NUKE_VENV}" = "1" ]; then
-  log_info "[stop] Full stop: wiping venv, runtime deps, and caches"
 else
-  log_info "[stop] Model reset: wiping model caches but preserving venv"
+  log_info "[stop] Full stop: nuking venv, caches, models - everything"
 fi
 
 cleanup_stop_server_session "${ROOT_DIR}"
@@ -38,9 +29,6 @@ sleep 1
 # 4) Remove repo-local caches (models and compiled artifacts under the repo)
 if [ "${NUKE_ALL}" != "0" ]; then
   cleanup_repo_caches "${ROOT_DIR}"
-fi
-
-if [ "${NUKE_VENV}" = "1" ]; then
   cleanup_venvs "${ROOT_DIR}"
 fi
 

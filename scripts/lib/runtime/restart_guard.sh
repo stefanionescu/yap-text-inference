@@ -92,8 +92,8 @@ _runtime_guard_force_engine_wipe() {
   log_warn "[server]     - All engine-specific artifacts"
   log_warn "[server]   =========================================="
   
-  # Force full nuke INCLUDING venv (engine switch requires fresh deps)
-  if ! NUKE_ALL=1 NUKE_VENV=1 bash "${script_dir}/stop.sh"; then
+  # Force full nuke (engine switch requires fresh deps)
+  if ! NUKE_ALL=1 bash "${script_dir}/stop.sh"; then
     log_err "[server] ✗ stop.sh failed during engine wipe"
     return 1
   fi

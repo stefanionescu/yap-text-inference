@@ -300,17 +300,12 @@ Default behavior (`NUKE_ALL=1`, model reset):
 Control flags:
 
 ```bash
-# Light stop (preserve everything including models)
+# Light stop (preserve venv, caches, models for quick restart)
 NUKE_ALL=0 bash scripts/stop.sh
 
-# Full wipe including venv (for engine switch or fresh install)
-NUKE_VENV=1 bash scripts/stop.sh
-
-# Or combine for maximum cleanup
-NUKE_ALL=1 NUKE_VENV=1 bash scripts/stop.sh
+# Full stop - nuke EVERYTHING: venv, caches, models (default)
+NUKE_ALL=1 bash scripts/stop.sh
 ```
-
-Note: `--install-deps` and engine switching (`--trt` ↔ `--vllm`) automatically set `NUKE_VENV=1`.
 
 ## Health Check
 
