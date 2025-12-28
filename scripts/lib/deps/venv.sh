@@ -101,7 +101,7 @@ ensure_python_runtime_for_engine() {
     return 1
   fi
 
-  log_info "[python] Ensuring python3 + pip available for vLLM path"
+  log_info "[python] Ensuring python3 + pip available for vLLM path..."
   { python3 --version || python --version; } &>/dev/null || true
   { python3 -m pip --version || python -m pip --version; } &>/dev/null || true
   return 0
