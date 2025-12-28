@@ -69,6 +69,9 @@ else:
     _ctx_out = int(os.getenv("CHAT_MAX_OUT", "150"))
     TRT_CALIB_SEQLEN = _ctx_len + _ctx_out
 
+# Calibration batch size defaults to 16 unless explicitly overridden.
+TRT_CALIB_BATCH_SIZE = int(os.getenv("TRT_CALIB_BATCH_SIZE", "16"))
+
 
 __all__ = [
     "TRT_ENGINE_DIR",
@@ -83,6 +86,6 @@ __all__ = [
     "TRT_KV_ENABLE_BLOCK_REUSE",
     "TRT_AWQ_BLOCK_SIZE",
     "TRT_CALIB_SIZE",
+    "TRT_CALIB_BATCH_SIZE",
     "TRT_CALIB_SEQLEN",
 ]
-

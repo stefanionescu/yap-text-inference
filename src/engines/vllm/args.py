@@ -30,6 +30,7 @@ from __future__ import annotations
 import importlib.util
 import os
 
+from vllm.config import AttentionConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 from src.helpers.model_profiles import (
@@ -91,6 +92,12 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
     max_batched = int(os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT", "256"))
 
+    # Capture any explicit backend overrides before we touch vLLM (avoids
+    # deprecation warnings when AttentionConfig inspects env vars).
+    attention_backend = os.environ.get("VLLM_ATTENTION_BACKEND")
+    if attention_backend:
+        attention_backend = attention_backend.strip()
+        os.environ.pop("VLLM_ATTENTION_BACKEND", None)
     # Normalize/validate KV cache dtype
     kv_dtype_value = (KV_DTYPE or "").strip()
 
@@ -118,8 +125,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
 
     # MLA and FLA models don't work with XFORMERS or FLASHINFER backends
     if uses_mla or needs_fla:
-        if os.getenv("VLLM_ATTENTION_BACKEND"):
-            os.environ.pop("VLLM_ATTENTION_BACKEND", None)
+        attention_backend = None
 
     dtype_value = "auto"
     if needs_bfloat16:
@@ -177,6 +183,9 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     if scaled_max_seqs is not None:
         kwargs["max_num_seqs"] = scaled_max_seqs
 
+    if attention_backend:
+        kwargs["attention_config"] = AttentionConfig(backend=attention_backend)
+
     engine_args = AsyncEngineArgs(**kwargs)
 
     # Add flag for local AWQ handling in engine creation
@@ -184,4 +193,3 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
         engine_args._is_local_awq = True
 
     return engine_args
-

@@ -30,8 +30,28 @@ vllm_awq_push_to_hf() {
     return
   fi
 
+  local python_exec
+  if declare -F get_venv_python >/dev/null 2>&1; then
+    python_exec="$(get_venv_python 2>/dev/null || true)"
+  else
+    python_exec="${ROOT_DIR}/.venv/bin/python"
+  fi
+
+  if [ -z "${python_exec}" ] || [ ! -x "${python_exec}" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+      python_exec="$(command -v python3)"
+      log_warn "[hf] ⚠ venv python missing; falling back to system python3 (${python_exec})"
+    elif command -v python >/dev/null 2>&1; then
+      python_exec="$(command -v python)"
+      log_warn "[hf] ⚠ venv python missing; falling back to system python (${python_exec})"
+    else
+      log_warn "[hf] ⚠ Unable to locate python interpreter for AWQ push; skipping upload"
+      return
+    fi
+  fi
+
   local python_cmd=(
-    "${ROOT_DIR}/.venv/bin/python"
+    "${python_exec}"
     "${ROOT_DIR}/src/engines/vllm/awq/hf/hf_push.py"
     --src "${src_dir}"
     --repo-id "${HF_PUSH_REPO_ID}"
