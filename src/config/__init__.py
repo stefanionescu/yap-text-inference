@@ -198,7 +198,7 @@ def _run_startup_validation():
     
     if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, ALL_CHAT_MODELS, "chat"):
         if not _allow_prequantized_override(CHAT_MODEL, "chat"):
-            raise ValueError(f"CHAT_MODEL must be one of: {ALL_CHAT_MODELS}, got: {CHAT_MODEL}")
+            raise ValueError(f"CHAT_MODEL must be allowlisted, got: {CHAT_MODEL}")
 
     if DEPLOY_TOOL:
         # Tool models must be classifiers
@@ -207,7 +207,7 @@ def _run_startup_validation():
         # Only validate against allowlist for HuggingFace models, not local paths
         if not is_local_model_path(TOOL_MODEL) and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
             raise ValueError(
-                f"TOOL_MODEL classifier must be one of: {ALLOWED_TOOL_MODELS}, got: {TOOL_MODEL}"
+                f"TOOL_MODEL classifier must be allowlisted, got: {TOOL_MODEL}"
             )
 
     # Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
