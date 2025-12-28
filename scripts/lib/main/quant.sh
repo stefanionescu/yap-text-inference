@@ -6,25 +6,14 @@
 
 # Resolve the 4-bit backend based on model classification
 # Usage: main_resolve_4bit_backend <chat_model>
-# Returns: "awq", "nvfp4", or "gptq_marlin"
+# Returns: "awq" or "gptq_marlin"
 main_resolve_4bit_backend() {
   local chat_model="$1"
   if [ -z "${chat_model}" ]; then
-    # For TRT + MoE with no model specified, default to nvfp4
-    if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
-      echo "nvfp4"
-    else
-      echo "awq"
-    fi
+    echo "awq"
     return
   fi
-  
-  # For TRT engine, MoE models use NVFP4 instead of AWQ
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && model_detect_is_moe "${chat_model}"; then
-    echo "nvfp4"
-    return
-  fi
-  
+
   local classification
   classification="$(model_detect_classify_prequant "${chat_model}")"
   case "${classification}" in

@@ -153,9 +153,6 @@ def _get_helper_functions():
         is_trt_awq_model_name,
         is_trt_prequantized_model,
         gpu_supports_fp8,
-        gpu_supports_nvfp4,
-        is_nvfp4_model_name,
-        validate_nvfp4_gpu_compat,
         map_quant_mode_to_trt,
     )
     
@@ -175,9 +172,6 @@ def _get_helper_functions():
         'is_trt_awq_model_name': is_trt_awq_model_name,
         'is_trt_prequantized_model': is_trt_prequantized_model,
         'gpu_supports_fp8': gpu_supports_fp8,
-        'gpu_supports_nvfp4': gpu_supports_nvfp4,
-        'is_nvfp4_model_name': is_nvfp4_model_name,
-        'validate_nvfp4_gpu_compat': validate_nvfp4_gpu_compat,
         'map_quant_mode_to_trt': map_quant_mode_to_trt,
     }
     return _helpers_cache
@@ -191,8 +185,7 @@ def __getattr__(name):
         'get_all_base_chat_models', 'get_allowed_chat_models', 'is_local_model_path',
         'classify_prequantized_model', 'classify_trt_prequantized_model',
         'is_awq_model_name', 'is_trt_awq_model_name', 'is_trt_prequantized_model',
-        'gpu_supports_fp8', 'gpu_supports_nvfp4', 'is_nvfp4_model_name',
-        'validate_nvfp4_gpu_compat', 'map_quant_mode_to_trt',
+        'gpu_supports_fp8', 'map_quant_mode_to_trt',
     }
     if name in helper_names:
         return _get_helper_functions()[name]
@@ -302,9 +295,6 @@ __all__ = [
     "is_trt_awq_model_name",
     "is_trt_prequantized_model",
     "gpu_supports_fp8",
-    "gpu_supports_nvfp4",
-    "is_nvfp4_model_name",
-    "validate_nvfp4_gpu_compat",
     "map_quant_mode_to_trt",
     # limits
     "CHAT_MAX_LEN",

@@ -15,8 +15,41 @@ import argparse
 import sys
 from pathlib import Path
 
+from src.config.quantization import TOKENIZER_FILES
 from ..core.metadata import collect_metadata, detect_base_model, get_engine_label
 from .readme_renderer import render_trt_readme
+
+
+def _find_tokenizer_dir(checkpoint_dir: Path, base_model: str | None) -> Path | None:
+    """Find directory containing tokenizer files.
+    
+    Checks:
+    1. Checkpoint directory itself
+    2. Parent's HF download (model-hf directory)
+    3. Downloads from HuggingFace if base_model provided
+    """
+    # Check if tokenizer is in checkpoint dir
+    if (checkpoint_dir / "tokenizer_config.json").exists():
+        return checkpoint_dir
+    
+    # Check sibling -hf directory (where model was downloaded)
+    # e.g., /models/foo-int4_awq-ckpt -> /models/foo-hf
+    ckpt_name = checkpoint_dir.name
+    for suffix in ["-int4_awq-ckpt", "-fp8-ckpt", "-int8_sq-ckpt", "-ckpt"]:
+        if ckpt_name.endswith(suffix):
+            hf_dir = checkpoint_dir.parent / (ckpt_name.replace(suffix, "-hf"))
+            if hf_dir.is_dir() and (hf_dir / "tokenizer_config.json").exists():
+                return hf_dir
+            break
+    
+    # Try to find in parent models directory
+    models_dir = checkpoint_dir.parent
+    for subdir in models_dir.iterdir():
+        if subdir.is_dir() and subdir.name.endswith("-hf"):
+            if (subdir / "tokenizer_config.json").exists():
+                return subdir
+    
+    return None
 
 
 def push_trt_to_hf(
@@ -114,6 +147,30 @@ def push_trt_to_hf(
             token=token,
             revision=branch,
         )
+    
+    # Upload tokenizer files (required for TRT-LLM to load the model)
+    tokenizer_dir = _find_tokenizer_dir(checkpoint_path, base_model)
+    if tokenizer_dir:
+        print(f"[trt-hf] Uploading tokenizer from {tokenizer_dir}")
+        tokenizer_files_found = 0
+        for filename in TOKENIZER_FILES:
+            src_file = tokenizer_dir / filename
+            if src_file.exists():
+                api.upload_file(
+                    path_or_fileobj=str(src_file),
+                    path_in_repo=filename,
+                    repo_id=repo_id,
+                    token=token,
+                    revision=branch,
+                )
+                tokenizer_files_found += 1
+        if tokenizer_files_found > 0:
+            print(f"[trt-hf] Uploaded {tokenizer_files_found} tokenizer files")
+        else:
+            print("[trt-hf] Warning: No tokenizer files found to upload")
+    else:
+        print("[trt-hf] Warning: Could not find tokenizer directory; tokenizer not uploaded")
+        print("[trt-hf]   TRT-LLM will need to download tokenizer from base model at runtime")
     
     print(f"[trt-hf] Successfully pushed to https://huggingface.co/{repo_id}")
     return True

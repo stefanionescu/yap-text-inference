@@ -41,17 +41,17 @@ ensure_required_env_vars() {
 }
 
 # Determine whether the selected quantization represents a 4-bit export
-# Accepts explicit quant values (awq, gptq_marlin, nvfp4, int4_*)
+# Accepts explicit quant values (awq, gptq_marlin, int4_*)
 # and falls back to QUANT_MODE=4bit when specific quant strings are unset.
 push_quant_is_4bit() {
   local quant="${1:-${QUANTIZATION:-}}"
   local chat_quant="${2:-${CHAT_QUANTIZATION:-}}"
 
   case "${quant}" in
-    awq|gptq|gptq_marlin|nvfp4|4bit|int4_*|fp4) return 0 ;;
+    awq|gptq|gptq_marlin|4bit|int4_*|fp4) return 0 ;;
   esac
   case "${chat_quant}" in
-    awq|gptq|gptq_marlin|nvfp4|4bit|int4_*|fp4) return 0 ;;
+    awq|gptq|gptq_marlin|4bit|int4_*|fp4) return 0 ;;
   esac
   if [ "${QUANT_MODE:-}" = "4bit" ]; then
     return 0

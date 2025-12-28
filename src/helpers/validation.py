@@ -52,7 +52,6 @@ def validate_env() -> None:
         if not TRT_ENGINE_DIR:
             # TRT_ENGINE_DIR can be empty if we're building from scratch
             pass  # Will be set during quantization/build step
-    
     # Quantization is only required when deploying LLMs (not classifiers)
     needs_quantization = DEPLOY_CHAT or (DEPLOY_TOOL and not is_classifier_model(TOOL_MODEL))
     if needs_quantization:
@@ -62,9 +61,9 @@ def validate_env() -> None:
             errors.append(
                 "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', 'awq', '8bit', or '4bit' for VLLM"
             )
-        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {"fp8", "int8_sq", "int8", "int4_awq", "nvfp4", "awq", "8bit", "4bit"}:
+        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {"fp8", "int8_sq", "int8", "int4_awq", "awq", "8bit", "4bit"}:
             errors.append(
-                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'nvfp4', 'awq', '8bit', or '4bit' for TRT"
+                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'awq', '8bit', or '4bit' for TRT"
             )
     if errors:
         raise ValueError("; ".join(errors))

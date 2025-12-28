@@ -149,6 +149,28 @@ def _build_kv_cache_config() -> dict[str, Any]:
     return kv_cfg
 
 
+def _read_checkpoint_model_type(engine_dir: str) -> str | None:
+    """Read the model_type from the engine's checkpoint config.
+    
+    TensorRT-LLM 1.2+ needs model_type to identify architecture.
+    Falls back to None if not found (TRT-LLM will try to infer from name).
+    """
+    engine_path = Path(engine_dir)
+    config_file = engine_path / "config.json"
+    
+    if config_file.exists():
+        try:
+            with open(config_file, encoding="utf-8") as f:
+                config = json.load(f)
+            model_type = config.get("model_type")
+            if model_type:
+                return str(model_type)
+        except (json.JSONDecodeError, ValueError, OSError) as e:
+            logger.warning("Failed to read model_type from config.json: %s", e)
+    
+    return None
+
+
 def _read_engine_max_batch_size(engine_dir: str) -> int | None:
     """Read the engine's baked-in max_batch_size from metadata.
     
@@ -252,6 +274,11 @@ async def _ensure_engine() -> TRTEngine:
         # Validate runtime batch size against engine's baked-in max (fail early)
         _validate_runtime_batch_size(engine_dir)
         
+        # Read model_type from checkpoint config (TRT-LLM 1.2+ needs this for custom model names)
+        model_type = _read_checkpoint_model_type(engine_dir)
+        if model_type:
+            logger.info("TRT-LLM: detected model_type=%s from checkpoint config", model_type)
+        
         logger.info("TRT-LLM: building chat engine (engine_dir=%s, tokenizer=%s)", engine_dir, CHAT_MODEL)
         
         # Import TRT-LLM lazily to avoid import errors when not using TRT
@@ -261,6 +288,10 @@ async def _ensure_engine() -> TRTEngine:
             "model": engine_dir,
             "tokenizer": CHAT_MODEL,
         }
+        
+        # Pass model_type explicitly if available (required for custom model names in TRT-LLM 1.2+)
+        if model_type:
+            kwargs["model_type"] = model_type
         
         kv_cfg = _build_kv_cache_config()
         if kv_cfg:
