@@ -50,6 +50,7 @@ from src.config import (
 )
 from ..base import BaseEngine, EngineOutput
 from .args import make_engine_args
+from .quantization import UNSUPPORTED_QUANT_DTYPE_FIELDS
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +60,6 @@ _ENGINE_LOCK = asyncio.Lock()  # Guards engine initialization
 _CACHE_RESET_LOCK = asyncio.Lock()  # Guards cache reset operations
 _CACHE_RESET_EVENT = asyncio.Event()  # Signals cache reset to daemon
 _LAST_CACHE_RESET = time.monotonic()  # For rate limiting resets
-
-_UNSUPPORTED_QUANT_FIELDS = ("scale_dtype", "zp_dtype")
 
 
 class VLLMEngine(BaseEngine):
@@ -199,29 +198,6 @@ def _create_engine_with_awq_handling(engine_args: AsyncEngineArgs) -> AsyncLLMEn
         return _build(fallback_args)
 
 
-def _strip_quant_dtype_from_mapping(value: Any) -> tuple[Any, bool]:
-    """Remove unsupported quant dtype keys from nested mappings/lists."""
-    removed = False
-    if isinstance(value, dict):
-        cleaned: dict[Any, Any] = {}
-        for k, v in value.items():
-            if k in _UNSUPPORTED_QUANT_FIELDS:
-                removed = True
-                continue
-            cleaned_v, child_removed = _strip_quant_dtype_from_mapping(v)
-            removed = removed or child_removed
-            cleaned[k] = cleaned_v
-        return cleaned, removed
-    if isinstance(value, list):
-        new_list = []
-        for item in value:
-            cleaned_item, child_removed = _strip_quant_dtype_from_mapping(item)
-            removed = removed or child_removed
-            new_list.append(cleaned_item)
-        return new_list, removed
-    return value, False
-
-
 def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> AsyncEngineArgs | None:
     """Rebuild engine args without legacy quant dtype fields if present.
 
@@ -237,20 +213,21 @@ def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> Asyn
         source_names.append("quantization_config")
 
     filtered_kwargs: dict[str, Any] = {}
-    removed = any(hasattr(engine_args, field) for field in _UNSUPPORTED_QUANT_FIELDS)
+    removed = any(hasattr(engine_args, field) for field in UNSUPPORTED_QUANT_DTYPE_FIELDS)
 
     for name in source_names:
-        if name in _UNSUPPORTED_QUANT_FIELDS:
+        if name in UNSUPPORTED_QUANT_DTYPE_FIELDS:
             removed = True
             continue
         if not hasattr(engine_args, name):
             continue
 
         value = getattr(engine_args, name)
-        cleaned_value, child_removed = _strip_quant_dtype_from_mapping(value)
-        if child_removed:
-            removed = True
-        value = cleaned_value
+        if name == "quantization_config" and isinstance(value, dict):
+            cleaned = {k: v for k, v in value.items() if k not in UNSUPPORTED_QUANT_DTYPE_FIELDS}
+            if cleaned != value:
+                removed = True
+            value = cleaned
 
         filtered_kwargs[name] = value
 
@@ -271,7 +248,7 @@ def _looks_like_quant_dtype_error(error: Exception) -> bool:
     message = str(error)
     if not message:
         return False
-    return any(field in message for field in _UNSUPPORTED_QUANT_FIELDS)
+    return any(field in message for field in UNSUPPORTED_QUANT_DTYPE_FIELDS)
 
 
 # ---------------------------------------------------------------------------

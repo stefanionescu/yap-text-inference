@@ -98,7 +98,7 @@ echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 
 log_info "[server] Server started"
 health_hint="${SERVER_HEALTH_URLS[0]:-http://${SERVER_ADDR}/healthz}"
-log_info "[server] Health:  curl -s ${health_hint}"
+log_info "[server] Health: curl -s ${health_hint}"
 log_info "[server] All logs: tail -f ${ROOT_DIR}/server.log"
 log_info "[server] Stop: kill -TERM -$(cat "${ROOT_DIR}/server.pid")"
 

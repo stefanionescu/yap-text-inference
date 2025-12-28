@@ -6,12 +6,15 @@ import os
 from typing import Any
 
 from src.helpers.models import is_local_model_path
-from .io import read_json_file
+from .io import read_json_file, write_json_file
 
 __all__ = [
     "detect_quantization_backend",
     "log_detected_quantization",
     "resolve_model_origin",
+    "sanitize_quantization_metadata",
+    "strip_unsupported_quant_fields",
+    "UNSUPPORTED_QUANT_DTYPE_FIELDS",
 ]
 
 _QUANT_CONFIG_CANDIDATES = (
@@ -21,10 +24,93 @@ _QUANT_CONFIG_CANDIDATES = (
     "awq_config.json",
 )
 _AWQ_METADATA_FILE = "awq_metadata.json"
+UNSUPPORTED_QUANT_DTYPE_FIELDS = ("scale_dtype", "zp_dtype")
+
+
+def sanitize_quantization_metadata(model_path: str) -> None:
+    """Remove legacy dtype keys from local or cached remote config files."""
+    if not model_path:
+        return
+    if is_local_model_path(model_path):
+        _sanitize_local_quant_files(model_path)
+        return
+    if "/" not in model_path:
+        return
+    _sanitize_remote_quant_files(model_path)
+
+
+def strip_unsupported_quant_fields(payload: Any) -> bool:
+    """Recursively delete unsupported dtype keys from a JSON-compatible object."""
+
+    def _strip(obj: Any) -> bool:
+        removed = False
+        if isinstance(obj, dict):
+            for key in list(obj.keys()):
+                if key in UNSUPPORTED_QUANT_DTYPE_FIELDS:
+                    obj.pop(key, None)
+                    removed = True
+            for value in obj.values():
+                removed |= _strip(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                removed |= _strip(item)
+        return removed
+
+    return _strip(payload)
+
+
+def _sanitize_local_quant_files(model_path: str) -> None:
+    for filename in _QUANT_CONFIG_CANDIDATES:
+        candidate = os.path.join(model_path, filename)
+        if os.path.isfile(candidate):
+            _sanitize_json_file(candidate)
+
+
+def _sanitize_remote_quant_files(model_path: str) -> None:
+    try:
+        from huggingface_hub import hf_hub_download
+    except Exception as exc:
+        print(
+            "[config] Warning: huggingface_hub not available for quantization metadata sanitization "
+            f"({exc})"
+        )
+        return
+
+    token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
+    cache_dir = os.getenv("HF_HOME")
+
+    for filename in _QUANT_CONFIG_CANDIDATES:
+        try:
+            downloaded = hf_hub_download(
+                repo_id=model_path,
+                filename=filename,
+                token=token,
+                cache_dir=cache_dir,
+                local_files_only=False,
+            )
+        except Exception:
+            continue
+        _sanitize_json_file(downloaded)
+
+
+def _sanitize_json_file(path: str) -> None:
+    payload = read_json_file(path)
+    if payload is None:
+        return
+    if not strip_unsupported_quant_fields(payload):
+        return
+    if write_json_file(path, payload):
+        print(
+            "[config] Sanitized quantization metadata for "
+            f"{path}: removed {', '.join(UNSUPPORTED_QUANT_DTYPE_FIELDS)}"
+        )
+    else:
+        print(f"[config] Warning: failed to sanitize quantization metadata at {path}")
 
 
 def detect_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Attempt both local and remote detection for llmcompressor exports."""
+    sanitize_quantization_metadata(model_path)
     method, payload = _detect_local_quantization_backend(model_path)
     if method:
         return method, payload
@@ -174,4 +260,3 @@ def _normalize_quantization_name(name: str | None) -> str | None:
         "autoround": "compressed-tensors",
     }
     return mapping.get(normalized)
-
