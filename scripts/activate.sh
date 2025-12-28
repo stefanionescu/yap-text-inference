@@ -16,7 +16,7 @@ source "${SCRIPT_DIR}/lib/common/log.sh"
 # shellcheck disable=SC1090
 source "${SCRIPT_DIR}/lib/deps/venv.sh"
 
-venv_dir="$(resolve_venv_dir)"
+venv_dir="$(get_venv_dir)"
 activate_script="${venv_dir}/bin/activate"
 
 if [ ! -f "${activate_script}" ]; then
@@ -79,4 +79,3 @@ EOF
     launch_bash_shell
     ;;
 esac
-

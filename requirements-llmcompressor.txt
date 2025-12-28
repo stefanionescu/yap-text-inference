@@ -1,0 +1,24 @@
+# VLLM AWQ quantization requirements
+
+--extra-index-url https://download.pytorch.org/whl/cu130
+
+# Core AWQ stack (llmcompressor + torch CUDA 13 build)
+torch==2.9.0+cu130 ; sys_platform == 'linux'
+llmcompressor==0.9.0
+
+# Hugging Face + training utilities used by llmcompressor
+accelerate==1.1.1
+datasets==3.1.0
+safetensors==0.4.5
+sentencepiece==0.2.0
+protobuf==5.28.2
+pyyaml==6.0.2
+rich==13.9.4
+loguru==0.7.3
+tqdm==4.67.1
+transformers==4.56.0
+tokenizers==0.22.0
+mistral_common==1.8.5
+hf_transfer==0.1.8
+huggingface_hub==0.34.0
+ftfy==6.2.3

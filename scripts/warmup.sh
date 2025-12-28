@@ -46,7 +46,11 @@ cleanup_lock() {
 
 choose_python() {
   local venv_dir
-  venv_dir="$(resolve_venv_dir 2>/dev/null || echo "${ROOT_DIR}/.venv")"
+  if command -v get_venv_dir >/dev/null 2>&1; then
+    venv_dir="$(get_venv_dir)"
+  else
+    venv_dir="${ROOT_DIR}/.venv"
+  fi
   local venv_py="${venv_dir}/bin/python"
   if [ -x "${venv_py}" ]; then
     echo "${venv_py}"

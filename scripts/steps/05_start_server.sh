@@ -18,7 +18,7 @@ cd "${ROOT_DIR}"
 activate_venv "" 0 || true
 
 # Resolve venv directory once for consistent use
-VENV_DIR="$(resolve_venv_dir)"
+VENV_DIR="$(get_venv_dir)"
 
 # Double-start guard and stale PID handling
 PID_FILE="${ROOT_DIR}/server.pid"
@@ -104,4 +104,3 @@ if [ -x "${WARMUP_SCRIPT}" ]; then
 else
   log_warn "[warmup] ⚠ Warmup script not found at ${WARMUP_SCRIPT}"
 fi
-

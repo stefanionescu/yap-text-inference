@@ -108,11 +108,11 @@ ensure_python_runtime_for_engine() {
 # =============================================================================
 # Centralized functions to get venv paths - use these instead of hardcoding
 
-# Resolve the venv directory with the following precedence:
+# Resolve the runtime venv directory with the following precedence:
 # 1) VENV_DIR env var (explicit override)
 # 2) Prebaked /opt/venv if it exists (TRT base image comes with this)
 # 3) Repo-local .venv
-resolve_venv_dir() {
+get_venv_dir() {
   if [ -n "${VENV_DIR:-}" ]; then
     echo "${VENV_DIR}"
     return
@@ -124,9 +124,17 @@ resolve_venv_dir() {
   echo "${ROOT_DIR}/.venv"
 }
 
-# Get the venv directory path (export-friendly)
-get_venv_dir() {
-  resolve_venv_dir
+# Resolve the AWQ/llmcompressor venv directory
+get_quant_venv_dir() {
+  if [ -n "${QUANT_VENV_DIR:-}" ]; then
+    echo "${QUANT_VENV_DIR}"
+    return
+  fi
+  if [ -d "/opt/venv-quant" ]; then
+    echo "/opt/venv-quant"
+    return
+  fi
+  echo "${ROOT_DIR}/.venv-quant"
 }
 
 # Get the venv Python executable path
@@ -136,11 +144,19 @@ get_venv_python() {
   printf '%s/bin/python\n' "$(get_venv_dir)"
 }
 
+get_quant_venv_python() {
+  printf '%s/bin/python\n' "$(get_quant_venv_dir)"
+}
+
 # Get the venv pip executable path
 # Usage: get_venv_pip
 # Returns: Path to venv pip binary
 get_venv_pip() {
   printf '%s/bin/pip\n' "$(get_venv_dir)"
+}
+
+get_quant_venv_pip() {
+  printf '%s/bin/pip\n' "$(get_quant_venv_dir)"
 }
 
 # =============================================================================
@@ -202,93 +218,147 @@ validate_venv_python_version() {
   return 0
 }
 
-ensure_virtualenv() {
-  local venv_path
-  venv_path="$(resolve_venv_dir)"
-  export VENV_DIR="${venv_path}"
-  local venv_python="${venv_path}/bin/python"
-  local engine="${INFERENCE_ENGINE:-vllm}"
+_venv_is_protected_path() {
+  case "$1" in
+    /opt/venv|/opt/venv-quant) return 0 ;;
+  esac
+  return 1
+}
 
-  # Check if existing venv has wrong Python version for engine
+_venv_remove_if_invalid() {
+  local venv_path="$1"
+  local engine="$2"
+  local reason=""
+  local venv_python="${venv_path}/bin/python"
+
+  if [ ! -d "${venv_path}" ]; then
+    return 0
+  fi
+
+  if ! validate_venv_python_version "${venv_path}"; then
+    reason="incompatible Python version"
+  elif [ ! -x "${venv_python}" ]; then
+    reason="missing python binary"
+  fi
+
+  if [ -z "${reason}" ]; then
+    return 0
+  fi
+
+  if _venv_is_protected_path "${venv_path}"; then
+    log_err "[venv] ✗ ${venv_path} ${reason}; refusing to delete baked venv (${engine})"
+    return 1
+  fi
+
+  log_warn "[venv] ⚠ ${venv_path} ${reason}; recreating"
+  rm -rf "${venv_path}"
+  return 0
+}
+
+_venv_download_get_pip() {
+  local py_bin="$1"
+  local tmp_file="${ROOT_DIR}/.get-pip.py"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "${tmp_file}" https://bootstrap.pypa.io/get-pip.py || true
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "${tmp_file}" https://bootstrap.pypa.io/get-pip.py || true
+  fi
+  if [ -f "${tmp_file}" ]; then
+    "${py_bin}" "${tmp_file}" || true
+    rm -f "${tmp_file}" || true
+  fi
+}
+
+_venv_prepare_virtualenv_support() {
+  local py_bin="$1"
+  if ! "${py_bin}" -m pip --version >/dev/null 2>&1; then
+    log_warn "[venv] ⚠ pip missing for ${py_bin}; bootstrapping"
+    _venv_download_get_pip "${py_bin}"
+  fi
+  if ! "${py_bin}" -m pip install --upgrade pip >/dev/null 2>&1; then
+    log_warn "[venv] ⚠ Failed to upgrade pip; continuing"
+  fi
+  if "${py_bin}" -m pip install virtualenv >/dev/null 2>&1; then
+    return 0
+  fi
+  log_warn "[venv] ⚠ virtualenv install failed via pip. Attempting OS package"
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo -n apt-get update >/dev/null 2>&1 || true
+    sudo -n apt-get install -y python3-venv >/dev/null 2>&1 || true
+  elif command -v apk >/dev/null 2>&1; then
+    sudo -n apk add --no-cache python3 py3-virtualenv >/dev/null 2>&1 || true
+  elif command -v dnf >/dev/null 2>&1; then
+    sudo -n dnf install -y python3-venv >/dev/null 2>&1 || true
+  elif command -v yum >/dev/null 2>&1; then
+    sudo -n yum install -y python3-venv >/dev/null 2>&1 || true
+  fi
+}
+
+_venv_create_with_virtualenv() {
+  local py_bin="$1"
+  local venv_path="$2"
+  if "${py_bin}" -m virtualenv --version >/dev/null 2>&1; then
+    "${py_bin}" -m virtualenv "${venv_path}"
+    return $?
+  fi
+  if command -v virtualenv >/dev/null 2>&1; then
+    virtualenv -p "${py_bin}" "${venv_path}"
+    return $?
+  fi
+  return 1
+}
+
+_venv_create_new() {
+  local venv_path="$1"
+  local py_bin
+  py_bin=$(get_python_binary_for_engine) || return 1
+
+  log_info "[venv] Creating virtual environment at ${venv_path} with ${py_bin}"
+  if "${py_bin}" -m venv "${venv_path}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  log_warn "[venv] ⚠ python venv failed (ensurepip missing?). Trying virtualenv."
+  _venv_prepare_virtualenv_support "${py_bin}"
+  if _venv_create_with_virtualenv "${py_bin}" "${venv_path}"; then
+    return 0
+  fi
+
+  log_err "[venv] ✗ Failed to create a virtual environment. Install python3-venv or virtualenv and retry."
+  return 1
+}
+
+ensure_virtualenv() {
+  local requested_path="${1:-}"
+  local venv_path
+  if [ -n "${requested_path}" ]; then
+    venv_path="${requested_path}"
+  else
+    venv_path="$(get_venv_dir)"
+    export VENV_DIR="${venv_path}"
+  fi
+
+  local engine="${INFERENCE_ENGINE:-vllm}"
   if [ -d "${venv_path}" ]; then
-    if ! validate_venv_python_version "${venv_path}"; then
-      if [ "${venv_path}" = "/opt/venv" ]; then
-        log_err "[venv] ✗ /opt/venv exists but has incompatible Python for ${engine}; refusing to delete baked venv"
-        return 1
-      fi
-      log_warn "[venv] ⚠ Existing venv has wrong Python version for ${engine} engine; recreating"
-      rm -rf "${venv_path}"
-    elif [ ! -x "${venv_python}" ]; then
-      if [ "${venv_path}" = "/opt/venv" ]; then
-        log_err "[venv] ✗ /opt/venv missing python binary; refusing to delete baked venv"
-        return 1
-      fi
-      log_warn "[venv] ⚠ Existing virtualenv missing python binary; recreating ${venv_path}"
-      rm -rf "${venv_path}"
-    fi
+    _venv_remove_if_invalid "${venv_path}" "${engine}" || return 1
   fi
 
   if [ ! -d "${venv_path}" ]; then
-    # Get the correct Python binary for this engine
-    local PY_BIN
-    PY_BIN=$(get_python_binary_for_engine) || return 1
-    
-    log_info "[venv] Creating virtual environment at ${venv_path} with ${PY_BIN}"
-
-    if ! ${PY_BIN} -m venv "${venv_path}" >/dev/null 2>&1; then
-      log_warn "[venv] ⚠ python venv failed (ensurepip missing?). Trying virtualenv."
-      if ! ${PY_BIN} -m pip --version >/dev/null 2>&1; then
-        log_warn "[venv] ⚠ pip is not available; attempting to bootstrap pip."
-        TMP_PIP="${ROOT_DIR}/.get-pip.py"
-        if command -v curl >/dev/null 2>&1; then
-          curl -fsSL -o "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
-        elif command -v wget >/dev/null 2>&1; then
-          wget -qO "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
-        fi
-        if [ -f "${TMP_PIP}" ]; then
-          ${PY_BIN} "${TMP_PIP}" || true
-          rm -f "${TMP_PIP}" || true
-        fi
-      fi
-
-      if ! ${PY_BIN} -m pip install --upgrade pip >/dev/null 2>&1; then
-        log_warn "[venv] ⚠ Failed to upgrade pip; continuing."
-      fi
-      if ! ${PY_BIN} -m pip install virtualenv >/dev/null 2>&1; then
-        log_warn "[venv] ⚠ virtualenv install failed via pip. Attempting OS package for venv."
-        if command -v apt-get >/dev/null 2>&1; then
-          sudo -n apt-get update >/dev/null 2>&1 || true
-          sudo -n apt-get install -y python3-venv >/dev/null 2>&1 || true
-        elif command -v apk >/dev/null 2>&1; then
-          sudo -n apk add --no-cache python3 py3-virtualenv >/dev/null 2>&1 || true
-        elif command -v dnf >/dev/null 2>&1; then
-          sudo -n dnf install -y python3-venv >/dev/null 2>&1 || true
-        elif command -v yum >/dev/null 2>&1; then
-          sudo -n yum install -y python3-venv >/dev/null 2>&1 || true
-        fi
-      fi
-
-      if command -v virtualenv >/dev/null 2>&1 || ${PY_BIN} -m virtualenv --version >/dev/null 2>&1; then
-        log_info "[venv] Creating venv with virtualenv"
-        if ${PY_BIN} -m virtualenv --version >/dev/null 2>&1; then
-          ${PY_BIN} -m virtualenv "${venv_path}"
-        else
-          virtualenv -p "${PY_BIN}" "${venv_path}"
-        fi
-      else
-        log_err "[venv] ✗ Failed to create a virtual environment. Install python3-venv or virtualenv and retry."
-        return 1
-      fi
-    fi
+    _venv_create_new "${venv_path}" || return 1
   fi
 }
 
 ensure_pip_in_venv() {
+  local requested_path="${1:-}"
   local venv_path
-  venv_path="$(resolve_venv_dir)"
-  export VENV_DIR="${venv_path}"
-  local venv_python="${venv_path}/bin/python"
+  if [ -n "${requested_path}" ]; then
+    venv_path="${requested_path}"
+  else
+    venv_path="$(get_venv_dir)"
+    export VENV_DIR="${venv_path}"
+  fi
 
+  local venv_python="${venv_path}/bin/python"
   if [ ! -x "${venv_python}" ]; then
     log_err "[venv] ✗ Virtual environment missing python binary; run ensure_virtualenv first."
     return 1
@@ -297,16 +367,7 @@ ensure_pip_in_venv() {
   if ! "${venv_python}" -m pip --version >/dev/null 2>&1; then
     log_warn "[venv] ⚠ pip missing in virtual environment; bootstrapping pip."
     if ! "${venv_python}" -m ensurepip --upgrade >/dev/null 2>&1; then
-      TMP_PIP="${ROOT_DIR}/.get-pip.py"
-      if command -v curl >/dev/null 2>&1; then
-        curl -fsSL -o "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
-      elif command -v wget >/dev/null 2>&1; then
-        wget -qO "${TMP_PIP}" https://bootstrap.pypa.io/get-pip.py || true
-      fi
-      if [ -f "${TMP_PIP}" ]; then
-        "${venv_python}" "${TMP_PIP}" || true
-        rm -f "${TMP_PIP}" || true
-      fi
+      _venv_download_get_pip "${venv_python}"
     fi
   fi
 
@@ -324,7 +385,7 @@ ensure_pip_in_venv() {
 #   fail_on_error: If 1, exit on error; if 0, return error code (default: 1)
 # Returns: 0 on success, 1 on failure
 activate_venv() {
-  local venv_dir="${1:-$(resolve_venv_dir)}"
+  local venv_dir="${1:-$(get_venv_dir)}"
   local fail_on_error="${2:-1}"
   
   if [ ! -d "${venv_dir}" ]; then
@@ -354,5 +415,3 @@ activate_venv() {
   
   return 0
 }
-
-
