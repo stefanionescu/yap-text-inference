@@ -20,33 +20,41 @@ install_flashinfer_if_applicable() {
   local venv_python venv_pip
   venv_python="$(get_venv_python)"
   venv_pip="$(get_venv_pip)"
+  
+  # Validate Python binary exists - check multiple locations
+  if [ ! -x "${venv_python}" ]; then
+    if [ -x "/opt/venv/bin/python" ]; then
+      venv_python="/opt/venv/bin/python"
+      venv_pip="/opt/venv/bin/pip"
+    elif command -v python3 >/dev/null 2>&1; then
+      venv_python="python3"
+      venv_pip="python3 -m pip"
+    else
+      log_warn "[deps] ⚠ No Python found; skipping FlashInfer install"
+      return 0
+    fi
+  fi
 
-  local CUDA_NVVER
-  CUDA_NVVER=$("${venv_python}" - <<'PY' || true
+  # Detect CUDA and Torch versions
+  local torch_info CUDA_NVVER TORCH_MAJMIN
+  torch_info=$("${venv_python}" -c "
 import sys
 try:
     import torch
     cu = (torch.version.cuda or '').strip()
-    if not cu:
-        sys.exit(1)
-    print(cu.replace('.', ''))  # e.g., 12.6 -> 126
-except Exception:
-    sys.exit(1)
-PY
-  )
-
-  local TORCH_MAJMIN
-  TORCH_MAJMIN=$("${venv_python}" - <<'PY' || true
-import sys
-try:
-    import torch
     ver = torch.__version__.split('+', 1)[0]
     parts = ver.split('.')
-    print(f"{parts[0]}.{parts[1]}")  # e.g., 2.9.0 -> 2.9
+    torch_majmin = f'{parts[0]}.{parts[1]}'
+    cuda_ver = cu.replace('.', '') if cu else ''
+    print(f'{cuda_ver} {torch_majmin}')
 except Exception:
     sys.exit(1)
-PY
-  )
+" 2>/dev/null) || torch_info=""
+
+  if [ -n "${torch_info}" ]; then
+    CUDA_NVVER="${torch_info%% *}"
+    TORCH_MAJMIN="${torch_info##* }"
+  fi
 
   if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
     local FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"

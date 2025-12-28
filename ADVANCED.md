@@ -367,8 +367,7 @@ vLLM supports multiple quantization backends:
 
 | Mode | Backend | Notes |
 |------|---------|-------|
-| `4bit` / `awq` | llmcompressor + vLLM | Default for most models |
-| `4bit` (Qwen/Mistral3) | AutoAWQ 0.2.9 | Fallback for hybrid architectures |
+| `4bit` / `awq` | llmcompressor + vLLM | All models (including Qwen) |
 | `gptq` / `gptq_marlin` | vLLM GPTQ | For pre-quantized GPTQ repos |
 | `8bit` / `fp8` | vLLM FP8 | L40S/H100 native |
 | `8bit` / `fp8` | vLLM FP8 (W8A16) | A100 emulated (FP8 weights, FP16 compute) |
