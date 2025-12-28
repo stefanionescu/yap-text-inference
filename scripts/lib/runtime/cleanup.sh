@@ -73,9 +73,9 @@ cleanup_runtime_state() {
 cleanup_venvs() {
   local root_dir="$1"
   
-  # Use resolve_venv_dir() to detect the actual venv location (handles /opt/venv for Docker)
+  # Use get_venv_dir() to detect the actual venv location (handles /opt/venv for Docker)
   local detected_venv
-  detected_venv="$(resolve_venv_dir)"
+  detected_venv="$(get_venv_dir)"
   
   # Clean detected venv first (could be /opt/venv or repo-local)
   if [ -n "${detected_venv}" ] && [ -d "${detected_venv}" ]; then
@@ -83,11 +83,25 @@ cleanup_venvs() {
     rm -rf "${detected_venv}" || true
   fi
   
+  local quant_venv="${QUANT_VENV_DIR:-}"
+  if [ -z "${quant_venv}" ]; then
+    if [ -d "/opt/venv-quant" ]; then
+      quant_venv="/opt/venv-quant"
+    else
+      quant_venv="${root_dir}/.venv-quant"
+    fi
+  fi
+  if [ -n "${quant_venv}" ] && [ -d "${quant_venv}" ]; then
+    log_info "[cleanup] Removing quantization venv: ${quant_venv}"
+    rm -rf "${quant_venv}" || true
+  fi
+  
   # Also clean all possible repo-local venv locations
   _cleanup_remove_dirs "venv" \
     "${root_dir}/.venv" \
     "${root_dir}/.venv-trt" \
     "${root_dir}/.venv-vllm" \
+    "${root_dir}/.venv-quant" \
     "${root_dir}/venv" \
     "${root_dir}/env" \
     "${root_dir}/.env"
@@ -96,6 +110,10 @@ cleanup_venvs() {
   if [ -d "/opt/venv" ]; then
     log_info "[cleanup] Removing Docker venv: /opt/venv"
     rm -rf "/opt/venv" || true
+  fi
+  if [ -d "/opt/venv-quant" ]; then
+    log_info "[cleanup] Removing Docker quant venv: /opt/venv-quant"
+    rm -rf "/opt/venv-quant" || true
   fi
 }
 
@@ -118,9 +136,9 @@ cleanup_hf_caches() {
 cleanup_engine_artifacts() {
   local root_dir="$1"
   
-  # Use resolve_venv_dir() to detect the actual venv location
+  # Use get_venv_dir() to detect the actual venv location
   local detected_venv
-  detected_venv="$(resolve_venv_dir)"
+  detected_venv="$(get_venv_dir)"
   
   _cleanup_remove_dirs "engine artifact" \
     "${root_dir}/.awq" \
@@ -133,8 +151,10 @@ cleanup_engine_artifacts() {
     "${root_dir}/.venv" \
     "${root_dir}/.venv-trt" \
     "${root_dir}/.venv-vllm" \
+    "${root_dir}/.venv-quant" \
     "${detected_venv}" \
-    "/opt/venv"
+    "/opt/venv" \
+    "/opt/venv-quant"
 }
 
 cleanup_misc_caches() {
@@ -227,5 +247,3 @@ cleanup_server_artifacts() {
   local root_dir="$1"
   rm -f "${root_dir}/server.log" "${root_dir}/server.pid" "${root_dir}/.server.log.trim" || true
 }
-
-

@@ -15,6 +15,18 @@ get_requirements_file() {
   esac
 }
 
+get_quant_requirements_file() {
+  local engine="${INFERENCE_ENGINE:-vllm}"
+  case "${engine}" in
+    vllm|VLLM)
+      echo "${ROOT_DIR}/requirements-llmcompressor.txt"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
 filter_requirements_without_flashinfer() {
   local req_file
   req_file="$(get_requirements_file)"
@@ -63,5 +75,43 @@ record_requirements_hash() {
   local stamp_file="${venv_dir}/.req_hash"
   if [ -f "${req_file}" ]; then
     sha256sum "${req_file}" | awk '{print $1}' > "${stamp_file}" || true
+  fi
+}
+
+install_quant_requirements() {
+  local venv_dir="${1:-$(get_quant_venv_dir)}"
+  local req_file
+  req_file="${2:-$(get_quant_requirements_file)}"
+
+  if [ -z "${req_file}" ] || [ ! -f "${req_file}" ]; then
+    log_info "[deps] No quantization requirements file found; skipping AWQ env install"
+    return 0
+  fi
+
+  local pip_bin="${venv_dir}/bin/pip"
+  if [ ! -x "${pip_bin}" ]; then
+    log_err "[deps] ✗ Quantization pip not found at ${pip_bin}; ensure quant venv exists first"
+    return 1
+  fi
+
+  local stamp_file="${venv_dir}/.quant_req_hash"
+  local cur_hash=""
+  local old_hash=""
+  if [ -f "${req_file}" ]; then
+    cur_hash=$(sha256sum "${req_file}" | awk '{print $1}')
+  fi
+  if [ -f "${stamp_file}" ]; then
+    old_hash=$(cat "${stamp_file}" 2>/dev/null || true)
+  fi
+
+  if [ "${FORCE_REINSTALL:-0}" != "1" ] && [ -n "${cur_hash}" ] && [ "${cur_hash}" = "${old_hash}" ]; then
+    log_info "[deps] Quantization dependencies unchanged; skipping pip install"
+    return 0
+  fi
+
+  log_info "[deps] Installing quantization requirements (${req_file})"
+  "${pip_bin}" install --upgrade-strategy only-if-needed -r "${req_file}"
+  if [ -n "${cur_hash}" ]; then
+    echo "${cur_hash}" > "${stamp_file}" || true
   fi
 }

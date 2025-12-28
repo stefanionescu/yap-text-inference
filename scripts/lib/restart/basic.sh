@@ -12,9 +12,11 @@ wipe_dependencies_for_reinstall() {
   log_info "[deps] Wiping all dependencies for clean reinstall..."
   
   # 1. Remove all venvs (all pip packages gone)
-  for venv_path in "${root}/.venv" "${root}/.venv-trt" "${root}/.venv-vllm" "${root}/venv" "${root}/env"; do
+  local quant_venv="${QUANT_VENV_DIR:-${root}/.venv-quant}"
+  for venv_path in "${root}/.venv" "${root}/.venv-trt" "${root}/.venv-vllm" "${root}/.venv-quant" "${root}/venv" "${root}/env" "${quant_venv}"; do
     [ -d "${venv_path}" ] && rm -rf "${venv_path}"
   done
+  [ -d "/opt/venv-quant" ] && rm -rf "/opt/venv-quant"
   
   # 2. Remove pip caches (wheels, downloaded packages)
   for pip_cache in "${root}/.pip_cache" "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip"; do
