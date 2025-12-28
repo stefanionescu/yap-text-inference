@@ -7,6 +7,7 @@
 _VLLM_INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_VLLM_INSTALL_DIR}/detect.sh"
 source "${_VLLM_INSTALL_DIR}/../../lib/env/flashinfer.sh"
+source "${_VLLM_INSTALL_DIR}/../../lib/deps/venv.sh"
 
 # Install FlashInfer if applicable
 vllm_install_flashinfer() {
@@ -21,21 +22,27 @@ vllm_install_flashinfer() {
     return 0
   fi
 
-  local python_exec="${ROOT_DIR}/.venv/bin/python"
-  local cuda_ver
-  local torch_ver
-  
-  cuda_ver="$(vllm_detect_cuda_version "${python_exec}")"
-  torch_ver="$(vllm_detect_torch_version "${python_exec}")"
+  local venv_python venv_pip
+  venv_python="$(get_venv_python)"
+  venv_pip="$(get_venv_pip)"
+
+  if [ ! -x "${venv_python}" ]; then
+    log_warn "[vllm] ⚠ No venv Python found; skipping FlashInfer install"
+    return 0
+  fi
+
+  local cuda_ver torch_ver
+  cuda_ver="$(vllm_detect_cuda_version "${venv_python}")"
+  torch_ver="$(vllm_detect_torch_version "${venv_python}")"
 
   if [ -n "${cuda_ver:-}" ] && [ -n "${torch_ver:-}" ]; then
     local fi_index="https://flashinfer.ai/whl/cu${cuda_ver}/torch${torch_ver}"
     local fi_pkg="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
     
     log_info "[vllm] Installing ${fi_pkg} (extra-index: ${fi_index})"
-    if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary --extra-index-url "${fi_index}" "${fi_pkg}"; then
+    if ! "${venv_pip}" install --prefer-binary --extra-index-url "${fi_index}" "${fi_pkg}"; then
       log_warn "[vllm] ⚠ FlashInfer install failed with extra index; falling back to PyPI only"
-      if ! "${ROOT_DIR}/.venv/bin/pip" install --prefer-binary "${fi_pkg}"; then
+      if ! "${venv_pip}" install --prefer-binary "${fi_pkg}"; then
         log_warn "[vllm] ⚠ FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi
     fi
@@ -47,7 +54,13 @@ vllm_install_flashinfer() {
 
 # Validate vLLM installation
 vllm_validate_installation() {
-  local python_exec="${ROOT_DIR}/.venv/bin/python"
+  local python_exec
+  python_exec="$(get_venv_python)"
+  
+  if [ ! -x "${python_exec}" ]; then
+    log_err "[vllm] ✗ No venv Python found"
+    return 1
+  fi
   
   log_info "[vllm] Validating vLLM installation..."
   

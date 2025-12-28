@@ -68,7 +68,6 @@ cleanup_runtime_state() {
 
 cleanup_venvs() {
   local root_dir="$1"
-  shift
   _cleanup_remove_dirs "venv" \
     "${root_dir}/.venv" \
     "${root_dir}/.venv-trt" \
@@ -132,7 +131,7 @@ cleanup_misc_caches() {
 
 cleanup_pip_caches() {
   if command -v python >/dev/null 2>&1; then
-    python -m pip cache purge || true
+    python -m pip cache purge >/dev/null 2>&1 || true
     local sys_cache
     sys_cache=$(python -m pip cache dir 2>/dev/null || true)
     [ -n "${sys_cache}" ] && [ -d "${sys_cache}" ] && rm -rf "${sys_cache}" || true
