@@ -46,7 +46,6 @@ from ..config.filters import (
     ESCAPED_QUOTE_PATTERN,
     EXAGGERATED_OH_PATTERN,
     FREESTYLE_PREFIX_PATTERN,
-    FREESTYLE_TARGET_PREFIXES,
     HTML_TAG_PATTERN,
     LEADING_NEWLINE_TOKENS_PATTERN,
     NEWLINE_TOKEN_PATTERN,
@@ -104,14 +103,132 @@ def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS)
     return text
 
 
-def sanitize_stream_text(text: str) -> str:
-    """Apply lightweight sanitization suitable for live streaming."""
+class StreamingSanitizer:
+    """Stateful sanitizer that emits stable chunks for streaming.
+
+    Complexity: O(len(chunk)) per push. We only ever re-sanitize the
+    active tail buffer, never the full history.
+    """
+
+    # How much suffix (in characters) we keep as "maybe unstable" to allow
+    # boundary-sensitive validators (emails, phone numbers, ellipsis, html).
+    _MAX_TAIL = 256
+
+    def __init__(self) -> None:
+        # Raw tail retained for boundary-sensitive checks
+        self._raw_tail: str = ""
+        # Sanitized tail retained but not yet emitted
+        self._sanitized_tail: str = ""
+        # Sanitized stable parts already emitted
+        self._emitted_parts: list[str] = []
+        # Flags for one-shot behaviors
+        self._prefix_pending = True
+        self._capital_pending = True
+
+    def push(self, chunk: str) -> str:
+        """Process a new raw chunk and return the sanitized delta."""
+        if not chunk:
+            return ""
+
+        self._raw_tail += chunk
+
+        sanitized, self._prefix_pending, self._capital_pending = _sanitize_stream_chunk(
+            self._raw_tail,
+            prefix_pending=self._prefix_pending,
+            capital_pending=self._capital_pending,
+            strip_leading_ws=self._prefix_pending,
+        )
+
+        stable_len, tail_len = _split_stable_and_tail_lengths(
+            raw_tail=self._raw_tail,
+            sanitized=sanitized,
+            max_tail=self._MAX_TAIL,
+        )
+
+        delta = ""
+        if stable_len > 0:
+            delta = sanitized[:stable_len]
+            self._emitted_parts.append(delta)
+
+        self._sanitized_tail = sanitized[stable_len:stable_len + tail_len]
+        # Keep only the raw portion that maps to the retained tail window
+        self._raw_tail = self._raw_tail[-self._MAX_TAIL :]
+
+        return delta
+
+    def flush(self) -> str:
+        """Emit any remaining buffered sanitized text."""
+        if not self._raw_tail and not self._sanitized_tail:
+            return ""
+
+        sanitized, self._prefix_pending, self._capital_pending = _sanitize_stream_chunk(
+            self._raw_tail,
+            prefix_pending=self._prefix_pending,
+            capital_pending=self._capital_pending,
+            strip_leading_ws=self._prefix_pending,
+        )
+
+        # At flush we emit everything and trim trailing whitespace
+        tail = sanitized.rstrip()
+        self._emitted_parts.append(tail)
+        self._sanitized_tail = ""
+        self._raw_tail = ""
+        return tail
+
+    @property
+    def full_text(self) -> str:
+        """Return the fully sanitized text accumulated so far."""
+        return "".join(self._emitted_parts) + self._sanitized_tail
+
+
+def _ensure_leading_capital(text: str) -> str:
+    """Ensure the first alphabetic character is uppercase."""
+    for idx, char in enumerate(text):
+        if char.isalpha():
+            if char.islower():
+                return f"{text[:idx]}{char.upper()}{text[idx + 1:]}"
+            break
+    return text
+
+
+def _ensure_leading_capital_stream(text: str, capital_pending: bool) -> tuple[str, bool]:
+    """Streaming-friendly leading capital enforcement.
+
+    Returns the transformed text and whether capitalization is still pending.
+    """
+    if not capital_pending:
+        return text, False
+    for idx, char in enumerate(text):
+        if char.isalpha():
+            if char.islower():
+                return f"{text[:idx]}{char.upper()}{text[idx + 1:]}", False
+            return text, False
+    return text, True
+
+
+def _sanitize_stream_chunk(
+    text: str,
+    *,
+    prefix_pending: bool,
+    capital_pending: bool,
+    strip_leading_ws: bool,
+) -> tuple[str, bool, bool]:
+    """Run the streaming sanitization pipeline on a single chunk.
+
+    prefix_pending controls whether freestyle/newline stripping is applied.
+    capital_pending controls whether leading-capital enforcement is still needed.
+    """
     if not text:
-        return ""
-    cleaned = FREESTYLE_PREFIX_PATTERN.sub("", text, count=1)
-    if cleaned != text:
-        cleaned = cleaned.lstrip(": ").lstrip()
-    cleaned = _strip_leading_newline_tokens(cleaned)
+        return "", prefix_pending, capital_pending
+
+    cleaned = text
+    if prefix_pending:
+        cleaned = FREESTYLE_PREFIX_PATTERN.sub("", cleaned, count=1)
+        if cleaned != text:
+            cleaned = cleaned.lstrip(": ").lstrip()
+        cleaned = _strip_leading_newline_tokens(cleaned)
+        prefix_pending = False
+
     # Verbalize emails and phone numbers early (before dash replacement etc.)
     cleaned = _verbalize_emails(cleaned)
     cleaned = _verbalize_phone_numbers(cleaned)
@@ -133,117 +250,88 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = HTML_TAG_PATTERN.sub("", cleaned)
     cleaned = html.unescape(cleaned)
     cleaned = _collapse_spaces(cleaned)
-    cleaned = _ensure_leading_capital(cleaned)
-    # Strip leading whitespace so output always starts with letter/digit
-    return cleaned.lstrip()
+
+    cleaned, capital_pending = _ensure_leading_capital_stream(cleaned, capital_pending)
+
+    if strip_leading_ws:
+        cleaned = cleaned.lstrip()
+
+    return cleaned, prefix_pending, capital_pending
 
 
-class StreamingSanitizer:
-    """Stateful sanitizer that emits stable chunks for streaming.
-    
-    This class accumulates raw text and emits sanitized deltas, holding
-    back "unstable" trailing characters that might change with more context.
-    
-    Example:
-        sanitizer = StreamingSanitizer()
-        for chunk in raw_stream:
-            clean = sanitizer.push(chunk)
-            if clean:
-                send_to_client(clean)
-        # Flush any remaining buffered text
-        tail = sanitizer.flush()
-        if tail:
-            send_to_client(tail)
-    
-    Attributes:
-        _raw: Accumulated raw text.
-        _emitted_len: Length of sanitized text already emitted.
-        _last_sanitized: Cached result of last sanitization.
+def _split_stable_and_tail_lengths(
+    raw_tail: str,
+    sanitized: str,
+    max_tail: int,
+) -> tuple[int, int]:
+    """Compute how much of the sanitized text is stable vs tail to buffer.
+
+    We keep:
+    - trailing unstable chars (whitespace, slashes, etc.)
+    - trailing partial ellipsis/dots
+    - trailing partial html entities (&amp)
+    - trailing segments that look like in-progress emails/phone numbers
     """
+    if not sanitized:
+        return 0, 0
 
-    def __init__(self) -> None:
-        self._raw: str = ""
-        self._emitted_len: int = 0
-        self._last_sanitized: str = ""
+    unstable = _unstable_suffix_len(sanitized)
+    html_guard = _html_entity_suffix_len(sanitized)
+    email_guard = _email_suffix_len(raw_tail)
+    phone_guard = _phone_suffix_len(raw_tail)
 
-    def push(self, chunk: str) -> str:
-        """Process a new raw chunk and return the sanitized delta.
-        
-        Accumulates the chunk, re-sanitizes the full text, and returns
-        only the new stable portion not yet emitted.
-        
-        Args:
-            chunk: New raw text chunk from the model.
-            
-        Returns:
-            Sanitized delta to emit, or empty string if none stable.
-        """
-        if not chunk:
-            return ""
-        self._raw += chunk
-        sanitized = self._sanitize()
-        if _is_prefix_pending(self._raw):
-            return ""
-        stable_len = _stable_length(sanitized)
-        if stable_len <= self._emitted_len:
-            return ""
-        delta = sanitized[self._emitted_len:stable_len]
-        self._emitted_len = stable_len
-        return delta
+    tail_len = min(len(sanitized), max(unstable, html_guard, email_guard, phone_guard, 0))
+    stable_len = len(sanitized) - tail_len
 
-    def flush(self) -> str:
-        """Return any remaining buffered sanitized text."""
-        if not self._raw:
-            return ""
-        sanitized = self._last_sanitized or self._sanitize()
-        if _is_prefix_pending(self._raw):
-            return ""
-        if len(sanitized) <= self._emitted_len:
-            return ""
-        tail = sanitized[self._emitted_len:]
-        self._emitted_len = len(sanitized)
-        # Strip trailing whitespace since generation is complete
-        return tail.rstrip()
+    # Bound the retained tail to avoid unbounded buffering
+    if tail_len > max_tail:
+        stable_len = len(sanitized) - max_tail
+        tail_len = max_tail
 
-    @property
-    def full_text(self) -> str:
-        """Return the fully sanitized text accumulated so far."""
-        return self._last_sanitized or self._sanitize()
-
-    def _sanitize(self) -> str:
-        sanitized = sanitize_stream_text(self._raw)
-        self._last_sanitized = sanitized
-        return sanitized
+    return stable_len, tail_len
 
 
-def _is_prefix_pending(raw_text: str) -> bool:
-    stripped = raw_text.lstrip()
-    if not stripped:
-        return True
-    lowered = stripped.lower()
-    for target in FREESTYLE_TARGET_PREFIXES:
-        if lowered.startswith(target):
-            return False
-        if len(lowered) < len(target) and target.startswith(lowered):
-            return True
-    return False
-
-
-def _stable_length(text: str) -> int:
+def _unstable_suffix_len(text: str) -> int:
     idx = len(text)
     while idx > 0 and text[idx - 1] in TRAILING_STREAM_UNSTABLE_CHARS:
         idx -= 1
-    return idx
+    # Keep any trailing run of dots (partial ellipsis)
+    while idx > 0 and text[idx - 1] == ".":
+        idx -= 1
+    return len(text) - idx
 
 
-def _ensure_leading_capital(text: str) -> str:
-    """Ensure the first alphabetic character is uppercase."""
-    for idx, char in enumerate(text):
-        if char.isalpha():
-            if char.islower():
-                return f"{text[:idx]}{char.upper()}{text[idx + 1:]}"
-            break
-    return text
+def _html_entity_suffix_len(text: str) -> int:
+    match = re.search(r"&[A-Za-z]{0,10}$", text)
+    if not match:
+        return 0
+    return len(text) - match.start()
+
+
+def _email_suffix_len(raw_text: str) -> int:
+    """Retain trailing text that could still form a valid email across chunks."""
+    if not raw_text:
+        return 0
+    # Common case: if the tail already has a full email, keep nothing extra
+    if EMAIL_PATTERN.search(raw_text):
+        # Still keep a small guard in case of partial second email
+        return min(16, len(raw_text))
+
+    # Partial email guard (local@ or local@domain)
+    partial = re.search(r"[A-Za-z0-9._%+-]+@?[A-Za-z0-9.-]*$", raw_text)
+    if not partial:
+        return 0
+    return min(len(raw_text) - partial.start(), 256)
+
+
+def _phone_suffix_len(raw_text: str) -> int:
+    """Retain trailing digits/+/-/spaces that could still form a phone number."""
+    if not raw_text:
+        return 0
+    partial = re.search(r"[+\d][\d \-\(\)]*$", raw_text)
+    if not partial:
+        return 0
+    return min(len(raw_text) - partial.start(), 64)
 
 
 def _normalize_exaggerated_oh(match: re.Match[str]) -> str:
@@ -360,7 +448,6 @@ def _verbalize_phone_numbers(text: str) -> str:
 
 __all__ = [
     "sanitize_prompt",
-    "sanitize_stream_text",
     "StreamingSanitizer",
 ]
 

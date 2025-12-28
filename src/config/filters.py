@@ -82,7 +82,6 @@ EMOTICON_PATTERN = re.compile(
 FREESTYLE_PREFIX_PATTERN = re.compile(r"^\s*(freestyle mode\.?)\s*", re.IGNORECASE)
 ELLIPSIS_PATTERN = re.compile(r"…[ \t]*")
 NEWLINE_TOKEN_PATTERN = re.compile(r"\s*(?:\\n|/n|\r?\n)+\s*")
-FREESTYLE_TARGET_PREFIXES: tuple[str, ...] = ("freestyle mode", "freestyle mode.")
 TRAILING_STREAM_UNSTABLE_CHARS = set(" \t\r\n/\\")
 ESCAPED_QUOTE_PATTERN = re.compile(r'\\(["\'])')
 DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s*")
@@ -132,7 +131,6 @@ __all__ = [
     "FREESTYLE_PREFIX_PATTERN",
     "ELLIPSIS_PATTERN",
     "NEWLINE_TOKEN_PATTERN",
-    "FREESTYLE_TARGET_PREFIXES",
     "TRAILING_STREAM_UNSTABLE_CHARS",
     "ESCAPED_QUOTE_PATTERN",
     "DOUBLE_DOT_SPACE_PATTERN",
