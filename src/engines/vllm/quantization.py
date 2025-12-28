@@ -172,7 +172,6 @@ def _normalize_quantization_name(name: str | None) -> str | None:
         "compressedtensors": "compressed-tensors",
         "compressed_tensors": "compressed-tensors",
         "compressed-tensor": "compressed-tensors",
-        "nvfp4": "compressed-tensors",
         "autoround": "compressed-tensors",
     }
     return mapping.get(normalized)

@@ -74,7 +74,7 @@ restart_parse_args() {
         ;;
       --chat-quant)
         if [ -z "${2:-}" ]; then
-          log_err "[restart] ✗ --chat-quant requires a value (4bit|8bit|fp8|gptq|gptq_marlin|awq|nvfp4)"
+          log_err "[restart] ✗ --chat-quant requires a value (4bit|8bit|fp8|gptq|gptq_marlin|awq)"
           return 1
         fi
         RECONFIG_CHAT_QUANTIZATION="$2"

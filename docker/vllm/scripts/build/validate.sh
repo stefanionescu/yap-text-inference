@@ -9,7 +9,7 @@ ALLOWED_TOOL_MODELS=(
 )
 
 # W4A16 marker hints (from src/config/quantization.py)
-W4A16_HINTS=("w4a16" "nvfp4" "compressed-tensors" "autoround")
+W4A16_HINTS=("w4a16" "compressed-tensors" "autoround")
 
 # POSIX-compatible lowercase function (works on macOS Bash 3.x)
 to_lower() {
@@ -75,7 +75,7 @@ validate_chat_model() {
     
     if ! is_prequantized_model "$model"; then
         echo "[validate] CHAT_MODEL '$model' is not a pre-quantized model" >&2
-        echo "[validate] Chat model name must contain one of: awq, gptq, w4a16, nvfp4, compressed-tensors, autoround" >&2
+        echo "[validate] Chat model name must contain one of: awq, gptq, w4a16, compressed-tensors, autoround" >&2
         return 1
     fi
     

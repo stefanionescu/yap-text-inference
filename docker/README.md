@@ -69,7 +69,7 @@ vLLM is recommended for most use cases. It supports pre-quantized AWQ and GPTQ m
 Chat models must be pre-quantized. The build validates that the model name contains one of:
 - `awq` - AWQ quantized models
 - `gptq` - GPTQ quantized models
-- `w4a16`, `nvfp4`, `compressed-tensors`, `autoround` - llmcompressor W4A16 exports
+- `w4a16`, `compressed-tensors`, `autoround` - llmcompressor W4A16 exports
 
 ### Build Examples
 
@@ -342,7 +342,7 @@ docker stats yap-server
 ### vLLM Issues
 
 1. **Build fails: "not a pre-quantized model"**
-   - Chat model name must contain: `awq`, `gptq`, `w4a16`, `nvfp4`, `compressed-tensors`, or `autoround`
+   - Chat model name must contain: `awq`, `gptq`, `w4a16`, `compressed-tensors`, or `autoround`
 
 2. **Build fails: "not in the allowed list"**
    - Tool model must be in the allowlist in `src/config/models.py`

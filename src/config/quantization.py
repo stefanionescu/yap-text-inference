@@ -6,11 +6,10 @@ SUPPORTED_ENGINES: tuple[str, ...] = ("vllm", "trt")
 LOWBIT_QUANTIZATIONS: set[str] = {"awq", "gptq", "gptq_marlin"}
 
 # TRT-specific quantization formats
-# - int4_awq: 4-bit AWQ for dense models (all GPUs)
-# - nvfp4: 4-bit floating point for MoE models (all GPUs)
+# - int4_awq: 4-bit AWQ for all models (dense and MoE)
 # - fp8: 8-bit FP8 (Hopper H100 sm90, Ada L40S sm89)
 # - int8_sq: 8-bit SmoothQuant INT8 (Ampere A100 sm80, older GPUs without FP8)
-TRT_QUANTIZATIONS: set[str] = {"int4_awq", "nvfp4", "fp8", "int8_sq"}
+TRT_QUANTIZATIONS: set[str] = {"int4_awq", "fp8", "int8_sq"}
 
 # GPU SM architectures that support native FP8
 TRT_FP8_SM_ARCHS: tuple[str, ...] = ("sm89", "sm90")  # L40S, H100
@@ -19,9 +18,20 @@ TRT_FP8_SM_ARCHS: tuple[str, ...] = ("sm89", "sm90")  # L40S, H100
 AWQ_MODEL_MARKERS: tuple[str, ...] = (
     "awq",
     "w4a16",
-    "nvfp4",
     "compressed-tensors",
     "autoround",
+)
+
+# Tokenizer files to copy when pushing quantized models to HuggingFace
+# Different models use different tokenizer formats
+TOKENIZER_FILES: tuple[str, ...] = (
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "tokenizer.model",  # SentencePiece (LLaMA, Mistral)
+    "vocab.json",       # Some models
+    "merges.txt",       # BPE models
+    "added_tokens.json",
 )
 
 
@@ -47,5 +57,6 @@ __all__ = [
     "TRT_FP8_SM_ARCHS",
     "LOWBIT_QUANTIZATIONS",
     "AWQ_MODEL_MARKERS",
+    "TOKENIZER_FILES",
     "normalize_engine",
 ]

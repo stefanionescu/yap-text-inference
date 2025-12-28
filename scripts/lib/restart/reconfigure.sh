@@ -58,12 +58,8 @@ _restart_normalize_quantization_flag() {
   local lowered="${value,,}"
   case "${lowered}" in
     4bit)
-      # For MoE models on TRT, 4-bit means nvfp4; for dense models, it's awq
-      if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && model_detect_is_moe "${model}"; then
-        echo "nvfp4"
-      else
-        echo "awq"
-      fi
+      # 4-bit always maps to AWQ runtime
+      echo "awq"
       ;;
     8bit)
       # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
@@ -78,11 +74,11 @@ _restart_normalize_quantization_flag() {
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
-    8bit|fp8|awq|nvfp4|gptq|gptq_marlin)
+    8bit|fp8|awq|gptq|gptq_marlin)
       return 0
       ;;
     *)
-      log_err "[restart] ✗ Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq|nvfp4."
+      log_err "[restart] ✗ Invalid quantization '${value}'. Expected 8bit|fp8|gptq|gptq_marlin|awq."
       return 1
       ;;
   esac

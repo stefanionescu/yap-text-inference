@@ -155,7 +155,6 @@ print(json.dumps(quant))
   
   # Write metadata
   local meta_file="${engine_dir}/build_metadata.json"
-  cat >"${meta_file}" <<EOF
 {
   "model_id": "${CHAT_MODEL:-unknown}",
   "dtype": "${TRT_DTYPE:-float16}",

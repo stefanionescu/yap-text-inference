@@ -52,7 +52,6 @@ model_detect_has_w4a16_hint() {
   fi
   _model_detect_has_any_marker "${lowered}" \
     "w4a16" \
-    "nvfp4" \
     "compressed-tensors" \
     "autoround"
 }
@@ -161,48 +160,4 @@ model_detect_classify_trt() {
   fi
   echo ""
 }
-
-# Check if model name indicates NVFP4 quantization
-model_detect_is_nvfp4() {
-  local value="${1:-}"
-  if [ -z "${value}" ]; then
-    return 1
-  fi
-  local lowered
-  lowered="$(_model_detect_lower "${value}")"
-  _model_detect_has_marker "${lowered}" "nvfp4"
-}
-
-# Validate that NVFP4/MOE is not used on A100 (sm80)
-# NVFP4 requires native FP4 support which A100 lacks
-# Usage: model_detect_validate_nvfp4_gpu <model_id> <sm_arch> <is_moe_quantization>
-# Returns 0 if valid, 1 if invalid (should block deployment)
-model_detect_validate_nvfp4_gpu() {
-  local model_id="${1:-}"
-  local sm_arch="${2:-${GPU_SM_ARCH:-}}"
-  local is_moe_quant="${3:-0}"
-  
-  # Only sm80 (A100) is blocked for NVFP4
-  if [ "${sm_arch}" != "sm80" ]; then
-    return 0
-  fi
-  
-  # Check 1: Pre-quantized NVFP4 model on A100
-  if model_detect_is_nvfp4 "${model_id}"; then
-    return 1
-  fi
-  
-  # Check 2: MoE model quantization on A100 (would use NVFP4)
-  if [ "${is_moe_quant}" = "1" ]; then
-    return 1
-  fi
-  
-  # Check 3: MoE model on A100 with TRT (would need NVFP4)
-  if model_detect_is_moe "${model_id}"; then
-    return 1
-  fi
-  
-  return 0
-}
-
 
