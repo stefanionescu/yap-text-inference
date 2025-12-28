@@ -5,8 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/runtime/cleanup.sh"
+source "${SCRIPT_DIR}/lib/env/stop.sh"
 
-HARD_RESET="${HARD_RESET:-0}" # set HARD_RESET=1 to attempt nvidia-smi --gpu-reset
+stop_init_flags
+# Set HARD_RESET=1 to attempt nvidia-smi --gpu-reset when cleaning GPUs
 
 # =============================================================================
 # CLEANUP CONTROL FLAGS
@@ -14,8 +16,6 @@ HARD_RESET="${HARD_RESET:-0}" # set HARD_RESET=1 to attempt nvidia-smi --gpu-res
 # NUKE_ALL=0: Light stop - preserve venv, caches, models (for quick restart)
 # NUKE_ALL=1: Full stop - wipe EVERYTHING: venv, caches, models, all of it
 # =============================================================================
-NUKE_ALL="${NUKE_ALL:-1}"
-
 if [ "${NUKE_ALL}" = "0" ]; then
   log_info "[stop] Light stop: preserving venv, caches, and models..."
 else

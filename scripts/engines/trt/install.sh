@@ -5,6 +5,10 @@
 # Functions for installing TensorRT-LLM and its dependencies.
 # Follows the pattern from trtllm-example/custom/setup/install-dependencies.sh
 
+_TRT_INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../lib/deps/pip.sh
+source "${_TRT_INSTALL_DIR}/../../lib/deps/pip.sh"
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -123,7 +127,7 @@ _trt_pip_install_with_retry() {
   local attempt=1
 
   while [ "${attempt}" -le "${max_attempts}" ]; do
-    if pip "$@"; then
+    if pip_quiet "$@"; then
       return 0
     fi
     attempt=$((attempt + 1))
@@ -356,7 +360,7 @@ trt_prepare_repo() {
     local attempt=1
     local clone_done=false
     while [ "${attempt}" -le "${clone_attempts}" ]; do
-      if git -c http.lowSpeedLimit=0 -c http.lowSpeedTime=999999 -c advice.detachedHead=false clone "${clone_opts[@]}" "${repo_url}" "${repo_dir}" 2>/dev/null; then
+      if git -c http.lowSpeedLimit=0 -c http.lowSpeedTime=999999 -c advice.detachedHead=false clone "${clone_opts[@]}" "${repo_url}" "${repo_dir}" >/dev/null 2>&1; then
         clone_done=true
         break
       fi
@@ -375,24 +379,24 @@ trt_prepare_repo() {
   fi
   
   # Ensure we're on the correct tag (all git ops quiet)
-  if git -C "${repo_dir}" show-ref --verify --quiet "${tag_ref}"; then
+  if git -C "${repo_dir}" show-ref --verify --quiet "${tag_ref}" >/dev/null 2>&1; then
     : # Tag already present
   else
     log_info "[trt] Fetching ${tag_ref}"
     if [ "${clone_depth}" != "full" ]; then
-      git -C "${repo_dir}" fetch --quiet --depth "${clone_depth}" --force origin "${tag_ref}:${tag_ref}" 2>/dev/null || {
+      git -C "${repo_dir}" fetch --quiet --depth "${clone_depth}" --force origin "${tag_ref}:${tag_ref}" >/dev/null 2>&1 || {
         log_err "[trt] ✗ Unable to fetch ${tag_ref}"
         return 1
       }
     else
-      git -C "${repo_dir}" fetch --quiet --force origin "${tag_ref}:${tag_ref}" 2>/dev/null || {
+      git -C "${repo_dir}" fetch --quiet --force origin "${tag_ref}:${tag_ref}" >/dev/null 2>&1 || {
         log_err "[trt] ✗ Unable to fetch ${tag_ref}"
         return 1
       }
     fi
   fi
-  
-  if ! git -c advice.detachedHead=false -C "${repo_dir}" checkout --quiet "${tag_name}" 2>/dev/null; then
+
+  if ! git -c advice.detachedHead=false -C "${repo_dir}" checkout --quiet "${tag_name}" >/dev/null 2>&1; then
     log_err "[trt] ✗ Could not checkout version ${TRT_VERSION} (tag ${tag_name})"
     log_err "[trt] ✗ Hint: ensure ${tag_name} exists in ${repo_url}"
     return 1
@@ -456,11 +460,11 @@ trt_install_quant_requirements() {
       log_warn "[trt] ⚠ Constraints file not found at ${constraints_file}; continuing without it"
     fi
 
-    pip "${pip_args[@]}" || {
+    if ! pip_quiet "${pip_args[@]}"; then
       log_warn "[trt] ⚠ Some quantization requirements failed to install"
-    }
+    fi
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
-    pip install 'urllib3>=2.6.0' || true
+    pip_quiet install 'urllib3>=2.6.0' || true
     
     # Mark as installed (store hash of requirements.txt)
     mkdir -p "$(dirname "${marker_file}")"
@@ -470,4 +474,3 @@ trt_install_quant_requirements() {
     log_warn "[trt] ⚠ Quantization requirements.txt not found at ${quant_reqs}, continuing"
   fi
 }
-

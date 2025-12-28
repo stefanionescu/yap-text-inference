@@ -8,11 +8,14 @@ source "${SCRIPT_DIR}/../lib/runtime/restart_guard.sh"
 source "${SCRIPT_DIR}/../lib/deps/venv.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 source "${SCRIPT_DIR}/../lib/common/cuda.sh"
+source "${SCRIPT_DIR}/../lib/env/server.sh"
 
 # Validate CUDA 13.x for TRT before starting server
 ensure_cuda_ready_for_engine "server" || exit 1
 
-log_info "[server] Starting server on :8000 in background"
+server_init_network_defaults
+
+log_info "[server] Starting server on ${SERVER_BIND_ADDR} in background"
 cd "${ROOT_DIR}"
 # Activate venv if available (non-fatal)
 activate_venv "" 0 || true
@@ -56,7 +59,12 @@ fi
 runtime_guard_write_snapshot "${ROOT_DIR}"
 
 # Resolve uvicorn launcher robustly (prefer venv python -m, then venv binary, then system)
-CMD_ARGS=("src.server:app" "--host" "0.0.0.0" "--port" "8000" "--workers" "1")
+CMD_ARGS=(
+  "src.server:app"
+  "--host" "${SERVER_BIND_HOST}"
+  "--port" "${SERVER_PORT}"
+  "--workers" "1"
+)
 
 if [ -x "${VENV_DIR}/bin/python" ] && "${VENV_DIR}/bin/python" - <<'PY' >/dev/null 2>&1
 import uvicorn
@@ -91,7 +99,8 @@ SERVER_PID=$!
 echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 
 log_info "[server] Server started: PID=$(cat "${ROOT_DIR}/server.pid")"
-log_info "[server] Health:  curl -s http://127.0.0.1:8000/healthz"
+health_hint="${SERVER_HEALTH_URLS[0]:-http://${SERVER_ADDR}/healthz}"
+log_info "[server] Health:  curl -s ${health_hint}"
 log_info "[server] All logs: tail -f ${ROOT_DIR}/server.log"
 log_info "[server] Stop:    kill -TERM -$(cat "${ROOT_DIR}/server.pid")  # negative PID kills session"
 

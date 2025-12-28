@@ -15,6 +15,7 @@ export ROOT_DIR
 source "${SCRIPT_DIR}/lib/common/log.sh"
 # shellcheck disable=SC1090
 source "${SCRIPT_DIR}/lib/deps/venv.sh"
+source "${SCRIPT_DIR}/lib/env/runtime.sh"
 
 venv_dir="$(get_venv_dir)"
 activate_script="${venv_dir}/bin/activate"
@@ -34,8 +35,8 @@ fi
 
 target_shell="${SHELL:-/bin/bash}"
 shell_name="$(basename "${target_shell}")"
-RUN_DIR="${ROOT_DIR}/.run"
-mkdir -p "${RUN_DIR}"
+
+runtime_init_repo_paths "${ROOT_DIR}"
 
 launch_bash_shell() {
   local rc_file="${RUN_DIR}/activate.bashrc"
