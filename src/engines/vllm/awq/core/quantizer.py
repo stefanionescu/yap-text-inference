@@ -17,19 +17,19 @@ from .backends import quantize_with_llmcompressor
 from .calibration import CalibrationConfig
 
 
-def _is_classifier_model_path(model_path: str) -> bool:
-    """Check if model path refers to a classifier model."""
-    # Import here to avoid circular imports
-    from src.helpers.models import is_classifier_model
-    return is_classifier_model(model_path)
-
-
 CHAT_TOTAL_POLICY = TotalLengthPolicy(
     kind="chat",
     default_total=CHAT_MAX_LEN + CHAT_MAX_OUT,
     len_env="CHAT_MAX_LEN",
     out_env="CHAT_MAX_OUT",
 )
+
+
+def _is_classifier_model_path(model_path: str) -> bool:
+    """Check if model path refers to a classifier model."""
+    # Import here to avoid circular imports
+    from src.helpers.models import is_classifier_model
+    return is_classifier_model(model_path)
 
 
 def compute_chat_calibration_seqlen(requested: int) -> int:
@@ -48,7 +48,6 @@ def _read_positive_env(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
-_MOE_SEQLEN_LIMIT = _read_positive_env("AWQ_MOE_SEQLEN", 4096)
 _MOE_NSAMPLES_LIMIT = _read_positive_env("AWQ_MOE_NSAMPLES", 32)
 
 
@@ -101,7 +100,6 @@ class AWQQuantizer:
 
         calibration_kind = "Chat"
         is_moe = is_moe_model(model_config, model_path)
-        moe_target_cap: int | None = None
 
         if is_moe:
             calibration_kind = "Chat (MoE)"
@@ -114,15 +112,6 @@ class AWQQuantizer:
                 )
                 self.config.nsamples = capped_nsamples
 
-            capped_seqlen = min(self.config.seqlen, _MOE_SEQLEN_LIMIT)
-            if capped_seqlen < self.config.seqlen:
-                print(
-                    "[awq] MoE model detected; capping calibration seqlen "
-                    f"from {self.config.seqlen} to {capped_seqlen}"
-                )
-                self.config.seqlen = capped_seqlen
-            moe_target_cap = self.config.seqlen
-
         requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model_config)
         if target_seqlen != requested_seqlen:
@@ -130,12 +119,6 @@ class AWQQuantizer:
         else:
             print(f"[awq] {calibration_kind} model calibration seqlen = {target_seqlen}")
 
-        if is_moe and moe_target_cap is not None and target_seqlen > moe_target_cap:
-            print(
-                "[awq] MoE calibration target trimmed from "
-                f"{target_seqlen} to {moe_target_cap}"
-            )
-            target_seqlen = moe_target_cap
 
         return quantize_with_llmcompressor(
             calibration_config=self.config,

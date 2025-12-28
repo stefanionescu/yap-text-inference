@@ -3,45 +3,31 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-LOG_DIR="${ROOT_DIR}/logs"
-RUN_DIR="${ROOT_DIR}/.run"
-LOG_FILE="${LOG_DIR}/warmup.log"
-LOCK_FILE="${RUN_DIR}/warmup.lock"
-HEALTH_CHECK_SCRIPT="${SCRIPT_DIR}/lib/common/health.sh"
-mkdir -p "${LOG_DIR}" "${RUN_DIR}"
 
-# Source venv helpers and logging (needed for log_err in helpers)
+# Source venv helpers, logging, and env defaults
 source "${SCRIPT_DIR}/lib/deps/venv.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/common/log.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/lib/env/runtime.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/lib/env/server.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/lib/env/warmup.sh" 2>/dev/null || true
 
-HOST_VAL="${HOST:-127.0.0.1}"
-PORT_VAL="${PORT:-8000}"
-SERVER_ADDR="${HOST_VAL}:${PORT_VAL}"
-SERVER_WS_URL="${SERVER_WS_URL:-ws://${SERVER_ADDR}/ws}"
-HEALTH_URLS=("http://${SERVER_ADDR}/healthz" "http://${SERVER_ADDR}/health")
-WARMUP_TIMEOUT_SECS="${WARMUP_TIMEOUT_SECS:-300}"
-if ! [[ "${WARMUP_TIMEOUT_SECS}" =~ ^[0-9]+$ ]] || (( WARMUP_TIMEOUT_SECS < 1 )); then
-  WARMUP_TIMEOUT_SECS=300
-fi
-WARMUP_RETRIES="${WARMUP_RETRIES:-2}"
-if ! [[ "${WARMUP_RETRIES}" =~ ^[0-9]+$ ]] || (( WARMUP_RETRIES < 1 )); then
-  WARMUP_RETRIES=2
-fi
-export SERVER_WS_URL
+runtime_init_repo_paths "${ROOT_DIR}"
+server_init_network_defaults
+warmup_init_defaults "${ROOT_DIR}" "${SCRIPT_DIR}"
 
 log_warmup() {
   local line="[warmup] $*"
   log_info "${line}"
-  echo "${line}" >> "${LOG_FILE}"
+  echo "${line}" >> "${WARMUP_LOG_FILE}"
 }
 
 write_lock() {
-  echo "$$" > "${LOCK_FILE}"
+  echo "$$" > "${WARMUP_LOCK_FILE}"
 }
 
 # shellcheck disable=SC2329
 cleanup_lock() {
-  rm -f "${LOCK_FILE}" || true
+  rm -f "${WARMUP_LOCK_FILE}" || true
 }
 
 choose_python() {
@@ -91,12 +77,12 @@ export PYTHONPATH
 
 wait_for_ready() {
   local deadline=$((SECONDS + WARMUP_TIMEOUT_SECS))
-  local urls=("${HEALTH_URLS[@]}")
+  local urls=("${SERVER_HEALTH_URLS[@]}")
   while (( SECONDS <= deadline )); do
-    if bash "${HEALTH_CHECK_SCRIPT}" "${urls[@]}" >/dev/null 2>&1; then
+    if bash "${WARMUP_HEALTH_CHECK_SCRIPT}" "${urls[@]}" >/dev/null 2>&1; then
       return 0
     fi
-    sleep 2
+    sleep "${WARMUP_HEALTH_POLL_INTERVAL_SECS}"
   done
   return 1
 }
@@ -167,12 +153,12 @@ if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
 fi
 if [[ -z "${max_conn}" || "${max_conn}" =~ [^0-9] ]]; then
-  log_warmup "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to 8"
-  max_conn=8
+  log_warmup "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
+  max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
 if (( max_conn <= 0 )); then
-  log_warmup "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to 8"
-  max_conn=8
+  log_warmup "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
+  max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
 
 log_warmup "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
@@ -195,7 +181,7 @@ for (( idx=1; idx<=WARMUP_RETRIES; idx++ )); do
     log_warmup "✗ FAIL: warmup run ${idx} (see ${run_log})"
     ok=0
   fi
-  sleep 1
+  sleep "${WARMUP_RUN_DELAY_SECS}"
 done
 
 for (( idx=1; idx<=WARMUP_RETRIES; idx++ )); do
@@ -206,7 +192,7 @@ for (( idx=1; idx<=WARMUP_RETRIES; idx++ )); do
     log_warmup "✗ FAIL: bench run ${idx} (see ${run_log})"
     ok=0
   fi
-  sleep 1
+  sleep "${WARMUP_RUN_DELAY_SECS}"
 done
 
 if [[ "${ok}" -eq 1 ]]; then

@@ -61,7 +61,9 @@ install_requirements_without_flashinfer() {
   venv_dir="$(get_venv_dir)"
   local tmp_req_file="${venv_dir}/.requirements.no_flashinfer.txt"
   if ! should_skip_requirements_install; then
-    "${venv_dir}/bin/pip" install --upgrade-strategy only-if-needed -r "${tmp_req_file}"
+    if ! pip_quiet_exec "${venv_dir}/bin/pip" install --upgrade-strategy only-if-needed -r "${tmp_req_file}"; then
+      return 1
+    fi
   else
     log_info "[deps] Dependencies unchanged; skipping main pip install"
   fi
@@ -110,7 +112,9 @@ install_quant_requirements() {
   fi
 
   log_info "[deps] Installing quantization requirements (${req_file})"
-  "${pip_bin}" install --upgrade-strategy only-if-needed -r "${req_file}"
+  if ! pip_quiet_exec "${pip_bin}" install --upgrade-strategy only-if-needed -r "${req_file}"; then
+    return 1
+  fi
   if [ -n "${cur_hash}" ]; then
     echo "${cur_hash}" > "${stamp_file}" || true
   fi

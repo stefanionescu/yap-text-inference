@@ -87,9 +87,9 @@ except Exception:
     local FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
     local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
     log_info "${label} Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
-    if ! "${pip_cmd[@]}" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
+    if ! pip_quiet_exec "${pip_cmd[@]}" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
       log_warn "${label} ⚠ FlashInfer install failed even with extra index; falling back to PyPI only"
-      if ! "${pip_cmd[@]}" install --prefer-binary "${FI_PKG}"; then
+      if ! pip_quiet_exec "${pip_cmd[@]}" install --prefer-binary "${FI_PKG}"; then
         log_warn "${label} ⚠ FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi
     fi
@@ -98,4 +98,3 @@ except Exception:
     log_warn "${label} ⚠ Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
   fi
 }
-

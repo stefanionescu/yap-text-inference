@@ -2,6 +2,10 @@
 
 # Virtual environment helpers
 
+_VENV_HELPERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./pip.sh
+source "${_VENV_HELPERS_DIR}/pip.sh"
+
 # =============================================================================
 # PYTHON VERSION REQUIREMENTS
 # =============================================================================
@@ -392,7 +396,7 @@ ensure_pip_in_venv() {
   fi
 
   if "${venv_python}" -m pip --version >/dev/null 2>&1; then
-    "${venv_python}" -m pip install --upgrade pip
+    pip_quiet_exec "${venv_python}" -m pip install --upgrade pip || true
   else
     log_err "[venv] ✗ pip is not available in the virtual environment; please install python3-venv or virtualenv and retry."
     return 1
