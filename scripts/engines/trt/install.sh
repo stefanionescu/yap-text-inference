@@ -437,6 +437,9 @@ trt_install_quant_requirements() {
   if [ -f "${quant_reqs}" ]; then
     log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
 
+    # Ensure .run directory exists for filtered requirements file
+    mkdir -p "$(dirname "${filtered_reqs}")"
+
     # Filter out torch/torchvision, CUDA runtime pins, and relative constraint includes.
     # We already install torch/torchvision via trt_install_pytorch.
     awk '
