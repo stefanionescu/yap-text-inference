@@ -31,3 +31,4 @@ hf_transfer==0.1.8
 huggingface_hub==0.34.0
 ftfy==6.2.3
 lingua-language-detector==2.1.0
+phonenumbers==9.0.3
