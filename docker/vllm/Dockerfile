@@ -1,5 +1,5 @@
 # Multi-stage build for efficient Docker image
-# CUDA 13.0 with Ubuntu 24.04 for VLLM 0.12.0 compatibility
+# CUDA 13.0 with Ubuntu 24.04 for VLLM 0.13.0 compatibility
 FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04 AS builder
 
 # Allow overriding FlashInfer version at build time
