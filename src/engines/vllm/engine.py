@@ -199,6 +199,29 @@ def _create_engine_with_awq_handling(engine_args: AsyncEngineArgs) -> AsyncLLMEn
         return _build(fallback_args)
 
 
+def _strip_quant_dtype_from_mapping(value: Any) -> tuple[Any, bool]:
+    """Remove unsupported quant dtype keys from nested mappings/lists."""
+    removed = False
+    if isinstance(value, dict):
+        cleaned: dict[Any, Any] = {}
+        for k, v in value.items():
+            if k in _UNSUPPORTED_QUANT_FIELDS:
+                removed = True
+                continue
+            cleaned_v, child_removed = _strip_quant_dtype_from_mapping(v)
+            removed = removed or child_removed
+            cleaned[k] = cleaned_v
+        return cleaned, removed
+    if isinstance(value, list):
+        new_list = []
+        for item in value:
+            cleaned_item, child_removed = _strip_quant_dtype_from_mapping(item)
+            removed = removed or child_removed
+            new_list.append(cleaned_item)
+        return new_list, removed
+    return value, False
+
+
 def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> AsyncEngineArgs | None:
     """Rebuild engine args without legacy quant dtype fields if present.
 
@@ -224,11 +247,10 @@ def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> Asyn
             continue
 
         value = getattr(engine_args, name)
-        if name == "quantization_config" and isinstance(value, dict):
-            cleaned = {k: v for k, v in value.items() if k not in _UNSUPPORTED_QUANT_FIELDS}
-            if cleaned != value:
-                removed = True
-            value = cleaned
+        cleaned_value, child_removed = _strip_quant_dtype_from_mapping(value)
+        if child_removed:
+            removed = True
+        value = cleaned_value
 
         filtered_kwargs[name] = value
 
