@@ -1,7 +1,4 @@
 """Template utilities for generating AWQ model documentation.
-
-Refactored to reduce indentation, remove magic values, and centralize
-template/license selection in config.
 """
 
 import json

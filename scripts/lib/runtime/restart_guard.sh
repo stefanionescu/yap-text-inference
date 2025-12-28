@@ -22,6 +22,9 @@ runtime_guard_get_running_server_pid() {
   local pid_file
   pid_file="$(_runtime_guard_pid_file "${root_dir}")"
 
+# Treat server.pid as best-effort bookkeeping: only return the PID if the
+# process is still alive, otherwise drop the stale file so a fresh launch can
+# claim it.
   if [ -f "${pid_file}" ]; then
     local existing_pid
     existing_pid="$(cat "${pid_file}" 2>/dev/null || true)"
@@ -153,6 +156,8 @@ runtime_guard_handle_engine_switch() {
   return 0  # Switch handled
 }
 
+# Compare the requested deployment parameters with the last snapshot.
+# Returns 0 when everything matches (safe to keep caches) and 1 otherwise.
 runtime_guard_configs_match() {
   local desired_deploy="$1"
   local desired_chat="$2"
@@ -189,6 +194,9 @@ runtime_guard_configs_match() {
   return 1
 }
 
+# Decide whether to stop a running server and whether caches can be preserved.
+# Handles engine switches (which force a wipe) and compares config snapshots
+# to decide between a light stop (keep caches) and a full reset.
 runtime_guard_stop_server_if_needed() {
   local script_dir="$1"; shift
   local root_dir="$1"; shift
@@ -244,6 +252,7 @@ runtime_guard_stop_server_if_needed() {
   fi
 }
 
+# Persist the last-known-good deployment config for future comparisons.
 runtime_guard_write_snapshot() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local run_dir="${root_dir}/.run"
@@ -261,4 +270,3 @@ runtime_guard_write_snapshot() {
     echo "GPU_SM_ARCH=${GPU_SM_ARCH:-}"
   } > "${env_file}" 2>/dev/null || true
 }
-

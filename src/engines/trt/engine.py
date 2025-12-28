@@ -85,13 +85,10 @@ class TRTEngine(BaseEngine):
         prompt: str,
         sampling_params: Any,
         request_id: str,
-        *,
-        priority: int = 0,
     ) -> AsyncGenerator[EngineOutput, None]:
         """Stream generation using TRT-LLM's generate_async API.
         
-        Note: TRT-LLM doesn't support request priorities like vLLM.
-        The priority parameter is accepted for interface compatibility but ignored.
+        Note: TRT-LLM doesn't support request prioritization like vLLM.
         """
         if self._shutdown:
             raise EngineNotReadyError("Engine has been shutdown")
@@ -323,4 +320,3 @@ async def shutdown_engines() -> None:
             return
         await engine.shutdown()
         _ENGINE = None
-

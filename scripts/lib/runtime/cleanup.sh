@@ -75,6 +75,8 @@ cleanup_system_nvidia_caches() {
   _cleanup_remove_dirs "cache" "$HOME/.nv" "/root/.nv"
 }
 
+# Gracefully stop the uvicorn session tracked by server.pid (if present); falls
+# back to pkill if bookkeeping is missing so the server can't linger.
 cleanup_stop_server_session() {
   local root_dir="$1"
   local pid_file="${root_dir}/server.pid"
@@ -96,6 +98,7 @@ cleanup_stop_server_session() {
   fi
 }
 
+# Catch straggler CUDA/engine helpers that may survive uvicorn shutdown.
 cleanup_kill_engine_processes() {
   pkill -f "vllm.v1.engine.core" || true
   pkill -f "EngineCore_0" || true
@@ -222,6 +225,8 @@ cleanup_pip_caches() {
     "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip" "${PIP_CACHE_DIR:-}"
 }
 
+# If GPUs are wedged, terminate every process holding a CUDA context and
+# optionally trigger nvidia-smi --gpu-reset when HARD_RESET=1.
 cleanup_gpu_processes() {
   local hard_reset="${1:-0}"
   command -v nvidia-smi >/dev/null 2>&1 || return 0

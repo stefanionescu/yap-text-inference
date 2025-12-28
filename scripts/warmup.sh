@@ -87,6 +87,7 @@ wait_for_ready() {
   return 1
 }
 
+# Detect the maximum connection count from env overrides or config fallback.
 detect_max_conn() {
   if [[ -n "${MAX_CONCURRENT_CONNECTIONS:-}" ]]; then
     echo "${MAX_CONCURRENT_CONNECTIONS}"
@@ -110,6 +111,7 @@ print(MAX_CONCURRENT_CONNECTIONS)
   return 1
 }
 
+# Infer which prompt template to use so warmup exercises the deployed subset.
 detect_prompt_mode() {
   local deploy_mode="${DEPLOY_MODE:-}"
   case "${deploy_mode}" in
@@ -130,6 +132,7 @@ detect_prompt_mode() {
   fi
 }
 
+# Execute a warmup/bench python helper and tee stdout/stderr into a log file.
 run_py_tool() {
   local log_path="$1"; shift
   if "${PY_BIN}" "$@" >"${log_path}" 2>&1; then

@@ -124,8 +124,6 @@ class BaseEngine(ABC):
         prompt: str,
         sampling_params: Any,
         request_id: str,
-        *,
-        priority: int = 0,
     ) -> AsyncGenerator[EngineOutput, None]:
         """Stream generation outputs.
         
@@ -133,7 +131,6 @@ class BaseEngine(ABC):
             prompt: The input prompt text.
             sampling_params: Engine-specific sampling parameters.
             request_id: Unique identifier for this request.
-            priority: Request priority (higher = more urgent).
             
         Yields:
             EngineOutput instances with cumulative text and optional token IDs.
@@ -191,4 +188,3 @@ __all__ = [
     "EngineNotReadyError",
     "EngineShutdownError",
 ]
-

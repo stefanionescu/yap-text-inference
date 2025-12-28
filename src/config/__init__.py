@@ -69,11 +69,6 @@ from .models import (
     ALLOWED_TRT_QUANT_CHAT_MODELS,
     ALLOWED_TOOL_MODELS,
 )
-from .priorities import (
-    CHAT_REQUEST_PRIORITY,
-    TOOL_REQUEST_PRIORITY,
-    WARM_REQUEST_PRIORITY,
-)
 from .quantization import (
     SUPPORTED_ENGINES,
     TRT_FP8_SM_ARCHS,
@@ -339,8 +334,4 @@ __all__ = [
     "WS_CLOSE_IDLE_CODE",
     "WS_CLOSE_IDLE_REASON",
     "WS_CLOSE_CLIENT_REQUEST_CODE",
-    # priorities
-    "CHAT_REQUEST_PRIORITY",
-    "TOOL_REQUEST_PRIORITY",
-    "WARM_REQUEST_PRIORITY",
 ]

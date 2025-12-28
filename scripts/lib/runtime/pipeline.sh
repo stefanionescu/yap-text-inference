@@ -2,6 +2,8 @@
 
 # Helpers shared by main.sh and restart.sh for log rotation and background launches.
 
+# Prepare server.log for a new run, trimming oversized files and ensuring the
+# .run directory exists so downstream helpers can rely on pid/log state.
 runtime_pipeline_prepare_log() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local server_log="${root_dir}/server.log"
@@ -24,6 +26,12 @@ runtime_pipeline_prepare_log() {
   echo "${server_log}"
 }
 
+# Launch the composed deployment command inside a detached session.
+# Args:
+#   $1 - repo root (used for pid/log files)
+#   $2 - command string to execute (typically the pipeline chain)
+#   $3 - follow flag (1 tails server log, 0 returns immediately)
+#   $4 - log prefix describing what is being launched
 runtime_pipeline_run_background() {
   local root_dir="$1"
   local command_string="$2"
@@ -51,5 +59,3 @@ runtime_pipeline_run_background() {
     exec tail -n +1 -F "${server_log}"
   fi
 }
-
-
