@@ -89,26 +89,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # stupid, output is a bit messed up, ignores instructions
 ]
 
-ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
-    "yapwithai/mistral-small-instruct-2409-trt-awq",
-    "yapwithai/flammenai-mahou-1.3-mistral-nemo-12B-trt-awq",
-    "yapwithai/soob3123-grayline-qwen3-14B-trt-awq",
-    "yapwithai/anthracite-org-magnum-v2-32b-trt-awq",
-    "yapwithai/thedrummer-unslopnemo-12B-v4.1-trt-awq",
-    "yapwithai/qwen3-14B-trt-awq",
-    "yapwithai/mistral-small-24B-instruct-2501-trt-awq",
-    "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small",
-    "yapwithai/qwen3-32B-trt-awq",
-    "yapwithai/jinx-qwen3-14B-trt-awq",
-    "yapwithai/jinx-qwen3-32B-trt-awq",
-    "yapwithai/zerofata-ms3.2-paintedfantasy-visage-33B-trt-awq",
-    "yapwithai/delta-vector-rei-24B-kto-trt-awq",
-    "yapwithai/readyart-broken-tutu-24B-unslop-v2.0-trt-awq",
-    "yapwithai/arliai-mistral-small-22B-arliai-rpmax-v1.1-trt-awq",
-    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq",
-    "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
-    "yapwithai/naphula-goetia-24B-v1.1-trt-awq",
-]
+ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = []
 
 ALLOWED_TOOL_MODELS: list[str] = [
     "yapwithai/yap-longformer-screenshot-intent",

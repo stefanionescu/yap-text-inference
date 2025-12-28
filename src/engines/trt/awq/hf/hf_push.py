@@ -25,29 +25,62 @@ def _find_tokenizer_dir(checkpoint_dir: Path, base_model: str | None) -> Path | 
     
     Checks:
     1. Checkpoint directory itself
-    2. Parent's HF download (model-hf directory)
-    3. Downloads from HuggingFace if base_model provided
+    2. Sibling -hf directory in same parent
+    3. models/ directory in workspace root (checkpoint may be in .trt_cache/)
+    4. Downloads from HuggingFace if base_model provided
     """
     # Check if tokenizer is in checkpoint dir
     if (checkpoint_dir / "tokenizer_config.json").exists():
         return checkpoint_dir
     
-    # Check sibling -hf directory (where model was downloaded)
-    # e.g., /models/foo-int4_awq-ckpt -> /models/foo-hf
+    # Extract model name from checkpoint dir name
     ckpt_name = checkpoint_dir.name
+    model_stem = ckpt_name
     for suffix in ["-int4_awq-ckpt", "-fp8-ckpt", "-int8_sq-ckpt", "-ckpt"]:
         if ckpt_name.endswith(suffix):
-            hf_dir = checkpoint_dir.parent / (ckpt_name.replace(suffix, "-hf"))
-            if hf_dir.is_dir() and (hf_dir / "tokenizer_config.json").exists():
-                return hf_dir
+            model_stem = ckpt_name[:-len(suffix)]
             break
     
-    # Try to find in parent models directory
-    models_dir = checkpoint_dir.parent
-    for subdir in models_dir.iterdir():
-        if subdir.is_dir() and subdir.name.endswith("-hf"):
-            if (subdir / "tokenizer_config.json").exists():
-                return subdir
+    # Check sibling -hf directory in same parent
+    hf_dir = checkpoint_dir.parent / f"{model_stem}-hf"
+    if hf_dir.is_dir() and (hf_dir / "tokenizer_config.json").exists():
+        return hf_dir
+    
+    # Checkpoint is in .trt_cache/, but HF download is in models/
+    # Go up to workspace root and check models/ directory
+    # e.g., /workspace/.trt_cache/foo-ckpt -> /workspace/models/foo-hf
+    workspace_root = checkpoint_dir.parent.parent
+    models_dir = workspace_root / "models"
+    if models_dir.is_dir():
+        hf_dir = models_dir / f"{model_stem}-hf"
+        if hf_dir.is_dir() and (hf_dir / "tokenizer_config.json").exists():
+            return hf_dir
+        
+        # Try scanning models/ for any matching -hf directory
+        for subdir in models_dir.iterdir():
+            if subdir.is_dir() and subdir.name.endswith("-hf"):
+                if (subdir / "tokenizer_config.json").exists():
+                    # Check if this -hf dir matches our model stem
+                    if subdir.name == f"{model_stem}-hf":
+                        return subdir
+    
+    # Last resort: download tokenizer from base_model if provided
+    if base_model:
+        try:
+            from huggingface_hub import snapshot_download
+            import tempfile
+            
+            # Download only tokenizer files to temp dir
+            temp_dir = Path(tempfile.mkdtemp(prefix="tokenizer_"))
+            snapshot_download(
+                repo_id=base_model,
+                local_dir=str(temp_dir),
+                allow_patterns=list(TOKENIZER_FILES),
+            )
+            if (temp_dir / "tokenizer_config.json").exists():
+                return temp_dir
+        except Exception as e:
+            print(f"[trt-hf] Warning: Failed to download tokenizer from {base_model}: {e}")
     
     return None
 

@@ -161,3 +161,57 @@ model_detect_classify_trt() {
   echo ""
 }
 
+# =============================================================================
+# PREQUANTIZED MODEL + PUSH VALIDATION
+# =============================================================================
+
+# Check if any of the provided models are prequantized
+model_detect_any_prequant() {
+  local chat_model="${1:-}"
+  local tool_model="${2:-}"
+  
+  if [ -n "${chat_model}" ]; then
+    if model_detect_is_awq_name "${chat_model}" || model_detect_is_gptq_name "${chat_model}"; then
+      echo "${chat_model}"
+      return 0
+    fi
+  fi
+  if [ -n "${tool_model}" ]; then
+    if model_detect_is_awq_name "${tool_model}" || model_detect_is_gptq_name "${tool_model}"; then
+      echo "${tool_model}"
+      return 0
+    fi
+  fi
+  echo ""
+  return 1
+}
+
+# Validate that --push-quant is not used with a prequantized model
+# Returns 0 if valid, 1 if invalid (with error messages)
+model_detect_validate_push_quant_prequant() {
+  local chat_model="${1:-}"
+  local tool_model="${2:-}"
+  local push_requested="${3:-${HF_AWQ_PUSH_REQUESTED:-0}}"
+  local prefix="${4:-[main]}"
+  
+  if [ "${push_requested}" != "1" ]; then
+    return 0
+  fi
+  
+  local prequant_model
+  prequant_model="$(model_detect_any_prequant "${chat_model}" "${tool_model}")"
+  
+  if [ -n "${prequant_model}" ]; then
+    log_err "${prefix} ✗ Cannot use --push-quant with a prequantized model."
+    log_err "${prefix}   Model '${prequant_model}' is already quantized."
+    log_err "${prefix}   There are no local quantization artifacts to upload."
+    log_err ""
+    log_err "${prefix}   Options:"
+    log_err "${prefix}     1. Remove --push-quant to use the prequantized model directly"
+    log_err "${prefix}     2. Use a base (non-quantized) model if you want to quantize and push"
+    return 1
+  fi
+  
+  return 0
+}
+

@@ -303,6 +303,11 @@ restart_reconfigure_models() {
     exit 1
   fi
 
+  # Validate --push-quant is not used with prequantized models
+  if ! model_detect_validate_push_quant_prequant "${chat_model}" "${tool_model}" "${HF_AWQ_PUSH_REQUESTED:-0}" "[restart]"; then
+    exit 1
+  fi
+
   if [ "${deploy_chat}" = "1" ]; then
     export CHAT_MODEL="${chat_model}"
     export CHAT_MODEL_NAME="${chat_model}"
