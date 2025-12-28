@@ -90,16 +90,16 @@ ensure_python_runtime_for_engine() {
     fi
 
     log_err "[python] ✗ Cannot proceed without Python ${TRT_REQUIRED_PYTHON_VERSION}"
-    log_err "[python] ✗ TensorRT-LLM 1.2.0rc5 does NOT work with Python 3.11 or 3.12"
-    log_err "[python] ✗ Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually:"
-    log_err "[python] ✗   Ubuntu/Debian: apt install python3.10 python3.10-venv python3.10-dev"
-    log_err "[python] ✗   Or use the Docker image which has Python ${TRT_REQUIRED_PYTHON_VERSION} pre-installed"
+    log_err "[python]   TensorRT-LLM 1.2.0rc5 does NOT work with Python 3.11 or 3.12"
+    log_err "[python]   Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually:"
+    log_err "[python]     Ubuntu/Debian: apt install python3.10 python3.10-venv python3.10-dev"
+    log_err "[python]     Or use the Docker image which has Python ${TRT_REQUIRED_PYTHON_VERSION} pre-installed"
     return 1
   fi
 
   log_info "[python] Ensuring python3 + pip available for vLLM path"
-  python3 --version || python --version || true
-  python3 -m pip --version || python -m pip --version || true
+  { python3 --version || python --version; } &>/dev/null || true
+  { python3 -m pip --version || python -m pip --version; } &>/dev/null || true
   return 0
 }
 

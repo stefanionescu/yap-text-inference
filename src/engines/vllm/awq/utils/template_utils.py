@@ -72,17 +72,7 @@ def _derive_quantizer_version(awq_version: str) -> str:
 
 
 def _resolve_quantizer_fields(awq_version: str) -> dict[str, str]:
-    raw = (awq_version or "").strip().lower()
-    backend = raw.split("==", 1)[0] if raw else "llmcompressor"
-    version = _derive_quantizer_version(awq_version or backend)
-
-    if backend.startswith("autoawq"):
-        return {
-            "quantizer_name": "AutoAWQ",
-            "quantizer_link": "https://github.com/casper-hansen/AutoAWQ",
-            "quantizer_version": version,
-            "quantizer_recipe_heading": "AutoAWQ config",
-        }
+    version = _derive_quantizer_version(awq_version or "llmcompressor")
 
     return {
         "quantizer_name": "LLM Compressor",
@@ -146,14 +136,6 @@ def generate_readme(
     awq_version = awq_version or metadata.get("awq_version") or "llmcompressor==unknown"
     quantizer_fields = _resolve_quantizer_fields(awq_version)
     hf_size_note = ""
-    if quantizer_fields.get("quantizer_name") == "AutoAWQ":
-        hf_size_note = (
-            "\n> **Heads up:** Hugging Face currently recalculates the \"Model size\" badge "
-            "only for repositories that declare the `compressed-tensors` format. "
-            "AutoAWQ exports still use the classic AWQ tensor layout, so the dashboard may "
-            "report the base model size even though the `.safetensors` files are quantized. "
-            "Open the *Files* tab to see the true quantized sizes.\n"
-        )
 
     license_info = compute_license_info(model_path, is_tool=is_tool, is_hf_model=is_hf_model)
 

@@ -131,7 +131,7 @@ Pass `4bit` or `8bit` to the host scripts. The logs will spell out the actual ba
 
 ### vLLM Quantization
 
-vLLM uses llmcompressor for AWQ/W4A16 quantization (with AutoAWQ fallback for Qwen & Mistral 3):
+vLLM uses [llmcompressor](https://github.com/vllm-project/llm-compressor) for AWQ/W4A16 quantization:
 
 ```bash
 # AWQ 4-bit quantization
@@ -142,8 +142,6 @@ bash scripts/main.sh --vllm 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/
 ```
 
 Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`).
-
-> **AutoAWQ fallback:** Qwen2/Qwen3 and Mistral 3 checkpoints automatically switch to [AutoAWQ 0.2.9](https://github.com/AutoAWQ/AutoAWQ) because llmcompressor cannot yet trace their hybrid forward graphs.
 
 ### TensorRT-LLM Quantization
 

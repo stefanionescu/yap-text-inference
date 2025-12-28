@@ -66,7 +66,7 @@ def is_moe_model(model_config: Any | None, model_identifier: str) -> bool:
     """Return True when this model is a Mixture of Experts (MoE) model.
     
     MoE models have sparse architectures with expert layers that are not
-    supported by AWQ quantization backends (AutoAWQ or llmcompressor).
+    supported by AWQ quantization.
     """
     # Check config for MoE indicators
     if model_config is not None:
@@ -98,44 +98,6 @@ def is_moe_model(model_config: Any | None, model_identifier: str) -> bool:
         return True
     
     return False
-
-
-def requires_autoawq_backend(model_config: Any | None, model_identifier: str) -> bool:
-    """Return True when this model must be quantized with AutoAWQ."""
-
-    from src.helpers.calibration import normalize_model_id  # lazy import to avoid cycles
-
-    model_type = (getattr(model_config, "model_type", "") or "").lower()
-    if model_type.startswith("qwen"):
-        return True
-
-    if not model_type:
-        normalized = normalize_model_id(model_identifier)
-        qwen_markers = ("qwen3", "qwen2", "qwen")
-        if any(marker in normalized for marker in qwen_markers):
-            return True
-
-    return False
-
-
-def ensure_autoawq_dependencies() -> None:
-    """Backfill legacy symbols expected by AutoAWQ on newer transformers builds."""
-
-    try:
-        from transformers import activations  # type: ignore
-
-        _ = activations.PytorchGELUTanh
-    except Exception:
-        import torch.nn as nn
-        from transformers import activations  # type: ignore
-
-        class PytorchGELUTanh(nn.Module):  # type: ignore
-            def forward(self, hidden_states: Any) -> Any:  # type: ignore[override]
-                import torch
-
-                return torch.nn.functional.gelu(hidden_states, approximate="tanh")
-
-        activations.PytorchGELUTanh = PytorchGELUTanh  # type: ignore[attr-defined]
 
 
 def prefetch_model(model_path: str) -> str | None:

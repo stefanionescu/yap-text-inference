@@ -1,4 +1,4 @@
-"""Core AWQ quantization logic (llmcompressor + AutoAWQ fallback)."""
+"""Core AWQ quantization logic using llmcompressor."""
 
 from __future__ import annotations
 
@@ -11,9 +11,8 @@ from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
     load_model_config,
     prefetch_model,
-    requires_autoawq_backend,
 )
-from .backends import quantize_with_autoawq, quantize_with_llmcompressor
+from .backends import quantize_with_llmcompressor
 from .calibration import CalibrationConfig
 
 
@@ -48,7 +47,7 @@ class AWQQuantizer:
         output_dir: str,
         force: bool = False,
     ) -> bool:
-        """Quantize a model using llmcompressor or AutoAWQ (for Qwen).
+        """Quantize a model to 4-bit AWQ using llmcompressor.
         
         Raises ValueError if model is a classifier (not supported).
         """
@@ -82,8 +81,6 @@ class AWQQuantizer:
 
         model_config = load_model_config(resolved_model_path)
         hf_model_type = getattr(model_config, "model_type", "") if model_config is not None else ""
-        
-        requires_autoawq = requires_autoawq_backend(model_config, model_path)
 
         requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model_config)
@@ -92,15 +89,6 @@ class AWQQuantizer:
             print(f"[awq] {calibration_kind} model calibration seqlen adjusted to {target_seqlen}")
         else:
             print(f"[awq] {calibration_kind} model calibration seqlen = {target_seqlen}")
-
-        if requires_autoawq:
-            return quantize_with_autoawq(
-                model_path=model_path,
-                resolved_model_path=resolved_model_path,
-                output_dir=output_dir,
-                quant_config=quant_config,
-                target_seqlen=target_seqlen,
-            )
 
         return quantize_with_llmcompressor(
             calibration_config=self.config,
