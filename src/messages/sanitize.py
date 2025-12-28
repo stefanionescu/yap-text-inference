@@ -173,9 +173,17 @@ class StreamingSanitizer:
             strip_leading_ws=self._prefix_pending,
         )
 
-        # At flush we emit everything and trim trailing whitespace
-        tail = sanitized.rstrip()
-        self._emitted_parts.append(tail)
+        emitted_text = "".join(self._emitted_parts)
+        # Never trim more prefix than the portion we know is still buffered
+        pending_tail = self._sanitized_tail.rstrip()
+        max_overlap = max(0, len(sanitized) - len(pending_tail))
+        overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
+        overlap = min(overlap, max_overlap)
+
+        # At flush we emit only the unseen suffix and trim trailing whitespace
+        tail = sanitized[overlap:].rstrip()
+        if tail:
+            self._emitted_parts.append(tail)
         self._sanitized_tail = ""
         self._raw_tail = ""
         return tail
@@ -470,4 +478,3 @@ __all__ = [
     "sanitize_prompt",
     "StreamingSanitizer",
 ]
-

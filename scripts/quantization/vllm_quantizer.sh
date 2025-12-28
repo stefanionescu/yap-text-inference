@@ -48,5 +48,5 @@ else
       exit 1
     fi
   fi
-  log_info "[quant] AWQ quantization process completed"
+  log_info "[quant] ✓ AWQ quantization process completed"
 fi

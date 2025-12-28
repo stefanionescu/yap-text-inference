@@ -86,7 +86,7 @@ except Exception:
   if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
     local FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
     local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
-    log_info "${label} Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
+    log_info "${label} Installing ${FI_PKG}..."
     if ! pip_quiet_exec "${pip_cmd[@]}" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
       log_warn "${label} ⚠ FlashInfer install failed with extra index; falling back to PyPI only"
       if ! pip_quiet_exec "${pip_cmd[@]}" install --prefer-binary "${FI_PKG}"; then
