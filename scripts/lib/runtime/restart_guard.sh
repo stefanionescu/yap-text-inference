@@ -85,12 +85,12 @@ _runtime_guard_force_engine_wipe() {
   log_warn "[server] ⚠ =========================================="
   log_warn "[server] ⚠ ENGINE SWITCH DETECTED: ${from_engine} → ${to_engine}"
   log_warn "[server] ⚠ =========================================="
-  log_warn "[server] ⚠ This requires a FULL environment wipe:"
-  log_warn "[server] ⚠   - All HF caches"
-  log_warn "[server] ⚠   - All pip dependencies (venv)"
-  log_warn "[server] ⚠   - All quantized model caches"
-  log_warn "[server] ⚠   - All engine-specific artifacts"
-  log_warn "[server] ⚠ =========================================="
+  log_warn "[server]   This requires a FULL environment wipe:"
+  log_warn "[server]     - All HF caches"
+  log_warn "[server]     - All pip dependencies (venv)"
+  log_warn "[server]     - All quantized model caches"
+  log_warn "[server]     - All engine-specific artifacts"
+  log_warn "[server]   =========================================="
   
   # Force full nuke INCLUDING venv (engine switch requires fresh deps)
   if ! NUKE_ALL=1 NUKE_VENV=1 bash "${script_dir}/stop.sh"; then
