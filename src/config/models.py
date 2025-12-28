@@ -41,8 +41,6 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "ArliAI/Mistral-Small-22B-ArliAI-RPMax-v1.1",
     "ArliAI/Mistral-Small-24B-ArliAI-RPMax-v1.4",
     "Naphula/Goetia-24B-v1.1",
-
-
     "NousResearch/Hermes-4-14B",
     "Mawdistical/Squelching-Fantasies-qw3-14B",
 ]
