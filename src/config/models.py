@@ -100,17 +100,11 @@ ALLOWED_TOOL_MODELS: list[str] = [
     "yapwithai/yap-modernbert-screenshot-intent"
 ]
 
-ALL_CHAT_MODELS: list[str] = (
-    ALLOWED_BASE_CHAT_MODELS + ALLOWED_BASE_MOE_CHAT_MODELS + ALLOWED_VLLM_QUANT_CHAT_MODELS
-)
-
-
 __all__ = [
     # Model lists
     "ALLOWED_BASE_CHAT_MODELS",
     "ALLOWED_BASE_MOE_CHAT_MODELS",
     "ALLOWED_VLLM_QUANT_CHAT_MODELS",
     "ALLOWED_TRT_QUANT_CHAT_MODELS",
-    "ALL_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
 ]

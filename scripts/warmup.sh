@@ -15,9 +15,16 @@ runtime_init_repo_paths "${ROOT_DIR}"
 server_init_network_defaults
 warmup_init_defaults "${ROOT_DIR}" "${SCRIPT_DIR}"
 
+declare -a WARMUP_PERSONA_VARIANTS=()
+
 log_warmup() {
   local line="[warmup] $*"
   log_info "${line}"
+  echo "${line}" >> "${WARMUP_LOG_FILE}"
+}
+
+log_warmup_file() {
+  local line="[warmup] $*"
   echo "${line}" >> "${WARMUP_LOG_FILE}"
 }
 
@@ -28,6 +35,116 @@ write_lock() {
 # shellcheck disable=SC2329
 cleanup_lock() {
   rm -f "${WARMUP_LOCK_FILE}" || true
+}
+
+trim_string() {
+  local value="${1:-}"
+  value="${value#${value%%[![:space:]]*}}"
+  value="${value%${value##*[![:space:]]}}"
+  echo "${value}"
+}
+
+add_persona_variant() {
+  local gender
+  local personality
+  gender="$(trim_string "${1:-}")"
+  personality="$(trim_string "${2:-}")"
+  if [ -z "${gender}" ]; then
+    return
+  fi
+  WARMUP_PERSONA_VARIANTS+=("${gender}|${personality}")
+}
+
+parse_persona_spec() {
+  local spec="${1:-}"
+  local entries
+  IFS=',' read -r -a entries <<<"${spec}"
+  for entry in "${entries[@]}"; do
+    entry="$(trim_string "${entry}")"
+    if [ -z "${entry}" ]; then
+      continue
+    fi
+    if [[ "${entry}" == *:* ]]; then
+      add_persona_variant "${entry%%:*}" "${entry#*:}"
+    else
+      add_persona_variant "${entry}" ""
+    fi
+  done
+}
+
+# Build persona variants from env overrides or repo defaults.
+detect_persona_variants() {
+  WARMUP_PERSONA_VARIANTS=()
+
+  if [ -n "${WARMUP_PERSONAS:-}" ]; then
+    parse_persona_spec "${WARMUP_PERSONAS}"
+    return
+  fi
+
+  if [ -n "${GENDER:-}" ]; then
+    add_persona_variant "${GENDER}" "${PERSONALITY:-}"
+    return
+  fi
+
+  local py_output=""
+  if py_output="$("${PY_BIN}" - <<'PY' 2>/dev/null
+from tests.config.defaults import PERSONA_VARIANTS
+for gender, personality, _ in PERSONA_VARIANTS:
+    if not gender:
+        continue
+    personality = personality or ""
+    print(f"{gender}:{personality}")
+PY
+)"; then
+    while IFS= read -r line; do
+      line="$(trim_string "${line}")"
+      if [ -z "${line}" ]; then
+        continue
+      fi
+      if [[ "${line}" == *:* ]]; then
+        add_persona_variant "${line%%:*}" "${line#*:}"
+      else
+        add_persona_variant "${line}" ""
+      fi
+    done <<<"${py_output}"
+  fi
+
+  if [ "${#WARMUP_PERSONA_VARIANTS[@]}" -eq 0 ]; then
+    add_persona_variant "female" ""
+    add_persona_variant "male" ""
+  fi
+}
+
+sanitize_label() {
+  local value="${1:-}"
+  value="${value,,}"
+  value="${value//[^a-z0-9]/_}"
+  echo "${value}"
+}
+
+safe_log_prefix() {
+  local raw="${1:-run}"
+  local cleaned
+  cleaned="$(sanitize_label "${raw}")"
+  if [ -z "${cleaned}" ]; then
+    cleaned="run"
+  fi
+  echo "${cleaned}"
+}
+
+log_phase_result() {
+  local label="${1:-}"
+  local status="${2:-}"
+  local log_path="${3:-}"
+  if [ "${status}" = "OK" ]; then
+    log_warmup "${label} (OK)"
+  else
+    if [ -n "${log_path}" ]; then
+      log_warmup "${label} (FAIL) (see ${log_path})"
+    else
+      log_warmup "${label} (FAIL)"
+    fi
+  fi
 }
 
 choose_python() {
@@ -141,6 +258,31 @@ run_py_tool() {
   return 1
 }
 
+# Execute a python helper with retries, logging only the final status.
+run_with_retries() {
+  local label="${1:-}"
+  local log_prefix="${2:-run}"
+  shift 2
+  local -a cmd=("$@")
+  local attempt=1
+  local run_log=""
+  local last_log=""
+
+  for (( attempt=1; attempt<=WARMUP_RETRIES; attempt++ )); do
+    run_log="${LOG_DIR}/${log_prefix}_attempt${attempt}.log"
+    last_log="${run_log}"
+    log_warmup_file "${label}: attempt ${attempt} → ${run_log}"
+    if run_py_tool "${run_log}" "${cmd[@]}"; then
+      log_phase_result "${label}" "OK"
+      return 0
+    fi
+    log_warmup_file "${label}: attempt ${attempt} failed"
+  done
+
+  log_phase_result "${label}" "FAIL" "${last_log}"
+  return 1
+}
+
 write_lock
 trap cleanup_lock EXIT INT TERM
 
@@ -156,49 +298,69 @@ if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
 fi
 if [[ -z "${max_conn}" || "${max_conn}" =~ [^0-9] ]]; then
-  log_warmup "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
+  log_warmup_file "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
   max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
 if (( max_conn <= 0 )); then
-  log_warmup "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
+  log_warmup_file "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
   max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
 
-log_warmup "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
+log_warmup_file "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
 
-ok=1
+overall_ok=1
 prompt_mode="$(detect_prompt_mode)"
 PROMPT_MODE_FLAGS=()
 if [[ "${prompt_mode}" == "tool" ]]; then
   PROMPT_MODE_FLAGS=(--no-chat-prompt)
 fi
-log_warmup "Using prompt mode '${prompt_mode}' for warmup + bench tests"
+log_warmup_file "Using prompt mode '${prompt_mode}' for warmup + bench tests"
+
+detect_persona_variants
+for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
+  IFS='|' read -r persona_gender persona_personality <<<"${persona}"
+  log_warmup_file "Persona variant configured: gender=${persona_gender:-default} personality=${persona_personality:-}"
+done
 
 cd "${ROOT_DIR}"
 
-for (( idx=1; idx<=WARMUP_RETRIES; idx++ )); do
-  run_log="${LOG_DIR}/warmup_run_${idx}.log"
-  if run_py_tool "${run_log}" "tests/warmup.py" "${PROMPT_MODE_FLAGS[@]}"; then
-    log_warmup "OK: warmup run ${idx} (see ${run_log})"
-  else
-    log_warmup "✗ FAIL: warmup run ${idx} (see ${run_log})"
-    ok=0
+for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
+  IFS='|' read -r persona_gender persona_personality <<<"${persona}"
+  persona_gender="$(trim_string "${persona_gender}")"
+  persona_personality="$(trim_string "${persona_personality}")"
+  persona_label="${persona_gender:-default}"
+
+  persona_args=()
+  if [ -n "${persona_gender}" ]; then
+    persona_args+=("--gender" "${persona_gender}")
+  fi
+  if [ -n "${persona_personality}" ]; then
+    persona_args+=("--personality" "${persona_personality}")
+  fi
+
+  warmup_label="warmup: ${persona_label}"
+  warmup_prefix="$(safe_log_prefix "warmup_${persona_label}")"
+  if ! run_with_retries "${warmup_label}" "${warmup_prefix}" "tests/warmup.py" "${PROMPT_MODE_FLAGS[@]}" "${persona_args[@]}"; then
+    overall_ok=0
+  fi
+  sleep "${WARMUP_RUN_DELAY_SECS}"
+
+  bench_label="warmup: bench ${max_conn}x ${persona_label}"
+  bench_prefix="$(safe_log_prefix "bench_${max_conn}x_${persona_label}")"
+  if ! run_with_retries \
+    "${bench_label}" \
+    "${bench_prefix}" \
+    "tests/bench.py" \
+    "${PROMPT_MODE_FLAGS[@]}" \
+    "--requests" "${max_conn}" \
+    "--concurrency" "${max_conn}" \
+    "${persona_args[@]}"; then
+    overall_ok=0
   fi
   sleep "${WARMUP_RUN_DELAY_SECS}"
 done
 
-for (( idx=1; idx<=WARMUP_RETRIES; idx++ )); do
-  run_log="${LOG_DIR}/bench_run_${idx}.log"
-  if run_py_tool "${run_log}" "tests/bench.py" "${PROMPT_MODE_FLAGS[@]}" "--requests" "${max_conn}" "--concurrency" "${max_conn}"; then
-    log_warmup "OK: bench run ${idx} (n=${max_conn}, c=${max_conn}) (see ${run_log})"
-  else
-    log_warmup "✗ FAIL: bench run ${idx} (see ${run_log})"
-    ok=0
-  fi
-  sleep "${WARMUP_RUN_DELAY_SECS}"
-done
-
-if [[ "${ok}" -eq 1 ]]; then
+if [[ "${overall_ok}" -eq 1 ]]; then
   log_warmup "✓ Warmup + bench complete."
   exit 0
 fi
