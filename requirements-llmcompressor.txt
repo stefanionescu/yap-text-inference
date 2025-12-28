@@ -8,7 +8,7 @@ llmcompressor==0.9.0
 
 # Hugging Face + training utilities used by llmcompressor
 accelerate==1.1.1
-datasets==3.1.0
+datasets==4.4.1
 safetensors==0.4.5
 sentencepiece==0.2.0
 protobuf==5.28.2
