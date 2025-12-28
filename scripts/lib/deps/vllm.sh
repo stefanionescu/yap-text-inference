@@ -17,10 +17,8 @@ vllm_install_deps() {
   
   filter_requirements_without_flashinfer || return 1
   install_requirements_without_flashinfer || return 1
-  install_llmcompressor_without_deps || return 1
   vllm_install_flashinfer
   
   log_info "[vllm] ✓ vLLM dependencies installed"
   return 0
 }
-

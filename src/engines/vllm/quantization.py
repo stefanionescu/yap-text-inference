@@ -110,7 +110,6 @@ def _detect_remote_quantization_backend(model_path: str) -> tuple[str | None, di
                 token=token,
                 cache_dir=cache_dir,
                 local_files_only=False,
-                resume_download=True,
             )
         except Exception:
             continue
