@@ -6,6 +6,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common/model_detect.sh"
+source "${SCRIPT_DIR}/../../lib/common/awq.sh"
 source "${SCRIPT_DIR}/../../lib/deps/venv.sh"
 
 # Ensure AWQ cache directory exists
@@ -37,7 +38,7 @@ vllm_awq_quantize_chat_if_needed() {
   fi
 
   # Check for existing quantized model
-  if [ -f "${out_dir}/.awq_ok" ] || [ -f "${out_dir}/awq_metadata.json" ] || [ -f "${out_dir}/awq_config.json" ]; then
+  if awq_chat_cache_ready "${out_dir}"; then
     log_info "[quant] Using existing AWQ chat model at ${out_dir}"
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq

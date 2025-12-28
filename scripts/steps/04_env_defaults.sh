@@ -21,7 +21,7 @@ source "${LIB_DIR}/common/cuda.sh"
 # Validate CUDA 13.x for TRT before setting environment defaults
 ensure_cuda_ready_for_engine "env" || exit 1
 
-log_info "[env] Setting environment defaults"
+log_info "[env] Setting environment defaults..."
 
 # Detect FlashInfer availability for runtime tuning (optional)
 detect_flashinfer
@@ -44,12 +44,3 @@ gpu_init_detection "env"
 
 # Apply GPU-/quantization-specific defaults
 apply_quantization_defaults
-
-log_info "[env] Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
-if [ "${DEPLOY_CHAT}" = "1" ]; then
-  chat_precision="${CHAT_QUANTIZATION:-${QUANTIZATION:-fp16}}"
-  log_info "[env] Chat model: ${CHAT_MODEL:-<unset>} (${chat_precision})"
-fi
-if [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "[env] Tool model: ${TOOL_MODEL:-<unset>} (fp32)"
-fi

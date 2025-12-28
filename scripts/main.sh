@@ -13,6 +13,7 @@ source "${SCRIPT_DIR}/lib/common/model_validate.sh"
 source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
+source "${SCRIPT_DIR}/lib/common/cli.sh"
 
 # Runtime management
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"

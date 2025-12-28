@@ -26,15 +26,13 @@ main_parse_cli() {
         push_quant_requested=0
         ;;
       --engine)
-        if [ -z "${2:-}" ]; then
-          log_err "[main] ✗ --engine requires a value (trt|vllm)"
+        if ! cli_set_engine_value "${2:-}" "[main]" engine; then
           return 1
         fi
-        engine="$2"
         shift
         ;;
       --engine=*)
-        engine="${1#--engine=}"
+        cli_set_engine_value "${1#--engine=}" "[main]" engine || return 1
         ;;
       --vllm)
         engine="vllm"
@@ -43,16 +41,16 @@ main_parse_cli() {
         engine="trt"
         ;;
       --deploy-mode)
-        if [ -z "${2:-}" ]; then
-          log_err "[main] ✗ --deploy-mode requires a value (both|chat|tool)"
+        if ! cli_set_deploy_mode_value "${2:-}" "[main]" deploy_mode; then
           return 1
         fi
-        deploy_mode="$2"
         deploy_explicit=1
         shift
         ;;
       --deploy-mode=*)
-        deploy_mode="${1#--deploy-mode=}"
+        if ! cli_set_deploy_mode_value "${1#--deploy-mode=}" "[main]" deploy_mode; then
+          return 1
+        fi
         deploy_explicit=1
         ;;
       4bit|4BIT|4Bit)
@@ -95,26 +93,15 @@ main_parse_cli() {
     esac
   fi
 
-  case "${deploy_mode}" in
-    both|chat|tool) ;;
-    *)
-      log_err "[main] ✗ Invalid deploy mode '${deploy_mode}'. Expected both|chat|tool."
-      return 1
-      ;;
-  esac
+  if ! deploy_mode="$(cli_validate_deploy_mode "${deploy_mode}")"; then
+    log_err "[main] ✗ Invalid deploy mode '${deploy_mode}'. Expected both|chat|tool."
+    return 1
+  fi
 
-  case "${engine}" in
-    vllm|VLLM)
-      engine="vllm"
-      ;;
-    trt|TRT|tensorrt|TENSORRT|trtllm|TRTLLM)
-      engine="trt"
-      ;;
-    *)
-      log_err "[main] ✗ Unknown engine type '${engine}'. Expected trt|vllm."
-      return 1
-      ;;
-  esac
+  if ! engine="$(cli_normalize_engine "${engine}")"; then
+    log_err "[main] ✗ Unknown engine type '${engine}'. Expected trt|vllm."
+    return 1
+  fi
 
   case "${quant_type}" in
     4bit|8bit|auto) ;;
@@ -199,4 +186,3 @@ main_export_models() {
     export TOOL_MODEL="${TOOL_MODEL_NAME}"
   fi
 }
-

@@ -10,6 +10,8 @@ import torch
 
 # Suppress tokenizers parallelism warnings when forking during calibration
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+# Help CUDA reuse reserved segments during large calibration sweeps
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 from src.config.calibration import CALIB_DEFAULT_DATASET
 from src.helpers.calibration import (
@@ -63,15 +65,6 @@ def quantize_with_llmcompressor(
         )
     ]
 
-    print(f"[awq] Quantizing with llmcompressor {compressor_version}")
-    print(f"[awq] Quantization config: {json.dumps(quant_config)}")
-    print(
-        "[awq] Running oneshot() with dataset="
-        f"{dataset_info['effective']}, nsamples={calibration_config.nsamples}, "
-        f"max_seq_length={target_seqlen}"
-    )
-
-    print(f"[awq] Loading model from {resolved_model_path}")
     try:
         from transformers import AutoModelForCausalLM  # type: ignore
     except Exception as exc:  # noqa: BLE001
@@ -181,5 +174,4 @@ def _log_llmcompressor_exception(exc: Exception, prefix: str | None = None) -> N
 def _is_dataset_registration_error(exc: Exception) -> bool:
     message = str(exc)
     return "Unable to find" in message and "TextGenerationDataset" in message
-
 

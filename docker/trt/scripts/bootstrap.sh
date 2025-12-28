@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
-log_info "[trt] Setting environment defaults (TRT-LLM image)"
+log_info "[trt] Setting environment defaults (TRT-LLM image)..."
 
 # Source modular env configuration
 source "${SCRIPT_DIR}/env/helpers.sh"

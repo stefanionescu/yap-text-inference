@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
-log_info "[vllm] Setting environment defaults (vLLM AWQ image)"
+log_info "[vllm] Setting environment defaults (vLLM AWQ image)..."
 
 # Source modular env configuration
 source "${SCRIPT_DIR}/env/helpers.sh"
