@@ -111,7 +111,7 @@ install_quant_requirements() {
     return 0
   fi
 
-  log_info "[deps] Installing quantization requirements (${req_file})"
+  log_info "[deps] Installing quantization requirements..."
   if ! pip_quiet_exec "${pip_bin}" install --upgrade-strategy only-if-needed -r "${req_file}"; then
     return 1
   fi

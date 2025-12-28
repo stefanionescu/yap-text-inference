@@ -88,7 +88,7 @@ except Exception:
     local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
     log_info "${label} Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
     if ! pip_quiet_exec "${pip_cmd[@]}" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
-      log_warn "${label} ⚠ FlashInfer install failed even with extra index; falling back to PyPI only"
+      log_warn "${label} ⚠ FlashInfer install failed with extra index; falling back to PyPI only"
       if ! pip_quiet_exec "${pip_cmd[@]}" install --prefer-binary "${FI_PKG}"; then
         log_warn "${label} ⚠ FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi

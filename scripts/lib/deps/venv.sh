@@ -112,20 +112,46 @@ ensure_python_runtime_for_engine() {
 # =============================================================================
 # Centralized functions to get venv paths - use these instead of hardcoding
 
+# Detect whether we can safely use a preferred venv path. This returns success
+# when the directory already exists or the parent directory is writable so we
+# could create it (e.g. /opt inside our Docker image when running as root).
+_venv_path_is_usable() {
+  local path="$1"
+  if [ -z "${path}" ]; then
+    return 1
+  fi
+  if [ -d "${path}" ]; then
+    return 0
+  fi
+  if [ -e "${path}" ]; then
+    return 1
+  fi
+  local parent
+  parent="$(dirname "${path}")"
+  if [ -d "${parent}" ] && [ -w "${parent}" ]; then
+    return 0
+  fi
+  return 1
+}
+
 # Resolve the runtime venv directory with the following precedence:
 # 1) VENV_DIR env var (explicit override)
-# 2) Prebaked /opt/venv if it exists (TRT base image comes with this)
+# 2) Writable/pre-existing /opt/venv (Docker prebaked venv)
 # 3) Repo-local .venv
 get_venv_dir() {
   if [ -n "${VENV_DIR:-}" ]; then
     echo "${VENV_DIR}"
     return
   fi
-  if [ -d "/opt/venv" ]; then
-    echo "/opt/venv"
-    return
+  local resolved
+  if _venv_path_is_usable "/opt/venv"; then
+    resolved="/opt/venv"
+  else
+    resolved="${ROOT_DIR}/.venv"
   fi
-  echo "${ROOT_DIR}/.venv"
+  VENV_DIR="${resolved}"
+  export VENV_DIR
+  echo "${VENV_DIR}"
 }
 
 # Resolve the AWQ/llmcompressor venv directory
@@ -134,11 +160,15 @@ get_quant_venv_dir() {
     echo "${QUANT_VENV_DIR}"
     return
   fi
-  if [ -d "/opt/venv-quant" ]; then
-    echo "/opt/venv-quant"
-    return
+  local resolved
+  if _venv_path_is_usable "/opt/venv-quant"; then
+    resolved="/opt/venv-quant"
+  else
+    resolved="${ROOT_DIR}/.venv-quant"
   fi
-  echo "${ROOT_DIR}/.venv-quant"
+  QUANT_VENV_DIR="${resolved}"
+  export QUANT_VENV_DIR
+  echo "${QUANT_VENV_DIR}"
 }
 
 # Get the venv Python executable path
@@ -332,7 +362,7 @@ _venv_create_new_with_python() {
   local venv_path="$1"
   local py_bin="$2"
 
-  log_info "[venv] Creating virtual environment at ${venv_path} with ${py_bin}"
+  log_info "[venv] Creating virtual environment at ${venv_path}..."
   if "${py_bin}" -m venv "${venv_path}" >/dev/null 2>&1; then
     return 0
   fi

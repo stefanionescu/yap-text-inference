@@ -46,7 +46,7 @@ vllm_awq_quantize_chat_if_needed() {
     return 0
   fi
 
-  log_info "[quant] Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${out_dir}"
+  log_info "[quant] Quantizing chat model to AWQ..."
   local python_bin
   python_bin="$(get_quant_venv_python)"
   if [ ! -x "${python_bin}" ]; then

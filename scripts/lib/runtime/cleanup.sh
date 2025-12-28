@@ -135,14 +135,8 @@ cleanup_venvs() {
     rm -rf "${detected_venv}" || true
   fi
   
-  local quant_venv="${QUANT_VENV_DIR:-}"
-  if [ -z "${quant_venv}" ]; then
-    if [ -d "/opt/venv-quant" ]; then
-      quant_venv="/opt/venv-quant"
-    else
-      quant_venv="${root_dir}/.venv-quant"
-    fi
-  fi
+  local quant_venv
+  quant_venv="${QUANT_VENV_DIR:-$(get_quant_venv_dir)}"
   if [ -n "${quant_venv}" ] && [ -d "${quant_venv}" ]; then
     log_info "[cleanup] Removing quantization venv: ${quant_venv}"
     rm -rf "${quant_venv}" || true

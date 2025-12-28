@@ -97,7 +97,7 @@ trt_install_pytorch() {
   local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
   local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
   
-  log_info "[trt] Installing PyTorch ${torch_version}..."
+  log_info "[trt] Installing PyTorch..."
   
   # Install torch and torchvision together from the SAME index to ensure CUDA version match
   local pip_cmd=(
@@ -148,7 +148,7 @@ trt_install_tensorrt_llm() {
   local target="${TRT_PIP_SPEC}"
   local trt_no_deps="${TRTLLM_NO_DEPS:-0}"
   
-  log_info "[trt] Installing TensorRT-LLM: ${target}"
+  log_info "[trt] Installing TensorRT-LLM..."
   
   # NOTE: Do NOT use --upgrade here - it can replace torch with a different CUDA version
   # from NVIDIA's index, causing CUDA version mismatch between torch and torchvision
@@ -439,7 +439,7 @@ trt_install_quant_requirements() {
   fi
   
   if [ -f "${quant_reqs}" ]; then
-    log_info "[trt] Installing TRT-LLM quantization requirements from ${quant_reqs}"
+    log_info "[trt] Installing TRT-LLM quantization requirements..."
 
     # Ensure .run directory exists for filtered requirements file
     mkdir -p "$(dirname "${filtered_reqs}")"
