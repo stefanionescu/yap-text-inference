@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.config import trt as trt_config
 from src.helpers.templates import compute_license_info
 
 from ..utils.detection import (
@@ -22,7 +23,7 @@ class EngineLabelError(Exception):
     """Raised when engine label cannot be determined."""
     
 
-def _env_int(name: str, default: int) -> int:
+def _env_int(name: str, default: int | None) -> int | None:
     """Get int from env var, handling empty strings."""
     val = os.getenv(name, "")
     if not val:
@@ -124,6 +125,15 @@ def get_engine_label(engine_path: Path) -> str:
     return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
 
 
+def _infer_kv_cache_dtype(quant_method: str) -> str:
+    env_override = os.getenv("TRT_KV_CACHE_DTYPE")
+    if env_override:
+        return env_override
+    if "fp8" in (quant_method or "").lower():
+        return "fp8"
+    return "int8"
+
+
 def collect_metadata(
     checkpoint_path: Path,
     engine_path: Path,
@@ -202,14 +212,23 @@ def collect_metadata(
         "gpu_name": detect_gpu_name(),
         "cuda_toolkit": cuda_version,
         "tensorrt_llm_version": trt_version,
-        "kv_cache_dtype": "int8",
-        "awq_block_size": _env_int("TRT_AWQ_BLOCK_SIZE", 128),
-        "calib_size": _env_int("TRT_CALIB_SIZE", 256),
-        "calib_seqlen": 2048,
-        "calib_batch_size": _env_int("TRT_CALIB_BATCH_SIZE", 16),
-        "max_batch_size": _env_str("TRT_MAX_BATCH_SIZE", str(metadata.get("max_batch_size", "N/A"))),
-        "max_input_len": _env_str("TRT_MAX_INPUT_LEN", str(metadata.get("max_input_len", "N/A"))),
-        "max_output_len": _env_str("TRT_MAX_OUTPUT_LEN", str(metadata.get("max_output_len", "N/A"))),
+        "kv_cache_dtype": _infer_kv_cache_dtype(quant_method),
+        "awq_block_size": _env_int("TRT_AWQ_BLOCK_SIZE", trt_config.TRT_AWQ_BLOCK_SIZE),
+        "calib_size": _env_int("TRT_CALIB_SIZE", trt_config.TRT_CALIB_SIZE),
+        "calib_seqlen": _env_int("TRT_CALIB_SEQLEN", trt_config.TRT_CALIB_SEQLEN),
+        "calib_batch_size": _env_int("TRT_CALIB_BATCH_SIZE", trt_config.TRT_CALIB_BATCH_SIZE),
+        "max_batch_size": _env_str(
+            "TRT_MAX_BATCH_SIZE",
+            str(metadata.get("max_batch_size", trt_config.TRT_MAX_BATCH_SIZE or "N/A")),
+        ),
+        "max_input_len": _env_str(
+            "TRT_MAX_INPUT_LEN",
+            str(metadata.get("max_input_len", trt_config.TRT_MAX_INPUT_LEN)),
+        ),
+        "max_output_len": _env_str(
+            "TRT_MAX_OUTPUT_LEN",
+            str(metadata.get("max_output_len", trt_config.TRT_MAX_OUTPUT_LEN)),
+        ),
     })
     metadata.update(get_compute_capability_info(sm_arch))
     
@@ -233,7 +252,6 @@ def collect_metadata(
                     "calib_batch_size": meta.get("calib_batch_size", metadata["calib_batch_size"]),
                     "max_batch_size": meta.get("max_batch_size", metadata["max_batch_size"]),
                     "max_input_len": meta.get("max_input_len", metadata["max_input_len"]),
-                    # build_metadata.json uses max_output_len; accept max_seq_len fallback
                     "max_output_len": meta.get("max_output_len", meta.get("max_seq_len", metadata["max_output_len"])),
                 })
                 metadata.update(get_compute_capability_info(sm_arch))
@@ -250,8 +268,7 @@ def collect_metadata(
 
     metadata.setdefault(
         "quant_portability_note",
-        "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX)",
+        "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX) or reuse one of the prebuild engines in case they match your GPU.",
     )
     
     return metadata
-

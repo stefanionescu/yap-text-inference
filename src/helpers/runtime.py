@@ -17,23 +17,22 @@ def _select_attention_backend() -> None:
     """Set attention backend and KV dtype safeguards based on availability.
     - Prefer FLASHINFER when importable.
     - If FP8 KV is requested but flashinfer is unavailable, force KV_DTYPE=auto.
+    - Use only VLLM_ATTENTION_BACKEND for overrides (no extra env knobs).
     """
-    has_flashinfer = False
-    # Select backend if not set; otherwise detect availability for KV fallback
-    if not os.getenv("VLLM_ATTENTION_BACKEND"):
-        try:
-            import flashinfer  # type: ignore[import]  # noqa: F401
-            os.environ.setdefault("VLLM_ATTENTION_BACKEND", "FLASHINFER")
-            has_flashinfer = True
-        except Exception:
-            os.environ.setdefault("VLLM_ATTENTION_BACKEND", "XFORMERS")
-            has_flashinfer = False
+    backend_hint = os.getenv("VLLM_ATTENTION_BACKEND")
+
+    try:
+        import flashinfer  # type: ignore[import]  # noqa: F401
+        has_flashinfer = True
+    except Exception:
+        has_flashinfer = False
+
+    if backend_hint:
+        backend = backend_hint.strip().upper()
     else:
-        try:
-            import flashinfer  # type: ignore[import]  # noqa: F401
-            has_flashinfer = True
-        except Exception:
-            has_flashinfer = False
+        backend = "FLASHINFER" if has_flashinfer else "XFORMERS"
+
+    os.environ["VLLM_ATTENTION_BACKEND"] = backend
 
     # If FP8 KV requested without flashinfer, force auto (fp16)
     if not has_flashinfer:
@@ -69,4 +68,3 @@ if env_flag(_AUTO_CONFIG_FLAG, True):
 
 
 __all__ = ["configure_runtime_env"]
-

@@ -60,6 +60,8 @@ _CACHE_RESET_LOCK = asyncio.Lock()  # Guards cache reset operations
 _CACHE_RESET_EVENT = asyncio.Event()  # Signals cache reset to daemon
 _LAST_CACHE_RESET = time.monotonic()  # For rate limiting resets
 
+_UNSUPPORTED_QUANT_FIELDS = ("scale_dtype", "zp_dtype")
+
 
 class VLLMEngine(BaseEngine):
     """vLLM-based inference engine with cache management.
@@ -180,14 +182,60 @@ def _awq_offline_mode():
 
 
 def _create_engine_with_awq_handling(engine_args: AsyncEngineArgs) -> AsyncLLMEngine:
-    """Create an engine honoring AWQ offline requirements."""
-    is_local_awq = getattr(engine_args, "_is_local_awq", False)
-    if is_local_awq:
-        if hasattr(engine_args, "_is_local_awq"):
-            delattr(engine_args, "_is_local_awq")
-        with _awq_offline_mode():
-            return AsyncLLMEngine.from_engine_args(engine_args)
-    return AsyncLLMEngine.from_engine_args(engine_args)
+    """Create an engine honoring AWQ offline requirements and legacy configs."""
+
+    def _build(args: AsyncEngineArgs) -> AsyncLLMEngine:
+        ctx = _awq_offline_mode() if getattr(args, "_is_local_awq", False) else contextlib.nullcontext()
+        with ctx:
+            return AsyncLLMEngine.from_engine_args(args)
+
+    try:
+        return _build(engine_args)
+    except Exception as exc:  # noqa: BLE001
+        if not _looks_like_quant_dtype_error(exc):
+            raise
+        fallback_args = _clone_engine_args_without_quant_dtype(engine_args)
+        if fallback_args is None:
+            raise
+        logger.warning(
+            "vLLM: engine args include unsupported quant dtype knobs; retrying without scale/zp dtype fields"
+        )
+        return _build(fallback_args)
+
+
+def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> AsyncEngineArgs | None:
+    """Rebuild engine args without legacy quant dtype fields if present."""
+    annotations = getattr(engine_args.__class__, "__annotations__", {})
+    if not annotations:
+        return None
+
+    filtered_kwargs: dict[str, Any] = {}
+    removed = False
+    for name in annotations:
+        if name in _UNSUPPORTED_QUANT_FIELDS:
+            removed = True
+            continue
+        if hasattr(engine_args, name):
+            filtered_kwargs[name] = getattr(engine_args, name)
+
+    if not removed:
+        return None
+
+    new_args = AsyncEngineArgs(**filtered_kwargs)
+    if hasattr(engine_args, "_is_local_awq"):
+        setattr(new_args, "_is_local_awq", getattr(engine_args, "_is_local_awq"))
+    return new_args
+
+
+
+def _looks_like_quant_dtype_error(error: Exception) -> bool:
+    """Return True if the ValidationError references unsupported quant dtype inputs."""
+    if error.__class__.__name__ != "ValidationError":
+        return False
+    message = str(error)
+    if not message:
+        return False
+    return any(field in message for field in _UNSUPPORTED_QUANT_FIELDS)
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +288,7 @@ async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
         success = await engine.reset_caches(reason)
         if success:
             _LAST_CACHE_RESET = time.monotonic()
+
             _CACHE_RESET_EVENT.set()
         return success
 
@@ -272,4 +321,3 @@ async def shutdown_engines() -> None:
 async def clear_all_engine_caches_on_disconnect() -> None:
     """Force cache reset when all clients disconnect."""
     await reset_engine_caches("all_clients_disconnected", force=True)
-

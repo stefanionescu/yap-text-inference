@@ -148,7 +148,7 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
     if use_v1:
         if normalized.startswith("fp8"):
             os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
-            print("[config] V1 engine: FP8 KV cache enabled via VLLM_FP8_KV_CACHE_ENABLE=1")
+            print("[config] V1 engine: FP8 KV cache enabled")
         elif normalized.startswith("int8"):
             if not _KV_DTYPE_WARNING_EMITTED:
                 print(

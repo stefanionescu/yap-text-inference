@@ -37,8 +37,6 @@ if [ -f "${PID_FILE}" ]; then
 fi
 
 # Log key env knobs
-log_info "[server]   GPU=${DETECTED_GPU_NAME:-unknown}"
-
 if [ "${DEPLOY_MODE:-both}" = "both" ]; then
   log_info "[server]   CHAT=${CHAT_MODEL:-}"
   log_info "[server]   TOOL=${TOOL_MODEL:-}"
@@ -98,11 +96,11 @@ setsid "${CMD[@]}" >> "${ROOT_DIR}/server.log" 2>&1 &
 SERVER_PID=$!
 echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
 
-log_info "[server] Server started: PID=$(cat "${ROOT_DIR}/server.pid")"
+log_info "[server] Server started"
 health_hint="${SERVER_HEALTH_URLS[0]:-http://${SERVER_ADDR}/healthz}"
 log_info "[server] Health:  curl -s ${health_hint}"
 log_info "[server] All logs: tail -f ${ROOT_DIR}/server.log"
-log_info "[server] Stop:    kill -TERM -$(cat "${ROOT_DIR}/server.pid")  # negative PID kills session"
+log_info "[server] Stop: kill -TERM -$(cat "${ROOT_DIR}/server.pid")"
 
 WARMUP_SCRIPT="${ROOT_DIR}/scripts/warmup.sh"
 if [ -x "${WARMUP_SCRIPT}" ]; then
