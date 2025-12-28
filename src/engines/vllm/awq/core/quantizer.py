@@ -9,6 +9,7 @@ from src.helpers.calibration import resolve_total_len, TotalLengthPolicy
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
+    is_moe_model,
     load_model_config,
     prefetch_model,
 )
@@ -32,7 +33,23 @@ CHAT_TOTAL_POLICY = TotalLengthPolicy(
 
 
 def compute_chat_calibration_seqlen(requested: int) -> int:
+    requested = max(int(requested), 1)
     return resolve_total_len(requested, CHAT_TOTAL_POLICY)
+
+
+def _read_positive_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+_MOE_SEQLEN_LIMIT = _read_positive_env("AWQ_MOE_SEQLEN", 4096)
+_MOE_NSAMPLES_LIMIT = _read_positive_env("AWQ_MOE_NSAMPLES", 32)
 
 
 class AWQQuantizer:
@@ -82,13 +99,43 @@ class AWQQuantizer:
         model_config = load_model_config(resolved_model_path)
         hf_model_type = getattr(model_config, "model_type", "") if model_config is not None else ""
 
+        calibration_kind = "Chat"
+        is_moe = is_moe_model(model_config, model_path)
+        moe_target_cap: int | None = None
+
+        if is_moe:
+            calibration_kind = "Chat (MoE)"
+
+            capped_nsamples = min(self.config.nsamples, _MOE_NSAMPLES_LIMIT)
+            if capped_nsamples < self.config.nsamples:
+                print(
+                    "[awq] MoE model detected; reducing calibration samples "
+                    f"from {self.config.nsamples} to {capped_nsamples}"
+                )
+                self.config.nsamples = capped_nsamples
+
+            capped_seqlen = min(self.config.seqlen, _MOE_SEQLEN_LIMIT)
+            if capped_seqlen < self.config.seqlen:
+                print(
+                    "[awq] MoE model detected; capping calibration seqlen "
+                    f"from {self.config.seqlen} to {capped_seqlen}"
+                )
+                self.config.seqlen = capped_seqlen
+            moe_target_cap = self.config.seqlen
+
         requested_seqlen = compute_chat_calibration_seqlen(self.config.seqlen)
         target_seqlen = resolve_calibration_seqlen(requested_seqlen, model_config)
-        calibration_kind = "Chat"
         if target_seqlen != requested_seqlen:
             print(f"[awq] {calibration_kind} model calibration seqlen adjusted to {target_seqlen}")
         else:
             print(f"[awq] {calibration_kind} model calibration seqlen = {target_seqlen}")
+
+        if is_moe and moe_target_cap is not None and target_seqlen > moe_target_cap:
+            print(
+                "[awq] MoE calibration target trimmed from "
+                f"{target_seqlen} to {moe_target_cap}"
+            )
+            target_seqlen = moe_target_cap
 
         return quantize_with_llmcompressor(
             calibration_config=self.config,

@@ -3,6 +3,9 @@
 # AWQ model detection and environment wiring for scripts/restart.sh
 # Requires: ROOT_DIR
 
+RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${RESTART_LIB_DIR}/../common/awq.sh"
+
 _awq_read_source_model() {
   local dir="$1"
   local meta="${dir}/awq_metadata.json"
@@ -40,8 +43,10 @@ restart_detect_awq_models() {
   esac
 
   local LOCAL_CHAT_OK=0
-  if [ -d "${AWQ_CACHE_DIR}" ]; then
-    if [ -f "${CHAT_AWQ_DIR}/.awq_ok" ] || [ -f "${CHAT_AWQ_DIR}/awq_metadata.json" ] || [ -f "${CHAT_AWQ_DIR}/awq_config.json" ]; then LOCAL_CHAT_OK=1; fi
+  local local_chat_dir=""
+  if local_chat_dir="$(awq_resolve_local_chat_cache "${ROOT_DIR}")"; then
+    LOCAL_CHAT_OK=1
+    CHAT_AWQ_DIR="${local_chat_dir}"
   fi
 
   local last_chat_model last_quant last_chat_quant
@@ -167,5 +172,4 @@ restart_push_cached_awq_models() {
     log_info "[restart] No local AWQ artifacts matched deploy mode '${DEPLOY_MODE}'; nothing to upload."
   fi
 }
-
 

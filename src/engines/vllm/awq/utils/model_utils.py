@@ -116,7 +116,7 @@ def prefetch_model(model_path: str) -> str | None:
     token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
     cache_dir = os.environ.get("HF_HOME")
 
-    print(f"[awq] Prefetching model from Hub: {model_path}")
+    print(f"[awq] Fetching model from Hub: {model_path}...")
     last_err: Exception | None = None
     for attempt in range(1, 4):
         try:

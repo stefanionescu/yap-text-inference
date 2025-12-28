@@ -33,15 +33,13 @@ restart_parse_args() {
         shift
         ;;
       --engine)
-        if [ -z "${2:-}" ]; then
-          log_err "[restart] ✗ --engine requires a value (trt|vllm)"
+        if ! cli_set_engine_value "${2:-}" "[restart]" INFERENCE_ENGINE; then
           return 1
         fi
-        INFERENCE_ENGINE="$2"
         shift 2
         ;;
       --engine=*)
-        INFERENCE_ENGINE="${1#*=}"
+        cli_set_engine_value "${1#*=}" "[restart]" INFERENCE_ENGINE || return 1
         shift
         ;;
       --install-deps)
@@ -61,15 +59,13 @@ restart_parse_args() {
         shift
         ;;
       --deploy-mode)
-        if [ -z "${2:-}" ]; then
-          log_err "[restart] ✗ --deploy-mode requires a value (both|chat|tool)"
+        if ! cli_set_deploy_mode_value "${2:-}" "[restart]" RECONFIG_DEPLOY_MODE; then
           return 1
         fi
-        RECONFIG_DEPLOY_MODE="$2"
         shift 2
         ;;
       --deploy-mode=*)
-        RECONFIG_DEPLOY_MODE="${1#*=}"
+        cli_set_deploy_mode_value "${1#*=}" "[restart]" RECONFIG_DEPLOY_MODE || return 1
         shift
         ;;
       --chat-quant)
@@ -131,24 +127,16 @@ restart_parse_args() {
   done
 
   # Inherit from --deploy-mode flag if DEPLOY_MODE wasn't set as positional
-  DEPLOY_MODE="${DEPLOY_MODE:-${RECONFIG_DEPLOY_MODE:-both}}"
-  case "${DEPLOY_MODE}" in
-    both|chat|tool) ;;
-    *)
-      log_err "[restart] ✗ Invalid deploy mode '${DEPLOY_MODE}'. Expected both|chat|tool."
-      return 1
-      ;;
-  esac
+  if ! DEPLOY_MODE="$(cli_validate_deploy_mode "${DEPLOY_MODE:-${RECONFIG_DEPLOY_MODE:-both}}")"; then
+    log_err "[restart] ✗ Invalid deploy mode '${DEPLOY_MODE}'. Expected both|chat|tool."
+    return 1
+  fi
   
   # Normalize engine selection
-  case "${INFERENCE_ENGINE}" in
-    trt|TRT|tensorrt|TENSORRT) INFERENCE_ENGINE="trt" ;;
-    vllm|VLLM) INFERENCE_ENGINE="vllm" ;;
-    *)
-      log_err "[restart] ✗ Unknown engine '${INFERENCE_ENGINE}'. Expected trt|vllm."
-      return 1
-      ;;
-  esac
+  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE}")"; then
+    log_err "[restart] ✗ Unknown engine '${INFERENCE_ENGINE}'. Expected trt|vllm."
+    return 1
+  fi
   
   export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE
@@ -157,5 +145,3 @@ restart_parse_args() {
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   return 0
 }
-
-

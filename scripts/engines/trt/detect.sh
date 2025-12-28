@@ -11,6 +11,8 @@ _TRT_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Source common GPU detection
 # shellcheck source=../../lib/common/gpu_detect.sh
 source "${_TRT_DETECT_DIR}/../../lib/common/gpu_detect.sh"
+# shellcheck source=../../lib/common/hf.sh
+source "${_TRT_DETECT_DIR}/../../lib/common/hf.sh"
 
 # =============================================================================
 # TRT-LLM VERSION DETECTION
@@ -406,12 +408,7 @@ trt_download_prebuilt_engine() {
   log_info "[engine]   From: ${repo_id}"
   log_info "[engine]   To: ${target_dir}"
   
-  # Only enable HF_HUB_ENABLE_HF_TRANSFER if hf_transfer is installed
-  if python -c "import hf_transfer" 2>/dev/null; then
-    export HF_HUB_ENABLE_HF_TRANSFER=1
-  else
-    export HF_HUB_ENABLE_HF_TRANSFER=0
-  fi
+  hf_enable_transfer "[engine]" "python" || true
   
   mkdir -p "${target_dir}"
   

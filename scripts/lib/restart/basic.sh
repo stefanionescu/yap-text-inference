@@ -53,37 +53,17 @@ restart_run_install_deps_if_needed() {
 }
 
 restart_basic() {
-  local SERVER_LOG LAST_QUANT LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_ENV_FILE
-  SERVER_LOG="${ROOT_DIR}/server.log"
-  LAST_QUANT=""; LAST_DEPLOY=""; LAST_CHAT=""; LAST_TOOL=""
-  LAST_ENV_FILE="${ROOT_DIR}/.run/last_config.env"
+  local LAST_QUANT LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_CHAT_QUANT
+  LAST_QUANT="${QUANTIZATION:-$(runtime_guard_read_last_config_value "QUANTIZATION" "${ROOT_DIR}")}"
+  LAST_DEPLOY="${DEPLOY_MODE:-$(runtime_guard_read_last_config_value "DEPLOY_MODE" "${ROOT_DIR}")}"
+  LAST_CHAT="${CHAT_MODEL:-$(runtime_guard_read_last_config_value "CHAT_MODEL" "${ROOT_DIR}")}"
+  LAST_TOOL="${TOOL_MODEL:-$(runtime_guard_read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")}"
+  LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-$(runtime_guard_read_last_config_value "CHAT_QUANTIZATION" "${ROOT_DIR}")}"
 
-  if [ -f "${SERVER_LOG}" ]; then
-    LAST_QUANT=$(grep -E "Quantization: " "${SERVER_LOG}" | tail -n1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
-    LAST_DEPLOY=$(grep -E "Deploy mode: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Deploy mode: ([^ ]+).*/\1/' || true)
-    LAST_CHAT=$(grep -E "Chat model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Chat model: *(.*)/\1/' || true)
-    LAST_TOOL=$(grep -E "Tool model: " "${SERVER_LOG}" | tail -n1 | sed -E 's/.*Tool model: *(.*)/\1/' || true)
-    if [ -z "${LAST_CHAT}" ] || [ "${LAST_CHAT}" = "(none)" ]; then
-      LAST_CHAT=$(grep -E "CHAT=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*CHAT=([^ ]*).*/\1/' || true)
-      # Fallback to MODEL= line when deploying chat-only
-      if [ -z "${LAST_CHAT}" ]; then
-        LAST_CHAT=$(grep -E "MODEL=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*MODEL=([^ ]*).*/\1/' || true)
-      fi
-    fi
-    if [ -z "${LAST_TOOL}" ] || [ "${LAST_TOOL}" = "(none)" ]; then
-      LAST_TOOL=$(grep -E "TOOL=" "${SERVER_LOG}" | tail -n1 | sed -E 's/.*TOOL=([^ ]*).*/\1/' || true)
-    fi
+  if [ -z "${LAST_DEPLOY}" ] || [ -z "${LAST_CHAT}" -a "${LAST_DEPLOY}" != "tool" ] || [ -z "${LAST_TOOL}" -a "${LAST_DEPLOY}" != "chat" ]; then
+    log_err "[restart] ✗ Unable to determine previous deployment configuration. Run a full deployment first."
+    exit 1
   fi
-
-  if [ -z "${LAST_QUANT}" ] && [ -f "${LAST_ENV_FILE}" ]; then
-    # shellcheck disable=SC1090
-    source "${LAST_ENV_FILE}" || true
-    LAST_QUANT="${LAST_QUANT:-${QUANTIZATION:-}}"
-    LAST_DEPLOY="${LAST_DEPLOY:-${DEPLOY_MODE:-}}"
-    LAST_CHAT="${LAST_CHAT:-${CHAT_MODEL:-}}"
-    LAST_TOOL="${LAST_TOOL:-${TOOL_MODEL:-}}"
-  fi
-
 
   # Resolve quantization with proper precedence:
   # 1. Explicit CHAT_QUANTIZATION (awq, gptq, gptq_marlin) takes precedence
@@ -93,7 +73,6 @@ restart_basic() {
   # BUG FIX: Previously this would incorrectly override fp8 with awq.
   # Now we only use CHAT_QUANTIZATION as fallback when LAST_QUANT is empty or
   # is a generic placeholder (8bit) that needs resolution.
-  local LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
   if [ -z "${LAST_QUANT}" ]; then
     # No quantization found in logs, use CHAT_QUANTIZATION if available
     if [ -n "${LAST_CHAT_QUANT}" ]; then
