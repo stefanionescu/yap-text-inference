@@ -17,16 +17,37 @@ source "${_TRT_DETECT_DIR}/../../lib/common/gpu_detect.sh"
 # =============================================================================
 
 # Detect installed TensorRT-LLM version
+# Priority:
+#   1. TRTLLM_INSTALLED_VERSION env var (if already detected/cached)
+#   2. Python runtime detection (imports tensorrt_llm)
+#   3. TRT_VERSION env var (fallback to target version from trt.sh)
 # Returns version string (e.g., "1.2.0rc5") or "unknown"
 trt_detect_trtllm_version() {
+  # 1. Return cached value if already detected
+  if [ -n "${TRTLLM_INSTALLED_VERSION:-}" ]; then
+    echo "${TRTLLM_INSTALLED_VERSION}"
+    return 0
+  fi
+  
+  # 2. Detect via Python import
   if command -v python >/dev/null 2>&1; then
     local version
     version=$(python -c "import tensorrt_llm; print(tensorrt_llm.__version__)" 2>/dev/null | tail -n1 || echo "")
     if [ -n "${version}" ]; then
+      # Cache for subsequent calls
+      export TRTLLM_INSTALLED_VERSION="${version}"
       echo "${version}"
       return 0
     fi
   fi
+  
+  # 3. Fall back to target version from trt.sh config
+  # This is the version we're installing, should match after successful install
+  if [ -n "${TRT_VERSION:-}" ]; then
+    echo "${TRT_VERSION}"
+    return 0
+  fi
+  
   echo "unknown"
   return 1
 }

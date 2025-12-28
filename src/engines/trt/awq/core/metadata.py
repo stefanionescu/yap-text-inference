@@ -18,6 +18,10 @@ from ..utils.detection import (
 )
 
 
+class EngineLabelError(Exception):
+    """Raised when engine label cannot be determined."""
+    
+
 def _env_int(name: str, default: int) -> int:
     """Get int from env var, handling empty strings."""
     val = os.getenv(name, "")
@@ -58,28 +62,66 @@ def detect_base_model(checkpoint_path: Path) -> str:
 
 
 def get_engine_label(engine_path: Path) -> str:
-    """Generate engine label from build metadata.
+    """Generate engine label from build metadata or environment variables.
+    
+    Uses environment variables that are already set by our shell scripts:
+    - GPU_SM_ARCH: Set by gpu_init_detection() in gpu_detect.sh
+    - TRT_VERSION: Set in scripts/lib/env/trt.sh
+    - CUDA_VERSION: Detected by trt_detect_cuda_version() or set in containers
     
     Args:
         engine_path: Path to TRT-LLM engine directory.
         
     Returns:
         Engine label string (e.g., "sm90_trt-llm-0.17.0_cuda12.8").
+        
+    Raises:
+        EngineLabelError: If required values cannot be determined.
     """
+    # Try build_metadata.json first - it has the exact values used at build time
     meta_path = engine_path / "build_metadata.json"
     if meta_path.is_file():
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            sm = meta.get("sm_arch", "sm89")
-            trt_ver = meta.get("tensorrt_llm_version", "unknown")
-            cuda_ver = meta.get("cuda_toolkit", meta.get("cuda_version", "unknown"))
-            return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
+            sm = meta.get("sm_arch")
+            trt_ver = meta.get("tensorrt_llm_version")
+            cuda_ver = meta.get("cuda_toolkit") or meta.get("cuda_version")
+            
+            if sm and trt_ver and cuda_ver:
+                return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
+            # Metadata file exists but is incomplete - fall through to env vars
         except Exception:
             pass
     
-    # Fallback: use directory name or generate from env
-    sm = os.getenv("GPU_SM_ARCH", "sm89")
-    return f"{sm}_default"
+    # Use environment variables that are already set by our shell scripts
+    sm = os.getenv("GPU_SM_ARCH")
+    if not sm:
+        raise EngineLabelError(
+            "GPU_SM_ARCH not set. This should be exported by gpu_init_detection() "
+            "in scripts/lib/common/gpu_detect.sh. Ensure main.sh or restart.sh ran properly."
+        )
+    
+    trt_ver = os.getenv("TRT_VERSION")
+    if not trt_ver:
+        # Try runtime detection as backup
+        trt_ver = detect_tensorrt_llm_version()
+        if not trt_ver or trt_ver == "unknown":
+            raise EngineLabelError(
+                "TRT_VERSION not set and tensorrt_llm not importable. "
+                "This should be set in scripts/lib/env/trt.sh."
+            )
+    
+    cuda_ver = os.getenv("CUDA_VERSION")
+    if not cuda_ver:
+        # Try runtime detection as backup
+        cuda_ver = detect_cuda_version()
+        if not cuda_ver or cuda_ver == "unknown":
+            raise EngineLabelError(
+                "CUDA_VERSION not set and nvcc not found. "
+                "Ensure CUDA is installed or CUDA_VERSION is exported."
+            )
+    
+    return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
 
 
 def collect_metadata(
@@ -133,10 +175,27 @@ def collect_metadata(
         except Exception:
             pass
     
-    # Set defaults from environment/runtime detection
-    sm_arch = _env_str("GPU_SM_ARCH", "sm90")
-    trt_version = detect_tensorrt_llm_version()
-    cuda_version = _env_str("CUDA_VERSION", detect_cuda_version())
+    # Get values from environment (set by our shell scripts) or runtime detection
+    sm_arch = os.getenv("GPU_SM_ARCH")
+    if not sm_arch:
+        raise EngineLabelError(
+            "GPU_SM_ARCH not set. This should be exported by gpu_init_detection() "
+            "in scripts/lib/common/gpu_detect.sh."
+        )
+    
+    trt_version = os.getenv("TRT_VERSION") or detect_tensorrt_llm_version()
+    if not trt_version or trt_version == "unknown":
+        raise EngineLabelError(
+            "TRT_VERSION not set and tensorrt_llm not importable. "
+            "This should be set in scripts/lib/env/trt.sh."
+        )
+    
+    cuda_version = os.getenv("CUDA_VERSION") or detect_cuda_version()
+    if not cuda_version or cuda_version == "unknown":
+        raise EngineLabelError(
+            "CUDA_VERSION not set and nvcc not found. "
+            "Ensure CUDA is installed or CUDA_VERSION is exported."
+        )
     
     metadata.update({
         "sm_arch": sm_arch,
@@ -181,7 +240,8 @@ def collect_metadata(
             except Exception:
                 pass
     else:
-        metadata["engine_label"] = f"{sm_arch}_default"
+        # Engine path doesn't exist yet - generate label from current environment
+        metadata["engine_label"] = f"{sm_arch}_trt-llm-{trt_version}_cuda{cuda_version}"
     
     # Fetch license from the base model
     is_hf_model = "/" in base_model

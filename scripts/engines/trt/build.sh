@@ -120,17 +120,29 @@ trtllm-build \\
 EOF
   chmod +x "${cmd_file}"
   
-  # Get TensorRT-LLM version (suppress TRT-LLM's import banner by only taking last line)
+  # Get TensorRT-LLM version (uses cached TRTLLM_INSTALLED_VERSION if available)
   local trtllm_ver
-  trtllm_ver=$(python -c "import tensorrt_llm; print(tensorrt_llm.__version__)" 2>/dev/null | tail -n1 || echo "unknown")
+  trtllm_ver=$(trt_detect_trtllm_version 2>/dev/null)
+  if [ -z "${trtllm_ver}" ] || [ "${trtllm_ver}" = "unknown" ]; then
+    log_err "[build] ✗ Cannot determine TensorRT-LLM version. Is tensorrt_llm installed?"
+    return 1
+  fi
   
-  # Get CUDA version
+  # Get CUDA version (uses CUDA_VERSION env var if set)
   local cuda_ver
-  cuda_ver=$(trt_detect_cuda_version 2>/dev/null || echo "unknown")
+  cuda_ver=$(trt_detect_cuda_version 2>/dev/null)
+  if [ -z "${cuda_ver}" ]; then
+    log_err "[build] ✗ Cannot determine CUDA version. Is CUDA installed?"
+    return 1
+  fi
   
-  # Get GPU info
+  # Get GPU info (uses DETECTED_GPU_NAME if already set)
   local gpu_name
-  gpu_name=$(gpu_detect_name 2>/dev/null || echo "unknown")
+  gpu_name="${DETECTED_GPU_NAME:-$(gpu_detect_name 2>/dev/null)}"
+  if [ -z "${gpu_name}" ] || [ "${gpu_name}" = "Unknown" ]; then
+    log_err "[build] ✗ Cannot detect GPU. Is nvidia-smi available?"
+    return 1
+  fi
   
   local gpu_vram
   gpu_vram=$(gpu_detect_vram_gb 2>/dev/null || echo "0")
@@ -158,6 +170,12 @@ print(json.dumps(quant))
     *) kv_cache_dtype="int8" ;;
   esac
   
+  # Validate GPU_SM_ARCH is set (should be exported by gpu_init_detection)
+  if [ -z "${GPU_SM_ARCH:-}" ]; then
+    log_err "[build] ✗ GPU_SM_ARCH not set. Run gpu_init_detection() first."
+    return 1
+  fi
+  
   # Write metadata
   local meta_file="${engine_dir}/build_metadata.json"
 {
@@ -169,7 +187,7 @@ print(json.dumps(quant))
   "quantization": ${quant_info},
   "tensorrt_llm_version": "${trtllm_ver}",
   "cuda_toolkit": "${cuda_ver}",
-  "sm_arch": "${GPU_SM_ARCH:-unknown}",
+  "sm_arch": "${GPU_SM_ARCH}",
   "gpu_name": "${gpu_name}",
   "gpu_vram_gb": ${gpu_vram},
   "nvidia_driver": "${nvidia_driver}",
@@ -237,7 +255,7 @@ trt_quantize_and_build() {
   log_info "[build] Starting TRT quantize and build pipeline..."
   log_info "[build]   Model: ${model_id}"
   log_info "[build]   Format: ${qformat}"
-  log_info "[build]   GPU: ${GPU_SM_ARCH:-auto} ($(gpu_detect_name))"
+  log_info "[build]   GPU: ${GPU_SM_ARCH} (${DETECTED_GPU_NAME:-$(gpu_detect_name)})"
   
   # Check if this is a pre-quantized model
   if trt_is_prequantized_model "${model_id}"; then

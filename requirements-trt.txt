@@ -36,3 +36,7 @@ ninja==1.13.0
 packaging==25.0
 setuptools==79.0.0
 wheel==0.45.1
+
+# Text sanitization
+phonenumbers==9.0.3
+ftfy==6.2.3

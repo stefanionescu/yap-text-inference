@@ -31,9 +31,16 @@ import re
 import unicodedata
 
 from ..config.filters import (
+    BIDI_CHAR_PATTERN,
+    COLLAPSE_SPACES_PATTERN,
+    CTRL_CHAR_PATTERN,
+    DASH_PATTERN,
+    DIGIT_WORDS,
     DOUBLE_DOT_SPACE_PATTERN,
     ELLIPSIS_PATTERN,
     ELLIPSIS_TRAILING_DOT_PATTERN,
+    ELLIPSIS_TRAILING_SPACE_PATTERN,
+    EMAIL_PATTERN,
     EMOJI_PATTERN,
     EMOTICON_PATTERN,
     ESCAPED_QUOTE_PATTERN,
@@ -41,10 +48,14 @@ from ..config.filters import (
     FREESTYLE_PREFIX_PATTERN,
     FREESTYLE_TARGET_PREFIXES,
     HTML_TAG_PATTERN,
+    LEADING_NEWLINE_TOKENS_PATTERN,
     NEWLINE_TOKEN_PATTERN,
+    SPACE_BEFORE_PUNCT_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
 )
 from ..config.limits import PROMPT_SANITIZE_MAX_CHARS
+
+from phonenumbers import PhoneNumberMatcher  # type: ignore[import-untyped]
 
 try:
     from ftfy import fix_text  # type: ignore[import-not-found]
@@ -52,12 +63,6 @@ except Exception:  # pragma: no cover - ftfy is declared in requirements
     def fix_text(text: str) -> str:  # type: ignore
         """Fallback when ftfy is not available."""
         return text
-
-
-# Control characters except TAB/CR/LF (which are allowed)
-_CTRL_RE = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
-# Bidirectional text control characters (can cause display issues)
-_BIDI_RE = re.compile(r"[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C]")
 
 
 def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS) -> str:
@@ -88,8 +93,8 @@ def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS)
     text = unicodedata.normalize("NFKC", text)
 
     # Remove disallowed controls and bidi markers
-    text = _CTRL_RE.sub("", text)
-    text = _BIDI_RE.sub("", text)
+    text = CTRL_CHAR_PATTERN.sub("", text)
+    text = BIDI_CHAR_PATTERN.sub("", text)
 
     text = text.strip()
     if not text:
@@ -107,13 +112,20 @@ def sanitize_stream_text(text: str) -> str:
     if cleaned != text:
         cleaned = cleaned.lstrip(": ").lstrip()
     cleaned = _strip_leading_newline_tokens(cleaned)
+    # Verbalize emails and phone numbers early (before dash replacement etc.)
+    cleaned = _verbalize_emails(cleaned)
+    cleaned = _verbalize_phone_numbers(cleaned)
     cleaned = _strip_asterisks(cleaned)
     cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
     cleaned = DOUBLE_DOT_SPACE_PATTERN.sub("...", cleaned)
     cleaned = ELLIPSIS_TRAILING_DOT_PATTERN.sub("...", cleaned)
+    # Strip any trailing space after ellipsis
+    cleaned = ELLIPSIS_TRAILING_SPACE_PATTERN.sub("...", cleaned)
+    # Replace dashes/hyphens with space (before space collapsing)
+    cleaned = DASH_PATTERN.sub(" ", cleaned)
     cleaned = cleaned.replace("'", "'")
-    cleaned = re.sub(r"\s+([',?!])", r"\1", cleaned)
+    cleaned = SPACE_BEFORE_PUNCT_PATTERN.sub(r"\1", cleaned)
     cleaned = ESCAPED_QUOTE_PATTERN.sub(_normalize_escaped_quote, cleaned)
     cleaned = EXAGGERATED_OH_PATTERN.sub(_normalize_exaggerated_oh, cleaned)
     cleaned = _strip_emoji_like_tokens(cleaned)
@@ -121,7 +133,9 @@ def sanitize_stream_text(text: str) -> str:
     cleaned = HTML_TAG_PATTERN.sub("", cleaned)
     cleaned = html.unescape(cleaned)
     cleaned = _collapse_spaces(cleaned)
-    return _ensure_leading_capital(cleaned)
+    cleaned = _ensure_leading_capital(cleaned)
+    # Strip leading whitespace so output always starts with letter/digit
+    return cleaned.lstrip()
 
 
 class StreamingSanitizer:
@@ -253,14 +267,14 @@ def _strip_leading_newline_tokens(text: str) -> str:
     """Remove leading newline tokens without inserting padding."""
     if not text:
         return ""
-    return re.sub(r"^(?:\s*(?:\\n|/n|\r?\n)+\s*)", "", text)
+    return LEADING_NEWLINE_TOKENS_PATTERN.sub("", text)
 
 
 def _collapse_spaces(text: str) -> str:
     """Collapse runs of spaces/tabs into a single space."""
     if not text:
         return ""
-    return re.sub(r"[ \t]{2,}", " ", text)
+    return COLLAPSE_SPACES_PATTERN.sub(" ", text)
 
 
 def _strip_asterisks(text: str) -> str:
@@ -277,6 +291,70 @@ def _strip_emoji_like_tokens(text: str) -> str:
     text = EMOJI_PATTERN.sub(" ", text)
     text = EMOTICON_PATTERN.sub(" ", text)
     return _collapse_spaces(text)
+
+
+def _verbalize_email(email: str) -> str:
+    """Convert email to spoken form: me@you.com → me at you dot com."""
+    result = email.replace("@", " at ")
+    result = result.replace(".", " dot ")
+    return result
+
+
+def _verbalize_emails(text: str) -> str:
+    """Find and verbalize all email addresses in text."""
+    if not text:
+        return ""
+
+    def replace_email(match: re.Match[str]) -> str:
+        return _verbalize_email(match.group(0))
+
+    return EMAIL_PATTERN.sub(replace_email, text)
+
+
+def _verbalize_phone_digit(char: str) -> str:
+    """Convert a single phone character to spoken form."""
+    if char == "+":
+        return "plus"
+    if char in DIGIT_WORDS:
+        return DIGIT_WORDS[char]
+    return ""
+
+
+def _verbalize_phone_number(raw_number: str) -> str:
+    """Convert phone number to spoken form: +1 234 → plus one two three four."""
+    words: list[str] = []
+    for char in raw_number:
+        word = _verbalize_phone_digit(char)
+        if word:
+            words.append(word)
+    return " ".join(words)
+
+
+def _verbalize_phone_numbers(text: str) -> str:
+    """Find and verbalize phone numbers with international format (+XX...).
+    
+    Only detects numbers with explicit country code (e.g., +1, +44).
+    Local numbers without + prefix are not considered phone numbers.
+    """
+    if not text:
+        return text
+
+    matches: list[tuple[int, int, str]] = []
+
+    # region=None only matches international format with explicit + country code
+    for match in PhoneNumberMatcher(text, None):
+        matches.append((match.start, match.end, _verbalize_phone_number(match.raw_string)))
+
+    if not matches:
+        return text
+
+    # Replace from end to start to preserve positions
+    matches.sort(key=lambda x: x[0], reverse=True)
+    result = text
+    for start, end, verbalized in matches:
+        result = result[:start] + verbalized + result[end:]
+
+    return result
 
 
 __all__ = [

@@ -90,6 +90,37 @@ EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
 LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
 
+# Prompt/output sanitization patterns
+CTRL_CHAR_PATTERN = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
+BIDI_CHAR_PATTERN = re.compile(r"[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C]")
+SPACE_BEFORE_PUNCT_PATTERN = re.compile(r"\s+([',?!])")
+LEADING_NEWLINE_TOKENS_PATTERN = re.compile(r"^(?:\s*(?:\\n|/n|\r?\n)+\s*)")
+COLLAPSE_SPACES_PATTERN = re.compile(r"[ \t]{2,}")
+# Strip any whitespace after ellipsis (... followed by spaces → ...)
+ELLIPSIS_TRAILING_SPACE_PATTERN = re.compile(r"\.\.\.\s+")
+# Replace one or more dashes/hyphens with a single space
+DASH_PATTERN = re.compile(r"-+")
+
+# Email detection pattern (comprehensive but not overly strict)
+EMAIL_PATTERN = re.compile(
+    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+    re.IGNORECASE,
+)
+
+# Digit to word mapping for phone number verbalization
+DIGIT_WORDS: dict[str, str] = {
+    "0": "zero",
+    "1": "one",
+    "2": "two",
+    "3": "three",
+    "4": "four",
+    "5": "five",
+    "6": "six",
+    "7": "seven",
+    "8": "eight",
+    "9": "nine",
+}
+
 __all__ = [
     "CHAT_CONTINUE_TOOLS",
     "CONTROL_FUNCTION_MESSAGES",
@@ -108,5 +139,14 @@ __all__ = [
     "EXAGGERATED_OH_PATTERN",
     "ELLIPSIS_TRAILING_DOT_PATTERN",
     "LETTERS_ONLY_PATTERN",
+    "CTRL_CHAR_PATTERN",
+    "BIDI_CHAR_PATTERN",
+    "SPACE_BEFORE_PUNCT_PATTERN",
+    "LEADING_NEWLINE_TOKENS_PATTERN",
+    "COLLAPSE_SPACES_PATTERN",
+    "ELLIPSIS_TRAILING_SPACE_PATTERN",
+    "DASH_PATTERN",
+    "EMAIL_PATTERN",
+    "DIGIT_WORDS",
 ]
 
