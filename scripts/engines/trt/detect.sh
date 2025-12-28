@@ -84,28 +84,6 @@ trt_get_quantize_script() {
 }
 
 # =============================================================================
-# TRT PRE-QUANTIZED MODEL DETECTION
-# =============================================================================
-
-# Check if model is a TRT pre-quantized model (contains both 'trt' and 'awq')
-trt_is_prequantized_model() {
-  local model="${1:-}"
-  if [ -z "${model}" ]; then
-    return 1
-  fi
-  
-  local lowered
-  lowered=$(echo "${model}" | tr '[:upper:]' '[:lower:]')
-  
-  # Must contain both 'trt' and 'awq'
-  if echo "${lowered}" | grep -q "trt" && echo "${lowered}" | grep -q "awq"; then
-    return 0
-  fi
-  
-  return 1
-}
-
-# =============================================================================
 # CUDA VERSION DETECTION
 # =============================================================================
 
@@ -461,4 +439,3 @@ print('✓ Downloaded pre-built engine', file=sys.stderr)
     return 1
   fi
 }
-

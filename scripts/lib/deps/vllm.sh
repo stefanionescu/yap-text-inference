@@ -8,6 +8,7 @@ _VLLM_DEPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source vLLM-specific modules
 source "${_VLLM_DEPS_DIR}/../../engines/vllm/install.sh"
+source "${_VLLM_DEPS_DIR}/flashinfer.sh"
 source "${_VLLM_DEPS_DIR}/reqs.sh"
 
 _vllm_install_quant_env() {
@@ -37,7 +38,7 @@ vllm_install_deps() {
   
   filter_requirements_without_flashinfer || return 1
   install_requirements_without_flashinfer || return 1
-  vllm_install_flashinfer
+  install_flashinfer_if_applicable "vllm"
   _vllm_install_quant_env || return 1
   
   log_info "[vllm] ✓ vLLM dependencies installed"

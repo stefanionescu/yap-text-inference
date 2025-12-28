@@ -4,6 +4,7 @@
 
 RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${RESTART_LIB_DIR}/../common/model_detect.sh"
+source "${RESTART_LIB_DIR}/../main/quant.sh"
 
 _restart_resolve_deploy_mode() {
   local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-both}}"
@@ -325,39 +326,27 @@ restart_reconfigure_models() {
   local chat_quant="${RECONFIG_CHAT_QUANTIZATION:-${CHAT_QUANTIZATION:-}}"
   if [ -n "${chat_quant}" ]; then
     chat_quant="$(_restart_normalize_quantization_flag "${chat_quant}" "${chat_model}")"
+    _restart_validate_quantization "${chat_quant}" || exit 1
   fi
+
   local quantization="${QUANTIZATION:-}"
   if [ -n "${quantization}" ]; then
     quantization="$(_restart_normalize_quantization_flag "${quantization}" "${chat_model}")"
+    _restart_validate_quantization "${quantization}" || exit 1
   fi
 
-  if [ "${deploy_chat}" = "1" ] && [ -z "${chat_quant}" ]; then
-    chat_quant="$(model_detect_quantization_hint "${chat_model}")"
+  local chat_hint=""
+  if [ "${deploy_chat}" = "1" ]; then
+    chat_hint="$(model_detect_quantization_hint "${chat_model}")"
   fi
 
-  if [ -n "${chat_quant}" ]; then
-    if ! _restart_validate_quantization "${chat_quant}"; then
-      exit 1
-    fi
-    quantization="${chat_quant}"
-  fi
-  if [ -z "${quantization}" ]; then
-    quantization="$(_restart_autodetect_quantization "${chat_model}" "${deploy_chat}")"
-  fi
-  if [ -z "${quantization}" ]; then
-    # Default to 8bit placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
-    quantization="8bit"
-  fi
-  if ! _restart_validate_quantization "${quantization}"; then
-    exit 1
-  fi
-  export QUANTIZATION="${quantization}"
-
-  if [ -n "${chat_quant}" ]; then
-    export CHAT_QUANTIZATION="${chat_quant}"
-  else
-    unset CHAT_QUANTIZATION
-  fi
+  quant_resolve_settings \
+    "${DEPLOY_MODE}" \
+    "${chat_model}" \
+    "${RECONFIG_CHAT_QUANTIZATION:-}" \
+    "${chat_hint}" \
+    "${quantization}" \
+    "${chat_quant}"
 
   # Honor --push-quant only when using a 4-bit quantization
   push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"

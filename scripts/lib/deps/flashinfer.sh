@@ -6,38 +6,65 @@ _FI_DEP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_FI_DEP_DIR}/venv.sh"
 
 install_flashinfer_if_applicable() {
+  local scope="${1:-deps}"
+  local python_bin="${2:-}"
+  local pip_bin="${3:-}"
+  local label
+  case "${scope}" in
+    \[*\]) label="${scope}" ;;
+    *) label="[${scope}]" ;;
+  esac
+
   if [ "$(uname -s)" != "Linux" ]; then
-    log_warn "[deps] ⚠ Non-Linux platform detected; skipping FlashInfer GPU wheel install."
+    log_warn "${label} ⚠ Non-Linux platform detected; skipping FlashInfer GPU wheel install."
     return 0
   fi
 
   local skip=${SKIP_FLASHINFER:-0}
   if [ "${skip}" = "1" ]; then
-    log_info "[deps] Skipping FlashInfer install due to configuration"
+    log_info "${label} Skipping FlashInfer install due to configuration"
     return 0
   fi
 
-  local venv_python venv_pip
-  venv_python="$(get_venv_python)"
-  venv_pip="$(get_venv_pip)"
-  
-  # Validate Python binary exists - check multiple locations
-  if [ ! -x "${venv_python}" ]; then
+  if [ -z "${python_bin}" ]; then
+    python_bin="$(get_venv_python 2>/dev/null || true)"
+  fi
+  if [ -z "${python_bin}" ] || [ ! -x "${python_bin}" ]; then
     if [ -x "/opt/venv/bin/python" ]; then
-      venv_python="/opt/venv/bin/python"
-      venv_pip="/opt/venv/bin/pip"
-    elif command -v python3 >/dev/null 2>&1; then
-      venv_python="python3"
-      venv_pip="python3 -m pip"
+      python_bin="/opt/venv/bin/python"
     else
-      log_warn "[deps] ⚠ No Python found; skipping FlashInfer install"
-      return 0
+      python_bin="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)"
     fi
+  fi
+  if [ -z "${python_bin}" ]; then
+    log_warn "${label} ⚠ No Python found; skipping FlashInfer install"
+    return 0
+  fi
+
+  if [ -z "${pip_bin}" ]; then
+    pip_bin="$(get_venv_pip 2>/dev/null || true)"
+  fi
+  if [ -z "${pip_bin}" ] || [ ! -x "${pip_bin}" ]; then
+    if [ -x "/opt/venv/bin/pip" ]; then
+      pip_bin="/opt/venv/bin/pip"
+    elif command -v pip3 >/dev/null 2>&1; then
+      pip_bin="$(command -v pip3)"
+    elif command -v pip >/dev/null 2>&1; then
+      pip_bin="$(command -v pip)"
+    else
+      pip_bin=""
+    fi
+  fi
+  local -a pip_cmd
+  if [ -n "${pip_bin}" ]; then
+    pip_cmd=("${pip_bin}")
+  else
+    pip_cmd=("${python_bin}" "-m" "pip")
   fi
 
   # Detect CUDA and Torch versions
   local torch_info CUDA_NVVER TORCH_MAJMIN
-  torch_info=$("${venv_python}" -c "
+  torch_info=$("${python_bin}" -c "
 import sys
 try:
     import torch
@@ -59,17 +86,16 @@ except Exception:
   if [ -n "${CUDA_NVVER:-}" ] && [ -n "${TORCH_MAJMIN:-}" ]; then
     local FI_IDX_PRIMARY="https://flashinfer.ai/whl/cu${CUDA_NVVER}/torch${TORCH_MAJMIN}"
     local FI_PKG="flashinfer-python${FLASHINFER_VERSION_SPEC:-==0.5.3}"
-    log_info "[deps] Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
-    if ! "${venv_pip}" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
-      log_warn "[deps] ⚠ FlashInfer install failed even with extra index; falling back to PyPI only"
-      if ! "${venv_pip}" install --prefer-binary "${FI_PKG}"; then
-        log_warn "[deps] ⚠ FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
+    log_info "${label} Installing ${FI_PKG} (extra-index: ${FI_IDX_PRIMARY})"
+    if ! "${pip_cmd[@]}" install --prefer-binary --extra-index-url "${FI_IDX_PRIMARY}" "${FI_PKG}"; then
+      log_warn "${label} ⚠ FlashInfer install failed even with extra index; falling back to PyPI only"
+      if ! "${pip_cmd[@]}" install --prefer-binary "${FI_PKG}"; then
+        log_warn "${label} ⚠ FlashInfer NOT installed. Will fall back to XFORMERS at runtime."
       fi
     fi
-    log_info "[deps] FlashInfer wheel source: ${FI_IDX_PRIMARY} (CUDA=${CUDA_NVVER} Torch=${TORCH_MAJMIN})"
+    log_info "${label} FlashInfer wheel source: ${FI_IDX_PRIMARY} (CUDA=${CUDA_NVVER} Torch=${TORCH_MAJMIN})"
   else
-    log_warn "[deps] ⚠ Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
+    log_warn "${label} ⚠ Torch/CUDA not detected; skipping FlashInfer install (will fall back to XFORMERS)."
   fi
 }
-
 

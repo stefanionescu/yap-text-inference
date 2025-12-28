@@ -44,14 +44,6 @@ if [ "${NUKE_ALL}" != "0" ]; then
   cleanup_pip_caches
 fi
 
-for TORCH_CACHE in "$HOME/.cache/torch" "/root/.cache/torch"; do
-  [ -d "$TORCH_CACHE" ] && rm -rf "$TORCH_CACHE" || true
-done
-
-for NV_CACHE in "$HOME/.nv" "/root/.nv"; do
-  [ -d "$NV_CACHE" ] && rm -rf "$NV_CACHE" || true
-done
-
 cleanup_python_artifacts "${ROOT_DIR}"
 cleanup_tmp_dirs
 

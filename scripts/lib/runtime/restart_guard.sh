@@ -116,7 +116,8 @@ runtime_guard_force_engine_wipe() {
 # Call this at the start of main.sh/restart.sh BEFORE any heavy operations.
 #
 # Usage: runtime_guard_handle_engine_switch <script_dir> <root_dir> <desired_engine>
-# Returns: 0 if engine switch was handled (wipe done), 1 if no switch needed
+# Returns: 0 if engine switch was handled (wipe done), 1 if no switch needed,
+#          2 if a wipe was attempted but failed
 # Sets: ENGINE_SWITCH_HANDLED=1 if wipe was performed
 #
 runtime_guard_handle_engine_switch() {
@@ -260,5 +261,4 @@ runtime_guard_write_snapshot() {
     echo "GPU_SM_ARCH=${GPU_SM_ARCH:-}"
   } > "${env_file}" 2>/dev/null || true
 }
-
 

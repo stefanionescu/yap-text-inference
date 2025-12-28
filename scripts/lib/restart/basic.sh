@@ -11,76 +11,21 @@ wipe_dependencies_for_reinstall() {
   
   log_info "[deps] Wiping all dependencies for clean reinstall..."
   
-  # 1. Remove all venvs (all pip packages gone)
-  local quant_venv="${QUANT_VENV_DIR:-${root}/.venv-quant}"
-  for venv_path in "${root}/.venv" "${root}/.venv-trt" "${root}/.venv-vllm" "${root}/.venv-quant" "${root}/venv" "${root}/env" "${quant_venv}"; do
-    [ -d "${venv_path}" ] && rm -rf "${venv_path}"
-  done
-  [ -d "/opt/venv-quant" ] && rm -rf "/opt/venv-quant"
+  cleanup_venvs "${root}"
+  cleanup_repo_pip_cache "${root}"
+  cleanup_repo_runtime_caches "${root}"
+  cleanup_system_vllm_caches
+  cleanup_system_trt_caches
+  cleanup_system_compiler_caches
+  cleanup_system_nvidia_caches
+  cleanup_pip_caches
   
-  # 2. Remove pip caches (wheels, downloaded packages)
-  for pip_cache in "${root}/.pip_cache" "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip"; do
-    [ -d "${pip_cache}" ] && rm -rf "${pip_cache}"
-  done
-  
-  # 3. Remove vLLM-specific caches
-  local VLLM_CACHES=(
-    "${root}/.flashinfer"
-    "${root}/.xformers"
-    "${root}/.vllm_cache"
-    "$HOME/.cache/flashinfer" "/root/.cache/flashinfer"
-    "$HOME/.cache/vllm" "/root/.cache/vllm"
-    "/workspace/.cache/vllm"
-  )
-  for cache_dir in "${VLLM_CACHES[@]}"; do
-    [ -d "${cache_dir}" ] && rm -rf "${cache_dir}"
-  done
-  
-  # 4. Remove TRT-LLM specific caches (wheel caches, compiled engines metadata)
-  local TRT_CACHES=(
-    "${root}/.trt_cache"
-    "$HOME/.cache/tensorrt_llm" "/root/.cache/tensorrt_llm"
-    "$HOME/.cache/tensorrt" "/root/.cache/tensorrt"
-    "$HOME/.cache/nvidia" "/root/.cache/nvidia"
-    "$HOME/.cache/modelopt" "/root/.cache/modelopt"
-    "$HOME/.cache/onnx" "/root/.cache/onnx"
-    "$HOME/.cache/cuda" "/root/.cache/cuda"
-    "$HOME/.cache/pycuda" "/root/.cache/pycuda"
-    "$HOME/.local/share/tensorrt_llm" "/root/.local/share/tensorrt_llm"
-    "/workspace/.cache/tensorrt" "/workspace/.cache/tensorrt_llm"
-  )
-  for cache_dir in "${TRT_CACHES[@]}"; do
-    [ -d "${cache_dir}" ] && rm -rf "${cache_dir}"
-  done
-  
-  # 5. Remove torch/compiler caches (triton, inductor, extensions)
-  local COMPILER_CACHES=(
-    "${root}/.torch_inductor"
-    "${root}/.triton"
-    "$HOME/.cache/torch" "/root/.cache/torch"
-    "$HOME/.cache/torch_extensions" "/root/.cache/torch_extensions"
-    "$HOME/.triton" "/root/.triton"
-    "$HOME/.torch_inductor" "/root/.torch_inductor"
-    "/workspace/.cache/torch" "/workspace/.cache/triton"
-  )
-  for cache_dir in "${COMPILER_CACHES[@]}"; do
-    [ -d "${cache_dir}" ] && rm -rf "${cache_dir}"
-  done
-  
-  # 6. Remove NVIDIA JIT caches
-  for nv_cache in "$HOME/.nv" "/root/.nv"; do
-    [ -d "${nv_cache}" ] && rm -rf "${nv_cache}"
-  done
-  
-  # 7. Remove dep hash markers (forces full reinstall)
+  # Remove dep hash markers (forces full reinstall)
   rm -f "${root}/.venv/.req_hash" 2>/dev/null || true
   rm -f "${root}/.run/trt_quant_deps_installed" 2>/dev/null || true
   
-  # 8. Clean temp directories
-  rm -rf /tmp/pip-* /tmp/torch_* /tmp/flashinfer* /tmp/triton* /tmp/trt* /tmp/tensorrt* /tmp/nv* /tmp/cuda* 2>/dev/null || true
-  
-  # 9. Clean shared memory (TRT-LLM uses /dev/shm)
-  rm -rf /dev/shm/tensorrt* /dev/shm/trt* /dev/shm/torch* /dev/shm/nv* /dev/shm/cuda* 2>/dev/null || true
+  # Clean temp directories
+  cleanup_tmp_dirs
   
   log_info "[deps] ✓ All dependency caches wiped. Models, HF cache, TRT repo preserved."
 }

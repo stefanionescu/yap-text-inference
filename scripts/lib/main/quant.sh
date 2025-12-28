@@ -24,66 +24,71 @@ main_resolve_4bit_backend() {
 }
 
 # Apply quantization selection based on user flags and model hints
-# Usage: main_apply_quantization <forced_mode> <chat_hint>
+# Usage: quant_resolve_settings <deploy_mode> <chat_model> <forced_mode> <chat_hint> [current_quant] [current_chat_quant]
 # Sets: QUANT_MODE, QUANTIZATION, CHAT_QUANTIZATION
-main_apply_quantization() {
-  local forced_mode="$1"
-  local chat_hint="$2"
+quant_resolve_settings() {
+  local deploy_mode="$1"
+  local chat_model="$2"
+  local forced_mode="${3:-auto}"
+  local chat_hint="${4:-}"
+  local current_quant="${5:-}"
+  local current_chat_quant="${6:-}"
 
-  # Tool-only mode: no quantization needed
-  if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
+  if [ "${deploy_mode}" = "tool" ]; then
     QUANT_MODE="tool-only"
-    unset QUANTIZATION
-    unset CHAT_QUANTIZATION
+    unset QUANTIZATION CHAT_QUANTIZATION
     export QUANT_MODE
     return
   fi
 
-  local resolved_mode=""
   local resolved_backend=""
+  local resolved_mode=""
 
-  case "${forced_mode}" in
-    4bit)
-      resolved_mode="4bit"
-      resolved_backend="$(main_resolve_4bit_backend "${CHAT_MODEL_NAME}")"
-      ;;
-    8bit)
-      resolved_mode="8bit"
-      # Backend (fp8 vs int8) is resolved later based on GPU architecture
-      resolved_backend="8bit"
-      ;;
-    auto)
-      if [ -n "${chat_hint:-}" ]; then
+  if [ -n "${current_chat_quant}" ]; then
+    resolved_backend="${current_chat_quant}"
+  elif [ -n "${current_quant}" ]; then
+    resolved_backend="${current_quant}"
+  fi
+
+  if [ -z "${resolved_backend}" ]; then
+    case "${forced_mode}" in
+      4bit)
         resolved_mode="4bit"
-        resolved_backend="${chat_hint}"
-      else
+        resolved_backend="$(main_resolve_4bit_backend "${chat_model}")"
+        ;;
+      8bit)
         resolved_mode="8bit"
-        # Backend (fp8 vs int8) is resolved later based on GPU architecture
         resolved_backend="8bit"
-      fi
-      ;;
-    *)
-      resolved_mode="8bit"
-      # Backend (fp8 vs int8) is resolved later based on GPU architecture
-      resolved_backend="8bit"
-      ;;
-  esac
+        ;;
+      auto|"")
+        if [ -n "${chat_hint}" ]; then
+          resolved_mode="4bit"
+          resolved_backend="${chat_hint}"
+        else
+          resolved_mode="8bit"
+          resolved_backend="8bit"
+        fi
+        ;;
+      *)
+        resolved_backend="${forced_mode}"
+        ;;
+    esac
+  fi
 
-  # Check for pre-quantized models and override if needed
-  if [ "${DEPLOY_MODE_SELECTED}" != "tool" ]; then
+  if [ -n "${chat_model}" ]; then
     local prequant_kind
-    prequant_kind="$(model_detect_classify_prequant "${CHAT_MODEL_NAME}")"
+    prequant_kind="$(model_detect_classify_prequant "${chat_model}")"
     case "${prequant_kind}" in
       awq)
         if [ "${resolved_backend}" != "awq" ]; then
-          log_warn "[quant] ⚠ Chat model '${CHAT_MODEL_NAME}' is already 4-bit (AWQ/W4A16); overriding to 4bit runtime."
+          log_warn "[quant] ⚠ Chat model '${chat_model}' is already 4-bit (AWQ/W4A16); overriding to 4bit runtime."
           resolved_mode="4bit"
           resolved_backend="awq"
         fi
         ;;
       gptq)
         if [ "${resolved_backend}" != "gptq_marlin" ]; then
-          log_warn "[quant] ⚠ Chat model '${CHAT_MODEL_NAME}' is GPTQ; overriding to 4bit GPTQ runtime."
+          log_warn "[quant] ⚠ Chat model '${chat_model}' is GPTQ; overriding to 4bit GPTQ runtime."
           resolved_mode="4bit"
           resolved_backend="gptq_marlin"
         fi
@@ -91,16 +96,43 @@ main_apply_quantization() {
     esac
   fi
 
-  QUANT_MODE="${resolved_mode}"
-  QUANTIZATION="${resolved_backend}"
-  if [ "${DEPLOY_MODE_SELECTED}" != "tool" ]; then
-    CHAT_QUANTIZATION="${resolved_backend}"
+  if [ -z "${resolved_backend}" ]; then
+    resolved_backend="8bit"
   fi
 
-  export QUANT_MODE QUANTIZATION
-  if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-    export CHAT_QUANTIZATION
+  if [ -z "${resolved_mode}" ]; then
+    case "${resolved_backend}" in
+      awq|gptq|gptq_marlin|4bit)
+        resolved_mode="4bit"
+        ;;
+      *)
+        resolved_mode="8bit"
+        ;;
+    esac
   fi
+
+  QUANT_MODE="${resolved_mode}"
+  QUANTIZATION="${resolved_backend}"
+  export QUANT_MODE QUANTIZATION
+
+  if [ "${deploy_mode}" != "tool" ]; then
+    CHAT_QUANTIZATION="${resolved_backend}"
+    export CHAT_QUANTIZATION
+  else
+    unset CHAT_QUANTIZATION
+  fi
+}
+
+# Apply quantization selection based on user flags and model hints
+# Usage: main_apply_quantization <forced_mode> <chat_hint>
+main_apply_quantization() {
+  quant_resolve_settings \
+    "${DEPLOY_MODE_SELECTED}" \
+    "${CHAT_MODEL_NAME}" \
+    "${1:-auto}" \
+    "${2:-}" \
+    "${QUANTIZATION:-}" \
+    "${CHAT_QUANTIZATION:-}"
 }
 
 # Get quantization hint from chat model name
@@ -111,4 +143,3 @@ main_get_quant_hint() {
     model_detect_quantization_hint "${CHAT_MODEL_NAME}"
   fi
 }
-
