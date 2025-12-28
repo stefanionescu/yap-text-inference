@@ -81,10 +81,10 @@ if quantization == "awq" and deploy_chat and chat_model:
 
 if errors:
     for err in errors:
-        print(f"[validate] ✗ Model validation failed: {err}", file=sys.stderr)
+        print(f"[validate] ✗ Model name validation failed: {err}", file=sys.stderr)
     sys.exit(1)
 
-print("[validate] ✓ Model validation passed")
+print("[validate] ✓ Model name validation passed")
 sys.exit(0)
 VALIDATE_SCRIPT
   then

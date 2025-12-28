@@ -43,6 +43,7 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "Naphula/Goetia-24B-v1.1",
     "NousResearch/Hermes-4-14B",
     "Mawdistical/Squelching-Fantasies-qw3-14B",
+    "Qwen/QwQ-32B",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
@@ -67,6 +68,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
 
     # Pre-quantized AWQ/W4A16 models
+    "RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w4a16",
     "leon-se/gemma-3-27b-it-qat-W4A16-G128",
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ", # stupid and random as fuck
@@ -79,10 +81,18 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # EXTREMELY GOOD: might even be better than Qwen3 30B
+
+    "yapwithai/arliai-qwen3-30B-a3b-arliai-rpr-v4-fast-w4a16",
+    "yapwithai/bgg1996-melinoe-30B-A3B-thinking-w4a16",
 ]
 
 ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/delta-vector-rei-24B-kto-trt-awq",
+    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq",
+    "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
+    "yapwithai/nousresearch-hermes-4-14B-trt-awq",
+    "yapwithai/mistral-small-24B-instruct-2501-trt-awq",
+    "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small-trt-awq",
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
