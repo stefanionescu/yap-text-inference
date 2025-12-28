@@ -89,7 +89,9 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # stupid, output is a bit messed up, ignores instructions
 ]
 
-ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = []
+ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
+    "yapwithai/delta-vector-rei-24B-kto-trt-awq",
+]
 
 ALLOWED_TOOL_MODELS: list[str] = [
     "yapwithai/yap-longformer-screenshot-intent",
