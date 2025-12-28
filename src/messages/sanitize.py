@@ -147,8 +147,13 @@ class StreamingSanitizer:
 
         delta = ""
         if stable_len > 0:
-            delta = sanitized[:stable_len]
-            self._emitted_parts.append(delta)
+            stable = sanitized[:stable_len]
+            # Avoid re-emitting content that is already in emitted_parts due to tail window overlap
+            emitted_text = "".join(self._emitted_parts)
+            overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
+            delta = stable[overlap:]
+            if delta:
+                self._emitted_parts.append(delta)
 
         self._sanitized_tail = sanitized[stable_len:stable_len + tail_len]
         # Keep only the raw portion that maps to the retained tail window
@@ -289,6 +294,21 @@ def _split_stable_and_tail_lengths(
         tail_len = max_tail
 
     return stable_len, tail_len
+
+
+def _suffix_prefix_overlap(emitted: str, candidate: str, max_check: int) -> int:
+    """Return length of the longest suffix of emitted that is a prefix of candidate.
+
+    Only checks up to max_check characters to keep work bounded.
+    """
+    if not emitted or not candidate:
+        return 0
+    emitted_suffix = emitted[-max_check:]
+    max_len = min(len(emitted_suffix), len(candidate))
+    for length in range(max_len, 0, -1):
+        if emitted_suffix[-length:] == candidate[:length]:
+            return length
+    return 0
 
 
 def _unstable_suffix_len(text: str) -> int:

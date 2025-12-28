@@ -79,7 +79,10 @@ EMOTICON_PATTERN = re.compile(
     r")"
 )
 
-FREESTYLE_PREFIX_PATTERN = re.compile(r"^\s*(freestyle mode\.?)\s*", re.IGNORECASE)
+FREESTYLE_PREFIX_PATTERN = re.compile(
+    r"^\s*(?:freestyle mode\.?|on the screen now:)\s*",
+    re.IGNORECASE,
+)
 ELLIPSIS_PATTERN = re.compile(r"…[ \t]*")
 NEWLINE_TOKEN_PATTERN = re.compile(r"\s*(?:\\n|/n|\r?\n)+\s*")
 TRAILING_STREAM_UNSTABLE_CHARS = set(" \t\r\n/\\")
