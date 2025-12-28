@@ -6,6 +6,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common/model_detect.sh"
+source "${SCRIPT_DIR}/../../lib/deps/venv.sh"
 
 # Ensure AWQ cache directory exists
 vllm_awq_ensure_cache_dir() {
@@ -45,7 +46,9 @@ vllm_awq_quantize_chat_if_needed() {
   fi
 
   log_info "[quant] Quantizing chat model to AWQ: ${CHAT_MODEL} -> ${out_dir}"
-  if cd "${ROOT_DIR}" && "${ROOT_DIR}/.venv/bin/python" -m src.engines.vllm.awq.quantize --model "${CHAT_MODEL}" --out "${out_dir}"; then
+  local python_bin
+  python_bin="$(get_venv_python)"
+  if cd "${ROOT_DIR}" && "${python_bin}" -m src.engines.vllm.awq.quantize --model "${CHAT_MODEL}" --out "${out_dir}"; then
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq
     vllm_awq_push_to_hf "${out_dir}"
