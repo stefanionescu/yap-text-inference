@@ -11,8 +11,6 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "zerofata/MS3.2-PaintedFantasy-Visage-33B", # better than Cydonia but still quirky
     "anthracite-org/magnum-v4-72b", # amazing on OpenRouter but too big
     "anthracite-org/magnum-v1-72b", # amazing on OpenRouter but too big
-    "TheDrummer/Big-Tiger-Gemma-27B-v1", # might or might not work depending on vllm setup/version
-    "TheDrummer/Tiger-Gemma-12B-v3", # might or might not work depending on vllm setup/version
     "dphn/Dolphin3.0-Llama3.1-8B",
     "ArliAI/DS-R1-Qwen3-8B-ArliAI-RpR-v4-Small",
     "nvidia/Llama-3_1-Nemotron-51B-Instruct",
@@ -35,8 +33,6 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Bloodmoon_12B",
     "SicariusSicariiStuff/Angelic_Eclipse_12B",
     "flammenai/Mahou-1.3-mistral-nemo-12B",
-    "zai-org/GLM-4-32B-0414",
-    "zai-org/GLM-4-32B-Base-0414",
     "Qwen/Qwen3-32B",
     "mistralai/Mistral-Small-Instruct-2409",
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
@@ -45,6 +41,10 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "ArliAI/Mistral-Small-22B-ArliAI-RPMax-v1.1",
     "ArliAI/Mistral-Small-24B-ArliAI-RPMax-v1.4",
     "Naphula/Goetia-24B-v1.1",
+
+
+    "NousResearch/Hermes-4-14B",
+    "Mawdistical/Squelching-Fantasies-qw3-14B",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
@@ -59,6 +59,8 @@ ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
     "moonshotai/Kimi-Linear-48B-A3B-Instruct",
     "cerebras/Kimi-Linear-REAP-35B-A3B-Instruct",
     "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+
+    "bgg1996/Melinoe-30B-A3B-Thinking",
 ]
 
 ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
@@ -80,13 +82,6 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # EXTREMELY GOOD: might even be better than Qwen3 30B
-
-    "yapwithai/zerofata-MS3.2-paintedfantasy-visage-33B-w4a16", # really bad, rambles even with conservative params
-    "yapwithai/sicariussicariistuff-impish-nemo-12B-w4a16",
-    "yapwithai/thedrummer-theia-21B-v2-w4a16",
-    "yapwithai/doctor-shotgun-ms3.2-24B-magnum-diamond-w4a16",
-    "yapwithai/thedrummer-rocinante-12B-v1.1-w4a16",
-    "yapwithai/knifeayumu-cydonia-v1.3-magnum-v4-22B-w4a16", # stupid, output is a bit messed up, ignores instructions
 ]
 
 ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
