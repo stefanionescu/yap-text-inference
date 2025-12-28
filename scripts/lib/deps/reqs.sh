@@ -64,8 +64,6 @@ install_requirements_without_flashinfer() {
     if ! pip_quiet_exec "${venv_dir}/bin/pip" install --upgrade-strategy only-if-needed -r "${tmp_req_file}"; then
       return 1
     fi
-  else
-    log_info "[deps] Dependencies unchanged; skipping main pip install"
   fi
 }
 

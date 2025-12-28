@@ -64,7 +64,7 @@ vllm_awq_push_to_hf() {
     python_cmd+=(--private)
   fi
 
-  log_info "[hf] Uploading AWQ weights from ${src_dir} to Hugging Face repo ${HF_PUSH_REPO_ID}"
+  log_info "[hf] Uploading AWQ weights to Hugging Face. Repo: ${HF_PUSH_REPO_ID}"
   HF_TOKEN="${HF_TOKEN}" "${python_cmd[@]}"
 }
 

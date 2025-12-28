@@ -45,7 +45,7 @@ def _regenerate_readme(folder: Path, metadata: dict[str, Any]) -> None:
     
     readme_path = folder / "README.md"
     readme_path.write_text(readme_contents, encoding="utf-8")
-    print(f"[hf-push] Regenerated {readme_path}")
+    print(f"[hf-push] Regenerated README")
 
 
 def _load_metadata(folder: Path) -> dict[str, Any]:
@@ -144,7 +144,6 @@ def main() -> int:
     if args.allow_create:
         api.create_repo(repo_id=repo_id, private=args.private, exist_ok=True)
 
-    print(f"[hf-push] Uploading {src_dir} -> {repo_id}@{args.branch}")
     api.upload_folder(
         folder_path=str(src_dir),
         repo_id=repo_id,

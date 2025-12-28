@@ -39,7 +39,7 @@ vllm_awq_quantize_chat_if_needed() {
 
   # Check for existing quantized model
   if awq_chat_cache_ready "${out_dir}"; then
-    log_info "[quant] Using existing AWQ chat model at ${out_dir}"
+    log_info "[quant] Using existing AWQ chat model..."
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq
     vllm_awq_push_to_hf "${out_dir}"

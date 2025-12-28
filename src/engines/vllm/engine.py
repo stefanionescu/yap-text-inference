@@ -210,9 +210,11 @@ def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> Asyn
     # Prefer annotated fields (the constructor accepts them); fall back to the
     # instance dict if annotations are missing on this version of vLLM.
     source_names = list(annotations) or list(getattr(engine_args, "__dict__", {}).keys())
+    if "quantization_config" not in source_names and hasattr(engine_args, "quantization_config"):
+        source_names.append("quantization_config")
 
     filtered_kwargs: dict[str, Any] = {}
-    removed = False
+    removed = any(hasattr(engine_args, field) for field in _UNSUPPORTED_QUANT_FIELDS)
 
     for name in source_names:
         if name in _UNSUPPORTED_QUANT_FIELDS:
