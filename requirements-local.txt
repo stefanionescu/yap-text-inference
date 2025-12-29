@@ -8,3 +8,4 @@
 websockets==12.0
 httpx==0.27.2
 orjson==3.10.7
+phonenumbers==9.0.3

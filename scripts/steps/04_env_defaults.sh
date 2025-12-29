@@ -22,6 +22,7 @@ source "${LIB_DIR}/common/cuda.sh"
 # Validate CUDA 13.x for TRT before setting environment defaults
 ensure_cuda_ready_for_engine "env" || exit 1
 
+log_blank
 log_info "[env] Setting environment defaults..."
 
 # Detect FlashInfer availability for runtime tuning (optional)

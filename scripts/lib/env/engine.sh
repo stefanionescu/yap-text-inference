@@ -22,7 +22,6 @@ apply_engine_defaults() {
       source "${trt_env_file}"
       if [ -n "${TRTLLM_ENGINE_DIR:-}" ]; then
         export TRT_ENGINE_DIR="${TRTLLM_ENGINE_DIR}"
-        log_info "[engine] Loaded TRT engine path: ${TRT_ENGINE_DIR}"
       fi
     fi
   fi

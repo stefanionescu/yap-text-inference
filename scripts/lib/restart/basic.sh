@@ -170,7 +170,7 @@ restart_basic() {
       log_err "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
       exit 1
     fi
-    log_info "[restart] ✓ TRT engine validated: ${TRT_ENGINE_DIR}"
+    log_info "[restart] ✓ TRT engine validated"
     log_blank
   fi
 

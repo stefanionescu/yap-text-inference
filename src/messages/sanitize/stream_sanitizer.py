@@ -46,7 +46,7 @@ class StreamingSanitizer:
 
     # How much suffix (in characters) we keep as "maybe unstable" to allow
     # boundary-sensitive validators (emails, phone numbers, ellipsis, html).
-    _MAX_TAIL = 256
+    _MAX_TAIL = 64
 
     def __init__(self) -> None:
         # Raw tail retained for boundary-sensitive checks
@@ -89,24 +89,16 @@ class StreamingSanitizer:
         if stable_len > 0:
             stable = sanitized[:stable_len]
             emitted_text = "".join(self._emitted_parts)
-
-            # Prefer direct prefix/suffix relations; fall back to overlap to avoid replays.
-            if stable.startswith(emitted_text):
-                delta = stable[len(emitted_text) :]
-            elif len(stable) <= len(emitted_text) and emitted_text.endswith(stable):
-                delta = ""
-            else:
-                overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
-                delta = stable[overlap:]
+            lcp = _common_prefix_len(emitted_text, stable)
+            if lcp < len(emitted_text):
+                emitted_text = emitted_text[:lcp]
+                self._emitted_parts = [emitted_text] if emitted_text else []
+            delta = stable[lcp:]
 
             if delta:
                 self._emitted_parts.append(delta)
 
         self._sanitized_tail = sanitized[stable_len:stable_len + tail_len]
-        # Keep only the raw portion that maps to the retained tail window
-        if len(self._raw_tail) > self._MAX_TAIL:
-            self._trimmed_stream_start = True
-            self._raw_tail = self._raw_tail[-self._MAX_TAIL :]
 
         return delta
 
@@ -127,14 +119,11 @@ class StreamingSanitizer:
         self._capital_pending = capital_state
 
         emitted_text = "".join(self._emitted_parts)
-
-        if sanitized.startswith(emitted_text):
-            tail = sanitized[len(emitted_text) :].rstrip()
-        elif len(sanitized) <= len(emitted_text) and emitted_text.endswith(sanitized):
-            tail = ""
-        else:
-            overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
-            tail = sanitized[overlap:].rstrip()
+        lcp = _common_prefix_len(emitted_text, sanitized)
+        if lcp < len(emitted_text):
+            emitted_text = emitted_text[:lcp]
+            self._emitted_parts = [emitted_text] if emitted_text else []
+        tail = sanitized[lcp:].rstrip()
 
         if tail:
             self._emitted_parts.append(tail)
@@ -247,11 +236,11 @@ def _split_stable_and_tail_lengths(
     return stable_len, tail_len
 
 
-def _suffix_prefix_overlap(emitted: str, candidate: str, max_check: int) -> int:
+def _suffix_prefix_overlap(emitted: str, candidate: str, max_check: int | None) -> int:
     """Return length of the longest suffix of emitted that is a prefix of candidate."""
     if not emitted or not candidate:
         return 0
-    emitted_suffix = emitted[-max_check:]
+    emitted_suffix = emitted if max_check is None else emitted[-max_check:]
     max_len = min(len(emitted_suffix), len(candidate))
     for length in range(max_len, 0, -1):
         if emitted_suffix[-length:] == candidate[:length]:
@@ -286,7 +275,7 @@ def _html_entity_suffix_len(text: str) -> int:
 
 
 def _html_tag_suffix_len(raw_text: str) -> int:
-    """Retain trailing text if inside an HTML tag not yet closed."""
+    """Retain trailing text only if the last '<' is not yet closed by a '>'."""
     if not raw_text:
         return 0
     last_lt = raw_text.rfind("<")
@@ -295,8 +284,36 @@ def _html_tag_suffix_len(raw_text: str) -> int:
     last_gt = raw_text.rfind(">")
     if last_gt > last_lt:
         return 0
-    # Keep up to the start of the unclosed tag (bounded)
     return min(len(raw_text) - last_lt, 256)
+
+
+def _maybe_trim_with_unclosed_tag(raw_text: str, max_tail: int) -> tuple[str, bool]:
+    """Trim raw_text to max_tail, but keep any trailing unclosed HTML tag intact."""
+    if len(raw_text) <= max_tail:
+        return raw_text, False
+    last_lt = raw_text.rfind("<")
+    last_gt = raw_text.rfind(">")
+    has_unclosed = last_lt != -1 and last_gt < last_lt
+    if has_unclosed:
+        start = max(last_lt, len(raw_text) - max_tail)
+        return raw_text[start:], True
+    return raw_text[-max_tail:], True
+
+
+def _common_prefix_len(a: str, b: str) -> int:
+    max_len = min(len(a), len(b))
+    idx = 0
+    while idx < max_len and a[idx] == b[idx]:
+        idx += 1
+    return idx
+
+
+def _trim_raw_tail(inst: StreamingSanitizer) -> None:
+    if len(inst._raw_tail) <= inst._MAX_TAIL:
+        return
+    inst._raw_tail, trimmed = _maybe_trim_with_unclosed_tag(inst._raw_tail, inst._MAX_TAIL)
+    if trimmed:
+        inst._trimmed_stream_start = True
 
 
 def _email_suffix_len(raw_text: str) -> int:
