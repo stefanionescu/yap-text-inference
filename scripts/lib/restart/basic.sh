@@ -141,7 +141,7 @@ restart_basic() {
   if [ "${DEPLOY_MODE}" = "tool" ]; then
     log_info "[restart] Quick restart: tool-only classifier deployment"
   else
-    log_info "[restart] Quick restart: reusing cached ${QUANTIZATION:-8bit} models (deploy=${DEPLOY_MODE})"
+    log_info "[restart] Quick restart: reusing cached models (deploy=${DEPLOY_MODE})"
   fi
 
   # 1. Stop server first (before any deps/env work)
@@ -186,5 +186,8 @@ restart_basic() {
   echo "${BG_PID}" > "${ROOT_DIR}/.run/deployment.pid"
 
   log_info "[restart] Server started (PID: ${BG_PID}). Logs: tail -f server.log"
-  exec tail -n +1 -F "${SERVER_LOG_PATH}"
+  local warmup_lock="${ROOT_DIR}/.run/warmup.lock"
+  local warmup_capture="${ROOT_DIR}/logs/warmup.server.log"
+  touch "${SERVER_LOG_PATH}" || true
+  exec "${SCRIPT_DIR}/lib/runtime/follow_logs.sh" "${SERVER_LOG_PATH}" "${warmup_lock}" "${warmup_capture}"
 }

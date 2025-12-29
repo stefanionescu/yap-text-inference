@@ -46,8 +46,8 @@ class TTFBAggregator:
     def has_samples(self) -> bool:
         return bool(self.tool_samples or self.chat_samples)
 
-    def emit(self, sink: Callable[[str], None], *, label: str = "TTFB SUMMARY") -> None:
-        for kind, samples in (("TOOLCALL", self.tool_samples), ("CHAT", self.chat_samples)):
+    def emit(self, sink: Callable[[str], None], *, label: str = "TTFB") -> None:
+        for kind, samples in (("TOOL", self.tool_samples), ("CHAT", self.chat_samples)):
             if not samples:
                 continue
             stats = _build_stats(samples)

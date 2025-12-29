@@ -51,7 +51,7 @@ async def run_test(
         await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
     finally:
         if ttfb_aggregator.has_samples():
-            ttfb_aggregator.emit(print, label="Personality TTFB")
+            ttfb_aggregator.emit(print)
 
 
 def _build_session(

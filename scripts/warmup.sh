@@ -287,13 +287,13 @@ run_with_retries() {
 write_lock
 trap cleanup_lock EXIT INT TERM
 
-log_warmup "Waiting for server readiness on ${SERVER_ADDR} (timeout ${WARMUP_TIMEOUT_SECS}s)..."
+log_warmup_file "Waiting for server readiness on ${SERVER_ADDR} (timeout ${WARMUP_TIMEOUT_SECS}s)..."
 if ! wait_for_ready; then
   log_warmup "✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
   exit 1
 fi
 
-log_warmup "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
+log_warmup_file "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
 
 if ! max_conn="$(detect_max_conn)"; then
   max_conn=""

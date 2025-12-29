@@ -83,7 +83,7 @@ async def run_conversation(
                 logger.info("Assistant ← %s", assistant_text)
         finally:
             if ttfb_aggregator.has_samples():
-                ttfb_aggregator.emit(logger.info, label="Conversation TTFB")
+                ttfb_aggregator.emit(logger.info)
             await send_client_end(ws)
 
 
