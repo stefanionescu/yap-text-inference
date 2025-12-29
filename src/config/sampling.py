@@ -87,6 +87,7 @@ INFERENCE_STOP = [
     "<|im_end|>",
     "|im_end|>",
     "<|im_start|>",
+    "<|im_start|",
     "<|assistant|>",
     "<|user|>",
     "<|end|>",

@@ -45,7 +45,6 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "ArliAI/Mistral-Small-22B-ArliAI-RPMax-v1.1",
     "ArliAI/Mistral-Small-24B-ArliAI-RPMax-v1.4",
     "Naphula/Goetia-24B-v1.1",
-    "NousResearch/Hermes-4-14B",
     "Mawdistical/Squelching-Fantasies-qw3-14B",
     "Qwen/QwQ-32B",
 ]
@@ -95,7 +94,6 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/delta-vector-rei-24B-kto-trt-awq",
     "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq",
     "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
-    "yapwithai/nousresearch-hermes-4-14B-trt-awq",
     "yapwithai/mistral-small-24B-instruct-2501-trt-awq",
     "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small-trt-awq",
     "yapwithai/qwq-32B-trt-awq",
