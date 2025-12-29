@@ -376,10 +376,10 @@ def _normalize_exaggerated_oh(match: re.Match[str]) -> str:
 
 
 def _normalize_escaped_quote(match: re.Match[str]) -> str:
-    """Replace escaped quotes, downgrading \" to ' for stability."""
+    """Remove escaped double quotes entirely, keep single quotes."""
     char = match.group(1)
     if char == '"':
-        return "'"
+        return ""
     return char
 
 

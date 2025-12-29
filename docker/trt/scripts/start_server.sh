@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
 cd /app
+ROOT_DIR="${ROOT_DIR:-/app}"
 
 # ============================================================================
 # Download TRT engines/checkpoints from HuggingFace if not already present
@@ -22,11 +23,15 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
     fi
 
     log_info "[trt] Resolving artifacts from ${TRT_ENGINE_REPO}..."
-    py_out=$(
-      python - <<'PYPULL'
+py_out=$(
+      PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" python - <<'PYPULL'
 import os
+import sys
 from pathlib import Path
 from huggingface_hub import snapshot_download, list_repo_tree
+
+
+import src.scripts.site_customize as _site_customize  # noqa: F401
 
 repo_id=os.environ.get('TRT_ENGINE_REPO','').strip()
 engine_dir=os.environ.get('TRT_ENGINE_DIR','/opt/engines/trt-chat')
@@ -84,8 +89,8 @@ if any(p.startswith("trt-llm/checkpoints/") for p in paths):
     ckpt_dir=str(Path(local)/"trt-llm"/"checkpoints")
     if (Path(ckpt_dir)/"config.json").is_file():
         print("MODE=checkpoints")
-        print(f"CHECKPOINT_DIR={ckpt_dir}")
-        raise SystemExit(0)
+    print(f"CHECKPOINT_DIR={ckpt_dir}")
+    raise SystemExit(0)
 
 print("MODE=none")
 PYPULL
@@ -170,4 +175,3 @@ SERVER_PID=$!
 
 # Wait on server (container stays alive)
 wait "${SERVER_PID}"
-

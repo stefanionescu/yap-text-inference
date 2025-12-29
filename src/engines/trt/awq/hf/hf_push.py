@@ -150,7 +150,6 @@ def push_trt_to_hf(
         print(f"[trt-hf] Warning: Could not create repo: {e}")
     
     # Upload README
-    print(f"[trt-hf] Uploading README to {repo_id}")
     api.upload_file(
         path_or_fileobj=str(readme_path),
         path_in_repo="README.md",
@@ -160,7 +159,7 @@ def push_trt_to_hf(
     )
     
     # Upload checkpoints
-    print(f"[trt-hf] Uploading checkpoints from {checkpoint_dir}")
+    print(f"[trt-hf] Uploading checkpoints...")
     api.upload_folder(
         folder_path=str(checkpoint_path),
         path_in_repo="trt-llm/checkpoints",
@@ -172,7 +171,7 @@ def push_trt_to_hf(
     # Upload engines if they exist
     if engine_path.is_dir():
         engine_label = get_engine_label(engine_path)
-        print(f"[trt-hf] Uploading engines from {engine_dir} as {engine_label}")
+        print(f"[trt-hf] Uploading engines from...")
         api.upload_folder(
             folder_path=str(engine_path),
             path_in_repo=f"trt-llm/engines/{engine_label}",
@@ -184,7 +183,7 @@ def push_trt_to_hf(
     # Upload tokenizer files (required for TRT-LLM to load the model)
     tokenizer_dir = _find_tokenizer_dir(checkpoint_path, base_model)
     if tokenizer_dir:
-        print(f"[trt-hf] Uploading tokenizer from {tokenizer_dir}")
+        print(f"[trt-hf] Uploading tokenizer...")
         tokenizer_files_found = 0
         for filename in TOKENIZER_FILES:
             src_file = tokenizer_dir / filename
@@ -198,7 +197,7 @@ def push_trt_to_hf(
                 )
                 tokenizer_files_found += 1
         if tokenizer_files_found > 0:
-            print(f"[trt-hf] Uploaded {tokenizer_files_found} tokenizer files")
+            print(f"[trt-hf] ✓ Uploaded tokenizer")
         else:
             print("[trt-hf] Warning: No tokenizer files found to upload")
     else:
