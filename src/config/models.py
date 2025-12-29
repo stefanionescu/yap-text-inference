@@ -1,7 +1,7 @@
 """Model allowlists."""
 
 ALLOWED_BASE_CHAT_MODELS: list[str] = [
-    "SicariusSicariiStuff/Impish_Nemo_12B", # unstable above 0.8 temp; decent <=0.6
+    "SicariusSicariiStuff/Impish_Nemo_12B", # unstable above 0.8 temp when using 4bit quant; decent <=0.6
     "TheDrummer/Theia-21B-v2", # mid intelligence; ok for cheaper long runs
     "TheDrummer/Rocinante-12B-v1.1", # mid intelligence; downgrade option, weak instructions
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # pretty bad overall
@@ -90,6 +90,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
 ]
 
 ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
+    # Pre-quantized AWQ/W4A16 models
     "yapwithai/delta-vector-rei-24B-kto-trt-awq",
     "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq",
     "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
@@ -102,6 +103,12 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/delta-vector-ohashi-nemo-12B-trt-awq",
     "yapwithai/concedo-beepo-22B-trt-awq",
     "yapwithai/gryphe-pantheon-rp-pure-1.6.2-22b-small-trt-awq",
+
+    # Pre-quantized FP8 models
+    "yapwithai/sicariussicariistuff-angelic-eclipse-12B-trt-fp8",
+    "yapwithai/sicariussicariistuff-impish-bloodmoon-12B-trt-fp8",
+    "yapwithai/sicariussicariistuff-impish-nemo-12B-trt-fp8",
+    "yapwithai/thedrummer-unslopnemo-12B-v4.1-trt-fp8",
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
