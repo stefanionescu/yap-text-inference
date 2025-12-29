@@ -45,7 +45,7 @@ trt_download_model() {
     return 0
   fi
   
-  log_info "[model] Downloading model ${model_id} to ${target_dir}..."
+  log_info "[model] Downloading model ${model_id}..."
   log_blank
   
   mkdir -p "${target_dir}"
@@ -102,9 +102,7 @@ trt_quantize_model() {
   
   local kv_cache_dtype
   kv_cache_dtype=$(trt_resolve_kv_cache_dtype "${qformat}")
-  
-  log_info "[quant] Quantizing model ${model_id} to ${qformat}..."
-  
+
   # Check if already quantized
   if [ -d "${output_dir}" ] && [ -f "${output_dir}/config.json" ]; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then

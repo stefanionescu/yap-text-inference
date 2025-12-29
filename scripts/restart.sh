@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${SCRIPT_DIR}/lib/common/warnings.sh"
 source "${SCRIPT_DIR}/lib/common/log.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
@@ -31,14 +32,6 @@ ensure_required_env_vars
 
 # Resolve venv path the same way main does (supports baked /opt/venv)
 export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
-
-# Torch relies on pynvml and emits a deprecation FutureWarning every run; suppress it globally
-TORCH_PYNVML_WARN_FILTER="ignore::FutureWarning:torch.cuda"
-if [[ -z "${PYTHONWARNINGS:-}" ]]; then
-  export PYTHONWARNINGS="${TORCH_PYNVML_WARN_FILTER}"
-elif [[ "${PYTHONWARNINGS}" != *"${TORCH_PYNVML_WARN_FILTER}"* ]]; then
-  export PYTHONWARNINGS="${PYTHONWARNINGS},${TORCH_PYNVML_WARN_FILTER}"
-fi
 
 # Detect GPU and export arch flags early
 gpu_init_detection "gpu"

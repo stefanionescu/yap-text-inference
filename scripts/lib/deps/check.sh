@@ -77,9 +77,6 @@ log_trt_dep_status() {
   if [[ -n "${NEEDS_FLASHINFER:-}" ]]; then
     _status_line "flashinfer" "${NEEDS_FLASHINFER}"
   fi
-  if [[ ${#REQUIREMENTS_MISSING_PKGS[@]} -gt 0 ]]; then
-    printf "[deps]   missing deps        %s\n" "${bad}"
-  fi
   log_blank
 }
 

@@ -12,6 +12,8 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export ROOT_DIR
 
 # shellcheck disable=SC1090
+source "${SCRIPT_DIR}/lib/common/warnings.sh"
+# shellcheck disable=SC1090
 source "${SCRIPT_DIR}/lib/common/log.sh"
 # shellcheck disable=SC1090
 source "${SCRIPT_DIR}/lib/deps/venv.sh"

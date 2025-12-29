@@ -269,7 +269,5 @@ trt_install_deps() {
     log_err "[trt] ✗ TensorRT-LLM repo preparation failed"
     return 1
   fi
-  
-  log_info "[trt] ✓ TRT-LLM ready"
   return 0
 }

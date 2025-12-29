@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Source venv helpers, logging, and env defaults
 source "${SCRIPT_DIR}/lib/deps/venv.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/lib/common/warnings.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/common/log.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/env/runtime.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/env/server.sh" 2>/dev/null || true
