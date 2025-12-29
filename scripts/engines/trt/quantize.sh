@@ -5,6 +5,13 @@
 # Functions for quantizing models with TensorRT-LLM.
 
 # =============================================================================
+# PATH SETUP
+# =============================================================================
+
+_TRT_QUANT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_TRT_QUANT_ROOT="${ROOT_DIR:-$(cd "${_TRT_QUANT_DIR}/../../.." && pwd)}"
+
+# =============================================================================
 # MODEL DOWNLOAD
 # =============================================================================
 
@@ -39,16 +46,20 @@ trt_download_model() {
   fi
   
   log_info "[model] Downloading model ${model_id} to ${target_dir}..."
+  log_blank
+  
   mkdir -p "${target_dir}"
   
   hf_enable_transfer "[model]" "python" || true
   
-  if ! python -c "
-import sys
+  local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
+import src.scripts.site_customize as _site_customize  # noqa: F401
 from huggingface_hub import snapshot_download
+
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
 print('✓ Downloaded model', file=sys.stderr)
-"; then
+PYTHON
     log_err "[model] ✗ Failed to download model ${model_id}"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ] && [ ! -f "${target_dir}/config.json" ]; then
@@ -92,8 +103,6 @@ trt_quantize_model() {
   kv_cache_dtype=$(trt_resolve_kv_cache_dtype "${qformat}")
   
   log_info "[quant] Quantizing model ${model_id} to ${qformat}..."
-  log_info "[quant]   Output: ${output_dir}"
-  log_info "[quant]   KV cache: ${kv_cache_dtype}"
   
   # Check if already quantized
   if [ -d "${output_dir}" ] && [ -f "${output_dir}/config.json" ]; then
@@ -213,16 +222,18 @@ trt_download_prequantized() {
   
   hf_enable_transfer "[model]" "python" || true
   
-  if ! python -c "
-import sys
+  local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
+import src.scripts.site_customize as _site_customize  # noqa: F401
 from huggingface_hub import snapshot_download
+
 snapshot_download(
     repo_id='${model_id}',
     local_dir='${target_dir}',
     allow_patterns=['trt-llm/checkpoints/**', '*.json', '*.safetensors']
 )
 print('✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
-"; then
+PYTHON
     log_err "[model] ✗ Failed to download pre-quantized model"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ]; then
@@ -275,6 +286,7 @@ trt_validate_checkpoint() {
   fi
   
   log_info "[quant] ✓ Checkpoint validated"
+  log_blank
   return 0
 }
 

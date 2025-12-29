@@ -114,7 +114,6 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
     if is_hf_model:
         fetched = fetch_license_from_hf(model_path)
         if fetched:
-            print(f"[license] Using license from base model {model_path}: {fetched['license']}")
             return fetched
 
     # Fallback: use 'other' and link to the base model's LICENSE file

@@ -7,6 +7,7 @@
 # GPU detection: use lib/common/gpu_detect.sh functions directly.
 
 _TRT_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_TRT_DETECT_ROOT="${ROOT_DIR:-$(cd "${_TRT_DETECT_DIR}/../../.." && pwd)}"
 
 # Source common GPU detection
 # shellcheck source=../../lib/common/gpu_detect.sh
@@ -246,20 +247,21 @@ trt_list_remote_engines() {
     return 1
   fi
   
-  python -c "
-import sys
+  local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
+  PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON 2>/dev/null || true
+import src.scripts.site_customize as _site_customize  # noqa: F401
+
 try:
     from huggingface_hub import list_repo_tree
     items = list(list_repo_tree('${repo_id}', path_in_repo='trt-llm/engines', repo_type='model'))
     for item in items:
         if item.path.startswith('trt-llm/engines/') and item.path.count('/') == 2:
-            # Extract engine label from path: trt-llm/engines/{label}
             label = item.path.split('/')[-1]
             print(label)
-except Exception as e:
-    print(f'Error: {e}', file=sys.stderr)
+except Exception as exc:
+    print(f'Error: {exc}', file=sys.stderr)
     sys.exit(1)
-" 2>/dev/null || true
+PYTHON
 }
 
 # Parse engine label into components
@@ -412,16 +414,18 @@ trt_download_prebuilt_engine() {
   
   mkdir -p "${target_dir}"
   
-  if ! python -c "
-import sys
+  local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
+import src.scripts.site_customize as _site_customize  # noqa: F401
 from huggingface_hub import snapshot_download
+
 snapshot_download(
     repo_id='${repo_id}',
     local_dir='${target_dir}',
     allow_patterns=['trt-llm/engines/${engine_label}/**']
 )
 print('✓ Downloaded pre-built engine', file=sys.stderr)
-"; then
+PYTHON
     log_err "[engine] ✗ Failed to download pre-built engine"
     return 1
   fi

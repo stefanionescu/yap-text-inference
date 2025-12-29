@@ -53,8 +53,7 @@ trt_build_engine() {
   fi
   
   log_info "[build] Building TensorRT-LLM engine..."
-  log_info "[build]   Checkpoint: ${checkpoint_dir}"
-  log_info "[build]   Output: ${engine_dir}"
+  log_blank
   
   # Calculate max sequence length
   local max_seq_len=$((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN))
@@ -182,6 +181,7 @@ print(json.dumps(quant))
   
   # Write metadata
   local meta_file="${engine_dir}/build_metadata.json"
+  cat >"${meta_file}" <<EOF
 {
   "model_id": "${CHAT_MODEL:-unknown}",
   "dtype": "${TRT_DTYPE:-float16}",
@@ -202,8 +202,6 @@ print(json.dumps(quant))
   "built_at": "$(date -Iseconds)"
 }
 EOF
-  
-  log_info "[build] Build metadata recorded to ${meta_file}"
 }
 
 # =============================================================================
