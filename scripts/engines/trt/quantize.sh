@@ -59,7 +59,7 @@ import src.scripts.site_customize as _site_customize  # noqa: F401
 from huggingface_hub import snapshot_download
 
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
-print('✓ Downloaded model', file=sys.stderr)
+
 PYTHON
     log_err "[model] ✗ Failed to download model ${model_id}"
     # Cleanup partial download to avoid inconsistent state
