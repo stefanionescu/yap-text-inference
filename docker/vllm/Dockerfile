@@ -61,7 +61,7 @@ RUN set -eux; \
         pip install --no-cache-dir --prefer-binary "${FI_PKG}" || true; \
     fi; \
     if [ -n "${LLMCOMPRESSOR_VERSION:-}" ]; then \
-        echo "[build] Installing llmcompressor==${LLMCOMPRESSOR_VERSION} without deps"; \
+        echo "[build] Installing llmcompressor without deps"; \
         pip install --no-cache-dir --no-deps "llmcompressor==${LLMCOMPRESSOR_VERSION}"; \
     fi
 
