@@ -22,7 +22,7 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "Jinx-org/Jinx-Qwen3-32B",
     "Jinx-org/Jinx-Qwen3-14B",
     "deepseek-ai/DeepSeek-V2-Lite-Chat",
-    "mistralai/Mistral-Nemo-Instruct-2407", 
+    "mistralai/Mistral-Nemo-Instruct-2407",
     "SteelStorage/L3-Aethora-15B-V2",
     "Delta-Vector/Ohashi-NeMo-12B",
     "concedo/Beepo-22B",
@@ -111,6 +111,7 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/thedrummer-unslopnemo-12B-v4.1-trt-fp8",
     "yapwithai/mistral-nemo-instruct-2407-trt-fp8",
     "yapwithai/flammenai-mahou-1.3-mistral-nemo-12B-trt-fp8",
+    "yapwithai/delta-vector-ohashi-nemo-12B-trt-fp8",
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
