@@ -70,7 +70,8 @@ else:
     TRT_CALIB_SEQLEN = _ctx_len + _ctx_out
 
 # Calibration batch size defaults to 16 unless explicitly overridden.
-TRT_CALIB_BATCH_SIZE = int(os.getenv("TRT_CALIB_BATCH_SIZE", "16"))
+_trt_calib_batch_env = os.getenv("TRT_CALIB_BATCH_SIZE", "").strip()
+TRT_CALIB_BATCH_SIZE = int(_trt_calib_batch_env) if _trt_calib_batch_env else 16
 
 
 __all__ = [
