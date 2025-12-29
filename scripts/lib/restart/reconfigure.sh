@@ -229,8 +229,6 @@ _restart_can_preserve_cache() {
 }
 
 restart_clear_model_artifacts() {
-  log_section "[restart] Clearing cached model artifacts..."
-  
   # Clear stale TRT engine path reference
   rm -f "${ROOT_DIR}/.run/trt_engine_dir.env" 2>/dev/null || true
   
