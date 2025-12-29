@@ -12,7 +12,7 @@ from ..config.limits import (
     MAX_PERSONALITIES,
     MAX_SYNONYMS_PER_PERSONALITY,
 )
-from .sanitize import sanitize_prompt
+from .sanitize.prompt_sanitizer import sanitize_prompt
 from ..helpers.input import (
     is_gender_empty_or_null,
     is_personality_empty_or_null,

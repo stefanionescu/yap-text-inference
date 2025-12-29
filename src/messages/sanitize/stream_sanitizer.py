@@ -1,39 +1,22 @@
-"""Sanitization utilities for both user prompts and assistant outputs.
+"""Streaming sanitizer for assistant outputs.
 
-This module provides text sanitization at two levels:
-
-1. User Prompt Sanitization (sanitize_prompt):
-   - Input validation and type checking
-   - Unicode normalization (NFKC)
-   - Mojibake repair via ftfy
-   - Control character removal
-   - Bidi direction marker removal
-   - Size limit enforcement
-
-2. Streaming Output Sanitization (StreamingSanitizer):
-   - Stateful processing for live streaming
-   - Freestyle prefix stripping
-   - Ellipsis normalization
-   - Quote normalization
-   - Emoji/emoticon removal
-   - HTML tag stripping
-   - Capital letter enforcement
-
-The StreamingSanitizer is designed for live streaming where text may
-be incomplete. It buffers "unstable" trailing characters (ellipsis,
-partial words) until more context arrives, ensuring clean output.
+This sanitizer is stateful and operates on streamed model text. It:
+    - Strips freestyle prefixes and leading newline tokens once
+    - Verbalizes emails/phone numbers to avoid leaking raw contacts
+    - Normalizes ellipses/dashes/quotes/spacing
+    - Removes escaped quotes, emojis/emoticons, and HTML tags
+    - Enforces a leading capital once
+    - Buffers unstable suffixes (ellipsis, partial words/entities) to avoid
+      emitting incomplete tokens mid-stream
 """
 
 from __future__ import annotations
 
 import html
 import re
-import unicodedata
 
-from ..config.filters import (
-    BIDI_CHAR_PATTERN,
+from ...config.filters import (
     COLLAPSE_SPACES_PATTERN,
-    CTRL_CHAR_PATTERN,
     DASH_PATTERN,
     DIGIT_WORDS,
     DOUBLE_DOT_SPACE_PATTERN,
@@ -43,7 +26,6 @@ from ..config.filters import (
     EMAIL_PATTERN,
     EMOJI_PATTERN,
     EMOTICON_PATTERN,
-    ESCAPED_QUOTE_PATTERN,
     EXAGGERATED_OH_PATTERN,
     FREESTYLE_PREFIX_PATTERN,
     HTML_TAG_PATTERN,
@@ -52,63 +34,13 @@ from ..config.filters import (
     SPACE_BEFORE_PUNCT_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
 )
-from ..config.limits import PROMPT_SANITIZE_MAX_CHARS
+from .common import _strip_escaped_quotes
 
 from phonenumbers import PhoneNumberMatcher  # type: ignore[import-untyped]
 
-try:
-    from ftfy import fix_text  # type: ignore[import-not-found]
-except Exception:  # pragma: no cover - ftfy is declared in requirements
-    def fix_text(text: str) -> str:  # type: ignore
-        """Fallback when ftfy is not available."""
-        return text
-
-
-def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS) -> str:
-    """Sanitize user-provided prompt text.
-
-    - Ensures type is string and non-empty after trimming
-    - Normalizes Unicode and fixes mojibake
-    - Removes control characters (except TAB/CR/LF)
-    - Removes bidi direction control characters
-
-    Args:
-        raw: Raw input text
-        max_chars: Maximum allowed character length after sanitization
-
-    Returns:
-        Sanitized text
-
-    Raises:
-        ValueError: If invalid type, empty after cleaning, or exceeds size limit
-    """
-    if raw is None:
-        raise ValueError("prompt is required")
-    if not isinstance(raw, str):
-        raise ValueError("prompt must be a string")
-
-    # Normalize and fix encoding issues
-    text = fix_text(raw)
-    text = unicodedata.normalize("NFKC", text)
-
-    # Remove disallowed controls and bidi markers
-    text = CTRL_CHAR_PATTERN.sub("", text)
-    text = BIDI_CHAR_PATTERN.sub("", text)
-
-    text = text.strip()
-    if not text:
-        raise ValueError("prompt is empty after sanitization")
-    if len(text) > max_chars:
-        raise ValueError("prompt too large")
-    return text
-
 
 class StreamingSanitizer:
-    """Stateful sanitizer that emits stable chunks for streaming.
-
-    Complexity: O(len(chunk)) per push. We only ever re-sanitize the
-    active tail buffer, never the full history.
-    """
+    """Stateful sanitizer that emits stable chunks for streaming."""
 
     # How much suffix (in characters) we keep as "maybe unstable" to allow
     # boundary-sensitive validators (emails, phone numbers, ellipsis, html).
@@ -229,11 +161,7 @@ def _sanitize_stream_chunk(
     capital_pending: bool,
     strip_leading_ws: bool,
 ) -> tuple[str, bool, bool]:
-    """Run the streaming sanitization pipeline on a single chunk.
-
-    prefix_pending controls whether freestyle/newline stripping is applied.
-    capital_pending controls whether leading-capital enforcement is still needed.
-    """
+    """Run the streaming sanitization pipeline on a single chunk."""
     if not text:
         return "", prefix_pending, capital_pending
 
@@ -259,7 +187,7 @@ def _sanitize_stream_chunk(
     cleaned = DASH_PATTERN.sub(" ", cleaned)
     cleaned = cleaned.replace("'", "'")
     cleaned = SPACE_BEFORE_PUNCT_PATTERN.sub(r"\1", cleaned)
-    cleaned = ESCAPED_QUOTE_PATTERN.sub(_normalize_escaped_quote, cleaned)
+    cleaned = _strip_escaped_quotes(cleaned)
     cleaned = EXAGGERATED_OH_PATTERN.sub(_normalize_exaggerated_oh, cleaned)
     cleaned = _strip_emoji_like_tokens(cleaned)
     # Strip HTML tags and unescape entities
@@ -280,14 +208,7 @@ def _split_stable_and_tail_lengths(
     sanitized: str,
     max_tail: int,
 ) -> tuple[int, int]:
-    """Compute how much of the sanitized text is stable vs tail to buffer.
-
-    We keep:
-    - trailing unstable chars (whitespace, slashes, etc.)
-    - trailing partial ellipsis/dots
-    - trailing partial html entities (&amp)
-    - trailing segments that look like in-progress emails/phone numbers
-    """
+    """Compute how much of the sanitized text is stable vs tail to buffer."""
     if not sanitized:
         return 0, 0
 
@@ -308,10 +229,7 @@ def _split_stable_and_tail_lengths(
 
 
 def _suffix_prefix_overlap(emitted: str, candidate: str, max_check: int) -> int:
-    """Return length of the longest suffix of emitted that is a prefix of candidate.
-
-    Only checks up to max_check characters to keep work bounded.
-    """
+    """Return length of the longest suffix of emitted that is a prefix of candidate."""
     if not emitted or not candidate:
         return 0
     emitted_suffix = emitted[-max_check:]
@@ -373,14 +291,6 @@ def _normalize_exaggerated_oh(match: re.Match[str]) -> str:
         return text
     replacement = "Ooh" if text[0].isupper() else "ooh"
     return replacement
-
-
-def _normalize_escaped_quote(match: re.Match[str]) -> str:
-    """Remove escaped double quotes entirely, keep single quotes."""
-    char = match.group(1)
-    if char == '"':
-        return ""
-    return char
 
 
 def _strip_leading_newline_tokens(text: str) -> str:
@@ -451,11 +361,7 @@ def _verbalize_phone_number(raw_number: str) -> str:
 
 
 def _verbalize_phone_numbers(text: str) -> str:
-    """Find and verbalize phone numbers with international format (+XX...).
-    
-    Only detects numbers with explicit country code (e.g., +1, +44).
-    Local numbers without + prefix are not considered phone numbers.
-    """
+    """Find and verbalize phone numbers with international format (+XX...)."""
     if not text:
         return text
 
@@ -477,7 +383,5 @@ def _verbalize_phone_numbers(text: str) -> str:
     return result
 
 
-__all__ = [
-    "sanitize_prompt",
-    "StreamingSanitizer",
-]
+__all__ = ["StreamingSanitizer"]
+

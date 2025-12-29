@@ -109,6 +109,7 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/sicariussicariistuff-impish-bloodmoon-12B-trt-fp8",
     "yapwithai/sicariussicariistuff-impish-nemo-12B-trt-fp8",
     "yapwithai/thedrummer-unslopnemo-12B-v4.1-trt-fp8",
+    "yapwithai/mistral-nemo-instruct-2407-trt-fp8",
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
