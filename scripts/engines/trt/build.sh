@@ -89,7 +89,7 @@ trt_build_engine() {
   # Record build metadata
   trt_record_build_metadata "${engine_dir}" "${checkpoint_dir}"
   
-  log_info "[build] ✓ Engine build complete: ${engine_dir}"
+  log_info "[build] ✓ Engine build complete"
   return 0
 }
 
