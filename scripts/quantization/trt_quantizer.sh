@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Source common utilities
+source "${SCRIPT_DIR}/../lib/common/warnings.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/../lib/common/model_detect.sh"

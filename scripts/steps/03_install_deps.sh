@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 export ROOT_DIR
 
 LIB_DIR="${SCRIPT_DIR}/../lib"
+source "${LIB_DIR}/common/warnings.sh"
 source "${LIB_DIR}/common/log.sh"
 
 # Common deps

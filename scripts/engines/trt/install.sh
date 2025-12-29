@@ -320,7 +320,7 @@ PY
   if [[ "${trt_version}" == IMPORT_ERROR:* ]]; then
     log_warn "[trt] ⚠ TensorRT-LLM import reported: ${trt_version} (ignored for modelopt)"
   else
-    log_info "[trt] TensorRT-LLM version: ${trt_version}"
+    log_info "[trt] ✓ TensorRT-LLM version: ${trt_version}"
   fi
   
   # Validate Python libraries
@@ -335,11 +335,10 @@ PY
   # Check trtllm-build command
   if ! command -v trtllm-build >/dev/null 2>&1; then
     log_warn "[trt] ⚠ trtllm-build command not found in PATH"
-  else
-    log_info "[trt] trtllm-build: $(which trtllm-build)"
   fi
   
   log_info "[trt] ✓ TensorRT-LLM installation validated"
+  log_blank
   return 0
 }
 
@@ -368,7 +367,7 @@ trt_prepare_repo() {
   if [ -d "${repo_dir}" ]; then
     log_info "[trt] Reusing existing TensorRT-LLM repository..."
   else
-    log_info "[trt] Cloning repo..."
+    log_info "[trt] Cloning TRTLLM repo..."
     
     # Build clone options (--quiet suppresses progress, -c advice.detachedHead=false suppresses detached HEAD warning)
     local clone_opts=("--quiet" "--single-branch" "--no-tags" "--branch" "${tag_name}")

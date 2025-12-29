@@ -89,12 +89,10 @@ apply_quantization_defaults() {
           export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-10}
           export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
           export GEN_TIMEOUT_S=${GEN_TIMEOUT_S:-60}
-          log_info "[env] FP8 mode: Hopper/Ada GPU with native FP8 support"
           ;;
         *A100*)
           # A100 runs FP8 weights in W8A16 emulated mode via Marlin (stores FP8, computes FP16)
           # KV cache uses INT8 since A100 doesn't support FP8 KV cache
-          log_info "[env] FP8 mode: A100 with W8A16 emulated mode (FP8 weights, FP16 compute) + INT8 KV cache"
           export KV_DTYPE=${KV_DTYPE:-int8}
           export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
           if [ "${HAS_FLASHINFER}" = "1" ]; then
@@ -179,11 +177,9 @@ apply_quantization_defaults() {
           if [ "${HAS_FLASHINFER}" = "1" ]; then
             export VLLM_USE_V1=1
             export VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-FLASHINFER}
-            log_info "[env] A100 4-bit mode: V1 engine + FlashInfer + INT8 KV"
           else
             export VLLM_USE_V1=0
             export VLLM_ATTENTION_BACKEND=XFORMERS
-            log_info "[env] A100 4-bit mode: V0 engine + XFORMERS + INT8 KV"
           fi
           ;;
         *H100*|*L40S*|*L40*)

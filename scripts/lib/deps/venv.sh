@@ -70,9 +70,6 @@ _venv_python_reports_version() {
   local detected_version
   detected_version=$("${py_bin}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || true)
   if [ "${detected_version}" = "${expected_minor}" ]; then
-    local full
-    full=$("${py_bin}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null || true)
-    log_info "[python] Python ${full} available (${py_bin})"
     return 0
   fi
   return 1

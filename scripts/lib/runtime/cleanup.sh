@@ -3,6 +3,7 @@
 # Shared cleanup helpers used by stop.sh and runtime guard utilities.
 
 _CLEANUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_CLEANUP_DIR}/../common/warnings.sh"
 source "${_CLEANUP_DIR}/../common/log.sh"
 source "${_CLEANUP_DIR}/../deps/venv.sh"
 

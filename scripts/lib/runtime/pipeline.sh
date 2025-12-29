@@ -54,7 +54,6 @@ runtime_pipeline_run_background() {
 
   if [ "${follow_logs}" = "1" ]; then
     log_blank
-    log_info "[main] Following logs (Ctrl+C detaches, background continues)..."
     touch "${server_log}" || true
     exec tail -n +1 -F "${server_log}"
   fi
