@@ -77,7 +77,6 @@ log_trt_dep_status() {
   if [[ -n "${NEEDS_FLASHINFER:-}" ]]; then
     _status_line "flashinfer" "${NEEDS_FLASHINFER}"
   fi
-  log_blank
 }
 
 # Check if PyTorch is installed with correct version (exact match, including CUDA suffix)
