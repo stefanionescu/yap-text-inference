@@ -130,8 +130,6 @@ fi
 
 # If engine was switched, need full deployment (restart can't handle fresh engine)
 if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
-  log_info "[restart] Engine switch complete. Running full deployment for new engine..."
-  
   # Build main.sh args, preserving all flags from restart invocation
   declare -a main_args=("--${INFERENCE_ENGINE}" "--deploy-mode" "${DEPLOY_MODE}")
   

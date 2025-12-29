@@ -248,7 +248,7 @@ async def cache_reset_daemon() -> None:
 
     # Event used to interrupt the wait (e.g., after a long session ends)
     event = cache_reset_reschedule_event()
-    logger.info("cache reset daemon started interval=%ss (vLLM only)", interval)
+    logger.info("cache reset daemon started interval=%ss", interval)
 
     while True:
         # Check if we were signaled to reset immediately

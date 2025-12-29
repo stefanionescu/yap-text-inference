@@ -97,6 +97,7 @@ _runtime_guard_force_engine_wipe() {
   cleanup_engine_artifacts "${root_dir}"
   
   log_info "[server] Engine wipe complete. Ready for fresh ${to_engine} deployment."
+  log_blank
 }
 
 # Backward compatibility alias

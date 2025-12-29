@@ -85,6 +85,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # EXTREMELY GOOD: might even be better than Qwen3 30B
+    
     "yapwithai/arliai-qwen3-30B-a3b-arliai-rpr-v4-fast-w4a16",
     "yapwithai/bgg1996-melinoe-30B-A3B-thinking-w4a16",
 ]
@@ -103,6 +104,7 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/delta-vector-ohashi-nemo-12B-trt-awq",
     "yapwithai/concedo-beepo-22B-trt-awq",
     "yapwithai/gryphe-pantheon-rp-pure-1.6.2-22b-small-trt-awq",
+    "yapwithai/qwen3-14B-trt-awq",
 
     # Pre-quantized FP8 models
     "yapwithai/sicariussicariistuff-angelic-eclipse-12B-trt-fp8",
