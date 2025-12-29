@@ -88,10 +88,19 @@ class StreamingSanitizer:
         delta = ""
         if stable_len > 0:
             stable = sanitized[:stable_len]
-            # Avoid re-emitting content that is already in emitted_parts due to tail window overlap
             emitted_text = "".join(self._emitted_parts)
-            overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
-            delta = stable[overlap:]
+
+            if stable.startswith(emitted_text):
+                # Common case: sanitized text simply grew; emit the new suffix
+                delta = stable[len(emitted_text) :]
+            elif len(stable) <= len(emitted_text) and emitted_text.endswith(stable):
+                # Sanitized string shrank or stayed the same; nothing new to emit
+                delta = ""
+            else:
+                # Fallback to overlap detection to avoid double-emitting when windows slide
+                overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
+                delta = stable[overlap:]
+
             if delta:
                 self._emitted_parts.append(delta)
 
@@ -120,14 +129,19 @@ class StreamingSanitizer:
         self._capital_pending = capital_state
 
         emitted_text = "".join(self._emitted_parts)
-        # Never trim more prefix than the portion we know is still buffered
-        pending_tail = self._sanitized_tail.rstrip()
-        max_overlap = max(0, len(sanitized) - len(pending_tail))
-        overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
-        overlap = min(overlap, max_overlap)
 
-        # At flush we emit only the unseen suffix and trim trailing whitespace
-        tail = sanitized[overlap:].rstrip()
+        if sanitized.startswith(emitted_text):
+            tail = sanitized[len(emitted_text) :].rstrip()
+        elif len(sanitized) <= len(emitted_text) and emitted_text.endswith(sanitized):
+            tail = ""
+        else:
+            # Never trim more prefix than the portion we know is still buffered
+            pending_tail = self._sanitized_tail.rstrip()
+            max_overlap = max(0, len(sanitized) - len(pending_tail))
+            overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
+            overlap = min(overlap, max_overlap)
+            tail = sanitized[overlap:].rstrip()
+
         if tail:
             self._emitted_parts.append(tail)
         self._sanitized_tail = ""
