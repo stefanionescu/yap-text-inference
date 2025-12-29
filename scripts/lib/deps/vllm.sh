@@ -41,5 +41,6 @@ vllm_install_deps() {
   _vllm_install_quant_env || return 1
   
   log_info "[vllm] ✓ vLLM dependencies installed"
+  log_blank
   return 0
 }
