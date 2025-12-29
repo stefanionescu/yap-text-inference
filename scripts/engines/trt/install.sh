@@ -366,7 +366,7 @@ trt_prepare_repo() {
   # Clone if not present, reuse if exists
   # Note: FORCE_REBUILD only affects engine/checkpoint builds, not the repo clone
   if [ -d "${repo_dir}" ]; then
-    log_info "[trt] Reusing existing TensorRT-LLM repository at ${repo_dir}"
+    log_info "[trt] Reusing existing TensorRT-LLM repository..."
   else
     log_info "[trt] Cloning repo..."
     
@@ -432,7 +432,6 @@ trt_prepare_repo() {
     return 1
   fi
   
-  log_info "[trt] TensorRT-LLM repository ready at ${repo_dir}"
   export TRT_REPO_DIR="${repo_dir}"
   return 0
 }
