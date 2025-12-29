@@ -90,9 +90,14 @@ class StreamingSanitizer:
             stable = sanitized[:stable_len]
             emitted_text = "".join(self._emitted_parts)
 
-            # Align using suffix/prefix overlap to handle both growth and shrinkage safely.
-            overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
-            delta = stable[overlap:]
+            # Prefer direct prefix/suffix relations; fall back to overlap to avoid replays.
+            if stable.startswith(emitted_text):
+                delta = stable[len(emitted_text) :]
+            elif len(stable) <= len(emitted_text) and emitted_text.endswith(stable):
+                delta = ""
+            else:
+                overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
+                delta = stable[overlap:]
 
             if delta:
                 self._emitted_parts.append(delta)
@@ -123,8 +128,13 @@ class StreamingSanitizer:
 
         emitted_text = "".join(self._emitted_parts)
 
-        overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
-        tail = sanitized[overlap:].rstrip()
+        if sanitized.startswith(emitted_text):
+            tail = sanitized[len(emitted_text) :].rstrip()
+        elif len(sanitized) <= len(emitted_text) and emitted_text.endswith(sanitized):
+            tail = ""
+        else:
+            overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
+            tail = sanitized[overlap:].rstrip()
 
         if tail:
             self._emitted_parts.append(tail)
