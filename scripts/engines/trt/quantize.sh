@@ -55,6 +55,7 @@ trt_download_model() {
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
 import sys
+import src.scripts.site_customize as _site_customize  # noqa: F401
 from huggingface_hub import snapshot_download
 
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
@@ -223,6 +224,7 @@ trt_download_prequantized() {
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
 import sys
+import src.scripts.site_customize as _site_customize  # noqa: F401
 from huggingface_hub import snapshot_download
 
 snapshot_download(
