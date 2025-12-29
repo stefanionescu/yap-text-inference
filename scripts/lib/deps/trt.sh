@@ -69,9 +69,7 @@ trt_install_missing_components() {
   local had_error=0
 
   if [[ "${NEEDS_PYTORCH}" = "1" || "${NEEDS_TORCHVISION}" = "1" ]]; then
-    if trt_install_pytorch; then
-      log_info ""
-    else
+    if ! trt_install_pytorch; then
       had_error=1
     fi
   fi
@@ -94,9 +92,7 @@ trt_install_missing_components() {
     else
       unset TRTLLM_NO_DEPS
     fi
-    if trt_install_tensorrt_llm; then
-      log_info ""
-    else
+    if ! trt_install_tensorrt_llm; then
       had_error=1
     fi
   fi
