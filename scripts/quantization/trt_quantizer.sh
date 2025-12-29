@@ -10,7 +10,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Source common utilities
-source "${SCRIPT_DIR}/../lib/common/warnings.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/../lib/common/model_detect.sh"
@@ -23,6 +22,112 @@ source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 source "${SCRIPT_DIR}/../engines/trt/quantize.sh"
 source "${SCRIPT_DIR}/../engines/trt/build.sh"
 source "${SCRIPT_DIR}/../engines/trt/push.sh"
+
+# =============================================================================
+# HELPERS
+# =============================================================================
+
+_trt_export_quant_env() {
+  local qformat="$1"
+  if [ -z "${qformat}" ]; then
+    return
+  fi
+  TRT_QFORMAT="${qformat}"
+  TRT_QUANT_METHOD="${qformat}"
+  export TRT_QFORMAT TRT_QUANT_METHOD
+}
+
+_trt_guess_qformat_from_name() {
+  local name="$1"
+  if [ -z "${name}" ]; then
+    return 1
+  fi
+  local lowered
+  lowered="${name,,}"
+  if [[ "${lowered}" == *awq* ]]; then
+    echo "int4_awq"
+    return 0
+  fi
+  if [[ "${lowered}" == *fp8* ]]; then
+    echo "fp8"
+    return 0
+  fi
+  if [[ "${lowered}" == *int8* ]] || [[ "${lowered}" == *int-8* ]]; then
+    echo "int8_sq"
+    return 0
+  fi
+  if [[ "${lowered}" == *8bit* ]] || [[ "${lowered}" == *8-bit* ]]; then
+    echo "fp8"
+    return 0
+  fi
+  return 1
+}
+
+_trt_detect_qformat_from_checkpoint() {
+  local ckpt_dir="$1"
+  if [ -z "${ckpt_dir}" ] || [ ! -f "${ckpt_dir}/config.json" ]; then
+    return 1
+  fi
+  local detected
+  detected=$(python - <<'PY' "${ckpt_dir}" 2>/dev/null || true)
+import json
+import sys
+from pathlib import Path
+
+cfg_path = Path(sys.argv[1]) / "config.json"
+try:
+    data = json.loads(cfg_path.read_text(encoding="utf-8"))
+except Exception:
+    sys.exit(0)
+
+quant = {}
+for key in ("quantization_config", "quantization", "quant_config"):
+    value = data.get(key)
+    if isinstance(value, dict) and value:
+        quant = value
+        break
+
+algo = ""
+if isinstance(quant, dict):
+    raw_algo = quant.get("quant_algo") or quant.get("algorithm") or quant.get("quantization_algo") or quant.get("quantization_method")
+    if isinstance(raw_algo, str):
+        algo = raw_algo.lower()
+    w_bit = quant.get("w_bit") or quant.get("weight_bits") or quant.get("weight_bit") or quant.get("quant_bits")
+    try:
+        if isinstance(w_bit, str):
+            w_bit = int(w_bit)
+    except Exception:
+        w_bit = None
+else:
+    w_bit = None
+
+def emit(value):
+    if value:
+        print(value)
+        sys.exit(0)
+
+if "fp8" in algo:
+    emit("fp8")
+if "int8" in algo or "sq" in algo:
+    emit("int8_sq")
+if "int4" in algo or "awq" in algo:
+    emit("int4_awq")
+if isinstance(w_bit, int):
+    if w_bit <= 4:
+        emit("int4_awq")
+    if w_bit >= 8:
+        emit("fp8")
+
+sys.exit(0)
+PY
+  )
+  detected="${detected%%$'\n'}"
+  if [ -n "${detected}" ]; then
+    echo "${detected}"
+    return 0
+  fi
+  return 1
+}
 
 # =============================================================================
 # MAIN LOGIC
@@ -75,6 +180,7 @@ fi
 
 # Resolve quantization format (pass model ID for MoE detection)
 QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
+_trt_export_quant_env "${QFORMAT}"
 
 # Check if model is already TRT pre-quantized
 if model_detect_is_trt_prequant "${MODEL_ID}"; then
@@ -83,6 +189,12 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
     log_info "[quant] Detected pre-quantized TRT model (${trt_prequant_kind})"
   else
     log_info "[quant] Detected pre-quantized TRT model: ${MODEL_ID}"
+  fi
+
+  guessed_qformat="$(_trt_guess_qformat_from_name "${MODEL_ID}" 2>/dev/null || true)"
+  if [ -n "${guessed_qformat}" ]; then
+    QFORMAT="${guessed_qformat}"
+    _trt_export_quant_env "${QFORMAT}"
   fi
   
   # Download pre-quantized checkpoint
@@ -96,6 +208,12 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
   export TRT_CHECKPOINT_DIR
   
   log_info "[quant] Using pre-quantized checkpoint: ${TRT_CHECKPOINT_DIR}"
+
+  detected_qformat="$(_trt_detect_qformat_from_checkpoint "${TRT_CHECKPOINT_DIR}" || true)"
+  if [ -n "${detected_qformat}" ]; then
+    QFORMAT="${detected_qformat}"
+    _trt_export_quant_env "${QFORMAT}"
+  fi
 else
   # Get checkpoint directory
   CHECKPOINT_DIR=$(trt_get_checkpoint_dir "${MODEL_ID}" "${QFORMAT}")
@@ -107,7 +225,7 @@ else
       TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
       export TRT_CHECKPOINT_DIR
     else
-      log_info "[quant] Force rebuild was set to True, will re-quantize"
+      log_info "[quant] FORCE_REBUILD=true, will re-quantize"
     fi
   fi
   

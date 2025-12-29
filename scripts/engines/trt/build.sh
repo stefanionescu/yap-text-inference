@@ -185,6 +185,7 @@ print(json.dumps(quant))
 {
   "model_id": "${CHAT_MODEL:-unknown}",
   "dtype": "${TRT_DTYPE:-float16}",
+  "quant_method": "${TRT_QFORMAT:-int4_awq}",
   "max_batch_size": ${TRT_MAX_BATCH_SIZE:-16},
   "max_input_len": ${TRT_MAX_INPUT_LEN:-8192},
   "max_output_len": ${TRT_MAX_OUTPUT_LEN:-4096},

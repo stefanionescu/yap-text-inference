@@ -80,6 +80,11 @@ def classify_trt_prequantized_model(value: str | None) -> str | None:
     if is_trt_awq_model_name(value):
         return "trt_awq"
     if is_trt_8bit_model_name(value):
+        lowered = value.lower()
+        if "fp8" in lowered:
+            return "trt_fp8"
+        if "int8" in lowered or "int-8" in lowered:
+            return "trt_int8"
         return "trt_8bit"
     return None
 
