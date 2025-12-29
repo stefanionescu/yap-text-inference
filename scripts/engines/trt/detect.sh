@@ -249,6 +249,7 @@ trt_list_remote_engines() {
   
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
   PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON 2>/dev/null || true
+import sys
 import src.scripts.site_customize as _site_customize  # noqa: F401
 
 try:
@@ -416,6 +417,7 @@ trt_download_prebuilt_engine() {
   
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
+import sys
 import src.scripts.site_customize as _site_customize  # noqa: F401
 from huggingface_hub import snapshot_download
 
