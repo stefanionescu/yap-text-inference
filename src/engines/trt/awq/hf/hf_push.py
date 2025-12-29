@@ -234,10 +234,6 @@ def push_trt_to_hf(
                     revision=branch,
                 )
                 tokenizer_files_found += 1
-        if tokenizer_files_found > 0:
-            print(f"[trt-hf] ✓ Uploaded tokenizer")
-        else:
-            print("[trt-hf] Warning: No tokenizer files found to upload")
     else:
         print("[trt-hf] Warning: Could not find tokenizer directory; tokenizer not uploaded")
         print("[trt-hf]   TRT-LLM will need to download tokenizer from base model at runtime")
@@ -255,7 +251,6 @@ def push_trt_to_hf(
         candidate_dirs=chat_asset_dirs,
     )
     
-    print(f"[trt-hf] ✓ Successfully pushed to HF")
     return True
 
 
