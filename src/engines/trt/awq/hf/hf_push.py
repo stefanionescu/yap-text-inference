@@ -120,7 +120,7 @@ def _upload_chat_assets(
     if uploaded > 0:
         print(f"[trt-hf] ✓ Uploaded chat template assets")
     else:
-        print("[trt-hf] No chat template/generation_config files found to upload. Skipping")
+        print("[trt-hf] No chat template/generation_config files found. Skipping")
 
 
 def push_trt_to_hf(

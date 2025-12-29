@@ -280,4 +280,5 @@ if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
   trt_push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}"
 fi
 
-log_info "[quant] ✓ Complete"
+log_info "[quant] ✓ Quantization process complete"
+log_blank
