@@ -69,7 +69,7 @@ _trt_detect_qformat_from_checkpoint() {
     return 1
   fi
   local detected
-  detected=$(python - <<'PY' "${ckpt_dir}" 2>/dev/null || true)
+  detected=$(python - "${ckpt_dir}" <<'PY' 2>/dev/null || true)
 import json
 import sys
 from pathlib import Path
