@@ -16,7 +16,9 @@ python_warning_add_filter() {
 }
 
 python_warning_suppress_pynvml_future() {
-  local filter="ignore:.*pynvml.*:FutureWarning"
+  # Note: PYTHONWARNINGS treats the message field as literal (regex chars escaped),
+  # so match the fixed prefix emitted by torch when importing pynvml.
+  local filter="ignore:The pynvml package is deprecated.:FutureWarning"
   python_warning_add_filter "${filter}"
 }
 
