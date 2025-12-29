@@ -69,7 +69,8 @@ _trt_detect_qformat_from_checkpoint() {
     return 1
   fi
   local detected
-  detected=$(python - "${ckpt_dir}" <<'PY' 2>/dev/null || true)
+  detected="$(
+    python - "${ckpt_dir}" 2>/dev/null <<'PY' || true
 import json
 import sys
 from pathlib import Path
@@ -120,7 +121,7 @@ if isinstance(w_bit, int):
 
 sys.exit(0)
 PY
-  )
+  )"
   detected="${detected%%$'\n'}"
   if [ -n "${detected}" ]; then
     echo "${detected}"
