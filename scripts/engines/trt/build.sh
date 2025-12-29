@@ -232,6 +232,7 @@ trt_validate_engine() {
   local engine_count
   engine_count=$(ls "${engine_dir}"/rank*.engine 2>/dev/null | wc -l)
   log_info "[build] ✓ Engine validated"
+  log_blank
   return 0
 }
 

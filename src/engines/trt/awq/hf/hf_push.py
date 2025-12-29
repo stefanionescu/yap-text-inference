@@ -209,7 +209,7 @@ def push_trt_to_hf(
     # Upload engines if they exist
     if engine_path.is_dir():
         engine_label = get_engine_label(engine_path)
-        print(f"[trt-hf] Uploading engines from...")
+        print(f"[trt-hf] Uploading engines...")
         api.upload_folder(
             folder_path=str(engine_path),
             path_in_repo=f"trt-llm/engines/{engine_label}",

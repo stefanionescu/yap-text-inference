@@ -35,7 +35,7 @@ trt_push_to_hf() {
     return 1
   fi
   
-  log_info "[hf] Pushing to HuggingFace: ${HF_PUSH_REPO_ID}..."
+  log_info "[hf] Pushing quantized model to HuggingFace..."
   
   # Pick a python interpreter (prefer venv, then system)
   local python_exe="${HF_PYTHON:-}"
