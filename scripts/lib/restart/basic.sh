@@ -36,7 +36,7 @@ restart_run_install_deps_if_needed() {
     return 0
   fi
   
-  log_info "[restart] Reinstalling all dependencies from scratch..."
+  log_section "[restart] Reinstalling all dependencies from scratch..."
   
   # Wipe all existing pip dependencies and caches for clean install
   # Preserves models, HF cache, TRT repo (if same engine)
@@ -145,7 +145,7 @@ restart_basic() {
   fi
 
   # 1. Stop server first (before any deps/env work)
-  log_info "[restart] Stopping server (preserving models and dependencies)..."
+  log_section "[restart] Stopping server (preserving models and dependencies)..."
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
   # 2. Handle --install-deps (wipe and reinstall all dependencies)
@@ -159,7 +159,7 @@ restart_basic() {
     if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
       log_err "[restart] ✗ TRT engine directory not found or not set."
       log_err "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
-      log_err "[restart]"
+      log_blank
       log_err "[restart] TensorRT-LLM requires a pre-built engine. Options:"
       log_err "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
       log_err "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
@@ -178,7 +178,7 @@ restart_basic() {
   fi
   log_info "[restart] All logs: tail -f server.log"
   log_info "[restart] To stop: bash scripts/stop.sh"
-  log_info ""
+  log_blank
 
   mkdir -p "${ROOT_DIR}/.run"
   setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG_PATH}" 2>&1 &

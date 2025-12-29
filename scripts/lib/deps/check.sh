@@ -78,8 +78,9 @@ log_trt_dep_status() {
     _status_line "flashinfer" "${NEEDS_FLASHINFER}"
   fi
   if [[ ${#REQUIREMENTS_MISSING_PKGS[@]} -gt 0 ]]; then
-    printf "[deps]   %-14s %s %s\n" "missing" "${bad}" "${REQUIREMENTS_MISSING_PKGS[*]}"
+    printf "[deps]   missing deps        %s\n" "${bad}"
   fi
+  log_blank
 }
 
 # Check if PyTorch is installed with correct version (exact match, including CUDA suffix)
@@ -315,4 +316,3 @@ check_trt_deps_status() {
   
   return 1
 }
-

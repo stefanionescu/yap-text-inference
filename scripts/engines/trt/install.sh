@@ -97,7 +97,7 @@ trt_install_pytorch() {
   local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
   local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
   
-  log_info "[trt] Installing PyTorch..."
+  log_section "[trt] Installing PyTorch..."
   
   # Install torch and torchvision together from the SAME index to ensure CUDA version match
   local pip_cmd=(

@@ -24,9 +24,16 @@ torch_cuda_mismatch_guard() {
   local detect_output=""
   local detect_rc=0
   local previous_opts="$-"
+  local tmp_output
+
+  tmp_output=$(mktemp -t torch-guard-XXXXXX 2>/dev/null) || \
+    tmp_output=$(mktemp /tmp/torch-guard-XXXXXX 2>/dev/null) || true
+  if [ -z "${tmp_output}" ]; then
+    tmp_output="${ROOT_DIR:-/tmp}/torch-guard-${RANDOM:-$$}"
+  fi
 
   set +e
-  detect_output=$("${py_bin}" - <<'PY' 2>&1)
+  "${py_bin}" - <<'PY' >"${tmp_output}" 2>&1
 import importlib.util
 import sys
 
@@ -59,19 +66,20 @@ except Exception as exc:  # noqa: BLE001
 
 sys.exit(0)
 PY
+
   detect_rc=$?
   if [[ "${previous_opts}" == *e* ]]; then
     set -e
   fi
+  detect_output=$(cat "${tmp_output}" 2>/dev/null || true)
+  rm -f "${tmp_output}" 2>/dev/null || true
 
   if [ "${detect_rc}" -eq 42 ]; then
-    log_warn "${prefix} ⚠ Detected PyTorch/TorchVision CUDA mismatch in ${venv_dir}"
-    if [ -n "${detect_output}" ]; then
-      while IFS= read -r line; do
-        [ -z "${line}" ] && continue
-        log_warn "${prefix}   ${line}"
-      done <<< "${detect_output}"
+    local mismatch_location=""
+    if [ -n "${venv_dir}" ]; then
+      mismatch_location=" in ${venv_dir}"
     fi
+    log_warn "${prefix} ⚠ Detected PyTorch/TorchVision CUDA mismatch${mismatch_location}"
 
     TORCHVISION_CUDA_MISMATCH_DETECTED=1
     export TORCHVISION_CUDA_MISMATCH_DETECTED
@@ -89,8 +97,6 @@ PY
       log_err "${prefix}   Run: ${pip_cmd[*]} uninstall -y torch torchvision"
       return 1
     fi
-
-    log_info "${prefix} torch/torchvision removed; next install step will pull matching wheels"
     return 0
   fi
 

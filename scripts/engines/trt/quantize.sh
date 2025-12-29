@@ -184,7 +184,7 @@ runpy.run_path(sys.argv[0], run_name='__main__')
     return 1
   fi
   
-  log_info "[quant] ✓ Quantization complete: ${output_dir}"
+  log_info "[quant] ✓ Quantization complete"
   return 0
 }
 
@@ -272,11 +272,9 @@ trt_validate_checkpoint() {
   safetensor_count=$(find "${ckpt_dir}" -maxdepth 1 -name "*.safetensors" 2>/dev/null | wc -l)
   if [ "${safetensor_count}" -eq 0 ]; then
     log_warn "[quant] ⚠ No .safetensors files found in checkpoint directory"
-  else
-    log_info "[quant] Found ${safetensor_count} .safetensors files"
   fi
   
-  log_info "[quant] ✓ Checkpoint validated: ${ckpt_dir}"
+  log_info "[quant] ✓ Checkpoint validated"
   return 0
 }
 

@@ -53,7 +53,7 @@ runtime_pipeline_run_background() {
   log_info "[main] To stop: bash scripts/stop.sh"
 
   if [ "${follow_logs}" = "1" ]; then
-    log_info ""
+    log_blank
     log_info "[main] Following logs (Ctrl+C detaches, background continues)..."
     touch "${server_log}" || true
     exec tail -n +1 -F "${server_log}"

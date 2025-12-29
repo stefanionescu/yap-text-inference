@@ -205,7 +205,7 @@ model_detect_validate_push_quant_prequant() {
     log_err "${prefix} ✗ Cannot use --push-quant with a prequantized model."
     log_err "${prefix}   Model '${prequant_model}' is already quantized."
     log_err "${prefix}   There are no local quantization artifacts to upload."
-    log_err ""
+    log_blank
     log_err "${prefix}   Options:"
     log_err "${prefix}     1. Remove --push-quant to use the prequantized model directly"
     log_err "${prefix}     2. Use a base (non-quantized) model if you want to quantize and push"
@@ -214,4 +214,3 @@ model_detect_validate_push_quant_prequant() {
   
   return 0
 }
-

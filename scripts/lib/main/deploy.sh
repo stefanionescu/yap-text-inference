@@ -5,7 +5,7 @@
 
 # Log current configuration
 main_log_config() {
-  log_info ""
+  log_blank
   if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
     log_info "[main] Configuration:, tool-only, precision=float16"
   else
@@ -18,8 +18,8 @@ main_log_config() {
   if [ "${DEPLOY_MODE}" != "chat" ]; then
     log_info "[main] Tool model: ${TOOL_MODEL_NAME}"
   fi
-  log_info ""
-  log_info "[main] Starting deployment in background (auto-detached)"
+  log_blank
+  log_section "[main] Starting deployment in background (auto-detached)"
 }
 
 # Build the deployment command based on engine type

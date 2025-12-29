@@ -76,7 +76,7 @@ trt_install_missing_components() {
 
   if [[ "${NEEDS_REQUIREMENTS}" = "1" ]]; then
     if filter_requirements_without_flashinfer && install_requirements_without_flashinfer; then
-      log_info ""
+      :
     else
       had_error=1
     fi
