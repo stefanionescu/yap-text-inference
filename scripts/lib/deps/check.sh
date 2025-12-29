@@ -92,7 +92,6 @@ check_pytorch_installed() {
   installed_ver=$(get_pip_pkg_version "torch" "$py_exe")
   
   if [[ -z "$installed_ver" ]]; then
-    log_info "[deps] PyTorch is NOT installed"
     return 1
   fi
   
@@ -114,7 +113,6 @@ check_torchvision_installed() {
   installed_ver=$(get_pip_pkg_version "torchvision" "$py_exe")
   
   if [[ -z "$installed_ver" ]]; then
-    log_info "[deps] TorchVision is NOT installed"
     return 1
   fi
   
@@ -136,7 +134,6 @@ check_trtllm_installed() {
   installed_ver=$(get_pip_pkg_version "tensorrt_llm" "$py_exe")
   
   if [[ -z "$installed_ver" ]]; then
-    log_info "[deps] TensorRT-LLM is NOT installed"
     return 1
   fi
   
@@ -154,8 +151,7 @@ check_flashinfer_installed() {
   if flashinfer_present_py "$py_exe"; then
     return 0
   fi
-
-  log_info "[deps] flashinfer NOT installed"
+  
   return 1
 }
 

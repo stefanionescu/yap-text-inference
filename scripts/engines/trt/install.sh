@@ -115,6 +115,21 @@ trt_install_pytorch() {
   return 0
 }
 
+# Persist torch/torchvision pins so downstream pip installs cannot swap CUDA builds
+trt_write_torch_constraints_file() {
+  local constraints_file="${TRT_TORCH_CONSTRAINTS_FILE:-${ROOT_DIR:-.}/.run/trt_torch_constraints.txt}"
+  local torch_version="${TRT_PYTORCH_VERSION:-2.9.0+cu130}"
+  local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
+
+  mkdir -p "$(dirname "${constraints_file}")"
+  cat >"${constraints_file}" <<EOF
+torch==${torch_version}
+torchvision==${torchvision_version}
+EOF
+
+  echo "${constraints_file}"
+}
+
 # =============================================================================
 # TRT-LLM INSTALLATION
 # =============================================================================
@@ -147,6 +162,12 @@ trt_install_tensorrt_llm() {
   local nvidia_index="${TRT_EXTRA_INDEX_URL}"
   local target="${TRT_PIP_SPEC}"
   local trt_no_deps="${TRTLLM_NO_DEPS:-0}"
+  local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+  local constraints_file
+  constraints_file=$(trt_write_torch_constraints_file) || {
+    log_err "[trt] ✗ Unable to materialize torch constraints"
+    return 1
+  }
   
   log_info "[trt] Installing TensorRT-LLM..."
   
@@ -157,9 +178,13 @@ trt_install_tensorrt_llm() {
     install --no-cache-dir --timeout 120 --retries 20
     --index-url "${nvidia_index}"
     --extra-index-url "https://pypi.org/simple"
+    --extra-index-url "${torch_idx}"
   )
   if [ "${trt_no_deps}" = "1" ]; then
     pip_cmd+=(--no-deps)
+  fi
+  if [ -n "${constraints_file}" ] && [ -f "${constraints_file}" ]; then
+    pip_cmd+=(--constraint "${constraints_file}")
   fi
   pip_cmd+=("${target}")
   
