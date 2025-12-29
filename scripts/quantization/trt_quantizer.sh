@@ -41,7 +41,7 @@ if [ "${TRT_TARGET_CHAT}" = "0" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-log_info "[quant] Starting TRT-LLM quantization..."
+log_section "[quant] Starting TRT-LLM quantization..."
 
 # Initialize GPU detection
 gpu_init_detection "trt-quant"
@@ -132,7 +132,6 @@ fi
 
 # Build engine if needed
 if [ -z "${TRT_ENGINE_DIR:-}" ]; then
-  log_info "[build] Building TRT engine..."
   if ! trt_build_engine "${TRT_CHECKPOINT_DIR}" "${ENGINE_DIR}"; then
     log_err "[build] ✗ Engine build failed"
     exit 1

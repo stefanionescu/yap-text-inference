@@ -9,8 +9,7 @@ restart_apply_defaults_and_deps() {
   restart_run_install_deps_if_needed
 
   # Load environment defaults (after deps are installed)
-  log_info "[restart] Loading environment defaults..."
+  log_section "[restart] Loading environment defaults..."
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 }
-
 

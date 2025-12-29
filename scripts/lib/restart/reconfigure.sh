@@ -229,7 +229,7 @@ _restart_can_preserve_cache() {
 }
 
 restart_clear_model_artifacts() {
-  log_info "[restart] Clearing cached model artifacts..."
+  log_section "[restart] Clearing cached model artifacts..."
   
   # Clear stale TRT engine path reference
   rm -f "${ROOT_DIR}/.run/trt_engine_dir.env" 2>/dev/null || true
@@ -362,7 +362,7 @@ restart_reconfigure_models() {
     preserve_cache=1
   fi
 
-  log_info "[restart] Reconfiguring models..."
+  log_section "[restart] Reconfiguring models..."
 
   local resolved_venv="${VENV_DIR:-$(get_venv_dir)}"
   NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"

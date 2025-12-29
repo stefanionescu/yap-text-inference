@@ -172,7 +172,7 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   exec bash "${SCRIPT_DIR}/main.sh" "${main_args[@]}"
 fi
 
-log_info "[restart] Engine: ${INFERENCE_ENGINE}"
+log_section "[restart] Engine: ${INFERENCE_ENGINE}"
 
 if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
   restart_reconfigure_models
@@ -188,7 +188,7 @@ if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ] && [ "${CHAT_AWQ_SOURCE_KIND:-}" = "p
   log_err "[restart] ✗ Cannot use --push-quant with a prequantized model."
   log_err "[restart]   Model '${CHAT_AWQ_SOURCE:-}' is already quantized."
   log_err "[restart]   There are no local quantization artifacts to upload."
-  log_err ""
+  log_blank
   log_err "[restart]   Options:"
   log_err "[restart]     1. Remove --push-quant to use the prequantized model directly"
   log_err "[restart]     2. Use a base (non-quantized) model if you want to quantize and push"
@@ -198,7 +198,7 @@ fi
 # Validate we have at least one valid source
 if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
   log_err "[restart] ✗ No AWQ models found for deploy mode '${DEPLOY_MODE}'"
-  log_err ""
+  log_blank
   log_err "[restart] Options:"
   log_err "[restart]   1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
   log_err "[restart]   2. Ensure cached AWQ exports exist in ${ROOT_DIR}/.awq/"
@@ -206,7 +206,7 @@ if [ "${AWQ_SOURCES_READY:-0}" != "1" ]; then
 fi
 
 # Light stop - preserve models and dependencies (BEFORE deps install)
-log_info "[restart] Stopping server..."
+log_section "[restart] Stopping server..."
 NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 # Check if venv exists (skip if --install-deps will create it)
@@ -235,7 +235,7 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; th
   if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
     log_err "[restart] ✗ TRT engine directory not found or not set."
     log_err "[restart]   TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
-    log_err ""
+    log_blank
     log_err "[restart]   TensorRT-LLM requires a pre-built engine. Options:"
     log_err "[restart]     1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
     log_err "[restart]     2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"

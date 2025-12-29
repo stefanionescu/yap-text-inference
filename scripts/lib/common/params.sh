@@ -119,7 +119,7 @@ validate_push_quant_prereqs() {
   fi
   
   if [ "${has_errors}" -ne 0 ]; then
-    log_err ""
+    log_blank
     log_err "[env] ✗ Either provide the required environment variables or remove --push-quant flag."
     exit 1
   fi
@@ -135,5 +135,4 @@ validate_push_quant_prereqs() {
   log_info "[env] Quantized model will be pushed to ${HF_PUSH_REPO_ID} (${visibility})"
   return 0
 }
-
 
