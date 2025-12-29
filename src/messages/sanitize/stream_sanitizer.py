@@ -90,9 +90,14 @@ class StreamingSanitizer:
             stable = sanitized[:stable_len]
             emitted_text = "".join(self._emitted_parts)
 
-            # Align by longest shared prefix; never re-emit already-sent bytes.
-            shared = _common_prefix_len(stable, emitted_text)
-            delta = stable[shared:]
+            # Prefer simple growth; otherwise align by suffix/prefix overlap to avoid replay.
+            if stable.startswith(emitted_text):
+                delta = stable[len(emitted_text) :]
+            elif len(stable) <= len(emitted_text) and emitted_text.endswith(stable):
+                delta = ""
+            else:
+                overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
+                delta = stable[overlap:]
 
             if delta:
                 self._emitted_parts.append(delta)
@@ -123,8 +128,17 @@ class StreamingSanitizer:
 
         emitted_text = "".join(self._emitted_parts)
 
-        shared = _common_prefix_len(sanitized, emitted_text)
-        tail = sanitized[shared:].rstrip()
+        if sanitized.startswith(emitted_text):
+            tail = sanitized[len(emitted_text) :].rstrip()
+        elif len(sanitized) <= len(emitted_text) and emitted_text.endswith(sanitized):
+            tail = ""
+        else:
+            # Never trim more prefix than the portion we know is still buffered
+            pending_tail = self._sanitized_tail.rstrip()
+            max_overlap = max(0, len(sanitized) - len(pending_tail))
+            overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
+            overlap = min(overlap, max_overlap)
+            tail = sanitized[overlap:].rstrip()
 
         if tail:
             self._emitted_parts.append(tail)

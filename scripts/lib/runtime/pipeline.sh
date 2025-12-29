@@ -53,7 +53,6 @@ runtime_pipeline_run_background() {
   echo "${bg_pid}" > "${root_dir}/.run/deployment.pid"
 
   log_info "[main] Deployment started (PID: ${bg_pid})"
-  log_info "[main] All logs (deployment + server): ${server_log}"
   log_info "[main] To stop: bash scripts/stop.sh"
 
   if [ "${follow_logs}" = "1" ]; then
