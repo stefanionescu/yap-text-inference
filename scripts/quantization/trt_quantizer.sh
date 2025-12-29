@@ -77,7 +77,12 @@ QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODE
 
 # Check if model is already TRT pre-quantized
 if model_detect_is_trt_prequant "${MODEL_ID}"; then
-  log_info "[quant] Detected pre-quantized TRT model: ${MODEL_ID}"
+  trt_prequant_kind="$(model_detect_classify_trt "${MODEL_ID}")"
+  if [ -n "${trt_prequant_kind}" ]; then
+    log_info "[quant] Detected pre-quantized TRT model (${trt_prequant_kind})"
+  else
+    log_info "[quant] Detected pre-quantized TRT model: ${MODEL_ID}"
+  fi
   
   # Download pre-quantized checkpoint
   CHECKPOINT_DIR=$(trt_download_prequantized "${MODEL_ID}")
@@ -101,7 +106,7 @@ else
       TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
       export TRT_CHECKPOINT_DIR
     else
-      log_info "[quant] FORCE_REBUILD=true, will re-quantize"
+      log_info "[quant] Force rebuild was set to True, will re-quantize"
     fi
   fi
   

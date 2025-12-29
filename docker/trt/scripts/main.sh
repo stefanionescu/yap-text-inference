@@ -19,7 +19,7 @@ usage() {
   echo "Optional Environment Variables:"
   echo "  HF_TOKEN                        - HuggingFace token (for private models/engines)"
   echo "  TRT_KV_FREE_GPU_FRAC            - GPU memory fraction for KV cache (default: 0.92)"
-  echo "  TRT_KV_ENABLE_BLOCK_REUSE       - Enable KV cache block reuse (default: 1)"
+  echo "  TRT_KV_ENABLE_BLOCK_REUSE       - Enable KV cache block reuse optimization (default: 0)"
   echo ""
   echo "Note: CHAT_MODEL, TOOL_MODEL, and TRT_ENGINE_REPO are configured at build time."
   echo "      You don't need to specify them when running the container."

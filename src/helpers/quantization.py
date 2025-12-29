@@ -63,12 +63,24 @@ def is_trt_awq_model_name(value: str | None) -> bool:
     return "trt" in lowered and "awq" in lowered and "/" in value
 
 
+def is_trt_8bit_model_name(value: str | None) -> bool:
+    """Detect TRT repos that bundle prebuilt 8-bit (fp8/int8) checkpoints."""
+    if not value:
+        return False
+    lowered = value.lower()
+    if "trt" not in lowered or "/" not in value:
+        return False
+    return any(marker in lowered for marker in ("fp8", "8bit", "8-bit", "int8", "int-8"))
+
+
 def classify_trt_prequantized_model(value: str | None) -> str | None:
-    """Return 'trt_awq' when the repo name implies a TRT pre-quantized model."""
+    """Return the TRT pre-quantized flavor based on repo naming."""
     if not value:
         return None
     if is_trt_awq_model_name(value):
         return "trt_awq"
+    if is_trt_8bit_model_name(value):
+        return "trt_8bit"
     return None
 
 
@@ -162,6 +174,7 @@ __all__ = [
     "classify_prequantized_model",
     "is_prequantized_model",
     "is_trt_awq_model_name",
+    "is_trt_8bit_model_name",
     "classify_trt_prequantized_model",
     "is_trt_prequantized_model",
     "is_valid_engine",

@@ -110,7 +110,26 @@ model_detect_is_prequant_awq() {
 # TRT-LLM DETECTION
 # =============================================================================
 
-# Check if model is a TRT pre-quantized model (contains both 'trt' and 'awq')
+# Check if model is a TRT pre-quantized model (AWQ or 8-bit)
+_model_detect_trt_prequant_kind() {
+  local lowered="$1"
+  if [ -z "${lowered}" ]; then
+    return 1
+  fi
+  if ! _model_detect_has_marker "${lowered}" "trt"; then
+    return 1
+  fi
+  if _model_detect_has_marker "${lowered}" "awq"; then
+    echo "trt_awq"
+    return 0
+  fi
+  if _model_detect_has_any_marker "${lowered}" "fp8" "8bit" "8-bit" "int8" "int-8"; then
+    echo "trt_8bit"
+    return 0
+  fi
+  return 1
+}
+
 model_detect_is_trt_prequant() {
   local value="${1:-}"
   if [ -z "${value}" ]; then
@@ -118,8 +137,7 @@ model_detect_is_trt_prequant() {
   fi
   local lowered
   lowered="$(_model_detect_lower "${value}")"
-  # Must contain both 'trt' and 'awq'
-  if _model_detect_has_marker "${lowered}" "trt" && _model_detect_has_marker "${lowered}" "awq"; then
+  if _model_detect_trt_prequant_kind "${lowered}" >/dev/null; then
     return 0
   fi
   return 1
@@ -147,11 +165,14 @@ model_detect_is_moe() {
   return 1
 }
 
-# Classify model for TRT (returns: trt_awq, moe, or empty)
+# Classify model for TRT (returns: trt_awq, trt_8bit, moe, or empty)
 model_detect_classify_trt() {
   local value="${1:-}"
-  if model_detect_is_trt_prequant "${value}"; then
-    echo "trt_awq"
+  local lowered
+  lowered="$(_model_detect_lower "${value}")"
+  local kind=""
+  if kind="$(_model_detect_trt_prequant_kind "${lowered}")"; then
+    echo "${kind}"
     return
   fi
   if model_detect_is_moe "${value}"; then
@@ -171,13 +192,13 @@ model_detect_any_prequant() {
   local tool_model="${2:-}"
   
   if [ -n "${chat_model}" ]; then
-    if model_detect_is_awq_name "${chat_model}" || model_detect_is_gptq_name "${chat_model}"; then
+    if model_detect_is_awq_name "${chat_model}" || model_detect_is_gptq_name "${chat_model}" || model_detect_is_trt_prequant "${chat_model}"; then
       echo "${chat_model}"
       return 0
     fi
   fi
   if [ -n "${tool_model}" ]; then
-    if model_detect_is_awq_name "${tool_model}" || model_detect_is_gptq_name "${tool_model}"; then
+    if model_detect_is_awq_name "${tool_model}" || model_detect_is_gptq_name "${tool_model}" || model_detect_is_trt_prequant "${tool_model}"; then
       echo "${tool_model}"
       return 0
     fi

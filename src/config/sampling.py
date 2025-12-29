@@ -81,7 +81,6 @@ _DEFAULT_LOGIT_BIAS = {
 # - Gemma 3: <|eot_id|>, <|start_header_id|>
 # - Kimi: <|im_user|>, <|im_system|>, [EOS], [EOT]
 # - DeepSeek V2/V3: Fullwidth vertical bars and "User:" prefix
-# - Thinking tokens: <think>, <thinking> (prevent reasoning output)
 
 INFERENCE_STOP = [
     # ChatML format
@@ -109,13 +108,6 @@ INFERENCE_STOP = [
     # General
     "[SYSTEM_PROMPT]",
     "[/SYSTEM_PROMPT]",
-    # Thinking tokens (Qwen3, DeepSeek R1, Hunyuan, etc.)
-    # Stop immediately if model tries to produce thinking/reasoning output.
-    # Note: We stop on opening tags to prevent any thinking content from
-    # being generated, rather than waiting for closing tags.
-    "<think>",
-    "<thinking>",
-    "<|think|>",  # ChatML-style thinking token variant
 ]
 
 

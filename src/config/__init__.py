@@ -145,6 +145,7 @@ def _get_helper_functions():
         classify_trt_prequantized_model,
         is_awq_model_name,
         is_trt_awq_model_name,
+        is_trt_8bit_model_name,
         is_trt_prequantized_model,
         gpu_supports_fp8,
         map_quant_mode_to_trt,
@@ -164,6 +165,7 @@ def _get_helper_functions():
         'classify_trt_prequantized_model': classify_trt_prequantized_model,
         'is_awq_model_name': is_awq_model_name,
         'is_trt_awq_model_name': is_trt_awq_model_name,
+        'is_trt_8bit_model_name': is_trt_8bit_model_name,
         'is_trt_prequantized_model': is_trt_prequantized_model,
         'gpu_supports_fp8': gpu_supports_fp8,
         'map_quant_mode_to_trt': map_quant_mode_to_trt,
@@ -178,7 +180,7 @@ def __getattr__(name):
         '_is_valid_model', 'is_classifier_model', 'is_moe_model',
         'get_all_base_chat_models', 'get_allowed_chat_models', 'is_local_model_path',
         'classify_prequantized_model', 'classify_trt_prequantized_model',
-        'is_awq_model_name', 'is_trt_awq_model_name', 'is_trt_prequantized_model',
+        'is_awq_model_name', 'is_trt_awq_model_name', 'is_trt_8bit_model_name', 'is_trt_prequantized_model',
         'gpu_supports_fp8', 'map_quant_mode_to_trt',
     }
     if name in helper_names:

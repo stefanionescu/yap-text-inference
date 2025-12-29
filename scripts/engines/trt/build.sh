@@ -261,7 +261,13 @@ trt_quantize_and_build() {
   
   # Check if this is a pre-quantized model
   if model_detect_is_trt_prequant "${model_id}"; then
-    log_info "[build] Detected pre-quantized TRT model"
+    local prequant_kind
+    prequant_kind="$(model_detect_classify_trt "${model_id}")"
+    if [ -n "${prequant_kind}" ]; then
+      log_info "[build] Detected pre-quantized TRT model (${prequant_kind})"
+    else
+      log_info "[build] Detected pre-quantized TRT model"
+    fi
     
     # Check for pre-built engine in the HF repo FIRST
     local prebuilt_engine_label
