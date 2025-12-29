@@ -90,14 +90,9 @@ class StreamingSanitizer:
             stable = sanitized[:stable_len]
             emitted_text = "".join(self._emitted_parts)
 
-            # Prefer simple growth; otherwise align by suffix/prefix overlap to avoid replay.
-            if stable.startswith(emitted_text):
-                delta = stable[len(emitted_text) :]
-            elif len(stable) <= len(emitted_text) and emitted_text.endswith(stable):
-                delta = ""
-            else:
-                overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
-                delta = stable[overlap:]
+            # Align using suffix/prefix overlap to handle both growth and shrinkage safely.
+            overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
+            delta = stable[overlap:]
 
             if delta:
                 self._emitted_parts.append(delta)
@@ -128,17 +123,8 @@ class StreamingSanitizer:
 
         emitted_text = "".join(self._emitted_parts)
 
-        if sanitized.startswith(emitted_text):
-            tail = sanitized[len(emitted_text) :].rstrip()
-        elif len(sanitized) <= len(emitted_text) and emitted_text.endswith(sanitized):
-            tail = ""
-        else:
-            # Never trim more prefix than the portion we know is still buffered
-            pending_tail = self._sanitized_tail.rstrip()
-            max_overlap = max(0, len(sanitized) - len(pending_tail))
-            overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
-            overlap = min(overlap, max_overlap)
-            tail = sanitized[overlap:].rstrip()
+        overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
+        tail = sanitized[overlap:].rstrip()
 
         if tail:
             self._emitted_parts.append(tail)
@@ -233,10 +219,14 @@ def _split_stable_and_tail_lengths(
 
     unstable = _unstable_suffix_len(sanitized)
     html_guard = _html_entity_suffix_len(sanitized)
+    html_tag_guard = _html_tag_suffix_len(raw_tail)
     email_guard = _email_suffix_len(raw_tail)
     phone_guard = _phone_suffix_len(raw_tail)
 
-    tail_len = min(len(sanitized), max(unstable, html_guard, email_guard, phone_guard, 0))
+    tail_len = min(
+        len(sanitized),
+        max(unstable, html_guard, html_tag_guard, email_guard, phone_guard, 0),
+    )
     stable_len = len(sanitized) - tail_len
 
     # Bound the retained tail to avoid unbounded buffering
@@ -283,6 +273,20 @@ def _html_entity_suffix_len(text: str) -> int:
     if not match:
         return 0
     return len(text) - match.start()
+
+
+def _html_tag_suffix_len(raw_text: str) -> int:
+    """Retain trailing text if inside an HTML tag not yet closed."""
+    if not raw_text:
+        return 0
+    last_lt = raw_text.rfind("<")
+    if last_lt == -1:
+        return 0
+    last_gt = raw_text.rfind(">")
+    if last_gt > last_lt:
+        return 0
+    # Keep up to the start of the unclosed tag (bounded)
+    return min(len(raw_text) - last_lt, 256)
 
 
 def _email_suffix_len(raw_text: str) -> int:
