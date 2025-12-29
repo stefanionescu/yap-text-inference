@@ -90,16 +90,9 @@ class StreamingSanitizer:
             stable = sanitized[:stable_len]
             emitted_text = "".join(self._emitted_parts)
 
-            if stable.startswith(emitted_text):
-                # Common case: sanitized text simply grew; emit the new suffix
-                delta = stable[len(emitted_text) :]
-            elif len(stable) <= len(emitted_text) and emitted_text.endswith(stable):
-                # Sanitized string shrank or stayed the same; nothing new to emit
-                delta = ""
-            else:
-                # Fallback to overlap detection to avoid double-emitting when windows slide
-                overlap = _suffix_prefix_overlap(emitted_text, stable, self._MAX_TAIL)
-                delta = stable[overlap:]
+            # Align by longest shared prefix; never re-emit already-sent bytes.
+            shared = _common_prefix_len(stable, emitted_text)
+            delta = stable[shared:]
 
             if delta:
                 self._emitted_parts.append(delta)
@@ -130,17 +123,8 @@ class StreamingSanitizer:
 
         emitted_text = "".join(self._emitted_parts)
 
-        if sanitized.startswith(emitted_text):
-            tail = sanitized[len(emitted_text) :].rstrip()
-        elif len(sanitized) <= len(emitted_text) and emitted_text.endswith(sanitized):
-            tail = ""
-        else:
-            # Never trim more prefix than the portion we know is still buffered
-            pending_tail = self._sanitized_tail.rstrip()
-            max_overlap = max(0, len(sanitized) - len(pending_tail))
-            overlap = _suffix_prefix_overlap(emitted_text, sanitized, self._MAX_TAIL)
-            overlap = min(overlap, max_overlap)
-            tail = sanitized[overlap:].rstrip()
+        shared = _common_prefix_len(sanitized, emitted_text)
+        tail = sanitized[shared:].rstrip()
 
         if tail:
             self._emitted_parts.append(tail)
@@ -259,6 +243,15 @@ def _suffix_prefix_overlap(emitted: str, candidate: str, max_check: int) -> int:
         if emitted_suffix[-length:] == candidate[:length]:
             return length
     return 0
+
+
+def _common_prefix_len(a: str, b: str) -> int:
+    """Length of the longest common prefix of a and b."""
+    max_len = min(len(a), len(b))
+    idx = 0
+    while idx < max_len and a[idx] == b[idx]:
+        idx += 1
+    return idx
 
 
 def _unstable_suffix_len(text: str) -> int:
