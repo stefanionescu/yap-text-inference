@@ -385,7 +385,6 @@ restart_reconfigure_models() {
   if [ "${preserve_cache}" != "1" ]; then
     if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
       if _restart_needs_trt_engine_build || _restart_needs_awq_pipeline; then
-        log_info "[restart] Building TRT-LLM engine..."
         source "${SCRIPT_DIR}/quantization/trt_quantizer.sh"
       fi
     elif _restart_needs_awq_pipeline; then

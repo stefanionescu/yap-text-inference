@@ -11,6 +11,7 @@ source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
 source "${SCRIPT_DIR}/lib/runtime/pipeline.sh"
 source "${SCRIPT_DIR}/lib/common/model_validate.sh"
 source "${SCRIPT_DIR}/lib/common/cli.sh"
+source "${SCRIPT_DIR}/lib/common/pytorch_guard.sh"
 source "${SCRIPT_DIR}/lib/restart/overrides.sh"
 source "${SCRIPT_DIR}/lib/restart/args.sh"
 source "${SCRIPT_DIR}/lib/restart/basic.sh"
@@ -30,6 +31,14 @@ ensure_required_env_vars
 
 # Resolve venv path the same way main does (supports baked /opt/venv)
 export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
+
+# Torch relies on pynvml and emits a deprecation FutureWarning every run; suppress it globally
+TORCH_PYNVML_WARN_FILTER="ignore::FutureWarning:torch.cuda"
+if [[ -z "${PYTHONWARNINGS:-}" ]]; then
+  export PYTHONWARNINGS="${TORCH_PYNVML_WARN_FILTER}"
+elif [[ "${PYTHONWARNINGS}" != *"${TORCH_PYNVML_WARN_FILTER}"* ]]; then
+  export PYTHONWARNINGS="${PYTHONWARNINGS},${TORCH_PYNVML_WARN_FILTER}"
+fi
 
 # Detect GPU and export arch flags early
 gpu_init_detection "gpu"
@@ -106,6 +115,14 @@ export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
 ensure_cuda_ready_for_engine "restart" || exit 1
+
+# Torch/TorchVision mismatch causes runtime import errors; remove mismatched wheels
+torch_cuda_mismatch_guard "[restart]"
+if [ "${TORCHVISION_CUDA_MISMATCH_DETECTED:-0}" = "1" ] && [ "${INSTALL_DEPS}" != "1" ]; then
+  log_info "[restart] torch/torchvision mismatch detected; forcing --install-deps for clean reinstall"
+  INSTALL_DEPS=1
+  export INSTALL_DEPS
+fi
 
 # Validate --push-quant prerequisites early (before any heavy operations)
 # Check for engine switching - this requires FULL environment wipe

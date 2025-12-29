@@ -14,6 +14,8 @@ source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
 source "${SCRIPT_DIR}/lib/common/cli.sh"
+source "${SCRIPT_DIR}/lib/deps/venv.sh"
+source "${SCRIPT_DIR}/lib/common/pytorch_guard.sh"
 
 # Runtime management
 source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
@@ -48,6 +50,9 @@ fi
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
 ensure_cuda_ready_for_engine "main" || exit 1
+
+# Torch/TorchVision mismatch causes runtime import errors; wipe mismatched wheels
+torch_cuda_mismatch_guard "[main]"
 
 # Export models to environment
 main_export_models

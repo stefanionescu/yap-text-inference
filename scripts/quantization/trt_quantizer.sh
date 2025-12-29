@@ -74,7 +74,6 @@ fi
 
 # Resolve quantization format (pass model ID for MoE detection)
 QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
-log_info "[quant] Quantization format: ${QFORMAT}"
 
 # Check if model is already TRT pre-quantized
 if model_detect_is_trt_prequant "${MODEL_ID}"; then
