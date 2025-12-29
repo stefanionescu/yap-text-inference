@@ -18,7 +18,7 @@ else
 fi
 
 # KV cache settings
-export TRT_KV_ENABLE_BLOCK_REUSE=${TRT_KV_ENABLE_BLOCK_REUSE:-1}
+export TRT_KV_ENABLE_BLOCK_REUSE=${TRT_KV_ENABLE_BLOCK_REUSE:-0}
 
 # Context and output limits
 export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5525}

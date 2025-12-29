@@ -40,27 +40,43 @@ ensure_required_env_vars() {
   export MAX_CONCURRENT_CONNECTIONS
 }
 
-# Determine whether the selected quantization represents a 4-bit export
-# Accepts explicit quant values (awq, gptq_marlin, int4_*)
-# and falls back to QUANT_MODE=4bit when specific quant strings are unset.
-push_quant_is_4bit() {
+# Determine whether the selected quantization represents an uploadable export.
+# Accepts explicit quant values (awq, gptq_marlin, fp8, int8_sq, etc.)
+# and falls back to QUANT_MODE when specific quant strings are unset.
+push_quant_is_supported_quant() {
   local quant="${1:-${QUANTIZATION:-}}"
   local chat_quant="${2:-${CHAT_QUANTIZATION:-}}"
 
-  case "${quant}" in
-    awq|gptq|gptq_marlin|4bit|int4_*|fp4) return 0 ;;
+  _push_quant_value_is_supported "${quant}" && return 0
+  _push_quant_value_is_supported "${chat_quant}" && return 0
+
+  case "${QUANT_MODE:-}" in
+    4bit|8bit)
+      return 0
+      ;;
   esac
-  case "${chat_quant}" in
-    awq|gptq|gptq_marlin|4bit|int4_*|fp4) return 0 ;;
-  esac
-  if [ "${QUANT_MODE:-}" = "4bit" ]; then
-    return 0
-  fi
   return 1
 }
 
-# Honor --push-quant only when a 4-bit quantization is selected.
-# Sets HF_AWQ_PUSH to 1 only when requested AND quantization is 4-bit.
+_push_quant_value_is_supported() {
+  local value="$1"
+  if [ -z "${value}" ]; then
+    return 1
+  fi
+  value="$(printf '%s' "${value}" | tr '[:upper:]' '[:lower:]')"
+  case "${value}" in
+    awq|gptq|gptq_marlin|4bit|int4_*|fp4)
+      return 0
+      ;;
+    8bit|fp8|fp8_*|int8|int8_*|int8_sq)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+# Honor --push-quant only when a supported quantization (4-bit or 8-bit) is selected.
+# Sets HF_AWQ_PUSH to 1 only when requested AND quantization is supported.
 # Otherwise HF_AWQ_PUSH is forced to 0 and a skip message is logged.
 push_quant_apply_policy() {
   local quant="${1:-${QUANTIZATION:-}}"
@@ -74,10 +90,10 @@ push_quant_apply_policy() {
     return 0
   fi
 
-  if ! push_quant_is_4bit "${quant}" "${chat_quant}"; then
+  if ! push_quant_is_supported_quant "${quant}" "${chat_quant}"; then
     HF_AWQ_PUSH=0
     export HF_AWQ_PUSH
-    log_info "[${context}] --push-quant requested but quantization is not 4bit; skipping Hugging Face push."
+    log_info "[${context}] --push-quant requested but quantization is not a 4bit/8bit export; skipping Hugging Face push."
     return 0
   fi
 
@@ -135,4 +151,3 @@ validate_push_quant_prereqs() {
   log_info "[env] Quantized model will be pushed to ${HF_PUSH_REPO_ID} (${visibility})"
   return 0
 }
-

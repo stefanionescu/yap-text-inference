@@ -75,7 +75,7 @@ vLLM-specific environment variables:
 **Cache Management:**
 - vLLM periodically resets prefix and multimodal caches to prevent fragmentation
 - Configure interval with `CACHE_RESET_INTERVAL_SECONDS` (default: 600)
-- Force immediate reset via `reset_engine_caches()` API
+- Force immediate reset via `reset_engine_caches()` (internal Python API for developers extending the codebase)
 
 ### TensorRT-LLM Configuration
 
@@ -412,11 +412,16 @@ bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 
 **Pre-quantized TRT models:**
 - Repos containing both `trt` and `awq` in the name are detected as pre-quantized TRT checkpoints
+- Repos containing `trt` plus any of `fp8`, `8bit`, `8-bit`, `int8`, or `int-8` are treated as prebuilt fp8/int8 checkpoints
 - The server downloads the checkpoint and builds the engine locally
 
 ### Pushing Quantized Exports to Hugging Face
 
 Uploads **only** happen when you pass `--push-quant` to the launcher you're using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—environment variables alone will never trigger a push.
+
+Supported upload targets:
+- vLLM AWQ/W4A16 exports produced by the 4-bit quantizer (chat engine)
+- TensorRT-LLM checkpoints/engines built from 4-bit (`int4_awq`) or 8-bit (`fp8` / `int8_sq`) quantization runs
 
 When `--push-quant` is specified, the script validates required parameters **at the very beginning** (before any downloads or heavy operations). If validation fails, the script exits immediately with a clear error message.
 
@@ -433,32 +438,34 @@ Uploads always push to the `main` branch. Repos are auto-created if they don't e
 
 ```bash
 export HF_TOKEN="hf_your_api_token"
-export HF_PUSH_REPO_ID="your-org/model-awq"
+export HF_PUSH_REPO_ID="your-org/model-awq"  # repo name is arbitrary
 export HF_PUSH_PRIVATE=1  # optional, default is private
 
-# vLLM: Full deployment with HF push
+# vLLM: Full deployment with HF push (AWQ/W4A16 export)
 bash scripts/main.sh --vllm 4bit <chat_model> <tool_model> --push-quant
 
-# TRT: Full deployment with HF push
+# TRT: Full deployment with HF push (4-bit export)
 bash scripts/main.sh --trt 4bit <chat_model> <tool_model> --push-quant
+
+# TRT: Upload an 8-bit fp8/int8_sq export
+bash scripts/main.sh --trt 8bit <chat_model> <tool_model> --push-quant
 
 # Restart with quantization and push (either engine)
 bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 4bit
+
+# Restart workflow pushing a cached 8-bit TRT build
+bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 8bit
 ```
 
 **Note:** The `--push-quant` flag is the **only** way to enable HF uploads.
 
-The pipeline writes metadata files (`awq_metadata.json` or `build_metadata.json`) and `README.md` into each quantized folder for transparency and reproducibility.
+The pipeline writes metadata files (`awq_metadata.json` or `build_metadata.json`, including the resolved quant method such as `int4_awq`, `fp8`, or `int8_sq`) and `README.md` into each quantized folder for transparency and reproducibility.
 
 ## Test Clients
 
 All CLI harnesses run against the same WebSocket stack; use them to validate behavior end to end. Unless otherwise noted, run them through `scripts/activate.sh` so you pick up whichever venv exists (`VENV_DIR`, `/opt/venv`, or repo `.venv`). Example: `bash scripts/activate.sh python3 tests/warmup.py`. For the lightweight CPU-only path described in [Local Test Dependencies](#local-test-dependencies), keep sourcing `.venv-local/bin/activate`.
 
-> **Prompt modes:** every client accepts `--prompt-mode {both,chat,tool}` (or `PROMPT_MODE` env).  
-> `both` (default) sends the chat persona prompt.  
-> `chat` forces chat-only (identical to `both`).  
-> `tool` disables chat prompts entirely (for classifier-only tool deployments).  
-> Use this flag whenever the server is deployed in chat-only or tool-only mode so tests match the live configuration. `scripts/warmup.sh` auto-detects `DEPLOY_MODE` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards the correct choice to `tests/warmup.py` and `tests/bench.py`.
+> **Tool-only deployments:** Pass `--no-chat-prompt` to skip sending chat prompts when the server is deployed in tool-only mode. By default, clients send the chat persona prompt. `scripts/warmup.sh` auto-detects `DEPLOY_MODE` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards `--no-chat-prompt` to `tests/warmup.py` and `tests/bench.py` when appropriate.
 
 ### Warmup Test Client
 
@@ -469,7 +476,7 @@ python3 tests/warmup.py "who was Columbus?"
 python3 tests/warmup.py --gender male --personality flirty "hello there"
 ```
 
-Append `--prompt-mode chat` or `--prompt-mode tool` to mirror single-engine deployments (default `both`).
+Append `--no-chat-prompt` for tool-only deployments where no chat model is available.
 
 Environment overrides honored by the client:
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
@@ -501,7 +508,7 @@ Flags:
 - `--api-key`: override `TEXT_API_KEY`
 - `--persona/-p`: persona key from `tests/prompts/live.py` (defaults to `anna_flirty`)
 - `--recv-timeout`: override `DEFAULT_RECV_TIMEOUT_SEC`
-- `--prompt-mode`: disable chat prompts altogether (`tool`) or keep them (`chat`/`both`) mid-session; persona switches are disabled automatically when chat prompts are off
+- `--no-chat-prompt`: disable chat prompts for tool-only deployments; persona switches are disabled automatically when chat prompts are off
 - positional text: optional opener message
 
 ### Personality Switch Test
@@ -514,7 +521,7 @@ TEXT_API_KEY=your_api_key python3 tests/personality.py \
   --delay 2
 ```
 
-This client requires chat prompts, so invoke it with `--prompt-mode chat` or `both`.
+This client requires chat prompts (do not use `--no-chat-prompt`).
 
 `PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
 
@@ -525,7 +532,7 @@ This client requires chat prompts, so invoke it with `--prompt-mode chat` or `bo
 TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
 ```
 
-Supports `--prompt-mode` for chat-only or tool-only deployments.
+Supports `--no-chat-prompt` for tool-only deployments.
 
 Streams a fixed 10-turn script (`tests/messages/conversation.py`) to verify bounded-history eviction and KV-cache reuse.
 
@@ -535,7 +542,7 @@ Streams a fixed 10-turn script (`tests/messages/conversation.py`) to verify boun
 TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
 ```
 
-Ensures toolcall decisions fire before the follow-up chat stream. Override `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` as needed, and pass `--prompt-mode tool` when the chat engine is disabled.
+Ensures toolcall decisions fire before the follow-up chat stream. Override `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` as needed, and pass `--no-chat-prompt` when the chat engine is disabled.
 
 ### Tool Regression Test
 
@@ -551,7 +558,7 @@ TEXT_API_KEY=your_api_key python3 tests/tool.py \
 - `--timeout`: wait per tool decision (default 5 s)
 - `--concurrency`: parallel cases if the tool engine has capacity
 - `--limit`: cap the number of replayed cases for faster smoke runs
-- `--prompt-mode`: limit prompts to `chat` or `tool` so the suite matches the deployment mode (default `both`)
+- `--no-chat-prompt`: skip chat prompts for tool-only deployments
 
 ### Benchmark Client
 

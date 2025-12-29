@@ -14,7 +14,7 @@ Metrics reported:
 Usage:
   python3 tests/warmup.py
   python3 tests/warmup.py "your custom message"
-  python3 tests/warmup.py --gender male --style playful "hello there"
+  python3 tests/warmup.py --gender male --personality playful "hello there"
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
