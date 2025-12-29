@@ -204,7 +204,7 @@ def push_trt_to_hf(
         print("[trt-hf] Warning: Could not find tokenizer directory; tokenizer not uploaded")
         print("[trt-hf]   TRT-LLM will need to download tokenizer from base model at runtime")
     
-    print(f"[trt-hf] Successfully pushed to https://huggingface.co/{repo_id}")
+    print(f"[trt-hf] ✓ Successfully pushed to HF")
     return True
 
 

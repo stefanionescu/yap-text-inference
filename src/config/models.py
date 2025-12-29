@@ -22,18 +22,14 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "Jinx-org/Jinx-Qwen3-32B",
     "Jinx-org/Jinx-Qwen3-14B",
     "deepseek-ai/DeepSeek-V2-Lite-Chat",
-
-
-
     "mistralai/Mistral-Nemo-Instruct-2407", 
     "SteelStorage/L3-Aethora-15B-V2",
     "Delta-Vector/Ohashi-NeMo-12B",
     "concedo/Beepo-22B",
+
+
     "Gryphe/Pantheon-RP-Pure-1.6.2-22b-Small",
     
-
-
-
     "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
     "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     "mistralai/Mistral-Small-24B-Instruct-2501",
