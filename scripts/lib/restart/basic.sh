@@ -3,6 +3,10 @@
 # Generic (non-AWQ) restart path for scripts/restart.sh
 # Requires: SCRIPT_DIR, ROOT_DIR
 
+_RESTART_BASIC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../noise/logging.sh
+source "${_RESTART_BASIC_DIR}/../noise/logging.sh"
+
 # Wipe all pip/venv dependencies and caches for a clean reinstall
 # Preserves: HF cache, TRT repo, models, AWQ cache, quantized engines
 # This is ONLY called when --install-deps is passed (explicit user request)
@@ -189,5 +193,5 @@ restart_basic() {
   local warmup_lock="${ROOT_DIR}/.run/warmup.lock"
   local warmup_capture="${ROOT_DIR}/logs/warmup.server.log"
   touch "${SERVER_LOG_PATH}" || true
-  exec "${SCRIPT_DIR}/lib/runtime/follow_logs.sh" "${SERVER_LOG_PATH}" "${warmup_lock}" "${warmup_capture}"
+  noise_follow_server_logs "${SERVER_LOG_PATH}" "${warmup_lock}" "${warmup_capture}"
 }

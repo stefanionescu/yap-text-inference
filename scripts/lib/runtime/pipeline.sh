@@ -3,6 +3,8 @@
 # Helpers shared by main.sh and restart.sh for log rotation and background launches.
 
 _RUNTIME_PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../noise/logging.sh
+source "${_RUNTIME_PIPELINE_DIR}/../noise/logging.sh"
 
 # Prepare server.log for a new run, trimming oversized files and ensuring the
 # .run directory exists so downstream helpers can rely on pid/log state.
@@ -59,6 +61,7 @@ runtime_pipeline_run_background() {
     touch "${server_log}" || true
     local warmup_lock="${root_dir}/.run/warmup.lock"
     local warmup_capture="${root_dir}/logs/warmup.server.log"
-    exec "${_RUNTIME_PIPELINE_DIR}/follow_logs.sh" "${server_log}" "${warmup_lock}" "${warmup_capture}"
+    noise_follow_server_logs "${server_log}" "${warmup_lock}" "${warmup_capture}"
+    return $?
   fi
 }
