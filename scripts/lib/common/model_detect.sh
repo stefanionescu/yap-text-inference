@@ -123,7 +123,15 @@ _model_detect_trt_prequant_kind() {
     echo "trt_awq"
     return 0
   fi
-  if _model_detect_has_any_marker "${lowered}" "fp8" "8bit" "8-bit" "int8" "int-8"; then
+  if _model_detect_has_marker "${lowered}" "fp8"; then
+    echo "trt_fp8"
+    return 0
+  fi
+  if _model_detect_has_any_marker "${lowered}" "int8" "int-8"; then
+    echo "trt_int8"
+    return 0
+  fi
+  if _model_detect_has_any_marker "${lowered}" "8bit" "8-bit"; then
     echo "trt_8bit"
     return 0
   fi
@@ -165,7 +173,7 @@ model_detect_is_moe() {
   return 1
 }
 
-# Classify model for TRT (returns: trt_awq, trt_8bit, moe, or empty)
+# Classify model for TRT (returns: trt_awq, trt_fp8, trt_int8, trt_8bit, moe, or empty)
 model_detect_classify_trt() {
   local value="${1:-}"
   local lowered
