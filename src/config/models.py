@@ -112,6 +112,7 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/mistral-nemo-instruct-2407-trt-fp8",
     "yapwithai/flammenai-mahou-1.3-mistral-nemo-12B-trt-fp8",
     "yapwithai/delta-vector-ohashi-nemo-12B-trt-fp8",
+    "yapwithai/jinx-qwen3-14B-trt-fp8",
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [

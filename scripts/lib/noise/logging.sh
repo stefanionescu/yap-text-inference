@@ -68,7 +68,6 @@ noise_follow_server_logs() {
       if [ "${capture_active}" -eq 0 ]; then
         capture_active=1
         capture_announced=1
-        printf '[warmup] Capturing server logs for warmup...\n'
         warmup_last_line_ts=$(date +%s 2>/dev/null || printf '0')
         if [ "${capture_enabled}" -eq 1 ]; then
           printf '===== Warmup run started at %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" >> "${capture_file}"
