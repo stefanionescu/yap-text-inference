@@ -34,6 +34,14 @@ TOKENIZER_FILES: tuple[str, ...] = (
     "added_tokens.json",
 )
 
+# Chat template assets that may not live alongside tokenizer files for all models.
+# We upload them separately so TRT-LLM has native chat formatting and default
+# generation settings (e.g., eos settings) available at runtime.
+CHAT_TEMPLATE_FILES: tuple[str, ...] = (
+    "chat_template.jinja",
+    "generation_config.json",
+)
+
 
 def normalize_engine(engine: str | None) -> str:
     """Normalize engine name to lowercase, default to 'vllm'.
@@ -58,5 +66,6 @@ __all__ = [
     "LOWBIT_QUANTIZATIONS",
     "AWQ_MODEL_MARKERS",
     "TOKENIZER_FILES",
+    "CHAT_TEMPLATE_FILES",
     "normalize_engine",
 ]

@@ -15,7 +15,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from src.config.quantization import TOKENIZER_FILES
+from src.config.quantization import CHAT_TEMPLATE_FILES, TOKENIZER_FILES
 from ..core.metadata import collect_metadata, detect_base_model, get_engine_label
 from .readme_renderer import render_trt_readme
 
@@ -83,6 +83,44 @@ def _find_tokenizer_dir(checkpoint_dir: Path, base_model: str | None) -> Path | 
             print(f"[trt-hf] Warning: Failed to download tokenizer from {base_model}: {e}")
     
     return None
+
+
+def _upload_chat_assets(
+    api,
+    *,
+    repo_id: str,
+    branch: str,
+    token: str,
+    candidate_dirs: list[Path],
+) -> None:
+    """Upload chat template and generation config if present in any candidate dir."""
+    uploaded = 0
+    tried_dirs: set[Path] = set()
+
+    for directory in candidate_dirs:
+        if not directory or directory in tried_dirs:
+            continue
+        tried_dirs.add(directory)
+        for filename in CHAT_TEMPLATE_FILES:
+            src = directory / filename
+            if not src.exists():
+                continue
+            try:
+                api.upload_file(
+                    path_or_fileobj=str(src),
+                    path_in_repo=filename,
+                    repo_id=repo_id,
+                    token=token,
+                    revision=branch,
+                )
+                uploaded += 1
+            except Exception as exc:
+                print(f"[trt-hf] Warning: failed to upload {filename} from {src}: {exc}")
+
+    if uploaded > 0:
+        print(f"[trt-hf] ✓ Uploaded chat template assets")
+    else:
+        print("[trt-hf] No chat template/generation_config files found to upload. Skipping")
 
 
 def push_trt_to_hf(
@@ -203,6 +241,19 @@ def push_trt_to_hf(
     else:
         print("[trt-hf] Warning: Could not find tokenizer directory; tokenizer not uploaded")
         print("[trt-hf]   TRT-LLM will need to download tokenizer from base model at runtime")
+
+    # Upload chat template + generation config if available
+    chat_asset_dirs: list[Path] = []
+    if tokenizer_dir:
+        chat_asset_dirs.append(tokenizer_dir)
+    chat_asset_dirs.append(checkpoint_path)
+    _upload_chat_assets(
+        api,
+        repo_id=repo_id,
+        branch=branch,
+        token=token,
+        candidate_dirs=chat_asset_dirs,
+    )
     
     print(f"[trt-hf] ✓ Successfully pushed to HF")
     return True
