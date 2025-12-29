@@ -169,8 +169,8 @@ trt_assert_cuda13_driver() {
   fi
 
   if [ "$toolkit_int" -lt "$min_cuda_int" ]; then
-    log_err "[${prefix}] ✗ CUDA toolkit 13.x required. Detected: '${toolkit_ver}' (int=${toolkit_int})"
-    log_err "[${prefix}] ✗ Hint: Install CUDA 13 toolkit and ensure nvcc is in PATH."
+    log_err "[${prefix}] ✗ CUDA toolkit 13.x required. Detected: '${toolkit_ver}'"
+    log_err "[${prefix}]     Hint: Install CUDA 13 toolkit and ensure nvcc is in PATH."
     return 1
   fi
 

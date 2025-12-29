@@ -66,7 +66,7 @@ vllm_awq_quantize_chat_if_needed() {
 # Handle pre-quantized or quantize as needed
 vllm_awq_handle_chat_prequant_or_quantize() {
   if [ "${USE_PREQUANT_AWQ_CHAT:-0}" = "1" ]; then
-    log_info "[quant] Detected pre-quantized AWQ chat model; skipping quantization: ${CHAT_MODEL}"
+    log_info "[quant] Detected pre-quantized AWQ chat model"
     export CHAT_QUANTIZATION=awq
     return 0
   fi

@@ -79,7 +79,7 @@ PY
     if [ -n "${venv_dir}" ]; then
       mismatch_location=" in ${venv_dir}"
     fi
-    log_warn "${prefix} ⚠ Detected PyTorch/TorchVision CUDA mismatch${mismatch_location}"
+    log_warn "${prefix} ⚠ Detected PyTorch/TorchVision CUDA mismatch"
 
     TORCHVISION_CUDA_MISMATCH_DETECTED=1
     export TORCHVISION_CUDA_MISMATCH_DETECTED
