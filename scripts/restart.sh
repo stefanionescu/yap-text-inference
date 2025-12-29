@@ -233,7 +233,8 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; th
     log_err "[restart]     3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
     exit 1
   fi
-  log_info "[restart] TRT engine validated: ${TRT_ENGINE_DIR}"
+  log_info "[restart] ✓ TRT engine validated: ${TRT_ENGINE_DIR}"
+  log_blank
 fi
 
 restart_server_background

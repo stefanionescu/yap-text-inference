@@ -45,6 +45,7 @@ runtime_pipeline_run_background() {
   local server_log
   server_log="$(runtime_pipeline_prepare_log "${root_dir}")"
 
+  log_blank
   log_info "[main] ${start_message}"
   log_info "[main] Ctrl+C after launch stops log tail only; deployment keeps running."
 
