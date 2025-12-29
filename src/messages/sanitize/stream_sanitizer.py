@@ -16,10 +16,12 @@ import html
 import re
 
 from ...config.filters import (
+    ACTION_EMOTE_PATTERN,
     COLLAPSE_SPACES_PATTERN,
     DASH_PATTERN,
     DIGIT_WORDS,
     DOUBLE_DOT_SPACE_PATTERN,
+    DOT_RUN_PATTERN,
     ELLIPSIS_PATTERN,
     ELLIPSIS_TRAILING_DOT_PATTERN,
     ELLIPSIS_TRAILING_SPACE_PATTERN,
@@ -169,13 +171,14 @@ def _sanitize_stream_chunk(
     if prefix_pending:
         cleaned = FREESTYLE_PREFIX_PATTERN.sub("", cleaned, count=1)
         if cleaned != text:
-            cleaned = cleaned.lstrip(": ").lstrip()
+            cleaned = cleaned.lstrip()
         cleaned = _strip_leading_newline_tokens(cleaned)
         prefix_pending = False
 
     # Verbalize emails and phone numbers early (before dash replacement etc.)
     cleaned = _verbalize_emails(cleaned)
     cleaned = _verbalize_phone_numbers(cleaned)
+    cleaned = ACTION_EMOTE_PATTERN.sub("", cleaned)
     cleaned = _strip_asterisks(cleaned)
     cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
     cleaned = NEWLINE_TOKEN_PATTERN.sub(" ", cleaned)
@@ -183,6 +186,10 @@ def _sanitize_stream_chunk(
     cleaned = ELLIPSIS_TRAILING_DOT_PATTERN.sub("...", cleaned)
     # Strip any trailing space after ellipsis
     cleaned = ELLIPSIS_TRAILING_SPACE_PATTERN.sub("...", cleaned)
+    # Collapse any run of 2+ dots to a single period
+    cleaned = DOT_RUN_PATTERN.sub(".", cleaned)
+    # Ensure a space after period if followed by an alnum (avoid smushing words)
+    cleaned = re.sub(r"\.(?=[A-Za-z0-9])", ". ", cleaned)
     # Replace dashes/hyphens with space (before space collapsing)
     cleaned = DASH_PATTERN.sub(" ", cleaned)
     cleaned = cleaned.replace("'", "'")

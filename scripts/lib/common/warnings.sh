@@ -22,4 +22,11 @@ python_warning_suppress_pynvml_future() {
   python_warning_add_filter "${filter}"
 }
 
+python_warning_suppress_modelopt_lm_head_warning() {
+  # TRT quantization prints a redundant user warning about lm_head accuracy loss.
+  local filter="ignore:Enable lm_head quantization. lm_head quantization may lead to additional accuracy loss.:UserWarning"
+  python_warning_add_filter "${filter}"
+}
+
 python_warning_suppress_pynvml_future
+python_warning_suppress_modelopt_lm_head_warning

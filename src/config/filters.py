@@ -79,6 +79,11 @@ EMOTICON_PATTERN = re.compile(
     r")"
 )
 
+ACTION_EMOTE_PATTERN = re.compile(
+    r"\*(?:smirks?|winks?|laughs?|smiles?|frowns?|giggles?)\*",
+    re.IGNORECASE,
+)
+
 FREESTYLE_PREFIX_PATTERN = re.compile(
     r"^\s*(?:freestyle mode\.?|on the screen now:)\s*",
     re.IGNORECASE,
@@ -91,6 +96,7 @@ DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s*")
 EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
 LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
+DOT_RUN_PATTERN = re.compile(r"\.{2,}")
 
 # Prompt/output sanitization patterns
 CTRL_CHAR_PATTERN = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
@@ -131,6 +137,7 @@ __all__ = [
     "HTML_TAG_PATTERN",
     "EMOJI_PATTERN",
     "EMOTICON_PATTERN",
+    "ACTION_EMOTE_PATTERN",
     "FREESTYLE_PREFIX_PATTERN",
     "ELLIPSIS_PATTERN",
     "NEWLINE_TOKEN_PATTERN",
@@ -139,6 +146,7 @@ __all__ = [
     "DOUBLE_DOT_SPACE_PATTERN",
     "EXAGGERATED_OH_PATTERN",
     "ELLIPSIS_TRAILING_DOT_PATTERN",
+    "DOT_RUN_PATTERN",
     "LETTERS_ONLY_PATTERN",
     "CTRL_CHAR_PATTERN",
     "BIDI_CHAR_PATTERN",
