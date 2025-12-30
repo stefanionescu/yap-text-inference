@@ -8,6 +8,7 @@ import uuid
 from fastapi import WebSocket
 
 from ...engines import get_engine, create_sampling_params
+from ..sanitize.prompt_sanitizer import sanitize_prompt
 
 _WARM_PARAMS = None
 
@@ -44,4 +45,14 @@ async def warm_chat_segment(
     }))
 
 
-__all__ = ["warm_chat_segment"]
+def sanitize_optional_prompt(raw: str | None) -> str:
+    """Sanitize optional persona/runtime fields; empty when missing."""
+    if raw is None:
+        return ""
+    text = raw.strip()
+    if not text:
+        return ""
+    return sanitize_prompt(text)
+
+
+__all__ = ["warm_chat_segment", "sanitize_optional_prompt"]
