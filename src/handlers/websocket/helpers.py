@@ -91,18 +91,6 @@ async def send_toolcall(ws: WebSocket, status: str, raw: object) -> None:
     })
 
 
-async def flush_and_send(ws: WebSocket, buffer_text: str) -> None:
-    """Send buffered text as a token frame if non-empty.
-    
-    Args:
-        ws: The WebSocket connection.
-        buffer_text: Text to send (skipped if empty).
-    """
-    if not buffer_text:
-        return
-    await safe_send_json(ws, {"type": "token", "text": buffer_text})
-
-
 async def cancel_task(task: asyncio.Task | None) -> None:
     """Cancel an asyncio task and await its completion.
     
@@ -277,9 +265,7 @@ __all__ = [
     "safe_send_text",
     "safe_send_json",
     "send_toolcall",
-    "flush_and_send",
     "cancel_task",
     "launch_tool_request",
     "stream_chat_response",
 ]
-

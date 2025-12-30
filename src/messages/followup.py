@@ -14,7 +14,7 @@ from ..handlers.session import session_handler
 from ..execution.chat.runner import run_chat_generation
 from ..config import DEPLOY_CHAT
 from ..tokens import trim_text_to_token_limit_chat
-from ..handlers.websocket.helpers import safe_send_json
+from ..handlers.websocket.helpers import safe_send_json, stream_chat_response
 
 
 logger = logging.getLogger(__name__)
@@ -66,30 +66,20 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     # Track user utterance for pairing with assistant response later.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
 
-    final_text = ""
     sampling_overrides = cfg.get("chat_sampling")
-    interrupted = False
 
-    async for chunk in run_chat_generation(
-        session_id=session_id,
-        static_prefix=static_prefix,
-        runtime_text=runtime_text,
-        history_text=history_text,
-        user_utt=user_utt,
-        sampling_overrides=sampling_overrides,
-    ):
-        sent = await safe_send_json(ws, {"type": "token", "text": chunk})
-        if not sent:
-            interrupted = True
-            break
-        final_text += chunk
-
-    if interrupted:
-        return
-
-    if not await safe_send_json(ws, {"type": "final", "normalized_text": final_text}):
-        return
-    if not await safe_send_json(ws, {"type": "done", "usage": {}}):
-        return
-
-    session_handler.append_history_turn(session_id, user_utt, final_text, turn_id=history_turn_id)
+    await stream_chat_response(
+        ws,
+        run_chat_generation(
+            session_id=session_id,
+            static_prefix=static_prefix,
+            runtime_text=runtime_text,
+            history_text=history_text,
+            user_utt=user_utt,
+            sampling_overrides=sampling_overrides,
+        ),
+        session_id,
+        user_utt,
+        history_turn_id=history_turn_id,
+        history_user_utt=trimmed_analysis,
+    )

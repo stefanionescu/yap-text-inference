@@ -1,5 +1,7 @@
 """Authentication handler."""
 
+from __future__ import annotations
+
 import logging
 from fastapi import HTTPException, Security
 from fastapi.security.api_key import APIKeyQuery, APIKeyHeader
@@ -26,63 +28,42 @@ def validate_api_key(provided_key: str) -> bool:
     return provided_key == TEXT_API_KEY
 
 
+def _select_api_key(*candidates: str | None) -> str | None:
+    """Return the first non-empty API key candidate from the provided values."""
+    for candidate in candidates:
+        if candidate:
+            return candidate
+    return None
+
+
+def _validate_candidate(provided_key: str | None, *, context: str) -> tuple[bool, str | None, str | None]:
+    """Validate a candidate API key and return (is_valid, key, error_code)."""
+    if not provided_key:
+        logger.warning("%s missing API key", context)
+        return False, None, "missing"
+    if not validate_api_key(provided_key):
+        logger.warning("%s invalid API key", context)
+        return False, None, "invalid"
+    return True, provided_key, None
+
+
 async def get_api_key(
     api_key_query: str | None = Security(api_key_query),
     api_key_header: str | None = Security(api_key_header),
 ) -> str:
-    """FastAPI dependency to extract and validate API key from request.
-    
-    Args:
-        api_key_query: API key from query parameter
-        api_key_header: API key from X-API-Key header
-        
-    Returns:
-        Valid API key string
-        
-    Raises:
-        HTTPException: If API key is missing or invalid
-    """
-    # Try header first, then query parameter
-    provided_key = api_key_header or api_key_query
-    
-    if not provided_key:
-        logger.warning("API key missing from request")
+    """FastAPI dependency to extract and validate API key from request."""
+
+    provided_key = _select_api_key(api_key_header, api_key_query)
+    ok, valid_key, error = _validate_candidate(provided_key, context="HTTP request")
+    if ok and valid_key:
+        return valid_key
+
+    if error == "missing":
         raise HTTPException(
             status_code=401,
             detail="API key required. Provide via 'X-API-Key' header or 'api_key' query parameter."
         )
-    
-    if not validate_api_key(provided_key):
-        logger.warning("Invalid API key provided")
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key."
-        )
-    
-    return provided_key
-
-
-def extract_websocket_api_key(websocket: WebSocket) -> str | None:
-    """Extract API key from WebSocket connection.
-    
-    Args:
-        websocket: WebSocket connection
-        
-    Returns:
-        API key if found, None otherwise
-    """
-    # Try query parameters first
-    query_params = dict(websocket.query_params)
-    api_key = query_params.get("api_key")
-    
-    if api_key:
-        return api_key
-    
-    # Try headers
-    headers = dict(websocket.headers)
-    api_key = headers.get("x-api-key") or headers.get("X-API-Key")
-    
-    return api_key
+    raise HTTPException(status_code=401, detail="Invalid API key.")
 
 
 async def authenticate_websocket(websocket: WebSocket) -> bool:
@@ -94,16 +75,13 @@ async def authenticate_websocket(websocket: WebSocket) -> bool:
     Returns:
         True if authenticated, False otherwise
     """
-    provided_key = extract_websocket_api_key(websocket)
-    
-    if not provided_key:
-        logger.warning("WebSocket connection missing API key")
+    provided_key = _select_api_key(
+        websocket.headers.get("x-api-key"),
+        websocket.headers.get("X-API-Key"),
+        websocket.query_params.get("api_key"),
+    )
+    ok, _, error = _validate_candidate(provided_key, context="WebSocket connection")
+    if not ok:
         return False
-    
-    if not validate_api_key(provided_key):
-        logger.warning("WebSocket connection with invalid API key")
-        return False
-    
     logger.info("WebSocket connection authenticated successfully")
     return True
-
