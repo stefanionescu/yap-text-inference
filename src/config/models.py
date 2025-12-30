@@ -103,6 +103,7 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/concedo-beepo-22B-trt-awq",
     "yapwithai/gryphe-pantheon-rp-pure-1.6.2-22b-small-trt-awq",
     "yapwithai/qwen3-14B-trt-awq",
+    "yapwithai/readyart-broken-tutu-24B-unslop-v2.0-trt-awq",
 
     # Pre-quantized FP8 models
     "yapwithai/sicariussicariistuff-angelic-eclipse-12B-trt-fp8",

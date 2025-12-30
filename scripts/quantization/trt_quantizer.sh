@@ -148,7 +148,7 @@ if [ "${TRT_TARGET_CHAT}" = "0" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-log_section "[quant] Starting TRT-LLM quantization..."
+log_blank
 
 # Initialize GPU detection
 gpu_init_detection "trt-quant"

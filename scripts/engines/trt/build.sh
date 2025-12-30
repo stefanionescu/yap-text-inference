@@ -71,7 +71,7 @@ trt_build_engine() {
     --max_input_len "${TRT_MAX_INPUT_LEN:-8192}"
     --max_seq_len "${max_seq_len}"
     --max_batch_size "${TRT_MAX_BATCH_SIZE:-16}"
-    --log_level info
+    --log_level error
     --workers "$(nproc --all)"
   )
   
@@ -119,7 +119,7 @@ trtllm-build \\
   --max_input_len ${TRT_MAX_INPUT_LEN:-8192} \\
   --max_seq_len $((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN)) \\
   --max_batch_size ${TRT_MAX_BATCH_SIZE:-16} \\
-  --log_level info
+  --log_level error
 EOF
   chmod +x "${cmd_file}"
   
