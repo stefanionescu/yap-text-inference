@@ -506,7 +506,7 @@ TEXT_API_KEY=your_api_key python3 tests/live.py \
 Flags:
 - `--server`: explicit URL (falls back to `SERVER_WS_URL`, appends `/ws` if missing)
 - `--api-key`: override `TEXT_API_KEY`
-- `--persona/-p`: persona key from `tests/prompts/live.py` (defaults to `anna_flirty`)
+- `--persona/-p`: persona key from `tests/prompts/detailed.py` (defaults to `anna_flirty`)
 - `--recv-timeout`: override `DEFAULT_RECV_TIMEOUT_SEC`
 - `--no-chat-prompt`: disable chat prompts for tool-only deployments; persona switches are disabled automatically when chat prompts are off
 - positional text: optional opener message
