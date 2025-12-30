@@ -12,6 +12,11 @@ source "${SCRIPT_DIR}/env/models.sh"
 source "${SCRIPT_DIR}/env/trt_config.sh"
 source "${SCRIPT_DIR}/env/tokens.sh"
 source "${SCRIPT_DIR}/env/gpu_detect.sh"
+
+# Validate that the baked-in engine is compatible with the runtime GPU
+# This must run after gpu_detect.sh sets GPU_SM_ARCH
+source "${SCRIPT_DIR}/env/validate_engine.sh"
+
 source "${SCRIPT_DIR}/env/final_defaults.sh"
 
 log_info "[trt] Docker TRT-LLM Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"

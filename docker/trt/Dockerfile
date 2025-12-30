@@ -1,5 +1,8 @@
 # TensorRT-LLM production image for pre-quantized models
 # CUDA 13.0 with Ubuntu 24.04 (TRT-LLM 1.2.0rc5 requires torch 2.9.x cu130)
+#
+# IMPORTANT: Pre-built TRT engine is BAKED INTO the image at build time.
+#            When you run the container, the engine is already there - just start!
 FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04
 
 # Use bash for RUN lines
@@ -14,7 +17,13 @@ ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
 
 # TRT engine configuration - HuggingFace repo with pre-built engines
+# TRT_ENGINE_REPO: HuggingFace repo containing the pre-built engine
+# TRT_ENGINE_LABEL: Engine directory name (e.g., sm90_trt-llm-0.17.0_cuda12.8)
 ARG TRT_ENGINE_REPO=""
+ARG TRT_ENGINE_LABEL=""
+
+# HuggingFace token for private repos
+ARG HF_TOKEN=""
 
 # TensorRT-LLM version configuration
 ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc5
@@ -107,8 +116,9 @@ ENV DEPLOY_MODE=${DEPLOY_MODE}
 ENV CHAT_MODEL=${CHAT_MODEL}
 ENV TOOL_MODEL=${TOOL_MODEL}
 
-# TRT engine repo for pulling pre-built engines from HuggingFace
+# TRT engine configuration
 ENV TRT_ENGINE_REPO=${TRT_ENGINE_REPO}
+ENV TRT_ENGINE_LABEL=${TRT_ENGINE_LABEL}
 
 # Engine type
 ENV INFERENCE_ENGINE=trt
@@ -118,6 +128,130 @@ ENV MODELS_DIR=/opt/models
 ENV ENGINES_DIR=/opt/engines
 ENV TRT_ENGINE_DIR=/opt/engines/trt-chat
 RUN mkdir -p "${MODELS_DIR}" "${ENGINES_DIR}" "${TRT_ENGINE_DIR}"
+
+# ----------------------------------------------------------------------------
+# Download pre-built TRT engine at build time (baked into image)
+# This makes startup instant - no downloads needed at runtime!
+# ----------------------------------------------------------------------------
+RUN --mount=type=secret,id=hf_token,required=false \
+    set -eux; \
+    if [ -n "${TRT_ENGINE_REPO}" ] && [ -n "${TRT_ENGINE_LABEL}" ]; then \
+        echo "[build] Downloading pre-built TRT engine..."; \
+        echo "[build]   Repo: ${TRT_ENGINE_REPO}"; \
+        echo "[build]   Engine: ${TRT_ENGINE_LABEL}"; \
+        HF_TOKEN_VAL=""; \
+        if [ -f /run/secrets/hf_token ]; then \
+            HF_TOKEN_VAL=$(cat /run/secrets/hf_token); \
+        fi; \
+        python -c " \
+import os, sys \
+from huggingface_hub import snapshot_download, hf_hub_download \
+\
+repo_id = '${TRT_ENGINE_REPO}' \
+engine_label = '${TRT_ENGINE_LABEL}' \
+target_dir = '/opt/engines/trt-chat' \
+token = os.environ.get('HF_TOKEN') or '${HF_TOKEN}' or None \
+if token == '': token = None \
+\
+print(f'[build] Downloading engine from {repo_id}...') \
+try: \
+    # Download engine files from trt-llm/engines/{engine_label}/ \
+    snapshot_download( \
+        repo_id=repo_id, \
+        local_dir=target_dir, \
+        allow_patterns=[f'trt-llm/engines/{engine_label}/**'], \
+        token=token, \
+    ) \
+    # Move files from nested structure to target dir \
+    import shutil \
+    nested_dir = os.path.join(target_dir, 'trt-llm', 'engines', engine_label) \
+    if os.path.isdir(nested_dir): \
+        for f in os.listdir(nested_dir): \
+            shutil.move(os.path.join(nested_dir, f), os.path.join(target_dir, f)) \
+        shutil.rmtree(os.path.join(target_dir, 'trt-llm')) \
+    # Verify engine files exist \
+    engine_files = [f for f in os.listdir(target_dir) if f.endswith('.engine')] \
+    if not engine_files: \
+        print(f'[build] ERROR: No .engine files found in {target_dir}', file=sys.stderr) \
+        sys.exit(1) \
+    print(f'[build] ✓ Downloaded {len(engine_files)} engine file(s)') \
+except Exception as e: \
+    print(f'[build] ERROR: Failed to download engine: {e}', file=sys.stderr) \
+    sys.exit(1) \
+"; \
+        echo "[build] ✓ TRT engine baked into image"; \
+    else \
+        echo "[build] No TRT_ENGINE_REPO/TRT_ENGINE_LABEL set - skipping engine download"; \
+    fi
+
+# Download tokenizer/checkpoint for the chat model
+RUN --mount=type=secret,id=hf_token,required=false \
+    set -eux; \
+    if [ -n "${CHAT_MODEL}" ]; then \
+        echo "[build] Downloading tokenizer from ${CHAT_MODEL}..."; \
+        HF_TOKEN_VAL=""; \
+        if [ -f /run/secrets/hf_token ]; then \
+            HF_TOKEN_VAL=$(cat /run/secrets/hf_token); \
+        fi; \
+        python -c " \
+import os, sys \
+from huggingface_hub import snapshot_download \
+\
+repo_id = '${CHAT_MODEL}' \
+target_dir = '/opt/models/chat' \
+token = os.environ.get('HF_TOKEN') or '${HF_TOKEN}' or None \
+if token == '': token = None \
+\
+print(f'[build] Downloading tokenizer from {repo_id}...') \
+try: \
+    snapshot_download( \
+        repo_id=repo_id, \
+        local_dir=target_dir, \
+        allow_patterns=['*.json', '*.model', '*.txt', 'tokenizer*', 'config*', 'generation_config*'], \
+        token=token, \
+    ) \
+    print('[build] ✓ Tokenizer downloaded') \
+except Exception as e: \
+    print(f'[build] ERROR: Failed to download tokenizer: {e}', file=sys.stderr) \
+    sys.exit(1) \
+"; \
+    fi
+
+# Download tool model if specified
+RUN --mount=type=secret,id=hf_token,required=false \
+    set -eux; \
+    if [ -n "${TOOL_MODEL}" ]; then \
+        echo "[build] Downloading tool model ${TOOL_MODEL}..."; \
+        HF_TOKEN_VAL=""; \
+        if [ -f /run/secrets/hf_token ]; then \
+            HF_TOKEN_VAL=$(cat /run/secrets/hf_token); \
+        fi; \
+        python -c " \
+import os, sys \
+from huggingface_hub import snapshot_download \
+\
+repo_id = '${TOOL_MODEL}' \
+target_dir = '/opt/models/tool' \
+token = os.environ.get('HF_TOKEN') or '${HF_TOKEN}' or None \
+if token == '': token = None \
+\
+print(f'[build] Downloading tool model from {repo_id}...') \
+try: \
+    snapshot_download( \
+        repo_id=repo_id, \
+        local_dir=target_dir, \
+        token=token, \
+    ) \
+    print('[build] ✓ Tool model downloaded') \
+except Exception as e: \
+    print(f'[build] ERROR: Failed to download tool model: {e}', file=sys.stderr) \
+    sys.exit(1) \
+"; \
+    fi
+
+# Set model paths for runtime
+ENV CHAT_MODEL_PATH=/opt/models/chat
+ENV TOOL_MODEL_PATH=/opt/models/tool
 
 # Cache directories
 ENV HF_HOME=/app/.hf

@@ -24,8 +24,20 @@ esac
 CHAT_MODEL="${CHAT_MODEL:-}"
 TOOL_MODEL="${TOOL_MODEL:-}"
 
-# Custom tag (optional - defaults to vllm-deploy mode if not set)
+# HuggingFace token for private repos
+HF_TOKEN="${HF_TOKEN:-}"
+
+# Custom tag (MUST start with vllm-)
 TAG="${TAG:-vllm-${DEPLOY_MODE_VAL}}"
+
+# Validate tag naming convention
+if [[ ! "${TAG}" =~ ^vllm- ]]; then
+  echo "[build] ✗ TAG must start with 'vllm-' for vLLM images" >&2
+  echo "[build]   Got: ${TAG}" >&2
+  echo "[build]   Example: vllm-qwen30b-awq" >&2
+  exit 1
+fi
+
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
 # Build configuration
@@ -47,35 +59,36 @@ usage() {
     echo ""
     echo "Build and push Yap Text Inference Docker image (vLLM engine)"
     echo ""
-    echo "The image is configured at build time with specific pre-quantized models."
-    echo "When run, the container automatically downloads those models from HuggingFace."
+    echo "IMPORTANT: The pre-quantized model is BAKED INTO the image at build time."
+    echo "           When you run the container, the model is already there - just start and go!"
     echo ""
     echo "Environment Variables:"
     echo "  DOCKER_USERNAME     - Docker Hub username (required)"
     echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
-    echo "  DEPLOY_MODE       - chat|tool|both (default: both)"
+    echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
     echo "  CHAT_MODEL          - Pre-quantized chat model HF repo (required for chat/both)"
     echo "                        Must contain: awq, gptq, w4a16, compressed-tensors, or autoround"
     echo "  TOOL_MODEL          - Tool classifier model HF repo (required for tool/both)"
-    echo "                        Must be in the allowlist (see src/config/models.py)"
-    echo "  TAG                 - Custom image tag (default: vllm-<DEPLOY_MODE>)"
+    echo "  TAG                 - Image tag (MUST start with 'vllm-')"
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
+    echo "  HF_TOKEN            - HuggingFace token (for private repos)"
     echo ""
     echo "Options:"
     echo "  --help              - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  # Build chat-only image"
+    echo "  # Build chat-only image with pre-quantized model baked in"
     echo "  DOCKER_USERNAME=myuser \\"
     echo "    DEPLOY_MODE=chat \\"
-    echo "    CHAT_MODEL=jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym \\"
-    echo "    TAG=vllm-mistral-24b \\"
+    echo "    CHAT_MODEL=cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit \\"
+    echo "    TAG=vllm-qwen30b-awq \\"
     echo "    ./build.sh"
     echo ""
     echo "  # Build tool-only image"
     echo "  DOCKER_USERNAME=myuser \\"
     echo "    DEPLOY_MODE=tool \\"
     echo "    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \\"
+    echo "    TAG=vllm-tool-only \\"
     echo "    ./build.sh"
     echo ""
     echo "  # Build both models"
@@ -115,6 +128,13 @@ require_docker
 ensure_docker_login
 
 log_info "[build] Building Docker image: ${FULL_IMAGE_NAME}..."
+log_info "[build] Pre-quantized model will be baked into the image"
+if [[ -n "${CHAT_MODEL}" ]]; then
+    log_info "[build]   Chat model: ${CHAT_MODEL}"
+fi
+if [[ -n "${TOOL_MODEL}" ]]; then
+    log_info "[build]   Tool model: ${TOOL_MODEL}"
+fi
 
 # Build the image
 prepare_build_context
@@ -125,6 +145,7 @@ init_build_args
 BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 [[ -n "${CHAT_MODEL}" ]] && BUILD_ARGS+=(--build-arg "CHAT_MODEL=${CHAT_MODEL}")
 [[ -n "${TOOL_MODEL}" ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
+[[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--build-arg "HF_TOKEN=${HF_TOKEN}")
 
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 

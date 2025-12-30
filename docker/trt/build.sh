@@ -23,10 +23,27 @@ esac
 # Model configuration (required based on DEPLOY_MODE)
 CHAT_MODEL="${CHAT_MODEL:-}"
 TOOL_MODEL="${TOOL_MODEL:-}"
-TRT_ENGINE_REPO="${TRT_ENGINE_REPO:-}"
 
-# Custom tag (optional - defaults to trt-deploy mode if not set)
+# TRT Engine configuration (REQUIRED for chat/both modes)
+# TRT_ENGINE_REPO: HuggingFace repo containing pre-built TRT engines
+# TRT_ENGINE_LABEL: Engine directory name (e.g., sm90_trt-llm-0.17.0_cuda12.8)
+TRT_ENGINE_REPO="${TRT_ENGINE_REPO:-}"
+TRT_ENGINE_LABEL="${TRT_ENGINE_LABEL:-}"
+
+# HuggingFace token for private repos
+HF_TOKEN="${HF_TOKEN:-}"
+
+# Custom tag (MUST start with trt-)
 TAG="${TAG:-trt-${DEPLOY_MODE_VAL}}"
+
+# Validate tag naming convention
+if [[ ! "${TAG}" =~ ^trt- ]]; then
+  echo "[build] ✗ TAG must start with 'trt-' for TensorRT images" >&2
+  echo "[build]   Got: ${TAG}" >&2
+  echo "[build]   Example: trt-qwen30b-sm90" >&2
+  exit 1
+fi
+
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
 # Build configuration
@@ -48,63 +65,56 @@ usage() {
     echo ""
     echo "Build and push Yap Text Inference Docker image (TensorRT-LLM engine)"
     echo ""
-    echo "The image is configured at build time with specific pre-quantized models."
-    echo "TRT engines are downloaded from HuggingFace on first run and cached."
+    echo "IMPORTANT: The pre-built TRT engine is BAKED INTO the image at build time."
+    echo "           When you run the container, the engine is already there - just start and go!"
     echo ""
     echo "Environment Variables:"
     echo "  DOCKER_USERNAME     - Docker Hub username (required)"
     echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
-    echo "  DEPLOY_MODE       - chat|tool|both (default: both)"
-    echo "  CHAT_MODEL          - HuggingFace model for tokenizer (required for chat/both)"
-    echo "  TRT_ENGINE_REPO     - HuggingFace repo with pre-built TRT engine (required for chat/both)"
-    echo "                        Or leave empty to require engine mount at runtime"
+    echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
+    echo "  CHAT_MODEL          - HuggingFace TRT-quantized model repo (required for chat/both)"
+    echo "                        This repo contains the checkpoint for tokenizer"
+    echo "  TRT_ENGINE_REPO     - HuggingFace repo with pre-built TRT engines (required for chat/both)"
+    echo "  TRT_ENGINE_LABEL    - Engine directory name in the repo (required for chat/both)"
+    echo "                        Format: sm{arch}_trt-llm-{version}_cuda{version}"
+    echo "                        Example: sm90_trt-llm-0.17.0_cuda12.8"
     echo "  TOOL_MODEL          - Tool classifier model HF repo (required for tool/both)"
-    echo "                        Must be in the allowlist (see src/config/models.py)"
-    echo "  TAG                 - Custom image tag (default: trt-<DEPLOY_MODE>)"
+    echo "  TAG                 - Image tag (MUST start with 'trt-')"
     echo "  PLATFORM            - Target platform (default: linux/amd64)"
+    echo "  HF_TOKEN            - HuggingFace token (for private repos)"
     echo ""
     echo "Options:"
     echo "  --help              - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  # Build chat-only image with engine repo"
+    echo "  # Build chat-only image with pre-built engine baked in"
     echo "  DOCKER_USERNAME=myuser \\"
     echo "    DEPLOY_MODE=chat \\"
-    echo "    CHAT_MODEL=Qwen/Qwen3-30B-A3B \\"
-    echo "    TRT_ENGINE_REPO=myuser/qwen3-30b-trt-engine \\"
-    echo "    TAG=trt-qwen30b \\"
-    echo "    ./build.sh"
-    echo ""
-    echo "  # Build chat-only image (engine mounted at runtime)"
-    echo "  DOCKER_USERNAME=myuser \\"
-    echo "    DEPLOY_MODE=chat \\"
-    echo "    CHAT_MODEL=Qwen/Qwen3-30B-A3B \\"
-    echo "    TAG=trt-qwen30b-mount \\"
+    echo "    CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \\"
+    echo "    TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \\"
+    echo "    TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \\"
+    echo "    TAG=trt-qwen30b-sm90 \\"
     echo "    ./build.sh"
     echo ""
     echo "  # Build tool-only image"
     echo "  DOCKER_USERNAME=myuser \\"
     echo "    DEPLOY_MODE=tool \\"
     echo "    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \\"
+    echo "    TAG=trt-tool-only \\"
     echo "    ./build.sh"
     echo ""
     echo "  # Build both models"
     echo "  DOCKER_USERNAME=myuser \\"
     echo "    DEPLOY_MODE=both \\"
-    echo "    CHAT_MODEL=Qwen/Qwen3-30B-A3B \\"
-    echo "    TRT_ENGINE_REPO=myuser/qwen3-30b-trt-engine \\"
+    echo "    CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \\"
+    echo "    TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \\"
+    echo "    TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \\"
     echo "    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \\"
-    echo "    TAG=trt-qwen3-full \\"
+    echo "    TAG=trt-qwen3-full-sm90 \\"
     echo "    ./build.sh"
     echo ""
     echo "Running the built image:"
     echo "  docker run -d --gpus all -e TEXT_API_KEY=xxx -p 8000:8000 myuser/yap-text-api:TAG"
-    echo ""
-    echo "Running with mounted engine:"
-    echo "  docker run -d --gpus all \\"
-    echo "    -e TEXT_API_KEY=xxx \\"
-    echo "    -v /path/to/engine:/opt/engines/trt-chat \\"
-    echo "    -p 8000:8000 myuser/yap-text-api:TAG"
     exit 0
 }
 
@@ -120,10 +130,10 @@ if [[ "${DOCKER_USERNAME}" == "your-username" ]]; then
     exit 1
 fi
 
-# Validate models based on deploy mode
-log_info "[build] Validating models for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
-if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}" "${TRT_ENGINE_REPO}"; then
-    log_error "[build] ✗ Model validation failed. Build aborted."
+# Validate models and engine configuration
+log_info "[build] Validating configuration for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
+if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}" "${TRT_ENGINE_REPO}" "${TRT_ENGINE_LABEL}"; then
+    log_error "[build] ✗ Configuration validation failed. Build aborted."
     exit 1
 fi
 
@@ -132,6 +142,11 @@ require_docker
 ensure_docker_login
 
 log_info "[build] Building Docker image: ${FULL_IMAGE_NAME}..."
+log_info "[build] Pre-built engine will be baked into the image"
+if [[ -n "${TRT_ENGINE_REPO}" ]] && [[ -n "${TRT_ENGINE_LABEL}" ]]; then
+    log_info "[build]   Engine repo: ${TRT_ENGINE_REPO}"
+    log_info "[build]   Engine label: ${TRT_ENGINE_LABEL}"
+fi
 
 # Build the image
 prepare_build_context
@@ -143,6 +158,8 @@ BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 [[ -n "${CHAT_MODEL}" ]] && BUILD_ARGS+=(--build-arg "CHAT_MODEL=${CHAT_MODEL}")
 [[ -n "${TOOL_MODEL}" ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
 [[ -n "${TRT_ENGINE_REPO}" ]] && BUILD_ARGS+=(--build-arg "TRT_ENGINE_REPO=${TRT_ENGINE_REPO}")
+[[ -n "${TRT_ENGINE_LABEL}" ]] && BUILD_ARGS+=(--build-arg "TRT_ENGINE_LABEL=${TRT_ENGINE_LABEL}")
+[[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--build-arg "HF_TOKEN=${HF_TOKEN}")
 
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 
