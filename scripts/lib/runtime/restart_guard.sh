@@ -221,6 +221,7 @@ runtime_guard_stop_server_if_needed() {
     return 0
   fi
 
+  log_blank
   log_warn "[server] ⚠ Server already running (PID=${running_pid}). Evaluating restart strategy..."
   if runtime_guard_configs_match \
        "${desired_deploy}" \

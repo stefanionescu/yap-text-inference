@@ -138,12 +138,12 @@ log_phase_result() {
   local status="${2:-}"
   local log_path="${3:-}"
   if [ "${status}" = "OK" ]; then
-    log_warmup "${label} (OK)"
+    log_info "${label} (OK)"
   else
     if [ -n "${log_path}" ]; then
-      log_warmup "${label} (FAIL) (see ${log_path})"
+      log_info "${label} (FAIL) (see ${log_path})"
     else
-      log_warmup "${label} (FAIL)"
+      log_info "${label} (FAIL)"
     fi
   fi
 }

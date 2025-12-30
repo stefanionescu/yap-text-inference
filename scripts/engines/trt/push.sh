@@ -35,6 +35,7 @@ trt_push_to_hf() {
     return 1
   fi
   
+  log_blank
   log_info "[hf] Pushing quantized model to HuggingFace..."
   
   # Pick a python interpreter (prefer venv, then system)
@@ -83,9 +84,11 @@ trt_push_to_hf() {
   
   if "${python_cmd[@]}"; then
     log_info "[hf] ✓ Pushed to HuggingFace"
+    log_blank
     return 0
   else
     log_warn "[hf] ⚠ HuggingFace push failed"
+    log_blank
     return 1
   fi
 }
