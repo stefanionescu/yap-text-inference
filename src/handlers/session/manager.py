@@ -489,17 +489,38 @@ class SessionHandler:
     # Internal helpers
     # ------------------------------------------------------------------ #
     def _strip_check_screen_prefix(self, session_id: str, text: str) -> str:
-        """Remove the session-specific CHECK SCREEN prefix from stored history."""
+        """Remove any session-specific screen prefixes from stored history."""
+
         if not text:
             return ""
-        prefix = self.get_check_screen_prefix(session_id)
-        if not prefix:
-            return text
-        if text.startswith(prefix):
-            return text[len(prefix):].lstrip()
-        lower_prefix = prefix.lower()
-        if text.lower().startswith(lower_prefix):
-            return text[len(prefix):].lstrip()
+
+        def _strip_prefix(candidate: str | None, value: str) -> tuple[bool, str]:
+            if not candidate:
+                return False, value
+            prefix_text = candidate.strip()
+            if not prefix_text:
+                return False, value
+            prefix_len = len(candidate)
+            if value.startswith(candidate):
+                return True, value[prefix_len:].lstrip()
+            lower_candidate = candidate.lower()
+            if value.lower().startswith(lower_candidate):
+                return True, value[prefix_len:].lstrip()
+            return False, value
+
+        prefixes: list[str] = []
+        for candidate in (
+            self.get_check_screen_prefix(session_id),
+            self.get_screen_checked_prefix(session_id),
+        ):
+            if candidate and candidate not in prefixes:
+                prefixes.append(candidate)
+
+        for prefix in prefixes:
+            removed, updated = _strip_prefix(prefix, text)
+            if removed:
+                return updated
+
         return text
 
     def _evict_idle_sessions(self) -> None:

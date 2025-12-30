@@ -2,7 +2,7 @@
 
 This sanitizer is stateful and operates on streamed model text. It:
     - Strips freestyle prefixes and leading newline tokens once
-    - Verbalizes emails/phone numbers to avoid leaking raw contacts
+    - Verbalizes emails/phone numbers
     - Normalizes ellipses/dashes/quotes/spacing
     - Removes escaped quotes, emojis/emoticons, and HTML tags
     - Enforces a leading capital once
@@ -45,8 +45,9 @@ from phonenumbers import PhoneNumberMatcher  # type: ignore[import-untyped]
 class StreamingSanitizer:
     """Stateful sanitizer that emits stable chunks for streaming."""
 
-    # How much suffix (in characters) we keep as "maybe unstable" to allow
-    # boundary-sensitive validators (emails, phone numbers, ellipsis, html).
+    # How much suffix (in characters) we keep as a "potentially unstable" buffer
+    # so boundary-sensitive validators (emails, phone numbers, ellipsis, html)
+    # can operate across streamed chunks.
     _MAX_TAIL = 64
 
     def __init__(self) -> None:
@@ -290,8 +291,8 @@ def _html_tag_suffix_len(raw_text: str) -> int:
     return min(len(raw_text) - last_lt, 256)
 
 
-def _maybe_trim_with_unclosed_tag(raw_text: str, max_tail: int) -> tuple[str, bool]:
-    """Trim raw_text to max_tail, but keep any trailing unclosed HTML tag intact."""
+def _trim_tail_preserving_unclosed_tag(raw_text: str, max_tail: int) -> tuple[str, bool]:
+    """Trim raw_text to max_tail while keeping any trailing unclosed HTML tag intact."""
     if len(raw_text) <= max_tail:
         return raw_text, False
     last_lt = raw_text.rfind("<")
@@ -303,18 +304,10 @@ def _maybe_trim_with_unclosed_tag(raw_text: str, max_tail: int) -> tuple[str, bo
     return raw_text[-max_tail:], True
 
 
-def _common_prefix_len(a: str, b: str) -> int:
-    max_len = min(len(a), len(b))
-    idx = 0
-    while idx < max_len and a[idx] == b[idx]:
-        idx += 1
-    return idx
-
-
 def _trim_raw_tail(inst: StreamingSanitizer) -> None:
     if len(inst._raw_tail) <= inst._MAX_TAIL:
         return
-    inst._raw_tail, trimmed = _maybe_trim_with_unclosed_tag(inst._raw_tail, inst._MAX_TAIL)
+    inst._raw_tail, trimmed = _trim_tail_preserving_unclosed_tag(inst._raw_tail, inst._MAX_TAIL)
     if trimmed:
         inst._trimmed_stream_start = True
 
@@ -446,4 +439,3 @@ def _verbalize_phone_numbers(text: str) -> str:
 
 
 __all__ = ["StreamingSanitizer"]
-
