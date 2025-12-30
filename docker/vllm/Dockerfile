@@ -1,5 +1,6 @@
 # Multi-stage build for efficient Docker image
 # CUDA 13.0 with Ubuntu 24.04 for VLLM 0.13.0 compatibility
+
 FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04 AS builder
 
 # Allow overriding FlashInfer version at build time
@@ -70,11 +71,13 @@ RUN set -eux; \
 # =============================================================================
 FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu24.04
 
-# Model configuration - set at build time, downloaded at runtime
-# These are baked into the image so you don't specify them when running
+# Model configuration - set and downloaded at build time
 ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
+
+# HuggingFace token for private repos
+ARG HF_TOKEN=""
 
 # Set environment variables for production
 ENV DEBIAN_FRONTEND=noninteractive
@@ -82,14 +85,18 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Configured models - these are set at build time and used at runtime
-# The container will automatically download these specific models on startup
+# Configured models - these are set at build time
 ENV DEPLOY_MODE=${DEPLOY_MODE}
 ENV CHAT_MODEL=${CHAT_MODEL}
 ENV TOOL_MODEL=${TOOL_MODEL}
 
 # Engine type for vLLM
 ENV INFERENCE_ENGINE=vllm
+
+# Default directories for baked-in models
+ENV MODELS_DIR=/opt/models
+ENV CHAT_MODEL_PATH=/opt/models/chat
+ENV TOOL_MODEL_PATH=/opt/models/tool
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -111,7 +118,7 @@ COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache
+RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache /opt/models
 
 # Set proper permissions
 RUN chmod +x /app/scripts/*.sh
@@ -123,6 +130,79 @@ ENV VLLM_CACHE_DIR=/app/.vllm_cache
 ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     GIT_SSL_CAINFO=/etc/ssl/certs/ca-certificates.crt
+
+# ----------------------------------------------------------------------------
+# Download pre-quantized chat model at build time (baked into image)
+# This makes startup instant - no downloads needed at runtime!
+# ----------------------------------------------------------------------------
+RUN --mount=type=secret,id=hf_token,required=false \
+    set -eux; \
+    if [ -n "${CHAT_MODEL}" ]; then \
+        echo "[build] Downloading pre-quantized chat model..."; \
+        echo "[build]   Model: ${CHAT_MODEL}"; \
+        HF_TOKEN_VAL=""; \
+        if [ -f /run/secrets/hf_token ]; then \
+            HF_TOKEN_VAL=$(cat /run/secrets/hf_token); \
+        fi; \
+        python -c " \
+import os, sys \
+from huggingface_hub import snapshot_download \
+\
+repo_id = '${CHAT_MODEL}' \
+target_dir = '/opt/models/chat' \
+token = os.environ.get('HF_TOKEN') or '${HF_TOKEN}' or None \
+if token == '': token = None \
+\
+print(f'[build] Downloading {repo_id}...') \
+try: \
+    snapshot_download( \
+        repo_id=repo_id, \
+        local_dir=target_dir, \
+        token=token, \
+    ) \
+    print('[build] ✓ Chat model downloaded and baked into image') \
+except Exception as e: \
+    print(f'[build] ERROR: Failed to download chat model: {e}', file=sys.stderr) \
+    sys.exit(1) \
+"; \
+    else \
+        echo "[build] No CHAT_MODEL specified - skipping chat model download"; \
+    fi
+
+# Download tool model at build time if specified
+RUN --mount=type=secret,id=hf_token,required=false \
+    set -eux; \
+    if [ -n "${TOOL_MODEL}" ]; then \
+        echo "[build] Downloading tool model..."; \
+        echo "[build]   Model: ${TOOL_MODEL}"; \
+        HF_TOKEN_VAL=""; \
+        if [ -f /run/secrets/hf_token ]; then \
+            HF_TOKEN_VAL=$(cat /run/secrets/hf_token); \
+        fi; \
+        python -c " \
+import os, sys \
+from huggingface_hub import snapshot_download \
+\
+repo_id = '${TOOL_MODEL}' \
+target_dir = '/opt/models/tool' \
+token = os.environ.get('HF_TOKEN') or '${HF_TOKEN}' or None \
+if token == '': token = None \
+\
+print(f'[build] Downloading {repo_id}...') \
+try: \
+    snapshot_download( \
+        repo_id=repo_id, \
+        local_dir=target_dir, \
+        token=token, \
+    ) \
+    print('[build] ✓ Tool model downloaded and baked into image') \
+except Exception as e: \
+    print(f'[build] ERROR: Failed to download tool model: {e}', file=sys.stderr) \
+    sys.exit(1) \
+"; \
+    else \
+        echo "[build] No TOOL_MODEL specified - skipping tool model download"; \
+    fi
 
 # Expose port
 EXPOSE 8000

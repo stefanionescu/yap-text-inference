@@ -613,33 +613,19 @@ Pass `--double-ttfb` to keep each connection open for two sequential transaction
 
 TensorRT-LLM 1.2.0 (and variations like 1.2.0rc5) documentation claims Python 3.11 support, but **Python 3.11 does not work reliably**. Use **Python 3.10** instead.
 
-**Symptoms with Python 3.11:**
-- Cryptic import errors during TRT-LLM initialization
-- Segmentation faults during engine build
-- Incompatible wheel installations failing silently
-
 ### CUDA 13.0 Requirement
 
 TensorRT-LLM 1.2.0rc5 requires **CUDA 13.0** and **PyTorch 2.9.0**. The TRT-LLM package specifies `torch<=2.9.0,>=2.9.0a0` as a dependency constraint.
 
 If you see pip dependency resolver warnings about torch versions during installation, ensure you're using:
 - `torch==2.9.0+cu130` with `--index-url https://download.pytorch.org/whl/cu130`
-- `torchvision==0.24.0+cu130` (matching torch 2.9.0)
-
-**WARNING**: Using `torch==2.9.1` will cause TRT-LLM's pip install to replace it with a different torch build from NVIDIA's index (often CUDA 12.8), causing CUDA version mismatches.
-
-The build scripts handle this automatically.
+- `torchvision==0.24.0+cu130` (matching torch 2.9.0).
 
 ### Base Docker Image Selection
 
 **The base Docker image matters a lot.** Installing OpenMPI packages (`libopenmpi3` / `libopenmpi3t64` and `openmpi-common`) via `scripts/setup/bootstrap.sh` can inadvertently **downgrade CUDA below 13.0** depending on the base image's package repositories and pinned versions.
 
 Since TensorRT-LLM requires CUDA 13.0+, this silent downgrade will break deployment with cryptic errors.
-
-**Symptoms of CUDA downgrade:**
-- TensorRT-LLM engine build failures
-- Runtime errors about incompatible CUDA versions
-- `nvcc --version` showing < 13.0 after bootstrap
 
 **Workarounds:**
 1. Use a base image with CUDA 13.0 pre-installed and proper apt pinning
@@ -658,7 +644,7 @@ Root causes:
 
 Fixes:
 - Restart the container with a clean GPU mapping: `--gpus all` or `--gpus '"device=0"'` (or the specific UUID). Verify `/dev/nvidia0` exists inside the container.
-- If the assigned GPU stays bad, switch to a different GPU/instance (e.g a different H100 flavor worked when a particular H100 PCIe stayed wedged).
+- If the assigned GPU stays bad, switch to a different GPU/instance.
 - As a last resort, reset the GPU (`nvidia-smi --gpu-reset -i 0`) or reboot the host if safe.
 
 ## GPU Memory Fractions
