@@ -49,7 +49,6 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "Qwen/QwQ-32B",
     "dphn/Dolphin-Mistral-24B-Venice-Edition",
     "ReadyArt/Broken-Tutu-24B-Transgression-v2.0",
-
     "mistralai/Ministral-3-14B-Instruct-2512",
     "TheDrummer/Magidonia-24B-v4.3",
 ]
@@ -107,7 +106,8 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/gryphe-pantheon-rp-pure-1.6.2-22b-small-trt-awq",
     "yapwithai/readyart-broken-tutu-24B-unslop-v2.0-trt-awq",
     "yapwithai/readyart-broken-tutu-24B-transgression-v2.0-trt-awq", # LOVE the initial reactions, gotta test more
-    "yapwithai/dphn-dolphin-mistral-24B-venice-edition-trt-awq", # Detect but a bit bland
+    "yapwithai/dphn-dolphin-mistral-24B-venice-edition-trt-awq", # Decent but a bit bland
+    "yapwithai/thedrummer-magidonia-24B-v4.3-trt-awq",
 
     # Pre-quantized FP8 models
     "yapwithai/sicariussicariistuff-angelic-eclipse-12B-trt-fp8",
