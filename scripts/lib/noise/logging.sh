@@ -74,12 +74,12 @@ noise_follow_server_logs() {
         fi
       fi
 
-      if [[ "${line}" == *"[warmup]"* ]]; then
+      if [[ "${line}" == *'[warmup]'* ]]; then
         printf '%s\n' "${line}"
         warmup_last_line_ts=$(date +%s 2>/dev/null || printf '0')
-        if [[ "${line}" == *"[warmup] ✓ Warmup + bench complete."* ]] || \
-           [[ "${line}" == *"[warmup] Warmup finished with failures."* ]] || \
-           [[ "${line}" == *"[warmup] ✗"* ]]; then
+        if [[ "${line}" == *'[warmup] ✓ Warmup + bench complete.'* ]] || \
+           [[ "${line}" == *'[warmup] Warmup finished with failures.'* ]] || \
+           [[ "${line}" == *'[warmup] ✗'* ]]; then
           warmup_filter_active=0
         fi
       elif [ "${capture_enabled}" -eq 1 ]; then

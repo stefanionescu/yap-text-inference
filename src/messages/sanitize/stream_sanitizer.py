@@ -34,6 +34,7 @@ from ...config.filters import (
     LEADING_NEWLINE_TOKENS_PATTERN,
     NEWLINE_TOKEN_PATTERN,
     SPACE_BEFORE_PUNCT_PATTERN,
+    SPACED_DOT_RUN_PATTERN,
     TRAILING_STREAM_UNSTABLE_CHARS,
 )
 from .common import _strip_escaped_quotes
@@ -185,6 +186,8 @@ def _sanitize_stream_chunk(
     cleaned = ELLIPSIS_TRAILING_SPACE_PATTERN.sub("...", cleaned)
     # Collapse any run of 2+ dots to a single period
     cleaned = DOT_RUN_PATTERN.sub(".", cleaned)
+    # Collapse dots separated by spaces (". . " or ". . .") to a single period
+    cleaned = SPACED_DOT_RUN_PATTERN.sub(".", cleaned)
     # Ensure a space after period if followed by an alnum (avoid smushing words)
     cleaned = re.sub(r"\.(?=[A-Za-z0-9])", ". ", cleaned)
     # Replace dashes/hyphens with space (before space collapsing)
