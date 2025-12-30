@@ -32,23 +32,118 @@ def _apply_patch_script(patch_script: str | None) -> None:
 
 def download_model(model_id: str, target_dir: str) -> None:
     """Download a Hugging Face model snapshot into target_dir."""
-    from huggingface_hub import snapshot_download
+    import time
+
+    from huggingface_hub import HfApi, snapshot_download
+
+    print(f"[model] Repo: {model_id}", file=sys.stderr)
+    print(f"[model] Target: {target_dir}", file=sys.stderr)
+
+    # Check repo info first
+    print("[model] Fetching repository metadata...", file=sys.stderr)
+    try:
+        api = HfApi()
+        repo_info = api.repo_info(repo_id=model_id, repo_type="model")
+        print(f"[model] ✓ Repository found: {repo_info.id}", file=sys.stderr)
+        if repo_info.siblings:
+            total_size = sum(f.size or 0 for f in repo_info.siblings if f.size)
+            size_gb = total_size / (1024**3)
+            print(
+                f"[model] Total files: {len(repo_info.siblings)} ({size_gb:.2f} GB)",
+                file=sys.stderr,
+            )
+    except Exception as e:
+        print(f"[model] ⚠ Could not fetch repo info: {e}", file=sys.stderr)
+
+    print("[model] Starting download (this may take a while for large models)...", file=sys.stderr)
+    start_time = time.time()
+
+    # Re-enable progress bars if requested
+    import os as _os
+
+    show_progress = _os.environ.get("SHOW_HF_LOGS", "").lower() in ("1", "true", "yes")
+    if show_progress:
+        _os.environ.pop("HF_HUB_DISABLE_PROGRESS_BARS", None)
+        _os.environ.pop("TQDM_DISABLE", None)
 
     _import_log_filter()
-    snapshot_download(repo_id=model_id, local_dir=target_dir)
+
+    try:
+        snapshot_download(repo_id=model_id, local_dir=target_dir)
+    except KeyboardInterrupt:
+        print("\n[model] ✗ Download interrupted by user", file=sys.stderr)
+        raise
+    except Exception as e:
+        print(f"[model] ✗ Download failed: {e}", file=sys.stderr)
+        raise
+
+    elapsed = time.time() - start_time
+    print(f"[model] ✓ Download complete in {elapsed:.1f}s", file=sys.stderr)
 
 
 def download_prequantized(model_id: str, target_dir: str) -> None:
     """Download pre-quantized TensorRT checkpoint assets."""
-    from huggingface_hub import snapshot_download
+    import time
 
-    _import_log_filter()
-    snapshot_download(
-        repo_id=model_id,
-        local_dir=target_dir,
-        allow_patterns=["trt-llm/checkpoints/**", "*.json", "*.safetensors"],
-    )
-    print("[model] ✓ Downloaded pre-quantized checkpoint", file=sys.stderr)
+    from huggingface_hub import HfApi, snapshot_download
+
+    print(f"[model] Repo: {model_id}", file=sys.stderr)
+    print(f"[model] Target: {target_dir}", file=sys.stderr)
+
+    # Check repo info first to give visibility into what we're downloading
+    print("[model] Fetching repository metadata...", file=sys.stderr)
+    try:
+        api = HfApi()
+        repo_info = api.repo_info(repo_id=model_id, repo_type="model")
+        print(f"[model] ✓ Repository found: {repo_info.id}", file=sys.stderr)
+        if repo_info.siblings:
+            # Count relevant files
+            patterns = ["trt-llm/checkpoints/", ".json", ".safetensors"]
+            matching_files = [
+                f
+                for f in repo_info.siblings
+                if any(p in f.rfilename for p in patterns)
+            ]
+            total_size = sum(f.size or 0 for f in matching_files if f.size)
+            size_gb = total_size / (1024**3)
+            print(
+                f"[model] Files to download: {len(matching_files)} ({size_gb:.2f} GB)",
+                file=sys.stderr,
+            )
+    except Exception as e:
+        print(f"[model] ⚠ Could not fetch repo info: {e}", file=sys.stderr)
+        print("[model] Proceeding with download anyway...", file=sys.stderr)
+
+    allow_patterns = ["trt-llm/checkpoints/**", "*.json", "*.safetensors"]
+    print(f"[model] Filter patterns: {allow_patterns}", file=sys.stderr)
+    print("[model] Starting download (this may take a while for large models)...", file=sys.stderr)
+
+    start_time = time.time()
+
+    # Re-enable progress bars for this download since user wants visibility
+    import os as _os
+
+    show_progress = _os.environ.get("SHOW_HF_LOGS", "").lower() in ("1", "true", "yes")
+    if show_progress:
+        # Temporarily re-enable progress bars
+        _os.environ.pop("HF_HUB_DISABLE_PROGRESS_BARS", None)
+        _os.environ.pop("TQDM_DISABLE", None)
+
+    try:
+        snapshot_download(
+            repo_id=model_id,
+            local_dir=target_dir,
+            allow_patterns=allow_patterns,
+        )
+    except KeyboardInterrupt:
+        print("\n[model] ✗ Download interrupted by user", file=sys.stderr)
+        raise
+    except Exception as e:
+        print(f"[model] ✗ Download failed: {e}", file=sys.stderr)
+        raise
+
+    elapsed = time.time() - start_time
+    print(f"[model] ✓ Downloaded pre-quantized checkpoint in {elapsed:.1f}s", file=sys.stderr)
 
 
 def run_quantization(script_path: str, script_args: Iterable[str], patch_script: str | None) -> None:
