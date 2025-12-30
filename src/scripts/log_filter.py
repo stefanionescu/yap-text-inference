@@ -258,7 +258,13 @@ def _configure():
     else:
         logging.getLogger("log_filter").debug("HF logs enabled via SHOW_HF_LOGS")
     _configure_transformers_logging()
-    _configure_trtllm_logging()
+
+    # TensorRT-LLM log suppression (unless SHOW_TRT_LOGS is set)
+    show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
+    if not show_trt_logs:
+        _configure_trtllm_logging()
+    else:
+        logging.getLogger("log_filter").debug("TRT logs enabled via SHOW_TRT_LOGS")
 
 
 _configure()

@@ -20,13 +20,20 @@ declare -a WARMUP_PERSONA_VARIANTS=()
 
 log_warmup() {
   local line="[warmup] $*"
-  log_info "${line}"
   echo "${line}" >> "${WARMUP_LOG_FILE}"
 }
 
 log_warmup_file() {
   local line="[warmup] $*"
   echo "${line}" >> "${WARMUP_LOG_FILE}"
+}
+
+# Log phase results to both stderr (terminal) and server.log for visibility
+log_to_server() {
+  local line="$*"
+  local server_log="${ROOT_DIR}/server.log"
+  log_info "${line}"
+  echo "${line}" >> "${server_log}"
 }
 
 write_lock() {
@@ -138,12 +145,12 @@ log_phase_result() {
   local status="${2:-}"
   local log_path="${3:-}"
   if [ "${status}" = "OK" ]; then
-    log_info "${label} (OK)"
+    log_to_server "[warmup] ${label} (OK)"
   else
     if [ -n "${log_path}" ]; then
-      log_info "${label} (FAIL) (see ${log_path})"
+      log_to_server "[warmup] ${label} (FAIL) (see ${log_path})"
     else
-      log_info "${label} (FAIL)"
+      log_to_server "[warmup] ${label} (FAIL)"
     fi
   fi
 }
@@ -186,7 +193,7 @@ choose_python() {
 activate_venv "" 0 || true
 
 if ! PY_BIN="$(choose_python)"; then
-  log_warmup "✗ Unable to locate python interpreter."
+  log_to_server "[warmup] ✗ Unable to locate python interpreter."
   exit 1
 fi
 
@@ -289,11 +296,11 @@ trap cleanup_lock EXIT INT TERM
 
 log_warmup_file "Waiting for server readiness on ${SERVER_ADDR} (timeout ${WARMUP_TIMEOUT_SECS}s)..."
 if ! wait_for_ready; then
-  log_warmup "✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
+  log_to_server "[warmup] ✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
   exit 1
 fi
 
-log_warmup "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
+log_to_server "[warmup] Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
 
 if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
@@ -362,9 +369,9 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
 done
 
 if [[ "${overall_ok}" -eq 1 ]]; then
-  log_warmup "✓ Warmup + bench complete."
+  log_to_server "[warmup] ✓ Warmup + bench complete."
   exit 0
 fi
 
-log_warmup "Warmup finished with failures."
+log_to_server "[warmup] Warmup finished with failures."
 exit 1

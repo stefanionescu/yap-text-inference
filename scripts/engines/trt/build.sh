@@ -40,9 +40,6 @@ trt_build_engine() {
     return 1
   fi
   
-  # Validate checkpoint
-  trt_validate_checkpoint "${checkpoint_dir}" || return 1
-  
   # Check if engine already exists
   if [ -d "${engine_dir}" ] && ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
@@ -317,6 +314,9 @@ trt_quantize_and_build() {
     trt_quantize_model "${model_id}" "${ckpt_dir}" "${qformat}" || return 1
     TRT_CHECKPOINT_DIR="${ckpt_dir}"
   fi
+  
+  # Validate checkpoint before building
+  trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}" || return 1
   
   # Build engine
   local engine_dir

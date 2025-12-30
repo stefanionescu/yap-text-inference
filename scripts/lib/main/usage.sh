@@ -91,6 +91,8 @@ main_usage() {
   echo "Debugging:"
   echo "  --show-hf-logs      Show Hugging Face download/upload progress bars"
   echo "  --no-show-hf-logs   Hide Hugging Face logs (default)"
+  echo "  --show-trt-logs     Show TensorRT-LLM build/quantization logs"
+  echo "  --no-show-trt-logs  Hide TensorRT logs (default)"
   exit 1
 }
 
