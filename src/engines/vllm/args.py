@@ -34,6 +34,7 @@ from vllm.config import AttentionConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 from src.helpers.model_profiles import (
+    get_max_batched_tokens,
     get_tokenizer_kwargs,
     model_needs_memory_optimization,
     model_requires_bfloat16,
@@ -88,9 +89,6 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     Returns:
         Configured AsyncEngineArgs ready for engine creation.
     """
-    # Prefill chunk sizing (smaller chunk => better TTFB under burst; tune as needed)
-    max_batched = int(os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT", "256"))
-
     # Capture any explicit backend overrides before we touch vLLM (avoids
     # deprecation warnings when AttentionConfig inspects env vars).
     attention_backend = os.environ.get("VLLM_ATTENTION_BACKEND")
@@ -113,6 +111,20 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
             log_detected_quantization(model, detected_quant, quant_payload)
 
     model_origin = resolve_model_origin(model)
+
+    # Prefill chunk sizing: check profile first, then env var, then default.
+    # Some models (e.g., Mistral 3.2) need higher values for acceptable TTFB.
+    env_batched = os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT")
+    profile_batched = get_max_batched_tokens(model_origin)
+    if env_batched:
+        # Explicit env var takes precedence
+        max_batched = int(env_batched)
+    elif profile_batched is not None:
+        # Use profile-specific value
+        max_batched = profile_batched
+    else:
+        # Default fallback
+        max_batched = 256
     needs_bfloat16 = model_requires_bfloat16(model_origin)
     needs_memory_opt = model_needs_memory_optimization(model_origin)
     needs_fla = model_requires_fla_runtime(model_origin)

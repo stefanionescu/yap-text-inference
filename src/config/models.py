@@ -38,7 +38,7 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Angelic_Eclipse_12B",
     "flammenai/Mahou-1.3-mistral-nemo-12B",
     "Qwen/Qwen3-32B",
-    "mistralai/Mistral-Small-Instruct-2409",
+    "mistralai/Mistral-Small-Instruct-2409", # SHOULD MAKE QUANT
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
     "Delta-Vector/Rei-24B-KTO",
     "ArliAI/Qwen2.5-32B-ArliAI-RPMax-v1.3",
@@ -76,14 +76,14 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
     "NaomiBTW/Cydonia-v1.3-Magnum-v4-22B-AWQ", # stupid and random as fuck
     "TheBloke/30B-Lazarus-AWQ", # completely ignores instructions, super dumb
-    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # BEST CHAT MODEL FOR NOW
+    "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit", # GOOD but lots of GPT-isms
     "Qwen/Qwen3-32B-AWQ",
     "Qwen/Qwen3-14B-AWQ",
     "warshanks/Ministral-8B-Instruct-2410-AWQ",
     "TheBloke/mixtral-8x7b-v0.1-AWQ",
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
-    "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # EXTREMELY GOOD: might even be better than Qwen3 30B
+    "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # BEST CHAT MODEL FOR NOW
 
     "yapwithai/arliai-qwen3-30B-a3b-arliai-rpr-v4-fast-w4a16",
     "yapwithai/bgg1996-melinoe-30B-A3B-thinking-w4a16",
@@ -92,7 +92,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
 ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     # Pre-quantized AWQ/W4A16 models
     "yapwithai/delta-vector-rei-24B-kto-trt-awq",
-    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq", # 
+    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq", # really dumb, not worth it
     "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
     "yapwithai/mistral-small-24B-instruct-2501-trt-awq", # REALLY GOOD, not the best but can be massaged to work
     "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small-trt-awq",

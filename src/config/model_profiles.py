@@ -47,6 +47,9 @@ class ModelProfile:
             Incompatible with FlashInfer backend (DeepSeek V2/V3, Moonlight).
         needs_memory_optimization: If True, reduce GPU memory allocation.
             Helps with models prone to OOM (Gemma family).
+        max_num_batched_tokens: Override for chunked prefill batch size.
+            Higher values can reduce TTFB for some models (e.g., Mistral 3.2).
+            If None, uses the default from MAX_NUM_BATCHED_TOKENS_CHAT env var.
         config_overrides: Dict of config.json overrides applied after quantization.
             Used to fix configuration issues in exported models.
         tokenizer_kwargs: Dict of kwargs passed to AutoTokenizer.from_pretrained.
@@ -59,6 +62,7 @@ class ModelProfile:
     requires_fla_runtime: bool = False
     uses_mla: bool = False
     needs_memory_optimization: bool = False
+    max_num_batched_tokens: int | None = None
     config_overrides: Mapping[str, Any] | None = None
     tokenizer_kwargs: Mapping[str, Any] | None = None
 
@@ -132,6 +136,15 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
     ModelProfile(
         name="qwen3",
         markers=("qwen3",),
+        tokenizer_kwargs={"fix_mistral_regex": True},
+    ),
+    # Mistral Small 3.2 needs higher max_num_batched_tokens for acceptable TTFB.
+    # The model introduced instruction-following enhancements that increased compute overhead.
+    # Must come before the generic mistral-small-3 profile to match first.
+    ModelProfile(
+        name="mistral-small-3.2",
+        markers=("mistral-small-3.2", "mistral_small_3.2"),
+        max_num_batched_tokens=512,
         tokenizer_kwargs={"fix_mistral_regex": True},
     ),
     # Mistral Small 3.x models have a broken tokenizer regex pattern
