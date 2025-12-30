@@ -272,12 +272,12 @@ run_with_retries() {
   for (( attempt=1; attempt<=WARMUP_RETRIES; attempt++ )); do
     run_log="${LOG_DIR}/${log_prefix}_attempt${attempt}.log"
     last_log="${run_log}"
-    log_warmup_file "${label}: attempt ${attempt} → ${run_log}"
+    log_warmup "${label}: attempt ${attempt} → ${run_log}"
     if run_py_tool "${run_log}" "${cmd[@]}"; then
       log_phase_result "${label}" "OK"
       return 0
     fi
-    log_warmup_file "${label}: attempt ${attempt} failed"
+    log_warmup "${label}: attempt ${attempt} failed (see ${run_log})"
   done
 
   log_phase_result "${label}" "FAIL" "${last_log}"
@@ -293,7 +293,7 @@ if ! wait_for_ready; then
   exit 1
 fi
 
-log_warmup_file "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
+log_warmup "Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
 
 if ! max_conn="$(detect_max_conn)"; then
   max_conn=""

@@ -181,6 +181,18 @@ STREAMING_SANITIZER_CASES = [
     ("Oh, you're such a nerd! But I love it. So, let's Oh, you're such a nerd! But I love it. So, let's see. 27 plus 36 Oh, you're such a nerd! But I love it. So, let's see. 27 plus 36 equals. 63! You're right, I knew you would be. So, how'd that go over with your brother? Did you make him feel dumb?", [40, 80, 120, 160, 220, 280]),
     ("Echo echo echo should not replay when buffered.", [5, 12, 22, 35, 48]),
     ("The the the repeated words not duplicated.", [4, 10, 18, 32, 45]),
+
+    # Opening quotes and colons (regression - must preserve spacing and punctuation)
+    ("She said 'hello there' to the crowd.", [8, 18, 30, 42]),
+    ("Got that 'come hither' look down pat.", [6, 14, 26, 38]),
+    ("He yelled 'watch out' loudly.", [8, 18, 28]),
+    ("Gorgeous and confident: a killer combo.", [10, 22, 34]),
+    ("Three things: apples, oranges, and bananas.", [8, 18, 32, 45]),
+    ("Note: this is important.", [5, 12, 22]),
+    ("Question: what time is it?", [6, 14, 24]),
+    ("The answer: forty two.", [6, 14, 22]),
+    ("Mixed quote 'and colon: together' works.", [8, 20, 34, 45]),
+    ("Nested 'single quotes' and \"double quotes\" preserved.", [8, 22, 38, 55]),
 ]
 
 __all__ = ["STREAMING_SANITIZER_CASES"]

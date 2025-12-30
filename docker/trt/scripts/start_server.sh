@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 from huggingface_hub import snapshot_download, list_repo_tree
 
-import src.scripts.site_customize as _site_customize  # noqa: F401
+import src.scripts.log_filter as _log_filter  # noqa: F401
 
 repo_id=os.environ.get('TRT_ENGINE_REPO','').strip()
 engine_dir=os.environ.get('TRT_ENGINE_DIR','/opt/engines/trt-chat')
