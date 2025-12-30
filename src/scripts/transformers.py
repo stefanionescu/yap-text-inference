@@ -112,4 +112,3 @@ if patch_attn_implementation_eager():
         "[patch] Applied transformers eager attention fix for flash attention loading",
         file=sys.stderr,
     )
-

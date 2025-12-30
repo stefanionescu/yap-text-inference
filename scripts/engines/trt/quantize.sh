@@ -171,12 +171,27 @@ trt_quantize_model() {
     export TRANSFORMERS_PATCH_SCRIPT="${patch_script}"
   fi
   
-  # Run with patch applied via -c wrapper
-  if ! python -c "
+  # Suppress TRT-LLM/modelopt log noise
+  export TRTLLM_LOG_LEVEL="${TRTLLM_LOG_LEVEL:-error}"
+  export TQDM_DISABLE="${TQDM_DISABLE:-1}"
+  export HF_HUB_DISABLE_PROGRESS_BARS="${HF_HUB_DISABLE_PROGRESS_BARS:-1}"
+  
+  # Run with patch and log filter applied via -c wrapper
+  local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -c "
 import os, sys, runpy
+# Apply transformers patches first (prints patch messages)
 patch = os.environ.get('TRANSFORMERS_PATCH_SCRIPT')
 if patch:
     exec(open(patch).read())
+# Apply log filter to suppress noise
+try:
+    import src.scripts.log_filter
+except ImportError:
+    pass
+# Print quantization start after patches, before actual work
+print(file=sys.stderr)
+print('[quant] Starting quantization...', file=sys.stderr)
 sys.argv = sys.argv[1:]
 runpy.run_path(sys.argv[0], run_name='__main__')
 " "${quant_cmd[@]:1}"; then

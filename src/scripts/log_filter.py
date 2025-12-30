@@ -89,6 +89,43 @@ def _configure_transformers_logging() -> None:
     os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
 
 
+def _configure_trtllm_logging() -> None:
+    """Suppress TensorRT-LLM and modelopt log noise during quantization."""
+    import warnings
+
+    # Suppress TensorRT-LLM loggers
+    for logger_name in (
+        "tensorrt_llm",
+        "tensorrt_llm.logger",
+        "tensorrt_llm.runtime",
+        "modelopt",
+        "modelopt.torch",
+        "modelopt.torch.quantization",
+        "nvidia_modelopt",
+        "accelerate",
+    ):
+        logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+    # Suppress deprecation warnings from torch/modelopt
+    warnings.filterwarnings("ignore", message=".*torch_dtype.*is deprecated.*")
+    warnings.filterwarnings("ignore", message=".*Python version.*below the recommended.*")
+    warnings.filterwarnings("ignore", category=DeprecationWarning, module="modelopt")
+    warnings.filterwarnings("ignore", category=FutureWarning, module="modelopt")
+
+    # Suppress TensorRT-LLM version banner via environment
+    os.environ.setdefault("TRTLLM_LOG_LEVEL", "error")
+
+    # Suppress datasets progress bars
+    try:
+        from datasets import disable_progress_bars as datasets_disable_progress
+        datasets_disable_progress()
+    except Exception:
+        pass
+
+    # Suppress tqdm progress bars globally for quantization
+    os.environ.setdefault("TQDM_DISABLE", "1")
+
+
 def _configure():
     snapshot_group = "huggingface_hub.snapshot_download"
     _label_hf_snapshot_progress(snapshot_group)
@@ -100,6 +137,7 @@ def _configure():
     )
     _disable_hf_download_progress(download_groups)
     _configure_transformers_logging()
+    _configure_trtllm_logging()
 
 
 _configure()
