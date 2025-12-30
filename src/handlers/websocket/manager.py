@@ -74,6 +74,7 @@ from ..session import abort_session_requests, session_handler
 from .lifecycle import WebSocketLifecycle
 from .errors import reject_connection, send_error
 from .parser import parse_client_message
+from .helpers import safe_send_json
 
 logger = logging.getLogger(__name__)
 
@@ -193,14 +194,15 @@ async def _handle_control_message(
 ) -> bool:
     """Process ping/pong/end messages; return True if connection should close."""
     if msg_type == "ping":
-        await ws.send_text(json.dumps({"type": "pong"}))
+        await safe_send_json(ws, {"type": "pong"})
         return False
     if msg_type == "pong":
         return False
     if msg_type == "end":
         logger.info("WS recv: end session_id=%s", session_id)
-        await ws.send_text(
-            json.dumps({"type": "connection_closed", "reason": "client_request"})
+        await safe_send_json(
+            ws,
+            {"type": "connection_closed", "reason": "client_request"},
         )
         await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
         return True

@@ -9,6 +9,7 @@ from fastapi import WebSocket
 
 from ...engines import get_engine, create_sampling_params
 from ..sanitize.prompt_sanitizer import sanitize_prompt
+from ...handlers.websocket.helpers import safe_send_json
 
 _WARM_PARAMS = None
 
@@ -38,11 +39,11 @@ async def warm_chat_segment(
     ):
         break
 
-    await ws.send_text(json.dumps({
+    await safe_send_json(ws, {
         "type": "warmed",
         "segment": segment,
         "bytes": byte_count,
-    }))
+    })
 
 
 def sanitize_optional_prompt(raw: str | None) -> str:

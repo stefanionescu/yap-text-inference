@@ -36,7 +36,13 @@ from .chat import run_chat_generation
 from ..handlers.session import session_handler
 from ..config.filters import CHAT_CONTINUE_TOOLS
 from ..config.timeouts import TOOL_TIMEOUT_S
-from ..handlers.websocket.helpers import cancel_task, launch_tool_request, send_toolcall, stream_chat_response
+from ..handlers.websocket.helpers import (
+    cancel_task,
+    launch_tool_request,
+    safe_send_json,
+    send_toolcall,
+    stream_chat_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -143,9 +149,9 @@ async def run_execution(
         # Pick a cycled control message for variety
         control_message = session_handler.pick_control_message(session_id)
         # Send the message as token + final + done
-        await ws.send_text(json.dumps({"type": "token", "text": control_message}))
-        await ws.send_text(json.dumps({"type": "final", "normalized_text": control_message}))
-        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+        await safe_send_json(ws, {"type": "token", "text": control_message})
+        await safe_send_json(ws, {"type": "final", "normalized_text": control_message})
+        await safe_send_json(ws, {"type": "done", "usage": {}})
         # Record both user utterance and control message in history
         session_handler.append_history_turn(session_id, user_utt, control_message)
         logger.info("sequential_exec: done (control function, msg=%r)", control_message)

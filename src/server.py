@@ -68,6 +68,7 @@ from .config import (
     INFERENCE_ENGINE,
 )
 from .helpers.validation import validate_env
+from .helpers.runtime import configure_runtime_env
 from .config.logging import configure_logging
 from .engines import (
     get_engine,
@@ -84,6 +85,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(default_response_class=ORJSONResponse)
 
 configure_logging()
+configure_runtime_env()
 validate_env()
 
 

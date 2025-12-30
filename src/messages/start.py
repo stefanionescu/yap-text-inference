@@ -31,7 +31,6 @@ then dispatches execution as a background task.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -67,7 +66,7 @@ from ..execution.executor import run_execution
 from ..execution.chat.runner import run_chat_generation
 from ..execution.tool.runner import run_toolcall
 from ..execution.tool.parser import parse_tool_result
-from ..handlers.websocket.helpers import stream_chat_response
+from ..handlers.websocket.helpers import safe_send_json, stream_chat_response
 from ..config.timeouts import TOOL_TIMEOUT_S
 from .validators import (
     ValidationError,
@@ -123,11 +122,11 @@ _SAMPLING_FIELDS: tuple[tuple[str, type, float | int, float | int, str, str], ..
 
 
 async def _close_with_validation_error(ws: WebSocket, err: ValidationError) -> None:
-    await ws.send_text(json.dumps({
+    await safe_send_json(ws, {
         "type": "error",
         "error_code": err.error_code,
         "message": err.message,
-    }))
+    })
     await ws.close(code=1008)
     logger.info("handle_start: error → %s; connection closed", err.error_code)
 
@@ -229,7 +228,8 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     # and user_utt is passed separately to the prompt builder.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
 
-    await ws.send_text(json.dumps(_build_ack_payload(session_id, session_config, updated_config)))
+    if not await safe_send_json(ws, _build_ack_payload(session_id, session_config, updated_config)):
+        return
     logger.info("handle_start: ack sent session_id=%s", session_id)
 
     plan = StartPlan(
@@ -475,11 +475,11 @@ async def _dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
             )
             tool_res = {"cancelled": True, "text": "[]", "timeout": True}
         raw_field, is_tool = parse_tool_result(tool_res)
-        await ws.send_text(json.dumps({
+        await safe_send_json(ws, {
             "type": "toolcall",
             "status": "yes" if is_tool else "no",
             "raw": raw_field,
-        }))
-        await ws.send_text(json.dumps({"type": "final", "normalized_text": ""}))
-        await ws.send_text(json.dumps({"type": "done", "usage": {}}))
+        })
+        await safe_send_json(ws, {"type": "final", "normalized_text": ""})
+        await safe_send_json(ws, {"type": "done", "usage": {}})
         logger.info("handle_start: tool-only done session_id=%s is_tool=%s", plan.session_id, is_tool)

@@ -16,6 +16,7 @@ import json
 from fastapi import WebSocket
 
 from ..handlers.session import abort_session_requests
+from ..handlers.websocket.helpers import safe_send_text
 
 
 async def handle_cancel_message(ws: WebSocket, session_id: str, request_id: str | None = None) -> None:
@@ -32,6 +33,5 @@ async def handle_cancel_message(ws: WebSocket, session_id: str, request_id: str 
     payload = {"type": "done", "cancelled": True}
     if request_id:
         payload["request_id"] = request_id
-    await ws.send_text(json.dumps(payload))
-
+    await safe_send_text(ws, json.dumps(payload))
 

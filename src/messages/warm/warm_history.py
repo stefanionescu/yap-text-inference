@@ -1,21 +1,21 @@
 """Warm history message handler split from message_handlers for modularity."""
 
-import json
 from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
 from ...tokens import count_tokens_chat, trim_history_preserve_messages_chat
 from ...helpers.prompts import build_chat_warm_prompt
 from .warm_utils import warm_chat_segment, sanitize_optional_prompt
+from ...handlers.websocket.helpers import safe_send_json
 
 
 async def handle_warm_history_message(ws: WebSocket, msg: dict) -> None:
     """Handle 'warm_history' message type."""
     if not DEPLOY_CHAT:
-        await ws.send_text(json.dumps({
+        await safe_send_json(ws, {
             "type": "error",
-            "message": "warm_history requires chat model deployment"
-        }))
+            "message": "warm_history requires chat model deployment",
+        })
         return
     
     history_text = msg.get("history_text", "")
@@ -30,10 +30,10 @@ async def handle_warm_history_message(ws: WebSocket, msg: dict) -> None:
         static_prefix = sanitize_optional_prompt(msg.get("chat_prompt") or msg.get("persona_text"))
         runtime_text = sanitize_optional_prompt(msg.get("runtime_text"))
     except ValueError as e:
-        await ws.send_text(json.dumps({
+        await safe_send_json(ws, {
             "type": "error",
             "message": str(e),
-        }))
+        })
         return
 
     prompt = build_chat_warm_prompt(static_prefix, runtime_text, history_text)
