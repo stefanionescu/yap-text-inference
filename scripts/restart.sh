@@ -76,6 +76,8 @@ Key flags:
                         `4bit` uses NVFP4 for MoE models (TRT) or AWQ for dense models.
                         `8bit` uses FP8 (L40S/H100) or INT8-SQ (A100).
                         Pre-quantized repos are detected automatically.
+  --show-hf-logs        Show Hugging Face download/upload progress bars
+  --no-show-hf-logs     Hide Hugging Face logs (default)
 
 This script always:
   • Stops the server
@@ -144,6 +146,11 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   # Pass push-quant flag if requested
   if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ]; then
     main_args+=("--push-quant")
+  fi
+  
+  # Pass show-hf-logs flag if requested
+  if [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
+    main_args+=("--show-hf-logs")
   fi
   
   # Add model(s) based on deploy mode

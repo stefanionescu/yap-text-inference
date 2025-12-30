@@ -15,6 +15,7 @@ import sys
 from typing import Iterable
 
 from src.config.patterns import TRTLLM_NOISE_PATTERNS
+from src.helpers.env import env_flag
 
 
 def _label_hf_snapshot_progress(group: str) -> None:
@@ -244,13 +245,18 @@ def _configure():
     snapshot_group = "huggingface_hub.snapshot_download"
     _label_hf_snapshot_progress(snapshot_group)
 
+    # Single flag controls both download AND upload HF progress bars
+    show_hf_logs = env_flag("SHOW_HF_LOGS", False)
     download_groups = (
         "huggingface_hub.http_get",  # standard downloads (snapshot_download/hf_hub_download)
         "huggingface_hub.xet_get",   # Xet-accelerated downloads
         snapshot_group,               # parallel snapshot fetch progress
     )
-    _disable_hf_download_progress(download_groups)
-    _disable_hf_upload_progress()
+    if not show_hf_logs:
+        _disable_hf_download_progress(download_groups)
+        _disable_hf_upload_progress()
+    else:
+        logging.getLogger("log_filter").debug("HF logs enabled via SHOW_HF_LOGS")
     _configure_transformers_logging()
     _configure_trtllm_logging()
 

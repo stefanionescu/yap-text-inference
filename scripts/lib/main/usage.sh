@@ -87,6 +87,10 @@ main_usage() {
   echo "Quantized model uploads:"
   echo "  --push-quant        Upload freshly built 4-bit exports to Hugging Face"
   echo "  --no-push-quant     Skip uploads (default)"
+  echo ""
+  echo "Debugging:"
+  echo "  --show-hf-logs      Show Hugging Face download/upload progress bars"
+  echo "  --no-show-hf-logs   Hide Hugging Face logs (default)"
   exit 1
 }
 
