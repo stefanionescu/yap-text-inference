@@ -27,6 +27,7 @@ trt_download_model() {
   
   # If model_id is a local path, use it directly
   if [ -d "${model_id}" ]; then
+    log_info "[model] Using local model path: ${model_id}"
     echo "${model_id}"
     return 0
   fi
@@ -40,23 +41,37 @@ trt_download_model() {
   
   # Download if not already present
   if [ -d "${target_dir}" ] && [ -f "${target_dir}/config.json" ]; then
-    log_info "[model] Using cached model at ${target_dir}"
+    log_info "[model] ✓ Using cached model at ${target_dir}"
     echo "${target_dir}"
     return 0
   fi
   
-  log_info "[model] Downloading model ${model_id}..."
+  log_info "[model] Downloading model from HuggingFace..."
+  log_info "[model] Model ID: ${model_id}"
+  log_info "[model] Target directory: ${target_dir}"
   log_blank
   
   mkdir -p "${target_dir}"
   
+  # Enable HF transfer for faster downloads
   hf_enable_transfer "[model]" "python" || true
   
+  # Pass SHOW_HF_LOGS to Python so it can re-enable progress bars if user wants them
+  local show_hf_logs_env=""
+  if [ "${SHOW_HF_LOGS:-false}" = "true" ] || [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
+    show_hf_logs_env="SHOW_HF_LOGS=1"
+    log_info "[model] HuggingFace progress bars enabled (--show-hf-logs)"
+  fi
+  
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
-  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-model \
+  local download_start download_end download_duration
+  download_start=$(date +%s)
+  
+  if ! env ${show_hf_logs_env} PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-model \
     --model-id "${model_id}" \
     --target-dir "${target_dir}"; then
     log_err "[model] ✗ Failed to download model ${model_id}"
+    log_err "[model] Check network connectivity and HuggingFace authentication"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ] && [ ! -f "${target_dir}/config.json" ]; then
       log_warn "[model] ⚠ Cleaning up partial download at ${target_dir}"
@@ -64,6 +79,10 @@ trt_download_model() {
     fi
     return 1
   fi
+  
+  download_end=$(date +%s)
+  download_duration=$((download_end - download_start))
+  log_info "[model] ✓ Download completed in ${download_duration}s"
   
   echo "${target_dir}"
 }
@@ -216,18 +235,44 @@ trt_download_prequantized() {
   fi
   
   log_info "[model] Downloading pre-quantized TRT model..."
+  log_info "[model] Model ID: ${model_id}"
+  log_info "[model] Target directory: ${target_dir}"
+  
+  # Check if already downloaded
+  local ckpt_dir="${target_dir}/trt-llm/checkpoints"
+  if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
+    log_info "[model] ✓ Pre-quantized model already cached at ${ckpt_dir}"
+    echo "${ckpt_dir}"
+    return 0
+  fi
+  
   mkdir -p "${target_dir}"
   
+  # Enable HF transfer for faster downloads
   hf_enable_transfer "[model]" "python" || true
   
+  # Pass SHOW_HF_LOGS to Python so it can re-enable progress bars if user wants them
+  local show_hf_logs_env=""
+  if [ "${SHOW_HF_LOGS:-false}" = "true" ] || [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
+    show_hf_logs_env="SHOW_HF_LOGS=1"
+    log_info "[model] HuggingFace progress bars enabled (--show-hf-logs)"
+  else
+    log_info "[model] HuggingFace progress bars disabled (use --show-hf-logs to enable)"
+  fi
+  
+  log_blank
+  
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
-  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-prequantized \
+  local download_start download_end download_duration
+  download_start=$(date +%s)
+  
+  if ! env ${show_hf_logs_env} PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-prequantized \
     --model-id "${model_id}" \
     --target-dir "${target_dir}"; then
     log_err "[model] ✗ Failed to download pre-quantized model"
+    log_err "[model] Check network connectivity and HuggingFace authentication"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ]; then
-      local ckpt_dir="${target_dir}/trt-llm/checkpoints"
       if [ ! -f "${ckpt_dir}/config.json" ] && [ ! -f "${target_dir}/config.json" ]; then
         log_warn "[model] ⚠ Cleaning up partial download at ${target_dir}"
         rm -rf "${target_dir}"
@@ -236,12 +281,26 @@ trt_download_prequantized() {
     return 1
   fi
   
+  download_end=$(date +%s)
+  download_duration=$((download_end - download_start))
+  log_info "[model] Download completed in ${download_duration}s"
+  
   # Check for checkpoint directory
-  local ckpt_dir="${target_dir}/trt-llm/checkpoints"
   if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
+    log_info "[model] ✓ Found TRT-LLM checkpoint at ${ckpt_dir}"
     echo "${ckpt_dir}"
-  else
+  elif [ -f "${target_dir}/config.json" ]; then
+    log_info "[model] ✓ Found checkpoint at ${target_dir}"
     echo "${target_dir}"
+  else
+    log_err "[model] ✗ Download completed but no config.json found"
+    log_err "[model] Expected at: ${ckpt_dir}/config.json or ${target_dir}/config.json"
+    # List what we got
+    log_info "[model] Directory contents:"
+    ls -la "${target_dir}" 2>/dev/null | head -20 | while read -r line; do
+      log_info "[model]   ${line}"
+    done
+    return 1
   fi
 }
 
