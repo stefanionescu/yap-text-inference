@@ -29,6 +29,8 @@ from typing import Any
 
 from fastapi import WebSocket
 
+from .helpers import safe_send_text
+
 
 async def send_error(
     ws: WebSocket,
@@ -52,7 +54,7 @@ async def send_error(
     }
     if extra:
         payload.update(extra)
-    await ws.send_text(json.dumps(payload))
+    await safe_send_text(ws, json.dumps(payload))
 
 
 async def reject_connection(
@@ -79,5 +81,4 @@ async def reject_connection(
     await ws.accept()
     await send_error(ws, error_code=error_code, message=message, extra=extra)
     await ws.close(code=close_code)
-
 

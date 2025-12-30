@@ -7,7 +7,6 @@ warm to seed prefix caching with the new prompt + history.
 
 from __future__ import annotations
 
-import json
 import math
 import random
 import uuid
@@ -15,6 +14,7 @@ from typing import Any
 from fastapi import WebSocket
 from ..handlers.session import session_handler
 from ..config import DEPLOY_CHAT
+from ..handlers.websocket.helpers import safe_send_json
 from ..config.filters import CHAT_PROMPT_RATE_LIMIT_MESSAGES
 from ..tokens import (
     count_tokens_chat,
@@ -43,29 +43,29 @@ _ERROR_CODE_MAP = {
 
 
 async def _send_ack_error(ws: WebSocket, err: ValidationError) -> None:
-    await ws.send_text(json.dumps({
+    await safe_send_json(ws, {
         "type": "ack",
         "for": "chat_prompt",
         "ok": False,
         "code": _ERROR_CODE_MAP.get(err.error_code, 400),
         "message": err.message,
-    }))
+    })
 
 
 async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
     if not DEPLOY_CHAT:
-        await ws.send_text(json.dumps({
+        await safe_send_json(ws, {
             "type": "ack",
             "for": "chat_prompt",
             "ok": False,
             "code": 400,
-            "message": "chat_prompt requires chat model deployment"
-        }))
+            "message": "chat_prompt requires chat model deployment",
+        })
         return
     
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
-        await ws.send_text(json.dumps({"type": "error", "message": "no active session; send 'start' first"}))
+        await safe_send_json(ws, {"type": "error", "message": "no active session; send 'start' first"})
         return
 
     # Required fields
@@ -84,13 +84,13 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
 
     # Must change at least one of gender or personality
     if (cfg.get("chat_gender") == g) and (cfg.get("chat_personality") == norm_personality):
-        await ws.send_text(json.dumps({
+        await safe_send_json(ws, {
             "type": "ack",
             "for": "chat_prompt",
             "ok": True,
             "code": 204,
-            "message": "no change"
-        }))
+            "message": "no change",
+        })
         return
 
     # Sanitize and length-check prompt
@@ -126,14 +126,14 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
             f"every {window_desc} seconds; retry in {retry_in} seconds"
         )
         friendly_message = random.choice(CHAT_PROMPT_RATE_LIMIT_MESSAGES)
-        await ws.send_text(json.dumps({
+        await safe_send_json(ws, {
             "type": "ack",
             "for": "chat_prompt",
             "ok": False,
             "code": 429,
             "message": message,
             "friendly_message": friendly_message,
-        }))
+        })
         return
 
     # Update session state
@@ -160,7 +160,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     ):
         break
 
-    await ws.send_text(json.dumps({
+    await safe_send_json(ws, {
         "type": "ack",
         "for": "chat_prompt",
         "ok": True,
@@ -168,5 +168,4 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
         "message": "updated",
         "gender": g,
         "personality": norm_personality,
-    }))
-
+    })

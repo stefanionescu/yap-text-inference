@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import os
+
 from src.config.templates import (
     CHAT_TEMPLATE_NAME,
     MISTRAL_RESEARCH_MODELS,
@@ -9,6 +12,12 @@ from src.config.templates import (
     QWEN_LICENSE_MODELS,
     QWEN_LICENSE,
 )
+
+logger = logging.getLogger(__name__)
+try:
+    _HF_LICENSE_FETCH_TIMEOUT_S = max(1.0, float(os.getenv("HF_LICENSE_FETCH_TIMEOUT", "5")))
+except ValueError:
+    _HF_LICENSE_FETCH_TIMEOUT_S = 5.0
 
 
 def resolve_template_name(is_tool: bool) -> str:
@@ -56,11 +65,11 @@ def fetch_license_from_hf(model_id: str) -> dict[str, str] | None:
     try:
         from huggingface_hub import model_info
     except ImportError:
-        print("[license] Warning: huggingface_hub not installed, cannot fetch license")
+        logger.warning("license: huggingface_hub not installed; skipping license fetch")
         return None
     
     try:
-        info = model_info(model_id)
+        info = model_info(model_id, timeout=_HF_LICENSE_FETCH_TIMEOUT_S)
         card_data = info.card_data
         
         if not card_data:
@@ -84,7 +93,7 @@ def fetch_license_from_hf(model_id: str) -> dict[str, str] | None:
             "license_link": license_link,
         }
     except Exception as e:
-        print(f"[license] Warning: Could not fetch license from {model_id}: {e}")
+        logger.warning("license: failed to fetch license for %s (%s)", model_id, e)
         return None
 
 
@@ -130,4 +139,3 @@ __all__ = [
     "compute_license_info",
     "fetch_license_from_hf",
 ]
-
