@@ -101,9 +101,9 @@ def match_personality_phrase(
     return None
 
 
-# =============================================================================
+# ============================================================================
 # Combined Gender + Personality Matching
-# =============================================================================
+# ============================================================================
 
 # Male/female word patterns for detecting gender in combined phrases
 _MALE_WORD_PATTERN = re.compile(GENDER_MALE_WORD, re.IGNORECASE)

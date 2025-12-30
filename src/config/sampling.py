@@ -36,6 +36,8 @@ All values can be overridden via environment variables or per-request.
 
 import os
 
+from ..helpers.sampling import build_logit_bias_map
+
 
 # ============================================================================
 # Default Sampling Parameters
@@ -111,31 +113,7 @@ INFERENCE_STOP = [
     "[/SYSTEM_PROMPT]",
 ]
 
-
-def _build_logit_bias_map(raw_map: dict[str, float]) -> dict[str, float]:
-    env_path = os.getenv("CHAT_LOGIT_BIAS_FILE")
-    if not env_path:
-        return raw_map
-    try:
-        import json
-        with open(env_path, encoding="utf-8") as infile:
-            loaded = json.load(infile)
-        if not isinstance(loaded, dict):
-            raise ValueError("CHAT_LOGIT_BIAS_FILE must contain a JSON object")
-        cleaned: dict[str, float] = {}
-        for key, value in loaded.items():
-            if not isinstance(key, str):
-                continue
-            try:
-                cleaned[key] = float(value)
-            except (TypeError, ValueError):
-                continue
-        return cleaned or raw_map
-    except Exception:
-        return raw_map
-
-
-CHAT_LOGIT_BIAS = _build_logit_bias_map(_DEFAULT_LOGIT_BIAS)
+CHAT_LOGIT_BIAS = build_logit_bias_map(_DEFAULT_LOGIT_BIAS)
 
 
 __all__ = [

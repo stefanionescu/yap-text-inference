@@ -64,7 +64,9 @@ def resolve_total_len(requested: int, policy: TotalLengthPolicy) -> int:
     return policy.resolve(requested)
 
 
-# ------------------------- Dataset helpers ------------------------- #
+# ============================================================================
+# Dataset helpers
+# ============================================================================
 
 _DATASET_ALIASES: Mapping[str, str] = {
     "open-platypus": CALIB_DEFAULT_DATASET,

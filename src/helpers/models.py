@@ -75,7 +75,9 @@ def is_valid_model(model: str, allowed_models: list, model_type: str) -> bool:
     return False
 
 
-# ----------------- MoE Model Detection -----------------
+# ============================================================================
+# MoE Model Detection
+# ============================================================================
 
 def is_moe_model(model: str | None) -> bool:
     """Check if model is a Mixture of Experts (MoE) model.
