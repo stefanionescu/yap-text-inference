@@ -318,7 +318,7 @@ def push_engine_to_hf(
         return False
     
     # Upload engine to engines/{engine_label}/
-    print(f"[trt-hf] Uploading engine to {repo_id} as trt-llm/engines/{engine_label}...")
+    print(f"[trt-hf] Uploading engine...")
     try:
         api.upload_folder(
             folder_path=str(engine_path),

@@ -236,7 +236,7 @@ trt_download_prequantized() {
   # Check if already downloaded
   local ckpt_dir="${target_dir}/trt-llm/checkpoints"
   if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
-    log_info "[model] ✓ Pre-quantized model already cached at ${ckpt_dir}"
+    log_info "[model] ✓ Pre-quantized model checkpoint already cached locally"
     echo "${ckpt_dir}"
     return 0
   fi

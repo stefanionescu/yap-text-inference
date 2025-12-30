@@ -9,7 +9,8 @@ _noise_is_warmup_running() {
   fi
 
   local pid=""
-  if ! pid="$(tr -d '[:space:]' <"${lock_file}" 2>/dev/null)"; then
+  # Use cat to read file - handles race condition where file is deleted after existence check
+  if ! pid="$(cat "${lock_file}" 2>/dev/null | tr -d '[:space:]')"; then
     pid=""
   fi
 
