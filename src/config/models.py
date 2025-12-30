@@ -70,7 +70,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
 
-    # Pre-quantized AWQ/W4A16 models
+    # Pre-quantized AWQ/W4A16/NVFP4 models
     "RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w4a16",
     "leon-se/gemma-3-27b-it-qat-W4A16-G128",
     "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
@@ -84,7 +84,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "casperhansen/mistral-nemo-instruct-2407-awq",
     "cpatonn/Llama-3_3-Nemotron-Super-49B-v1_5-AWQ-4bit",
     "jeffcookio/Mistral-Small-3.2-24B-Instruct-2506-awq-sym", # EXTREMELY GOOD: might even be better than Qwen3 30B
-    
+
     "yapwithai/arliai-qwen3-30B-a3b-arliai-rpr-v4-fast-w4a16",
     "yapwithai/bgg1996-melinoe-30B-A3B-thinking-w4a16",
 ]
@@ -94,15 +94,12 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/delta-vector-rei-24B-kto-trt-awq",
     "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq",
     "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
-    "yapwithai/mistral-small-24B-instruct-2501-trt-awq",
+    "yapwithai/mistral-small-24B-instruct-2501-trt-awq", # REALLY GOOD, not the best but can be massaged to work
     "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small-trt-awq",
     "yapwithai/qwq-32B-trt-awq",
-    "yapwithai/mistral-nemo-instruct-2407-trt-awq",
     "yapwithai/steelstorage-l3-aethora-15B-v2-trt-awq",
-    "yapwithai/delta-vector-ohashi-nemo-12B-trt-awq",
     "yapwithai/concedo-beepo-22B-trt-awq",
     "yapwithai/gryphe-pantheon-rp-pure-1.6.2-22b-small-trt-awq",
-    "yapwithai/qwen3-14B-trt-awq",
     "yapwithai/readyart-broken-tutu-24B-unslop-v2.0-trt-awq",
 
     # Pre-quantized FP8 models
