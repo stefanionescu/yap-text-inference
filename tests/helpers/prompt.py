@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 try:  # When /tests is already on sys.path
-    from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
+    from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
 except ModuleNotFoundError:  # When repo root is on sys.path
-    from tests.prompts.chat import FEMALE_PROMPT, MALE_PROMPT
+    from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
 
 
 def normalize_gender(value: str | None) -> str:

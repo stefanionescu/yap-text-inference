@@ -76,7 +76,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Thin orchestrator: parse CLI args and run the test."""
-    from tests.logic.personality.runner import run_test
+    from tests.logic.gender.runner import run_test
 
     args = _parse_args()
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))

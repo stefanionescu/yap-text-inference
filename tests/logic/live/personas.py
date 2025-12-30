@@ -6,7 +6,7 @@ from typing import Any
 
 from tests.helpers.prompt import normalize_gender
 
-PERSONA_MODULE = "tests.prompts.live"
+PERSONA_MODULE = "tests.prompts.detailed"
 DEFAULT_PERSONA_NAME = "anna_flirty"
 
 
@@ -19,7 +19,7 @@ class PersonaDefinition:
 
 
 class PersonaRegistry:
-    """Reloadable registry backed by `tests/prompts/live.py`."""
+    """Reloadable registry backed by `tests/prompts/detailed.py`."""
 
     def __init__(self, module_name: str = PERSONA_MODULE) -> None:
         self._module_name = module_name

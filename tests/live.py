@@ -4,7 +4,7 @@ Interactive live WebSocket test client.
 
 - Starts a session using the same default prompt as warmup (anna_flirty)
 - Keeps the connection open so you can exchange messages from the CLI
-    - Supports hot-reloading persona definitions from `tests/prompts/live.py`
+    - Supports hot-reloading persona definitions from `tests/prompts/detailed.py`
 - Lets you switch personas mid-session via `chat_prompt` updates
 - Prints streaming tokens, metrics, and structured error information
 - Sends a graceful `{"type": "end"}` message on /stop, Ctrl+C, or server close
@@ -70,7 +70,7 @@ def _parse_args() -> argparse.Namespace:
         "-p",
         dest="persona",
         default=DEFAULT_PERSONA_NAME,
-        help=f"Persona name from tests/prompts/live.py (default: {DEFAULT_PERSONA_NAME})",
+        help=f"Persona name from tests/prompts/detailed.py (default: {DEFAULT_PERSONA_NAME})",
     )
     parser.add_argument(
         "--recv-timeout",

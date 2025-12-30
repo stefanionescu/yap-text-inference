@@ -235,7 +235,7 @@ This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) with
 Highlights:
 
 - [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Add `--no-chat-prompt` when you deploy *only* the classifier so the client skips chat prompts.
-- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/live.py`. Requires chat prompts (do not use `--no-chat-prompt`).
+- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/detailed.py`. Requires chat prompts (do not use `--no-chat-prompt`).
 - [`tests/personality.py`](ADVANCED.md#personality-switch-test) – exercises persona swaps and history stitching to ensure cache hits are preserved. Requires chat prompts (do not use `--no-chat-prompt`).
 - [`tests/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics. Supports `--no-chat-prompt` for tool-only deployments.
 - [`tests/screen_analysis.py`](ADVANCED.md#screen-analysis--toolcall-test) – validates the toolcall branch used by screen analysis flows; chat prompts are mandatory.
