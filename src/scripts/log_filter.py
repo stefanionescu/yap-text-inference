@@ -140,7 +140,8 @@ def _configure_trtllm_logging() -> None:
         logging.getLogger(logger_name).setLevel(logging.ERROR)
 
     # Suppress deprecation warnings from torch/modelopt
-    warnings.filterwarnings("ignore", message=".*torch_dtype.*is deprecated.*")
+    warnings.filterwarnings("ignore", message=r".*`?torch_dtype`?.*deprecated.*")
+    warnings.filterwarnings("ignore", message=r".*`?dtype`?.*instead.*")
     warnings.filterwarnings("ignore", message=".*Python version.*below the recommended.*")
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="modelopt")
     warnings.filterwarnings("ignore", category=FutureWarning, module="modelopt")
@@ -229,6 +230,11 @@ def _install_trtllm_stream_filters(logger: logging.Logger) -> None:
     try:
         sys.stdout = _NoiseFilterStream(sys.stdout, TRTLLM_NOISE_PATTERNS)
         sys.stderr = _NoiseFilterStream(sys.stderr, TRTLLM_NOISE_PATTERNS)
+        # Also wrap __stdout__/__stderr__ in case libraries use them directly
+        if hasattr(sys, "__stdout__") and sys.__stdout__ is not None:
+            sys.__stdout__ = _NoiseFilterStream(sys.__stdout__, TRTLLM_NOISE_PATTERNS)
+        if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
+            sys.__stderr__ = _NoiseFilterStream(sys.__stderr__, TRTLLM_NOISE_PATTERNS)
         _TRT_STREAMS_PATCHED = True
     except Exception as exc:  # pragma: no cover - defensive guard
         logger.debug("failed to wrap stdio for TRT log filtering: %s", exc)
