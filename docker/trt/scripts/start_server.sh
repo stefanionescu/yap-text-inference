@@ -28,9 +28,20 @@ py_out=$(
 import os
 import sys
 from pathlib import Path
-from huggingface_hub import snapshot_download, list_repo_tree
 
-import src.scripts.log_filter as _log_filter  # noqa: F401
+show_hf_logs = os.environ.get("SHOW_HF_LOGS", "0").lower() in ("1", "true", "yes")
+if show_hf_logs:
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
+    os.environ.pop("TQDM_DISABLE", None)
+    try:
+        from huggingface_hub.utils import enable_progress_bars
+        enable_progress_bars()
+    except Exception:
+        pass
+else:
+    import src.scripts.log_filter as _log_filter  # noqa: F401
+
+from huggingface_hub import snapshot_download, list_repo_tree
 
 repo_id=os.environ.get('TRT_ENGINE_REPO','').strip()
 engine_dir=os.environ.get('TRT_ENGINE_DIR','/opt/engines/trt-chat')

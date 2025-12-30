@@ -415,9 +415,23 @@ trt_download_prebuilt_engine() {
   mkdir -p "${target_dir}"
   
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
+  local show_hf_logs="${SHOW_HF_LOGS:-0}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
+import os
 import sys
-import src.scripts.log_filter as _log_filter  # noqa: F401
+
+show_hf_logs = os.environ.get("SHOW_HF_LOGS", "0").lower() in ("1", "true", "yes")
+if show_hf_logs:
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
+    os.environ.pop("TQDM_DISABLE", None)
+    try:
+        from huggingface_hub.utils import enable_progress_bars
+        enable_progress_bars()
+    except Exception:
+        pass
+else:
+    import src.scripts.log_filter as _log_filter  # noqa: F401
+
 from huggingface_hub import snapshot_download
 
 snapshot_download(

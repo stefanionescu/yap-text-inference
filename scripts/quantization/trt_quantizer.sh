@@ -246,6 +246,7 @@ if ! trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}"; then
 fi
 
 log_info "[quant] ✓ Quantization process complete"
+log_blank
 
 # Get engine directory
 ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")

@@ -32,7 +32,7 @@ sleep 1
 if [ "${NUKE_ALL}" != "0" ]; then
   log_info "[stop] Deleting repo caches, compiled artifacts, and checked-out models..."
   cleanup_repo_caches "${ROOT_DIR}"
-  log_info "[stop] Removing Python virtual environments (repo and Docker)..."
+  log_info "[stop] Removing Python virtual environments..."
   cleanup_venvs "${ROOT_DIR}"
 fi
 
