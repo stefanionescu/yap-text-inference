@@ -2,8 +2,22 @@ from __future__ import annotations
 
 try:  # When /tests is on sys.path
     from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
+    from tests.prompts.detailed import (
+        ANNA_FLIRTY,
+        ANNA_RELIGIOUS,
+        ANNA_SPIRITUAL,
+        MARK_SAVAGE,
+        MARK_DELULU,
+    )
 except ModuleNotFoundError:  # When repo root is on sys.path
     from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
+    from tests.prompts.detailed import (
+        ANNA_FLIRTY,
+        ANNA_RELIGIOUS,
+        ANNA_SPIRITUAL,
+        MARK_SAVAGE,
+        MARK_DELULU,
+    )
 
 # Default personalities for tool phrase matching
 # Keys are personality names, values are lists of synonyms
@@ -39,6 +53,16 @@ PERSONA_VARIANTS = [
     ("male", "flirty", MALE_PROMPT),
 ]
 
+# Personality test variants: alternating Anna/Mark with different personalities
+# Pattern: Anna flirty -> Mark savage -> Anna religious -> Mark delulu -> Anna spiritual
+PERSONALITY_PERSONA_VARIANTS = [
+    ("female", "flirty", ANNA_FLIRTY),
+    ("male", "savage", MARK_SAVAGE),
+    ("female", "religious", ANNA_RELIGIOUS),
+    ("male", "delulu", MARK_DELULU),
+    ("female", "spiritual", ANNA_SPIRITUAL),
+]
+
 # Sampling defaults mirrored from src.config.sampling for CLI usage
 CHAT_TEMPERATURE_DEFAULT = 0.9
 CHAT_TOP_P_DEFAULT = 0.90
@@ -63,6 +87,7 @@ __all__ = [
     "PERSONALITY_SWITCH_DELAY_SECONDS",
     "PERSONALITY_REPLIES_PER_SWITCH",
     "PERSONA_VARIANTS",
+    "PERSONALITY_PERSONA_VARIANTS",
     "CHAT_TEMPERATURE_DEFAULT",
     "CHAT_TOP_P_DEFAULT",
     "CHAT_TOP_K_DEFAULT",
