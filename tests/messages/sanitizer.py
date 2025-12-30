@@ -193,6 +193,13 @@ STREAMING_SANITIZER_CASES = [
     ("The answer: forty two.", [6, 14, 22]),
     ("Mixed quote 'and colon: together' works.", [8, 20, 34, 45]),
     ("Nested 'single quotes' and \"double quotes\" preserved.", [8, 22, 38, 55]),
+
+    # Spaced dots regression (". . " should collapse to single period)
+    ("Drive a man wild. . What do you think?", [10, 22, 35]),
+    ("Sentence one. . Sentence two.", [8, 16, 28]),
+    ("Multiple. . . periods. . separated.", [8, 18, 30]),
+    ("End with spaced dots. . .", [8, 18]),
+    ("Period. .Word without space.", [6, 12, 22]),
 ]
 
 __all__ = ["STREAMING_SANITIZER_CASES"]

@@ -97,6 +97,8 @@ EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
 LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
 DOT_RUN_PATTERN = re.compile(r"\.{2,}")
+# Dots separated by spaces like ". . " or ". . ." → single period
+SPACED_DOT_RUN_PATTERN = re.compile(r"(?:\.\s+)+\.")
 
 # Prompt/output sanitization patterns
 CTRL_CHAR_PATTERN = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
@@ -148,6 +150,7 @@ __all__ = [
     "EXAGGERATED_OH_PATTERN",
     "ELLIPSIS_TRAILING_DOT_PATTERN",
     "DOT_RUN_PATTERN",
+    "SPACED_DOT_RUN_PATTERN",
     "LETTERS_ONLY_PATTERN",
     "CTRL_CHAR_PATTERN",
     "BIDI_CHAR_PATTERN",
