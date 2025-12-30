@@ -11,7 +11,7 @@ if _TEST_DIR not in sys.path:
 
 from tests.helpers.rate import SlidingWindowPacer
 from tests.config import PERSONALITY_REPLIES_PER_SWITCH
-from tests.messages.personality import PERSONALITY_NAME_CHECK_MESSAGE
+from tests.messages.gender import GENDER_NAME_CHECK_MESSAGE
 
 from .messaging import send_persona_update, send_user_exchange
 from .session import PersonaSession, PersonaVariant
@@ -57,7 +57,7 @@ async def run_switch_sequence(
         ws,
         session,
         variant,
-        PERSONALITY_NAME_CHECK_MESSAGE,
+        GENDER_NAME_CHECK_MESSAGE,
         message_pacer=message_pacer,
     )
     for _ in range(PERSONALITY_REPLIES_PER_SWITCH):

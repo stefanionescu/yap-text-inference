@@ -53,6 +53,9 @@ from tests.config import (
     BENCHMARK_DEFAULT_CONCURRENCY,
     BENCHMARK_DEFAULT_REQUESTS,
     BENCHMARK_DEFAULT_TIMEOUT_SEC,
+    BENCHMARK_BURST_MODE_DEFAULT,
+    BENCHMARK_BURST_SIZE_DEFAULT,
+    BENCHMARK_WINDOW_DURATION_DEFAULT,
 )
 
 def _parse_args() -> argparse.Namespace:
@@ -101,6 +104,27 @@ def _parse_args() -> argparse.Namespace:
         "--double-ttfb",
         action="store_true",
         help="send two sequential start messages per connection and report metrics separately",
+    )
+    p.add_argument(
+        "--burst-mode",
+        choices=["instant", "windowed"],
+        default=BENCHMARK_BURST_MODE_DEFAULT,
+        help=(
+            "transaction distribution mode: 'instant' sends all at once (default), "
+            "'windowed' sends in timed bursts"
+        ),
+    )
+    p.add_argument(
+        "--burst-size",
+        type=int,
+        default=BENCHMARK_BURST_SIZE_DEFAULT,
+        help="number of transactions to send per window (only used with --burst-mode=windowed)",
+    )
+    p.add_argument(
+        "--window-duration",
+        type=float,
+        default=BENCHMARK_WINDOW_DURATION_DEFAULT,
+        help="duration of each burst window in seconds (only used with --burst-mode=windowed)",
     )
     args = p.parse_args()
     args.sampling = build_sampling_payload(args)
