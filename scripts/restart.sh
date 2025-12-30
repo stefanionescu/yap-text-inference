@@ -78,6 +78,8 @@ Key flags:
                         Pre-quantized repos are detected automatically.
   --show-hf-logs        Show Hugging Face download/upload progress bars
   --no-show-hf-logs     Hide Hugging Face logs (default)
+  --show-trt-logs       Show TensorRT-LLM build/quantization logs
+  --no-show-trt-logs    Hide TensorRT logs (default)
 
 This script always:
   • Stops the server
@@ -151,6 +153,11 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   # Pass show-hf-logs flag if requested
   if [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
     main_args+=("--show-hf-logs")
+  fi
+  
+  # Pass show-trt-logs flag if requested
+  if [ "${SHOW_TRT_LOGS:-0}" = "1" ]; then
+    main_args+=("--show-trt-logs")
   fi
   
   # Add model(s) based on deploy mode

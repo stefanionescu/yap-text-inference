@@ -239,6 +239,14 @@ else
   fi
 fi
 
+# Validate checkpoint
+if ! trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}"; then
+  log_err "[quant] ✗ Checkpoint validation failed"
+  exit 1
+fi
+
+log_info "[quant] ✓ Quantization process complete"
+
 # Get engine directory
 ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")
 
@@ -278,5 +286,4 @@ if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
   trt_push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}"
 fi
 
-log_info "[quant] ✓ Quantization process complete"
 log_blank

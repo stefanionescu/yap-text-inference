@@ -47,8 +47,6 @@ trt_download_model() {
   fi
   
   log_info "[model] Downloading model from HuggingFace..."
-  log_info "[model] Model ID: ${model_id}"
-  log_info "[model] Target directory: ${target_dir}"
   log_blank
   
   mkdir -p "${target_dir}"
@@ -60,7 +58,6 @@ trt_download_model() {
   local show_hf_logs_env=""
   if [ "${SHOW_HF_LOGS:-false}" = "true" ] || [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
     show_hf_logs_env="SHOW_HF_LOGS=1"
-    log_info "[model] HuggingFace progress bars enabled (--show-hf-logs)"
   fi
   
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
@@ -255,16 +252,11 @@ trt_download_prequantized() {
   local show_hf_logs_env=""
   if [ "${SHOW_HF_LOGS:-false}" = "true" ] || [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
     show_hf_logs_env="SHOW_HF_LOGS=1"
-    log_info "[model] HuggingFace progress bars enabled (--show-hf-logs)"
-  else
-    log_info "[model] HuggingFace progress bars disabled (use --show-hf-logs to enable)"
   fi
   
   log_blank
   
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
-  local download_start download_end download_duration
-  download_start=$(date +%s)
   
   if ! env ${show_hf_logs_env} PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-prequantized \
     --model-id "${model_id}" \
@@ -281,13 +273,9 @@ trt_download_prequantized() {
     return 1
   fi
   
-  download_end=$(date +%s)
-  download_duration=$((download_end - download_start))
-  log_info "[model] Download completed in ${download_duration}s"
-  
   # Check for checkpoint directory
   if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
-    log_info "[model] ✓ Found TRT-LLM checkpoint at ${ckpt_dir}"
+    log_info "[model] ✓ Found TRT-LLM checkpoint"
     echo "${ckpt_dir}"
   elif [ -f "${target_dir}/config.json" ]; then
     log_info "[model] ✓ Found checkpoint at ${target_dir}"
@@ -340,7 +328,7 @@ trt_validate_checkpoint() {
     return 1
   fi
   
-  log_info "[quant] ✓ Checkpoint validated (${safetensor_count} weight files)"
+  log_info "[quant] ✓ Checkpoint validated"
   log_blank
   return 0
 }

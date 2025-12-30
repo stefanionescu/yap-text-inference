@@ -526,9 +526,26 @@ TEXT_API_KEY=your_api_key python3 tests/personality.py \
   --delay 2
 ```
 
-This client requires chat prompts (do not use `--no-chat-prompt`).
+Cycles through 5 personalities (flirty, savage, religious, delulu, spiritual) alternating between genders while maintaining conversation history. Requires a chat model deployment.
 
 `PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
+
+### Gender Switch Test
+
+```bash
+# run inside the scripts/activate.sh environment
+TEXT_API_KEY=your_api_key python3 tests/gender.py \
+  --server ws://127.0.0.1:8000 \
+  --switches 3 \
+  --delay 2
+```
+
+Cycles through `PERSONA_VARIANTS` (gender configurations) while maintaining conversation history. Requires a chat model deployment.
+
+Both tests share the same CLI flags:
+- `--switches`: Number of chat prompt switches (default 5)
+- `--delay`: Seconds between switches (default 2)
+- Sampling overrides: `--temperature`, `--top_p`, `--top_k`, `--min_p`, `--repetition_penalty`
 
 ### Conversation History Test
 

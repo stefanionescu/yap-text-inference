@@ -14,6 +14,7 @@ restart_parse_args() {
   HF_AWQ_PUSH_REQUESTED="${HF_AWQ_PUSH_REQUESTED:-0}"
   HF_AWQ_PUSH=0
   SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
+  SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
   
   # Engine selection - default from environment or 'trt'
   INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}"
@@ -26,6 +27,14 @@ restart_parse_args() {
         ;;
       --no-show-hf-logs)
         SHOW_HF_LOGS=0
+        shift
+        ;;
+      --show-trt-logs)
+        SHOW_TRT_LOGS=1
+        shift
+        ;;
+      --no-show-trt-logs)
+        SHOW_TRT_LOGS=0
         shift
         ;;
       both|chat|tool)
@@ -152,6 +161,6 @@ restart_parse_args() {
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
   export RECONFIG_CHAT_QUANTIZATION
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
-  export SHOW_HF_LOGS
+  export SHOW_HF_LOGS SHOW_TRT_LOGS
   return 0
 }
