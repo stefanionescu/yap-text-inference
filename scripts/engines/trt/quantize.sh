@@ -232,8 +232,6 @@ trt_download_prequantized() {
   fi
   
   log_info "[model] Downloading pre-quantized TRT model..."
-  log_info "[model] Model ID: ${model_id}"
-  log_info "[model] Target directory: ${target_dir}"
   
   # Check if already downloaded
   local ckpt_dir="${target_dir}/trt-llm/checkpoints"
@@ -275,19 +273,11 @@ trt_download_prequantized() {
   
   # Check for checkpoint directory
   if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
-    log_info "[model] ✓ Found TRT-LLM checkpoint"
     echo "${ckpt_dir}"
   elif [ -f "${target_dir}/config.json" ]; then
-    log_info "[model] ✓ Found checkpoint at ${target_dir}"
     echo "${target_dir}"
   else
     log_err "[model] ✗ Download completed but no config.json found"
-    log_err "[model] Expected at: ${ckpt_dir}/config.json or ${target_dir}/config.json"
-    # List what we got
-    log_info "[model] Directory contents:"
-    ls -la "${target_dir}" 2>/dev/null | head -20 | while read -r line; do
-      log_info "[model]   ${line}"
-    done
     return 1
   fi
 }
@@ -329,7 +319,6 @@ trt_validate_checkpoint() {
   fi
   
   log_info "[quant] ✓ Checkpoint validated"
-  log_blank
   return 0
 }
 

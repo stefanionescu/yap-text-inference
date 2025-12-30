@@ -38,15 +38,32 @@ def _should_show_hf_progress() -> bool:
 
 def _enable_hf_progress() -> None:
     """Re-enable HuggingFace progress bars (undo log_filter suppression)."""
-    # Remove env vars that disable progress
-    os.environ.pop("HF_HUB_DISABLE_PROGRESS_BARS", None)
+    # Set env vars to explicitly enable progress (not just remove)
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
     os.environ.pop("TQDM_DISABLE", None)
 
-    # Use HuggingFace API to enable progress bars
+    # Use HuggingFace API to enable progress bars for all relevant groups
     try:
         from huggingface_hub.utils import enable_progress_bars
 
+        # Enable all progress bar groups explicitly
+        progress_groups = (
+            "huggingface_hub.http_get",
+            "huggingface_hub.xet_get",
+            "huggingface_hub.snapshot_download",
+            "huggingface_hub.lfs_upload",
+            "huggingface_hub.hf_file_system",
+            "huggingface_hub.hf_api",
+        )
+        for group in progress_groups:
+            try:
+                enable_progress_bars(group)
+            except Exception:
+                pass  # Group might not exist in this version
+
+        # Also enable globally as fallback
         enable_progress_bars()
+        print("[model] ✓ HuggingFace progress bars enabled", file=sys.stderr)
     except Exception as e:
         print(f"[model] ⚠ Could not enable HF progress bars: {e}", file=sys.stderr)
 
@@ -87,32 +104,8 @@ def download_prequantized(model_id: str, target_dir: str) -> None:
 
     from huggingface_hub import HfApi, snapshot_download
 
-    print(f"[model] Repo: {model_id}", file=sys.stderr)
-    print(f"[model] Target: {target_dir}", file=sys.stderr)
-
     # Check repo info first to give visibility into what we're downloading
     print("[model] Fetching repository metadata...", file=sys.stderr)
-    try:
-        api = HfApi()
-        repo_info = api.repo_info(repo_id=model_id, repo_type="model")
-        print(f"[model] ✓ Repository found: {repo_info.id}", file=sys.stderr)
-        if repo_info.siblings:
-            # Count relevant files
-            patterns = ["trt-llm/checkpoints/", ".json", ".safetensors"]
-            matching_files = [
-                f
-                for f in repo_info.siblings
-                if any(p in f.rfilename for p in patterns)
-            ]
-            total_size = sum(f.size or 0 for f in matching_files if f.size)
-            size_gb = total_size / (1024**3)
-            print(
-                f"[model] Files to download: {len(matching_files)} ({size_gb:.2f} GB)",
-                file=sys.stderr,
-            )
-    except Exception as e:
-        print(f"[model] ⚠ Could not fetch repo info: {e}", file=sys.stderr)
-        print("[model] Proceeding with download anyway...", file=sys.stderr)
 
     allow_patterns = ["trt-llm/checkpoints/**", "*.json", "*.safetensors"]
     start_time = time.time()
