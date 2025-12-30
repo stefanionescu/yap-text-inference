@@ -18,7 +18,6 @@ main_log_config() {
   if [ "${DEPLOY_MODE}" != "chat" ]; then
     log_info "[main] Tool model: ${TOOL_MODEL_NAME}"
   fi
-  log_section "[main] Starting deployment in background (auto-detached)"
 }
 
 # Build the deployment command based on engine type
