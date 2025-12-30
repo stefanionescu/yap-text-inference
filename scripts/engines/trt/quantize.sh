@@ -327,14 +327,20 @@ trt_validate_checkpoint() {
     return 1
   fi
   
-  # Check for safetensors files
+  # Check for safetensors files - these are required for the engine build
   local safetensor_count
   safetensor_count=$(find "${ckpt_dir}" -maxdepth 1 -name "*.safetensors" 2>/dev/null | wc -l)
   if [ "${safetensor_count}" -eq 0 ]; then
-    log_warn "[quant] ⚠ No .safetensors files found in checkpoint directory"
+    log_err "[quant] ✗ No .safetensors files found in checkpoint directory"
+    log_err "[quant] Expected model weights at: ${ckpt_dir}/*.safetensors"
+    log_info "[quant] Directory contents:"
+    ls -la "${ckpt_dir}" 2>/dev/null | head -20 | while read -r line; do
+      log_info "[quant]   ${line}"
+    done
+    return 1
   fi
   
-  log_info "[quant] ✓ Checkpoint validated"
+  log_info "[quant] ✓ Checkpoint validated (${safetensor_count} weight files)"
   log_blank
   return 0
 }
