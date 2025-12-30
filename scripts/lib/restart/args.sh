@@ -13,12 +13,21 @@ restart_parse_args() {
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
   HF_AWQ_PUSH_REQUESTED="${HF_AWQ_PUSH_REQUESTED:-0}"
   HF_AWQ_PUSH=0
+  SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
   
   # Engine selection - default from environment or 'trt'
   INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}"
 
   while [ $# -gt 0 ]; do
     case "$1" in
+      --show-hf-logs)
+        SHOW_HF_LOGS=1
+        shift
+        ;;
+      --no-show-hf-logs)
+        SHOW_HF_LOGS=0
+        shift
+        ;;
       both|chat|tool)
         if [ -z "${DEPLOY_MODE}" ]; then DEPLOY_MODE="$1"; fi
         if [ -z "${RECONFIG_DEPLOY_MODE}" ]; then RECONFIG_DEPLOY_MODE="$1"; fi
@@ -143,5 +152,6 @@ restart_parse_args() {
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
   export RECONFIG_CHAT_QUANTIZATION
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
+  export SHOW_HF_LOGS
   return 0
 }

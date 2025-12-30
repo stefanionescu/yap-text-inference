@@ -11,6 +11,7 @@ main_parse_cli() {
   local quant_type="auto"
   local deploy_mode="${DEPLOY_MODE:-both}"
   local deploy_explicit=0
+  local show_hf_logs="${SHOW_HF_LOGS:-0}"
   local -a positional_args=()
 
   while [ $# -gt 0 ]; do
@@ -18,6 +19,12 @@ main_parse_cli() {
       -h|--help)
         main_usage
         return 1
+        ;;
+      --show-hf-logs)
+        show_hf_logs=1
+        ;;
+      --no-show-hf-logs)
+        show_hf_logs=0
         ;;
       --push-quant)
         push_quant_requested=1
@@ -168,11 +175,13 @@ main_parse_cli() {
   DEPLOY_MODE_SELECTED="${deploy_mode}"
   CHAT_MODEL_NAME="${chat_model}"
   TOOL_MODEL_NAME="${tool_model}"
+  SHOW_HF_LOGS="${show_hf_logs}"
 
   export ENGINE_TYPE INFERENCE_ENGINE
   export PUSH_QUANT HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   export QUANT_TYPE DEPLOY_MODE DEPLOY_MODE_SELECTED
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
+  export SHOW_HF_LOGS
 
   return 0
 }

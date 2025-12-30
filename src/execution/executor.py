@@ -26,7 +26,6 @@ The executor coordinates between:
 """
 
 import asyncio
-import json
 import logging
 import uuid
 from fastapi import WebSocket
