@@ -207,8 +207,6 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
   
   TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
   export TRT_CHECKPOINT_DIR
-  
-  log_info "[quant] Using pre-quantized checkpoint: ${TRT_CHECKPOINT_DIR}"
 
   detected_qformat="$(_trt_detect_qformat_from_checkpoint "${TRT_CHECKPOINT_DIR}" || true)"
   if [ -n "${detected_qformat}" ]; then
@@ -281,4 +279,3 @@ if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
 fi
 
 log_info "[quant] ✓ Quantization process complete"
-log_blank

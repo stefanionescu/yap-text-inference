@@ -55,7 +55,7 @@ trt_download_model() {
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
 import sys
-import src.scripts.site_customize as _site_customize  # noqa: F401
+import src.scripts.log_filter as _log_filter  # noqa: F401
 from huggingface_hub import snapshot_download
 
 snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
@@ -216,7 +216,7 @@ trt_download_prequantized() {
     target_dir="${TRT_CACHE_DIR:-${ROOT_DIR:-.}/.trt_cache}/${model_name}"
   fi
   
-  log_info "[model] Downloading pre-quantized TRT model: ${model_id}"
+  log_info "[model] Downloading pre-quantized TRT model..."
   mkdir -p "${target_dir}"
   
   hf_enable_transfer "[model]" "python" || true
@@ -224,7 +224,7 @@ trt_download_prequantized() {
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
 import sys
-import src.scripts.site_customize as _site_customize  # noqa: F401
+import src.scripts.log_filter as _log_filter  # noqa: F401
 from huggingface_hub import snapshot_download
 
 snapshot_download(
@@ -232,7 +232,7 @@ snapshot_download(
     local_dir='${target_dir}',
     allow_patterns=['trt-llm/checkpoints/**', '*.json', '*.safetensors']
 )
-print('✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
+print('[model] ✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
 PYTHON
     log_err "[model] ✗ Failed to download pre-quantized model"
     # Cleanup partial download to avoid inconsistent state

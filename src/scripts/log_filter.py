@@ -1,7 +1,7 @@
-"""Project-wide site customizations.
+"""Project-wide log filtering and noise suppression.
 
-Loaded automatically by Python's site module to tweak runtime behavior before
-application code executes.
+Imported early in the application lifecycle to reduce log noise from
+third-party libraries like Hugging Face and Transformers.
 """
 
 from __future__ import annotations
@@ -27,11 +27,11 @@ def _label_hf_snapshot_progress(group: str) -> None:
         return
 
     # Avoid wrapping multiple times if the module gets reloaded (e.g. in tests)
-    if getattr(base_tqdm, "__dict__", {}).get("_site_customize_pathed"):
+    if getattr(base_tqdm, "__dict__", {}).get("_log_filter_patched"):
         return
 
     class SnapshotQuietTqdm(base_tqdm):
-        _site_customize_pathed = True
+        _log_filter_patched = True
 
         def __init__(self, *args, **kwargs):
             desc = kwargs.get("desc")
@@ -58,7 +58,7 @@ def _disable_hf_download_progress(groups: Iterable[str]) -> None:
     if disable is None:
         return
 
-    logger = logging.getLogger("site_customize")
+    logger = logging.getLogger("log_filter")
     for name in groups:
         try:
             disable(name)
@@ -74,7 +74,7 @@ def _configure_transformers_logging() -> None:
     except ModuleNotFoundError:
         return
 
-    logger = logging.getLogger("site_customize")
+    logger = logging.getLogger("log_filter")
 
     try:
         transformers_logging.set_verbosity_warning()
@@ -103,3 +103,4 @@ def _configure():
 
 
 _configure()
+

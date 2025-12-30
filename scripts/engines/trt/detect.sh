@@ -250,7 +250,7 @@ trt_list_remote_engines() {
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
 PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON 2>/dev/null || true
 import sys
-import src.scripts.site_customize as _site_customize  # noqa: F401
+import src.scripts.log_filter as _log_filter  # noqa: F401
 try:
     from huggingface_hub import list_repo_tree
     items = list(list_repo_tree('${repo_id}', path_in_repo='trt-llm/engines', repo_type='model'))
@@ -417,7 +417,7 @@ trt_download_prebuilt_engine() {
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
 import sys
-import src.scripts.site_customize as _site_customize  # noqa: F401
+import src.scripts.log_filter as _log_filter  # noqa: F401
 from huggingface_hub import snapshot_download
 
 snapshot_download(
