@@ -285,7 +285,7 @@ Keep the connection warm during long pauses
 { "type": "ping" }
 ```
 
-- Server replies with `{"type":"pong"}` and resets the idle timer (default idle timeout: 150 s, set via `WS_IDLE_TIMEOUT_S`).
+- Server replies with `{"type":"pong"}` and resets the idle timer (default idle timeout: 150s, set via `WS_IDLE_TIMEOUT_S`).
 - Incoming `{"type":"pong"}` frames are treated as no-ops so clients can mirror the heartbeat without extra logic.
 
 Warm persona/history (cache priming; optional)
@@ -294,6 +294,11 @@ Warm persona/history (cache priming; optional)
 { "type": "warm_persona", "chat_prompt": "..." }
 { "type": "warm_history", "history_text": "..." }
 ```
+
+- `warm_persona` primes only the system/persona prompt. Reuse hits as long as the persona (chat_prompt) stays the same.
+- `warm_history` primes persona + runtime_text + the provided history. It only pays off if the very next request uses the exact same persona/runtime/history; any change means re-warm.
+- Switching persona mid-connection invalidates the old warmed prefix; send a new `warm_persona` (and `warm_history` if you need history reuse) for the new persona.
+- History changes frequently, so send `warm_history` immediately before the request that will consume that specific history snapshot.
 
 ### What You Receive
 
@@ -579,6 +584,11 @@ Pass `--double-ttfb` to keep each connection open for two sequential transaction
 - **vLLM:** Prefix caching reuses any repeated history/prompts within the process. If you swap a companion's system prompt, history KV stays hot.
 - **TensorRT-LLM:** Block reuse provides automatic KV cache management without explicit resets.
 - To guarantee a hit before speaking, send a `warm_persona` upfront.
+- Lifecycle guidance:
+  - Persona/system prompt is long-lived: warm once per persona value.
+  - History is short-lived: warm_history matters only when the request that follows uses the same persona/runtime/history; re-warm after any change.
+  - Switching persona/system prompt: cache matching resets; re-warm for the new persona (and history if needed).
+  - Using runtime_text: include the same runtime_text when calling warm_history, or the cache won’t match.
 
 ## Known Issues
 
