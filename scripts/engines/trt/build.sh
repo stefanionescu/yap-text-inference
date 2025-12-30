@@ -53,7 +53,6 @@ trt_build_engine() {
   fi
   
   log_info "[build] Building TensorRT-LLM engine..."
-  log_blank
   
   # Calculate max sequence length
   local max_seq_len=$((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN))

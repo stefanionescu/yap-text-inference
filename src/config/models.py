@@ -92,7 +92,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
 ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     # Pre-quantized AWQ/W4A16 models
     "yapwithai/delta-vector-rei-24B-kto-trt-awq",
-    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq",
+    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq", # 
     "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
     "yapwithai/mistral-small-24B-instruct-2501-trt-awq", # REALLY GOOD, not the best but can be massaged to work
     "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small-trt-awq",
