@@ -198,7 +198,20 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
     _trt_export_quant_env "${QFORMAT}"
   fi
   
-  # Download pre-quantized checkpoint
+  # Check for pre-built engine in the HF repo FIRST
+  PREBUILT_ENGINE_LABEL=""
+  PREBUILT_ENGINE_LABEL=$(trt_find_compatible_engine "${MODEL_ID}") || true
+  
+  if [ -n "${PREBUILT_ENGINE_LABEL}" ]; then
+    # Download the pre-built engine - skip engine building later
+    log_info "[quant] Using pre-built engine: ${PREBUILT_ENGINE_LABEL}"
+    PREBUILT_ENGINE_DIR=$(trt_download_prebuilt_engine "${MODEL_ID}" "${PREBUILT_ENGINE_LABEL}") || {
+      log_warn "[quant] ⚠ Failed to download pre-built engine, will build from checkpoint"
+      PREBUILT_ENGINE_LABEL=""
+    }
+  fi
+  
+  # Download pre-quantized checkpoint (needed for tokenizer and config even if using pre-built engine)
   CHECKPOINT_DIR=$(trt_download_prequantized "${MODEL_ID}")
   if [ -z "${CHECKPOINT_DIR}" ]; then
     log_err "[quant] ✗ Failed to download pre-quantized model"
@@ -212,6 +225,14 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
   if [ -n "${detected_qformat}" ]; then
     QFORMAT="${detected_qformat}"
     _trt_export_quant_env "${QFORMAT}"
+  fi
+  
+  # If we have a pre-built engine, use it and skip the engine build section later
+  if [ -n "${PREBUILT_ENGINE_LABEL}" ] && [ -n "${PREBUILT_ENGINE_DIR:-}" ]; then
+    TRT_ENGINE_DIR="${PREBUILT_ENGINE_DIR}"
+    export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${TRT_ENGINE_DIR}"
+    USING_PREBUILT_ENGINE=1
+    export USING_PREBUILT_ENGINE
   fi
 else
   # Get checkpoint directory
@@ -248,28 +269,33 @@ fi
 log_info "[quant] ✓ Quantization process complete"
 log_blank
 
-# Get engine directory
-ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")
+# Skip engine build if we're using a pre-built engine from HuggingFace
+if [ "${USING_PREBUILT_ENGINE:-0}" = "1" ]; then
+  log_info "[build] Using pre-built engine from HuggingFace: ${TRT_ENGINE_DIR}"
+else
+  # Get engine directory
+  ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")
 
-# Check if engine already exists
-if [ -d "${ENGINE_DIR}" ] && ls "${ENGINE_DIR}"/rank*.engine >/dev/null 2>&1; then
-  if [ "${FORCE_REBUILD:-false}" != "true" ]; then
-    log_info "[build] Reusing existing engine"
+  # Check if engine already exists locally
+  if [ -d "${ENGINE_DIR}" ] && ls "${ENGINE_DIR}"/rank*.engine >/dev/null 2>&1; then
+    if [ "${FORCE_REBUILD:-false}" != "true" ]; then
+      log_info "[build] Reusing existing local engine"
+      TRT_ENGINE_DIR="${ENGINE_DIR}"
+      export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${ENGINE_DIR}"
+    else
+      log_info "[build] FORCE_REBUILD=true, will rebuild engine"
+    fi
+  fi
+
+  # Build engine if needed
+  if [ -z "${TRT_ENGINE_DIR:-}" ]; then
+    if ! trt_build_engine "${TRT_CHECKPOINT_DIR}" "${ENGINE_DIR}"; then
+      log_err "[build] ✗ Engine build failed"
+      exit 1
+    fi
     TRT_ENGINE_DIR="${ENGINE_DIR}"
     export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${ENGINE_DIR}"
-  else
-    log_info "[build] FORCE_REBUILD=true, will rebuild engine"
   fi
-fi
-
-# Build engine if needed
-if [ -z "${TRT_ENGINE_DIR:-}" ]; then
-  if ! trt_build_engine "${TRT_CHECKPOINT_DIR}" "${ENGINE_DIR}"; then
-    log_err "[build] ✗ Engine build failed"
-    exit 1
-  fi
-  TRT_ENGINE_DIR="${ENGINE_DIR}"
-  export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${ENGINE_DIR}"
 fi
 
 # Validate engine
@@ -291,8 +317,11 @@ fi
 # Only runs when:
 # 1. --push-engine flag is passed (HF_ENGINE_PUSH=1)
 # 2. Using a prequantized model (skip if we already did a full push above)
+# 3. NOT using a pre-built engine from HuggingFace (no point pushing back what we downloaded)
 if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
-  if model_detect_is_trt_prequant "${MODEL_ID}"; then
+  if [ "${USING_PREBUILT_ENGINE:-0}" = "1" ]; then
+    log_info "[quant] --push-engine skipped: engine was downloaded from HuggingFace"
+  elif model_detect_is_trt_prequant "${MODEL_ID}"; then
     trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${MODEL_ID}"
   else
     log_info "[quant] --push-engine specified but model is not prequantized; skipping"
