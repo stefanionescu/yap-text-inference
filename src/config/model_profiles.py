@@ -138,15 +138,6 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         markers=("qwen3",),
         tokenizer_kwargs={"fix_mistral_regex": True},
     ),
-    # Mistral Small 3.2 needs higher max_num_batched_tokens for acceptable TTFB.
-    # The model introduced instruction-following enhancements that increased compute overhead.
-    # Must come before the generic mistral-small-3 profile to match first.
-    ModelProfile(
-        name="mistral-small-3.2",
-        markers=("mistral-small-3.2", "mistral_small_3.2"),
-        max_num_batched_tokens=512,
-        tokenizer_kwargs={"fix_mistral_regex": True},
-    ),
     # Mistral Small 3.x models have a broken tokenizer regex pattern
     # See: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84
     ModelProfile(
