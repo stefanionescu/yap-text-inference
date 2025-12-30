@@ -169,7 +169,7 @@ trt_install_tensorrt_llm() {
     return 1
   }
   
-  log_info "[trt] Installing TensorRT-LLM..."
+  log_info "[trt] Installing the TRT wheel..."
   
   # NOTE: Do NOT use --upgrade here - it can replace torch with a different CUDA version
   # from NVIDIA's index, causing CUDA version mismatch between torch and torchvision
@@ -189,7 +189,7 @@ trt_install_tensorrt_llm() {
   pip_cmd+=("${target}")
   
   _trt_pip_install_with_retry "${pip_cmd[@]}" || {
-    log_err "[trt] ✗ Failed to install TensorRT-LLM"
+    log_err "[trt] ✗ Failed to install the TRT wheel"
     return 1
   }
   
@@ -267,6 +267,8 @@ EOF
     return 1
   fi
 
+  log_info "[trt] ✓ CUDA bindings OK"
+
   return 0
 }
 
@@ -294,7 +296,7 @@ EOF
 
 # Validate TensorRT-LLM installation
 trt_validate_installation() {
-  log_info "[trt] Validating TensorRT-LLM installation..."
+  log_info "[trt] Validating TRT wheel installation..."
   
   # Check TensorRT-LLM version (suppress library's own version log)
   local trt_version

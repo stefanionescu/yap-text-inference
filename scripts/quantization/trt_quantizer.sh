@@ -187,9 +187,9 @@ _trt_export_quant_env "${QFORMAT}"
 if model_detect_is_trt_prequant "${MODEL_ID}"; then
   trt_prequant_kind="$(model_detect_classify_trt "${MODEL_ID}")"
   if [ -n "${trt_prequant_kind}" ]; then
-    log_info "[quant] Detected pre-quantized TRT model (${trt_prequant_kind})"
+    log_info "[quant] Detected that we'll use a pre-quantized TRT model (${trt_prequant_kind})"
   else
-    log_info "[quant] Detected pre-quantized TRT model: ${MODEL_ID}"
+    log_info "[quant] Detected that we'll use a pre-quantized TRT model: ${MODEL_ID}"
   fi
 
   guessed_qformat="$(_trt_guess_qformat_from_name "${MODEL_ID}" 2>/dev/null || true)"

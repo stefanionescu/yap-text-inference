@@ -47,6 +47,12 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "Naphula/Goetia-24B-v1.1",
     "Mawdistical/Squelching-Fantasies-qw3-14B",
     "Qwen/QwQ-32B",
+
+
+
+
+    "dphn/Dolphin-Mistral-24B-Venice-Edition",
+    "ReadyArt/Broken-Tutu-24B-Transgression-v2.0",
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
