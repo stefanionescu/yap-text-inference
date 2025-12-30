@@ -199,7 +199,7 @@ def push_trt_to_hf(
     )
     
     # Upload checkpoints
-    print(f"[trt-hf] Uploading checkpoints...")
+    print(f"[trt-hf] Uploading checkpoint...")
     api.upload_folder(
         folder_path=str(checkpoint_path),
         path_in_repo="trt-llm/checkpoints",
