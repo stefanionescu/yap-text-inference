@@ -1,8 +1,11 @@
-"""Centralized pattern definitions for tool phrase matching.
+"""Centralized pattern definitions for tool phrase matching and log filtering.
 
 All regex patterns for tool detection are defined here and imported
-by the matching logic in src/execution/tool/.
+by the matching logic in src/execution/tool/. Log filtering patterns
+for TensorRT-LLM noise suppression are also defined here.
 """
+
+import re
 
 # =============================================================================
 # FREESTYLE PATTERNS
@@ -157,4 +160,21 @@ SCREENSHOT_TRIGGER_PATTERNS = [
     r"^tkae\s+a\s+look[.!?]*$",  # typo: "tkae a look"
     r"^teak\s+a\s+look[.!?]*$",  # typo: "teak a look"
 ]
+
+# =============================================================================
+# TRTLLM LOG NOISE PATTERNS
+# =============================================================================
+
+# Patterns for suppressing TensorRT-LLM and modelopt log noise during quantization
+TRTLLM_NOISE_PATTERNS = (
+    re.compile(r"\[TensorRT-LLM].*TensorRT LLM version", re.IGNORECASE),
+    re.compile(r"torch_dtype.*deprecated", re.IGNORECASE),
+    re.compile(r"Registered <class 'transformers\.models\..+'> to _QuantAttention", re.IGNORECASE),
+    re.compile(r"Inserted \d+ quantizers", re.IGNORECASE),
+    re.compile(r"Caching activation statistics", re.IGNORECASE),
+    re.compile(r"Searching .*parameters", re.IGNORECASE),
+    re.compile(r"Loading extension modelopt", re.IGNORECASE),
+    re.compile(r"Loaded extension modelopt", re.IGNORECASE),
+    re.compile(r"current rank:\s*\d+,\s*tp rank:\s*\d+,\s*pp rank:\s*\d+", re.IGNORECASE),
+)
 

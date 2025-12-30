@@ -339,7 +339,6 @@ PY
     log_warn "[trt] ⚠ trtllm-build command not found in PATH"
   fi
   
-  log_info "[trt] ✓ TensorRT-LLM installation validated"
   log_blank
   return 0
 }
@@ -493,6 +492,7 @@ trt_install_quant_requirements() {
     mkdir -p "$(dirname "${marker_file}")"
     md5sum "${quant_reqs}" 2>/dev/null | awk '{print $1}' > "${marker_file}"
     log_info "[trt] ✓ Quantization dependencies installed"
+    log_blank
   else
     log_warn "[trt] ⚠ Quantization requirements.txt not found at ${quant_reqs}, continuing"
   fi

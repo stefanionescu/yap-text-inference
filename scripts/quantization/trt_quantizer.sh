@@ -220,7 +220,7 @@ else
   # Check if checkpoint already exists
   if [ -d "${CHECKPOINT_DIR}" ] && [ -f "${CHECKPOINT_DIR}/config.json" ]; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
-      log_info "[quant] Reusing existing checkpoint: ${CHECKPOINT_DIR}"
+      log_info "[quant] Reusing existing checkpoint"
       TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
       export TRT_CHECKPOINT_DIR
     else
@@ -245,7 +245,7 @@ ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")
 # Check if engine already exists
 if [ -d "${ENGINE_DIR}" ] && ls "${ENGINE_DIR}"/rank*.engine >/dev/null 2>&1; then
   if [ "${FORCE_REBUILD:-false}" != "true" ]; then
-    log_info "[build] Reusing existing engine: ${ENGINE_DIR}"
+    log_info "[build] Reusing existing engine"
     TRT_ENGINE_DIR="${ENGINE_DIR}"
     export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${ENGINE_DIR}"
   else
@@ -279,3 +279,4 @@ if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
 fi
 
 log_info "[quant] ✓ Quantization process complete"
+log_blank
