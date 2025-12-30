@@ -1,10 +1,11 @@
 """Quantization detection and classification helpers."""
 
-# Constants duplicated here to avoid circular imports with config
-# These should match src.config.quantization values
-SUPPORTED_ENGINES: tuple[str, ...] = ("vllm", "trt")
-LOWBIT_QUANTIZATIONS: set[str] = {"awq", "gptq", "gptq_marlin"}
-TRT_FP8_SM_ARCHS: tuple[str, ...] = ("sm89", "sm90")  # L40S, H100
+from src.config.quantization import (
+    SUPPORTED_ENGINES,
+    VLLM_QUANTIZATIONS,
+    TRT_FP8_SM_ARCHS,
+)
+
 _W4A16_HINTS = ("w4a16", "compressed-tensors", "autoround")
 
 
@@ -12,7 +13,7 @@ def is_lowbit_quantization(value: str | None) -> bool:
     """Return True when the quantization mode should use low-bit limits."""
     if not value:
         return False
-    return value in LOWBIT_QUANTIZATIONS
+    return value in VLLM_QUANTIZATIONS
 
 
 def is_awq_model_name(value: str | None) -> bool:
@@ -54,7 +55,9 @@ def is_prequantized_model(value: str | None) -> bool:
     return classify_prequantized_model(value) is not None
 
 
-# ----------------- TRT-LLM Specific Detection -----------------
+# ============================================================================
+# TRT-LLM Specific Detection
+# ============================================================================
 def is_trt_awq_model_name(value: str | None) -> bool:
     """Heuristic check for TRT-AWQ-style repos (contains both 'trt' and 'awq')."""
     if not value:
@@ -170,7 +173,7 @@ def map_quant_mode_to_trt(
 
 __all__ = [
     "SUPPORTED_ENGINES",
-    "LOWBIT_QUANTIZATIONS", 
+    "VLLM_QUANTIZATIONS", 
     "TRT_FP8_SM_ARCHS",
     "is_lowbit_quantization",
     "is_awq_model_name",

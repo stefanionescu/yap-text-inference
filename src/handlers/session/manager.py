@@ -97,9 +97,9 @@ class SessionHandler:
             state.touch()
         return state
 
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     # Session metadata / lifecycle
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     def initialize_session(self, session_id: str) -> dict[str, Any]:
         """Ensure a session state exists and return its metadata."""
 
@@ -307,9 +307,9 @@ class SessionHandler:
             return 0.0
         return max(0.0, time.monotonic() - state.created_at)
 
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     # History helpers
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     def get_history_text(self, session_id: str) -> str:
         state = self._get_state(session_id)
         if not state:
@@ -365,9 +365,9 @@ class SessionHandler:
         state.touch()
         return rendered
 
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     # Request/task tracking
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     def set_active_request(self, session_id: str, request_id: str) -> None:
         state = self._ensure_state(session_id)
         state.active_request_id = request_id
@@ -434,9 +434,9 @@ class SessionHandler:
         state.tool_request_id = None
         return {"active": active_req, "tool": tool_req}
 
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     # Token budget helpers
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     def _count_prefix_tokens(self, prefix: str | None) -> int:
         """Count tokens for a prefix string (including trailing space)."""
         if not prefix:
@@ -485,9 +485,9 @@ class SessionHandler:
 
         return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
 
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     # Internal helpers
-    # ------------------------------------------------------------------ #
+    # ============================================================================
     def _strip_check_screen_prefix(self, session_id: str, text: str) -> str:
         """Remove any session-specific screen prefixes from stored history."""
 

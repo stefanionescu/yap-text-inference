@@ -153,9 +153,9 @@ async def _clean_engine_caches(engine: AsyncLLMEngine) -> None:
             pass  # Best effort only
 
 
-# ---------------------------------------------------------------------------
+# ============================================================================
 # AWQ offline mode handling
-# ---------------------------------------------------------------------------
+# ============================================================================
 @contextlib.contextmanager
 def _awq_offline_mode():
     """Temporarily force offline flags for local AWQ model loading."""
@@ -251,9 +251,9 @@ def _looks_like_quant_dtype_error(error: Exception) -> bool:
     return any(field in message for field in UNSUPPORTED_QUANT_DTYPE_FIELDS)
 
 
-# ---------------------------------------------------------------------------
+# ============================================================================
 # Global engine management (singleton pattern)
-# ---------------------------------------------------------------------------
+# ============================================================================
 async def _ensure_engine() -> VLLMEngine:
     """Ensure the vLLM engine is initialized."""
     if not DEPLOY_CHAT:

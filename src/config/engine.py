@@ -34,7 +34,7 @@ from __future__ import annotations
 import os
 
 from ..helpers.env import env_flag
-from .quantization import normalize_engine
+from ..helpers.quantization import normalize_engine
 from .gpu import KV_DTYPE
 
 

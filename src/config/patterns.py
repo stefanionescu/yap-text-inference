@@ -7,9 +7,9 @@ for TensorRT-LLM noise suppression are also defined here.
 
 import re
 
-# =============================================================================
+# ============================================================================
 # FREESTYLE PATTERNS
-# =============================================================================
+# ============================================================================
 
 # Flexible pattern for "freestyle" with common typos:
 # - freestyle (correct)
@@ -45,9 +45,9 @@ FREESTYLE_STOP_PATTERNS = [
     rf"^just\s+stop\s+{FREESTYLE_WORD}\s+already[.!?]*$",  # just stop freestyle already
 ]
 
-# =============================================================================
+# ============================================================================
 # GENDER PATTERNS
-# =============================================================================
+# ============================================================================
 
 # Male identifiers (with typo handling via optional chars)
 # guy/gu, him, male/mal, hunk, dude/dud, boy/bo, marc, mark, marck
@@ -69,9 +69,9 @@ GENDER_FEMALE_PATTERNS = [
     rf"^change\s+to\s+{GENDER_FEMALE_WORD}[.!?]*$",  # change to gal
 ]
 
-# =============================================================================
+# ============================================================================
 # PERSONALITY PATTERNS
-# =============================================================================
+# ============================================================================
 
 # Patterns for "be/bee [more] {personality}" - {0} is replaced with personality word
 # These are template strings, use .format(personality_pattern) to build final regex
@@ -87,9 +87,9 @@ PERSONALITY_SWITCH_TEMPLATES = [
     r"^can\s+you\s+bee?\s+{0}\s+\w+[.!?]*$",  # can you be friendly please?
 ]
 
-# =============================================================================
+# ============================================================================
 # COMBINED GENDER + PERSONALITY PATTERNS
-# =============================================================================
+# ============================================================================
 
 # Templates for combined gender + personality switches
 # {0} = personality pattern, {1} = gender pattern (male or female)
@@ -129,9 +129,9 @@ GENDER_PERSONALITY_TEMPLATES = [
 ]
 
 
-# =============================================================================
+# ============================================================================
 # SCREENSHOT PATTERNS
-# =============================================================================
+# ============================================================================
 
 # Patterns that REJECT screenshot requests (return [] / no tool call)
 # "look/check twice/thrice/multiple times" and similar
@@ -161,9 +161,9 @@ SCREENSHOT_TRIGGER_PATTERNS = [
     r"^teak\s+a\s+look[.!?]*$",  # typo: "teak a look"
 ]
 
-# =============================================================================
+# ============================================================================
 # TRTLLM LOG NOISE PATTERNS
-# =============================================================================
+# ============================================================================
 
 # Patterns for suppressing TensorRT-LLM and modelopt log noise during quantization
 TRTLLM_NOISE_PATTERNS = (

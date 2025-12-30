@@ -48,10 +48,10 @@ from ...config.patterns import (
 )
 from .personality import match_personality_phrase, match_gender_personality_phrase
 
-# =============================================================================
+# ============================================================================
 # Compiled Patterns (module-level for efficiency)
 # Patterns are compiled once at import time to avoid repeated compilation.
-# =============================================================================
+# ============================================================================
 
 # Freestyle patterns
 _FREESTYLE_START_COMPILED = [re.compile(p, re.IGNORECASE) for p in FREESTYLE_START_PATTERNS]
@@ -66,9 +66,9 @@ _SCREENSHOT_REJECT_COMPILED = [re.compile(p, re.IGNORECASE) for p in SCREENSHOT_
 _SCREENSHOT_TAKE_X_COMPILED = re.compile(SCREENSHOT_TAKE_X_PATTERN, re.IGNORECASE)
 _SCREENSHOT_TRIGGER_COMPILED = [re.compile(p, re.IGNORECASE) for p in SCREENSHOT_TRIGGER_PATTERNS]
 
-# =============================================================================
+# ============================================================================
 # Types
-# =============================================================================
+# ============================================================================
 
 StaticFilterResult = Literal[
     "no_screenshot",
@@ -109,9 +109,9 @@ class FilterResult:
     """Second parameter (e.g., gender for switch_gender_and_personality)."""
 
 
-# =============================================================================
+# ============================================================================
 # Pattern Matchers
-# =============================================================================
+# ============================================================================
 
 def _match_freestyle(text: str) -> Literal["start", "stop"] | None:
     """Check if text matches freestyle start/stop patterns."""
@@ -158,9 +158,9 @@ def _match_screenshot(text: str) -> Literal["take_screenshot", "no_screenshot"] 
     return None
 
 
-# =============================================================================
+# ============================================================================
 # Main Filter
-# =============================================================================
+# ============================================================================
 
 def filter_tool_phrase(
     user_utt: str,

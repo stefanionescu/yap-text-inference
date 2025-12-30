@@ -71,9 +71,9 @@ from .models import (
 from .quantization import (
     SUPPORTED_ENGINES,
     TRT_FP8_SM_ARCHS,
-    LOWBIT_QUANTIZATIONS,
-    normalize_engine,
+    VLLM_QUANTIZATIONS,
 )
+from ..helpers.quantization import normalize_engine
 from .limits import (
     CHAT_MAX_LEN,
     CHAT_MAX_OUT,
@@ -286,7 +286,7 @@ __all__ = [
     "is_local_model_path",
     # quantization helpers
     "TRT_FP8_SM_ARCHS",
-    "LOWBIT_QUANTIZATIONS",
+    "VLLM_QUANTIZATIONS",
     "normalize_engine",
     "is_awq_model_name",
     "is_trt_awq_model_name",
