@@ -190,7 +190,7 @@ restart_basic() {
   local BG_PID=$!
   echo "${BG_PID}" > "${ROOT_DIR}/.run/deployment.pid"
 
-  log_info "[restart] Server started (PID: ${BG_PID}). Logs: tail -f server.log"
+  log_info "[restart] ✓ Server started. Logs: tail -f server.log"
   local warmup_lock="${ROOT_DIR}/.run/warmup.lock"
   local warmup_capture="${ROOT_DIR}/logs/warmup.server.log"
   touch "${SERVER_LOG_PATH}" || true

@@ -287,4 +287,17 @@ if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
   trt_push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}"
 fi
 
+# Optional: Push engine only to existing HuggingFace repo (for prequantized models)
+# Only runs when:
+# 1. --push-engine flag is passed (HF_ENGINE_PUSH=1)
+# 2. Using a prequantized model (skip if we already did a full push above)
+if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
+  if model_detect_is_trt_prequant "${MODEL_ID}"; then
+    trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${MODEL_ID}"
+  else
+    log_info "[quant] --push-engine specified but model is not prequantized; skipping"
+    log_info "[quant]   Use --push-quant to push local quantization artifacts instead"
+  fi
+fi
+
 log_blank

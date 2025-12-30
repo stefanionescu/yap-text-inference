@@ -70,6 +70,7 @@ Key flags:
   --reset-models        Delete cached models/HF data and redeploy new models
   --keep-models         Reuse existing quantized caches (default)
   --push-quant          Upload cached 4-bit exports to Hugging Face before relaunch
+  --push-engine         Push locally-built TRT engine to source HF repo (prequant models only)
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
   --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|gptq|gptq_marlin|awq).
@@ -150,6 +151,11 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
     main_args+=("--push-quant")
   fi
   
+  # Pass push-engine flag if requested
+  if [ "${HF_ENGINE_PUSH_REQUESTED:-0}" = "1" ]; then
+    main_args+=("--push-engine")
+  fi
+  
   # Pass show-hf-logs flag if requested
   if [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
     main_args+=("--show-hf-logs")
@@ -226,6 +232,9 @@ restart_setup_env_for_awq "${DEPLOY_MODE}"
 # Enable/disable push now that quantization is set (only allow 4-bit exports)
 push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"
 validate_push_quant_prereqs "${DEPLOY_MODE}"
+# Enable/disable engine push based on engine type (only TRT)
+push_engine_apply_policy "${INFERENCE_ENGINE:-trt}" "restart"
+validate_push_engine_prereqs
 restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
 # Validate model selections early for AWQ path before heavy work
 if ! validate_models_early; then

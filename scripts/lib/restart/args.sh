@@ -13,6 +13,8 @@ restart_parse_args() {
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
   HF_AWQ_PUSH_REQUESTED="${HF_AWQ_PUSH_REQUESTED:-0}"
   HF_AWQ_PUSH=0
+  HF_ENGINE_PUSH_REQUESTED="${HF_ENGINE_PUSH_REQUESTED:-0}"
+  HF_ENGINE_PUSH=0
   SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
   SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
   
@@ -130,6 +132,14 @@ restart_parse_args() {
         HF_AWQ_PUSH_REQUESTED=0
         shift
         ;;
+      --push-engine)
+        HF_ENGINE_PUSH_REQUESTED=1
+        shift
+        ;;
+      --no-push-engine)
+        HF_ENGINE_PUSH_REQUESTED=0
+        shift
+        ;;
       --help|-h)
         return 2
         ;;
@@ -161,6 +171,7 @@ restart_parse_args() {
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL
   export RECONFIG_CHAT_QUANTIZATION
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
+  export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
   export SHOW_HF_LOGS SHOW_TRT_LOGS
   return 0
 }

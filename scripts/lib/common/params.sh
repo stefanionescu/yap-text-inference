@@ -151,3 +151,57 @@ validate_push_quant_prereqs() {
   log_info "[env] Quantized model will be pushed to ${HF_PUSH_REPO_ID} (${visibility})"
   return 0
 }
+
+# Apply --push-engine policy: only enable for TRT engine with prequantized models
+# Sets HF_ENGINE_PUSH to 1 only when requested AND using TRT engine.
+# Otherwise HF_ENGINE_PUSH is forced to 0 and a skip message is logged.
+push_engine_apply_policy() {
+  local engine="${1:-${INFERENCE_ENGINE:-trt}}"
+  local context="${2:-push}"
+  local requested="${HF_ENGINE_PUSH_REQUESTED:-${HF_ENGINE_PUSH:-0}}"
+
+  if [ "${requested}" != "1" ]; then
+    HF_ENGINE_PUSH=0
+    export HF_ENGINE_PUSH
+    return 0
+  fi
+
+  # Only TRT engine supports engine-only push
+  if [ "${engine}" != "trt" ]; then
+    HF_ENGINE_PUSH=0
+    export HF_ENGINE_PUSH
+    log_info "[${context}] --push-engine is only supported for TensorRT engine; ignoring for vLLM."
+    return 0
+  fi
+
+  HF_ENGINE_PUSH=1
+  export HF_ENGINE_PUSH
+  return 0
+}
+
+# Validate required params when --push-engine flag is set
+# Must be called after HF_ENGINE_PUSH is set
+# Usage: validate_push_engine_prereqs
+validate_push_engine_prereqs() {
+  if [ "${HF_ENGINE_PUSH:-0}" != "1" ]; then
+    return 0
+  fi
+  
+  local has_errors=0
+  
+  # HF_TOKEN is required for any push
+  if [ -z "${HF_TOKEN:-}" ]; then
+    log_err "[env] ✗ --push-engine requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set."
+    log_err "[env] ✗ Set it with: export HF_TOKEN='hf_xxx'"
+    has_errors=1
+  fi
+  
+  if [ "${has_errors}" -ne 0 ]; then
+    log_blank
+    log_err "[env] ✗ Either provide HF_TOKEN or remove --push-engine flag."
+    exit 1
+  fi
+  
+  log_info "[env] Engine will be pushed to source HuggingFace repo after build"
+  return 0
+}

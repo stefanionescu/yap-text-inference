@@ -79,6 +79,10 @@ main_apply_quantization "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
 push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "main"
 validate_push_quant_prereqs "${DEPLOY_MODE:-both}"
 
+# Enable/disable engine push based on engine type (only TRT)
+push_engine_apply_policy "${INFERENCE_ENGINE:-trt}" "main"
+validate_push_engine_prereqs
+
 # Snapshot desired config for smart restart detection
 DESIRED_DEPLOY_MODE="${DEPLOY_MODE:-both}"
 DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"

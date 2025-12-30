@@ -260,19 +260,157 @@ def push_trt_to_hf(
     return True
 
 
+def push_engine_to_hf(
+    engine_dir: str,
+    repo_id: str,
+    token: str,
+    *,
+    branch: str = "main",
+) -> bool:
+    """Push only a TRT-LLM engine to an existing HuggingFace repository.
+    
+    This is used when building an engine locally for a pre-quantized model
+    and wanting to add the engine to the existing repo without modifying
+    the checkpoint or other files.
+    
+    Args:
+        engine_dir: Path to TRT-LLM engines directory.
+        repo_id: HuggingFace repo ID (owner/name) - must already exist.
+        token: HuggingFace API token.
+        branch: Branch to push to.
+        
+    Returns:
+        True if push succeeded, False otherwise.
+    """
+    try:
+        from huggingface_hub import HfApi
+    except ImportError:
+        print("[trt-hf] Error: huggingface_hub not installed")
+        return False
+    
+    engine_path = Path(engine_dir)
+    
+    if not engine_path.is_dir():
+        print(f"[trt-hf] Error: Engine directory not found: {engine_dir}")
+        return False
+    
+    # Validate engine files exist
+    engine_files = list(engine_path.glob("rank*.engine"))
+    if not engine_files:
+        print(f"[trt-hf] Error: No rank*.engine files found in {engine_dir}")
+        return False
+    
+    # Get engine label from metadata or environment
+    try:
+        engine_label = get_engine_label(engine_path)
+    except Exception as e:
+        print(f"[trt-hf] Error: Could not determine engine label: {e}")
+        return False
+    
+    api = HfApi(token=token)
+    
+    # Verify repo exists
+    try:
+        api.repo_info(repo_id=repo_id, token=token)
+    except Exception as e:
+        print(f"[trt-hf] Error: Repository {repo_id} not found or not accessible: {e}")
+        print("[trt-hf]   Use --push-quant to create a new repo with checkpoint + engine")
+        return False
+    
+    # Upload engine to engines/{engine_label}/
+    print(f"[trt-hf] Uploading engine to {repo_id} as trt-llm/engines/{engine_label}...")
+    try:
+        api.upload_folder(
+            folder_path=str(engine_path),
+            path_in_repo=f"trt-llm/engines/{engine_label}",
+            repo_id=repo_id,
+            token=token,
+            revision=branch,
+        )
+    except Exception as e:
+        print(f"[trt-hf] Error: Failed to upload engine: {e}")
+        return False
+    
+    print(f"[trt-hf] ✓ Engine uploaded to {repo_id}")
+    print(f"[trt-hf]   Path: trt-llm/engines/{engine_label}")
+    return True
+
+
 def main() -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Push TRT-LLM model to HuggingFace")
-    parser.add_argument("--checkpoint-dir", required=True, help="Path to TRT-LLM checkpoints")
-    parser.add_argument("--engine-dir", default="", help="Path to TRT-LLM engines (optional)")
-    parser.add_argument("--repo-id", required=True, help="HuggingFace repo ID (owner/name)")
-    parser.add_argument("--token", required=True, help="HuggingFace API token")
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+    
+    # Default push command (full push with checkpoint + engine)
+    push_parser = subparsers.add_parser("push", help="Push checkpoint and engine")
+    push_parser.add_argument("--checkpoint-dir", required=True, help="Path to TRT-LLM checkpoints")
+    push_parser.add_argument("--engine-dir", default="", help="Path to TRT-LLM engines (optional)")
+    push_parser.add_argument("--repo-id", required=True, help="HuggingFace repo ID (owner/name)")
+    push_parser.add_argument("--token", required=True, help="HuggingFace API token")
+    push_parser.add_argument("--branch", default="main", help="Branch to push to")
+    push_parser.add_argument("--base-model", default="", help="Base model ID (auto-detected)")
+    push_parser.add_argument("--quant-method", default="int4_awq", help="Quantization method")
+    push_parser.add_argument("--private", action="store_true", help="Create repo as private if it doesn't exist")
+    
+    # Engine-only push command
+    engine_parser = subparsers.add_parser("push-engine", help="Push only engine to existing repo")
+    engine_parser.add_argument("--engine-dir", required=True, help="Path to TRT-LLM engines")
+    engine_parser.add_argument("--repo-id", required=True, help="HuggingFace repo ID (owner/name)")
+    engine_parser.add_argument("--token", required=True, help="HuggingFace API token")
+    engine_parser.add_argument("--branch", default="main", help="Branch to push to")
+    
+    # For backwards compatibility, also support the old CLI format without subcommand
+    parser.add_argument("--checkpoint-dir", default="", help="Path to TRT-LLM checkpoints")
+    parser.add_argument("--engine-dir", default="", help="Path to TRT-LLM engines")
+    parser.add_argument("--repo-id", default="", help="HuggingFace repo ID (owner/name)")
+    parser.add_argument("--token", default="", help="HuggingFace API token")
     parser.add_argument("--branch", default="main", help="Branch to push to")
     parser.add_argument("--base-model", default="", help="Base model ID (auto-detected)")
     parser.add_argument("--quant-method", default="int4_awq", help="Quantization method")
     parser.add_argument("--private", action="store_true", help="Create repo as private if it doesn't exist")
+    parser.add_argument("--engine-only", action="store_true", help="Push only engine to existing repo")
     
     args = parser.parse_args()
+    
+    # Handle subcommand-based invocation
+    if args.command == "push":
+        success = push_trt_to_hf(
+            checkpoint_dir=args.checkpoint_dir,
+            engine_dir=args.engine_dir or "",
+            repo_id=args.repo_id,
+            token=args.token,
+            branch=args.branch,
+            base_model=args.base_model or None,
+            quant_method=args.quant_method,
+            private=args.private,
+        )
+        return 0 if success else 1
+    elif args.command == "push-engine":
+        success = push_engine_to_hf(
+            engine_dir=args.engine_dir,
+            repo_id=args.repo_id,
+            token=args.token,
+            branch=args.branch,
+        )
+        return 0 if success else 1
+    
+    # Handle legacy CLI format (no subcommand)
+    if args.engine_only:
+        if not args.engine_dir or not args.repo_id or not args.token:
+            print("[trt-hf] Error: --engine-only requires --engine-dir, --repo-id, and --token")
+            return 1
+        success = push_engine_to_hf(
+            engine_dir=args.engine_dir,
+            repo_id=args.repo_id,
+            token=args.token,
+            branch=args.branch,
+        )
+        return 0 if success else 1
+    
+    # Standard full push
+    if not args.checkpoint_dir or not args.repo_id or not args.token:
+        parser.print_help()
+        return 1
     
     success = push_trt_to_hf(
         checkpoint_dir=args.checkpoint_dir,
