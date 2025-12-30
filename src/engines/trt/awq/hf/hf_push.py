@@ -15,6 +15,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import src.scripts.log_filter  # noqa: F401 - suppress HF progress bars
+
 from src.config.quantization import CHAT_TEMPLATE_FILES, TOKENIZER_FILES
 from ..core.metadata import collect_metadata, detect_base_model, get_engine_label
 from .readme_renderer import render_trt_readme

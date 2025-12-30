@@ -24,6 +24,8 @@ for _path in (_project_root, _src_root):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
+import src.scripts.log_filter  # noqa: F401 - suppress HF progress bars
+
 from src.config.quantization import AWQ_MODEL_MARKERS
 from src.engines.vllm.awq.utils.template_utils import generate_readme
 

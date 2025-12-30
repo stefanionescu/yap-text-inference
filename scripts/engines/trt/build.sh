@@ -58,6 +58,10 @@ trt_build_engine() {
   # Calculate max sequence length
   local max_seq_len=$((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN))
   
+  # Suppress TRT-LLM log noise via environment
+  export TRTLLM_LOG_LEVEL="${TRTLLM_LOG_LEVEL:-error}"
+  export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore}"
+  
   # Build the engine
   local build_cmd=(
     trtllm-build
@@ -75,10 +79,13 @@ trt_build_engine() {
     --workers "$(nproc --all)"
   )
   
-  "${build_cmd[@]}" || {
+  "${build_cmd[@]}" 2>&1 | grep -v -E '^\[.*\] \[TRT-LLM\] \[(I|W)\]|^\[TensorRT-LLM\]|WARNING.*Python version.*below the recommended' || true
+  local build_status=${PIPESTATUS[0]}
+  
+  if [ "${build_status}" -ne 0 ]; then
     log_err "[build] ✗ Engine build failed"
     return 1
-  }
+  fi
   
   # Validate engine was created
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then

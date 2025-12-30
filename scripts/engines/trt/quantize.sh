@@ -53,14 +53,9 @@ trt_download_model() {
   hf_enable_transfer "[model]" "python" || true
   
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
-  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
-import sys
-import src.scripts.log_filter as _log_filter  # noqa: F401
-from huggingface_hub import snapshot_download
-
-snapshot_download(repo_id='${model_id}', local_dir='${target_dir}')
-
-PYTHON
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-model \
+    --model-id "${model_id}" \
+    --target-dir "${target_dir}"; then
     log_err "[model] ✗ Failed to download model ${model_id}"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ] && [ ! -f "${target_dir}/config.json" ]; then
@@ -140,8 +135,8 @@ trt_quantize_model() {
   }
   
   # Build quantization command
-  local quant_cmd=(
-    python "${quant_script}"
+  local quant_args=(
+    "${quant_script}"
     --model_dir "${local_model_dir}"
     --output_dir "${output_dir}"
     --dtype "${TRT_DTYPE:-float16}"
@@ -153,14 +148,14 @@ trt_quantize_model() {
   # Add format-specific options
   case "${qformat}" in
     int4_awq)
-      quant_cmd+=(--awq_block_size "${TRT_AWQ_BLOCK_SIZE:-128}")
-      quant_cmd+=(--kv_cache_dtype int8)
+      quant_args+=(--awq_block_size "${TRT_AWQ_BLOCK_SIZE:-128}")
+      quant_args+=(--kv_cache_dtype int8)
       ;;
     fp8)
-      quant_cmd+=(--kv_cache_dtype fp8)
+      quant_args+=(--kv_cache_dtype fp8)
       ;;
     int8_sq)
-      quant_cmd+=(--kv_cache_dtype int8)
+      quant_args+=(--kv_cache_dtype int8)
       ;;
   esac
   
@@ -176,25 +171,14 @@ trt_quantize_model() {
   export TQDM_DISABLE="${TQDM_DISABLE:-1}"
   export HF_HUB_DISABLE_PROGRESS_BARS="${HF_HUB_DISABLE_PROGRESS_BARS:-1}"
   
-  # Run with patch and log filter applied via -c wrapper
+  # Run with patch and log filter applied via Python helper
+  local patch_args=()
+  if [ -n "${patch_script}" ] && [ -f "${patch_script}" ]; then
+    patch_args=(--patch-script "${patch_script}")
+  fi
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
-  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -c "
-import os, sys, runpy
-# Apply transformers patches first (prints patch messages)
-patch = os.environ.get('TRANSFORMERS_PATCH_SCRIPT')
-if patch:
-    exec(open(patch).read())
-# Apply log filter to suppress noise
-try:
-    import src.scripts.log_filter
-except ImportError:
-    pass
-# Print quantization start after patches, before actual work
-print(file=sys.stderr)
-print('[quant] Starting quantization...', file=sys.stderr)
-sys.argv = sys.argv[1:]
-runpy.run_path(sys.argv[0], run_name='__main__')
-" "${quant_cmd[@]:1}"; then
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant run-quant \
+    "${patch_args[@]}" -- "${quant_args[@]}"; then
     log_err "[quant] ✗ Quantization failed"
     _quant_cleanup_on_failure
     return 1
@@ -237,18 +221,9 @@ trt_download_prequantized() {
   hf_enable_transfer "[model]" "python" || true
   
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
-  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
-import sys
-import src.scripts.log_filter as _log_filter  # noqa: F401
-from huggingface_hub import snapshot_download
-
-snapshot_download(
-    repo_id='${model_id}',
-    local_dir='${target_dir}',
-    allow_patterns=['trt-llm/checkpoints/**', '*.json', '*.safetensors']
-)
-print('[model] ✓ Downloaded pre-quantized checkpoint', file=sys.stderr)
-PYTHON
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-prequantized \
+    --model-id "${model_id}" \
+    --target-dir "${target_dir}"; then
     log_err "[model] ✗ Failed to download pre-quantized model"
     # Cleanup partial download to avoid inconsistent state
     if [ -d "${target_dir}" ]; then

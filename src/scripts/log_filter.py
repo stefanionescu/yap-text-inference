@@ -66,6 +66,32 @@ def _disable_hf_download_progress(groups: Iterable[str]) -> None:
             logger.debug("failed to disable Hugging Face progress for %s: %s", name, exc)
 
 
+def _disable_hf_upload_progress() -> None:
+    """Disable Hugging Face upload progress bars (Processing Files, New Data Upload, etc.)."""
+    try:
+        hub_utils = importlib.import_module("huggingface_hub.utils")
+    except ModuleNotFoundError:
+        return
+
+    disable = getattr(hub_utils, "disable_progress_bars", None)
+    if disable is None:
+        return
+
+    # Upload-related progress bar groups in huggingface_hub
+    upload_groups = (
+        "huggingface_hub.lfs_upload",      # LFS file uploads
+        "huggingface_hub.hf_file_system",  # HfFileSystem operations
+        "huggingface_hub.hf_api",          # HfApi upload methods
+    )
+
+    logger = logging.getLogger("log_filter")
+    for name in upload_groups:
+        try:
+            disable(name)
+        except Exception as exc:  # pragma: no cover - defensive guard
+            logger.debug("failed to disable Hugging Face upload progress for %s: %s", name, exc)
+
+
 def _configure_transformers_logging() -> None:
     """Quiet transformers logging/progress bars if the library is installed."""
 
@@ -136,6 +162,7 @@ def _configure():
         snapshot_group,               # parallel snapshot fetch progress
     )
     _disable_hf_download_progress(download_groups)
+    _disable_hf_upload_progress()
     _configure_transformers_logging()
     _configure_trtllm_logging()
 
