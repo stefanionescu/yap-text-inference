@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover - import only for type checking
         get_engine,
         reset_engine_caches,
         seconds_since_last_cache_reset,
-        shutdown_engines,
+        shutdown_engine,
     )
 
 
@@ -42,7 +42,7 @@ def __dir__() -> list[str]:
 __all__ = [
     "VLLMEngine",
     "get_engine",
-    "shutdown_engines",
+    "shutdown_engine",
     "reset_engine_caches",
     "cache_reset_reschedule_event",
     "seconds_since_last_cache_reset",

@@ -13,7 +13,7 @@ vLLM and TensorRT-LLM inference backends. The module handles:
    - Handles parameter name/format differences between engines
 
 3. Lifecycle Management:
-   - shutdown_engines(): Clean shutdown of all engines
+   - shutdown_engine(): Clean shutdown of all engines
    - Used during graceful server termination
 
 4. Cache Management (vLLM only):
@@ -67,13 +67,13 @@ async def get_engine() -> BaseEngine:
         return await get_trt_engine()
 
 
-async def shutdown_engines() -> None:
+async def shutdown_engine() -> None:
     """Shutdown all initialized engines."""
     if INFERENCE_ENGINE == "vllm":
-        from .vllm import shutdown_engines as shutdown_vllm
+        from .vllm import shutdown_engine as shutdown_vllm
         await shutdown_vllm()
     else:
-        from .trt import shutdown_engines as shutdown_trt
+        from .trt import shutdown_engine as shutdown_trt
         await shutdown_trt()
 
 
@@ -144,7 +144,7 @@ __all__ = [
     "EngineShutdownError",
     # Factory functions
     "get_engine",
-    "shutdown_engines",
+    "shutdown_engine",
     "create_sampling_params",
     # Cache management
     "reset_engine_caches",
