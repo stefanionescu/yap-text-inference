@@ -300,8 +300,6 @@ if ! wait_for_ready; then
   exit 1
 fi
 
-log_to_server "[warmup] Server ready. Running warmup + bench tests against ${SERVER_WS_URL}..."
-
 if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
 fi

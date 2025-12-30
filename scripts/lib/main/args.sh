@@ -8,6 +8,7 @@
 main_parse_cli() {
   local engine="${INFERENCE_ENGINE:-trt}"
   local push_quant_requested="${HF_AWQ_PUSH:-0}"
+  local push_engine_requested="${HF_ENGINE_PUSH:-0}"
   local quant_type="auto"
   local deploy_mode="${DEPLOY_MODE:-both}"
   local deploy_explicit=0
@@ -38,6 +39,12 @@ main_parse_cli() {
         ;;
       --no-push-quant)
         push_quant_requested=0
+        ;;
+      --push-engine)
+        push_engine_requested=1
+        ;;
+      --no-push-engine)
+        push_engine_requested=0
         ;;
       --engine)
         if ! cli_set_engine_value "${2:-}" "[main]" engine; then
@@ -177,6 +184,8 @@ main_parse_cli() {
   PUSH_QUANT="${push_quant_requested}"
   HF_AWQ_PUSH_REQUESTED="${push_quant_requested}"
   HF_AWQ_PUSH=0
+  HF_ENGINE_PUSH_REQUESTED="${push_engine_requested}"
+  HF_ENGINE_PUSH=0
   QUANT_TYPE="${quant_type}"
   DEPLOY_MODE="${deploy_mode}"
   DEPLOY_MODE_SELECTED="${deploy_mode}"
@@ -187,6 +196,7 @@ main_parse_cli() {
 
   export ENGINE_TYPE INFERENCE_ENGINE
   export PUSH_QUANT HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
+  export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
   export QUANT_TYPE DEPLOY_MODE DEPLOY_MODE_SELECTED
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
   export SHOW_HF_LOGS SHOW_TRT_LOGS
