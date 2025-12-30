@@ -239,14 +239,16 @@ async def run_benchmark(args) -> None:
         sampling,
     ) = _extract_session_options(args)
     requests, concurrency = _sanitize_workload_args(int(args.requests), int(args.concurrency))
-    counts = _distribute_requests(requests, concurrency)
     timeout_s = float(args.timeout)
     skip_chat_prompt = bool(getattr(args, "no_chat_prompt", False))
     chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
     double_ttfb = bool(getattr(args, "double_ttfb", False))
 
-    tasks = _launch_worker_tasks(
-        counts,
+    burst_mode = getattr(args, "burst_mode", "instant")
+    burst_size = max(1, int(getattr(args, "burst_size", 3)))
+    window_duration = float(getattr(args, "window_duration", 0.5))
+
+    common_opts = (
         url,
         api_key,
         gender,
@@ -257,8 +259,13 @@ async def run_benchmark(args) -> None:
         sampling,
         double_ttfb,
     )
-    nested = await asyncio.gather(*tasks)
-    results: list[dict[str, Any]] = [item for sub in nested for item in sub]
+
+    if burst_mode == "windowed":
+        results = await _run_windowed_benchmark(
+            requests, burst_size, window_duration, *common_opts
+        )
+    else:
+        results = await _run_instant_benchmark(requests, concurrency, *common_opts)
 
     print_report(url, requests, concurrency, results, double_ttfb=double_ttfb)
 
@@ -315,3 +322,101 @@ def _launch_worker_tasks(
             )
         )
     return tasks
+
+
+async def _run_instant_benchmark(
+    total_requests: int,
+    concurrency: int,
+    url: str,
+    api_key: str | None,
+    gender: str,
+    style: str,
+    chat_prompt: str | None,
+    message: str,
+    timeout_s: float,
+    sampling: dict[str, float | int] | None,
+    double_ttfb: bool,
+) -> list[dict[str, Any]]:
+    """
+    Run benchmark in instant mode.
+
+    Distributes all requests across `concurrency` workers and launches them
+    simultaneously.
+    """
+    counts = _distribute_requests(total_requests, concurrency)
+    tasks = _launch_worker_tasks(
+        counts,
+        url,
+        api_key,
+        gender,
+        style,
+        chat_prompt,
+        message,
+        timeout_s,
+        sampling,
+        double_ttfb,
+    )
+    nested = await asyncio.gather(*tasks)
+    return [item for sub in nested for item in sub]
+
+
+async def _run_windowed_benchmark(
+    total_requests: int,
+    burst_size: int,
+    window_duration: float,
+    url: str,
+    api_key: str | None,
+    gender: str,
+    style: str,
+    chat_prompt: str | None,
+    message: str,
+    timeout_s: float,
+    sampling: dict[str, float | int] | None,
+    double_ttfb: bool,
+) -> list[dict[str, Any]]:
+    """
+    Run benchmark in windowed burst mode.
+
+    Sends `burst_size` transactions concurrently, then waits `window_duration`
+    seconds before sending the next burst. Repeats until all requests are sent.
+    """
+    results: list[dict[str, Any]] = []
+    remaining = total_requests
+
+    while remaining > 0:
+        batch_size = min(burst_size, remaining)
+        window_start = time.perf_counter()
+
+        # Launch batch_size concurrent connections
+        tasks = [
+            asyncio.create_task(
+                _one_connection(
+                    url,
+                    api_key,
+                    gender,
+                    style,
+                    chat_prompt,
+                    message,
+                    timeout_s,
+                    sampling,
+                    double_ttfb,
+                )
+            )
+            for _ in range(batch_size)
+        ]
+
+        # Wait for all tasks in this window to complete
+        nested = await asyncio.gather(*tasks)
+        for sub in nested:
+            results.extend(sub)
+
+        remaining -= batch_size
+
+        # If there are more requests, wait for the remainder of the window
+        if remaining > 0:
+            elapsed = time.perf_counter() - window_start
+            sleep_time = window_duration - elapsed
+            if sleep_time > 0:
+                await asyncio.sleep(sleep_time)
+
+    return results

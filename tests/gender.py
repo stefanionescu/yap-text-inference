@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Personality switch WS test.
+Gender switch WS test.
 
 Tests the ability to dynamically switch persona/chat_prompt mid-session.
 Cycles through PERSONA_VARIANTS while maintaining conversation history.
@@ -14,9 +14,9 @@ Environment Variables:
 - WS_MAX_MESSAGES_PER_WINDOW: Max messages per window
 
 Usage:
-  python3 tests/personality.py
-  python3 tests/personality.py --switches 5 --delay 2
-  python3 tests/personality.py --temperature 0.8 --top_p 0.9
+  python3 tests/gender.py
+  python3 tests/gender.py --switches 5 --delay 2
+  python3 tests/gender.py --temperature 0.8 --top_p 0.9
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ from tests.config import (
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Personality switch WS test")
+    parser = argparse.ArgumentParser(description="Gender switch WS test")
     add_connection_args(
         parser,
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
@@ -93,3 +93,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
