@@ -316,7 +316,7 @@ def cache_reset_reschedule_event() -> asyncio.Event:
     return _CACHE_RESET_EVENT
 
 
-async def shutdown_engines() -> None:
+async def shutdown_engine() -> None:
     """Shut down the chat engine if it has been initialized."""
     global _ENGINE
     engine = _ENGINE

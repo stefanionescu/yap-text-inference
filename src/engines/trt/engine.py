@@ -36,6 +36,11 @@ from pathlib import Path
 from typing import Any
 from collections.abc import AsyncGenerator
 
+try:
+    from tensorrt_llm.executor import GenerationResult  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    GenerationResult = Any  # type: ignore[misc,assignment]
+
 from src.config import (
     CHAT_MODEL,
     DEPLOY_CHAT,
@@ -74,6 +79,8 @@ class TRTEngine(BaseEngine):
         self._llm = llm
         self._tokenizer_id = tokenizer_id
         self._shutdown = False
+        self._executor = getattr(llm, "_executor", None)
+        self._inflight: dict[str, GenerationResult] = {}
     
     @property
     def raw_engine(self) -> Any:
@@ -94,11 +101,25 @@ class TRTEngine(BaseEngine):
             raise EngineNotReadyError("Engine has been shutdown")
         
         prev_text = ""
-        async for chunk in self._llm.generate_async(prompt, sampling_params, streaming=True):
-            output = EngineOutput.from_trt(chunk, prev_text)
-            if output.text:
-                prev_text = output.text
-            yield output
+        generation = self._llm.generate_async(
+            prompt,
+            sampling_params,
+            streaming=True,
+        )
+
+        trt_request_id = getattr(generation, "request_id", None)
+        if isinstance(request_id, str) and trt_request_id is not None:
+            self._inflight[request_id] = generation
+
+        try:
+            async for chunk in generation:
+                output = EngineOutput.from_trt(chunk, prev_text)
+                if output.text:
+                    prev_text = output.text
+                yield output
+        finally:
+            if isinstance(request_id, str):
+                self._inflight.pop(request_id, None)
     
     async def abort(self, request_id: str) -> None:
         """Abort a TRT-LLM generation request.
@@ -106,9 +127,24 @@ class TRTEngine(BaseEngine):
         Note: TRT-LLM's abort mechanism may differ from vLLM.
         This is a best-effort implementation.
         """
-        # TRT-LLM may not have a direct abort API like vLLM
-        # The generation will naturally stop when the async iterator is not consumed
-        pass
+        if not request_id:
+            return
+
+        pending = self._inflight.pop(request_id, None)
+        trt_request_id = getattr(pending, "request_id", None)
+        if trt_request_id is None:
+            return
+
+        executor = getattr(self._llm, "_executor", self._executor)
+        if executor is None:
+            logger.warning("TRT-LLM: executor not available for cancellation")
+            return
+
+        try:
+            executor.abort_request(int(trt_request_id))
+            logger.info("TRT-LLM: cancelled request_id=%s", request_id)
+        except Exception:  # noqa: BLE001 - best effort abort
+            logger.warning("TRT-LLM: failed to cancel request_id=%s", request_id, exc_info=True)
     
     async def shutdown(self) -> None:
         """Shutdown the TRT-LLM engine."""
@@ -307,7 +343,7 @@ async def get_engine() -> TRTEngine:
     return await _ensure_engine()
 
 
-async def shutdown_engines() -> None:
+async def shutdown_engine() -> None:
     """Shut down the TRT chat engine if it has been initialized."""
     global _ENGINE
     engine = _ENGINE

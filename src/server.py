@@ -71,7 +71,7 @@ from .helpers.validation import validate_env
 from .config.logging import configure_logging
 from .engines import (
     get_engine,
-    shutdown_engines,
+    shutdown_engine,
     reset_engine_caches,
     cache_reset_reschedule_event,
     seconds_since_last_cache_reset,
@@ -174,7 +174,7 @@ async def preload_engines() -> None:
 @app.on_event("shutdown")
 async def stop_engines() -> None:
     """Ensure all engines shut down cleanly when the server exits."""
-    await shutdown_engines()
+    await shutdown_engine()
 
 
 @app.get("/")

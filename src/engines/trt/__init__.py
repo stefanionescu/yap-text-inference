@@ -9,7 +9,7 @@ TRTEngine:
 
 Factory Functions:
     get_engine(): Return singleton engine instance
-    shutdown_engines(): Clean shutdown of the engine
+    shutdown_engine(): Clean shutdown of the engine
 
 Key Differences from vLLM:
     - Engines are pre-compiled (not JIT compiled)
@@ -26,12 +26,12 @@ Configuration:
 from .engine import (
     TRTEngine,
     get_engine,
-    shutdown_engines,
+    shutdown_engine,
 )
 
 __all__ = [
     "TRTEngine",
     "get_engine",
-    "shutdown_engines",
+    "shutdown_engine",
 ]
 
