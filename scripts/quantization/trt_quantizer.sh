@@ -179,6 +179,9 @@ if [ -z "${MODEL_ID}" ]; then
   exit 1
 fi
 
+# Track if we perform quantization (vs reusing cached/downloaded checkpoints)
+DID_QUANTIZE=0
+
 # Resolve quantization format (pass model ID for MoE detection)
 QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
 _trt_export_quant_env "${QFORMAT}"
@@ -257,6 +260,7 @@ else
     fi
     TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
     export TRT_CHECKPOINT_DIR
+    DID_QUANTIZE=1
   fi
 fi
 
@@ -266,7 +270,10 @@ if ! trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}"; then
   exit 1
 fi
 
-log_info "[quant] ✓ Quantization process complete"
+# Only print if we ran quantization (not reused cached/remote checkpoint)
+if [ "${DID_QUANTIZE}" = "1" ]; then
+  log_info "[quant] ✓ Quantization process complete"
+fi
 log_blank
 
 # Skip engine build if we're using a pre-built engine from HuggingFace
@@ -279,7 +286,7 @@ else
   # Check if engine already exists locally
   if [ -d "${ENGINE_DIR}" ] && ls "${ENGINE_DIR}"/rank*.engine >/dev/null 2>&1; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
-      log_info "[build] Reusing existing local engine"
+      log_info "[build] Reusing existing local engine..."
       TRT_ENGINE_DIR="${ENGINE_DIR}"
       export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${ENGINE_DIR}"
     else

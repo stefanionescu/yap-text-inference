@@ -90,11 +90,9 @@ trt_push_to_hf() {
   
   if "${python_cmd[@]}"; then
     log_info "[hf] ✓ Pushed to HuggingFace"
-    log_blank
     return 0
   else
     log_warn "[hf] ⚠ HuggingFace push failed"
-    log_blank
     return 1
   fi
 }
@@ -148,8 +146,7 @@ trt_push_engine_to_hf() {
   fi
   
   log_blank
-  log_info "[hf] Pushing engine to existing HuggingFace repo..."
-  log_info "[hf]   Target: ${target_repo}"
+  log_info "[hf] Pushing engine to existing HF repo..."
   
   # Pick a python interpreter (prefer venv, then system)
   local python_exe="${HF_PYTHON:-}"
@@ -182,11 +179,9 @@ trt_push_engine_to_hf() {
   
   if "${python_cmd[@]}"; then
     log_info "[hf] ✓ Engine pushed to HuggingFace"
-    log_blank
     return 0
   else
     log_warn "[hf] ⚠ HuggingFace engine push failed"
-    log_blank
     return 1
   fi
 }

@@ -359,9 +359,8 @@ trt_find_compatible_engine() {
   local current_cuda
   current_cuda=$(trt_detect_cuda_version)
   
-  log_info "[engine] Checking for pre-built engines in ${repo_id}..."
-  log_info "[engine]   Current system: ${current_sm}, TRT-LLM ${current_trtllm}, CUDA ${current_cuda}"
-  
+  log_info "[engine] Checking for pre-built engines for this GPU..."
+
   local engines
   engines=$(trt_list_remote_engines "${repo_id}")
   
@@ -375,15 +374,14 @@ trt_find_compatible_engine() {
     if [ -z "${engine}" ]; then
       continue
     fi
-    log_info "[engine]   Checking engine: ${engine}"
     if trt_engine_matches_system "${engine}"; then
-      log_info "[engine] ✓ Found compatible engine: ${engine}"
+      log_info "[engine] ✓ Found compatible engine for GPU"
       echo "${engine}"
       return 0
     fi
   done <<< "${engines}"
   
-  log_info "[engine]   No compatible pre-built engine found (will build from checkpoint)"
+  log_info "[engine] No compatible pre-built engine found"
   return 1
 }
 
