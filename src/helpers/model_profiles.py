@@ -52,6 +52,18 @@ def get_tokenizer_kwargs(model_identifier: str | None) -> dict[str, Any]:
     return {}
 
 
+def get_max_batched_tokens(model_identifier: str | None) -> int | None:
+    """Return the max_num_batched_tokens override for a model, or None if not set.
+    
+    Some models (e.g., Mistral Small 3.2) need higher batch sizes for acceptable
+    TTFB. This function returns the profile-specific override if one exists.
+    """
+    profile = get_model_profile(model_identifier)
+    if profile and profile.max_num_batched_tokens is not None:
+        return profile.max_num_batched_tokens
+    return None
+
+
 __all__ = [
     "get_model_profile",
     "model_requires_bfloat16",
@@ -59,5 +71,6 @@ __all__ = [
     "model_needs_memory_optimization",
     "model_uses_mla",
     "get_tokenizer_kwargs",
+    "get_max_batched_tokens",
 ]
 
