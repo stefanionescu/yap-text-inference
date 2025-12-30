@@ -55,6 +55,7 @@ else
   log_info "[server]   KV_DTYPE=${KV_DTYPE:-}"
 fi
 
+log_blank
 runtime_guard_write_snapshot "${ROOT_DIR}"
 
 # Resolve uvicorn launcher robustly (prefer venv python -m, then venv binary, then system)
