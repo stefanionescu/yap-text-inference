@@ -52,11 +52,8 @@ def build_model_info(model_path: str, max_length: int) -> ClassifierModelInfo:
         ClassifierModelInfo with extracted/configured metadata.
     """
     config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
-    model_type = (
-        "longformer"
-        if getattr(config, "model_type", "").lower() == "longformer"
-        else "bert"
-    )
+    config_type = getattr(config, "model_type", "").lower()
+    model_type = "longformer" if config_type == "longformer" else "bert"
     num_labels = int(getattr(config, "num_labels", 2))
     return ClassifierModelInfo(
         model_id=model_path,

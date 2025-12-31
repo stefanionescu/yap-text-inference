@@ -75,6 +75,25 @@ TOOL_MAX_LENGTH = int(os.getenv("TOOL_MAX_LENGTH", "1536"))  # Total input budge
 TOOL_MICROBATCH_MAX_SIZE = int(os.getenv("TOOL_MICROBATCH_MAX_SIZE", "3"))
 TOOL_MICROBATCH_MAX_DELAY_MS = float(os.getenv("TOOL_MICROBATCH_MAX_DELAY_MS", "10.0"))
 
+# ============================================================================
+# Classifier Runtime Constants
+# ============================================================================
+# Internal constants for classifier adapter behavior.
+
+# Minimum request timeout to prevent immediate failures
+TOOL_MIN_TIMEOUT_S = 0.1
+
+# GPU memory fraction bounds (safety limits for TOOL_GPU_FRAC)
+TOOL_MIN_GPU_FRAC = 0.01
+TOOL_MAX_GPU_FRAC = 0.90
+
+# Classification output templates
+TOOL_POSITIVE_RESULT: list[dict] = [{"name": "take_screenshot"}]
+TOOL_NEGATIVE_RESULT: list[dict] = []
+
+# Binary classification label index for positive class
+TOOL_POSITIVE_LABEL_INDEX = 1
+
 
 __all__ = [
     "TOOL_LANGUAGE_FILTER",
@@ -84,5 +103,11 @@ __all__ = [
     "TOOL_MAX_LENGTH",
     "TOOL_MICROBATCH_MAX_SIZE",
     "TOOL_MICROBATCH_MAX_DELAY_MS",
+    "TOOL_MIN_TIMEOUT_S",
+    "TOOL_MIN_GPU_FRAC",
+    "TOOL_MAX_GPU_FRAC",
+    "TOOL_POSITIVE_RESULT",
+    "TOOL_NEGATIVE_RESULT",
+    "TOOL_POSITIVE_LABEL_INDEX",
 ]
 

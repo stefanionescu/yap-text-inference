@@ -38,7 +38,6 @@ from collections.abc import AsyncGenerator
 os.environ.setdefault("VLLM_USE_V1", "1")
 os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
 
-from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
 from src.config import (
@@ -50,7 +49,7 @@ from src.config import (
 )
 from ..base import BaseEngine, EngineOutput
 from .args import make_engine_args
-from .quantization import UNSUPPORTED_QUANT_DTYPE_FIELDS
+from .fallback import create_engine_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -132,16 +131,19 @@ class VLLMEngine(BaseEngine):
         """Reset vLLM prefix and multimodal caches."""
         logger.info("resetting vLLM cache (reason=%s)", reason)
         try:
-            await _clean_engine_caches(self._engine)
+            await _reset_vllm_caches(self._engine)
             return True
         except Exception:
             logger.warning("cache reset failed", exc_info=True)
             return False
 
 
-async def _clean_engine_caches(engine: AsyncLLMEngine) -> None:
-    """Best-effort clearing of caches using the public vLLM APIs."""
-    for method_name in ("reset_mm_cache", "reset_prefix_cache"):
+_VLLM_CACHE_RESET_METHODS = ("reset_mm_cache", "reset_prefix_cache")
+
+
+async def _reset_vllm_caches(engine: AsyncLLMEngine) -> None:
+    """Best-effort reset of vLLM prefix and multimodal caches."""
+    for method_name in _VLLM_CACHE_RESET_METHODS:
         method = getattr(engine, method_name, None)
         if method is None:
             continue
@@ -151,104 +153,6 @@ async def _clean_engine_caches(engine: AsyncLLMEngine) -> None:
                 await result
         except Exception:
             pass  # Best effort only
-
-
-# ============================================================================
-# AWQ offline mode handling
-# ============================================================================
-@contextlib.contextmanager
-def _awq_offline_mode():
-    """Temporarily force offline flags for local AWQ model loading."""
-    original_offline = os.environ.get("HF_HUB_OFFLINE")
-    original_transformers_offline = os.environ.get("TRANSFORMERS_OFFLINE")
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    os.environ["TRANSFORMERS_OFFLINE"] = "1"
-    try:
-        yield
-    finally:
-        if original_offline is not None:
-            os.environ["HF_HUB_OFFLINE"] = original_offline
-        else:
-            os.environ.pop("HF_HUB_OFFLINE", None)
-        if original_transformers_offline is not None:
-            os.environ["TRANSFORMERS_OFFLINE"] = original_transformers_offline
-        else:
-            os.environ.pop("TRANSFORMERS_OFFLINE", None)
-
-
-def _create_engine_with_awq_handling(engine_args: AsyncEngineArgs) -> AsyncLLMEngine:
-    """Create an engine honoring AWQ offline requirements and legacy configs."""
-
-    def _build(args: AsyncEngineArgs) -> AsyncLLMEngine:
-        ctx = _awq_offline_mode() if getattr(args, "_is_local_awq", False) else contextlib.nullcontext()
-        with ctx:
-            return AsyncLLMEngine.from_engine_args(args)
-
-    try:
-        return _build(engine_args)
-    except Exception as exc:  # noqa: BLE001
-        if not _looks_like_quant_dtype_error(exc):
-            raise
-        fallback_args = _clone_engine_args_without_quant_dtype(engine_args)
-        if fallback_args is None:
-            raise
-        logger.warning(
-            "vLLM: engine args include unsupported quant dtype knobs; retrying without scale/zp dtype fields"
-        )
-        return _build(fallback_args)
-
-
-def _clone_engine_args_without_quant_dtype(engine_args: AsyncEngineArgs) -> AsyncEngineArgs | None:
-    """Rebuild engine args without legacy quant dtype fields if present.
-
-    vLLM V1 rejects ``scale_dtype`` and ``zp_dtype`` in ``VllmConfig``. Some
-    quantized exports still carry these keys (sometimes nested under
-    ``quantization_config``), so we defensively strip them and retry.
-    """
-    annotations = getattr(engine_args.__class__, "__annotations__", {}) or {}
-    # Prefer annotated fields (the constructor accepts them); fall back to the
-    # instance dict if annotations are missing on this version of vLLM.
-    source_names = list(annotations) or list(getattr(engine_args, "__dict__", {}).keys())
-    if "quantization_config" not in source_names and hasattr(engine_args, "quantization_config"):
-        source_names.append("quantization_config")
-
-    filtered_kwargs: dict[str, Any] = {}
-    removed = any(hasattr(engine_args, field) for field in UNSUPPORTED_QUANT_DTYPE_FIELDS)
-
-    for name in source_names:
-        if name in UNSUPPORTED_QUANT_DTYPE_FIELDS:
-            removed = True
-            continue
-        if not hasattr(engine_args, name):
-            continue
-
-        value = getattr(engine_args, name)
-        if name == "quantization_config" and isinstance(value, dict):
-            cleaned = {k: v for k, v in value.items() if k not in UNSUPPORTED_QUANT_DTYPE_FIELDS}
-            if cleaned != value:
-                removed = True
-            value = cleaned
-
-        filtered_kwargs[name] = value
-
-    if not removed:
-        return None
-
-    new_args = AsyncEngineArgs(**filtered_kwargs)
-    if hasattr(engine_args, "_is_local_awq"):
-        setattr(new_args, "_is_local_awq", getattr(engine_args, "_is_local_awq"))
-    return new_args
-
-
-
-def _looks_like_quant_dtype_error(error: Exception) -> bool:
-    """Return True if the ValidationError references unsupported quant dtype inputs."""
-    if error.__class__.__name__ != "ValidationError":
-        return False
-    message = str(error)
-    if not message:
-        return False
-    return any(field in message for field in UNSUPPORTED_QUANT_DTYPE_FIELDS)
 
 
 # ============================================================================
@@ -269,7 +173,7 @@ async def _ensure_engine() -> VLLMEngine:
             raise RuntimeError("CHAT_MODEL is not configured; cannot start chat engine")
         logger.info("vLLM: building chat engine (model=%s)", CHAT_MODEL)
         engine_args = make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN)
-        raw_engine = _create_engine_with_awq_handling(engine_args)
+        raw_engine = create_engine_with_fallback(engine_args)
         _ENGINE = VLLMEngine(raw_engine)
         logger.info("vLLM: chat engine ready")
         return _ENGINE

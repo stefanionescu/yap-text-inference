@@ -28,11 +28,8 @@ Optional Configuration:
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import json
 import logging
 import os
-from pathlib import Path
 from typing import Any
 from collections.abc import AsyncGenerator
 
@@ -45,11 +42,13 @@ from src.config import (
     CHAT_MODEL,
     DEPLOY_CHAT,
     TRT_ENGINE_DIR,
-    TRT_KV_FREE_GPU_FRAC,
-    TRT_KV_ENABLE_BLOCK_REUSE,
-    TRT_RUNTIME_BATCH_SIZE,
 )
 from ..base import BaseEngine, EngineOutput, EngineNotReadyError
+from .config import (
+    build_kv_cache_config,
+    read_checkpoint_model_type,
+    validate_runtime_batch_size,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -168,119 +167,6 @@ class TRTEngine(BaseEngine):
         return False
 
 
-def _build_kv_cache_config() -> dict[str, Any]:
-    """Build KV cache configuration from environment settings."""
-    kv_cfg: dict[str, Any] = {}
-    
-    if TRT_KV_FREE_GPU_FRAC:
-        with contextlib.suppress(ValueError):
-            kv_cfg["free_gpu_memory_fraction"] = float(TRT_KV_FREE_GPU_FRAC)
-    
-    if TRT_KV_ENABLE_BLOCK_REUSE:
-        kv_cfg["enable_block_reuse"] = True
-    
-    return kv_cfg
-
-
-def _read_checkpoint_model_type(engine_dir: str) -> str | None:
-    """Read the model_type from the engine's checkpoint config.
-    
-    TensorRT-LLM 1.2+ needs model_type to identify architecture.
-    Falls back to None if not found (TRT-LLM will try to infer from name).
-    """
-    engine_path = Path(engine_dir)
-    config_file = engine_path / "config.json"
-    
-    if config_file.exists():
-        try:
-            with open(config_file, encoding="utf-8") as f:
-                config = json.load(f)
-            model_type = config.get("model_type")
-            if model_type:
-                return str(model_type)
-        except (json.JSONDecodeError, ValueError, OSError) as e:
-            logger.warning("Failed to read model_type from config.json: %s", e)
-    
-    return None
-
-
-def _read_engine_max_batch_size(engine_dir: str) -> int | None:
-    """Read the engine's baked-in max_batch_size from metadata.
-    
-    Checks build_metadata.json first, then falls back to config.json.
-    Returns None if batch size cannot be determined.
-    """
-    engine_path = Path(engine_dir)
-    
-    # Try build_metadata.json first (written by our build script)
-    metadata_file = engine_path / "build_metadata.json"
-    if metadata_file.exists():
-        try:
-            with open(metadata_file, encoding="utf-8") as f:
-                metadata = json.load(f)
-            batch_size = metadata.get("max_batch_size")
-            if batch_size is not None:
-                return int(batch_size)
-        except (json.JSONDecodeError, ValueError, OSError) as e:
-            logger.warning("Failed to read build_metadata.json: %s", e)
-    
-    # Fall back to config.json (TRT-LLM engine config)
-    config_file = engine_path / "config.json"
-    if config_file.exists():
-        try:
-            with open(config_file, encoding="utf-8") as f:
-                config = json.load(f)
-            # TRT-LLM stores batch size in build_config
-            build_cfg = config.get("build_config", {})
-            batch_size = build_cfg.get("max_batch_size")
-            if batch_size is not None:
-                return int(batch_size)
-        except (json.JSONDecodeError, ValueError, OSError) as e:
-            logger.warning("Failed to read config.json: %s", e)
-    
-    return None
-
-
-def _validate_runtime_batch_size(engine_dir: str) -> None:
-    """Validate TRT_BATCH_SIZE against engine's baked-in max.
-    
-    Raises RuntimeError if TRT_BATCH_SIZE exceeds the engine's max.
-    Logs a warning if batch size info is unavailable.
-    """
-    engine_max = _read_engine_max_batch_size(engine_dir)
-    
-    if engine_max is not None:
-        logger.info(
-            "TRT engine max_batch_size=%d (baked-in at build time)",
-            engine_max,
-        )
-        
-        if TRT_RUNTIME_BATCH_SIZE is not None:
-            if TRT_RUNTIME_BATCH_SIZE > engine_max:
-                raise RuntimeError(
-                    f"TRT_BATCH_SIZE ({TRT_RUNTIME_BATCH_SIZE}) exceeds engine's "
-                    f"baked-in max_batch_size ({engine_max}). "
-                    f"Either reduce TRT_BATCH_SIZE or rebuild the engine with a larger max_batch_size."
-                )
-            logger.info(
-                "TRT_BATCH_SIZE=%d (runtime, <= engine max %d) ✓",
-                TRT_RUNTIME_BATCH_SIZE,
-                engine_max,
-            )
-        else:
-            logger.info(
-                "TRT_BATCH_SIZE not set, will use engine max (%d)",
-                engine_max,
-            )
-    else:
-        logger.warning(
-            "Could not determine engine's max_batch_size from metadata. "
-            "Batch size validation skipped."
-        )
-        if TRT_RUNTIME_BATCH_SIZE is not None:
-            logger.info("TRT_BATCH_SIZE=%d (unvalidated)", TRT_RUNTIME_BATCH_SIZE)
-
-
 async def _ensure_engine() -> TRTEngine:
     """Ensure the TRT-LLM engine is initialized."""
     if not DEPLOY_CHAT:
@@ -305,10 +191,10 @@ async def _ensure_engine() -> TRTEngine:
             )
         
         # Validate runtime batch size against engine's baked-in max (fail early)
-        _validate_runtime_batch_size(engine_dir)
+        validate_runtime_batch_size(engine_dir)
         
         # Read model_type from checkpoint config (TRT-LLM 1.2+ needs this for custom model names)
-        model_type = _read_checkpoint_model_type(engine_dir)
+        model_type = read_checkpoint_model_type(engine_dir)
         if model_type:
             logger.info("TRT-LLM: detected model_type=%s from checkpoint config", model_type)
         
@@ -326,7 +212,7 @@ async def _ensure_engine() -> TRTEngine:
         if model_type:
             kwargs["model_type"] = model_type
         
-        kv_cfg = _build_kv_cache_config()
+        kv_cfg = build_kv_cache_config()
         if kv_cfg:
             kwargs["kv_cache_config"] = kv_cfg
         

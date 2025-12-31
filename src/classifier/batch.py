@@ -3,12 +3,12 @@
 This module provides infrastructure for accumulating individual classification
 requests into batches for efficient GPU inference. Key components:
 
-Future:
+BatchFuture:
     A lightweight, thread-safe promise/future implementation for returning
     results from the worker thread to requesting threads.
 
 RequestItem:
-    Simple dataclass pairing a text to classify with its result Future.
+    Simple dataclass pairing a text to classify with its result BatchFuture.
 
 BatchExecutor:
     The main batching coordinator that:
@@ -29,14 +29,13 @@ import threading
 import time
 from dataclasses import dataclass
 from queue import Empty, Queue
-from typing import Any
 from collections.abc import Callable
 
 import torch  # type: ignore[import]
 
 
-class Future:
-    """Lightweight, thread-safe future used by the batch executor.
+class BatchFuture:
+    """Lightweight, thread-safe future for batch executor results.
     
     Simpler than asyncio.Future or concurrent.futures.Future,
     optimized for the specific use case of cross-thread result delivery.
@@ -49,36 +48,37 @@ class Future:
 
     def __init__(self) -> None:
         self._event = threading.Event()
-        self._result: Any = None
-        self._exc: BaseException | None = None
+        self._result: list[float] | None = None
+        self._exc: Exception | None = None
 
-    def set_result(self, result: Any) -> None:
+    def set_result(self, result: list[float]) -> None:
         """Set the result value and wake waiters."""
         self._result = result
         self._event.set()
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(self, exc: Exception) -> None:
         """Set an exception to be raised and wake waiters."""
         self._exc = exc
         self._event.set()
 
-    def result(self, timeout: float | None = None) -> Any:
+    def result(self, timeout: float | None = None) -> list[float]:
         """Wait for and return the result, or raise the stored exception.
         
         Args:
             timeout: Max seconds to wait (None = forever).
             
         Returns:
-            The stored result.
+            List of class probabilities.
             
         Raises:
             TimeoutError: If timeout expires before result is set.
-            BaseException: The stored exception if set_exception was called.
+            Exception: The stored exception if set_exception was called.
         """
         if not self._event.wait(timeout):
             raise TimeoutError("Classifier batch timed out")
         if self._exc is not None:
             raise self._exc
+        assert self._result is not None
         return self._result
 
 
@@ -91,7 +91,7 @@ class RequestItem:
         future: Future to receive the classification result.
     """
     text: str
-    future: Future
+    future: BatchFuture
 
 
 class BatchExecutor:
@@ -140,34 +140,46 @@ class BatchExecutor:
         Raises:
             TimeoutError: If result not ready within timeout.
         """
-        fut = Future()
+        fut = BatchFuture()
         self._queue.put(RequestItem(text=text, future=fut))
         return fut.result(timeout=timeout_s)
 
-    def _worker_loop(self) -> None:
-        while True:
-            item = self._queue.get()
-            batch = [item]
-            deadline = time.perf_counter() + self._max_delay
+    def _collect_batch(self) -> list[RequestItem]:
+        """Block until at least one request, then collect up to max_batch."""
+        first = self._queue.get()
+        batch = [first]
+        deadline = time.perf_counter() + self._max_delay
 
-            while len(batch) < self._max_batch:
-                remaining = max(0.0, deadline - time.perf_counter())
-                if remaining <= 0:
-                    break
-                try:
-                    batch.append(self._queue.get(timeout=remaining))
-                except Empty:
-                    break
-
-            texts = [req.text for req in batch]
+        while len(batch) < self._max_batch:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                break
             try:
-                logits = self._infer_fn(texts)
-                probs = torch.softmax(logits, dim=-1).detach().cpu().tolist()
-                for req, prob in zip(batch, probs, strict=False):
-                    req.future.set_result(prob)
-            except Exception as exc:  # noqa: BLE001
-                for req in batch:
-                    req.future.set_exception(exc)
+                batch.append(self._queue.get(timeout=remaining))
+            except Empty:
+                break
+
+        return batch
+
+    def _dispatch_batch(self, batch: list[RequestItem]) -> None:
+        """Run inference on batch and deliver results to futures."""
+        texts = [req.text for req in batch]
+        try:
+            logits = self._infer_fn(texts)
+            probs = torch.softmax(logits, dim=-1).detach().cpu().tolist()
+            if len(probs) != len(batch):
+                raise RuntimeError(f"Batch size mismatch: {len(batch)} requests, {len(probs)} results")
+            for req, prob in zip(batch, probs, strict=True):
+                req.future.set_result(prob)
+        except Exception as exc:  # noqa: BLE001
+            for req in batch:
+                req.future.set_exception(exc)
+
+    def _worker_loop(self) -> None:
+        """Background worker: collect batches and dispatch them."""
+        while True:
+            batch = self._collect_batch()
+            self._dispatch_batch(batch)
 
 
 __all__ = ["BatchExecutor"]

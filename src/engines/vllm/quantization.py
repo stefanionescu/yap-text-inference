@@ -5,8 +5,13 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from src.config import (
+    AWQ_METADATA_FILENAME,
+    QUANT_CONFIG_FILENAMES,
+    UNSUPPORTED_QUANT_DTYPE_FIELDS,
+)
 from src.helpers.models import is_local_model_path
-from .io import read_json_file, write_json_file
+from ..io import read_json_file, write_json_file
 
 __all__ = [
     "detect_quantization_backend",
@@ -17,22 +22,13 @@ __all__ = [
     "UNSUPPORTED_QUANT_DTYPE_FIELDS",
 ]
 
-_QUANT_CONFIG_CANDIDATES = (
-    "config.json",
-    "quantization_config.json",
-    "quant_config.json",
-    "awq_config.json",
-)
-_AWQ_METADATA_FILE = "awq_metadata.json"
-UNSUPPORTED_QUANT_DTYPE_FIELDS = ("scale_dtype", "zp_dtype")
-
 
 def sanitize_quantization_metadata(model_path: str) -> None:
-    """Remove legacy dtype keys from local or cached remote config files."""
+    """Remove unsupported dtype keys from local or cached remote config files."""
     if not model_path:
         return
     if is_local_model_path(model_path):
-        _sanitize_local_quant_files(model_path)
+        _sanitize_quant_files_in_dir(model_path)
         return
     if "/" not in model_path:
         return
@@ -59,41 +55,28 @@ def strip_unsupported_quant_fields(payload: Any) -> bool:
     return _strip(payload)
 
 
-def _sanitize_local_quant_files(model_path: str) -> None:
-    for filename in _QUANT_CONFIG_CANDIDATES:
+def _sanitize_quant_files_in_dir(model_path: str) -> None:
+    """Sanitize quantization config files in a local directory."""
+    for filename in QUANT_CONFIG_FILENAMES:
         candidate = os.path.join(model_path, filename)
         if os.path.isfile(candidate):
             _sanitize_json_file(candidate)
 
 
 def _sanitize_remote_quant_files(model_path: str) -> None:
-    try:
-        from huggingface_hub import hf_hub_download
-    except Exception as exc:
-        print(
-            "[config] Warning: huggingface_hub not available for quantization metadata sanitization "
-            f"({exc})"
-        )
+    """Sanitize quantization config files from a remote HuggingFace repo."""
+    download_fn = _get_hf_download_fn()
+    if download_fn is None:
         return
 
-    token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
-    cache_dir = os.getenv("HF_HOME")
-
-    for filename in _QUANT_CONFIG_CANDIDATES:
-        try:
-            downloaded = hf_hub_download(
-                repo_id=model_path,
-                filename=filename,
-                token=token,
-                cache_dir=cache_dir,
-                local_files_only=False,
-            )
-        except Exception:
-            continue
-        _sanitize_json_file(downloaded)
+    for filename in QUANT_CONFIG_FILENAMES:
+        downloaded = download_fn(model_path, filename)
+        if downloaded:
+            _sanitize_json_file(downloaded)
 
 
 def _sanitize_json_file(path: str) -> None:
+    """Sanitize a single JSON config file by removing unsupported fields."""
     payload = read_json_file(path)
     if payload is None:
         return
@@ -106,6 +89,35 @@ def _sanitize_json_file(path: str) -> None:
         )
     else:
         print(f"[config] Warning: failed to sanitize quantization metadata at {path}")
+
+
+def _get_hf_download_fn():
+    """Return a function to download files from HuggingFace, or None if unavailable.
+    
+    Returns a callable(repo_id, filename) -> local_path | None
+    """
+    try:
+        from huggingface_hub import hf_hub_download
+    except Exception as exc:
+        print(f"[config] Warning: huggingface_hub not available ({exc})")
+        return None
+
+    token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
+    cache_dir = os.getenv("HF_HOME")
+
+    def download(repo_id: str, filename: str) -> str | None:
+        try:
+            return hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                token=token,
+                cache_dir=cache_dir,
+                local_files_only=False,
+            )
+        except Exception:
+            return None
+
+    return download
 
 
 def detect_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
@@ -148,7 +160,7 @@ def resolve_model_origin(model_path: str) -> str:
     if not model_path:
         return ""
     if is_local_model_path(model_path):
-        meta_path = os.path.join(model_path, _AWQ_METADATA_FILE)
+        meta_path = os.path.join(model_path, AWQ_METADATA_FILENAME)
         payload = read_json_file(meta_path)
         if isinstance(payload, dict):
             source = payload.get("source_model")
@@ -157,16 +169,22 @@ def resolve_model_origin(model_path: str) -> str:
     return model_path
 
 
-def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
-    """Inspect local model files to detect the quantization backend."""
-    if not is_local_model_path(model_path):
-        return None, {}
-
-    for filename in _QUANT_CONFIG_CANDIDATES:
-        candidate = os.path.join(model_path, filename)
-        if not os.path.isfile(candidate):
+def _detect_from_config_files(
+    file_resolver,
+) -> tuple[str | None, dict[str, Any]]:
+    """Detect quantization method from config files using a resolver function.
+    
+    Args:
+        file_resolver: Callable(filename) -> local_path | None
+        
+    Returns:
+        Tuple of (quant_method, payload) or (None, {}) if not found.
+    """
+    for filename in QUANT_CONFIG_FILENAMES:
+        path = file_resolver(filename)
+        if not path:
             continue
-        payload = read_json_file(candidate)
+        payload = read_json_file(path)
         if payload is None:
             continue
         quant_method = _extract_quantization_method(payload)
@@ -175,37 +193,31 @@ def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dic
     return None, {}
 
 
+def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
+    """Inspect local model files to detect the quantization backend."""
+    if not is_local_model_path(model_path):
+        return None, {}
+
+    def resolve_local(filename: str) -> str | None:
+        candidate = os.path.join(model_path, filename)
+        return candidate if os.path.isfile(candidate) else None
+
+    return _detect_from_config_files(resolve_local)
+
+
 def _detect_remote_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect remote Hugging Face repos for quantization metadata."""
     if not model_path or "/" not in model_path or is_local_model_path(model_path):
         return None, {}
-    try:
-        from huggingface_hub import hf_hub_download
-    except Exception as exc:
-        print(f"[config] Warning: huggingface_hub not available for remote quantization detection ({exc})")
+    
+    download_fn = _get_hf_download_fn()
+    if download_fn is None:
         return None, {}
 
-    token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
-    cache_dir = os.getenv("HF_HOME")
+    def resolve_remote(filename: str) -> str | None:
+        return download_fn(model_path, filename)
 
-    for filename in _QUANT_CONFIG_CANDIDATES:
-        try:
-            downloaded = hf_hub_download(
-                repo_id=model_path,
-                filename=filename,
-                token=token,
-                cache_dir=cache_dir,
-                local_files_only=False,
-            )
-        except Exception:
-            continue
-        payload = read_json_file(downloaded)
-        if payload is None:
-            continue
-        quant_method = _extract_quantization_method(payload)
-        if quant_method:
-            return quant_method, payload
-    return None, {}
+    return _detect_from_config_files(resolve_remote)
 
 
 def _extract_quant_config(payload: Any) -> dict[str, Any]:

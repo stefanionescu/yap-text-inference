@@ -66,9 +66,36 @@ if env_flag("VLLM_USE_V1", True):
         os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
 
 
+# ============================================================================
+# Engine Args Defaults
+# ============================================================================
+# Default values for vLLM engine configuration that can be overridden.
+
+# Default max batched tokens for chunked prefill (used when no profile or env override)
+DEFAULT_MAX_BATCHED_TOKENS = int(os.getenv("DEFAULT_MAX_BATCHED_TOKENS", "256"))
+
+# Quantization config file candidates (checked in order)
+QUANT_CONFIG_FILENAMES = (
+    "config.json",
+    "quantization_config.json",
+    "quant_config.json",
+    "awq_config.json",
+)
+
+# AWQ metadata filename written by our quantizer
+AWQ_METADATA_FILENAME = "awq_metadata.json"
+
+# Fields in quantization configs that vLLM V1 doesn't support
+UNSUPPORTED_QUANT_DTYPE_FIELDS = ("scale_dtype", "zp_dtype")
+
+
 __all__ = [
     "INFERENCE_ENGINE",
     "QUANTIZATION",
     "CHAT_QUANTIZATION",
+    "DEFAULT_MAX_BATCHED_TOKENS",
+    "QUANT_CONFIG_FILENAMES",
+    "AWQ_METADATA_FILENAME",
+    "UNSUPPORTED_QUANT_DTYPE_FIELDS",
 ]
 

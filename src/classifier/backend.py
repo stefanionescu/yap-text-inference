@@ -27,7 +27,6 @@ classifier adapter. It handles:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import torch  # type: ignore[import]
 from transformers import (  # type: ignore[import]
@@ -72,21 +71,15 @@ class TorchClassifierBackend:
             trust_remote_code=True,
         )
         self._tokenizer.truncation_side = "left"
-        tokenizer_max = getattr(self._tokenizer, "model_max_length", info.max_length)
-        self._max_length = min(info.max_length, tokenizer_max or info.max_length)
-
-        model_kwargs: dict[str, Any] = {"trust_remote_code": True}
-        if device.startswith("cuda"):
-            model_kwargs["torch_dtype"] = dtype
+        tokenizer_max = getattr(self._tokenizer, "model_max_length", None)
+        self._max_length = min(info.max_length, tokenizer_max) if tokenizer_max else info.max_length
 
         self._model = AutoModelForSequenceClassification.from_pretrained(
             info.model_id,
-            **model_kwargs,
-        )
-        self._model.to(device=device, dtype=dtype)
-        self._model.eval()
+            torch_dtype=dtype if device.startswith("cuda") else None,
+            trust_remote_code=True,
+        ).to(device=device, dtype=dtype).eval()
 
-        torch.set_grad_enabled(False)
         if device.startswith("cuda"):
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.benchmark = True
@@ -124,11 +117,12 @@ class TorchClassifierBackend:
 
         with torch.inference_mode():
             if self._info.model_type == "longformer":
+                # Longformer requires global attention on CLS token (index 0)
                 global_mask = torch.zeros_like(enc["input_ids"])
                 global_mask[:, 0] = 1
                 outputs = self._model(
                     **enc,
-                    global_attention_mask=global_mask.to(self._device),
+                    global_attention_mask=global_mask,
                 )
             else:
                 outputs = self._model(**enc)

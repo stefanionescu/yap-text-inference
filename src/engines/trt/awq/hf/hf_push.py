@@ -25,68 +25,84 @@ from src.config.quantization import CHAT_TEMPLATE_FILES, TOKENIZER_FILES
 from ..core.metadata import collect_metadata, detect_base_model, get_engine_label
 from .readme_renderer import render_trt_readme
 
+# HuggingFace repo path prefixes for TRT-LLM artifacts
+_HF_CHECKPOINTS_PATH = "trt-llm/checkpoints"
+_HF_ENGINES_PATH_FMT = "trt-llm/engines/{engine_label}"
+
+
+_TOKENIZER_CONFIG = "tokenizer_config.json"
+_CHECKPOINT_SUFFIXES = ("-int4_awq-ckpt", "-fp8-ckpt", "-int8_sq-ckpt", "-ckpt")
+
+
+def _has_tokenizer(directory: Path) -> bool:
+    """Check if a directory contains a tokenizer config."""
+    return (directory / _TOKENIZER_CONFIG).exists()
+
+
+def _extract_model_stem(checkpoint_name: str) -> str:
+    """Extract model stem by removing known checkpoint suffixes."""
+    for suffix in _CHECKPOINT_SUFFIXES:
+        if checkpoint_name.endswith(suffix):
+            return checkpoint_name[:-len(suffix)]
+    return checkpoint_name
+
+
+def _find_hf_dir_in_path(parent: Path, model_stem: str) -> Path | None:
+    """Look for a {model_stem}-hf directory with tokenizer."""
+    hf_dir = parent / f"{model_stem}-hf"
+    if hf_dir.is_dir() and _has_tokenizer(hf_dir):
+        return hf_dir
+    return None
+
+
+def _download_tokenizer_from_hub(base_model: str) -> Path | None:
+    """Download tokenizer files from HuggingFace hub to temp dir."""
+    try:
+        from huggingface_hub import snapshot_download
+        import tempfile
+        
+        temp_dir = Path(tempfile.mkdtemp(prefix="tokenizer_"))
+        snapshot_download(
+            repo_id=base_model,
+            local_dir=str(temp_dir),
+            allow_patterns=list(TOKENIZER_FILES),
+        )
+        if _has_tokenizer(temp_dir):
+            return temp_dir
+    except Exception as e:
+        print(f"[trt-hf] Warning: Failed to download tokenizer from {base_model}: {e}")
+    return None
+
 
 def _find_tokenizer_dir(checkpoint_dir: Path, base_model: str | None) -> Path | None:
     """Find directory containing tokenizer files.
     
-    Checks:
+    Search order:
     1. Checkpoint directory itself
-    2. Sibling -hf directory in same parent
-    3. models/ directory in workspace root (checkpoint may be in .trt_cache/)
-    4. Downloads from HuggingFace if base_model provided
+    2. Sibling {model_stem}-hf directory
+    3. models/{model_stem}-hf in workspace root
+    4. Download from HuggingFace if base_model provided
     """
-    # Check if tokenizer is in checkpoint dir
-    if (checkpoint_dir / "tokenizer_config.json").exists():
+    if _has_tokenizer(checkpoint_dir):
         return checkpoint_dir
     
-    # Extract model name from checkpoint dir name
-    ckpt_name = checkpoint_dir.name
-    model_stem = ckpt_name
-    for suffix in ["-int4_awq-ckpt", "-fp8-ckpt", "-int8_sq-ckpt", "-ckpt"]:
-        if ckpt_name.endswith(suffix):
-            model_stem = ckpt_name[:-len(suffix)]
-            break
+    model_stem = _extract_model_stem(checkpoint_dir.name)
     
-    # Check sibling -hf directory in same parent
-    hf_dir = checkpoint_dir.parent / f"{model_stem}-hf"
-    if hf_dir.is_dir() and (hf_dir / "tokenizer_config.json").exists():
-        return hf_dir
+    # Check sibling -hf directory
+    result = _find_hf_dir_in_path(checkpoint_dir.parent, model_stem)
+    if result:
+        return result
     
-    # Checkpoint is in .trt_cache/, but HF download is in models/
-    # Go up to workspace root and check models/ directory
-    # e.g., /workspace/.trt_cache/foo-ckpt -> /workspace/models/foo-hf
-    workspace_root = checkpoint_dir.parent.parent
-    models_dir = workspace_root / "models"
-    if models_dir.is_dir():
-        hf_dir = models_dir / f"{model_stem}-hf"
-        if hf_dir.is_dir() and (hf_dir / "tokenizer_config.json").exists():
-            return hf_dir
-        
-        # Try scanning models/ for any matching -hf directory
-        for subdir in models_dir.iterdir():
-            if subdir.is_dir() and subdir.name.endswith("-hf"):
-                if (subdir / "tokenizer_config.json").exists():
-                    # Check if this -hf dir matches our model stem
-                    if subdir.name == f"{model_stem}-hf":
-                        return subdir
+    # Check workspace models/ directory
+    workspace_models = checkpoint_dir.parent.parent / "models"
+    if workspace_models.is_dir():
+        result = _find_hf_dir_in_path(workspace_models, model_stem)
+        if result:
+            return result
     
-    # Last resort: download tokenizer from base_model if provided
+    # Download from HuggingFace as last resort
     if base_model:
-        try:
-            from huggingface_hub import snapshot_download
-            import tempfile
-            
-            # Download only tokenizer files to temp dir
-            temp_dir = Path(tempfile.mkdtemp(prefix="tokenizer_"))
-            snapshot_download(
-                repo_id=base_model,
-                local_dir=str(temp_dir),
-                allow_patterns=list(TOKENIZER_FILES),
-            )
-            if (temp_dir / "tokenizer_config.json").exists():
-                return temp_dir
-        except Exception as e:
-            print(f"[trt-hf] Warning: Failed to download tokenizer from {base_model}: {e}")
+        return _download_tokenizer_from_hub(base_model)
     
     return None
 
@@ -206,7 +222,7 @@ def push_trt_to_hf(
     print(f"[trt-hf] Uploading checkpoint...")
     api.upload_folder(
         folder_path=str(checkpoint_path),
-        path_in_repo="trt-llm/checkpoints",
+        path_in_repo=_HF_CHECKPOINTS_PATH,
         repo_id=repo_id,
         token=token,
         revision=branch,
@@ -215,10 +231,11 @@ def push_trt_to_hf(
     # Upload engines if they exist
     if engine_path.is_dir():
         engine_label = get_engine_label(engine_path)
+        engines_path = _HF_ENGINES_PATH_FMT.format(engine_label=engine_label)
         print(f"[trt-hf] Uploading engines...")
         api.upload_folder(
             folder_path=str(engine_path),
-            path_in_repo=f"trt-llm/engines/{engine_label}",
+            path_in_repo=engines_path,
             repo_id=repo_id,
             token=token,
             revision=branch,
@@ -318,11 +335,12 @@ def push_engine_to_hf(
         return False
     
     # Upload engine to engines/{engine_label}/
+    engines_path = _HF_ENGINES_PATH_FMT.format(engine_label=engine_label)
     print(f"[trt-hf] Uploading engine...")
     try:
         api.upload_folder(
             folder_path=str(engine_path),
-            path_in_repo=f"trt-llm/engines/{engine_label}",
+            path_in_repo=engines_path,
             repo_id=repo_id,
             token=token,
             revision=branch,
@@ -332,7 +350,7 @@ def push_engine_to_hf(
         return False
     
     print(f"[trt-hf] ✓ Engine uploaded to {repo_id}")
-    print(f"[trt-hf]   Path: trt-llm/engines/{engine_label}")
+    print(f"[trt-hf]   Path: {engines_path}")
     return True
 
 
