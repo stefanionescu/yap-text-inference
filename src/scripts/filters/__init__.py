@@ -10,10 +10,11 @@ Controlled by environment variables:
 - SHOW_TRT_LOGS: Enable TensorRT-LLM verbose output (default: False)
 
 Usage:
-    # Import early to apply filters before other libraries load
-    import src.scripts.filters
+    # Call configure() early, before other libraries are imported
+    from src.scripts.filters import configure
+    configure()
 
-    # Or import individual modules
+    # Or import individual modules for fine-grained control
     from src.scripts.filters.hf import configure_hf_logging
     from src.scripts.filters.trt import configure_trt_logging
 """
@@ -29,13 +30,6 @@ from src.helpers.env import env_flag
 _hf_module = None
 _transformers_module = None
 _trt_module = None
-
-__all__ = [
-    "configure",
-    "configure_hf_logging",
-    "configure_transformers_logging",
-    "configure_trt_logging",
-]
 
 logger = logging.getLogger("log_filter")
 
@@ -102,6 +96,10 @@ def configure() -> None:
         logger.debug("TRT logs enabled via SHOW_TRT_LOGS")
 
 
-# Auto-configure on import
-# This ensures importing this module applies all filters
-configure()
+__all__ = [
+    "configure",
+    "configure_hf_logging",
+    "configure_transformers_logging",
+    "configure_trt_logging",
+]
+

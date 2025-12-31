@@ -10,12 +10,12 @@ These rules describe how every source file should be structured so that our agen
 - If new constraints or questions arise, iterate on the plan with the developer until everything is clear, then implement only after receiving a definitive go-ahead.
 
 ## Module Layout
-- Always place the `__all__` export list at the very bottom of the file, after every class, function, and constant definition.
+- When using `__all__`, place it at the very bottom of the file, after every class, function, and constant definition; it is optional and only required when explicit export control is helpful.
 - Keep files focused: ideally one class per file. If you find yourself adding a second class, stop and split the logic into another module.
 - Start each file with a brief description that explains the file’s purpose, how it works, and why it exists (even for config modules) so readers have context before diving into the code.
-- When reorganizing files, use shell scripts (`mv`, helper bash/Python scripts, etc.) to move or batch-move assets and create directories; do not rewrite a file from zero just to change its location.
 - Order logic so that internal helpers appear before any public exports. Readers should encounter the private plumbing before the API surface.
 - Export each public symbol from a single, well-defined place—preferably the module’s `__init__.py`—instead of re-exporting it through multiple files.
+- `__init__.py` files are import/re-export hubs only; keep all executable logic in dedicated modules and simply re-export from the package init.
 - If a public symbol is exported but unused, decide whether it should be removed, relocated, or refactored—unused exports are almost always a code smell.
 - Avoid instantiating a singleton or global instance in the same file that defines the class; create those instances from a dedicated assembly point (e.g., the server entry module).
 - Never trigger work at import time—do not auto-call functions when the module loads. Expose callable entry points and let the importer execute them explicitly.
@@ -42,9 +42,19 @@ These rules describe how every source file should be structured so that our agen
 - Move shared logic from a local module into `helpers` when it becomes generally useful, and likewise relocate a helper from `helpers` into a local module if it turns out to be specific to that execution engine or feature.
 - Execution- or engine-specific logic must remain inside their respective directories (`execution`, `engines`, etc.).
 - All token-related concerns—including tokenization utilities and tokenizer interactions—belong under the `tokens` subdirectory.
-- Scripts that need Python helpers should import them from `src/scripts`; keep that directory organized by category subfolders (e.g., `filtering`) or by clearly named single-purpose modules when no category is necessary.
 - Watch the directory layout: avoid subdirectories that contain a single file unless the file is intentionally split into multiple modules soon. Either split the logic further, move shared portions into `helpers`, or relocate the file into a better-suited directory and remove the redundant subfolder.
 - When refactoring a large file into related modules, consider introducing a new subdirectory to host that cluster so the related pieces stay together and the parent directory remains organized.
+
+## Scripts
+- When reorganizing files, rely on shell or Python scripts (`mv`, helper utilities, etc.) to move assets or batch-create directories instead of rewriting files from scratch.
+- Python helpers that power CLI scripts should live under `src/scripts`, organized either by category directories (e.g., `filtering`) or clearly named single-purpose modules when a category is unnecessary.
+- Docker-related Python logic must remain inside the relevant `docker/` subdirectory rather than `src/scripts` so each image keeps its code self-contained.
+
+## Docker
+- Keep Python logic used by Docker assets inside clearly named directories under `docker/` so it remains separate from the shell scripts that drive each image.
+- Factor out any logic shared by multiple Docker images (e.g., TRT and VLLM) into a common subdirectory; keep image-specific scripts and Python helpers inside that image’s folder.
+- Every Docker image directory must ship with its own README that explains how to build and run it, and the root `docker/README.md` should cover the overall layout and entry points.
+- Keep Dockerfiles focused on container setup instructions. Offload non-trivial logic to scripts or Python files and invoke them from the Dockerfile instead of embedding complex steps inline.
 
 ## Documentation
 - Keep the primary README focused on the essential concepts: overall logic, how the scripts operate, and anything every developer must know to get started quickly.

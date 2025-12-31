@@ -11,11 +11,12 @@ Sessions track per-connection data including:
 
 Key components:
 - SessionHandler: Central session coordinator
-- session_handler: Global singleton instance
+- session_handler: Global singleton instance (from handlers.instances)
 - abort_session_requests: Clean request cancellation
 """
 
 from .abort import abort_session_requests
-from .manager import SessionHandler, session_handler
+from .manager import SessionHandler
+from ..instances import session_handler
 
 __all__ = ["SessionHandler", "session_handler", "abort_session_requests"]

@@ -149,11 +149,4 @@ class ConnectionHandler:
         }
 
 
-# Global connection handler instance
-connection_handler = ConnectionHandler()
-
-
-__all__ = [
-    "ConnectionHandler",
-    "connection_handler",
-]
+__all__ = ["ConnectionHandler"]

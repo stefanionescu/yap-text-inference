@@ -20,7 +20,8 @@ from typing import Sequence
 def _apply_filters() -> None:
     """Apply log filters to quiet noisy dependencies."""
     try:
-        import src.scripts.filters  # noqa: F401
+        from src.scripts.filters import configure
+        configure()
     except Exception:
         # Logging noise suppression is best-effort; do not block work.
         pass
