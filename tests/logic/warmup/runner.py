@@ -26,6 +26,7 @@ from tests.config import (
     DEFAULT_WS_PING_TIMEOUT,
     WARMUP_FALLBACK_MESSAGE,
 )
+from tests.helpers.errors import ServerError
 from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.stream import StreamTracker
@@ -134,6 +135,8 @@ async def _stream_session(
             if should_continue is False:
                 done_seen = True
                 break
+    except ServerError:
+        raise  # Propagate server errors to caller
     except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
         logger.warning("Connection closed by server")
     except asyncio.TimeoutError:
@@ -228,7 +231,8 @@ def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) ->
     if error_code == "authentication_failed":
         logger.info("%sHINT: Check your TEXT_API_KEY environment variable (currently: '%s')", _phase_prefix(phase_label), api_key)
     elif error_code == "server_at_capacity":
-        logger.info("%sHINT: Server is at maximum connection capacity. Try again later.", _phase_prefix(phase_label))
+        logger.info("%sHINT: Server is busy. Try again later.", _phase_prefix(phase_label))
+    raise ServerError(error_code, error_message)
 
 
 def _phase_prefix(phase_label: str | None) -> str:

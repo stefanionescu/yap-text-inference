@@ -38,6 +38,7 @@ from tests.helpers.cli import (
     add_sampling_args,
     build_sampling_payload,
 )
+from tests.helpers.errors import ServerError
 from tests.logic.conversation import run_conversation
 from tests.messages.conversation import CONVERSATION_HISTORY_MESSAGES
 
@@ -89,6 +90,8 @@ def main() -> None:
                 sampling=args.sampling or None,
             )
         )
+    except ServerError:
+        sys.exit(1)
     except KeyboardInterrupt:
         pass
 

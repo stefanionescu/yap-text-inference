@@ -86,7 +86,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        asyncio.run(
+        results = asyncio.run(
             run_suite(
                 ws_url=ws_url,
                 gender=args.gender or DEFAULT_GENDER,
@@ -99,6 +99,9 @@ def main() -> None:
                 max_steps_per_case=args.max_steps,
             )
         )
+        # Exit with error if any test failed
+        if any(not r.success for r in results):
+            sys.exit(1)
     except KeyboardInterrupt:
         print("Interrupted.")
 

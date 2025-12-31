@@ -17,6 +17,7 @@ Message Types:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 from typing import Any
@@ -36,6 +37,7 @@ from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
     WS_CLOSE_UNAUTHORIZED_CODE,
+    WS_WATCHDOG_TICK_S,
 )
 from ...engines import clear_caches_on_disconnect, reset_engine_caches
 from ...messages.cancel import handle_cancel_message
@@ -97,17 +99,11 @@ async def _prepare_connection(ws: WebSocket) -> bool:
         return False
 
     if not await connections.connect(ws):
-        capacity_info = connections.get_capacity_info()
         await reject_connection(
             ws,
             error_code="server_at_capacity",
-            message=(
-                "Server is at capacity. "
-                f"Active connections: {capacity_info['active']}/{capacity_info['max']}. "
-                "Please try again later."
-            ),
+            message="Server cannot accept new connections. Please try again later.",
             close_code=WS_CLOSE_BUSY_CODE,
-            extra={"capacity": capacity_info},
         )
         return False
 
@@ -208,7 +204,18 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
 
     try:
         while True:
-            raw_msg = await ws.receive_text()
+            # Use timeout on receive so we can detect idle timeout closure
+            try:
+                raw_msg = await asyncio.wait_for(
+                    ws.receive_text(),
+                    timeout=WS_WATCHDOG_TICK_S * 2,
+                )
+            except asyncio.TimeoutError:
+                # Check if lifecycle signaled close (idle timeout)
+                if lifecycle.should_close():
+                    break
+                continue
+
             try:
                 msg = parse_client_message(raw_msg)
             except ValueError as exc:

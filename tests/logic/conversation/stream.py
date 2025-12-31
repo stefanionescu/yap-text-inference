@@ -10,6 +10,7 @@ _test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _test_dir not in sys.path:
     sys.path.insert(0, _test_dir)
 
+from tests.helpers.errors import ServerError  # noqa: E402
 from tests.helpers.message import dispatch_message, iter_messages  # noqa: E402
 from tests.helpers.stream import StreamTracker  # noqa: E402
 
@@ -117,7 +118,9 @@ def _handle_done(msg: dict[str, Any], tracker: StreamTracker, exchange_idx: int)
 
 
 def _handle_error(msg: dict[str, Any]) -> None:
-    raise RuntimeError(f"Server error: {msg}")
+    error_code = msg.get("error_code", "unknown")
+    message = msg.get("message", str(msg))
+    raise ServerError(error_code, message)
 
 
 __all__ = ["stream_exchange"]

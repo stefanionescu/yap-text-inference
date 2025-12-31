@@ -12,6 +12,7 @@ if _TEST_DIR not in sys.path:
     sys.path.insert(0, _TEST_DIR)
 
 from tests.config import DEFAULT_PERSONALITIES
+from tests.helpers.errors import ServerError
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
 from .session import PersonaSession, PersonaVariant
@@ -50,7 +51,9 @@ async def collect_response(ws, tracker: StreamTracker) -> str:
             return tracker.final_text
 
         if t == "error":
-            raise RuntimeError(f"server error: {msg}")
+            error_code = msg.get("error_code", "unknown")
+            message = msg.get("message", str(msg))
+            raise ServerError(error_code, message)
 
     raise RuntimeError("WebSocket closed before receiving 'done'")
 
