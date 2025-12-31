@@ -7,7 +7,7 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
 - Either engine independently or both together
 - FastAPI + WebSocket streaming
 
-> **How tool calls work:** The tool model is a lightweight sequence classifier (`AutoModelForSequenceClassification`) that decides whether the client should capture a screenshot based on user intent. Additional function calls—such as switching the companion's gender or personality—are handled by heuristics in the codebase rather than the tool model, keeping tool inference focused on a single, well-defined task.
+> **How tool calls work:** The tool model is a small classifier (`AutoModelForSequenceClassification`) that decides if the client should capture a screenshot. Other actions like switching gender or personality are handled by simple heuristics, not the model.
 
 ## Contents
 
@@ -30,10 +30,10 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
 - **Dual-engine support:** Choose between vLLM and TensorRT-LLM based on your deployment needs.
 - Chat + tool deployment with optional chat-only or tool-only modes.
 - Tool-call-first detection: tool decisions fire before chat tokens.
-- Persona/history segmented prompts with prefix caching (vLLM) or block reuse (TRT-LLM) for low latency.
-- Integrated quantization: AWQ/GPTQ/FP8 for vLLM; INT4-AWQ/FP8/INT8-SQ for TRT-LLM.
-- Built-in resiliency: interrupts/barge-in, heartbeats, idle watchdog (150 s default), and sliding-window rate limits.
-- Secure multi-tenant guardrails via required API keys and a global semaphore driven by `MAX_CONCURRENT_CONNECTIONS`.
+- Prefix caching (vLLM) or block reuse (TRT-LLM) for fast repeated prompts.
+- Quantization support: AWQ/GPTQ/FP8 for vLLM; INT4-AWQ/FP8/INT8-SQ for TRT-LLM.
+- Built-in reliability: interrupts/barge-in, heartbeats, idle timeout (150s default), and rate limits.
+- Connection limits via `MAX_CONCURRENT_CONNECTIONS` and required API keys.
 
 ## Quickstart
 
@@ -62,11 +62,10 @@ bash scripts/main.sh tool <tool_model>
 ```
 
 Default GPU allocation:
-- Chat deployments reserve 70% of GPU memory when a tool model is also configured (override with `CHAT_GPU_FRAC`).
-- The tool model (when it runs on GPU) is capped at 20% by default; override with `TOOL_GPU_FRAC`.
-- Chat-only and tool-only mode allocates 90% to the chat engine
+- Chat + tool: 70% for chat, 20% for tool (override with `CHAT_GPU_FRAC` / `TOOL_GPU_FRAC`)
+- Chat-only or tool-only: 90%
 
-Tool routing relies on a lightweight PyTorch model (default: `yapwithai/yap-longformer-screenshot-intent`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`.
+Tool model default: `yapwithai/yap-longformer-screenshot-intent`. Override with `TOOL_MODEL` (must be compatible with `AutoModelForSequenceClassification`).
 
 Examples:
 ```bash
@@ -122,7 +121,7 @@ docker run -d --gpus all --name yap-tool \
   -p 8000:8000 youruser/yap-text-inference-awq:tool
 ```
 
-> Tool models are standard PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally (e.g., `$REPO/.run`, `.hf`, or `/app/models/tool` inside Docker) so restarts reuse them instantly.
+> Tool models are PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally so restarts reuse them.
 
 See `docker/README.md` for build arguments, image behavior, and run options.
 
@@ -217,11 +216,11 @@ export INFERENCE_ENGINE=vllm
 bash scripts/main.sh 4bit <chat_model> <tool_model>
 ```
 
-> **Engine switching:** Changing engines (e.g., `--trt` to `--vllm`) triggers a **full environment wipe** including HF caches, pip deps, quantized models, and engine artifacts. This ensures clean state transitions.
+> **Engine switching:** Changing engines (e.g., `--trt` to `--vllm`) wipes HF caches, pip deps, quantized models, and engine artifacts.
 
 ## Local Test Dependencies
 
-If you just want to run the WebSocket test clients (warmup, live, conversation, etc.) on a laptop or CPU-only machine, don't install the GPU-heavy requirements. Instead:
+To run WebSocket test clients on a laptop or CPU-only machine without GPU dependencies:
 
 ```bash
 python3 -m venv .venv-local
@@ -229,7 +228,7 @@ source .venv-local/bin/activate
 pip install -r requirements-local.txt
 ```
 
-This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) without pulling CUDA wheels, so macOS users can run `python3 tests/live.py ...` without errors. Use `requirements-trt.txt` or `requirements-vllm.txt` only when you need to run the actual inference server.
+This installs client deps (`websockets`, `httpx`, `orjson`) without CUDA wheels. Use `requirements-trt.txt` or `requirements-vllm.txt` only when running the inference server.
 
 ## Test Clients
 
@@ -281,23 +280,22 @@ bash scripts/restart.sh --reset-models --deploy-mode chat \
 bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 ```
 
-Key restart knobs:
-- `--trt` / `--vllm`: Select inference engine (switching triggers full environment wipe).
-- `--keep-models` (default) reuses cached exports; combine with `NUKE_ALL=0` for sub-minute restarts.
-- `--reset-models` wipes caches before relaunching different repos or quantization.
+Key restart flags:
+- `--trt` / `--vllm`: Select inference engine (switching wipes the environment).
+- `--keep-models` (default) reuses cached exports; combine with `NUKE_ALL=0` for fast restarts.
+- `--reset-models` wipes caches before relaunching with different models or quantization.
 - `--install-deps` reinstalls `.venv` before launching.
-- `--push-quant` uploads the cached quantized build (4bit AWQ/GPTQ or 8bit fp8/int8) to HF; see [`ADVANCED.md#pushing-quantized-exports-to-hugging-face`](ADVANCED.md#pushing-quantized-exports-to-hugging-face) for required env vars.
+- `--push-quant` uploads the quantized build to HF; see [`ADVANCED.md#pushing-quantized-exports-to-hugging-face`](ADVANCED.md#pushing-quantized-exports-to-hugging-face) for required env vars.
 
-Caches are wiped by default during model resets; they are only preserved automatically when the requested models *and* quantization match the previous deployment.
+Caches are wiped during model resets unless the models and quantization match the previous deployment.
 
 ### Stop Script Behavior
 
 Default behavior (`NUKE_ALL=1`, full wipe):
-- Terminates `uvicorn src.server:app` and engine workers
-- **Removes venv** (pip deps will be reinstalled on next deployment)
-- Clears repo-local caches (`.hf`, `.vllm_cache`, `.trt_cache`, `.awq`, `.torch_inductor`, `.triton`, `.flashinfer`, `.xformers`), tmp (`/tmp/vllm*`, `/tmp/flashinfer*`, `/tmp/torch_*`)
-- Clears HF caches, torch caches, NVIDIA PTX JIT cache, and `$HOME/.cache`
-- Preserves the repository, the container, and services like Jupyter/web console
+- Kills the server and engine workers
+- Removes venv (deps reinstalled on next deploy)
+- Clears all caches (HF, torch, vllm, trt, triton, etc.)
+- Preserves the repo, container, and services like Jupyter
 
 Control flags:
 

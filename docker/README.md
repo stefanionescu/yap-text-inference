@@ -1,6 +1,6 @@
 # Yap Text Inference Docker Setup
 
-This Docker setup provides containerized deployment of Yap's text inference API with **pre-baked models**.
+Docker setup for Yap's text inference API with models baked into the image.
 
 ## Engine Options
 
@@ -72,19 +72,16 @@ docker run -d --gpus all --name yap-server \
 
 ## vLLM Engine
 
-vLLM is recommended for most use cases. It supports pre-quantized AWQ and GPTQ models from HuggingFace.
+vLLM works for most use cases. It supports pre-quantized AWQ and GPTQ models from HuggingFace.
 
 ### How It Works
 
-1. **At build time**: The pre-quantized model is downloaded from HuggingFace and baked into the image
-2. **At runtime**: The model is already there - the server starts immediately
+1. **Build time**: Model downloaded from HuggingFace and baked into the image
+2. **Runtime**: Server starts immediately with the baked-in model
 
 ### Supported Models
 
-Chat models must be pre-quantized. The build validates that the model name contains one of:
-- `awq` - AWQ quantized models
-- `gptq` - GPTQ quantized models
-- `w4a16`, `compressed-tensors`, `autoround` - llmcompressor W4A16 exports
+Chat models must be pre-quantized (name must contain `awq`, `gptq`, `w4a16`, `compressed-tensors`, or `autoround`).
 
 ### Build Examples
 
@@ -138,36 +135,26 @@ ENGINE=vllm \
 
 ## TensorRT-LLM Engine
 
-TensorRT-LLM provides maximum inference performance with pre-compiled engines.
+TensorRT-LLM provides better inference performance with pre-compiled engines.
 
 ### How It Works
 
-1. **At build time**: The pre-built TRT engine is downloaded from HuggingFace and baked into the image
-2. **At runtime**: The engine is already loaded - the server starts immediately
+1. **Build time**: TRT engine downloaded from HuggingFace and baked into the image
+2. **Runtime**: Server starts immediately
 
-**Note:** The tool classifier always runs as a regular PyTorch model (not TRT). When deploying `tool` only, no TRT engine is needed.
+The tool classifier always runs as PyTorch (not TRT). Tool-only deployments don't need a TRT engine.
 
 ### Requirements
 
-For **chat** deployment (or **both**), you MUST specify:
-1. **CHAT_MODEL**: HuggingFace TRT-quantized model repo (for tokenizer/checkpoint)
-2. **TRT_ENGINE_REPO**: HuggingFace repo containing pre-built TRT engines
-3. **TRT_ENGINE_LABEL**: Exact engine directory name in the repo
+For **chat** or **both**: specify `CHAT_MODEL`, `TRT_ENGINE_REPO`, and `TRT_ENGINE_LABEL`.
 
-For **tool-only** deployment:
-- Just specify `TOOL_MODEL` (no TRT engine required)
+For **tool-only**: just specify `TOOL_MODEL`.
 
 ### Engine Label Format
 
-The `TRT_ENGINE_LABEL` follows a specific naming convention:
-```
-sm{arch}_trt-llm-{version}_cuda{version}
-```
+Format: `sm{arch}_trt-llm-{version}_cuda{version}`
 
-Examples:
-- `sm90_trt-llm-0.17.0_cuda12.8` - H100 GPU
-- `sm89_trt-llm-0.17.0_cuda12.8` - L40S / RTX 4090
-- `sm86_trt-llm-0.17.0_cuda12.8` - A100 / RTX 3090
+Examples: `sm90_...` (H100), `sm89_...` (L40S/4090), `sm86_...` (A100/3090)
 
 ### Build Examples
 
@@ -249,8 +236,6 @@ your-engine-repo/
 
 ### Basic Run
 
-Since models are baked into the image, running is simple:
-
 ```bash
 docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
@@ -282,7 +267,7 @@ docker run -d --gpus all --name yap-server \
 
 ### GPU Memory Allocation (Both Engines)
 
-Memory allocation is consistent between vLLM and TRT deployments:
+Memory allocation:
 
 | Deploy Mode | Chat Model | Tool Classifier |
 |-------------|------------|-----------------|
@@ -335,62 +320,25 @@ docker stats yap-server
 
 ### vLLM Issues
 
-1. **Build fails: "not a pre-quantized model"**
-   - Chat model name must contain: `awq`, `gptq`, `w4a16`, `compressed-tensors`, or `autoround`
-
-2. **Build fails: "not in the allowed list"**
-   - Tool model must be in the allowlist in `src/config/models.py`
-
-3. **Build fails: "TAG must start with 'vllm-'"**
-   - All vLLM image tags must start with `vllm-`
+1. **"not a pre-quantized model"** - Chat model name must contain `awq`, `gptq`, etc.
+2. **"not in the allowed list"** - Tool model must be in `src/config/models.py`
+3. **"TAG must start with 'vllm-'"** - Use the correct tag prefix
 
 ### TRT Issues
 
-1. **Runtime fails: "GPU ARCHITECTURE MISMATCH"**
-   - The engine baked into the image was built for a different GPU
-   - TRT engines are NOT portable across GPU architectures
-   - Example: An engine built for H100 (`sm90`) won't work on L40S (`sm89`)
-   - Solution: Use an image with an engine built for your GPU's SM architecture
-   - Check your GPU's SM arch: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
-
-2. **Runtime fails: "MISSING ENGINE METADATA"**
-   - The engine directory is missing `build_metadata.json`
-   - Every TRT engine must have this file for GPU validation
-   - Rebuild the engine with the latest quantization scripts
-
-3. **Runtime fails: "CANNOT DETECT RUNTIME GPU"**
-   - nvidia-smi not available or GPU not accessible
-   - Ensure container runs with `--gpus all`
-   - Verify GPU drivers are installed
-
-4. **Build fails: "TRT_ENGINE_REPO is REQUIRED"**
-   - You must specify both `TRT_ENGINE_REPO` and `TRT_ENGINE_LABEL` for chat/both modes
-
-5. **Build fails: "TRT_ENGINE_LABEL has invalid format"**
-   - Label must match: `sm{digits}_trt-llm-{version}_cuda{version}`
-   - Example: `sm90_trt-llm-0.17.0_cuda12.8`
-
-6. **Build fails: "No .engine files found"**
-   - The specified `TRT_ENGINE_LABEL` directory doesn't exist in `TRT_ENGINE_REPO`
-   - Verify the engine exists: `huggingface-cli repo-info yapwithai/qwen3-30b-trt-awq --files`
-
-7. **Build fails: "TAG must start with 'trt-'"**
-   - All TRT image tags must start with `trt-`
+1. **"GPU ARCHITECTURE MISMATCH"** - Engine built for different GPU. TRT engines are not portable across architectures. Check: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
+2. **"MISSING ENGINE METADATA"** - Engine missing `build_metadata.json`. Rebuild.
+3. **"CANNOT DETECT RUNTIME GPU"** - Run with `--gpus all`
+4. **"TRT_ENGINE_REPO is REQUIRED"** - Specify both `TRT_ENGINE_REPO` and `TRT_ENGINE_LABEL` for chat/both
+5. **"TRT_ENGINE_LABEL has invalid format"** - Must match `sm{digits}_trt-llm-{version}_cuda{version}`
+6. **"No .engine files found"** - Verify engine exists in repo
+7. **"TAG must start with 'trt-'"** - Use correct tag prefix
 
 ### Common Issues
 
-1. **CUDA/GPU not available**
-   - Ensure nvidia-docker is installed
-   - Test: `docker run --gpus all nvidia/cuda:13.0.0-runtime-ubuntu24.04 nvidia-smi`
-
-2. **Out of memory**
-   - Reduce GPU fractions: `-e CHAT_GPU_FRAC=0.60`
-   - Use int8 KV cache: `-e KV_DTYPE=int8`
-
-3. **Build slow / large image**
-   - Models are baked into the image, so build downloads the full model
-   - Images will be large (10-50GB depending on model size)
-   - Use Docker layer caching for faster rebuilds
+1. **CUDA/GPU not available** - Ensure nvidia-docker is installed. Test: `docker run --gpus all nvidia/cuda:13.0.0-runtime-ubuntu24.04 nvidia-smi`
+2. **Out of memory** - Reduce fractions: `-e CHAT_GPU_FRAC=0.60` or use int8 KV: `-e KV_DTYPE=int8`
+3. **Large image** - Models are baked in; images will be 10-50GB
 
 ### Debug Mode
 
@@ -405,9 +353,7 @@ docker run -it --gpus all --rm \
 
 ## API Usage
 
-Once running, the server provides:
-
-- **Health**: `GET /healthz` (no auth required)
+- **Health**: `GET /healthz` (no auth)
 - **WebSocket**: `ws://localhost:8000/ws?api_key=your_key`
 
-See the main README.md for complete API documentation.
+See README.md for full API docs.

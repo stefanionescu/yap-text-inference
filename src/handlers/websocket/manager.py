@@ -107,7 +107,12 @@ async def _prepare_connection(ws: WebSocket) -> bool:
         )
         return False
 
-    await ws.accept()
+    try:
+        await ws.accept()
+    except Exception:  # noqa: BLE001 - propagate after releasing slot
+        with contextlib.suppress(Exception):
+            await connections.disconnect(ws)
+        raise
     return True
 
 
