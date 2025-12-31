@@ -64,7 +64,7 @@ trt_download_model() {
   local download_start download_end download_duration
   download_start=$(date +%s)
   
-  if ! env ${show_hf_logs_env} PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-model \
+  if ! env ${show_hf_logs_env} PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.quantization download-model \
     --model-id "${model_id}" \
     --target-dir "${target_dir}"; then
     log_err "[model] ✗ Failed to download model ${model_id}"
@@ -193,7 +193,7 @@ trt_quantize_model() {
     patch_args=(--patch-script "${patch_script}")
   fi
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
-  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant run-quant \
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.quantization run-quant \
     "${patch_args[@]}" -- "${quant_args[@]}"; then
     log_err "[quant] ✗ Quantization failed"
     _quant_cleanup_on_failure
@@ -256,7 +256,7 @@ trt_download_prequantized() {
   
   local python_root="${ROOT_DIR:-${_TRT_QUANT_ROOT}}"
   
-  if ! env ${show_hf_logs_env} PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.trt_quant download-prequantized \
+  if ! env ${show_hf_logs_env} PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python -m src.scripts.quantization download-prequantized \
     --model-id "${model_id}" \
     --target-dir "${target_dir}"; then
     log_err "[model] ✗ Failed to download pre-quantized model"

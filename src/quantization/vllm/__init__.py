@@ -1,12 +1,11 @@
-"""vLLM Quantization Package (AWQ via llmcompressor)."""
+"""vLLM AWQ Quantization Package."""
 
 from .core import AWQQuantizer, CalibrationConfig
 from .utils.model_utils import is_awq_dir
 
-__version__ = "1.0.0"
-
 __all__ = [
     "AWQQuantizer",
-    "CalibrationConfig", 
+    "CalibrationConfig",
     "is_awq_dir",
 ]
+

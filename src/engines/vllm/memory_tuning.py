@@ -25,7 +25,7 @@ from src.config.limits import (
     MAX_NUM_SEQS_MEMORY_OPT_BASELINE,
     MAX_NUM_SEQS_MIN_FLOOR,
 )
-from ..warnings import warn_once
+from src.helpers.log_once import warn_once
 
 
 # GPU memory thresholds -> baseline mappings (threshold_gib, baseline_value)

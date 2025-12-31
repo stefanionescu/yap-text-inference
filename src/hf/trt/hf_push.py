@@ -12,8 +12,8 @@ from src.helpers.env import env_flag
 if not env_flag("SHOW_HF_LOGS", False):
     import src.scripts.filters  # noqa: F401 - suppress HF progress bars
 
-from ..metadata import get_engine_label
-from src.engines.hf import get_hf_api, verify_repo_exists
+from src.quantization.trt import get_engine_label
+from src.hf import get_hf_api, verify_repo_exists
 from .push_job import TRTPushJob
 
 __all__ = ["push_checkpoint_to_hf", "push_engine_to_hf"]

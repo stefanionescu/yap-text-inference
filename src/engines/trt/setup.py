@@ -18,7 +18,7 @@ from src.config import (
     TRT_KV_ENABLE_BLOCK_REUSE,
     TRT_RUNTIME_BATCH_SIZE,
 )
-from ..io import read_json_file
+from src.helpers.io import read_json_file
 
 
 logger = logging.getLogger(__name__)

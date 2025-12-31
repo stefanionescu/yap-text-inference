@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 from src.config.quantization import CHAT_TEMPLATE_FILES, TOKENIZER_FILES
 
-from ..metadata import collect_metadata, detect_base_model, get_engine_label
-from src.engines.hf import create_repo_if_needed
+from src.quantization.trt import collect_metadata, detect_base_model, get_engine_label
+from src.hf import create_repo_if_needed
 from .readme_renderer import render_trt_readme
 from .tokenizer_discovery import find_tokenizer_dir
 

@@ -16,7 +16,9 @@ def render_trt_readme(metadata: dict[str, Any]) -> str:
     Returns:
         Rendered README content.
     """
-    template_path = Path(__file__).parent / "readme" / "trt_chat_template.md"
+    # Template is in src/quantization/trt/readme/
+    src_root = Path(__file__).parent.parent.parent
+    template_path = src_root / "quantization" / "trt" / "readme" / "trt_chat_template.md"
     template = template_path.read_text(encoding="utf-8")
     
     # Simple mustache-style replacement: {{key}} -> value
