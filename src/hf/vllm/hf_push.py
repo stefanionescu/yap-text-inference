@@ -9,12 +9,11 @@ from pathlib import Path
 from src.helpers.env import env_flag
 
 if not env_flag("SHOW_HF_LOGS", False):
-    import src.scripts.filters  # noqa: F401 - suppress HF progress bars
+    from src.scripts.filters import configure
+    configure()
 
 from src.hf import get_hf_api
 from .push_job import AWQPushJob, resolve_token
-
-__all__ = ["push_awq_to_hf"]
 
 
 def push_awq_to_hf(
@@ -90,6 +89,9 @@ def main() -> int:
         allow_create=args.allow_create,
     )
     return 0 if success else 1
+
+
+__all__ = ["push_awq_to_hf"]
 
 
 if __name__ == "__main__":

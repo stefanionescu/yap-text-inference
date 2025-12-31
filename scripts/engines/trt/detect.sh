@@ -250,7 +250,8 @@ trt_list_remote_engines() {
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
 PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON 2>/dev/null || true
 import sys
-import src.scripts.filters  # noqa: F401
+from src.scripts.filters import configure
+configure()
 try:
     from huggingface_hub import list_repo_tree
     items = list(list_repo_tree('${repo_id}', path_in_repo='trt-llm/engines', repo_type='model'))
@@ -428,7 +429,8 @@ if show_hf_logs:
     except Exception:
         pass
 else:
-    import src.scripts.filters  # noqa: F401
+    from src.scripts.filters import configure
+    configure()
 
 from huggingface_hub import snapshot_download
 

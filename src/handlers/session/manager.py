@@ -4,7 +4,7 @@ This module implements the central session management for the inference server.
 SessionHandler coordinates per-connection state including lifecycle, configuration,
 history, request tracking, and rate limiting.
 
-The global `session_handler` instance is used throughout the application.
+The global `session_handler` singleton is instantiated in the `instances` module.
 For abort functionality, see the `abort` module.
 """
 
@@ -23,12 +23,16 @@ from src.config import (
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
-from ..rate_limit import RateLimitError, SlidingWindowRateLimiter
 from .time import format_session_timestamp
 
 from .config import update_session_config as _update_config, resolve_screen_prefix
 from .history import HistoryController
 from .prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
+from .rate_limiting import (
+    consume_chat_prompt_update as _consume_rate_limit,
+    get_chat_prompt_last_update_at as _get_rate_limit_ts,
+    set_chat_prompt_last_update_at as _set_rate_limit_ts,
+)
 from .requests import (
     CANCELLED_SENTINEL,
     is_request_cancelled as _is_cancelled,
@@ -84,9 +88,9 @@ class SessionHandler:
     # ============================================================================
     # Session metadata / lifecycle
     # ============================================================================
+
     def initialize_session(self, session_id: str) -> dict[str, Any]:
         """Ensure a session state exists and return its metadata."""
-
         self._evict_idle_sessions()
         state = self._sessions.get(session_id)
         if state:
@@ -110,12 +114,8 @@ class SessionHandler:
         }
         new_state = SessionState(session_id=session_id, meta=meta)
         # Cache default prefix token counts
-        new_state.check_screen_prefix_tokens = count_prefix_tokens(
-            DEFAULT_CHECK_SCREEN_PREFIX
-        )
-        new_state.screen_checked_prefix_tokens = count_prefix_tokens(
-            DEFAULT_SCREEN_CHECKED_PREFIX
-        )
+        new_state.check_screen_prefix_tokens = count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
+        new_state.screen_checked_prefix_tokens = count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
         self._sessions[session_id] = new_state
         new_state.touch()
         return meta
@@ -143,47 +143,21 @@ class SessionHandler:
         )
 
     def get_chat_prompt_last_update_at(self, session_id: str) -> float:
-        state = self._ensure_state(session_id)
-        return float(state.chat_prompt_last_update_at or 0.0)
+        """Get timestamp of last chat prompt update."""
+        return _get_rate_limit_ts(self._ensure_state(session_id))
 
     def set_chat_prompt_last_update_at(self, session_id: str, timestamp: float) -> None:
-        state = self._ensure_state(session_id)
-        state.chat_prompt_last_update_at = timestamp
+        """Set timestamp of last chat prompt update."""
+        _set_rate_limit_ts(self._ensure_state(session_id), timestamp)
 
     def consume_chat_prompt_update(
-        self,
-        session_id: str,
-        *,
-        limit: int,
-        window_seconds: float,
+        self, session_id: str, *, limit: int, window_seconds: float
     ) -> float:
-        """Record a chat prompt update attempt if within the rolling window limit.
-
-        Returns:
-            float: 0 if allowed, otherwise the number of seconds until the next slot frees.
-        """
-
-        state = self._ensure_state(session_id)
-        limiter = state.chat_prompt_rate_limiter
-        if (
-            limiter is None
-            or limiter.limit != limit
-            or limiter.window_seconds != window_seconds
-        ):
-            limiter = SlidingWindowRateLimiter(limit=limit, window_seconds=window_seconds)
-            state.chat_prompt_rate_limiter = limiter
-
-        try:
-            limiter.consume()
-        except RateLimitError as err:
-            return err.retry_in
-
-        state.chat_prompt_last_update_at = time.monotonic()
-        return 0.0
+        """Record a chat prompt update if within rate limit. Returns retry_in seconds or 0."""
+        return _consume_rate_limit(self._ensure_state(session_id), limit=limit, window_seconds=window_seconds)
 
     def get_session_config(self, session_id: str) -> dict[str, Any]:
         """Return a copy of the current session configuration."""
-
         state = self._get_state(session_id)
         if not state:
             return {}
@@ -200,56 +174,42 @@ class SessionHandler:
         state = self._get_state(session_id) if session_id else None
         return resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
 
-    def set_personalities(
-        self, session_id: str, personalities: dict[str, list[str]] | None
-    ) -> None:
+    def set_personalities(self, session_id: str, personalities: dict[str, list[str]] | None) -> None:
         """Store the personalities configuration for a session."""
-        state = self._ensure_state(session_id)
-        state.personalities = personalities
+        self._ensure_state(session_id).personalities = personalities
 
     def get_personalities(self, session_id: str) -> dict[str, list[str]] | None:
         """Get the personalities configuration for a session."""
         state = self._get_state(session_id)
-        if not state:
-            return None
-        return state.personalities
+        return state.personalities if state else None
 
     def pick_control_message(self, session_id: str) -> str:
-        """Pick a random control message for this session.
-        
-        Messages are cycled to ensure variety - once all messages
-        have been used in a session, the pool resets.
-        """
+        """Pick a random control message for this session."""
         from src.execution.tool.messages import pick_control_message
-        
-        state = self._ensure_state(session_id)
-        return pick_control_message(state)
+        return pick_control_message(self._ensure_state(session_id))
 
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""
-
         state = self._sessions.pop(session_id, None)
         if state and state.task and not state.task.done():
             state.task.cancel()
 
     def get_session_duration(self, session_id: str) -> float:
         """Return the elapsed time since the session was created."""
-
         state = self._get_state(session_id)
-        if not state:
-            return 0.0
-        return max(0.0, time.monotonic() - state.created_at)
+        return max(0.0, time.monotonic() - state.created_at) if state else 0.0
 
     # ============================================================================
     # History helpers
     # ============================================================================
+
     def get_history_text(self, session_id: str) -> str:
         state = self._get_state(session_id)
         if not state:
             return ""
         state.touch()
         return self._history.get_text(state)
-    
+
     def get_user_texts(self, session_id: str) -> list[str]:
         """Get raw user texts (untrimmed)."""
         state = self._get_state(session_id)
@@ -284,12 +244,7 @@ class SessionHandler:
         return turn_id
 
     def append_history_turn(
-        self,
-        session_id: str,
-        user_utt: str,
-        assistant_text: str,
-        *,
-        turn_id: str | None = None,
+        self, session_id: str, user_utt: str, assistant_text: str, *, turn_id: str | None = None
     ) -> str:
         state = self._ensure_state(session_id)
         normalized_user = strip_screen_prefix(
@@ -297,25 +252,19 @@ class SessionHandler:
             self.get_check_screen_prefix(session_id),
             self.get_screen_checked_prefix(session_id),
         )
-        rendered = self._history.append_turn(
-            state,
-            normalized_user,
-            assistant_text,
-            turn_id=turn_id,
-        )
+        rendered = self._history.append_turn(state, normalized_user, assistant_text, turn_id=turn_id)
         state.touch()
         return rendered
 
     # ============================================================================
     # Request/task tracking
     # ============================================================================
+
     def set_active_request(self, session_id: str, request_id: str) -> None:
-        state = self._ensure_state(session_id)
-        state.active_request_id = request_id
+        self._ensure_state(session_id).active_request_id = request_id
 
     def set_tool_request(self, session_id: str, request_id: str) -> None:
-        state = self._ensure_state(session_id)
-        state.tool_request_id = request_id
+        self._ensure_state(session_id).tool_request_id = request_id
 
     def get_tool_request_id(self, session_id: str) -> str:
         state = self._get_state(session_id)
@@ -332,11 +281,13 @@ class SessionHandler:
     def track_task(self, session_id: str, task: asyncio.Task) -> None:
         state = self._ensure_state(session_id)
         state.task = task
+
         def _clear_task(completed: asyncio.Task) -> None:
             current = self._get_state(session_id)
             if current and current.task is completed:
                 current.task = None
                 current.touch()
+
         task.add_done_callback(_clear_task)
 
     def has_running_task(self, session_id: str) -> bool:
@@ -353,29 +304,16 @@ class SessionHandler:
     # ============================================================================
     # Token budget helpers
     # ============================================================================
-    def get_effective_user_utt_max_tokens(
-        self,
-        session_id: str | None,
-        *,
-        for_followup: bool = False,
-    ) -> int:
-        """Get the effective max tokens for user utterance after accounting for prefix.
 
-        Args:
-            session_id: The session ID to look up prefix token counts.
-            for_followup: If True, account for screen_checked_prefix (followup messages).
-                          If False, account for check_screen_prefix (start messages
-                          that may trigger screenshot).
-
-        Returns:
-            The adjusted max token count for the user message content.
-        """
+    def get_effective_user_utt_max_tokens(self, session_id: str | None, *, for_followup: bool = False) -> int:
+        """Get the effective max tokens for user utterance after accounting for prefix."""
         state = self._get_state(session_id) if session_id else None
         return get_effective_user_utt_max_tokens(state, for_followup=for_followup)
 
     # ============================================================================
     # Internal helpers
     # ============================================================================
+
     def _evict_idle_sessions(self) -> None:
         if self._idle_ttl_seconds <= 0:
             return
@@ -389,7 +327,4 @@ class SessionHandler:
             self.clear_session_state(session_id)
 
 
-session_handler = SessionHandler()
-
-
-__all__ = ["SessionHandler", "session_handler"]
+__all__ = ["SessionHandler"]
