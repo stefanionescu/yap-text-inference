@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
-from typing import Iterator, Sequence
+from collections.abc import Iterator, Sequence
 
 from .types import CaseResult
 
@@ -248,7 +248,6 @@ def save_logs(
     Save test logs to a file with a unique name in tests/results/.
     Returns the path to the saved log file.
     """
-    import os
     from datetime import datetime
     from pathlib import Path
     

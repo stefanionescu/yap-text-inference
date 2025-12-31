@@ -44,11 +44,9 @@ class StreamTracker:
         """Record a streaming token and return any newly triggered metrics.
         
         Returns a dict with keys that may include:
-            - chat_ttfb_ms / ttfb_chat_ms: Time to first chat token
-            - time_to_first_3_words_ms / first_3_words_ms: Time to first 3 words
-            - time_to_first_complete_sentence_ms / first_sentence_ms: Time to first sentence
-        
-        Both key variants are provided for backwards compatibility.
+            - chat_ttfb_ms: Time to first chat token
+            - time_to_first_3_words_ms: Time to first 3 words
+            - time_to_first_complete_sentence_ms: Time to first sentence
         """
         metrics: dict[str, float | None] = {}
         if not chunk:
@@ -58,20 +56,17 @@ class StreamTracker:
             self.first_token_ts = time.perf_counter()
             ttfb = self._ms_since_sent(self.first_token_ts)
             metrics["chat_ttfb_ms"] = ttfb
-            metrics["ttfb_chat_ms"] = ttfb  # Alias for backwards compat
 
         self.final_text += chunk
         if self.first_3_words_ts is None and has_at_least_n_words(self.final_text, 3):
             self.first_3_words_ts = time.perf_counter()
             first_3 = self._ms_since_sent(self.first_3_words_ts)
             metrics["time_to_first_3_words_ms"] = first_3
-            metrics["first_3_words_ms"] = first_3  # Alias for backwards compat
 
         if self.first_sentence_ts is None and contains_complete_sentence(self.final_text):
             self.first_sentence_ts = time.perf_counter()
             first_sentence = self._ms_since_sent(self.first_sentence_ts)
             metrics["time_to_first_complete_sentence_ms"] = first_sentence
-            metrics["first_sentence_ms"] = first_sentence  # Alias for backwards compat
 
         self.chunks += 1
         return metrics

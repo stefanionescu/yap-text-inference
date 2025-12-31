@@ -9,7 +9,7 @@ from typing import Any
 from vllm.engine.arg_utils import AsyncEngineArgs
 
 from src.helpers.model_profiles import get_model_profile
-from src.helpers.calibration import normalize_model_id
+from src.helpers.model_profiles import normalize_model_id
 from src.helpers.log_once import warn_once
 
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False

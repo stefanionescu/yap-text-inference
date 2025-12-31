@@ -16,7 +16,7 @@ command -v shellcheck >/dev/null 2>&1 || {
 }
 
 PYTHON_TARGETS=()
-for path in src test; do
+for path in src tests docker; do
     if [[ -d "${path}" ]]; then
         PYTHON_TARGETS+=("${path}")
     fi

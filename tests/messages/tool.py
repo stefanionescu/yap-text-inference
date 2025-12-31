@@ -1,4 +1,5 @@
 """Default tool regression prompts and expected outcomes."""
+# ruff: noqa: E501  # Test data - long strings are intentional
 
 TOOL_DEFAULT_MESSAGES = [
     # -- SHOULD BE ACCEPTED: Single Screenshot Requests ──────────────────────────

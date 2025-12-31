@@ -37,13 +37,14 @@ from tests.helpers.cli import (
     build_sampling_payload,
 )
 from tests.helpers.ws import connect_with_retries, with_api_key
-from tests.helpers.errors import IdleTimeoutError
+from tests.helpers.errors import (
+    ConnectionClosedError,
+    IdleTimeoutError,
+    ServerError,
+)
 from tests.logic.live import (
     DEFAULT_PERSONA_NAME,
     LiveClient,
-    LiveConnectionClosed,
-    LiveIdleTimeout,
-    LiveServerError,
     LiveSession,
     PersonaRegistry,
 )
@@ -130,21 +131,21 @@ async def _run(args: argparse.Namespace) -> None:
             logger.info("Session ended due to inactivity. Goodbye!")
         else:
             logger.warning("Server closed the connection (code=%s). Exiting.", close_code)
-    except (IdleTimeoutError, LiveIdleTimeout):
+    except IdleTimeoutError:
         logger.info("Session ended due to inactivity. Goodbye!")
-    except LiveServerError as exc:
-        if exc.code == "authentication_failed":
+    except ServerError as exc:
+        if exc.error_code == "authentication_failed":
             logger.error(
                 "Authentication failed: server rejected the provided API key. "
                 "Double-check `--api-key` or `TEXT_API_KEY`."
             )
             raise SystemExit(1) from exc
-        if exc.code == "server_at_capacity":
+        if exc.error_code == "server_at_capacity":
             logger.error("Server is busy. Please try again later.")
             raise SystemExit(1) from exc
         logger.error("Server error: %s", exc)
         raise SystemExit(1) from exc
-    except LiveConnectionClosed as exc:
+    except ConnectionClosedError as exc:
         logger.warning("Connection closed: %s", exc)
     except Exception:
         logger.exception("Unexpected error while running live client")

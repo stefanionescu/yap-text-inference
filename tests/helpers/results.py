@@ -36,7 +36,7 @@ class BenchmarkResult:
     first_3_words_ms: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dict for backwards compatibility with existing code."""
+        """Convert to a plain dict representation."""
         result: dict[str, Any] = {"ok": self.ok, "phase": self.phase}
         if not self.ok:
             result["error"] = self.error

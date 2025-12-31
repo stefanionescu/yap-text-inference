@@ -29,12 +29,12 @@ async def collect_response(ws, tracker: StreamTracker) -> str:
         if t == "token":
             chunk = msg.get("text", "")
             metrics = tracker.record_token(chunk)
-            if metrics.get("ttfb_chat_ms") is not None:
-                print(f"  [chat] ttfb_ms={metrics['ttfb_chat_ms']:.2f}")
-            if metrics.get("first_3_words_ms") is not None:
-                print(f"  [chat] first_3_words_ms={metrics['first_3_words_ms']:.2f}")
-            if metrics.get("first_sentence_ms") is not None:
-                print(f"  [chat] first_sentence_ms={metrics['first_sentence_ms']:.2f}")
+            if metrics.get("chat_ttfb_ms") is not None:
+                print(f"  [chat] ttfb_ms={metrics['chat_ttfb_ms']:.2f}")
+            if metrics.get("time_to_first_3_words_ms") is not None:
+                print(f"  [chat] first_3_words_ms={metrics['time_to_first_3_words_ms']:.2f}")
+            if metrics.get("time_to_first_complete_sentence_ms") is not None:
+                print(f"  [chat] first_sentence_ms={metrics['time_to_first_complete_sentence_ms']:.2f}")
             continue
 
         if t == "final":

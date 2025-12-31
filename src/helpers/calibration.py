@@ -12,7 +12,6 @@ from collections.abc import Mapping
 
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 from src.config.calibration import CALIB_DEFAULT_DATASET
-from src.helpers.model_profiles import normalize_model_id
 
 
 def _read_int_env(name: str) -> int | None:
@@ -106,14 +105,12 @@ def dataset_fallback(name: str) -> str | None:
     return _DATASET_FALLBACKS.get(_dataset_key(name))
 
 
-# Re-export normalize_model_id for backward compatibility
 __all__ = [
-    "TotalLengthPolicy",
     "CHAT_TOTAL_POLICY",
-    "resolve_total_len",
+    "TotalLengthPolicy",
     "canonicalize_dataset_name",
     "dataset_fallback",
     "dataset_key",
-    "normalize_model_id",
+    "resolve_total_len",
 ]
 

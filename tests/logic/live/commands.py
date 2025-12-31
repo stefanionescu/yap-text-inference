@@ -14,11 +14,11 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
+from tests.helpers.errors import TestClientError
+
 if TYPE_CHECKING:
     from .client import LiveClient
     from .personas import PersonaRegistry
-
-from .errors import LiveClientError
 
 logger = logging.getLogger("live")
 
@@ -63,8 +63,8 @@ def _handle_toggle_command(
 
 async def _handle_help_command(
     _: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
     *,
     raw_command: str,
 ) -> bool:
@@ -77,8 +77,8 @@ async def _handle_help_command(
 
 async def _handle_list_command(
     _: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
     *,
     raw_command: str,
 ) -> bool:
@@ -91,8 +91,8 @@ async def _handle_list_command(
 
 async def _handle_persona_command(
     arg: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
     *,
     raw_command: str,
 ) -> bool:
@@ -108,15 +108,15 @@ async def _handle_persona_command(
         return False
     try:
         await client.change_persona(persona)
-    except LiveClientError as exc:
+    except TestClientError as exc:
         logger.error("persona update failed: %s", exc)
     return False
 
 
 async def _handle_history_command(
     _: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
     *,
     raw_command: str,
 ) -> bool:
@@ -133,8 +133,8 @@ async def _handle_history_command(
 
 async def _handle_info_command(
     _: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
     *,
     raw_command: str,
 ) -> bool:
@@ -154,8 +154,8 @@ async def _handle_info_command(
 
 async def _handle_stats_command(
     arg: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
     *,
     raw_command: str,
 ) -> bool:
@@ -173,8 +173,8 @@ async def _handle_stats_command(
 
 async def _handle_stop_command(
     _: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
     *,
     raw_command: str,
 ) -> bool:
@@ -214,8 +214,8 @@ COMMAND_ALIASES: dict[str, str] = {
 
 async def dispatch_command(
     command_line: str,
-    client: "LiveClient",
-    registry: "PersonaRegistry",
+    client: LiveClient,
+    registry: PersonaRegistry,
 ) -> bool:
     """
     Parse and dispatch a slash command.
