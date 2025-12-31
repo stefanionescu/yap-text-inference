@@ -1,28 +1,8 @@
 """Primary WebSocket connection handler orchestration.
 
 This module contains the main WebSocket connection handler that serves as
-the entry point for all client connections. It orchestrates:
-
-1. Connection Setup:
-   - API key authentication
-   - Connection admission (capacity check)
-   - Lifecycle watchdog initialization
-   
-2. Message Routing:
-   - Control messages: ping/pong/end
-   - Start messages: Initialize session and dispatch execution
-   - Cancel messages: Abort active requests
-   - Content messages: followup, chat_prompt updates
-   - Warming messages: warm_persona, warm_history
-
-3. Rate Limiting:
-   - Per-connection message rate limiting
-   - Separate rate limit for cancel messages
-   
-4. Cleanup:
-   - Session state cleanup on disconnect
-   - Engine cache reset for long sessions
-   - Connection slot release
+the entry point for all client connections. It orchestrates connection setup,
+message routing, rate limiting, and cleanup on disconnect.
 
 Message Types:
     start       - Initialize session with persona and start generation
@@ -38,10 +18,7 @@ Message Types:
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
-import math
-import random
 from typing import Any
 from collections.abc import Callable
 
@@ -55,7 +32,6 @@ from ...config import (
     WS_MESSAGE_WINDOW_SECONDS,
     CACHE_RESET_MIN_SESSION_SECONDS,
 )
-from ...config.chat import MESSAGE_RATE_LIMIT_MESSAGES
 from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
@@ -68,13 +44,14 @@ from ...messages.followup import handle_followup_message
 from ...messages.start import handle_start_message
 from ...messages.warm.warm_history import handle_warm_history_message
 from ...messages.warm.warm_persona import handle_warm_persona_message
-from ..rate_limit import RateLimitError, SlidingWindowRateLimiter
+from ..rate_limit import SlidingWindowRateLimiter
 from ..connections import connections
 from ..session import abort_session_requests, session_handler
 from .lifecycle import WebSocketLifecycle
 from .errors import reject_connection, send_error
 from .parser import parse_client_message
 from .helpers import safe_send_json
+from .rate_limits import select_rate_limiter, consume_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -135,55 +112,6 @@ async def _prepare_connection(ws: WebSocket) -> bool:
         return False
 
     await ws.accept()
-    return True
-
-
-def _select_rate_limiter(
-    msg_type: str,
-    message_limiter: SlidingWindowRateLimiter,
-    cancel_limiter: SlidingWindowRateLimiter,
-) -> tuple[SlidingWindowRateLimiter | None, str]:
-    """Pick which limiter applies to the message type (if any).
-
-    Cancel messages receive their own bucket so a burst of cancel attempts
-    cannot starve regular messaging. Control traffic (ping/pong/end) is
-    exempt from rate checks because it is either connection liveness or
-    teardown bookkeeping.
-    """
-    if msg_type == "cancel":
-        return cancel_limiter, "cancel"
-    if msg_type in {"ping", "pong", "end"}:
-        return None, ""
-    return message_limiter, "message"
-
-
-async def _consume_limiter(
-    ws: WebSocket,
-    limiter: SlidingWindowRateLimiter,
-    label: str,
-) -> bool:
-    """Attempt to consume a limiter token, sending an error on failure."""
-    try:
-        limiter.consume()
-    except RateLimitError as err:
-        retry_in = int(max(1, math.ceil(err.retry_in))) if err.retry_in > 0 else 1
-        limit_desc = limiter.limit
-        window_desc = int(limiter.window_seconds)
-        message = (
-            f"{label} rate limit: at most {limit_desc} per {window_desc} seconds; "
-            f"retry in {retry_in} seconds"
-        )
-        extra: dict[str, Any] = {"retry_in": retry_in}
-        # Add friendly message only for message rate limits (not cancel)
-        if label == "message":
-            extra["friendly_message"] = random.choice(MESSAGE_RATE_LIMIT_MESSAGES)
-        await send_error(
-            ws,
-            error_code=f"{label}_rate_limited",
-            message=message,
-            extra=extra,
-        )
-        return False
     return True
 
 
@@ -294,8 +222,8 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             lifecycle.touch()
             msg_type = msg.get("type")
 
-            limiter, label = _select_rate_limiter(msg_type, message_limiter, cancel_limiter)
-            if limiter and not await _consume_limiter(ws, limiter, label):
+            limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
+            if limiter and not await consume_limiter(ws, limiter, label):
                 continue
 
             if await _handle_control_message(ws, msg_type, session_id):

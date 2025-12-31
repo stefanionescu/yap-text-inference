@@ -88,9 +88,6 @@ WS_CANCEL_WINDOW_SECONDS = float(os.getenv(
 ))
 WS_MAX_CANCELS_PER_WINDOW = int(os.getenv("WS_MAX_CANCELS_PER_WINDOW", str(WS_MAX_MESSAGES_PER_WINDOW)))
 
-# Tool model history limit
-TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "900"))  # Tool model context allocation
-
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
 EXACT_TOKEN_TRIM = env_flag("EXACT_TOKEN_TRIM", True)
 
@@ -188,7 +185,6 @@ __all__ = [
     "WS_MAX_MESSAGES_PER_WINDOW",
     "WS_CANCEL_WINDOW_SECONDS",
     "WS_MAX_CANCELS_PER_WINDOW",
-    "TOOL_HISTORY_TOKENS",
     "EXACT_TOKEN_TRIM",
     "MAX_CONCURRENT_CONNECTIONS",
     "SCREEN_PREFIX_MAX_CHARS",

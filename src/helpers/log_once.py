@@ -4,7 +4,7 @@ This module provides a simple way to track which warnings have been emitted
 to avoid spamming logs with repeated warnings.
 
 Usage:
-    from src.engines.warnings import warn_once
+    from src.helpers.log_once import warn_once
     
     warn_once("cuda_mem", "torch unavailable for CUDA mem introspection")
     warn_once("cuda_mem", "same warning")  # Suppressed

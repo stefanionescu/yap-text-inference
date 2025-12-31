@@ -1,4 +1,28 @@
-"""Model allowlists."""
+"""Model allowlists for chat and tool deployment.
+
+This module contains the approved model lists for the inference stack:
+
+Chat Models (ALLOWED_BASE_CHAT_MODELS):
+    Base HuggingFace models that can be quantized for chat. Includes notes
+    on quality, temperature stability, and use cases from testing.
+
+MoE Chat Models (ALLOWED_BASE_MOE_CHAT_MODELS):
+    Mixture of Experts models requiring special quantization handling.
+    These use sparse activation and have different memory profiles.
+
+Pre-Quantized Models:
+    - ALLOWED_VLLM_QUANT_CHAT_MODELS: AWQ/GPTQ models ready for vLLM
+    - ALLOWED_TRT_QUANT_CHAT_MODELS: AWQ/FP8 models built for TRT-LLM
+
+Tool Models (ALLOWED_TOOL_MODELS):
+    Classifier models for screenshot intent detection. These use
+    transformers AutoModelForSequenceClassification, not vLLM.
+
+Adding New Models:
+    1. Test the model thoroughly before adding
+    2. Include a comment with notes on quality/stability
+    3. Add to the appropriate list based on architecture
+"""
 
 ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable above 0.8 temp when using 4bit quant; decent <=0.6

@@ -161,5 +161,25 @@ SCREENSHOT_TRIGGER_PATTERNS = [
     r"^teak\s+a\s+look[.!?]*$",  # typo: "teak a look"
 ]
 
-# TRTLLM_NOISE_PATTERNS moved to src/config/filters.py
+
+__all__ = [
+    # Freestyle patterns
+    "FREESTYLE_WORD",
+    "FREESTYLE_START_PATTERNS",
+    "FREESTYLE_STOP_PATTERNS",
+    # Gender patterns
+    "GENDER_MALE_WORD",
+    "GENDER_FEMALE_WORD",
+    "GENDER_MALE_PATTERNS",
+    "GENDER_FEMALE_PATTERNS",
+    # Personality patterns
+    "PERSONALITY_SWITCH_TEMPLATES",
+    # Combined gender + personality patterns
+    "GENDER_PERSONALITY_TEMPLATES",
+    # Screenshot patterns
+    "SCREENSHOT_REJECT_PATTERNS",
+    "SCREENSHOT_TAKE_X_PATTERN",
+    "SCREENSHOT_TRIGGER_QUANTITIES",
+    "SCREENSHOT_TRIGGER_PATTERNS",
+]
 
