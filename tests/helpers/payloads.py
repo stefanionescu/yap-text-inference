@@ -1,0 +1,98 @@
+"""Shared WebSocket message payload builders.
+
+This module provides the canonical `build_start_payload` function used by all
+test scripts to construct the start message for WebSocket sessions. Previously
+duplicated across 6+ files, this is now the single source of truth.
+
+Payload Types:
+    - start: Initial message to begin a conversation turn
+    - chat_prompt: Mid-session persona/prompt update
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from tests.config import DEFAULT_PERSONALITIES
+
+
+@dataclass(frozen=True)
+class SessionContext:
+    """Immutable context for building session payloads.
+    
+    Holds the stable session-level parameters that remain constant across
+    multiple messages within the same connection.
+    """
+
+    session_id: str
+    gender: str
+    personality: str
+    chat_prompt: str | None = None
+    sampling: dict[str, float | int] | None = None
+
+
+def build_start_payload(
+    ctx: SessionContext,
+    user_text: str,
+    *,
+    history_text: str = "",
+    personalities: list[str] | None = None,
+) -> dict[str, Any]:
+    """Build the start message payload for a conversation turn.
+    
+    Args:
+        ctx: Session context with gender, personality, and optional chat_prompt.
+        user_text: The user's message text.
+        history_text: Accumulated conversation history (default empty).
+        personalities: Optional personality list override (default DEFAULT_PERSONALITIES).
+    
+    Returns:
+        A dict ready to be JSON-serialized and sent over WebSocket.
+    """
+    payload: dict[str, Any] = {
+        "type": "start",
+        "session_id": ctx.session_id,
+        "gender": ctx.gender,
+        "personality": ctx.personality,
+        "personalities": personalities if personalities is not None else DEFAULT_PERSONALITIES,
+        "history_text": history_text,
+        "user_utterance": user_text,
+    }
+    if ctx.chat_prompt is not None:
+        payload["chat_prompt"] = ctx.chat_prompt
+    if ctx.sampling:
+        payload["sampling"] = ctx.sampling
+    return payload
+
+
+def build_chat_prompt_payload(
+    ctx: SessionContext,
+    *,
+    history_text: str = "",
+) -> dict[str, Any]:
+    """Build a chat_prompt update payload for mid-session persona changes.
+    
+    Args:
+        ctx: Session context with the new persona settings.
+        history_text: Current conversation history.
+    
+    Returns:
+        A dict ready to be JSON-serialized and sent over WebSocket.
+    """
+    return {
+        "type": "chat_prompt",
+        "session_id": ctx.session_id,
+        "gender": ctx.gender,
+        "personality": ctx.personality,
+        "chat_prompt": ctx.chat_prompt,
+        "history_text": history_text,
+    }
+
+
+__all__ = [
+    "SessionContext",
+    "build_start_payload",
+    "build_chat_prompt_payload",
+]
+

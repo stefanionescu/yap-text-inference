@@ -3,26 +3,20 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import sys
 import uuid
 
 import websockets  # type: ignore[import-not-found]
 
-_TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _TEST_DIR not in sys.path:
-    sys.path.insert(0, _TEST_DIR)
-
-from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.ttfb import TTFBAggregator
-from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     PERSONA_VARIANTS,
 )
-from tests.messages.conversation import CONVERSATION_HISTORY_MESSAGES
 from tests.helpers.env import get_float_env, get_int_env
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.ttfb import TTFBAggregator
+from tests.helpers.ws import send_client_end, with_api_key
+from tests.messages.conversation import CONVERSATION_HISTORY_MESSAGES
 
 from .sequences import run_initial_exchange, run_remaining_sequence, run_switch_sequence
 from .session import PersonaSession, PersonaVariant
@@ -31,27 +25,6 @@ PERSONA_WINDOW_SECONDS = get_float_env("CHAT_PROMPT_UPDATE_WINDOW_SECONDS", 60.0
 PERSONA_MAX_PER_WINDOW = get_int_env("CHAT_PROMPT_UPDATE_MAX_PER_WINDOW", 4)
 MESSAGE_WINDOW_SECONDS = get_float_env("WS_MESSAGE_WINDOW_SECONDS", 60.0)
 MESSAGE_MAX_PER_WINDOW = get_int_env("WS_MAX_MESSAGES_PER_WINDOW", 20)
-
-
-async def run_test(
-    ws_url: str,
-    api_key: str | None,
-    switches: int,
-    delay_s: int,
-    sampling: dict[str, float | int] | None,
-) -> None:
-    """Run the personality switch test."""
-    url = with_api_key(ws_url, api_key=api_key)
-    ttfb_aggregator = TTFBAggregator()
-    session = _build_session(sampling)
-    session.ttfb_aggregator = ttfb_aggregator
-    variants = _load_variants()
-    message_pacer, persona_pacer = _build_pacers()
-    try:
-        await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
-    finally:
-        if ttfb_aggregator.has_samples():
-            ttfb_aggregator.emit(print)
 
 
 def _build_session(
@@ -160,3 +133,22 @@ async def _perform_switches(
     return current_idx
 
 
+async def run_test(
+    ws_url: str,
+    api_key: str | None,
+    switches: int,
+    delay_s: int,
+    sampling: dict[str, float | int] | None,
+) -> None:
+    """Run the personality switch test."""
+    url = with_api_key(ws_url, api_key=api_key)
+    ttfb_aggregator = TTFBAggregator()
+    session = _build_session(sampling)
+    session.ttfb_aggregator = ttfb_aggregator
+    variants = _load_variants()
+    message_pacer, persona_pacer = _build_pacers()
+    try:
+        await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
+    finally:
+        if ttfb_aggregator.has_samples():
+            ttfb_aggregator.emit(print)

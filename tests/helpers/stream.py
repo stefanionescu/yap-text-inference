@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from .math import round_ms
 from .regex import contains_complete_sentence, has_at_least_n_words
 
 
@@ -40,28 +41,42 @@ class StreamTracker:
         return self.toolcall_ttfb_ms
 
     def record_token(self, chunk: str) -> dict[str, float | None]:
-        """Record a streaming token and return any newly triggered metrics."""
+        """Record a streaming token and return any newly triggered metrics.
+        
+        Returns a dict with keys that may include:
+            - chat_ttfb_ms / ttfb_chat_ms: Time to first chat token
+            - time_to_first_3_words_ms / first_3_words_ms: Time to first 3 words
+            - time_to_first_complete_sentence_ms / first_sentence_ms: Time to first sentence
+        
+        Both key variants are provided for backwards compatibility.
+        """
         metrics: dict[str, float | None] = {}
         if not chunk:
             return metrics
 
         if self.first_token_ts is None:
             self.first_token_ts = time.perf_counter()
-            metrics["chat_ttfb_ms"] = self._ms_since_sent(self.first_token_ts)
+            ttfb = self._ms_since_sent(self.first_token_ts)
+            metrics["chat_ttfb_ms"] = ttfb
+            metrics["ttfb_chat_ms"] = ttfb  # Alias for backwards compat
 
         self.final_text += chunk
         if self.first_3_words_ts is None and has_at_least_n_words(self.final_text, 3):
             self.first_3_words_ts = time.perf_counter()
-            metrics["time_to_first_3_words_ms"] = self._ms_since_sent(self.first_3_words_ts)
+            first_3 = self._ms_since_sent(self.first_3_words_ts)
+            metrics["time_to_first_3_words_ms"] = first_3
+            metrics["first_3_words_ms"] = first_3  # Alias for backwards compat
 
         if self.first_sentence_ts is None and contains_complete_sentence(self.final_text):
             self.first_sentence_ts = time.perf_counter()
-            metrics["time_to_first_complete_sentence_ms"] = self._ms_since_sent(self.first_sentence_ts)
+            first_sentence = self._ms_since_sent(self.first_sentence_ts)
+            metrics["time_to_first_complete_sentence_ms"] = first_sentence
+            metrics["first_sentence_ms"] = first_sentence  # Alias for backwards compat
 
         self.chunks += 1
         return metrics
 
-    def finalize_metrics(self, cancelled: bool) -> dict[str, Any]:
+    def finalize_metrics(self, cancelled: bool = False) -> dict[str, Any]:
         """Build the final metrics dict after streaming completes."""
         done_ts = time.perf_counter()
         ttfb_ms = self._ms_since_sent(self.first_token_ts)
@@ -81,11 +96,6 @@ class StreamTracker:
             "chunks": self.chunks,
             "chars": len(self.final_text),
         }
-
-
-def round_ms(value: float | None) -> float | None:
-    """Round a millisecond value to 2 decimal places, or return None."""
-    return round(value, 2) if value is not None else None
 
 
 __all__ = ["StreamTracker", "round_ms"]
