@@ -13,9 +13,9 @@ Patches applied:
      while custom models (like Kimi) use the old flash attention interface.
 
 Usage:
-    import src.scripts.transformers  # at top of script
+    import src.scripts.patches  # at top of script
     # or
-    from src.scripts.transformers import patch_transformers_auto_docstring
+    from src.scripts.patches import patch_transformers_auto_docstring
     patch_transformers_auto_docstring()
 """
 
@@ -112,3 +112,4 @@ if patch_attn_implementation_eager():
         "[patch] Applied transformers eager attention fix for flash attention loading",
         file=sys.stderr,
     )
+

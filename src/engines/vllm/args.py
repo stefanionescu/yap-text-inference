@@ -57,7 +57,7 @@ from .memory_tuning import (
     get_max_num_seqs_override,
     scale_batching_limits,
 )
-from .quantization import (
+from .quant.core.detection import (
     detect_quant_backend,
     log_quant_detection,
     resolve_model_origin,

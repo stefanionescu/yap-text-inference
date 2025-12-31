@@ -165,16 +165,7 @@ SCREENSHOT_TRIGGER_PATTERNS = [
 # TRTLLM LOG NOISE PATTERNS
 # ============================================================================
 
-# Patterns for suppressing TensorRT-LLM and modelopt log noise during quantization
-TRTLLM_NOISE_PATTERNS = (
-    re.compile(r"\[TensorRT-LLM].*TensorRT LLM version", re.IGNORECASE),
-    re.compile(r"`?torch_dtype`?\s*(is\s+)?deprecated", re.IGNORECASE),
-    re.compile(r"Registered <class 'transformers\.models\..+'> to _QuantAttention", re.IGNORECASE),
-    re.compile(r"Inserted \d+ quantizers", re.IGNORECASE),
-    re.compile(r"Caching activation statistics", re.IGNORECASE),
-    re.compile(r"Searching .*parameters", re.IGNORECASE),
-    re.compile(r"Loading extension modelopt", re.IGNORECASE),
-    re.compile(r"Loaded extension modelopt", re.IGNORECASE),
-    re.compile(r"current rank:\s*\d+,\s*tp rank:\s*\d+,\s*pp rank:\s*\d+", re.IGNORECASE),
-)
+# Re-export from canonical location in scripts module
+# Keeping here for backward compatibility with code that imports from config
+from src.scripts.filter_constants import TRTLLM_NOISE_PATTERNS as TRTLLM_NOISE_PATTERNS
 
