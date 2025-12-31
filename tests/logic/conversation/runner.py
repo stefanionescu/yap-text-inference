@@ -1,32 +1,34 @@
+"""Conversation history test runner.
+
+This module orchestrates multi-turn conversation tests over WebSocket. It
+maintains session state, tracks TTFB metrics across exchanges, and validates
+that history retention works correctly under bounded-history constraints.
+"""
+
 from __future__ import annotations
 
 import json
 import logging
-import os
-import sys
 import uuid
 from collections.abc import Sequence
 
 import websockets  # type: ignore[import-not-found]
 
-_test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _test_dir not in sys.path:
-    sys.path.insert(0, _test_dir)
-
-from tests.config import (  # noqa: E402
+from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
 )
-from tests.config.env import get_float_env, get_int_env  # noqa: E402
-from tests.helpers.prompt import select_chat_prompt  # noqa: E402
-from tests.helpers.rate import SlidingWindowPacer  # noqa: E402
-from tests.helpers.stream import StreamTracker  # noqa: E402
-from tests.helpers.ttfb import TTFBAggregator  # noqa: E402
-from tests.helpers.ws import send_client_end, with_api_key  # noqa: E402
-from .session import ConversationSession, build_start_payload  # noqa: E402
-from .stream import stream_exchange  # noqa: E402
+from tests.config.env import get_float_env, get_int_env
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.stream import StreamTracker
+from tests.helpers.ttfb import TTFBAggregator
+from tests.helpers.ws import send_client_end, with_api_key
+
+from .session import ConversationSession, build_start_payload
+from .stream import stream_exchange
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,12 @@ async def run_conversation(
     recv_timeout: float,
     sampling: dict[str, float | int] | None,
 ) -> None:
+    """
+    Execute a multi-turn conversation test.
+
+    Connects to the WebSocket server and replays the given prompts, tracking
+    TTFB and other metrics for each exchange.
+    """
     if not prompts:
         raise ValueError("Conversation prompt list is empty; nothing to send.")
 

@@ -1,3 +1,10 @@
+"""WebSocket connection utilities for test clients.
+
+This module provides helpers for WebSocket URL manipulation, connection
+retry logic, and common protocol operations like sending the end frame.
+It normalizes URLs to ensure consistent path handling across all test scripts.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -13,6 +20,7 @@ _HTTP_TO_WS = {"http": "ws", "https": "wss"}
 
 
 def _ensure_path_and_scheme(url: str, default_path: str) -> tuple[str, str, str, str, str]:
+    """Parse and normalize a WebSocket URL."""
     parts = urlsplit(url)
     scheme = parts.scheme or "ws"
     netloc = parts.netloc

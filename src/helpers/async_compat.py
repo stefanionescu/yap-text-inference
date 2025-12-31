@@ -10,8 +10,6 @@ import contextlib
 from collections.abc import AsyncGenerator
 from typing import TypeVar
 
-__all__ = ["timeout"]
-
 T = TypeVar("T")
 
 
@@ -54,3 +52,5 @@ async def timeout(delay: float) -> AsyncGenerator[None, None]:
     finally:
         handle.cancel()
 
+
+__all__ = ["timeout"]

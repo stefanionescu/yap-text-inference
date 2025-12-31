@@ -1,3 +1,10 @@
+"""WebSocket message parsing and dispatch utilities.
+
+This module provides helpers for parsing JSON messages from WebSocket frames
+and dispatching them to type-specific handlers. It supports both sync and
+async handler functions and gracefully handles malformed JSON.
+"""
+
 from __future__ import annotations
 
 import inspect
@@ -13,6 +20,7 @@ class MessageParseError(RuntimeError):
 
 
 def parse_message(raw: str) -> dict[str, Any]:
+    """Parse a raw WebSocket frame into a JSON dict."""
     try:
         return json.loads(raw)
     except json.JSONDecodeError as exc:

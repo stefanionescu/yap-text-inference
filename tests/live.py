@@ -25,9 +25,6 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-
-setup_repo_path()
-
 from tests.config import (
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
@@ -142,6 +139,7 @@ async def _run(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    setup_repo_path()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
     asyncio.run(_run(args))

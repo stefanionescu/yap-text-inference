@@ -1,3 +1,10 @@
+"""Prompt selection utilities for test utilities.
+
+This module provides helpers for normalizing gender strings and selecting
+appropriate chat prompts based on the assistant's gender. It imports the
+base prompts from tests/prompts/base.py.
+"""
+
 from __future__ import annotations
 
 try:  # When /tests is already on sys.path

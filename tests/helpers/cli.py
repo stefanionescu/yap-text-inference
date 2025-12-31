@@ -1,3 +1,11 @@
+"""CLI argument helpers for test utilities.
+
+This module provides reusable argparse argument groups shared by all test
+scripts. It includes connection args (server URL, API key), sampling override
+args (temperature, top_p, etc.), and the chat prompt skip flag for tool-only
+deployments.
+"""
+
 from __future__ import annotations
 
 import os

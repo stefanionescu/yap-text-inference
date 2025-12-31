@@ -1,3 +1,11 @@
+"""Central configuration hub for test utilities.
+
+This module re-exports all configuration constants, defaults, and test messages
+from the config submodules and tests/messages package. It serves as the single
+import point for test configuration so that CLI scripts and test runners can
+import everything they need from `tests.config`.
+"""
+
 from .env import (
     DEFAULT_SERVER_WS_URL,
     DEFAULT_GENDER,
@@ -85,4 +93,3 @@ __all__ = [
     "CHAT_PRESENCE_PENALTY_DEFAULT",
     "CHAT_FREQUENCY_PENALTY_DEFAULT",
 ]
-

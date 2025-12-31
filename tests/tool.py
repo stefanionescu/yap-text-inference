@@ -17,17 +17,14 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-
-setup_repo_path()
-
-from tests.helpers.cli import add_connection_args, add_chat_prompt_arg  # noqa: E402
-from tests.helpers.ws import with_api_key  # noqa: E402
-from tests.config import (  # noqa: E402
+from tests.helpers.cli import add_connection_args, add_chat_prompt_arg
+from tests.helpers.ws import with_api_key
+from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     TOOL_WS_MAX_MESSAGES_PER_WINDOW,
 )
-from tests.logic.tool.runner import run_suite  # noqa: E402
+from tests.logic.tool.runner import run_suite
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")
@@ -78,6 +75,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    setup_repo_path()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
 

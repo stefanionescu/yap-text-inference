@@ -1,9 +1,17 @@
+"""Environment-based configuration for test utilities.
+
+This module reads test configuration from environment variables and provides
+sensible defaults. It includes WebSocket connection settings, timeout values,
+and rate-limiting parameters used across all test clients.
+"""
+
 from __future__ import annotations
 
 import os
 
 
 def get_int_env(key: str, fallback: int) -> int:
+    """Read an integer from an environment variable with a fallback."""
     raw = os.getenv(key)
     if raw is None:
         return fallback
@@ -14,6 +22,7 @@ def get_int_env(key: str, fallback: int) -> int:
 
 
 def get_float_env(key: str, fallback: float) -> float:
+    """Read a float from an environment variable with a fallback."""
     raw = os.getenv(key)
     if raw is None:
         return fallback
@@ -46,4 +55,3 @@ __all__ = [
     "get_int_env",
     "get_float_env",
 ]
-

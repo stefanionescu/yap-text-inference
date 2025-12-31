@@ -1,3 +1,11 @@
+"""WebSocket client for interactive live sessions.
+
+This module provides the LiveClient class that wraps a WebSocket connection
+and provides high-level methods for sending messages, changing personas, and
+streaming responses. It handles message parsing, error reporting, and stats
+logging.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -22,9 +30,12 @@ logger = logging.getLogger("live")
 
 @dataclass
 class _StreamPrinter:
+    """Helper for printing streaming tokens to stdout."""
+
     printed_header: bool = False
 
     def write_chunk(self, chunk: str) -> None:
+        """Write a token chunk to stdout with appropriate formatting."""
         if not chunk:
             return
         if not self.printed_header:
@@ -33,6 +44,7 @@ class _StreamPrinter:
         print(chunk, end="", flush=True)
 
     def finish(self) -> None:
+        """Finish the current response line."""
         if self.printed_header:
             print()
             print()
@@ -40,11 +52,14 @@ class _StreamPrinter:
 
 @dataclass
 class _StreamState:
+    """Track state during response streaming."""
+
     tracker: StreamTracker
     printer: _StreamPrinter = field(default_factory=_StreamPrinter)
     pending_chat_ttfb: float | None = None
 
     def handle_token(self, chunk: str) -> None:
+        """Process an incoming token chunk."""
         metrics = self.tracker.record_token(chunk)
         self.printer.write_chunk(chunk)
         chat_ttfb = metrics.get("chat_ttfb_ms")
@@ -53,6 +68,8 @@ class _StreamState:
 
 
 class LiveClient:
+    """High-level WebSocket client for interactive sessions."""
+
     def __init__(self, ws, session: LiveSession, recv_timeout: float) -> None:
         self.ws = ws
         self.session = session
@@ -61,9 +78,11 @@ class LiveClient:
         self._stats_enabled = False
 
     async def send_initial_message(self, text: str) -> str:
+        """Send the initial user message to start the session."""
         return await self.send_user_message(text)
 
     async def send_user_message(self, text: str) -> str:
+        """Send a user message and return the assistant's response."""
         payload = self.session.build_start_payload(text)
         tracker = StreamTracker()
         await self._send_json(payload)
@@ -73,28 +92,35 @@ class LiveClient:
 
     @property
     def stats_logging_enabled(self) -> bool:
+        """Return whether stats logging is enabled."""
         return self._stats_enabled
 
     def set_stats_logging(self, enabled: bool) -> bool:
+        """Enable or disable stats logging."""
         self._stats_enabled = bool(enabled)
         return self._stats_enabled
 
     @property
     def is_connected(self) -> bool:
+        """Return True if the WebSocket is still connected."""
         return not getattr(self.ws, "closed", True)
 
     @property
     def close_code(self) -> int | None:
+        """Return the WebSocket close code if available."""
         return getattr(self.ws, "close_code", None)
 
     @property
     def close_reason(self) -> str | None:
+        """Return the WebSocket close reason if available."""
         return getattr(self.ws, "close_reason", None)
 
     async def wait_closed(self) -> None:
+        """Wait for the WebSocket to close."""
         await self.ws.wait_closed()
 
     async def change_persona(self, persona: PersonaDefinition) -> None:
+        """Request a persona change mid-session."""
         try:
             payload = self.session.build_persona_payload(persona)
         except ValueError as exc:
@@ -132,6 +158,7 @@ class LiveClient:
         self.session.replace_persona(persona)
 
     async def close(self) -> None:
+        """Close the WebSocket connection gracefully."""
         if self._closed:
             return
         self._closed = True
@@ -147,6 +174,7 @@ class LiveClient:
             await asyncio.wait_for(self.ws.wait_closed(), timeout=3.0)
 
     async def _send_json(self, payload: dict[str, Any]) -> None:
+        """Send a JSON payload over the WebSocket."""
         try:
             await self.ws.send(json.dumps(payload))
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
@@ -158,6 +186,7 @@ class LiveClient:
         *,
         print_user_prompt: bool = True,
     ) -> str:
+        """Stream and process the server response."""
         state = _StreamState(tracker)
         try:
             async for msg in iter_messages(self.ws, timeout=self.recv_timeout):
@@ -193,6 +222,7 @@ class LiveClient:
         raise LiveClientError("WebSocket closed before receiving 'done'")
 
     def _handle_toolcall_frame(self, msg: dict[str, Any], tracker: StreamTracker) -> None:
+        """Handle a toolcall message frame."""
         ttfb = tracker.record_toolcall()
         logger.info("TOOLCALL status=%s ttfb_ms=%s", msg.get("status"), round_ms(ttfb))
 
@@ -203,6 +233,7 @@ class LiveClient:
         *,
         print_user_prompt: bool,
     ) -> str:
+        """Handle the done message and finalize metrics."""
         state.printer.finish()
         if print_user_prompt:
             print("you >", end=" ", flush=True)
@@ -217,11 +248,13 @@ class LiveClient:
         return state.tracker.final_text
 
     def _handle_connection_closed(self, msg: dict[str, Any], tracker: StreamTracker) -> str:
+        """Handle a connection_closed message."""
         reason = msg.get("reason") or "server_request"
         logger.info("Server signaled connection_closed reason=%s", reason)
         return tracker.final_text
 
     async def _wait_for_chat_prompt_ack(self) -> dict[str, Any]:
+        """Wait for a chat_prompt ACK message."""
         try:
             async for msg in iter_messages(self.ws, timeout=self.recv_timeout):
                 msg_type = msg.get("type")
@@ -238,6 +271,7 @@ class LiveClient:
 
 
 def _log_server_error(msg: dict[str, Any]) -> None:
+    """Log a server error message."""
     logger.error(
         "Server error code=%s status=%s message=%s",
         msg.get("error_code") or msg.get("code"),
@@ -247,5 +281,3 @@ def _log_server_error(msg: dict[str, Any]) -> None:
 
 
 __all__ = ["LiveClient"]
-
-

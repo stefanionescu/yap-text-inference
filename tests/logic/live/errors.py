@@ -1,3 +1,10 @@
+"""Exception classes for live interactive sessions.
+
+This module defines the error hierarchy for the live WebSocket client.
+All exceptions inherit from LiveClientError, which is the base class for
+any issues that occur during an interactive session.
+"""
+
 from __future__ import annotations
 
 
@@ -27,5 +34,3 @@ __all__ = [
     "LiveServerError",
     "LiveInputClosed",
 ]
-
-

@@ -1,3 +1,17 @@
+"""Interactive CLI runner for the live WebSocket test client.
+
+This module provides the main interactive loop that reads user input, handles
+slash commands (delegated to commands.py), and sends messages through the
+LiveClient. It manages signal handlers, graceful shutdown, and coordinates
+between user input and server disconnect events.
+
+The InteractiveRunner orchestrates the interactive session lifecycle:
+- Installs SIGINT handlers for graceful Ctrl+C handling
+- Monitors both user input and server disconnect events
+- Delegates slash commands to the commands module
+- Prints streaming responses and manages the input prompt
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -6,9 +20,9 @@ import logging
 import os
 import signal
 from dataclasses import dataclass
-from collections.abc import Awaitable, Callable
 
 from .client import LiveClient
+from .commands import dispatch_command
 from .errors import LiveClientError, LiveConnectionClosed, LiveInputClosed
 from .personas import PersonaRegistry
 
@@ -17,6 +31,8 @@ logger = logging.getLogger("live")
 
 @dataclass(slots=True)
 class InteractiveRunner:
+    """Manages the interactive CLI session lifecycle."""
+
     client: LiveClient
     registry: PersonaRegistry
     show_banner: bool = True
@@ -24,6 +40,7 @@ class InteractiveRunner:
     _closing: bool = False
 
     async def run(self) -> None:
+        """Execute the interactive loop until exit or disconnect."""
         loop = asyncio.get_running_loop()
         sigint_installed = self._install_sigint_handler(loop)
         loop_task: asyncio.Task | None = None
@@ -38,6 +55,7 @@ class InteractiveRunner:
                 loop.remove_signal_handler(signal.SIGINT)
 
     def _install_sigint_handler(self, loop: asyncio.AbstractEventLoop) -> bool:
+        """Install a signal handler for graceful Ctrl+C handling."""
         try:
             loop.add_signal_handler(signal.SIGINT, self._handle_sigint)
             return True
@@ -46,12 +64,21 @@ class InteractiveRunner:
             return False
 
     def _start_background_tasks(self) -> tuple[asyncio.Task, asyncio.Task]:
+        """Create background tasks for input loop and disconnect monitoring."""
         loop_task = asyncio.create_task(self._loop())
         disconnect_task = asyncio.create_task(self._watch_disconnect())
         return loop_task, disconnect_task
 
-    async def _coordinate_tasks(self, loop_task: asyncio.Task, disconnect_task: asyncio.Task) -> None:
-        done, _ = await asyncio.wait({loop_task, disconnect_task}, return_when=asyncio.FIRST_COMPLETED)
+    async def _coordinate_tasks(
+        self,
+        loop_task: asyncio.Task,
+        disconnect_task: asyncio.Task,
+    ) -> None:
+        """Wait for either input loop or disconnect, then clean up the other."""
+        done, _ = await asyncio.wait(
+            {loop_task, disconnect_task},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
         if disconnect_task in done:
             await self._cancel_task(
                 loop_task,
@@ -66,6 +93,7 @@ class InteractiveRunner:
         *,
         suppress: tuple[type[BaseException], ...] = (asyncio.CancelledError,),
     ) -> None:
+        """Cancel a task and suppress specified exceptions."""
         if task.done():
             return
         task.cancel()
@@ -73,6 +101,7 @@ class InteractiveRunner:
             await task
 
     async def _finalize_task(self, task: asyncio.Task | None) -> None:
+        """Ensure a task is cancelled and awaited during cleanup."""
         if not task:
             return
         if not task.done():
@@ -82,6 +111,7 @@ class InteractiveRunner:
                 await task
 
     async def _loop(self) -> None:
+        """Main input loop: read lines and dispatch commands or messages."""
         if self.show_banner:
             self._print_banner()
         while True:
@@ -100,7 +130,7 @@ class InteractiveRunner:
             if not line:
                 continue
             if line.startswith("/"):
-                should_exit = await _handle_command(line[1:], self.client, self.registry)
+                should_exit = await dispatch_command(line[1:], self.client, self.registry)
                 if should_exit:
                     break
                 continue
@@ -112,6 +142,7 @@ class InteractiveRunner:
                 break
 
     async def _read_line(self) -> str:
+        """Read a line from stdin asynchronously."""
         loop = asyncio.get_running_loop()
         if self.stdin_task:
             self.stdin_task.cancel()
@@ -125,6 +156,7 @@ class InteractiveRunner:
         return line.strip()
 
     def _handle_sigint(self) -> None:
+        """Handle Ctrl+C by initiating graceful shutdown."""
         if self._closing:
             return
         self._closing = True
@@ -134,9 +166,11 @@ class InteractiveRunner:
         asyncio.create_task(self.client.close())
 
     def _print_banner(self) -> None:
+        """Display the startup banner with persona info."""
         print_help(self.registry.available_names(), self.client.session.persona.name)
 
     async def _watch_disconnect(self) -> None:
+        """Monitor for server disconnect and trigger shutdown if needed."""
         try:
             await self.client.wait_closed()
         except asyncio.CancelledError:
@@ -155,29 +189,28 @@ class InteractiveRunner:
         os._exit(0)
 
 
+# ============================================================================
+# Public API
+# ============================================================================
+
 async def interactive_loop(
     client: LiveClient,
     registry: PersonaRegistry,
     *,
     show_banner: bool = True,
 ) -> None:
+    """
+    Run the interactive command loop.
+
+    This is the main entry point for starting an interactive session.
+    It creates an InteractiveRunner and executes it.
+    """
     runner = InteractiveRunner(client, registry, show_banner=show_banner)
     await runner.run()
 
 
-async def _handle_command(command_line: str, client: LiveClient, registry: PersonaRegistry) -> bool:
-    command, *rest = command_line.split(maxsplit=1)
-    arg = rest[0].strip() if rest else ""
-    cmd = command.lower()
-    handler_key = _COMMAND_ALIASES.get(cmd, cmd)
-    handler = _COMMAND_HANDLERS.get(handler_key)
-    if handler is None:
-        logger.warning("Unknown command '/%s'. Type /help for options.", command)
-        return False
-    return await handler(arg, client, registry, raw_command=cmd)
-
-
 async def _ainput(prompt: str) -> str:
+    """Async wrapper around input() that runs in an executor."""
     loop = asyncio.get_running_loop()
     try:
         return await loop.run_in_executor(None, lambda: input(prompt))
@@ -188,6 +221,7 @@ async def _ainput(prompt: str) -> str:
 
 
 def print_help(names: list[str], current: str, verbose: bool = False) -> None:
+    """Print the help banner or detailed command list."""
     if verbose:
         print(
             "\nCommands:\n"
@@ -209,171 +243,4 @@ def print_help(names: list[str], current: str, verbose: bool = False) -> None:
         )
 
 
-def _handle_toggle_command(
-    arg: str,
-    *,
-    getter: Callable[[], bool],
-    setter: Callable[[bool], bool],
-    label: str,
-    command: str,
-) -> None:
-    try:
-        new_state = _resolve_toggle(arg, getter())
-    except ValueError:
-        logger.warning("Usage: /%s [on|off]", command)
-        return
-    setter(new_state)
-    logger.info("%s %s", label.capitalize(), "enabled" if new_state else "disabled")
-
-
-def _resolve_toggle(arg: str, current: bool) -> bool:
-    if not arg:
-        return not current
-    normalized = arg.lower()
-    if normalized in {"on", "true", "1", "enable", "enabled"}:
-        return True
-    if normalized in {"off", "false", "0", "disable", "disabled"}:
-        return False
-    raise ValueError("invalid toggle value")
-
-
 __all__ = ["interactive_loop", "print_help"]
-
-
-async def _handle_help_command(
-    _: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    _ = raw_command  # unused; keeps signature uniform
-    print_help(registry.available_names(), client.session.persona.name, verbose=True)
-    return False
-
-
-async def _handle_list_command(
-    _: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    _ = raw_command
-    names = registry.available_names()
-    logger.info("Available personas: %s", ", ".join(names))
-    return False
-
-
-async def _handle_persona_command(
-    arg: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    _ = raw_command
-    if not arg:
-        logger.warning("Usage: /persona <name>")
-        return False
-    try:
-        persona = registry.require(arg)
-    except ValueError as exc:
-        logger.error("%s", exc)
-        return False
-    try:
-        await client.change_persona(persona)
-    except LiveClientError as exc:
-        logger.error("persona update failed: %s", exc)
-    return False
-
-
-async def _handle_history_command(
-    _: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    _ = registry, raw_command  # unused
-    if client.session.history:
-        print("\n--- conversation history ---")
-        print(client.session.history)
-        print("--- end history ---")
-    else:
-        logger.info("History is empty")
-    return False
-
-
-async def _handle_info_command(
-    _: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    _ = registry, raw_command
-    persona = client.session.persona
-    logger.info(
-        "Session %s persona=%s gender=%s personality=%s history_chars=%d",
-        client.session.session_id,
-        persona.name,
-        persona.gender,
-        persona.personality,
-        len(client.session.history),
-    )
-    return False
-
-
-async def _handle_stats_command(
-    arg: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    _ = registry
-    _handle_toggle_command(
-        arg,
-        getter=lambda: client.stats_logging_enabled,
-        setter=client.set_stats_logging,
-        label="stats logging (metrics + chat TTFB)",
-        command=raw_command or "stats",
-    )
-    return False
-
-
-async def _handle_stop_command(
-    _: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    _ = registry, raw_command
-    logger.info("Stopping live session...")
-    await client.close()
-    logger.info("Stopped live session.")
-    return True
-
-
-CommandHandler = Callable[..., Awaitable[bool]]
-
-_COMMAND_HANDLERS: dict[str, CommandHandler] = {
-    "help": _handle_help_command,
-    "list": _handle_list_command,
-    "persona": _handle_persona_command,
-    "history": _handle_history_command,
-    "info": _handle_info_command,
-    "stats": _handle_stats_command,
-    "stop": _handle_stop_command,
-}
-
-_COMMAND_ALIASES = {
-    "?": "help",
-    "personas": "list",
-    "personality": "persona",
-    "status": "info",
-    "quit": "stop",
-    "exit": "stop",
-}

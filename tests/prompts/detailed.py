@@ -1,3 +1,18 @@
+"""Detailed persona prompt definitions with multiple personality variants.
+
+This module extends the base prompts with personality-specific variants
+(flirty, religious, spiritual, savage, delulu) for both Anna and Mark.
+It also exports the PERSONALITIES dictionary used by the live test client
+for runtime persona selection and hot-reloading.
+
+The module is structured as:
+1. Universal building blocks (identity, formatting, constraints)
+2. Character persona blocks (Anna, Mark)
+3. Personality-specific blocks (flirty, religious, etc.)
+4. Complete persona prompts combining all blocks
+5. PERSONALITIES registry mapping names to {gender, personality, prompt}
+"""
+
 # =============================================================================
 # REUSABLE BUILDING BLOCKS - UNIVERSAL
 # =============================================================================

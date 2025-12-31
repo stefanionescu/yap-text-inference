@@ -8,6 +8,7 @@ These rules describe how every source file should be structured so that our agen
 - Before writing code—whether for a refactor, restructure, or new feature—draft a plan that explains how you will satisfy these guidelines.
 - Share that plan with the developer, capture any feedback, and explicitly ask for approval before touching the code.
 - If new constraints or questions arise, iterate on the plan with the developer until everything is clear, then implement only after receiving a definitive go-ahead.
+- When implementation is finished, run the project’s linters/tests yourself from the CLI (e.g., via the repo’s lint script) so the codebase is left in a lint-clean state before handing back results.
 
 ## Module Layout
 - When using `__all__`, place it at the very bottom of the file, after every class, function, and constant definition; it is optional and only required when explicit export control is helpful.
@@ -21,6 +22,7 @@ These rules describe how every source file should be structured so that our agen
 - Never trigger work at import time—do not auto-call functions when the module loads. Expose callable entry points and let the importer execute them explicitly.
 - Keep total file length at or under 350 lines. Split the module whenever you approach that limit.
 - Never delete comments just to meet the line limit; the cap refers to executable code, and removing documentation for the sake of numbers is counterproductive.
+- Exception: data-heavy fixtures such as regression test cases or persona/prompt definitions (e.g., modules under `tests/`) may exceed the 350-line cap when splitting would reduce readability or introduce unnecessary indirection.
 - Use section dividers exactly in this format, followed by a single blank line before the first symbol:
   ```
   # ============================================================================

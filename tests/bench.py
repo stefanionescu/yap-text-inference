@@ -37,9 +37,6 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-
-setup_repo_path()
-
 from tests.helpers.cli import (
     add_connection_args,
     add_chat_prompt_arg,
@@ -133,6 +130,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Thin orchestrator: parse CLI args and run the benchmark."""
+    setup_repo_path()
     from tests.logic.benchmark.runner import run_benchmark
 
     args = _parse_args()

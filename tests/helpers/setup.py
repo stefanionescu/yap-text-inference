@@ -1,3 +1,10 @@
+"""Repository path setup for test scripts.
+
+This module provides a helper to ensure the repository root is on sys.path,
+allowing test scripts to import from the tests package regardless of how
+they are invoked (directly, via pytest, or from subdirectories).
+"""
+
 from __future__ import annotations
 
 import os

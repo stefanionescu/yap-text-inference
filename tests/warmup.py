@@ -38,9 +38,6 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-
-setup_repo_path()
-
 from tests.helpers.cli import (
     add_connection_args,
     add_chat_prompt_arg,
@@ -80,6 +77,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    setup_repo_path()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
     try:

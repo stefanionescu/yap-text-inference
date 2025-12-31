@@ -1,4 +1,9 @@
-"""Test case construction and helpers."""
+"""Test case construction and helpers for the tool regression suite.
+
+This module provides functions to build test cases from the raw message data
+in tests/messages/tool.py and helper functions for rendering conversation
+history during multi-step test execution.
+"""
 
 from __future__ import annotations
 
@@ -8,10 +13,9 @@ from tests.messages.tool import TOOL_DEFAULT_MESSAGES
 
 from .types import CaseStep, ToolTestCase
 
-__all__ = ["build_cases", "render_history"]
-
 
 def _shorten(text: str, limit: int = 80) -> str:
+    """Truncate text to a maximum length with ellipsis."""
     normalized = " ".join(text.split())
     if len(normalized) <= limit:
         return normalized
@@ -19,6 +23,13 @@ def _shorten(text: str, limit: int = 80) -> str:
 
 
 def build_cases() -> list[ToolTestCase]:
+    """
+    Build test cases from TOOL_DEFAULT_MESSAGES.
+
+    Supports two formats:
+    - Simple: (message: str, expect_tool: bool)
+    - Conversation: (name: str, [(message, expect_tool), ...])
+    """
     cases: list[ToolTestCase] = []
     auto_counter = 0
 
@@ -56,6 +67,7 @@ def build_cases() -> list[ToolTestCase]:
 
 
 def render_history(history: Sequence[CaseStep]) -> str:
+    """Render a sequence of case steps as conversation history text."""
     if not history:
         return ""
     lines: list[str] = []
@@ -63,3 +75,5 @@ def render_history(history: Sequence[CaseStep]) -> str:
         lines.append(f"User: {step.text}")
     return "\n".join(lines)
 
+
+__all__ = ["build_cases", "render_history"]

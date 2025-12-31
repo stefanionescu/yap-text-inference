@@ -12,8 +12,6 @@ from src.helpers.model_profiles import get_model_profile
 from src.helpers.calibration import normalize_model_id
 from src.helpers.log_once import warn_once
 
-__all__ = ["inject_tokenizer_kwargs"]
-
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
 _FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
 
@@ -134,3 +132,5 @@ def _normalize_tokenizer_identifier(candidate: Any) -> str:
 
     return normalize_model_id(str(candidate))
 
+
+__all__ = ["inject_tokenizer_kwargs"]
