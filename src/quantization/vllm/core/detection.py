@@ -224,7 +224,10 @@ def _detect_remote(model_path: str) -> tuple[str | None, dict[str, Any]]:
     if download_fn is None:
         return None, {}
 
-    return _detect_from_configs(download_fn)
+    def resolve_remote(filename: str) -> str | None:
+        return download_fn(model_path, filename)
+
+    return _detect_from_configs(resolve_remote)
 
 
 def _extract_quant_config(payload: Any) -> dict[str, Any]:

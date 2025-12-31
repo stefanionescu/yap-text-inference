@@ -6,6 +6,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Draft a plan before coding, share it, and get approval before changes.
 - Iterate on the plan when constraints or questions arise; proceed only after clear agreement.
 - Run project linters/tests from the CLI after implementation so the tree stays clean.
+- Whenever you rename or move a file/module, audit the codebase for imports and update them immediately so nothing keeps referring to the old path.
 
 ## Module layout
 - Prefer one class per file; split if a second class is needed.
