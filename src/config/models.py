@@ -27,7 +27,7 @@ Adding New Models:
 ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable above 0.8 temp when using 4bit quant; decent <=0.6
     "TheDrummer/Theia-21B-v2", # mid intelligence; ok for cheaper long runs
-    "TheDrummer/Rocinante-12B-v1.1", # mid intelligence; downgrade option, weak instructions
+    "TheDrummer/Rocinante-12B-v1.1", # mid intelligence; downgrade option, weak on instruction following
     "knifeayumu/Cydonia-v1.3-Magnum-v4-22B", # pretty bad overall
     "Doctor-Shotgun/MS3.2-24B-Magnum-Diamond",
     "anthracite-org/magnum-v2-32b", # a bit cheesy and yaps too much (good for general RP tho)

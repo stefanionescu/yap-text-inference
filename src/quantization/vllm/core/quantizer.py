@@ -13,7 +13,7 @@ from ..utils.model_utils import (
     load_model_config,
     prefetch_model,
 )
-from .backends import quantize
+from .llmcompressor import quantize
 from .calibration import CalibrationConfig
 
 

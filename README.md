@@ -37,8 +37,6 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
 
 ## Quickstart
 
-### Required Environment Variables
-
 Set the compulsory environment variables before invoking any host script:
 
 ```bash
