@@ -116,12 +116,13 @@ WORKDIR /app
 # Copy application code from build context
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
+COPY download/ /app/download/
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache /opt/models
+RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache /opt/models/chat /opt/models/tool
 
 # Set proper permissions
-RUN chmod +x /app/scripts/*.sh
+RUN chmod +x /app/scripts/*.sh /app/download/*.py
 
 # Cache directories
 ENV HF_HOME=/app/.hf
@@ -133,76 +134,15 @@ ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
 
 # ----------------------------------------------------------------------------
 # Download pre-quantized chat model at build time (baked into image)
-# This makes startup instant - no downloads needed at runtime!
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    set -eux; \
-    if [ -n "${CHAT_MODEL}" ]; then \
-        echo "[build] Downloading pre-quantized chat model..."; \
-        echo "[build]   Model: ${CHAT_MODEL}"; \
-        HF_TOKEN_VAL=""; \
-        if [ -f /run/secrets/hf_token ]; then \
-            HF_TOKEN_VAL=$(cat /run/secrets/hf_token); \
-        fi; \
-        python -c " \
-import os, sys \
-from huggingface_hub import snapshot_download \
-\
-repo_id = '${CHAT_MODEL}' \
-target_dir = '/opt/models/chat' \
-token = os.environ.get('HF_TOKEN') or '${HF_TOKEN}' or None \
-if token == '': token = None \
-\
-print(f'[build] Downloading {repo_id}...') \
-try: \
-    snapshot_download( \
-        repo_id=repo_id, \
-        local_dir=target_dir, \
-        token=token, \
-    ) \
-    print('[build] ✓ Chat model downloaded and baked into image') \
-except Exception as e: \
-    print(f'[build] ERROR: Failed to download chat model: {e}', file=sys.stderr) \
-    sys.exit(1) \
-"; \
-    else \
-        echo "[build] No CHAT_MODEL specified - skipping chat model download"; \
-    fi
+    python /app/download/download_chat.py
 
+# ----------------------------------------------------------------------------
 # Download tool model at build time if specified
+# ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    set -eux; \
-    if [ -n "${TOOL_MODEL}" ]; then \
-        echo "[build] Downloading tool model..."; \
-        echo "[build]   Model: ${TOOL_MODEL}"; \
-        HF_TOKEN_VAL=""; \
-        if [ -f /run/secrets/hf_token ]; then \
-            HF_TOKEN_VAL=$(cat /run/secrets/hf_token); \
-        fi; \
-        python -c " \
-import os, sys \
-from huggingface_hub import snapshot_download \
-\
-repo_id = '${TOOL_MODEL}' \
-target_dir = '/opt/models/tool' \
-token = os.environ.get('HF_TOKEN') or '${HF_TOKEN}' or None \
-if token == '': token = None \
-\
-print(f'[build] Downloading {repo_id}...') \
-try: \
-    snapshot_download( \
-        repo_id=repo_id, \
-        local_dir=target_dir, \
-        token=token, \
-    ) \
-    print('[build] ✓ Tool model downloaded and baked into image') \
-except Exception as e: \
-    print(f'[build] ERROR: Failed to download tool model: {e}', file=sys.stderr) \
-    sys.exit(1) \
-"; \
-    else \
-        echo "[build] No TOOL_MODEL specified - skipping tool model download"; \
-    fi
+    python /app/download/download_tool.py
 
 # Expose port
 EXPOSE 8000
@@ -213,4 +153,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Default command
 CMD ["/app/scripts/main.sh"]
-

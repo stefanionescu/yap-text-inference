@@ -1,6 +1,4 @@
-"""
-Utilities invoked by TRT quantization shell scripts.
-"""
+"""Utilities invoked by TRT quantization shell scripts."""
 
 from __future__ import annotations
 
@@ -8,13 +6,13 @@ import argparse
 import os
 import runpy
 import sys
-from typing import Iterable, Sequence
+from typing import Sequence
 
 
-def _import_log_filter() -> None:
-    """Import log filter to quiet noisy dependencies."""
+def _apply_filters() -> None:
+    """Apply log filters to quiet noisy dependencies."""
     try:
-        import src.scripts.log_filter  # noqa: F401
+        import src.scripts.filters  # noqa: F401
     except Exception:
         # Logging noise suppression is best-effort; do not block work.
         pass
@@ -30,39 +28,11 @@ def _apply_patch_script(patch_script: str | None) -> None:
     runpy.run_path(patch_script, run_name="__main__")
 
 
-def _should_show_hf_progress() -> bool:
-    """Check if HuggingFace progress bars should be shown."""
-    val = os.environ.get("SHOW_HF_LOGS", "").lower()
-    return val in ("1", "true", "yes")
-
-
 def _enable_hf_progress() -> None:
-    """Re-enable HuggingFace progress bars (undo log_filter suppression)."""
-    # Set env vars to explicitly enable progress (not just remove)
-    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
-    os.environ.pop("TQDM_DISABLE", None)
-
-    # Use HuggingFace API to enable progress bars for all relevant groups
+    """Re-enable HuggingFace progress bars (undo filter suppression)."""
     try:
-        from huggingface_hub.utils import enable_progress_bars
-
-        # Enable all progress bar groups explicitly
-        progress_groups = (
-            "huggingface_hub.http_get",
-            "huggingface_hub.xet_get",
-            "huggingface_hub.snapshot_download",
-            "huggingface_hub.lfs_upload",
-            "huggingface_hub.hf_file_system",
-            "huggingface_hub.hf_api",
-        )
-        for group in progress_groups:
-            try:
-                enable_progress_bars(group)
-            except Exception:
-                pass  # Group might not exist in this version
-
-        # Also enable globally as fallback
-        enable_progress_bars()
+        from src.scripts.filters.hf import enable_hf_progress
+        enable_hf_progress()
         print("[model] ✓ HuggingFace progress bars enabled", file=sys.stderr)
     except Exception as e:
         print(f"[model] ⚠ Could not enable HF progress bars: {e}", file=sys.stderr)
@@ -72,18 +42,18 @@ def download_model(model_id: str, target_dir: str) -> None:
     """Download a Hugging Face model snapshot into target_dir."""
     import time
 
-    from huggingface_hub import HfApi, snapshot_download
+    from huggingface_hub import snapshot_download
 
-    # Check repo info first
+    from src.helpers.env import env_flag
+
     print("[model] Fetching repository metadata...", file=sys.stderr)
     start_time = time.time()
 
-    # Enable progress bars BEFORE importing log_filter if user requested them
-    show_progress = _should_show_hf_progress()
-    if show_progress:
+    # Enable progress bars BEFORE applying filters if user requested them
+    if env_flag("SHOW_HF_LOGS", False):
         _enable_hf_progress()
     else:
-        _import_log_filter()
+        _apply_filters()
 
     try:
         snapshot_download(repo_id=model_id, local_dir=target_dir)
@@ -102,20 +72,20 @@ def download_prequantized(model_id: str, target_dir: str) -> None:
     """Download pre-quantized TensorRT checkpoint assets."""
     import time
 
-    from huggingface_hub import HfApi, snapshot_download
+    from huggingface_hub import snapshot_download
 
-    # Check repo info first to give visibility into what we're downloading
+    from src.helpers.env import env_flag
+
     print("[model] Fetching repository metadata...", file=sys.stderr)
 
     allow_patterns = ["trt-llm/checkpoints/**", "*.json", "*.safetensors"]
     start_time = time.time()
 
-    # Enable progress bars if user requested them, otherwise apply log filter
-    show_progress = _should_show_hf_progress()
-    if show_progress:
+    # Enable progress bars if user requested them, otherwise apply filters
+    if env_flag("SHOW_HF_LOGS", False):
         _enable_hf_progress()
     else:
-        _import_log_filter()
+        _apply_filters()
 
     try:
         snapshot_download(
@@ -134,12 +104,15 @@ def download_prequantized(model_id: str, target_dir: str) -> None:
     print(f"[model] ✓ Downloaded pre-quantized checkpoint in {elapsed:.1f}s", file=sys.stderr)
 
 
-def run_quantization(script_path: str, script_args: Iterable[str], patch_script: str | None) -> None:
+def run_quantization(
+    script_path: str,
+    script_args: list[str],
+    patch_script: str | None,
+) -> None:
     """Execute the quantization script with patches and noise suppression applied."""
     _apply_patch_script(patch_script or os.environ.get("TRANSFORMERS_PATCH_SCRIPT"))
-    _import_log_filter()
+    _apply_filters()
 
-    # Mirror the old -c wrapper behavior
     print(file=sys.stderr)
     print("[quant] Starting quantization...", file=sys.stderr)
 
@@ -177,9 +150,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             download_prequantized(args.model_id, args.target_dir)
         elif args.command == "run-quant":
             run_quantization(args.script, args.script_args, args.patch_script)
-        else:  # pragma: no cover - argparse enforces known commands
+        else:  # pragma: no cover
             raise ValueError(f"Unknown command: {args.command}")
-    except Exception as exc:  # pragma: no cover - defensive guard for CLI
+    except Exception as exc:  # pragma: no cover
         print(f"[trt-quant] ✗ {exc}", file=sys.stderr)
         return 1
 
@@ -188,4 +161,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
-

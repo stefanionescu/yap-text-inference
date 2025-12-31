@@ -13,7 +13,7 @@ from ..utils.model_utils import (
     load_model_config,
     prefetch_model,
 )
-from .backends import quantize_with_llmcompressor
+from .backends import quantize
 from .calibration import CalibrationConfig
 
 
@@ -106,7 +106,7 @@ class AWQQuantizer:
             print(f"[awq] {calibration_kind} model calibration seqlen: {target_seqlen}")
 
 
-        return quantize_with_llmcompressor(
+        return quantize(
             calibration_config=self.config,
             model_path=model_path,
             resolved_model_path=resolved_model_path,

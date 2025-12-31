@@ -39,7 +39,7 @@ if show_hf_logs:
     except Exception:
         pass
 else:
-    import src.scripts.log_filter as _log_filter  # noqa: F401
+    import src.scripts.filters  # noqa: F401
 
 from huggingface_hub import snapshot_download, list_repo_tree
 

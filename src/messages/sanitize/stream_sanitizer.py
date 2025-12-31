@@ -240,18 +240,6 @@ def _split_stable_and_tail_lengths(
     return stable_len, tail_len
 
 
-def _suffix_prefix_overlap(emitted: str, candidate: str, max_check: int | None) -> int:
-    """Return length of the longest suffix of emitted that is a prefix of candidate."""
-    if not emitted or not candidate:
-        return 0
-    emitted_suffix = emitted if max_check is None else emitted[-max_check:]
-    max_len = min(len(emitted_suffix), len(candidate))
-    for length in range(max_len, 0, -1):
-        if emitted_suffix[-length:] == candidate[:length]:
-            return length
-    return 0
-
-
 def _common_prefix_len(a: str, b: str) -> int:
     """Length of the longest common prefix of a and b."""
     max_len = min(len(a), len(b))
@@ -289,27 +277,6 @@ def _html_tag_suffix_len(raw_text: str) -> int:
     if last_gt > last_lt:
         return 0
     return min(len(raw_text) - last_lt, 256)
-
-
-def _trim_tail_preserving_unclosed_tag(raw_text: str, max_tail: int) -> tuple[str, bool]:
-    """Trim raw_text to max_tail while keeping any trailing unclosed HTML tag intact."""
-    if len(raw_text) <= max_tail:
-        return raw_text, False
-    last_lt = raw_text.rfind("<")
-    last_gt = raw_text.rfind(">")
-    has_unclosed = last_lt != -1 and last_gt < last_lt
-    if has_unclosed:
-        start = max(last_lt, len(raw_text) - max_tail)
-        return raw_text[start:], True
-    return raw_text[-max_tail:], True
-
-
-def _trim_raw_tail(inst: StreamingSanitizer) -> None:
-    if len(inst._raw_tail) <= inst._MAX_TAIL:
-        return
-    inst._raw_tail, trimmed = _trim_tail_preserving_unclosed_tag(inst._raw_tail, inst._MAX_TAIL)
-    if trimmed:
-        inst._trimmed_stream_start = True
 
 
 def _email_suffix_len(raw_text: str) -> int:
