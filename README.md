@@ -1,11 +1,13 @@
 # Yap Text Inference Server
 
-A text inference server supporting **both vLLM and TensorRT-LLM** engines, optimized for pairing a chat model with a lightweight screenshot-intent classifier. It can run:
+A text inference server supporting **both vLLM and TensorRT-LLM** engines, optimized for pairing a chat model with a lightweight tool model for function-call routing. It can run:
 
 - A chat engine (vLLM or TRT-LLM) for roleplay / assistant flows
-- A classifier-only tool router (takes screenshots or skips them)
+- A tool-only router for function calls (e.g., triggering screenshot capture)
 - Either engine independently or both together
 - FastAPI + WebSocket streaming
+
+> **How tool calls work:** The tool model is a lightweight sequence classifier (`AutoModelForSequenceClassification`) that decides whether the client should capture a screenshot based on user intent. Additional function calls—such as switching the companion's gender or personality—are handled by heuristics in the codebase rather than the tool model, keeping tool inference focused on a single, well-defined task.
 
 ## Contents
 
@@ -26,7 +28,7 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
 
 ## Key Features
 - **Dual-engine support:** Choose between vLLM and TensorRT-LLM based on your deployment needs.
-- Chat + classifier deployment with optional chat-only or classifier-only modes.
+- Chat + tool deployment with optional chat-only or tool-only modes.
 - Tool-call-first detection: tool decisions fire before chat tokens.
 - Persona/history segmented prompts with prefix caching (vLLM) or block reuse (TRT-LLM) for low latency.
 - Integrated quantization: AWQ/GPTQ/FP8 for vLLM; INT4-AWQ/FP8/INT8-SQ for TRT-LLM.
@@ -51,22 +53,22 @@ export TRT_MAX_BATCH_SIZE=64                 # Required for TRT: max sequences p
 Then you can run:
 
 ```bash
-# Chat + classifier (default) - auto-detached deployment with log tailing
-bash scripts/main.sh [--trt|--vllm] [4bit|8bit] <chat_model> <classifier_model>
+# Chat + tool (default) - auto-detached deployment with log tailing
+bash scripts/main.sh [--trt|--vllm] [4bit|8bit] <chat_model> <tool_model>
 
-# Chat-only / classifier-only helpers (host scripts only; Docker always runs both)
+# Chat-only / tool-only helpers (host scripts only; Docker always runs both)
 bash scripts/main.sh [--trt|--vllm] [4bit|8bit] chat <chat_model>
-bash scripts/main.sh tool <classifier_model>
+bash scripts/main.sh tool <tool_model>
 
 # Ctrl+C stops the log tail only; use scripts/stop.sh to stop the server
 ```
 
 Default GPU allocation:
-- Chat deployments reserve 70% of GPU memory when a classifier is also configured (override with `CHAT_GPU_FRAC`).
-- The classifier (when it runs on GPU) is capped at 20% by default; override with `TOOL_GPU_FRAC`.
+- Chat deployments reserve 70% of GPU memory when a tool model is also configured (override with `CHAT_GPU_FRAC`).
+- The tool model (when it runs on GPU) is capped at 20% by default; override with `TOOL_GPU_FRAC`.
 - Chat-only and tool-only mode allocates 90% to the chat engine
 
-Tool routing relies on a PyTorch classifier (default: `yapwithai/yap-longformer-screenshot-intent`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`.
+Tool routing relies on a lightweight PyTorch model (default: `yapwithai/yap-longformer-screenshot-intent`). You can swap it via `TOOL_MODEL`, but the model must be compatible with `AutoModelForSequenceClassification`.
 
 Examples:
 ```bash
@@ -97,7 +99,7 @@ Deploy the server in Docker using the AWQ stack in `docker/`:
 # Build the image
 DOCKER_USERNAME=youruser DEPLOY_MODE=both ./docker/build.sh
 
-# Run (chat + classifier)
+# Run (chat + tool)
 docker run -d --gpus all --name yap-awq \
   -e DEPLOY_MODE=both \
   -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
@@ -113,7 +115,7 @@ docker run -d --gpus all --name yap-chat \
   -e TEXT_API_KEY=your_secret_key \
   -p 8000:8000 youruser/yap-text-inference-awq:chat
 
-# Classifier-only
+# Tool-only
 DOCKER_USERNAME=youruser DEPLOY_MODE=tool ./docker/build.sh
 docker run -d --gpus all --name yap-tool \
   -e DEPLOY_MODE=tool \
@@ -122,7 +124,7 @@ docker run -d --gpus all --name yap-tool \
   -p 8000:8000 youruser/yap-text-inference-awq:tool
 ```
 
-> Tool classifiers are standard PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally (e.g., `$REPO/.run`, `.hf`, or `/app/models/tool` inside Docker) so restarts reuse them instantly.
+> Tool models are standard PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally (e.g., `$REPO/.run`, `.hf`, or `/app/models/tool` inside Docker) so restarts reuse them instantly.
 
 See `docker/README.md` for build arguments, image behavior, and run options.
 
@@ -173,7 +175,7 @@ Both engines auto-detect pre-quantized repos whose names include common markers:
 - `trt` + `fp8` / `8bit` / `8-bit` / `int8` / `int-8` (TRT-LLM fp8/int8 checkpoints)
 
 ```bash
-# Pre-quantized AWQ chat + classifier (vLLM)
+# Pre-quantized AWQ chat + tool (vLLM)
 bash scripts/main.sh --vllm yapwithai/impish-12b-awq yapwithai/yap-longformer-screenshot-intent
 
 # Pre-quantized TRT-AWQ (TensorRT-LLM) - still needs TRT_MAX_BATCH_SIZE for engine build
@@ -235,12 +237,12 @@ This installs the lightweight client deps (`websockets`, `httpx`, `orjson`) with
 
 Highlights:
 
-- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Add `--no-chat-prompt` when you deploy *only* the classifier so the client skips chat prompts.
+- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars. Add `--no-chat-prompt` when you deploy *only* the tool model so the client skips chat prompts.
 - [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/detailed.py`. Requires chat prompts (do not use `--no-chat-prompt`).
 - [`tests/personality.py`](ADVANCED.md#personality-switch-test) – exercises persona swaps and history stitching to ensure cache hits are preserved. Requires chat prompts (do not use `--no-chat-prompt`).
 - [`tests/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics. Supports `--no-chat-prompt` for tool-only deployments.
 - [`tests/screen_analysis.py`](ADVANCED.md#screen-analysis--toolcall-test) – validates the toolcall branch used by screen analysis flows; chat prompts are mandatory.
-- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call classifier (timeouts, concurrency, limit flags). `--no-chat-prompt` skips chat prompts (classifier-only).
+- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call model (timeouts, concurrency, limit flags). `--no-chat-prompt` skips chat prompts (tool-only).
 - [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions.
 
 All of them run on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
@@ -269,7 +271,7 @@ bash scripts/restart.sh --reset-models --deploy-mode both \
   --tool-model yapwithai/yap-longformer-screenshot-intent \
   --chat-quant 8bit
 
-# Classifier-only reset (no chat engine)
+# Tool-only reset (no chat engine)
 bash scripts/restart.sh --reset-models --deploy-mode tool \
   --tool-model yapwithai/yap-longformer-screenshot-intent
 
