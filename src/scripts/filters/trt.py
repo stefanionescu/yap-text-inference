@@ -16,8 +16,6 @@ from collections.abc import Iterable
 
 from src.config.filters import TRTLLM_NOISE_PATTERNS
 
-__all__ = ["configure_trt_logging", "NoiseFilterStream", "is_trt_noise"]
-
 logger = logging.getLogger("log_filter")
 
 # Track whether streams have been patched to avoid double-patching
@@ -165,4 +163,7 @@ def configure_trt_logging() -> None:
 
     # Install stream filters last (they wrap stdout/stderr)
     _install_stream_filters()
+
+
+__all__ = ["configure_trt_logging", "NoiseFilterStream", "is_trt_noise"]
 

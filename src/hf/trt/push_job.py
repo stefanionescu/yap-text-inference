@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.config.quantization import CHAT_TEMPLATE_FILES, TOKENIZER_FILES
-
+from src.config.trt import TRT_HF_CHECKPOINTS_PATH, TRT_HF_ENGINES_PATH_FMT
 from src.quantization.trt import collect_metadata, detect_base_model, get_engine_label
 from src.hf import create_repo_if_needed
 from .readme_renderer import render_trt_readme
@@ -15,11 +15,6 @@ from .tokenizer_discovery import find_tokenizer_dir
 
 if TYPE_CHECKING:  # pragma: no cover - optional dependency
     from huggingface_hub import HfApi
-
-__all__ = ["TRTPushJob"]
-
-_HF_CHECKPOINTS_PATH = "trt-llm/checkpoints"
-_HF_ENGINES_PATH_FMT = "trt-llm/engines/{engine_label}"
 
 
 @dataclass
@@ -92,7 +87,7 @@ class TRTPushJob:
         print("[trt-hf] Uploading checkpoint...")
         self.api.upload_folder(
             folder_path=str(self.checkpoint_path),
-            path_in_repo=_HF_CHECKPOINTS_PATH,
+            path_in_repo=TRT_HF_CHECKPOINTS_PATH,
             repo_id=self.repo_id,
             token=self.token,
             revision=self.branch,
@@ -103,7 +98,7 @@ class TRTPushJob:
             return
 
         engine_label = get_engine_label(self.engine_path)
-        engines_path = _HF_ENGINES_PATH_FMT.format(engine_label=engine_label)
+        engines_path = TRT_HF_ENGINES_PATH_FMT.format(engine_label=engine_label)
         print("[trt-hf] Uploading engines...")
 
         try:
@@ -148,3 +143,6 @@ class TRTPushJob:
             print("[trt-hf] ✓ Uploaded chat template assets")
         else:
             print("[trt-hf] No chat template/generation_config files found. Skipping")
+
+
+__all__ = ["TRTPushJob"]

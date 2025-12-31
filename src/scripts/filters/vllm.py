@@ -14,8 +14,6 @@ from collections.abc import Iterable
 
 from src.config.filters import VLLM_NOISE_PATTERNS
 
-__all__ = ["configure_vllm_logging", "VLLMNoiseFilterStream", "is_vllm_noise"]
-
 logger = logging.getLogger("log_filter")
 
 _STREAMS_PATCHED = False
@@ -127,4 +125,7 @@ def configure_vllm_logging() -> None:
     """
     _suppress_vllm_loggers()
     _install_stream_filters()
+
+
+__all__ = ["configure_vllm_logging", "VLLMNoiseFilterStream", "is_vllm_noise"]
 

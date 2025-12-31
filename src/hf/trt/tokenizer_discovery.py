@@ -5,19 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.config.quantization import TOKENIZER_FILES
-
-__all__ = ["find_tokenizer_dir"]
-
-_TOKENIZER_CONFIG = "tokenizer_config.json"
-_CHECKPOINT_SUFFIXES = ("-int4_awq-ckpt", "-fp8-ckpt", "-int8_sq-ckpt", "-ckpt")
+from src.config.trt import TRT_TOKENIZER_CONFIG_FILE, TRT_CHECKPOINT_SUFFIXES
 
 
 def _has_tokenizer(directory: Path) -> bool:
-    return (directory / _TOKENIZER_CONFIG).exists()
+    return (directory / TRT_TOKENIZER_CONFIG_FILE).exists()
 
 
 def _extract_model_stem(checkpoint_name: str) -> str:
-    for suffix in _CHECKPOINT_SUFFIXES:
+    for suffix in TRT_CHECKPOINT_SUFFIXES:
         if checkpoint_name.endswith(suffix):
             return checkpoint_name[: -len(suffix)]
     return checkpoint_name
@@ -69,3 +65,6 @@ def find_tokenizer_dir(checkpoint_dir: Path, base_model: str | None) -> Path | N
         return _download_tokenizer_from_hub(base_model)
 
     return None
+
+
+__all__ = ["find_tokenizer_dir"]

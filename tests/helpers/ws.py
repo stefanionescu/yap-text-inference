@@ -14,8 +14,8 @@ import os
 from collections.abc import Awaitable, Callable
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from tests.config import DEFAULT_WS_PATH
 
-DEFAULT_WS_PATH = "/ws"
 _HTTP_TO_WS = {"http": "ws", "https": "wss"}
 
 

@@ -9,8 +9,6 @@ from __future__ import annotations
 import logging
 import os
 
-__all__ = ["configure_transformers_logging"]
-
 logger = logging.getLogger("log_filter")
 
 
@@ -32,4 +30,7 @@ def configure_transformers_logging() -> None:
         logger.debug("failed to disable transformers progress: %s", exc)
 
     os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
+
+
+__all__ = ["configure_transformers_logging"]
 

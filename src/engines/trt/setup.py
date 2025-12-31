@@ -18,14 +18,11 @@ from src.config import (
     TRT_KV_ENABLE_BLOCK_REUSE,
     TRT_RUNTIME_BATCH_SIZE,
 )
+from src.config.trt import TRT_ENGINE_CONFIG_FILE, TRT_BUILD_METADATA_FILE
 from src.helpers.io import read_json_file
 
 
 logger = logging.getLogger(__name__)
-
-# Config file names
-_ENGINE_CONFIG_FILE = "config.json"
-_BUILD_METADATA_FILE = "build_metadata.json"
 
 
 def build_kv_cache_config() -> dict[str, Any]:
@@ -48,7 +45,7 @@ def read_checkpoint_model_type(engine_dir: str) -> str | None:
     TensorRT-LLM 1.2+ needs model_type to identify architecture.
     Falls back to None if not found (TRT-LLM will try to infer from name).
     """
-    config = read_json_file(Path(engine_dir) / _ENGINE_CONFIG_FILE)
+    config = read_json_file(Path(engine_dir) / TRT_ENGINE_CONFIG_FILE)
     if not isinstance(config, dict):
         return None
     
@@ -65,14 +62,14 @@ def read_engine_max_batch_size(engine_dir: str) -> int | None:
     engine_path = Path(engine_dir)
     
     # Try build_metadata.json first (written by our build script)
-    metadata = read_json_file(engine_path / _BUILD_METADATA_FILE)
+    metadata = read_json_file(engine_path / TRT_BUILD_METADATA_FILE)
     if isinstance(metadata, dict):
         batch_size = metadata.get("max_batch_size")
         if batch_size is not None:
             return int(batch_size)
     
     # Fall back to config.json (TRT-LLM engine config)
-    config = read_json_file(engine_path / _ENGINE_CONFIG_FILE)
+    config = read_json_file(engine_path / TRT_ENGINE_CONFIG_FILE)
     if isinstance(config, dict):
         build_cfg = config.get("build_config", {})
         batch_size = build_cfg.get("max_batch_size")
