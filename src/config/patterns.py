@@ -5,7 +5,6 @@ by the matching logic in src/execution/tool/. Log filtering patterns
 for TensorRT-LLM noise suppression are also defined here.
 """
 
-import re
 
 # ============================================================================
 # FREESTYLE PATTERNS

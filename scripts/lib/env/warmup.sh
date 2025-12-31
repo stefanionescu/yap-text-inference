@@ -22,7 +22,7 @@ warmup_normalize_positive_int() {
   fi
 
   printf -v "${var_name}" '%s' "${current_val}"
-  export "${var_name}"
+  export "${var_name?}"
 }
 
 warmup_init_defaults() {

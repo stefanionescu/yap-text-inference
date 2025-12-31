@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from src.config.filters import HF_DOWNLOAD_GROUPS, HF_UPLOAD_GROUPS, HF_ALL_GROUPS
 
@@ -52,7 +52,7 @@ def label_hf_snapshot_progress(group: str) -> None:
             super().__init__(*args, **kwargs)
 
     tqdm_module.tqdm = SnapshotQuietTqdm
-    setattr(utils_module, "tqdm", SnapshotQuietTqdm)
+    utils_module.tqdm = SnapshotQuietTqdm
 
     # Snapshot download stores a direct reference when imported, so update it too
     if hasattr(snapshot_module, "hf_tqdm"):

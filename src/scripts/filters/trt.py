@@ -12,7 +12,7 @@ import os
 import re
 import sys
 import warnings
-from typing import Iterable
+from collections.abc import Iterable
 
 from src.config.filters import TRTLLM_NOISE_PATTERNS
 

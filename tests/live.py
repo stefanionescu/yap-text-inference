@@ -102,7 +102,7 @@ async def _run(args: argparse.Namespace) -> None:
     )
 
     # Print interactive banner before any assistant output
-    print_help(registry.available_names(), persona.name)
+    print_help(persona.name)
 
     ws_url = with_api_key(args.server, api_key=args.api_key)
     try:

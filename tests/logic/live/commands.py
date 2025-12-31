@@ -71,7 +71,7 @@ async def _handle_help_command(
     """Display the help message with available commands."""
     _ = raw_command  # unused; keeps signature uniform
     from .cli import print_help
-    print_help(registry.available_names(), client.session.persona.name, verbose=True)
+    print_help(client.session.persona.name, verbose=True)
     return False
 
 
@@ -233,5 +233,5 @@ async def dispatch_command(
     return await handler(arg, client, registry, raw_command=cmd)
 
 
-__all__ = ["dispatch_command", "print_help"]
+__all__ = ["dispatch_command"]
 

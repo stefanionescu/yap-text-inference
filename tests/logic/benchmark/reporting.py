@@ -4,6 +4,11 @@ import os
 from typing import Any, Iterable
 
 
+# ============================================================================
+# Internal Helpers
+# ============================================================================
+
+
 def percentile(values: list[float], frac: float, minus_one: bool = False) -> float:
     if not values:
         return 0.0
@@ -48,6 +53,44 @@ def _format_error_line(raw_error: str, all_errors: list[dict[str, Any]]) -> str:
     return message
 
 
+def _print_latency_section(ok_results: Iterable[dict[str, Any]], prefix: str = "") -> None:
+    ok_list = list(ok_results)
+    tool_ttfb = [r["ttfb_toolcall_ms"] for r in ok_list if r.get("ttfb_toolcall_ms") is not None]
+    chat_ttfb = [r["ttfb_chat_ms"] for r in ok_list if r.get("ttfb_chat_ms") is not None]
+    first_sentence = [r["first_sentence_ms"] for r in ok_list if r.get("first_sentence_ms") is not None]
+    first_3_words = [r["first_3_words_ms"] for r in ok_list if r.get("first_3_words_ms") is not None]
+
+    if tool_ttfb:
+        p50 = percentile(tool_ttfb, 0.5)
+        p95 = percentile(tool_ttfb, 0.95, minus_one=True)
+        print(f"{prefix}toolcall_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
+    if chat_ttfb:
+        p50 = percentile(chat_ttfb, 0.5)
+        p95 = percentile(chat_ttfb, 0.95, minus_one=True)
+        print(f"{prefix}chat_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
+    if first_sentence:
+        p50 = percentile(first_sentence, 0.5)
+        p95 = percentile(first_sentence, 0.95, minus_one=True)
+        print(f"{prefix}first_sentence_ms p50={p50:.1f} p95={p95:.1f}")
+    if first_3_words:
+        p50 = percentile(first_3_words, 0.5)
+        p95 = percentile(first_3_words, 0.95, minus_one=True)
+        print(f"{prefix}first_3_words_ms p50={p50:.1f} p95={p95:.1f}")
+
+
+def _print_tagged_section(tag: str, results: list[dict[str, Any]]) -> None:
+    ok = [r for r in results if r.get("ok")]
+    if not ok:
+        return
+    prefix = f"[{tag}] "
+    _print_latency_section(ok, prefix=prefix)
+
+
+# ============================================================================
+# Public API
+# ============================================================================
+
+
 def print_report(
     url: str,
     requests: int,
@@ -76,35 +119,4 @@ def print_report(
         print(f"ERROR: {_format_error_line(emsg, errs)}")
 
 
-def _print_tagged_section(tag: str, results: list[dict[str, Any]]) -> None:
-    ok = [r for r in results if r.get("ok")]
-    if not ok:
-        return
-    prefix = f"[{tag}] "
-    _print_latency_section(ok, prefix=prefix)
-
-
-def _print_latency_section(ok_results: Iterable[dict[str, Any]], prefix: str = "") -> None:
-    ok_list = list(ok_results)
-    tool_ttfb = [r["ttfb_toolcall_ms"] for r in ok_list if r.get("ttfb_toolcall_ms") is not None]
-    chat_ttfb = [r["ttfb_chat_ms"] for r in ok_list if r.get("ttfb_chat_ms") is not None]
-    first_sentence = [r["first_sentence_ms"] for r in ok_list if r.get("first_sentence_ms") is not None]
-    first_3_words = [r["first_3_words_ms"] for r in ok_list if r.get("first_3_words_ms") is not None]
-
-    if tool_ttfb:
-        p50 = percentile(tool_ttfb, 0.5)
-        p95 = percentile(tool_ttfb, 0.95, minus_one=True)
-        print(f"{prefix}toolcall_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
-    if chat_ttfb:
-        p50 = percentile(chat_ttfb, 0.5)
-        p95 = percentile(chat_ttfb, 0.95, minus_one=True)
-        print(f"{prefix}chat_ttfb_ms p50={p50:.1f} p95={p95:.1f}")
-    if first_sentence:
-        p50 = percentile(first_sentence, 0.5)
-        p95 = percentile(first_sentence, 0.95, minus_one=True)
-        print(f"{prefix}first_sentence_ms p50={p50:.1f} p95={p95:.1f}")
-    if first_3_words:
-        p50 = percentile(first_3_words, 0.5)
-        p95 = percentile(first_3_words, 0.95, minus_one=True)
-        print(f"{prefix}first_3_words_ms p50={p50:.1f} p95={p95:.1f}")
-
+__all__ = ["print_report", "percentile"]

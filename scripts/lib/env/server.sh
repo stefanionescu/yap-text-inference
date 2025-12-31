@@ -21,7 +21,6 @@ server_init_network_defaults() {
   fi
   export SERVER_WS_URL
 
-  declare -ag SERVER_HEALTH_URLS
   health_urls_override="${SERVER_HEALTH_URLS_OVERRIDE:-}"
   if [ -n "${health_urls_override}" ]; then
     IFS=',' read -r -a SERVER_HEALTH_URLS <<< "${health_urls_override}"
@@ -31,5 +30,6 @@ server_init_network_defaults() {
       "http://${SERVER_ADDR}/health"
     )
   fi
+  export SERVER_HEALTH_URLS
 }
 

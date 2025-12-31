@@ -58,7 +58,7 @@ class EngineOutput:
     finished: bool = False  # Whether generation is complete
     
     @classmethod
-    def from_vllm(cls, output: Any) -> "EngineOutput":
+    def from_vllm(cls, output: Any) -> EngineOutput:
         """Convert vLLM RequestOutput to unified format.
         
         vLLM outputs have structure:
@@ -82,7 +82,7 @@ class EngineOutput:
         )
     
     @classmethod
-    def from_trt(cls, chunk: Any, prev_text: str = "") -> "EngineOutput":
+    def from_trt(cls, chunk: Any, prev_text: str = "") -> EngineOutput:
         """Convert TRT-LLM generation output to unified format.
         
         TRT-LLM output format varies by version but typically includes:

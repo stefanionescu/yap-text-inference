@@ -18,6 +18,7 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
     if command -v nvidia-smi >/dev/null 2>&1; then
       cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 || true)
       if [ -n "${cap}" ]; then
+        # shellcheck disable=SC2034  # Used by Python resolver
         GPU_SM="sm${cap/./}"
       fi
     fi

@@ -50,7 +50,7 @@ def select_rate_limiter(
 
 
 async def consume_limiter(
-    ws: "WebSocket",
+    ws: WebSocket,
     limiter: SlidingWindowRateLimiter,
     label: str,
 ) -> bool:

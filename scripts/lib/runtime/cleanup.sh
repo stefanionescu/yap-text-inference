@@ -8,7 +8,7 @@ source "${_CLEANUP_DIR}/../common/log.sh"
 source "${_CLEANUP_DIR}/../deps/venv.sh"
 
 _cleanup_remove_dirs() {
-  local label="$1"; shift
+  shift  # Skip label argument (used for caller context)
   local dir
   for dir in "$@"; do
     [ -z "${dir}" ] && continue

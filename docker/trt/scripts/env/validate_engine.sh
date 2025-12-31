@@ -51,6 +51,7 @@ except Exception as e:
     sys.exit(1)
 " 2>/dev/null) || true
     
+    # shellcheck disable=SC2034  # Reserved for future validation
     engine_gpu_name=$(python3 -c "
 import json
 import sys

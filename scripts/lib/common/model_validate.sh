@@ -10,7 +10,6 @@ validate_models_early() {
   local quantization="${QUANTIZATION:-}"
   local chat_quant="${CHAT_QUANTIZATION:-}"
   local engine="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}"
-  local sm_arch="${GPU_SM_ARCH:-}"
 
   # Find Python - prefer venv if available
   local python_cmd="python3"

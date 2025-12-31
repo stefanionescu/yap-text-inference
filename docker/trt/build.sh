@@ -50,6 +50,7 @@ FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 # Use stack directory as primary build context so its local .dockerignore applies
 BUILD_CONTEXT="${SCRIPT_DIR}"
+# shellcheck disable=SC2034  # Used by sourced scripts
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile"
 
 # Modules - shared utilities from common, engine-specific from local

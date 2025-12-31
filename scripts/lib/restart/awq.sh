@@ -140,7 +140,7 @@ restart_push_cached_awq_models() {
       local engine_base
       engine_base="$(basename "${engine_dir}")"
       # engine dir pattern: <model>-trt-<qformat>
-      local base="${engine_base%-${qformat}}"
+      local base="${engine_base%-"${qformat}"}"
       base="${base%-trt}"
       local ckpt_dir="${TRT_CACHE_DIR:-${ROOT_DIR}/.trt_cache}/${base}-${qformat}-ckpt"
       if [ -d "${ckpt_dir}" ]; then

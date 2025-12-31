@@ -202,11 +202,11 @@ check_requirements_installed() {
       if [[ -z "$installed_ver" ]]; then
         REQUIREMENTS_MISSING_PKGS+=("$pkg_name==$required_ver")
         has_missing=true
-        REQUIREMENTS_MISSING=true
+        export REQUIREMENTS_MISSING=true
       elif [[ "$installed_ver" != "$required_ver" ]]; then
         REQUIREMENTS_WRONG_VERSION_PKGS+=("$pkg_name")
         has_wrong_version=true
-        REQUIREMENTS_WRONG=true
+        export REQUIREMENTS_WRONG=true
       fi
     fi
   done < "$requirements_file"

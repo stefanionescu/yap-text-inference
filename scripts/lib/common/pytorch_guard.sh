@@ -75,10 +75,6 @@ PY
   rm -f "${tmp_output}" 2>/dev/null || true
 
   if [ "${detect_rc}" -eq 42 ]; then
-    local mismatch_location=""
-    if [ -n "${venv_dir}" ]; then
-      mismatch_location=" in ${venv_dir}"
-    fi
     log_warn "${prefix} ⚠ Detected PyTorch/TorchVision CUDA mismatch"
 
     TORCHVISION_CUDA_MISMATCH_DETECTED=1

@@ -69,7 +69,7 @@ class EnvironmentInfo:
     gpu_name: str = field(default_factory=detect_gpu_name)
 
     @classmethod
-    def from_env(cls) -> "EnvironmentInfo":
+    def from_env(cls) -> EnvironmentInfo:
         """Load environment info, raising EngineLabelError if required vars missing."""
         sm_arch = os.getenv("GPU_SM_ARCH")
         if not sm_arch:

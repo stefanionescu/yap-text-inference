@@ -48,7 +48,6 @@ def quantize(
     try:
         import llmcompressor
         from llmcompressor import oneshot
-        from llmcompressor.modifiers.awq import AWQModifier
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to import llmcompressor: {exc}")
         return False

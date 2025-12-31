@@ -165,8 +165,6 @@ gpu_supports_fp8() {
 # Initialize GPU detection and export variables
 # Usage: gpu_init_detection [log_prefix]
 gpu_init_detection() {
-  local prefix="${1:-gpu}"
-  
   if [ -z "${GPU_SM_ARCH:-}" ]; then
     GPU_SM_ARCH=$(gpu_detect_sm_arch)
     export GPU_SM_ARCH
@@ -207,7 +205,9 @@ gpu_apply_env_defaults() {
 
   # Set CUDAARCHS to match SM arch (needed for building extensions, e.g., modelopt)
   if [ -z "${CUDAARCHS:-}" ]; then
-    export CUDAARCHS="$(gpu_detect_cudaarchs "${sm_arch}")"
+    local cudaarchs
+    cudaarchs="$(gpu_detect_cudaarchs "${sm_arch}")"
+    export CUDAARCHS="${cudaarchs}"
   fi
   
   # Set memory allocation config for modern GPUs

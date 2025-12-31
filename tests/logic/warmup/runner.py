@@ -37,57 +37,14 @@ from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
 logger = logging.getLogger(__name__)
 
 
-async def run_once(args) -> None:
-    """Execute a single warmup request and report metrics."""
-    server_ws_url = args.server or os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
-    api_key = args.api_key or os.getenv("TEXT_API_KEY")
-    if not api_key:
-        raise ValueError("TEXT_API_KEY environment variable is required and must be set before running tests")
-    gender_env = os.getenv("GENDER")
-    personality_env = os.getenv("PERSONALITY") or os.getenv("PERSONA_STYLE")
-    gender = args.gender or gender_env or DEFAULT_GENDER
-    personality = args.personality or personality_env or DEFAULT_PERSONALITY
-    sampling_overrides = getattr(args, "sampling", None) or None
-    skip_chat_prompt = bool(getattr(args, "no_chat_prompt", False))
-    double_ttfb = bool(getattr(args, "double_ttfb", False))
+# ============================================================================
+# Internal Helpers
+# ============================================================================
 
-    ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
-    user_msg = choose_message(
-        args.message,
-        fallback=WARMUP_FALLBACK_MESSAGE,
-        defaults=WARMUP_DEFAULT_MESSAGES,
-    )
-    chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
-    logger.info("Connecting to %s (with API key auth)", server_ws_url)
-    async with connect_with_retries(
-        lambda: websockets.connect(
-            ws_url_with_auth,
-            max_queue=None,
-            ping_interval=DEFAULT_WS_PING_INTERVAL,
-            ping_timeout=DEFAULT_WS_PING_TIMEOUT,
-        )
-    ) as ws:
-        recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
-        num_transactions = 2 if double_ttfb else 1
-        try:
-            for idx in range(num_transactions):
-                phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
-                tracker = StreamTracker()
-                session_id = str(uuid.uuid4())
-                start_payload = _build_start_payload(
-                    session_id,
-                    gender,
-                    personality,
-                    chat_prompt,
-                    user_msg,
-                    sampling_overrides,
-                )
-                if double_ttfb:
-                    logger.info("%sSending start message for %s transaction", _phase_prefix(phase_label), phase_label)
-                await ws.send(json.dumps(start_payload))
-                await _stream_session(ws, tracker, recv_timeout, api_key, phase_label if double_ttfb else None)
-        finally:
-            await send_client_end(ws)
+
+def _phase_prefix(phase_label: str | None) -> str:
+    """Return a log prefix for multi-phase transactions."""
+    return f"[{phase_label}] " if phase_label else ""
 
 
 def _build_start_payload(
@@ -113,50 +70,6 @@ def _build_start_payload(
     if sampling:
         payload["sampling"] = sampling
     return payload
-
-
-async def _stream_session(
-    ws,
-    tracker: StreamTracker,
-    recv_timeout: float,
-    api_key: str,
-    phase_label: str | None = None,
-) -> None:
-    """Stream and log the server response."""
-    handlers = _build_stream_handlers(tracker, api_key, phase_label)
-    done_seen = False
-    try:
-        async for msg in iter_messages(ws, timeout=recv_timeout):
-            should_continue = await dispatch_message(
-                msg,
-                handlers,
-                default=lambda payload: _log_unknown_message(payload, phase_label),
-            )
-            if should_continue is False:
-                done_seen = True
-                break
-    except ServerError:
-        raise  # Propagate server errors to caller
-    except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
-        logger.warning("Connection closed by server")
-    except asyncio.TimeoutError:
-        logger.error("recv timeout after %.1fs", recv_timeout)
-    if not tracker.ack_seen:
-        logger.warning("no ACK(start) received from server")
-    if not done_seen:
-        logger.warning("stream terminated before receiving 'done'")
-
-
-def _build_stream_handlers(tracker: StreamTracker, api_key: str, phase_label: str | None):
-    """Build message type handlers for stream processing."""
-    return {
-        "ack": lambda msg: _handle_ack(msg, tracker, phase_label),
-        "toolcall": lambda msg: (_handle_toolcall(msg, tracker, phase_label) or True),
-        "token": lambda msg: (_handle_token(msg, tracker, phase_label) or True),
-        "final": lambda msg: (_handle_final(msg, tracker, phase_label) or True),
-        "done": lambda msg: _handle_done(msg, tracker, phase_label),
-        "error": lambda msg: _handle_error(msg, api_key, phase_label),
-    }
 
 
 def _log_unknown_message(msg: dict[str, Any], phase_label: str | None) -> bool:
@@ -236,9 +149,106 @@ def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) ->
     raise error
 
 
-def _phase_prefix(phase_label: str | None) -> str:
-    """Return a log prefix for multi-phase transactions."""
-    return f"[{phase_label}] " if phase_label else ""
+def _build_stream_handlers(tracker: StreamTracker, api_key: str, phase_label: str | None):
+    """Build message type handlers for stream processing."""
+    return {
+        "ack": lambda msg: _handle_ack(msg, tracker, phase_label),
+        "toolcall": lambda msg: (_handle_toolcall(msg, tracker, phase_label) or True),
+        "token": lambda msg: (_handle_token(msg, tracker, phase_label) or True),
+        "final": lambda msg: (_handle_final(msg, tracker, phase_label) or True),
+        "done": lambda msg: _handle_done(msg, tracker, phase_label),
+        "error": lambda msg: _handle_error(msg, api_key, phase_label),
+    }
+
+
+async def _stream_session(
+    ws,
+    tracker: StreamTracker,
+    recv_timeout: float,
+    api_key: str,
+    phase_label: str | None = None,
+) -> None:
+    """Stream and log the server response."""
+    handlers = _build_stream_handlers(tracker, api_key, phase_label)
+    done_seen = False
+    try:
+        async for msg in iter_messages(ws, timeout=recv_timeout):
+            should_continue = await dispatch_message(
+                msg,
+                handlers,
+                default=lambda payload: _log_unknown_message(payload, phase_label),
+            )
+            if should_continue is False:
+                done_seen = True
+                break
+    except ServerError:
+        raise  # Propagate server errors to caller
+    except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
+        logger.warning("Connection closed by server")
+    except asyncio.TimeoutError:
+        logger.error("recv timeout after %.1fs", recv_timeout)
+    if not tracker.ack_seen:
+        logger.warning("no ACK(start) received from server")
+    if not done_seen:
+        logger.warning("stream terminated before receiving 'done'")
+
+
+# ============================================================================
+# Public API
+# ============================================================================
+
+
+async def run_once(args) -> None:
+    """Execute a single warmup request and report metrics."""
+    server_ws_url = args.server or os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
+    api_key = args.api_key or os.getenv("TEXT_API_KEY")
+    if not api_key:
+        raise ValueError("TEXT_API_KEY environment variable is required and must be set before running tests")
+    gender_env = os.getenv("GENDER")
+    personality_env = os.getenv("PERSONALITY") or os.getenv("PERSONA_STYLE")
+    gender = args.gender or gender_env or DEFAULT_GENDER
+    personality = args.personality or personality_env or DEFAULT_PERSONALITY
+    sampling_overrides = getattr(args, "sampling", None) or None
+    skip_chat_prompt = bool(getattr(args, "no_chat_prompt", False))
+    double_ttfb = bool(getattr(args, "double_ttfb", False))
+
+    ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
+    user_msg = choose_message(
+        args.message,
+        fallback=WARMUP_FALLBACK_MESSAGE,
+        defaults=WARMUP_DEFAULT_MESSAGES,
+    )
+    chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
+    logger.info("Connecting to %s (with API key auth)", server_ws_url)
+    async with connect_with_retries(
+        lambda: websockets.connect(
+            ws_url_with_auth,
+            max_queue=None,
+            ping_interval=DEFAULT_WS_PING_INTERVAL,
+            ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+        )
+    ) as ws:
+        recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
+        num_transactions = 2 if double_ttfb else 1
+        try:
+            for idx in range(num_transactions):
+                phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
+                tracker = StreamTracker()
+                session_id = str(uuid.uuid4())
+                start_payload = _build_start_payload(
+                    session_id,
+                    gender,
+                    personality,
+                    chat_prompt,
+                    user_msg,
+                    sampling_overrides,
+                )
+                if double_ttfb:
+                    logger.info("%sSending start message for %s transaction", _phase_prefix(phase_label), phase_label)
+                await ws.send(json.dumps(start_payload))
+                await _stream_session(ws, tracker, recv_timeout, api_key, phase_label if double_ttfb else None)
+        finally:
+            await send_client_end(ws)
 
 
 __all__ = ["run_once"]
