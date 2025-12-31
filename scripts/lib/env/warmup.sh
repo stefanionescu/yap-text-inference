@@ -48,6 +48,5 @@ warmup_init_defaults() {
   export WARMUP_HEALTH_CHECK_SCRIPT="${WARMUP_HEALTH_CHECK_SCRIPT:-${script_dir}/lib/common/health.sh}"
 
   warmup_normalize_positive_int WARMUP_TIMEOUT_SECS 300
-  warmup_normalize_positive_int WARMUP_RETRIES 2
+  warmup_normalize_positive_int WARMUP_RETRIES 1
 }
-

@@ -4,7 +4,7 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
 
 - A chat engine (vLLM or TRT-LLM) for roleplay / assistant flows
 - A tool-only router for function calls (e.g., triggering screenshot capture)
-- Either engine independently or both together
+- Either chat/tool independently or both together
 - FastAPI + WebSocket streaming
 
 > **How tool calls work:** The tool model is a small classifier (`AutoModelForSequenceClassification`) that decides if the client should capture a screenshot. Other actions like switching gender or personality are handled by simple heuristics, not the model.
@@ -315,4 +315,4 @@ curl -s http://127.0.0.1:8000/healthz
 
 ## Advanced Usage and Tips
 
-Looking for logs, TensorRT-LLM configuration, vLLM tuning, WebSocket protocol details, or pushing quantized exports? See `ADVANCED.md`.
+Looking for logs, TensorRT-LLM configuration, vLLM tuning, WebSocket protocol details, or pushing quantized exports to HF? See `ADVANCED.md`.

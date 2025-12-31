@@ -110,11 +110,15 @@ async def connect_with_retries(
     attempt = 0
     delay = base_delay_s
     while True:
+        connected = False
         try:
             async with factory() as ws:
+                connected = True
                 yield ws
                 return
         except Exception:
+            if connected:
+                raise
             if attempt >= max_retries:
                 raise
             await asyncio.sleep(max(0.0, delay))
