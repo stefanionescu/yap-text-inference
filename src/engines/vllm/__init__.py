@@ -21,6 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover - import only for type checking
         seconds_since_last_cache_reset,
         shutdown_engine,
     )
+    from .setup import configure_runtime_env
 
 
 def __getattr__(name: str):
@@ -29,7 +30,11 @@ def __getattr__(name: str):
     if name not in __all__:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-    module = import_module(".engine", __name__)
+    # setup can be imported directly without vLLM
+    if name == "configure_runtime_env":
+        module = import_module(".setup", __name__)
+    else:
+        module = import_module(".engine", __name__)
     value = getattr(module, name)
     globals()[name] = value  # Cache attribute for future lookups
     return value
@@ -47,4 +52,5 @@ __all__ = [
     "cache_reset_reschedule_event",
     "seconds_since_last_cache_reset",
     "clear_caches_on_disconnect",
+    "configure_runtime_env",
 ]

@@ -4,7 +4,7 @@ from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT
 from ..sanitize.prompt_sanitizer import sanitize_prompt
-from ...helpers.prompts import build_chat_warm_prompt
+from ..chat.builder import build_chat_warm_prompt
 from .warm_utils import warm_chat_segment
 from ...handlers.websocket.helpers import safe_send_json
 

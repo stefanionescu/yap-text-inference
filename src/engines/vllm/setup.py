@@ -1,11 +1,27 @@
-"""Runtime environment initialization for CUDA/vLLM."""
+"""Runtime environment initialization for CUDA/vLLM.
+
+This module configures environment variables required for optimal vLLM
+performance, including attention backend selection and CUDA settings.
+It runs at most once per process unless force=True is passed.
+
+Environment Variables Set:
+    VLLM_USE_V1: Enable vLLM V1 engine (default: 1)
+    VLLM_ATTENTION_BACKEND: FLASHINFER if available, else XFORMERS
+    CUDA_DEVICE_MAX_CONNECTIONS: Set to 1 for stability
+    PYTORCH_ALLOC_CONF: Enable expandable segments
+    KV_DTYPE: Forced to auto if FP8 requested without flashinfer
+
+Control Flags:
+    YAP_AUTO_CONFIGURE_ENV: Set to enable auto-configuration at import
+    YAP_SKIP_ENV_AUTOCONFIG: Set to skip all auto-configuration
+"""
 
 from __future__ import annotations
 
 import os
 from typing import Final
 
-from .env import env_flag
+from src.helpers.env import env_flag
 
 
 _AUTO_CONFIG_FLAG: Final[str] = "YAP_AUTO_CONFIGURE_ENV"
@@ -13,8 +29,13 @@ _SKIP_AUTOCONFIG_FLAG: Final[str] = "YAP_SKIP_ENV_AUTOCONFIG"
 _ENV_CONFIGURED = False
 
 
+# ============================================================================
+# Internal Helpers
+# ============================================================================
+
 def _select_attention_backend() -> None:
     """Set attention backend and KV dtype safeguards based on availability.
+    
     - Prefer FLASHINFER when importable.
     - If FP8 KV is requested but flashinfer is unavailable, force KV_DTYPE=auto.
     - Use only VLLM_ATTENTION_BACKEND for overrides (no extra env knobs).
@@ -40,6 +61,10 @@ def _select_attention_backend() -> None:
             os.environ["KV_DTYPE"] = "auto"
 
 
+# ============================================================================
+# Public API
+# ============================================================================
+
 def configure_runtime_env(*, force: bool = False) -> None:
     """Apply CUDA/vLLM environment defaults exactly once per process.
 
@@ -63,3 +88,4 @@ def configure_runtime_env(*, force: bool = False) -> None:
 
 
 __all__ = ["configure_runtime_env"]
+

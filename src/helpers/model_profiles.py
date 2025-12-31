@@ -1,4 +1,8 @@
-"""Model profile lookup and query functions."""
+"""Model profile lookup and query functions.
+
+Provides functions to query model profiles and characteristics based on
+model identifiers. Used across engines and quantization modules.
+"""
 
 from __future__ import annotations
 
@@ -7,14 +11,14 @@ from typing import Any
 from src.config.model_profiles import MODEL_PROFILES, ModelProfile
 
 
-def _normalize_model_id(model_id: str | None) -> str:
+def normalize_model_id(model_id: str | None) -> str:
     """Canonicalize model identifiers for substring comparisons."""
     return (model_id or "").strip().lower()
 
 
 def get_model_profile(model_identifier: str | None) -> ModelProfile | None:
     """Return the first matching profile for the provided identifier."""
-    normalized = _normalize_model_id(model_identifier)
+    normalized = normalize_model_id(model_identifier)
     if not normalized:
         return None
     for profile in MODEL_PROFILES:
@@ -65,6 +69,7 @@ def get_max_batched_tokens(model_identifier: str | None) -> int | None:
 
 
 __all__ = [
+    "normalize_model_id",
     "get_model_profile",
     "model_requires_bfloat16",
     "model_requires_fla_runtime",

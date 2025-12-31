@@ -39,7 +39,7 @@ from ...config.websocket import (
 )
 from ...engines import clear_caches_on_disconnect, reset_engine_caches
 from ...messages.cancel import handle_cancel_message
-from ...messages.chat_prompt import handle_chat_prompt
+from ...messages.chat.prompt import handle_chat_prompt
 from ...messages.followup import handle_followup_message
 from ...messages.start import handle_start_message
 from ...messages.warm.warm_history import handle_warm_history_message

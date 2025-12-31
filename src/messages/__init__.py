@@ -18,9 +18,10 @@ cancel.py:
     Handles request cancellation during streaming. Aborts the
     active generation request and cleans up state.
 
-chat_prompt.py:
-    Handles dynamic persona/prompt updates mid-session. Validates
-    rate limits and applies new persona configuration.
+chat/:
+    Chat-related handlers and prompt building:
+    - prompt.py: Dynamic persona/prompt updates mid-session
+    - builder.py: Chat prompt construction using tokenizer templates
 
 validators.py:
     Input validation utilities shared across message handlers.
@@ -38,9 +39,12 @@ warm/:
 """
 
 from .start import handle_start_message, StartPlan, dispatch_execution
+from .chat.builder import build_chat_prompt_with_prefix, build_chat_warm_prompt
 
 __all__ = [
     "handle_start_message",
     "StartPlan",
     "dispatch_execution",
+    "build_chat_prompt_with_prefix",
+    "build_chat_warm_prompt",
 ]

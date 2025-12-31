@@ -1,4 +1,14 @@
-"""Template and license computation helpers for AWQ README generation."""
+"""License computation helpers for HuggingFace model card generation.
+
+This module provides functions to determine the appropriate license
+information for quantized models uploaded to HuggingFace. It fetches
+license data from the original model's repository when possible.
+
+Key Functions:
+    resolve_template_name: Get the chat template name for a model
+    compute_license_info: Determine license info for a quantized model
+    fetch_license_from_hf: Fetch license from a HuggingFace model repo
+"""
 
 from __future__ import annotations
 
@@ -14,40 +24,20 @@ from src.config.templates import (
 )
 
 logger = logging.getLogger(__name__)
+
 try:
     _HF_LICENSE_FETCH_TIMEOUT_S = max(1.0, float(os.getenv("HF_LICENSE_FETCH_TIMEOUT", "5")))
 except ValueError:
     _HF_LICENSE_FETCH_TIMEOUT_S = 5.0
 
 
+# ============================================================================
+# Public API
+# ============================================================================
+
 def resolve_template_name(is_tool: bool) -> str:
+    """Return the chat template name for a model."""
     return CHAT_TEMPLATE_NAME
-
-
-def _is_mistral_research_model(model_path: str) -> bool:
-    normalized = (model_path or "").strip()
-    if not normalized:
-        return False
-    for target in MISTRAL_RESEARCH_MODELS:
-        if normalized == target or normalized.endswith(target):
-            return True
-    return False
-
-
-def _license_link_for(model_path: str, is_hf_model: bool) -> str:
-    if not is_hf_model:
-        return "LICENSE"
-    return f"https://huggingface.co/{model_path}"
-
-
-def _is_qwen_license_model(model_path: str) -> bool:
-    normalized = (model_path or "").strip()
-    if not normalized:
-        return False
-    for target in QWEN_LICENSE_MODELS:
-        if normalized == target or normalized.endswith(target):
-            return True
-    return False
 
 
 def fetch_license_from_hf(model_id: str) -> dict[str, str] | None:
@@ -134,8 +124,39 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
     }
 
 
+# ============================================================================
+# Internal Helpers
+# ============================================================================
+
+def _is_mistral_research_model(model_path: str) -> bool:
+    normalized = (model_path or "").strip()
+    if not normalized:
+        return False
+    for target in MISTRAL_RESEARCH_MODELS:
+        if normalized == target or normalized.endswith(target):
+            return True
+    return False
+
+
+def _license_link_for(model_path: str, is_hf_model: bool) -> str:
+    if not is_hf_model:
+        return "LICENSE"
+    return f"https://huggingface.co/{model_path}"
+
+
+def _is_qwen_license_model(model_path: str) -> bool:
+    normalized = (model_path or "").strip()
+    if not normalized:
+        return False
+    for target in QWEN_LICENSE_MODELS:
+        if normalized == target or normalized.endswith(target):
+            return True
+    return False
+
+
 __all__ = [
     "resolve_template_name",
     "compute_license_info",
     "fetch_license_from_hf",
 ]
+

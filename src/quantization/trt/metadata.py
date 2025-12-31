@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config import trt as trt_config
-from src.helpers.templates import compute_license_info
+from src.hf.license import compute_license_info
 
 from .detection import get_compute_capability_info
 from .engine_label import (
