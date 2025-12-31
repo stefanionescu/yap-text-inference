@@ -160,13 +160,9 @@ EOF
   # Determine quantization info from checkpoint config
   local quant_info="{}"
   if [ -f "${checkpoint_dir}/config.json" ]; then
-    quant_info=$(python -c "
-import json
-with open('${checkpoint_dir}/config.json') as f:
-    cfg = json.load(f)
-quant = cfg.get('quantization', {})
-print(json.dumps(quant))
-" 2>/dev/null || echo "{}")
+    local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+    quant_info=$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python -m src.scripts.trt.detection quant-info "${checkpoint_dir}" 2>/dev/null || echo "{}")
   fi
   
   # Determine KV cache dtype based on quantization format

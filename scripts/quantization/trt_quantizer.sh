@@ -69,59 +69,9 @@ _trt_detect_qformat_from_checkpoint() {
     return 1
   fi
   local detected
-  detected="$(
-    python - "${ckpt_dir}" 2>/dev/null <<'PY' || true
-import json
-import sys
-from pathlib import Path
-
-cfg_path = Path(sys.argv[1]) / "config.json"
-try:
-    data = json.loads(cfg_path.read_text(encoding="utf-8"))
-except Exception:
-    sys.exit(0)
-
-quant = {}
-for key in ("quantization_config", "quantization", "quant_config"):
-    value = data.get(key)
-    if isinstance(value, dict) and value:
-        quant = value
-        break
-
-algo = ""
-if isinstance(quant, dict):
-    raw_algo = quant.get("quant_algo") or quant.get("algorithm") or quant.get("quantization_algo") or quant.get("quantization_method")
-    if isinstance(raw_algo, str):
-        algo = raw_algo.lower()
-    w_bit = quant.get("w_bit") or quant.get("weight_bits") or quant.get("weight_bit") or quant.get("quant_bits")
-    try:
-        if isinstance(w_bit, str):
-            w_bit = int(w_bit)
-    except Exception:
-        w_bit = None
-else:
-    w_bit = None
-
-def emit(value):
-    if value:
-        print(value)
-        sys.exit(0)
-
-if "fp8" in algo:
-    emit("fp8")
-if "int8" in algo or "sq" in algo:
-    emit("int8_sq")
-if "int4" in algo or "awq" in algo:
-    emit("int4_awq")
-if isinstance(w_bit, int):
-    if w_bit <= 4:
-        emit("int4_awq")
-    if w_bit >= 8:
-        emit("fp8")
-
-sys.exit(0)
-PY
-  )"
+  local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+  detected="$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python -m src.scripts.trt.detection qformat "${ckpt_dir}" 2>/dev/null || true)"
   detected="${detected%%$'\n'}"
   if [ -n "${detected}" ]; then
     echo "${detected}"

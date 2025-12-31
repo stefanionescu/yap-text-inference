@@ -203,72 +203,24 @@ trt_install_tensorrt_llm() {
 # Validate Python shared library
 trt_validate_python_libraries() {
   log_info "[trt] Checking Python shared library..."
-  python - <<'EOF'
-import ctypes
-import ctypes.util
-import sys
-
-version = f"{sys.version_info.major}.{sys.version_info.minor}"
-lib_name = ctypes.util.find_library(f"python{version}")
-
-if not lib_name:
-    raise SystemExit(
-        "Unable to locate libpython shared library. "
-        "Install python3-dev and ensure LD_LIBRARY_PATH includes its directory."
-    )
-
-try:
-    ctypes.CDLL(lib_name)
-except OSError as exc:
-    raise SystemExit(f"Found {lib_name} but failed to load it: {exc}")
-
-print("[trt] ✓ Python shared library OK")
-EOF
+  local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python -m src.scripts.trt.validation python-libs; then
+    return 1
+  fi
 }
 
 # Validate CUDA runtime
 trt_validate_cuda_runtime() {
   log_info "[trt] Checking CUDA Python bindings..."
-  local check_output
-  check_output=$(
-    python - <<'EOF'
-import sys
-from importlib.metadata import PackageNotFoundError, version
-
-try:
-    ver = version("cuda-python")
-except PackageNotFoundError:
-    print("MISSING: cuda-python not installed")
-    sys.exit(1)
-
-major = int(ver.split(".", 1)[0])
-try:
-    if major >= 13:
-        from cuda.bindings import runtime as cudart
-    else:
-        from cuda import cudart
-except Exception as exc:
-    print(f"IMPORT_ERROR: {type(exc).__name__}: {exc}")
-    sys.exit(1)
-
-err, _ = cudart.cudaDriverGetVersion()
-if err != 0:
-    print(f"CUDART_ERROR: cudaDriverGetVersion -> {err}")
-    sys.exit(1)
-
-print("[trt] ✓ CUDA runtime OK")
-EOF
-  ) || true
-
-  if ! echo "$check_output" | grep -q "✓ CUDA runtime OK"; then
-    log_err "[trt] ✗ CUDA Python bindings not working:"
-    echo "$check_output" >&2
+  local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+  if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python -m src.scripts.trt.validation cuda-runtime 2>&1; then
+    log_err "[trt] ✗ CUDA Python bindings not working"
     log_err "[trt] ✗ Hint: Ensure cuda-python>=13.0 and that CUDA_HOME/lib64 contains CUDA 13 runtime libraries"
     return 1
   fi
-
   log_info "[trt] ✓ CUDA bindings OK"
-
   return 0
 }
 
@@ -278,17 +230,9 @@ trt_validate_mpi_runtime() {
 
   if [ "$need_mpi" = "1" ]; then
     log_info "[trt] Checking MPI runtime..."
-    python - <<'EOF'
-import sys
-try:
-    from mpi4py import MPI
-    MPI.Get_version()
-    print("[trt] ✓ MPI runtime OK")
-except ImportError as exc:
-    sys.exit(f"mpi4py not installed: {exc}")
-except Exception as exc:
-    sys.exit(f"MPI runtime error: {exc}")
-EOF
+    local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+    PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python -m src.scripts.trt.validation mpi
   else
     log_info "[trt] Skipping MPI check (NEED_MPI=0)"
   fi
@@ -297,32 +241,20 @@ EOF
 # Validate TensorRT-LLM installation
 trt_validate_installation() {
   log_info "[trt] Validating TRT wheel installation..."
-  
-  # Check TensorRT-LLM version (suppress library's own version log)
-  local trt_version
-  trt_version=$(python - <<'PY' 2>/dev/null
-import sys, io
-try:
-    sys.stdout = io.StringIO()
-    import tensorrt_llm
-    sys.stdout = sys.__stdout__
-    print(tensorrt_llm.__version__)
-except Exception as exc:
-    sys.stdout = sys.__stdout__
-    print(f"IMPORT_ERROR: {type(exc).__name__}: {exc}")
-    # modelopt may be missing; do not fail installation for that
-    if isinstance(exc, ImportError) and 'modelopt' in str(exc):
-        sys.exit(0)
-    sys.exit(1)
-PY
-  ) || {
-    log_err "[trt] ✗ TensorRT-LLM not installed or not importable: ${trt_version}"
+
+  # Check TensorRT-LLM version
+  local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+  local trt_output
+  trt_output=$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python -m src.scripts.trt.validation trt-install 2>&1) || {
+    log_err "[trt] ✗ TensorRT-LLM not installed or not importable"
+    echo "${trt_output}" >&2
     return 1
   }
-  if [[ "${trt_version}" == IMPORT_ERROR:* ]]; then
-    log_warn "[trt] ⚠ TensorRT-LLM import reported: ${trt_version} (ignored for modelopt)"
+  if [[ "${trt_output}" == *"MODELOPT_MISSING"* ]]; then
+    log_warn "[trt] ⚠ TensorRT-LLM import reported: ${trt_output} (ignored for modelopt)"
   else
-    log_info "[trt] ✓ TensorRT-LLM version: ${trt_version}"
+    log_info "${trt_output}"
   fi
   
   # Validate Python libraries
