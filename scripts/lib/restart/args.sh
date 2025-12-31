@@ -17,6 +17,7 @@ restart_parse_args() {
   HF_ENGINE_PUSH=0
   SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
   SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
+  SHOW_VLLM_LOGS="${SHOW_VLLM_LOGS:-0}"
   SHOW_LLMCOMPRESSOR_LOGS="${SHOW_LLMCOMPRESSOR_LOGS:-0}"
   
   # Engine selection - default from environment or 'trt'
@@ -28,24 +29,16 @@ restart_parse_args() {
         SHOW_HF_LOGS=1
         shift
         ;;
-      --no-show-hf-logs)
-        SHOW_HF_LOGS=0
-        shift
-        ;;
       --show-trt-logs)
         SHOW_TRT_LOGS=1
         shift
         ;;
-      --no-show-trt-logs)
-        SHOW_TRT_LOGS=0
+      --show-vllm-logs)
+        SHOW_VLLM_LOGS=1
         shift
         ;;
       --show-llmcompressor-logs)
         SHOW_LLMCOMPRESSOR_LOGS=1
-        shift
-        ;;
-      --no-show-llmcompressor-logs)
-        SHOW_LLMCOMPRESSOR_LOGS=0
         shift
         ;;
       both|chat|tool)
@@ -73,10 +66,6 @@ restart_parse_args() {
         ;;
       --install-deps)
         INSTALL_DEPS=1
-        shift
-        ;;
-      --no-install-deps)
-        INSTALL_DEPS=0
         shift
         ;;
       --reset-models|--reconfigure)
@@ -137,16 +126,8 @@ restart_parse_args() {
         HF_AWQ_PUSH_REQUESTED=1
         shift
         ;;
-      --no-push-quant)
-        HF_AWQ_PUSH_REQUESTED=0
-        shift
-        ;;
       --push-engine)
         HF_ENGINE_PUSH_REQUESTED=1
-        shift
-        ;;
-      --no-push-engine)
-        HF_ENGINE_PUSH_REQUESTED=0
         shift
         ;;
       --help|-h)
@@ -181,6 +162,6 @@ restart_parse_args() {
   export RECONFIG_CHAT_QUANTIZATION
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
-  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_LLMCOMPRESSOR_LOGS
+  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS
   return 0
 }

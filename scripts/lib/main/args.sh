@@ -14,6 +14,7 @@ main_parse_cli() {
   local deploy_explicit=0
   local show_hf_logs="${SHOW_HF_LOGS:-0}"
   local show_trt_logs="${SHOW_TRT_LOGS:-0}"
+  local show_vllm_logs="${SHOW_VLLM_LOGS:-0}"
   local show_llmcompressor_logs="${SHOW_LLMCOMPRESSOR_LOGS:-0}"
   local -a positional_args=()
 
@@ -26,32 +27,20 @@ main_parse_cli() {
       --show-hf-logs)
         show_hf_logs=1
         ;;
-      --no-show-hf-logs)
-        show_hf_logs=0
-        ;;
       --show-trt-logs)
         show_trt_logs=1
         ;;
-      --no-show-trt-logs)
-        show_trt_logs=0
+      --show-vllm-logs)
+        show_vllm_logs=1
         ;;
       --show-llmcompressor-logs)
         show_llmcompressor_logs=1
         ;;
-      --no-show-llmcompressor-logs)
-        show_llmcompressor_logs=0
-        ;;
       --push-quant)
         push_quant_requested=1
         ;;
-      --no-push-quant)
-        push_quant_requested=0
-        ;;
       --push-engine)
         push_engine_requested=1
-        ;;
-      --no-push-engine)
-        push_engine_requested=0
         ;;
       --engine)
         if ! cli_set_engine_value "${2:-}" "[main]" engine; then
@@ -200,6 +189,7 @@ main_parse_cli() {
   TOOL_MODEL_NAME="${tool_model}"
   SHOW_HF_LOGS="${show_hf_logs}"
   SHOW_TRT_LOGS="${show_trt_logs}"
+  SHOW_VLLM_LOGS="${show_vllm_logs}"
   SHOW_LLMCOMPRESSOR_LOGS="${show_llmcompressor_logs}"
 
   export ENGINE_TYPE INFERENCE_ENGINE
@@ -207,7 +197,7 @@ main_parse_cli() {
   export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
   export QUANT_TYPE DEPLOY_MODE DEPLOY_MODE_SELECTED
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
-  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_LLMCOMPRESSOR_LOGS
+  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS
 
   return 0
 }

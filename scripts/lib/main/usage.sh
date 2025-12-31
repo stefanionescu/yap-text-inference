@@ -86,18 +86,14 @@ main_usage() {
   echo ""
   echo "Quantized model uploads:"
   echo "  --push-quant        Upload freshly built 4-bit exports to Hugging Face"
-  echo "  --no-push-quant     Skip uploads (default)"
   echo "  --push-engine       Push locally-built TRT engine to source HF repo"
   echo "                      Only for prequantized TRT models; adds engine for this GPU"
-  echo "  --no-push-engine    Skip engine push (default)"
   echo ""
   echo "Debugging:"
   echo "  --show-hf-logs              Show Hugging Face download/upload progress bars"
-  echo "  --no-show-hf-logs           Hide Hugging Face logs (default)"
   echo "  --show-trt-logs             Show TensorRT-LLM build/quantization logs"
-  echo "  --no-show-trt-logs          Hide TensorRT logs (default)"
+  echo "  --show-vllm-logs            Show vLLM engine initialization logs"
   echo "  --show-llmcompressor-logs   Show LLMCompressor/AutoAWQ calibration progress"
-  echo "  --no-show-llmcompressor-logs Hide LLMCompressor logs (default)"
   exit 1
 }
 
