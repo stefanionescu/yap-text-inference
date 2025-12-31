@@ -13,6 +13,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Place internal helpers before public exports so plumbing appears first.
 - Keep `__init__.py` files as import/re-export hubs; keep executable logic in dedicated modules.
 - Export each public symbol from a single place and avoid unused exports.
+- When you need explicit exports via `__all__`, define it only at the very bottom of the module after every class, function, and constant.
 - Avoid creating singletons or global instances in the defining module; instantiate them at assembly points.
 - Do not trigger work at import time; expose callable entry points instead.
 - Keep files at or under 350 lines; split when approaching the limit. Data-heavy fixtures may exceed this when splitting would hurt clarity.
@@ -50,4 +51,3 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Keep comments concise and focused on current behavior, NOT on past actions we took or refactors.
 - Prefer intent (“why”) over line-by-line narration, especially for non-obvious control flow.
 - Do not remove useful comments just to reduce length; reorganize instead when needed.
-
