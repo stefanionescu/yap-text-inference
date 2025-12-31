@@ -15,7 +15,7 @@ from fastapi import WebSocket
 from ..handlers.session import session_handler
 from ..config import DEPLOY_CHAT
 from ..handlers.websocket.helpers import safe_send_json
-from ..config.filters import CHAT_PROMPT_RATE_LIMIT_MESSAGES
+from ..config.chat import CHAT_PROMPT_RATE_LIMIT_MESSAGES
 from ..tokens import (
     count_tokens_chat,
     trim_history_preserve_messages_chat,

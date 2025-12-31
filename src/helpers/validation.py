@@ -6,6 +6,8 @@ from src.config.deploy import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_MODEL, TOOL_MODEL
 from src.config.engine import INFERENCE_ENGINE, QUANTIZATION, CHAT_QUANTIZATION
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.quantization import SUPPORTED_ENGINES
+from src.config.limits import MAX_CONCURRENT_CONNECTIONS
+from src.config.secrets import TEXT_API_KEY
 from .models import is_classifier_model
 from .quantization import classify_prequantized_model
 
@@ -36,6 +38,16 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
 def validate_env() -> None:
     """Validate required configuration once during startup."""
     errors: list[str] = []
+    
+    # Required secrets
+    if not TEXT_API_KEY:
+        errors.append("TEXT_API_KEY environment variable is required")
+    
+    # Required limits
+    if MAX_CONCURRENT_CONNECTIONS is None:
+        errors.append("MAX_CONCURRENT_CONNECTIONS environment variable is required")
+    
+    # Model configuration
     if DEPLOY_CHAT and not CHAT_MODEL:
         errors.append("CHAT_MODEL is required when DEPLOY_MODE is 'both' or 'chat'")
     if DEPLOY_TOOL and not TOOL_MODEL:

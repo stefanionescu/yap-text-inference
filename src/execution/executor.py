@@ -33,7 +33,7 @@ from fastapi import WebSocket
 from .tool.parser import parse_tool_result
 from .chat import run_chat_generation
 from ..handlers.session import session_handler
-from ..config.filters import CHAT_CONTINUE_TOOLS
+from ..config.chat import CHAT_CONTINUE_TOOLS
 from ..config.timeouts import TOOL_TIMEOUT_S
 from ..handlers.websocket.helpers import (
     cancel_task,

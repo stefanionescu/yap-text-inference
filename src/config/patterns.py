@@ -161,11 +161,5 @@ SCREENSHOT_TRIGGER_PATTERNS = [
     r"^teak\s+a\s+look[.!?]*$",  # typo: "teak a look"
 ]
 
-# ============================================================================
-# TRTLLM LOG NOISE PATTERNS
-# ============================================================================
-
-# Re-export from canonical location in scripts module
-# Keeping here for backward compatibility with code that imports from config
-from src.scripts.filter_constants import TRTLLM_NOISE_PATTERNS as TRTLLM_NOISE_PATTERNS
+# TRTLLM_NOISE_PATTERNS moved to src/config/filters.py
 

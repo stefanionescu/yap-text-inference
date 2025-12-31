@@ -9,7 +9,7 @@ import importlib
 import logging
 from typing import Iterable
 
-from src.scripts.filter_constants import HF_DOWNLOAD_GROUPS, HF_UPLOAD_GROUPS, HF_ALL_GROUPS
+from src.config.filters import HF_DOWNLOAD_GROUPS, HF_UPLOAD_GROUPS, HF_ALL_GROUPS
 
 __all__ = [
     "configure_hf_logging",

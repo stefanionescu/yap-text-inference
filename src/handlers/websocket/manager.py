@@ -55,7 +55,7 @@ from ...config import (
     WS_MESSAGE_WINDOW_SECONDS,
     CACHE_RESET_MIN_SESSION_SECONDS,
 )
-from ...config.filters import MESSAGE_RATE_LIMIT_MESSAGES
+from ...config.chat import MESSAGE_RATE_LIMIT_MESSAGES
 from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,

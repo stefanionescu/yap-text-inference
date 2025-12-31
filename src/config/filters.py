@@ -1,48 +1,52 @@
-"""Regex assets shared by text sanitizers."""
+"""Regex assets shared by text sanitizers and log filters."""
 
 from __future__ import annotations
 
 import re
 
-# Tool function names that should proceed to chat generation
-# All other tool functions skip chat and return just the tool result
-CHAT_CONTINUE_TOOLS: frozenset[str] = frozenset({"take_screenshot"})
+# ============================================================================
+# HUGGINGFACE PROGRESS BAR GROUPS
+# ============================================================================
 
-# Hard-coded messages for control functions (switch_gender, switch_personality, etc.)
-# These are cycled per session to ensure variety
-CONTROL_FUNCTION_MESSAGES: tuple[str, ...] = (
-    "All done",
-    "Yup sure. Done.",
-    "Alright, gimme a second. Done.",
-    "Sure, it's done.",
-    "That's done for ya.",
-    "Sure thing, done.",
-    "Consider it done.",
-    "Right away. Done.",
-    "There you go.",
-    "No problem, done.",
-    "Easy, done.",
-    "You got it.",
-    "Yep, all set.",
-    "There ya go.",
-    "Cool, all set.",
+# Download-related progress bar groups in huggingface_hub
+HF_DOWNLOAD_GROUPS: tuple[str, ...] = (
+    "huggingface_hub.http_get",           # Standard downloads (snapshot_download/hf_hub_download)
+    "huggingface_hub.xet_get",            # Xet-accelerated downloads
+    "huggingface_hub.snapshot_download",  # Parallel snapshot fetch progress
 )
 
-# Hard-coded messages for message rate limit responses
-MESSAGE_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
-    "Wow you yap a lot, slow down a bit.",
-    "I'm a bit overwhelmed sorry, give me a moment to recover.",
-    "Damn you really talk a lot, give me a second to recover.",
-    "My head's spinning, you're sending too many messages."
+# Upload-related progress bar groups in huggingface_hub
+HF_UPLOAD_GROUPS: tuple[str, ...] = (
+    "huggingface_hub.lfs_upload",         # LFS file uploads
+    "huggingface_hub.hf_file_system",     # HfFileSystem operations
+    "huggingface_hub.hf_api",             # HfApi upload methods
 )
 
-# Hard-coded messages for chat prompt update rate limit responses
-CHAT_PROMPT_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
-    "I can't change moods that often, sorry.",
-    "I'm not a robot, wait a bit before you change my personality.",
-    "Nope sorry, you've changed my mood too many times.",
-    "Don't wanna, I'll do it later."
+# All progress bar groups combined
+HF_ALL_GROUPS: tuple[str, ...] = HF_DOWNLOAD_GROUPS + HF_UPLOAD_GROUPS
+
+
+# ============================================================================
+# TRTLLM LOG NOISE PATTERNS
+# ============================================================================
+
+# Patterns for suppressing TensorRT-LLM and modelopt log noise during quantization
+TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\[TensorRT-LLM].*TensorRT LLM version", re.IGNORECASE),
+    re.compile(r"`?torch_dtype`?\s*(is\s+)?deprecated", re.IGNORECASE),
+    re.compile(r"Registered <class 'transformers\.models\..+'> to _QuantAttention", re.IGNORECASE),
+    re.compile(r"Inserted \d+ quantizers", re.IGNORECASE),
+    re.compile(r"Caching activation statistics", re.IGNORECASE),
+    re.compile(r"Searching .*parameters", re.IGNORECASE),
+    re.compile(r"Loading extension modelopt", re.IGNORECASE),
+    re.compile(r"Loaded extension modelopt", re.IGNORECASE),
+    re.compile(r"current rank:\s*\d+,\s*tp rank:\s*\d+,\s*pp rank:\s*\d+", re.IGNORECASE),
 )
+
+
+# ============================================================================
+# TEXT SANITIZATION PATTERNS
+# ============================================================================
 
 HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 
@@ -118,25 +122,14 @@ EMAIL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# Digit to word mapping for phone number verbalization
-DIGIT_WORDS: dict[str, str] = {
-    "0": "zero",
-    "1": "one",
-    "2": "two",
-    "3": "three",
-    "4": "four",
-    "5": "five",
-    "6": "six",
-    "7": "seven",
-    "8": "eight",
-    "9": "nine",
-}
-
 __all__ = [
-    "CHAT_CONTINUE_TOOLS",
-    "CONTROL_FUNCTION_MESSAGES",
-    "MESSAGE_RATE_LIMIT_MESSAGES",
-    "CHAT_PROMPT_RATE_LIMIT_MESSAGES",
+    # HuggingFace progress bar groups
+    "HF_DOWNLOAD_GROUPS",
+    "HF_UPLOAD_GROUPS",
+    "HF_ALL_GROUPS",
+    # TRT-LLM log noise patterns
+    "TRTLLM_NOISE_PATTERNS",
+    # Text sanitization patterns
     "HTML_TAG_PATTERN",
     "EMOJI_PATTERN",
     "EMOTICON_PATTERN",
@@ -160,6 +153,5 @@ __all__ = [
     "ELLIPSIS_TRAILING_SPACE_PATTERN",
     "DASH_PATTERN",
     "EMAIL_PATTERN",
-    "DIGIT_WORDS",
 ]
 

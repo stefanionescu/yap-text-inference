@@ -94,19 +94,10 @@ TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "900"))  # Tool model
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU
 EXACT_TOKEN_TRIM = env_flag("EXACT_TOKEN_TRIM", True)
 
-# Maximum concurrent WebSocket connections (must be provided explicitly)
+# Maximum concurrent WebSocket connections
+# Validated at runtime by helpers/validation.py
 _max_concurrent_raw = os.getenv("MAX_CONCURRENT_CONNECTIONS")
-if _max_concurrent_raw is None:
-    raise RuntimeError(
-        "MAX_CONCURRENT_CONNECTIONS environment variable is required. "
-        "Set it before starting the server."
-    )
-try:
-    MAX_CONCURRENT_CONNECTIONS = int(_max_concurrent_raw)
-except ValueError as exc:
-    raise ValueError(
-        f"MAX_CONCURRENT_CONNECTIONS must be an integer, got '{_max_concurrent_raw}'."
-    ) from exc
+MAX_CONCURRENT_CONNECTIONS: int | None = int(_max_concurrent_raw) if _max_concurrent_raw else None
 
 # Screen prefix validation
 SCREEN_PREFIX_MAX_CHARS = int(os.getenv("SCREEN_PREFIX_MAX_CHARS", "30"))
