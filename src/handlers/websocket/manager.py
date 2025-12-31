@@ -133,7 +133,8 @@ async def _handle_control_message(
             ws,
             {"type": "connection_closed", "reason": "client_request"},
         )
-        await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
+        with contextlib.suppress(Exception):
+            await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
         return True
     return False
 
@@ -284,9 +285,16 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         if lifecycle is not None:
             with contextlib.suppress(Exception):
                 await lifecycle.stop()
-        session_duration = await _cleanup_session(session_id)
+
+        session_duration = 0.0
+        try:
+            session_duration = await _cleanup_session(session_id)
+        except Exception:  # noqa: BLE001
+            logger.exception("WebSocket cleanup failed")
+
         if admitted:
-            await connections.disconnect(ws)
+            with contextlib.suppress(Exception):
+                await connections.disconnect(ws)
             remaining = connections.get_connection_count()
             logger.info("WebSocket connection closed. Active: %s", remaining)
             should_reset = (

@@ -39,16 +39,12 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
 
 from src.config import INFERENCE_ENGINE
 
 from .base import BaseEngine, EngineOutput, EngineNotReadyError, EngineShutdownError
 from .sampling import create_sampling_params
 from .warmup import warm_chat_engine, warm_classifier
-
-if TYPE_CHECKING:
-    pass
 
 
 async def get_engine() -> BaseEngine:

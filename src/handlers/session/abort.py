@@ -17,6 +17,7 @@ This is separated from the main SessionHandler to:
 from __future__ import annotations
 
 from src.config import DEPLOY_CHAT
+from ..instances import session_handler
 
 
 async def abort_session_requests(
@@ -40,9 +41,6 @@ async def abort_session_requests(
         Dict with 'active' and 'tool' keys containing the aborted request IDs.
         Empty strings if no requests were active.
     """
-    # Import here to avoid circular imports
-    from .manager import session_handler
-
     if not session_id:
         return {"active": "", "tool": ""}
 

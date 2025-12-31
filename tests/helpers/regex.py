@@ -7,15 +7,20 @@ sentence and time-to-first-N-words metrics.
 
 from __future__ import annotations
 
-import re
-
-# Heuristic: detect presence of a complete sentence terminator in the stream
-_SENTENCE_END_RE = re.compile(r'''[.!?](?:["')\]]+)?(?:\s|$)''')
+_TRAILING_CHARS = {'"', "'", ")", "]", "}"}
 
 
 def contains_complete_sentence(text: str) -> bool:
     """Return True if the text contains a complete sentence terminator."""
-    return _SENTENCE_END_RE.search(text) is not None
+    for idx, char in enumerate(text):
+        if char not in ".!?":
+            continue
+        cursor = idx + 1
+        while cursor < len(text) and text[cursor] in _TRAILING_CHARS:
+            cursor += 1
+        if cursor >= len(text) or text[cursor].isspace():
+            return True
+    return False
 
 
 def has_at_least_n_words(text: str, n: int) -> bool:

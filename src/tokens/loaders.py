@@ -13,14 +13,10 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING
 
 from tokenizers import Tokenizer
 
 from .source import TokenizerSource, TransformersTarget
-
-if TYPE_CHECKING:
-    pass
 
 
 logger = logging.getLogger(__name__)

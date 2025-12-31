@@ -26,10 +26,17 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from collections.abc import AsyncGenerator
 
-if TYPE_CHECKING:
+
+class EngineNotReadyError(Exception):
+    """Raised when the engine is not ready to serve requests."""
+    pass
+
+
+class EngineShutdownError(Exception):
+    """Raised when operations are attempted on a shutdown engine."""
     pass
 
 
@@ -170,16 +177,6 @@ class BaseEngine(ABC):
             True if caches were reset, False if not supported or failed.
         """
         return False
-
-
-class EngineNotReadyError(Exception):
-    """Raised when the engine is not ready to serve requests."""
-    pass
-
-
-class EngineShutdownError(Exception):
-    """Raised when operations are attempted on a shutdown engine."""
-    pass
 
 
 __all__ = [

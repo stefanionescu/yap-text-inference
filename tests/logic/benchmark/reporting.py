@@ -24,6 +24,30 @@ def _is_capacity_error(message: str | None) -> bool:
     return "server_at_capacity" in msg or "1013" in msg
 
 
+def _format_error_line(raw_error: str, all_errors: list[dict[str, Any]]) -> str:
+    message = raw_error or "unknown error"
+    normalized = message.lower()
+
+    if "authentication_failed" in normalized:
+        api_key = os.getenv("TEXT_API_KEY")
+        if api_key:
+            return "authentication_failed - provided TEXT_API_KEY was rejected"
+        return "authentication_failed - TEXT_API_KEY environment variable is missing"
+
+    if "server_at_capacity" in normalized:
+        capacity_errors = [err for err in all_errors if _is_capacity_error(err.get("error"))]
+        details: list[str] = []
+        if capacity_errors:
+            details.append(f"capacity_rejections={len(capacity_errors)}")
+        limit_env = os.getenv("MAX_CONCURRENT_CONNECTIONS")
+        if limit_env:
+            details.append(f"MAX_CONCURRENT_CONNECTIONS={limit_env}")
+        suffix = f" ({', '.join(details)})" if details else ""
+        return f"server_at_capacity. Details: {suffix}"
+
+    return message
+
+
 def print_report(
     url: str,
     requests: int,
@@ -48,28 +72,8 @@ def print_report(
         _print_tagged_section("second", [r for r in results if r.get("phase") == 2])
 
     if errs:
-        e = errs[0]
-        emsg = e.get("error", "unknown error")
-        print(f"example_error={emsg}")
-
-        if "authentication_failed" in emsg:
-            api_key = os.getenv("TEXT_API_KEY")
-            if api_key:
-                print(f"hint: Check TEXT_API_KEY environment variable (currently: '{api_key}')")
-            else:
-                print("hint: TEXT_API_KEY environment variable is required and must be set")
-        elif "server_at_capacity" in emsg:
-            print("hint: Server at capacity. Reduce concurrency (-c) or try again later.")
-
-        capacity_errors = [err for err in errs if _is_capacity_error(err.get("error"))]
-        if capacity_errors:
-            limit_env = os.getenv("MAX_CONCURRENT_CONNECTIONS")
-            limit_hint = f" (MAX_CONCURRENT_CONNECTIONS={limit_env})" if limit_env else ""
-            print(f"capacity_rejections={len(capacity_errors)}{limit_hint}")
-            print(
-                "Observation: The server refused extra sessions once concurrency hit its limit. "
-                "Lower --concurrency or add capacity if this is unexpected."
-            )
+        emsg = str(errs[0].get("error", "unknown error"))
+        print(f"ERROR: {_format_error_line(emsg, errs)}")
 
 
 def _print_tagged_section(tag: str, results: list[dict[str, Any]]) -> None:
@@ -103,5 +107,4 @@ def _print_latency_section(ok_results: Iterable[dict[str, Any]], prefix: str = "
         p50 = percentile(first_3_words, 0.5)
         p95 = percentile(first_3_words, 0.95, minus_one=True)
         print(f"{prefix}first_3_words_ms p50={p50:.1f} p95={p95:.1f}")
-
 
