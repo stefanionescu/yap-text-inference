@@ -62,11 +62,30 @@ KV_DTYPE = os.getenv("KV_DTYPE", "auto")  # 'auto'=fp16, 'fp8', 'int8'
 
 GPU_SM_ARCH = os.getenv("GPU_SM_ARCH", "")  # e.g., "sm89", "sm90"
 
+# ============================================================================
+# SM Architecture to Compute Capability Mapping
+# ============================================================================
+# Maps SM architecture strings to (compute_capability, architecture_note) tuples.
+# Used for README generation and compatibility checks.
+
+SM_COMPUTE_CAPABILITY: dict[str, tuple[str, str]] = {
+    "sm80": ("8.0", "Ampere / A100"),
+    "sm86": ("8.6", "Ampere / RTX 30 series"),
+    "sm89": ("8.9", "Ada Lovelace / RTX 40 series"),
+    "sm90": ("9.0", "Hopper / H100"),
+    "sm100": ("10.0", "Blackwell / B200"),
+}
+
+# Default compute capability info when SM arch is unknown
+DEFAULT_COMPUTE_CAPABILITY = ("8.9", "Ada Lovelace+")
+
 
 __all__ = [
     "CHAT_GPU_FRAC",
     "TOOL_GPU_FRAC",
     "KV_DTYPE",
     "GPU_SM_ARCH",
+    "SM_COMPUTE_CAPABILITY",
+    "DEFAULT_COMPUTE_CAPABILITY",
 ]
 

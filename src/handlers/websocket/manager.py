@@ -61,7 +61,7 @@ from ...config.websocket import (
     WS_CLOSE_CLIENT_REQUEST_CODE,
     WS_CLOSE_UNAUTHORIZED_CODE,
 )
-from ...engines import clear_all_engine_caches_on_disconnect, reset_engine_caches
+from ...engines import clear_caches_on_disconnect, reset_engine_caches
 from ...messages.cancel import handle_cancel_message
 from ...messages.chat_prompt import handle_chat_prompt
 from ...messages.followup import handle_followup_message
@@ -364,4 +364,4 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                         )
             if remaining == 0:
                 with contextlib.suppress(Exception):
-                    await clear_all_engine_caches_on_disconnect()
+                    await clear_caches_on_disconnect()

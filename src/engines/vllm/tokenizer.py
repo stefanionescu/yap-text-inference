@@ -10,11 +10,10 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 
 from src.helpers.model_profiles import get_model_profile
 from src.helpers.calibration import normalize_model_id
+from ..warnings import warn_once
 
 __all__ = ["inject_tokenizer_kwargs"]
 
-_TOKENIZER_WARNING_EMITTED = False
-_TOKENIZER_PATCH_WARNING_EMITTED = False
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
 _FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
 
@@ -40,8 +39,6 @@ def inject_tokenizer_kwargs(
     model_identifier: str | None,
 ) -> None:
     """Attach tokenizer kwargs if the installed vLLM supports them."""
-    global _TOKENIZER_WARNING_EMITTED
-
     if not tok_kwargs:
         return
     if _TOKENIZER_KWARG_KEY:
@@ -50,13 +47,11 @@ def inject_tokenizer_kwargs(
     if _patch_tokenizer(model_identifier, tok_kwargs):
         return
 
-    if not _TOKENIZER_WARNING_EMITTED:
-        keys = ", ".join(sorted(tok_kwargs.keys()))
-        print(
-            "[config] Warning: vLLM does not expose tokenizer kwargs; "
-            f"skipping tokenizer overrides ({keys or 'unknown keys'})."
-        )
-        _TOKENIZER_WARNING_EMITTED = True
+    keys = ", ".join(sorted(tok_kwargs.keys()))
+    warn_once(
+        "tokenizer_kwargs_unsupported",
+        f"vLLM does not expose tokenizer kwargs; skipping tokenizer overrides ({keys or 'unknown keys'}).",
+    )
 
 
 def _patch_tokenizer(model_identifier: str | None, tok_kwargs: dict[str, Any]) -> bool:
@@ -88,17 +83,15 @@ def _patch_tokenizer(model_identifier: str | None, tok_kwargs: dict[str, Any]) -
 
 def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
     """Monkeypatch AutoTokenizer to force fix_mistral_regex for specific models."""
-    global _FIX_MISTRAL_REGEX_PATCH_INSTALLED, _FIX_MISTRAL_REGEX_MARKERS, _TOKENIZER_PATCH_WARNING_EMITTED
+    global _FIX_MISTRAL_REGEX_PATCH_INSTALLED, _FIX_MISTRAL_REGEX_MARKERS
 
     try:
         from transformers import AutoTokenizer
     except Exception as exc:
-        if not _TOKENIZER_PATCH_WARNING_EMITTED:
-            print(
-                "[config] Warning: transformers not available to patch tokenizer "
-                f"kwargs fallback ({exc})."
-            )
-            _TOKENIZER_PATCH_WARNING_EMITTED = True
+        warn_once(
+            "transformers_import",
+            f"transformers not available to patch tokenizer kwargs fallback ({exc}).",
+        )
         return False
 
     markers = {m for m in markers if m}

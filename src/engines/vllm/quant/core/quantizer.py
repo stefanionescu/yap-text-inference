@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 from src.helpers.calibration import resolve_total_len, TotalLengthPolicy
-from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
+from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT, MOE_CALIBRATION_SAMPLES_LIMIT
 from ..utils import resolve_calibration_seqlen, is_awq_dir
 from ..utils.model_utils import (
     is_moe_model,
@@ -37,18 +37,6 @@ def compute_chat_calibration_seqlen(requested: int) -> int:
     return resolve_total_len(requested, CHAT_TOTAL_POLICY)
 
 
-def _read_positive_env(name: str, default: int) -> int:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    try:
-        value = int(raw)
-    except (TypeError, ValueError):
-        return default
-    return value if value > 0 else default
-
-
-_MOE_NSAMPLES_LIMIT = _read_positive_env("AWQ_MOE_NSAMPLES", 32)
 
 
 class AWQQuantizer:
@@ -104,7 +92,7 @@ class AWQQuantizer:
         if is_moe:
             calibration_kind = "Chat (MoE)"
 
-            capped_nsamples = min(self.config.nsamples, _MOE_NSAMPLES_LIMIT)
+            capped_nsamples = min(self.config.nsamples, MOE_CALIBRATION_SAMPLES_LIMIT)
             if capped_nsamples < self.config.nsamples:
                 print("[awq] MoE model detected")
                 print(f"[awq] Reducing calibration samples from {self.config.nsamples} to {capped_nsamples}...")

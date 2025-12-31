@@ -6,6 +6,8 @@ import os
 import time
 from typing import Any
 
+from src.config.limits import DOWNLOAD_MAX_RETRIES, DOWNLOAD_BACKOFF_MAX_SECONDS
+
 
 def is_awq_dir(path: str) -> bool:
     """Check if a directory contains a valid AWQ quantized model.
@@ -118,7 +120,7 @@ def prefetch_model(model_path: str) -> str | None:
 
     print(f"[awq] Fetching model from Hub...")
     last_err: Exception | None = None
-    for attempt in range(1, 4):
+    for attempt in range(1, DOWNLOAD_MAX_RETRIES + 1):
         try:
             resolved_model_path = snapshot_download(
                 repo_id=model_path,
@@ -130,9 +132,9 @@ def prefetch_model(model_path: str) -> str | None:
             break
         except Exception as dl_err:  # noqa: BLE001
             last_err = dl_err
-            backoff = min(2**attempt, 5)
-            print(f"[awq] Hub download failed (attempt {attempt}/3): {dl_err}")
-            if attempt < 3:
+            backoff = min(2**attempt, DOWNLOAD_BACKOFF_MAX_SECONDS)
+            print(f"[awq] Hub download failed (attempt {attempt}/{DOWNLOAD_MAX_RETRIES}): {dl_err}")
+            if attempt < DOWNLOAD_MAX_RETRIES:
                 print(f"[awq] Retrying in {backoff}s…")
                 time.sleep(backoff)
 

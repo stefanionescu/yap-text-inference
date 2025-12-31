@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -62,13 +63,51 @@ def detect_base_model(checkpoint_path: Path) -> str:
     return "unknown"
 
 
+@dataclass
+class _EnvironmentInfo:
+    """Container for environment-detected build information."""
+    sm_arch: str
+    trt_version: str
+    cuda_version: str
+    gpu_name: str = field(default_factory=detect_gpu_name)
+    
+    @classmethod
+    def from_env(cls) -> "_EnvironmentInfo":
+        """Load environment info, raising EngineLabelError if required vars missing."""
+        sm_arch = os.getenv("GPU_SM_ARCH")
+        if not sm_arch:
+            raise EngineLabelError(
+                "GPU_SM_ARCH not set. This should be exported by gpu_init_detection() "
+                "in scripts/lib/common/gpu_detect.sh."
+            )
+        
+        trt_version = os.getenv("TRT_VERSION") or detect_tensorrt_llm_version()
+        if not trt_version or trt_version == "unknown":
+            raise EngineLabelError(
+                "TRT_VERSION not set and tensorrt_llm not importable. "
+                "This should be set in scripts/lib/env/trt.sh."
+            )
+        
+        cuda_version = os.getenv("CUDA_VERSION") or detect_cuda_version()
+        if not cuda_version or cuda_version == "unknown":
+            raise EngineLabelError(
+                "CUDA_VERSION not set and nvcc not found. "
+                "Ensure CUDA is installed or CUDA_VERSION is exported."
+            )
+        
+        return cls(
+            sm_arch=sm_arch,
+            trt_version=trt_version,
+            cuda_version=cuda_version,
+        )
+    
+    def make_label(self) -> str:
+        """Generate the engine label string."""
+        return f"{self.sm_arch}_trt-llm-{self.trt_version}_cuda{self.cuda_version}"
+
+
 def get_engine_label(engine_path: Path) -> str:
     """Generate engine label from build metadata or environment variables.
-    
-    Uses environment variables that are already set by our shell scripts:
-    - GPU_SM_ARCH: Set by gpu_init_detection() in gpu_detect.sh
-    - TRT_VERSION: Set in scripts/lib/env/trt.sh
-    - CUDA_VERSION: Detected by trt_detect_cuda_version() or set in containers
     
     Args:
         engine_path: Path to TRT-LLM engine directory.
@@ -90,48 +129,148 @@ def get_engine_label(engine_path: Path) -> str:
             
             if sm and trt_ver and cuda_ver:
                 return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
-            # Metadata file exists but is incomplete - fall through to env vars
         except Exception:
             pass
     
-    # Use environment variables that are already set by our shell scripts
-    sm = os.getenv("GPU_SM_ARCH")
-    if not sm:
-        raise EngineLabelError(
-            "GPU_SM_ARCH not set. This should be exported by gpu_init_detection() "
-            "in scripts/lib/common/gpu_detect.sh. Ensure main.sh or restart.sh ran properly."
-        )
-    
-    trt_ver = os.getenv("TRT_VERSION")
-    if not trt_ver:
-        # Try runtime detection as backup
-        trt_ver = detect_tensorrt_llm_version()
-        if not trt_ver or trt_ver == "unknown":
-            raise EngineLabelError(
-                "TRT_VERSION not set and tensorrt_llm not importable. "
-                "This should be set in scripts/lib/env/trt.sh."
-            )
-    
-    cuda_ver = os.getenv("CUDA_VERSION")
-    if not cuda_ver:
-        # Try runtime detection as backup
-        cuda_ver = detect_cuda_version()
-        if not cuda_ver or cuda_ver == "unknown":
-            raise EngineLabelError(
-                "CUDA_VERSION not set and nvcc not found. "
-                "Ensure CUDA is installed or CUDA_VERSION is exported."
-            )
-    
-    return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
+    # Fall back to environment
+    env_info = _EnvironmentInfo.from_env()
+    return env_info.make_label()
 
 
 def _infer_kv_cache_dtype(quant_method: str) -> str:
+    """Infer KV cache dtype from quantization method."""
     env_override = os.getenv("TRT_KV_CACHE_DTYPE")
     if env_override:
         return env_override
     if "fp8" in (quant_method or "").lower():
         return "fp8"
     return "int8"
+
+
+def _infer_weight_bits(quant_method: str) -> str:
+    """Infer weight bit precision from quantization method."""
+    if "int4" in quant_method or "awq" in quant_method:
+        return "4"
+    if "int8" in quant_method:
+        return "8"
+    if "fp8" in quant_method:
+        return "8 (FP8)"
+    return "unknown"
+
+
+def _collect_base_metadata(
+    base_model: str,
+    repo_id: str,
+    quant_method: str,
+) -> dict[str, Any]:
+    """Collect basic model identification metadata."""
+    model_name = base_model if base_model else (repo_id.split("/")[-1] if "/" in repo_id else repo_id)
+    source_link = f"https://huggingface.co/{base_model}" if "/" in base_model else base_model
+    
+    return {
+        "base_model": base_model,
+        "repo_id": repo_id,
+        "model_name": model_name,
+        "source_model_link": source_link,
+        "quant_method": quant_method,
+        "quant_method_upper": quant_method.upper().replace("_", "-"),
+        "w_bit": _infer_weight_bits(quant_method),
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+    }
+
+
+def _collect_checkpoint_limits(checkpoint_path: Path) -> dict[str, Any]:
+    """Read build limits from checkpoint config.json."""
+    limits: dict[str, Any] = {}
+    config_path = checkpoint_path / "config.json"
+    
+    if config_path.is_file():
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            build_cfg = config.get("build_config", {})
+            limits["max_batch_size"] = build_cfg.get("max_batch_size", "N/A")
+            limits["max_input_len"] = build_cfg.get("max_input_len", "N/A")
+            limits["max_output_len"] = build_cfg.get("max_seq_len", "N/A")
+        except Exception:
+            pass
+    
+    return limits
+
+
+def _collect_env_metadata(
+    quant_method: str,
+    checkpoint_limits: dict[str, Any],
+) -> dict[str, Any]:
+    """Collect metadata from environment variables and runtime detection."""
+    env_info = _EnvironmentInfo.from_env()
+    
+    return {
+        "sm_arch": env_info.sm_arch,
+        "gpu_name": env_info.gpu_name,
+        "cuda_toolkit": env_info.cuda_version,
+        "tensorrt_llm_version": env_info.trt_version,
+        "kv_cache_dtype": _infer_kv_cache_dtype(quant_method),
+        "awq_block_size": _env_int("TRT_AWQ_BLOCK_SIZE", trt_config.TRT_AWQ_BLOCK_SIZE),
+        "calib_size": _env_int("TRT_CALIB_SIZE", trt_config.TRT_CALIB_SIZE),
+        "calib_seqlen": _env_int("TRT_CALIB_SEQLEN", trt_config.TRT_CALIB_SEQLEN),
+        "calib_batch_size": _env_int("TRT_CALIB_BATCH_SIZE", trt_config.TRT_CALIB_BATCH_SIZE),
+        "max_batch_size": _env_str(
+            "TRT_MAX_BATCH_SIZE",
+            str(checkpoint_limits.get("max_batch_size", trt_config.TRT_MAX_BATCH_SIZE or "N/A")),
+        ),
+        "max_input_len": _env_str(
+            "TRT_MAX_INPUT_LEN",
+            str(checkpoint_limits.get("max_input_len", trt_config.TRT_MAX_INPUT_LEN)),
+        ),
+        "max_output_len": _env_str(
+            "TRT_MAX_OUTPUT_LEN",
+            str(checkpoint_limits.get("max_output_len", trt_config.TRT_MAX_OUTPUT_LEN)),
+        ),
+    }
+
+
+def _apply_build_metadata_overrides(
+    metadata: dict[str, Any],
+    engine_path: Path,
+) -> None:
+    """Override metadata with values from build_metadata.json if available."""
+    if not engine_path.is_dir():
+        return
+    
+    meta_path = engine_path / "build_metadata.json"
+    if not meta_path.is_file():
+        return
+    
+    try:
+        build_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    
+    # Fields that can be overridden from build metadata
+    override_keys = [
+        ("sm_arch", "sm_arch"),
+        ("gpu_name", "gpu_name"),
+        ("cuda_toolkit", "cuda_toolkit"),
+        ("cuda_toolkit", "cuda_version"),  # Alternative key
+        ("tensorrt_llm_version", "tensorrt_llm_version"),
+        ("kv_cache_dtype", "kv_cache_dtype"),
+        ("awq_block_size", "awq_block_size"),
+        ("calib_size", "calib_size"),
+        ("calib_seqlen", "calib_seqlen"),
+        ("calib_batch_size", "calib_batch_size"),
+        ("max_batch_size", "max_batch_size"),
+        ("max_input_len", "max_input_len"),
+        ("max_output_len", "max_output_len"),
+        ("max_output_len", "max_seq_len"),  # Alternative key
+    ]
+    
+    for target_key, source_key in override_keys:
+        if source_key in build_meta and build_meta[source_key] is not None:
+            metadata[target_key] = build_meta[source_key]
+    
+    # Update compute capability info if sm_arch changed
+    if "sm_arch" in build_meta:
+        metadata.update(get_compute_capability_info(metadata["sm_arch"]))
 
 
 def collect_metadata(
@@ -153,113 +292,29 @@ def collect_metadata(
     Returns:
         Dictionary of metadata for template rendering.
     """
-    metadata = {
-        "base_model": base_model,
-        "repo_id": repo_id,
-        "model_name": base_model if base_model else (repo_id.split("/")[-1] if "/" in repo_id else repo_id),
-        "source_model_link": f"https://huggingface.co/{base_model}" if "/" in base_model else base_model,
-        "quant_method": quant_method,
-        "quant_method_upper": quant_method.upper().replace("_", "-"),
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-    }
+    # Collect base identification metadata
+    metadata = _collect_base_metadata(base_model, repo_id, quant_method)
     
-    # Detect w_bit from quant method
-    if "int4" in quant_method or "awq" in quant_method:
-        metadata["w_bit"] = "4"
-    elif "int8" in quant_method:
-        metadata["w_bit"] = "8"
-    elif "fp8" in quant_method:
-        metadata["w_bit"] = "8 (FP8)"
-    else:
-        metadata["w_bit"] = "unknown"
+    # Collect limits from checkpoint config
+    checkpoint_limits = _collect_checkpoint_limits(checkpoint_path)
+    metadata.update(checkpoint_limits)
     
-    # Read checkpoint config for build limits
-    config_path = checkpoint_path / "config.json"
-    if config_path.is_file():
-        try:
-            config = json.loads(config_path.read_text(encoding="utf-8"))
-            build_cfg = config.get("build_config", {})
-            metadata["max_batch_size"] = build_cfg.get("max_batch_size", "N/A")
-            metadata["max_input_len"] = build_cfg.get("max_input_len", "N/A")
-            metadata["max_output_len"] = build_cfg.get("max_seq_len", "N/A")
-        except Exception:
-            pass
+    # Collect environment/runtime metadata
+    env_metadata = _collect_env_metadata(quant_method, checkpoint_limits)
+    metadata.update(env_metadata)
     
-    # Get values from environment (set by our shell scripts) or runtime detection
-    sm_arch = os.getenv("GPU_SM_ARCH")
-    if not sm_arch:
-        raise EngineLabelError(
-            "GPU_SM_ARCH not set. This should be exported by gpu_init_detection() "
-            "in scripts/lib/common/gpu_detect.sh."
-        )
+    # Add compute capability info
+    metadata.update(get_compute_capability_info(metadata["sm_arch"]))
     
-    trt_version = os.getenv("TRT_VERSION") or detect_tensorrt_llm_version()
-    if not trt_version or trt_version == "unknown":
-        raise EngineLabelError(
-            "TRT_VERSION not set and tensorrt_llm not importable. "
-            "This should be set in scripts/lib/env/trt.sh."
-        )
-    
-    cuda_version = os.getenv("CUDA_VERSION") or detect_cuda_version()
-    if not cuda_version or cuda_version == "unknown":
-        raise EngineLabelError(
-            "CUDA_VERSION not set and nvcc not found. "
-            "Ensure CUDA is installed or CUDA_VERSION is exported."
-        )
-    
-    metadata.update({
-        "sm_arch": sm_arch,
-        "gpu_name": detect_gpu_name(),
-        "cuda_toolkit": cuda_version,
-        "tensorrt_llm_version": trt_version,
-        "kv_cache_dtype": _infer_kv_cache_dtype(quant_method),
-        "awq_block_size": _env_int("TRT_AWQ_BLOCK_SIZE", trt_config.TRT_AWQ_BLOCK_SIZE),
-        "calib_size": _env_int("TRT_CALIB_SIZE", trt_config.TRT_CALIB_SIZE),
-        "calib_seqlen": _env_int("TRT_CALIB_SEQLEN", trt_config.TRT_CALIB_SEQLEN),
-        "calib_batch_size": _env_int("TRT_CALIB_BATCH_SIZE", trt_config.TRT_CALIB_BATCH_SIZE),
-        "max_batch_size": _env_str(
-            "TRT_MAX_BATCH_SIZE",
-            str(metadata.get("max_batch_size", trt_config.TRT_MAX_BATCH_SIZE or "N/A")),
-        ),
-        "max_input_len": _env_str(
-            "TRT_MAX_INPUT_LEN",
-            str(metadata.get("max_input_len", trt_config.TRT_MAX_INPUT_LEN)),
-        ),
-        "max_output_len": _env_str(
-            "TRT_MAX_OUTPUT_LEN",
-            str(metadata.get("max_output_len", trt_config.TRT_MAX_OUTPUT_LEN)),
-        ),
-    })
-    metadata.update(get_compute_capability_info(sm_arch))
-    
-    # Override with build_metadata.json if available
+    # Generate engine label
     if engine_path.is_dir():
         metadata["engine_label"] = get_engine_label(engine_path)
-        meta_path = engine_path / "build_metadata.json"
-        if meta_path.is_file():
-            try:
-                meta = json.loads(meta_path.read_text(encoding="utf-8"))
-                sm_arch = meta.get("sm_arch", sm_arch)
-                metadata.update({
-                    "sm_arch": sm_arch,
-                    "gpu_name": meta.get("gpu_name", metadata["gpu_name"]),
-                    "cuda_toolkit": meta.get("cuda_toolkit", meta.get("cuda_version", metadata["cuda_toolkit"])),
-                    "tensorrt_llm_version": meta.get("tensorrt_llm_version", metadata["tensorrt_llm_version"]),
-                    "kv_cache_dtype": meta.get("kv_cache_dtype", metadata["kv_cache_dtype"]),
-                    "awq_block_size": meta.get("awq_block_size", metadata["awq_block_size"]),
-                    "calib_size": meta.get("calib_size", metadata["calib_size"]),
-                    "calib_seqlen": meta.get("calib_seqlen", metadata["calib_seqlen"]),
-                    "calib_batch_size": meta.get("calib_batch_size", metadata["calib_batch_size"]),
-                    "max_batch_size": meta.get("max_batch_size", metadata["max_batch_size"]),
-                    "max_input_len": meta.get("max_input_len", metadata["max_input_len"]),
-                    "max_output_len": meta.get("max_output_len", meta.get("max_seq_len", metadata["max_output_len"])),
-                })
-                metadata.update(get_compute_capability_info(sm_arch))
-            except Exception:
-                pass
+        # Apply any overrides from build_metadata.json
+        _apply_build_metadata_overrides(metadata, engine_path)
     else:
-        # Engine path doesn't exist yet - generate label from current environment
-        metadata["engine_label"] = f"{sm_arch}_trt-llm-{trt_version}_cuda{cuda_version}"
+        # Engine path doesn't exist yet - generate label from environment
+        env_info = _EnvironmentInfo.from_env()
+        metadata["engine_label"] = env_info.make_label()
     
     # Fetch license from the base model
     is_hf_model = "/" in base_model

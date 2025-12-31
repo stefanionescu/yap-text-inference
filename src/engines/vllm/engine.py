@@ -5,7 +5,7 @@ while preserving all existing functionality including cache management.
 
 Architecture:
     - VLLMEngine: BaseEngine implementation wrapping AsyncLLMEngine
-    - Singleton pattern with async-safe initialization via _ENGINE_LOCK
+    - Uses AsyncSingleton pattern for thread-safe initialization
     - Cache reset with rate limiting via _CACHE_RESET_LOCK and interval check
 
 Key Features:
@@ -48,14 +48,13 @@ from src.config import (
     DEPLOY_CHAT,
 )
 from ..base import BaseEngine, EngineOutput
+from ..singleton import AsyncSingleton
 from .args import make_engine_args
 from .fallback import create_engine_with_fallback
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton state
-_ENGINE: "VLLMEngine | None" = None  # Singleton engine instance
-_ENGINE_LOCK = asyncio.Lock()  # Guards engine initialization
+# Cache reset state (separate from engine singleton)
 _CACHE_RESET_LOCK = asyncio.Lock()  # Guards cache reset operations
 _CACHE_RESET_EVENT = asyncio.Event()  # Signals cache reset to daemon
 _LAST_CACHE_RESET = time.monotonic()  # For rate limiting resets
@@ -138,12 +137,12 @@ class VLLMEngine(BaseEngine):
             return False
 
 
-_VLLM_CACHE_RESET_METHODS = ("reset_mm_cache", "reset_prefix_cache")
+_CACHE_RESET_METHOD_NAMES = ("reset_mm_cache", "reset_prefix_cache")
 
 
 async def _reset_vllm_caches(engine: AsyncLLMEngine) -> None:
     """Best-effort reset of vLLM prefix and multimodal caches."""
-    for method_name in _VLLM_CACHE_RESET_METHODS:
+    for method_name in _CACHE_RESET_METHOD_NAMES:
         method = getattr(engine, method_name, None)
         if method is None:
             continue
@@ -156,41 +155,42 @@ async def _reset_vllm_caches(engine: AsyncLLMEngine) -> None:
 
 
 # ============================================================================
-# Global engine management (singleton pattern)
+# Global engine management (using AsyncSingleton pattern)
 # ============================================================================
-async def _ensure_engine() -> VLLMEngine:
-    """Ensure the vLLM engine is initialized."""
-    if not DEPLOY_CHAT:
-        raise RuntimeError("Chat engine requested but DEPLOY_CHAT=0")
-    global _ENGINE
-    if _ENGINE is not None:
-        return _ENGINE
-
-    async with _ENGINE_LOCK:
-        if _ENGINE is not None:
-            return _ENGINE
+class _VLLMEngineSingleton(AsyncSingleton[VLLMEngine]):
+    """Singleton manager for the vLLM engine."""
+    
+    async def _create_instance(self) -> VLLMEngine:
+        """Create the vLLM engine instance."""
+        if not DEPLOY_CHAT:
+            raise RuntimeError("Chat engine requested but DEPLOY_CHAT=0")
         if not CHAT_MODEL:
             raise RuntimeError("CHAT_MODEL is not configured; cannot start chat engine")
+        
         logger.info("vLLM: building chat engine (model=%s)", CHAT_MODEL)
         engine_args = make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN)
         raw_engine = create_engine_with_fallback(engine_args)
-        _ENGINE = VLLMEngine(raw_engine)
+        engine = VLLMEngine(raw_engine)
         logger.info("vLLM: chat engine ready")
-        return _ENGINE
+        return engine
+
+
+_engine_singleton = _VLLMEngineSingleton()
 
 
 async def get_engine() -> VLLMEngine:
     """Return the singleton chat engine instance."""
-    return await _ensure_engine()
+    return await _engine_singleton.get()
 
 
 async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
     """Reset prefix/MM caches if interval elapsed (or force)."""
     global _LAST_CACHE_RESET
 
-    engine = _ENGINE
-    if engine is None:
+    if not _engine_singleton.is_initialized:
         return False
+    
+    engine = await _engine_singleton.get()
 
     interval = CACHE_RESET_INTERVAL_SECONDS
     now = time.monotonic()
@@ -205,7 +205,6 @@ async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
         success = await engine.reset_caches(reason)
         if success:
             _LAST_CACHE_RESET = time.monotonic()
-
             _CACHE_RESET_EVENT.set()
         return success
 
@@ -222,19 +221,9 @@ def cache_reset_reschedule_event() -> asyncio.Event:
 
 async def shutdown_engine() -> None:
     """Shut down the chat engine if it has been initialized."""
-    global _ENGINE
-    engine = _ENGINE
-    if engine is None:
-        return
-
-    async with _ENGINE_LOCK:
-        engine = _ENGINE
-        if engine is None:
-            return
-        await engine.shutdown()
-        _ENGINE = None
+    await _engine_singleton.shutdown()
 
 
-async def clear_all_engine_caches_on_disconnect() -> None:
+async def clear_caches_on_disconnect() -> None:
     """Force cache reset when all clients disconnect."""
     await reset_engine_caches("all_clients_disconnected", force=True)
