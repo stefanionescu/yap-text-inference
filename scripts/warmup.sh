@@ -200,18 +200,6 @@ fi
 PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export PYTHONPATH
 
-wait_for_ready() {
-  local deadline=$((SECONDS + WARMUP_TIMEOUT_SECS))
-  local urls=("${SERVER_HEALTH_URLS[@]}")
-  while (( SECONDS <= deadline )); do
-    if bash "${WARMUP_HEALTH_CHECK_SCRIPT}" "${urls[@]}" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep "${WARMUP_HEALTH_POLL_INTERVAL_SECS}"
-  done
-  return 1
-}
-
 # Detect the maximum connection count from env overrides or config fallback.
 detect_max_conn() {
   if [[ -n "${MAX_CONCURRENT_CONNECTIONS:-}" ]]; then
@@ -293,12 +281,6 @@ run_with_retries() {
 
 write_lock
 trap cleanup_lock EXIT INT TERM
-
-log_warmup_file "Waiting for server readiness on ${SERVER_ADDR} (timeout ${WARMUP_TIMEOUT_SECS}s)..."
-if ! wait_for_ready; then
-  log_to_server "[warmup] ✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
-  exit 1
-fi
 
 if ! max_conn="$(detect_max_conn)"; then
   max_conn=""

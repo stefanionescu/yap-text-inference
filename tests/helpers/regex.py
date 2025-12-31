@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 
 # Heuristic: detect presence of a complete sentence terminator in the stream
-_SENTENCE_END_RE = re.compile(r"[.!?](?:[\""')\]]+)?(?:\s|$)")
+_SENTENCE_END_RE = re.compile(r'''[.!?](?:["')\]]+)?(?:\s|$)''')
 
 
 def contains_complete_sentence(text: str) -> bool:

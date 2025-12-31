@@ -10,11 +10,26 @@ source "${SCRIPT_DIR}/../lib/deps/venv.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
 source "${SCRIPT_DIR}/../lib/common/cuda.sh"
 source "${SCRIPT_DIR}/../lib/env/server.sh"
+source "${SCRIPT_DIR}/../lib/env/warmup.sh"
 
 # Validate CUDA 13.x for TRT before starting server
 ensure_cuda_ready_for_engine "server" || exit 1
 
 server_init_network_defaults
+warmup_init_defaults "${ROOT_DIR}" "${SCRIPT_DIR}/.."
+
+# Wait for server health with timeout. Exits with error if not healthy in time.
+wait_for_server_health() {
+  local deadline=$((SECONDS + WARMUP_TIMEOUT_SECS))
+  local urls=("${SERVER_HEALTH_URLS[@]}")
+  while (( SECONDS <= deadline )); do
+    if bash "${WARMUP_HEALTH_CHECK_SCRIPT}" "${urls[@]}" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "${WARMUP_HEALTH_POLL_INTERVAL_SECS}"
+  done
+  return 1
+}
 
 log_info "[server] Starting server on ${SERVER_BIND_ADDR} in background"
 cd "${ROOT_DIR}"
@@ -97,6 +112,19 @@ fi
 setsid "${CMD[@]}" >> "${ROOT_DIR}/server.log" 2>&1 &
 SERVER_PID=$!
 echo "${SERVER_PID}" > "${ROOT_DIR}/server.pid"
+
+log_info "[server] Waiting for server to become healthy (timeout ${WARMUP_TIMEOUT_SECS}s)..."
+
+if ! wait_for_server_health; then
+  log_err "[server] ✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
+  log_err "[server] Check logs: tail -f ${ROOT_DIR}/server.log"
+  # Kill the unhealthy server process
+  if [ -f "${ROOT_DIR}/server.pid" ]; then
+    kill -TERM "-$(cat "${ROOT_DIR}/server.pid")" 2>/dev/null || true
+    rm -f "${ROOT_DIR}/server.pid"
+  fi
+  exit 1
+fi
 
 log_info "[server] ✓ Server started"
 health_hint="${SERVER_HEALTH_URLS[0]:-http://${SERVER_ADDR}/healthz}"
