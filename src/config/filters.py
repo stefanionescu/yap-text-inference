@@ -45,6 +45,28 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 
 # ============================================================================
+# LLMCOMPRESSOR LOG NOISE PATTERNS
+# ============================================================================
+
+# Patterns for suppressing llmcompressor/AutoAWQ calibration progress output.
+# These match tqdm-style progress bars emitted during quantization calibration.
+LLMCOMPRESSOR_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # Checkpoint loading progress bars
+    re.compile(r"Loading checkpoint shards:\s*\d+%", re.IGNORECASE),
+    # Dataset generation/preprocessing progress bars
+    re.compile(r"Generating \w+ split:\s*\d+%", re.IGNORECASE),
+    re.compile(r"Preprocessing:\s*\d+%", re.IGNORECASE),
+    re.compile(r"Tokenizing:\s*\d+%", re.IGNORECASE),
+    # Calibration/quantization progress bars (with layer counter prefix)
+    re.compile(r"\(\d+/\d+\):\s*Calibrating:\s*\d+%", re.IGNORECASE),
+    re.compile(r"\(\d+/\d+\):\s*Propagating:\s*\d+%", re.IGNORECASE),
+    re.compile(r"Smoothing:\s*\d+%", re.IGNORECASE),
+    # Tokenizer regex warning from Mistral models
+    re.compile(r"tokenizer.*incorrect regex pattern.*fix_mistral_regex", re.IGNORECASE),
+)
+
+
+# ============================================================================
 # TEXT SANITIZATION PATTERNS
 # ============================================================================
 
@@ -129,6 +151,8 @@ __all__ = [
     "HF_ALL_GROUPS",
     # TRT-LLM log noise patterns
     "TRTLLM_NOISE_PATTERNS",
+    # LLMCompressor log noise patterns
+    "LLMCOMPRESSOR_NOISE_PATTERNS",
     # Text sanitization patterns
     "HTML_TAG_PATTERN",
     "EMOJI_PATTERN",

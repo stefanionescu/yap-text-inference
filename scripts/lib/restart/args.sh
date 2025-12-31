@@ -17,6 +17,7 @@ restart_parse_args() {
   HF_ENGINE_PUSH=0
   SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
   SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
+  SHOW_LLMCOMPRESSOR_LOGS="${SHOW_LLMCOMPRESSOR_LOGS:-0}"
   
   # Engine selection - default from environment or 'trt'
   INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}"
@@ -37,6 +38,14 @@ restart_parse_args() {
         ;;
       --no-show-trt-logs)
         SHOW_TRT_LOGS=0
+        shift
+        ;;
+      --show-llmcompressor-logs)
+        SHOW_LLMCOMPRESSOR_LOGS=1
+        shift
+        ;;
+      --no-show-llmcompressor-logs)
+        SHOW_LLMCOMPRESSOR_LOGS=0
         shift
         ;;
       both|chat|tool)
@@ -172,6 +181,6 @@ restart_parse_args() {
   export RECONFIG_CHAT_QUANTIZATION
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
-  export SHOW_HF_LOGS SHOW_TRT_LOGS
+  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_LLMCOMPRESSOR_LOGS
   return 0
 }
