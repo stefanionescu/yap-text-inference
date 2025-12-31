@@ -45,6 +45,26 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 
 # ============================================================================
+# VLLM LOG NOISE PATTERNS
+# ============================================================================
+
+# Patterns for suppressing vLLM engine initialization noise.
+# These match vLLM's bracketed log format and worker process output.
+VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # vLLM bracketed log format: INFO 12-31 19:07:25 [model.py:514] message
+    re.compile(r"^(?:INFO|WARNING|DEBUG)\s+\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+\[[\w.]+:\d+\]"),
+    # Worker process prefixed logs: (EngineCore_DP0 pid=60611) INFO ...
+    re.compile(r"^\(EngineCore_\w+\s+pid=\d+\)\s+(?:INFO|WARNING|DEBUG)\s+\d{2}-\d{2}"),
+    # CUDA graph capturing progress bars
+    re.compile(r"Capturing CUDA graphs.*\d+%", re.IGNORECASE),
+    # Safetensors/checkpoint loading progress bars
+    re.compile(r"Loading safetensors checkpoint shards:\s*\d+%", re.IGNORECASE),
+    # Empty worker process line (just prefix with no content)
+    re.compile(r"^\(EngineCore_\w+\s+pid=\d+\)\s*$"),
+)
+
+
+# ============================================================================
 # LLMCOMPRESSOR LOG NOISE PATTERNS
 # ============================================================================
 
@@ -151,6 +171,8 @@ __all__ = [
     "HF_ALL_GROUPS",
     # TRT-LLM log noise patterns
     "TRTLLM_NOISE_PATTERNS",
+    # vLLM log noise patterns
+    "VLLM_NOISE_PATTERNS",
     # LLMCompressor log noise patterns
     "LLMCOMPRESSOR_NOISE_PATTERNS",
     # Text sanitization patterns
