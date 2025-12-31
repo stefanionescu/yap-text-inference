@@ -27,12 +27,13 @@ from src.config.limits import (
 )
 from ..warnings import warn_once
 
-__all__ = [
-    "auto_max_num_seqs",
-    "configure_kv_cache",
-    "get_max_num_seqs_override",
-    "read_cuda_memory_snapshot",
-    "scale_batching_limits",
+
+# GPU memory thresholds -> baseline mappings (threshold_gib, baseline_value)
+# Ordered from smallest to largest threshold; first match wins
+_GPU_BASELINE_TIERS: list[tuple[float, int]] = [
+    (MAX_NUM_SEQS_GPU_THRESHOLD_SMALL, MAX_NUM_SEQS_BASELINE_SMALL),
+    (MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM, MAX_NUM_SEQS_BASELINE_MEDIUM),
+    (MAX_NUM_SEQS_GPU_THRESHOLD_LARGE, MAX_NUM_SEQS_BASELINE_LARGE),
 ]
 
 
@@ -103,15 +104,6 @@ def get_max_num_seqs_override() -> int | None:
     return None
 
 
-# GPU memory thresholds -> baseline mappings (threshold_gib, baseline_value)
-# Ordered from smallest to largest threshold; first match wins
-_GPU_BASELINE_TIERS: list[tuple[float, int]] = [
-    (MAX_NUM_SEQS_GPU_THRESHOLD_SMALL, MAX_NUM_SEQS_BASELINE_SMALL),
-    (MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM, MAX_NUM_SEQS_BASELINE_MEDIUM),
-    (MAX_NUM_SEQS_GPU_THRESHOLD_LARGE, MAX_NUM_SEQS_BASELINE_LARGE),
-]
-
-
 def _resolve_baseline_for_gpu_memory(total_gib: float, current_baseline: int) -> int:
     """Select the appropriate baseline based on GPU memory size."""
     for threshold, tier_baseline in _GPU_BASELINE_TIERS:
@@ -167,3 +159,11 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
     if normalized.startswith("fp8"):
         kwargs["calculate_kv_scales"] = True
 
+
+__all__ = [
+    "auto_max_num_seqs",
+    "configure_kv_cache",
+    "get_max_num_seqs_override",
+    "read_cuda_memory_snapshot",
+    "scale_batching_limits",
+]
