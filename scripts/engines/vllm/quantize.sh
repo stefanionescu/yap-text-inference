@@ -53,7 +53,7 @@ vllm_awq_quantize_chat_if_needed() {
     log_err "[quant] ✗ Quantization virtualenv missing (${python_bin}); run --install-deps to set up AWQ deps"
     return 1
   fi
-  if cd "${ROOT_DIR}" && "${python_bin}" -m src.engines.vllm.awq.quantize --model "${CHAT_MODEL}" --out "${out_dir}"; then
+  if cd "${ROOT_DIR}" && "${python_bin}" -m src.engines.vllm.quant.quantize --model "${CHAT_MODEL}" --out "${out_dir}"; then
     export CHAT_MODEL="${out_dir}"
     export CHAT_QUANTIZATION=awq
     vllm_awq_push_to_hf "${out_dir}"

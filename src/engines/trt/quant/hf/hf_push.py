@@ -2,7 +2,7 @@
 """Push TRT-LLM quantized model to HuggingFace.
 
 Usage:
-    python -m src.engines.trt.awq.hf.hf_push \\
+    python -m src.engines.trt.quant.hf.hf_push \\
         --checkpoint-dir /path/to/checkpoints \\
         --engine-dir /path/to/engines \\
         --repo-id owner/model-name-trt-awq \\

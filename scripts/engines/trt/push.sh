@@ -66,7 +66,7 @@ trt_push_to_hf() {
   local python_cmd=(
     "${python_exe}"
     "-W" "ignore::RuntimeWarning"
-    "-m" "src.engines.trt.awq.hf.hf_push"
+    "-m" "src.engines.trt.quant.hf.hf_push"
     "--checkpoint-dir" "${checkpoint_dir}"
     "--repo-id" "${HF_PUSH_REPO_ID}"
     "--token" "${token}"
@@ -170,7 +170,7 @@ trt_push_engine_to_hf() {
   local python_cmd=(
     "${python_exe}"
     "-W" "ignore::RuntimeWarning"
-    "-m" "src.engines.trt.awq.hf.hf_push"
+    "-m" "src.engines.trt.quant.hf.hf_push"
     "--engine-only"
     "--engine-dir" "${engine_dir}"
     "--repo-id" "${target_repo}"
