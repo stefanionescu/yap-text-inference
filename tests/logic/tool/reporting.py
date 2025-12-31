@@ -1,4 +1,9 @@
-"""Formatting and summary helpers for tool regression output."""
+"""Reporting and summary helpers for tool regression test output.
+
+This module provides functions for formatting and printing test results,
+computing summary statistics, and saving logs to files. It handles both
+console output and structured log file generation.
+"""
 
 from __future__ import annotations
 
@@ -9,10 +14,9 @@ from typing import Iterator, Sequence
 
 from .types import CaseResult
 
-__all__ = ["print_case_results", "print_summary", "format_case_results", "format_summary", "save_logs"]
-
 
 def _format_case_summary(result: CaseResult) -> str:
+    """Format a single case result as a one-line summary."""
     status = "PASS" if result.success else "FAIL"
     reason = ""
     # Only include the failure reason to keep successful output concise.
@@ -22,6 +26,7 @@ def _format_case_summary(result: CaseResult) -> str:
 
 
 def _iter_response_lines(result: CaseResult) -> Iterator[str]:
+    """Iterate over formatted response lines for a case result."""
     responses = result.responses or []
     if not responses:
         return iter(())
@@ -41,6 +46,7 @@ def _iter_response_lines(result: CaseResult) -> Iterator[str]:
 
 
 def _print_case_block(title: str, results: Sequence[CaseResult]) -> None:
+    """Print a block of case results with a title."""
     if not results:
         return
 
@@ -60,6 +66,7 @@ def _print_case_block(title: str, results: Sequence[CaseResult]) -> None:
 
 
 def print_case_results(results: Sequence[CaseResult], *, include_successes: bool = False) -> None:
+    """Print case results to stdout."""
     if include_successes:
         _print_case_block("=== Results ===", results)
         return
@@ -69,6 +76,7 @@ def print_case_results(results: Sequence[CaseResult], *, include_successes: bool
 
 
 def print_summary(results: Sequence[CaseResult]) -> None:
+    """Print summary statistics to stdout."""
     total = len(results)
     passed = sum(1 for r in results if r.success)
     failed = total - passed
@@ -89,6 +97,7 @@ def print_summary(results: Sequence[CaseResult]) -> None:
 
 
 def _print_latency_summary(results: Sequence[CaseResult]) -> None:
+    """Print latency statistics from step timings."""
     ttfb_samples: list[float] = []
     total_samples: list[float] = []
     for result in results:
@@ -109,6 +118,7 @@ def _print_latency_summary(results: Sequence[CaseResult]) -> None:
 
 
 def _print_latency_line(label: str, samples: list[float]) -> None:
+    """Print a single latency statistics line."""
     if not samples:
         print(f"  {label}: no samples")
         return
@@ -122,6 +132,7 @@ def _print_latency_line(label: str, samples: list[float]) -> None:
 
 
 def _percentile(sorted_values: list[float], percentile: float) -> float:
+    """Compute the given percentile from sorted values."""
     if not sorted_values:
         raise ValueError("percentile requires at least one value")
     if len(sorted_values) == 1:
@@ -285,3 +296,5 @@ def save_logs(
     
     return str(log_file)
 
+
+__all__ = ["print_case_results", "print_summary", "format_case_results", "format_summary", "save_logs"]

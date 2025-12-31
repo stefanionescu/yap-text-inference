@@ -1,3 +1,11 @@
+"""Base persona prompt templates and reusable building blocks.
+
+This module defines the core building blocks used to construct persona prompts:
+identity rules, tone guidelines, message formatting constraints, and the
+complete Anna (female) and Mark (male) base prompts. These templates are
+combined with personality-specific blocks to create full persona definitions.
+"""
+
 # =============================================================================
 # REUSABLE BUILDING BLOCKS
 # =============================================================================

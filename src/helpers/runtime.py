@@ -62,9 +62,4 @@ def configure_runtime_env(*, force: bool = False) -> None:
     _ENV_CONFIGURED = True
 
 
-# Auto-configure only when explicitly enabled via env flag
-if env_flag(_AUTO_CONFIG_FLAG, False):
-    configure_runtime_env()
-
-
 __all__ = ["configure_runtime_env"]

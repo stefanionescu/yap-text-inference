@@ -1,3 +1,10 @@
+"""Time-to-first-byte aggregation utilities.
+
+This module provides the TTFBAggregator class that accumulates TTFB samples
+across multiple requests and computes summary statistics (p50, p90, p95).
+Used by warmup and conversation tests to report latency metrics.
+"""
+
 from __future__ import annotations
 
 import math
@@ -6,6 +13,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 
 def _percentile(samples: Sequence[float], frac: float) -> float:
+    """Compute the given percentile (0-1) from sorted samples."""
     if not samples:
         raise ValueError("percentile requires at least one sample")
     if frac <= 0:
@@ -23,6 +31,7 @@ def _percentile(samples: Sequence[float], frac: float) -> float:
 
 
 def _coerce(value: Any) -> float | None:
+    """Coerce a value to float or return None."""
     if value is None:
         return None
     return float(value)
@@ -36,6 +45,7 @@ class TTFBAggregator:
     chat_samples: list[float] = field(default_factory=list)
 
     def record(self, metrics: Mapping[str, Any]) -> None:
+        """Record TTFB values from a metrics dict."""
         tool = _coerce(metrics.get("ttfb_toolcall_ms"))
         chat = _coerce(metrics.get("ttfb_chat_ms"))
         if tool is not None:
@@ -44,9 +54,11 @@ class TTFBAggregator:
             self.chat_samples.append(chat)
 
     def has_samples(self) -> bool:
+        """Return True if any samples have been recorded."""
         return bool(self.tool_samples or self.chat_samples)
 
     def emit(self, sink: Callable[[str], None], *, label: str = "TTFB") -> None:
+        """Emit summary statistics to the provided sink function."""
         for kind, samples in (("TOOL", self.tool_samples), ("CHAT", self.chat_samples)):
             if not samples:
                 continue
@@ -65,6 +77,7 @@ class TTFBAggregator:
 
 
 def _build_stats(samples: Sequence[float]) -> dict[str, float | int]:
+    """Build a stats dict from a sequence of samples."""
     count = len(samples)
     return {
         "count": count,

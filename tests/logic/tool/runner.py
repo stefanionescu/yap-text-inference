@@ -1,23 +1,19 @@
-"""Core execution orchestration for the tool regression suite."""
+"""Core execution orchestration for the tool regression suite.
+
+This module provides the run_suite function that orchestrates the entire
+tool test run: loading cases, filtering by step count, executing with
+concurrency, and reporting results.
+"""
 
 from __future__ import annotations
 
-import os
-import sys
-
-_TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _TEST_DIR not in sys.path:
-    sys.path.insert(0, _TEST_DIR)
-
-from tests.helpers.prompt import select_chat_prompt  # noqa: E402
-from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT  # noqa: E402
+from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
+from tests.helpers.prompt import select_chat_prompt
 
 from .cases import build_cases
 from .executor import run_all_cases
 from .reporting import print_case_results, print_summary, save_logs
 from .types import CaseResult, RunnerConfig, ToolTestCase
-
-__all__ = ["run_suite"]
 
 
 async def run_suite(
@@ -34,6 +30,20 @@ async def run_suite(
 ) -> list[CaseResult]:
     """
     Execute the tool-call regression suite and print per-case + summary output.
+
+    Args:
+        ws_url: WebSocket URL with API key included.
+        gender: Assistant gender for persona selection.
+        personality: Assistant personality.
+        timeout_s: Per-turn timeout in seconds.
+        concurrency: Maximum concurrent test cases.
+        limit: Optional limit on number of cases to run.
+        show_successes: Include passing cases in output.
+        skip_chat_prompt: Skip sending chat prompts.
+        max_steps_per_case: Skip cases with more steps than this.
+
+    Returns:
+        List of CaseResult objects for all executed cases.
     """
 
     cases = build_cases()
@@ -117,3 +127,6 @@ async def run_suite(
     print(f"\nLogs saved to: {log_file}")
     
     return results
+
+
+__all__ = ["run_suite"]

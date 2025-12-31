@@ -1,19 +1,20 @@
+"""Warmup test runner for single-request server testing.
+
+This module provides the run_once function that connects to the WebSocket
+server, sends a single request, streams the response, and reports timing
+metrics. Used for quick server health checks and warmup validation.
+"""
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import os
-import sys
 import uuid
 from typing import Any
 
 import websockets
-
-# Add test directory to path for imports
-_test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _test_dir not in sys.path:
-    sys.path.insert(0, _test_dir)
 
 from tests.config import (
     DEFAULT_GENDER,
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 async def run_once(args) -> None:
+    """Execute a single warmup request and report metrics."""
     server_ws_url = args.server or os.getenv("SERVER_WS_URL", DEFAULT_SERVER_WS_URL)
     api_key = args.api_key or os.getenv("TEXT_API_KEY")
     if not api_key:
@@ -95,6 +97,7 @@ def _build_start_payload(
     user_msg: str,
     sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
+    """Build the start message payload."""
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
@@ -118,6 +121,7 @@ async def _stream_session(
     api_key: str,
     phase_label: str | None = None,
 ) -> None:
+    """Stream and log the server response."""
     handlers = _build_stream_handlers(tracker, api_key, phase_label)
     done_seen = False
     try:
@@ -141,6 +145,7 @@ async def _stream_session(
 
 
 def _build_stream_handlers(tracker: StreamTracker, api_key: str, phase_label: str | None):
+    """Build message type handlers for stream processing."""
     return {
         "ack": lambda msg: _handle_ack(msg, tracker, phase_label),
         "toolcall": lambda msg: (_handle_toolcall(msg, tracker, phase_label) or True),
@@ -152,11 +157,13 @@ def _build_stream_handlers(tracker: StreamTracker, api_key: str, phase_label: st
 
 
 def _log_unknown_message(msg: dict[str, Any], phase_label: str | None) -> bool:
+    """Log unknown message types at debug level."""
     logger.debug("%sIgnoring message type=%s payload=%s", _phase_prefix(phase_label), msg.get("type"), msg)
     return True
 
 
 def _handle_ack(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> bool:
+    """Handle ACK messages."""
     ack_for = msg.get("for")
     if ack_for == "start":
         tracker.ack_seen = True
@@ -170,6 +177,7 @@ def _handle_ack(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | 
 
 
 def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
+    """Handle toolcall messages and log TTFB."""
     status = msg.get("status")
     logger.info("%sTOOLCALL status=%s raw=%s", _phase_prefix(phase_label), status, msg.get("raw"))
     ttfb_ms = tracker.record_toolcall()
@@ -178,6 +186,7 @@ def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker, phase_label: s
 
 
 def _handle_token(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
+    """Handle token messages and log timing metrics."""
     chunk = msg.get("text", "")
     metrics = tracker.record_token(chunk)
     chat_ttfb = metrics.get("chat_ttfb_ms")
@@ -192,12 +201,14 @@ def _handle_token(msg: dict[str, Any], tracker: StreamTracker, phase_label: str 
 
 
 def _handle_final(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
+    """Handle final messages with normalized text."""
     normalized = msg.get("normalized_text") or tracker.final_text
     if normalized:
         tracker.final_text = normalized
 
 
 def _handle_done(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
+    """Handle done messages and log final metrics."""
     cancelled = bool(msg.get("cancelled"))
     metrics_payload = {"type": "metrics", **tracker.finalize_metrics(cancelled)}
     final_text_payload = {"type": "final_text", "text": tracker.final_text}
@@ -210,6 +221,7 @@ def _handle_done(msg: dict[str, Any], tracker: StreamTracker, phase_label: str |
 
 
 def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) -> None:
+    """Handle error messages with helpful hints."""
     error_code = msg.get("error_code", "")
     error_message = msg.get("message", "unknown error")
     logger.error("%sServer error %s: %s", _phase_prefix(phase_label), error_code, error_message)
@@ -220,4 +232,8 @@ def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) ->
 
 
 def _phase_prefix(phase_label: str | None) -> str:
+    """Return a log prefix for multi-phase transactions."""
     return f"[{phase_label}] " if phase_label else ""
+
+
+__all__ = ["run_once"]

@@ -1,29 +1,28 @@
-"""Shared dataclasses for the tool regression suite."""
+"""Data types for the tool regression test suite.
+
+This module defines the dataclasses used throughout the tool test infrastructure:
+test case definitions, runner configuration, turn results, timing metrics,
+failure records, and overall case results.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Sequence
 
-__all__ = [
-    "CaseStep",
-    "ToolTestCase",
-    "RunnerConfig",
-    "TurnResult",
-    "StepTiming",
-    "FailureRecord",
-    "CaseResult",
-]
-
 
 @dataclass(frozen=True)
 class CaseStep:
+    """A single step in a tool test case."""
+
     text: str
     expect_tool: bool | None = None
 
 
 @dataclass(frozen=True)
 class ToolTestCase:
+    """A complete tool test case with one or more steps."""
+
     uid: int
     name: str
     label: str
@@ -32,6 +31,8 @@ class ToolTestCase:
 
 @dataclass(frozen=True)
 class RunnerConfig:
+    """Configuration for the tool test runner."""
+
     ws_url: str
     gender: str
     personality: str
@@ -43,6 +44,8 @@ class RunnerConfig:
 
 @dataclass(frozen=True)
 class TurnResult:
+    """Result of a single turn in a tool test case."""
+
     ok: bool
     tool_called: bool | None
     tool_status: str | None
@@ -56,6 +59,8 @@ class TurnResult:
 
 @dataclass(frozen=True)
 class StepTiming:
+    """Timing metrics for a single step."""
+
     step_index: int
     ttfb_ms: float | None
     total_ms: float | None
@@ -63,6 +68,8 @@ class StepTiming:
 
 @dataclass(frozen=True)
 class FailureRecord:
+    """Details about a single failure within a test case."""
+
     reason: str
     detail: str
     failing_step: int
@@ -72,6 +79,8 @@ class FailureRecord:
 
 @dataclass(frozen=True)
 class CaseResult:
+    """Overall result for a complete test case."""
+
     case: ToolTestCase
     success: bool
     reason: str | None = None
@@ -83,3 +92,13 @@ class CaseResult:
     step_timings: list[StepTiming] | None = None
     failures: list[FailureRecord] | None = None
 
+
+__all__ = [
+    "CaseStep",
+    "ToolTestCase",
+    "RunnerConfig",
+    "TurnResult",
+    "StepTiming",
+    "FailureRecord",
+    "CaseResult",
+]

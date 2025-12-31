@@ -1,30 +1,30 @@
+"""Benchmark runner for WebSocket /ws endpoint performance testing.
+
+This module orchestrates concurrent benchmark runs against the inference server.
+It supports both instant mode (all requests at once) and windowed burst mode
+(batched requests with configurable delays). Metrics collected include tool
+TTFB, chat TTFB, time to first sentence, and time to first 3 words.
+"""
+
 from __future__ import annotations
 
 import asyncio
 import json
-import os
-import sys
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
 import websockets
 
+from tests.config import BENCHMARK_FALLBACK_MESSAGE, DEFAULT_PERSONALITIES
 from tests.helpers.message import iter_messages
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.regex import contains_complete_sentence, has_at_least_n_words
 from tests.helpers.util import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
+
 from .reporting import print_report
-
-# Ensure prompts/config modules are importable when running as script
-_TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _TEST_DIR not in sys.path:
-    sys.path.insert(0, _TEST_DIR)
-
-import time
-
-from tests.config import BENCHMARK_FALLBACK_MESSAGE, DEFAULT_PERSONALITIES  # noqa: E402
 
 
 @dataclass
@@ -78,6 +78,7 @@ def _build_start_payload(
     message: str,
     sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
+    """Build the start message payload for a benchmark request."""
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
@@ -95,6 +96,7 @@ def _build_start_payload(
 
 
 async def _consume_stream(ws, tracker: _StreamTracker) -> dict[str, Any]:
+    """Consume the response stream and update the tracker with metrics."""
     async for msg in iter_messages(ws):
         msg_type = msg.get("type")
 
@@ -121,6 +123,7 @@ async def _consume_stream(ws, tracker: _StreamTracker) -> dict[str, Any]:
 
 
 def _error_from_message(msg: dict[str, Any]) -> dict[str, Any]:
+    """Extract error information from an error message."""
     error_code = msg.get("error_code", "")
     error_message = msg.get("message", "unknown error")
     if error_code:
@@ -139,6 +142,7 @@ async def _one_connection(
     sampling: dict[str, float | int] | None,
     double_ttfb: bool,
 ) -> list[dict[str, Any]]:
+    """Execute one or two transactions over a single WebSocket connection."""
     phases = 2 if double_ttfb else 1
     results: list[dict[str, Any]] = []
 
@@ -182,6 +186,7 @@ async def _send_transaction(
     sampling: dict[str, float | int] | None,
     phase: int,
 ) -> dict[str, Any]:
+    """Send a single start message and consume the response."""
     session_id = str(uuid.uuid4())
     start_payload = _build_start_payload(
         session_id,
@@ -211,6 +216,7 @@ async def _worker(
     sampling: dict[str, float | int] | None,
     double_ttfb: bool,
 ) -> list[dict[str, Any]]:
+    """Worker that executes multiple sequential connections."""
     out: list[dict[str, Any]] = []
     for _ in range(num):
         out.extend(
@@ -230,6 +236,7 @@ async def _worker(
 
 
 async def run_benchmark(args) -> None:
+    """Main benchmark entry point - parse args and execute the benchmark."""
     (
         url,
         api_key,
@@ -273,18 +280,21 @@ async def run_benchmark(args) -> None:
 def _extract_session_options(
     args,
 ) -> tuple[str, str | None, str, str, str, dict[str, float | int] | None]:
+    """Extract session options from parsed CLI arguments."""
     message = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
     sampling = getattr(args, "sampling", None) or None
     return args.server, args.api_key, args.gender, args.personality, message, sampling
 
 
 def _sanitize_workload_args(requests: int, concurrency: int) -> tuple[int, int]:
+    """Ensure request and concurrency values are valid."""
     safe_requests = max(1, requests)
     safe_concurrency = max(1, min(concurrency, safe_requests))
     return safe_requests, safe_concurrency
 
 
 def _distribute_requests(requests: int, concurrency: int) -> list[int]:
+    """Distribute requests across workers as evenly as possible."""
     base, rem = divmod(requests, concurrency)
     return [base + (1 if i < rem else 0) for i in range(concurrency)]
 
@@ -301,6 +311,7 @@ def _launch_worker_tasks(
     sampling: dict[str, float | int] | None,
     double_ttfb: bool,
 ) -> list[asyncio.Task[list[dict[str, Any]]]]:
+    """Launch worker tasks for the given request distribution."""
     tasks: list[asyncio.Task[list[dict[str, Any]]]] = []
     for count in counts:
         if count <= 0:
@@ -420,3 +431,6 @@ async def _run_windowed_benchmark(
                 await asyncio.sleep(sleep_time)
 
     return results
+
+
+__all__ = ["run_benchmark"]

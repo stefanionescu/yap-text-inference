@@ -1,3 +1,11 @@
+"""Default constants and persona variants for test utilities.
+
+This module contains hardcoded defaults for benchmarks, personality tests,
+sampling parameters, and persona variants. These values are used when no
+environment override is provided and serve as the baseline configuration
+for all test scripts.
+"""
+
 from __future__ import annotations
 
 try:  # When /tests is on sys.path
@@ -95,5 +103,3 @@ __all__ = [
     "CHAT_PRESENCE_PENALTY_DEFAULT",
     "CHAT_FREQUENCY_PENALTY_DEFAULT",
 ]
-
-

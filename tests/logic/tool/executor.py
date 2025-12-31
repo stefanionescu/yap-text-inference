@@ -1,4 +1,9 @@
-"""Websocket execution utilities for tool regression tests."""
+"""WebSocket execution utilities for tool regression tests.
+
+This module provides the core execution logic for running tool test cases over
+WebSocket connections. It handles connection management, message sending,
+response draining, and result collection with configurable concurrency.
+"""
 
 from __future__ import annotations
 
@@ -33,8 +38,6 @@ from .types import (
 
 STEP_WINDOW_SECONDS = max(0.0, float(TOOL_WS_MESSAGE_WINDOW_SECONDS))
 STEP_MAX_PER_WINDOW = max(0, int(TOOL_WS_MAX_MESSAGES_PER_WINDOW))
-
-__all__ = ["run_all_cases"]
 
 
 def _tool_status_to_bool(status: str | None) -> bool | None:
@@ -544,3 +547,5 @@ async def run_all_cases(
 
     return [r for r in results if r is not None]
 
+
+__all__ = ["run_all_cases"]

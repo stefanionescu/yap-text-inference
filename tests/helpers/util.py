@@ -1,3 +1,10 @@
+"""Miscellaneous utility functions for test scripts.
+
+This module provides general-purpose helpers that don't fit neatly into
+other test helper modules, such as message selection from CLI arguments
+or canned defaults.
+"""
+
 from __future__ import annotations
 
 import random
@@ -33,5 +40,3 @@ def choose_message(
 
 
 __all__ = ["choose_message"]
-
-

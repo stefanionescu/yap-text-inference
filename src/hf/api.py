@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # pragma: no cover - optional dependency
     from huggingface_hub import HfApi
 
-__all__ = ["get_hf_api", "create_repo_if_needed", "verify_repo_exists"]
-
 
 def get_hf_api(token: str) -> "HfApi | None":
     """Return an authenticated HfApi client, or None if unavailable."""
@@ -43,3 +41,6 @@ def verify_repo_exists(api: "HfApi", repo_id: str, token: str) -> bool:
     except Exception as exc:  # noqa: BLE001
         print(f"[hf] Error: Repository {repo_id} unavailable: {exc}")
         return False
+
+
+__all__ = ["get_hf_api", "create_repo_if_needed", "verify_repo_exists"]
