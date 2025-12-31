@@ -45,7 +45,7 @@ from src.config import (
 )
 from ..base import BaseEngine, EngineOutput, EngineNotReadyError
 from ..singleton import AsyncSingleton
-from .config import (
+from .setup import (
     build_kv_cache_config,
     read_checkpoint_model_type,
     validate_runtime_batch_size,

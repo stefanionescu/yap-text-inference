@@ -1,4 +1,13 @@
-"""Metadata collection for TRT-LLM quantized models."""
+"""Metadata collection for TRT-LLM quantized models.
+
+This module provides utilities for:
+1. Base model detection from checkpoint configs
+2. Engine label generation for HuggingFace repo organization
+3. Full metadata collection for README rendering
+
+Engine labels follow the format: {sm_arch}_trt-llm-{version}_cuda{version}
+Example: sm90_trt-llm-0.17.0_cuda12.8
+"""
 
 from __future__ import annotations
 
@@ -12,17 +21,32 @@ from typing import Any
 from src.config import trt as trt_config
 from src.helpers.templates import compute_license_info
 
-from ..utils.detection import (
+from .detection import (
     detect_cuda_version,
     detect_gpu_name,
     detect_tensorrt_llm_version,
     get_compute_capability_info,
 )
 
+__all__ = [
+    "EngineLabelError",
+    "collect_metadata",
+    "detect_base_model",
+    "get_engine_label",
+]
+
+
+# ============================================================================
+# Exceptions
+# ============================================================================
 
 class EngineLabelError(Exception):
     """Raised when engine label cannot be determined."""
-    
+
+
+# ============================================================================
+# Environment Helpers
+# ============================================================================
 
 def _env_int(name: str, default: int | None) -> int | None:
     """Get int from env var, handling empty strings."""
@@ -41,12 +65,16 @@ def _env_str(name: str, default: str) -> str:
     return val if val else default
 
 
+# ============================================================================
+# Base Model Detection
+# ============================================================================
+
 def detect_base_model(checkpoint_path: Path) -> str:
     """Detect base model from checkpoint config.
-    
+
     Args:
         checkpoint_path: Path to TRT-LLM checkpoint directory.
-        
+
     Returns:
         Base model ID or "unknown".
     """
@@ -63,14 +91,19 @@ def detect_base_model(checkpoint_path: Path) -> str:
     return "unknown"
 
 
+# ============================================================================
+# Environment Info
+# ============================================================================
+
 @dataclass
 class _EnvironmentInfo:
     """Container for environment-detected build information."""
+
     sm_arch: str
     trt_version: str
     cuda_version: str
     gpu_name: str = field(default_factory=detect_gpu_name)
-    
+
     @classmethod
     def from_env(cls) -> "_EnvironmentInfo":
         """Load environment info, raising EngineLabelError if required vars missing."""
@@ -80,41 +113,45 @@ class _EnvironmentInfo:
                 "GPU_SM_ARCH not set. This should be exported by gpu_init_detection() "
                 "in scripts/lib/common/gpu_detect.sh."
             )
-        
+
         trt_version = os.getenv("TRT_VERSION") or detect_tensorrt_llm_version()
         if not trt_version or trt_version == "unknown":
             raise EngineLabelError(
                 "TRT_VERSION not set and tensorrt_llm not importable. "
                 "This should be set in scripts/lib/env/trt.sh."
             )
-        
+
         cuda_version = os.getenv("CUDA_VERSION") or detect_cuda_version()
         if not cuda_version or cuda_version == "unknown":
             raise EngineLabelError(
                 "CUDA_VERSION not set and nvcc not found. "
                 "Ensure CUDA is installed or CUDA_VERSION is exported."
             )
-        
+
         return cls(
             sm_arch=sm_arch,
             trt_version=trt_version,
             cuda_version=cuda_version,
         )
-    
+
     def make_label(self) -> str:
         """Generate the engine label string."""
         return f"{self.sm_arch}_trt-llm-{self.trt_version}_cuda{self.cuda_version}"
 
 
+# ============================================================================
+# Engine Label
+# ============================================================================
+
 def get_engine_label(engine_path: Path) -> str:
     """Generate engine label from build metadata or environment variables.
-    
+
     Args:
         engine_path: Path to TRT-LLM engine directory.
-        
+
     Returns:
         Engine label string (e.g., "sm90_trt-llm-0.17.0_cuda12.8").
-        
+
     Raises:
         EngineLabelError: If required values cannot be determined.
     """
@@ -126,16 +163,20 @@ def get_engine_label(engine_path: Path) -> str:
             sm = meta.get("sm_arch")
             trt_ver = meta.get("tensorrt_llm_version")
             cuda_ver = meta.get("cuda_toolkit") or meta.get("cuda_version")
-            
+
             if sm and trt_ver and cuda_ver:
                 return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
         except Exception:
             pass
-    
+
     # Fall back to environment
     env_info = _EnvironmentInfo.from_env()
     return env_info.make_label()
 
+
+# ============================================================================
+# Metadata Inference
+# ============================================================================
 
 def _infer_kv_cache_dtype(quant_method: str) -> str:
     """Infer KV cache dtype from quantization method."""
@@ -158,6 +199,10 @@ def _infer_weight_bits(quant_method: str) -> str:
     return "unknown"
 
 
+# ============================================================================
+# Metadata Collection
+# ============================================================================
+
 def _collect_base_metadata(
     base_model: str,
     repo_id: str,
@@ -166,7 +211,7 @@ def _collect_base_metadata(
     """Collect basic model identification metadata."""
     model_name = base_model if base_model else (repo_id.split("/")[-1] if "/" in repo_id else repo_id)
     source_link = f"https://huggingface.co/{base_model}" if "/" in base_model else base_model
-    
+
     return {
         "base_model": base_model,
         "repo_id": repo_id,
@@ -183,7 +228,7 @@ def _collect_checkpoint_limits(checkpoint_path: Path) -> dict[str, Any]:
     """Read build limits from checkpoint config.json."""
     limits: dict[str, Any] = {}
     config_path = checkpoint_path / "config.json"
-    
+
     if config_path.is_file():
         try:
             config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -193,7 +238,7 @@ def _collect_checkpoint_limits(checkpoint_path: Path) -> dict[str, Any]:
             limits["max_output_len"] = build_cfg.get("max_seq_len", "N/A")
         except Exception:
             pass
-    
+
     return limits
 
 
@@ -203,7 +248,7 @@ def _collect_env_metadata(
 ) -> dict[str, Any]:
     """Collect metadata from environment variables and runtime detection."""
     env_info = _EnvironmentInfo.from_env()
-    
+
     return {
         "sm_arch": env_info.sm_arch,
         "gpu_name": env_info.gpu_name,
@@ -236,16 +281,16 @@ def _apply_build_metadata_overrides(
     """Override metadata with values from build_metadata.json if available."""
     if not engine_path.is_dir():
         return
-    
+
     meta_path = engine_path / "build_metadata.json"
     if not meta_path.is_file():
         return
-    
+
     try:
         build_meta = json.loads(meta_path.read_text(encoding="utf-8"))
     except Exception:
         return
-    
+
     # Fields that can be overridden from build metadata
     override_keys = [
         ("sm_arch", "sm_arch"),
@@ -263,11 +308,11 @@ def _apply_build_metadata_overrides(
         ("max_output_len", "max_output_len"),
         ("max_output_len", "max_seq_len"),  # Alternative key
     ]
-    
+
     for target_key, source_key in override_keys:
         if source_key in build_meta and build_meta[source_key] is not None:
             metadata[target_key] = build_meta[source_key]
-    
+
     # Update compute capability info if sm_arch changed
     if "sm_arch" in build_meta:
         metadata.update(get_compute_capability_info(metadata["sm_arch"]))
@@ -281,31 +326,31 @@ def collect_metadata(
     quant_method: str,
 ) -> dict[str, Any]:
     """Collect metadata for README rendering.
-    
+
     Args:
         checkpoint_path: Path to TRT-LLM checkpoint directory.
         engine_path: Path to TRT-LLM engine directory.
         base_model: Base model ID.
         repo_id: HuggingFace repo ID.
         quant_method: Quantization method (e.g., "int4_awq").
-        
+
     Returns:
         Dictionary of metadata for template rendering.
     """
     # Collect base identification metadata
     metadata = _collect_base_metadata(base_model, repo_id, quant_method)
-    
+
     # Collect limits from checkpoint config
     checkpoint_limits = _collect_checkpoint_limits(checkpoint_path)
     metadata.update(checkpoint_limits)
-    
+
     # Collect environment/runtime metadata
     env_metadata = _collect_env_metadata(quant_method, checkpoint_limits)
     metadata.update(env_metadata)
-    
+
     # Add compute capability info
     metadata.update(get_compute_capability_info(metadata["sm_arch"]))
-    
+
     # Generate engine label
     if engine_path.is_dir():
         metadata["engine_label"] = get_engine_label(engine_path)
@@ -315,7 +360,7 @@ def collect_metadata(
         # Engine path doesn't exist yet - generate label from environment
         env_info = _EnvironmentInfo.from_env()
         metadata["engine_label"] = env_info.make_label()
-    
+
     # Fetch license from the base model
     is_hf_model = "/" in base_model
     license_info = compute_license_info(base_model, is_tool=False, is_hf_model=is_hf_model)
@@ -325,5 +370,6 @@ def collect_metadata(
         "quant_portability_note",
         "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX) or reuse one of the prebuild engines in case they match your GPU.",
     )
-    
+
     return metadata
+

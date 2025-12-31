@@ -120,5 +120,3 @@ Adjust `kv_cache_config.free_gpu_memory_fraction` at runtime.
 This quantized model inherits the license from the original base model: **{{license_name}}**
 
 See the [original model's license]({{license_link}}) for full terms.
-
-

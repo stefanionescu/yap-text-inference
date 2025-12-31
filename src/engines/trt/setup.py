@@ -1,4 +1,4 @@
-"""TRT engine configuration reading and validation.
+"""TRT engine setup and validation.
 
 This module provides helpers for:
 1. Reading engine metadata from JSON config files
@@ -20,12 +20,6 @@ from src.config import (
 )
 from ..io import read_json_file
 
-__all__ = [
-    "build_kv_cache_config",
-    "read_checkpoint_model_type",
-    "read_engine_max_batch_size",
-    "validate_runtime_batch_size",
-]
 
 logger = logging.getLogger(__name__)
 
@@ -126,4 +120,12 @@ def validate_runtime_batch_size(engine_dir: str) -> None:
         )
         if TRT_RUNTIME_BATCH_SIZE is not None:
             logger.info("TRT_BATCH_SIZE=%d (unvalidated)", TRT_RUNTIME_BATCH_SIZE)
+
+
+__all__ = [
+    "build_kv_cache_config",
+    "read_checkpoint_model_type",
+    "read_engine_max_batch_size",
+    "validate_runtime_batch_size",
+]
 
