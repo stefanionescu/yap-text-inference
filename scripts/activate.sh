@@ -54,15 +54,7 @@ EOF
 
 case "${shell_name}" in
   bash)
-    rc_file="${RUN_DIR}/activate.bashrc"
-    cat > "${rc_file}" <<EOF
-if [ -f "\${HOME}/.bashrc" ]; then
-  source "\${HOME}/.bashrc"
-fi
-source "${activate_script}"
-EOF
-    log_info "[activate] Dropping into bash with ${venv_dir} activated"
-    exec "${target_shell}" --rcfile "${rc_file}" -i
+    launch_bash_shell
     ;;
   zsh)
     zdotdir="${RUN_DIR}/activate-zdotdir"

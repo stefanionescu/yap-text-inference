@@ -1,61 +1,36 @@
 #!/usr/bin/env bash
-# Argument parsing for main.sh
-#
-# main_parse_cli performs a single-pass parse that understands every supported
-# switch, quantization shorthand, and deploy-mode override. Parsed values are
+
+# Argument parsing for main.sh.
+# Performs a single-pass parse that understands every supported switch,
+# quantization shorthand, and deploy-mode override. Parsed values are
 # exported so downstream scripts do not need to re-process argv.
 
+_MAIN_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../common/args.sh
+source "${_MAIN_ARGS_DIR}/../common/args.sh"
+
 main_parse_cli() {
-  local engine="${INFERENCE_ENGINE:-trt}"
-  local push_quant_requested="${HF_AWQ_PUSH:-0}"
-  local push_engine_requested="${HF_ENGINE_PUSH:-0}"
+  args_init_common_state
+
   local quant_type="auto"
   local deploy_mode="${DEPLOY_MODE:-both}"
   local deploy_explicit=0
-  local show_hf_logs="${SHOW_HF_LOGS:-0}"
-  local show_trt_logs="${SHOW_TRT_LOGS:-0}"
-  local show_vllm_logs="${SHOW_VLLM_LOGS:-0}"
-  local show_llmcompressor_logs="${SHOW_LLMCOMPRESSOR_LOGS:-0}"
   local -a positional_args=()
 
   while [ $# -gt 0 ]; do
+    # Try common flags first
+    if args_parse_common_flag "$1" "${2:-}"; then
+      shift "${ARGS_SHIFT_COUNT}"
+      continue
+    fi
+
     case "$1" in
       -h|--help)
         main_usage
         return 1
         ;;
-      --show-hf-logs)
-        show_hf_logs=1
-        ;;
-      --show-trt-logs)
-        show_trt_logs=1
-        ;;
-      --show-vllm-logs)
-        show_vllm_logs=1
-        ;;
-      --show-llmcompressor-logs)
-        show_llmcompressor_logs=1
-        ;;
-      --push-quant)
-        push_quant_requested=1
-        ;;
-      --push-engine)
-        push_engine_requested=1
-        ;;
-      --engine)
-        if ! cli_set_engine_value "${2:-}" "[main]" engine; then
-          return 1
-        fi
-        shift
-        ;;
-      --engine=*)
-        cli_set_engine_value "${1#--engine=}" "[main]" engine || return 1
-        ;;
-      --vllm)
-        engine="vllm"
-        ;;
-      --trt|--tensorrt)
-        engine="trt"
+      --tensorrt)
+        INFERENCE_ENGINE="trt"
         ;;
       --deploy-mode)
         if ! cli_set_deploy_mode_value "${2:-}" "[main]" deploy_mode; then
@@ -115,8 +90,8 @@ main_parse_cli() {
     return 1
   fi
 
-  if ! engine="$(cli_normalize_engine "${engine}")"; then
-    log_err "[main] ✗ Unknown engine type '${engine}'. Expected trt|vllm."
+  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE}")"; then
+    log_err "[main] ✗ Unknown engine type '${INFERENCE_ENGINE}'. Expected trt|vllm."
     return 1
   fi
 
@@ -175,29 +150,14 @@ main_parse_cli() {
     return 1
   fi
 
-  ENGINE_TYPE="${engine}"
-  INFERENCE_ENGINE="${engine}"
-  PUSH_QUANT="${push_quant_requested}"
-  HF_AWQ_PUSH_REQUESTED="${push_quant_requested}"
-  HF_AWQ_PUSH=0
-  HF_ENGINE_PUSH_REQUESTED="${push_engine_requested}"
-  HF_ENGINE_PUSH=0
   QUANT_TYPE="${quant_type}"
   DEPLOY_MODE="${deploy_mode}"
-  DEPLOY_MODE_SELECTED="${deploy_mode}"
   CHAT_MODEL_NAME="${chat_model}"
   TOOL_MODEL_NAME="${tool_model}"
-  SHOW_HF_LOGS="${show_hf_logs}"
-  SHOW_TRT_LOGS="${show_trt_logs}"
-  SHOW_VLLM_LOGS="${show_vllm_logs}"
-  SHOW_LLMCOMPRESSOR_LOGS="${show_llmcompressor_logs}"
 
-  export ENGINE_TYPE INFERENCE_ENGINE
-  export PUSH_QUANT HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
-  export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
-  export QUANT_TYPE DEPLOY_MODE DEPLOY_MODE_SELECTED
+  args_export_common_state
+  export QUANT_TYPE DEPLOY_MODE
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
-  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS
 
   return 0
 }

@@ -134,9 +134,11 @@ fi
 
 # If engine was switched, need full deployment (restart can't handle fresh engine)
 if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
-  # Build main.sh args, preserving all flags from restart invocation
+  # Build main.sh args using shared flag builder
+  args_build_forward_flags
   declare -a main_args=("--${INFERENCE_ENGINE}" "--deploy-mode" "${DEPLOY_MODE}")
-  
+  main_args+=("${ARGS_FORWARD_FLAGS[@]}")
+
   # Pass quantization if specified
   if [ -n "${RECONFIG_CHAT_QUANTIZATION:-}" ]; then
     case "${RECONFIG_CHAT_QUANTIZATION}" in
@@ -144,37 +146,7 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
       8bit|8BIT) main_args+=("8bit") ;;
     esac
   fi
-  
-  # Pass push-quant flag if requested
-  if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ]; then
-    main_args+=("--push-quant")
-  fi
-  
-  # Pass push-engine flag if requested
-  if [ "${HF_ENGINE_PUSH_REQUESTED:-0}" = "1" ]; then
-    main_args+=("--push-engine")
-  fi
-  
-  # Pass show-hf-logs flag if requested
-  if [ "${SHOW_HF_LOGS:-0}" = "1" ]; then
-    main_args+=("--show-hf-logs")
-  fi
-  
-  # Pass show-trt-logs flag if requested
-  if [ "${SHOW_TRT_LOGS:-0}" = "1" ]; then
-    main_args+=("--show-trt-logs")
-  fi
-  
-  # Pass show-vllm-logs flag if requested
-  if [ "${SHOW_VLLM_LOGS:-0}" = "1" ]; then
-    main_args+=("--show-vllm-logs")
-  fi
-  
-  # Pass show-llmcompressor-logs flag if requested
-  if [ "${SHOW_LLMCOMPRESSOR_LOGS:-0}" = "1" ]; then
-    main_args+=("--show-llmcompressor-logs")
-  fi
-  
+
   # Add model(s) based on deploy mode
   case "${DEPLOY_MODE}" in
     chat)
@@ -188,7 +160,7 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
       main_args+=("${RECONFIG_TOOL_MODEL:-${TOOL_MODEL:-}}")
       ;;
   esac
-  
+
   exec bash "${SCRIPT_DIR}/main.sh" "${main_args[@]}"
 fi
 

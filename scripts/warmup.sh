@@ -18,14 +18,9 @@ warmup_init_defaults "${ROOT_DIR}" "${SCRIPT_DIR}"
 
 declare -a WARMUP_PERSONA_VARIANTS=()
 
+# Write a message to the warmup log file.
 log_warmup() {
-  local line="[warmup] $*"
-  echo "${line}" >> "${WARMUP_LOG_FILE}"
-}
-
-log_warmup_file() {
-  local line="[warmup] $*"
-  echo "${line}" >> "${WARMUP_LOG_FILE}"
+  echo "[warmup] $*" >> "${WARMUP_LOG_FILE}"
 }
 
 # Log phase results to both stderr (terminal) and server.log for visibility
@@ -286,15 +281,15 @@ if ! max_conn="$(detect_max_conn)"; then
   max_conn=""
 fi
 if [[ -z "${max_conn}" || "${max_conn}" =~ [^0-9] ]]; then
-  log_warmup_file "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
+  log_warmup "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
   max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
 if (( max_conn <= 0 )); then
-  log_warmup_file "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
+  log_warmup "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
   max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
 
-log_warmup_file "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
+log_warmup "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
 
 overall_ok=1
 prompt_mode="$(detect_prompt_mode)"
@@ -302,12 +297,12 @@ PROMPT_MODE_FLAGS=()
 if [[ "${prompt_mode}" == "tool" ]]; then
   PROMPT_MODE_FLAGS=(--no-chat-prompt)
 fi
-log_warmup_file "Using prompt mode '${prompt_mode}' for warmup + bench tests"
+log_warmup "Using prompt mode '${prompt_mode}' for warmup + bench tests"
 
 detect_persona_variants
 for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
   IFS='|' read -r persona_gender persona_personality <<<"${persona}"
-  log_warmup_file "Persona variant configured: gender=${persona_gender:-default} personality=${persona_personality:-}"
+  log_warmup "Persona variant configured: gender=${persona_gender:-default} personality=${persona_personality:-}"
 done
 
 cd "${ROOT_DIR}"
