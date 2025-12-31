@@ -1,6 +1,7 @@
 # Yap Text Inference Server
 
-A high-performance text inference server supporting **both vLLM and TensorRT-LLM** engines, optimized for pairing a chat model with a lightweight screenshot-intent classifier. It can run:
+A text inference server supporting **both vLLM and TensorRT-LLM** engines, optimized for pairing a chat model with a lightweight screenshot-intent classifier. It can run:
+
 - A chat engine (vLLM or TRT-LLM) for roleplay / assistant flows
 - A classifier-only tool router (takes screenshots or skips them)
 - Either engine independently or both together

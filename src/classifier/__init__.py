@@ -1,8 +1,7 @@
 """Classifier package for screenshot intent detection.
 
-This package provides a lightweight BERT-style classifier for detecting
-when users want to take a screenshot. It's much faster than running
-the full chat model for intent detection.
+This package provides a lightweight classifier for detecting when users
+want to take a screenshot. Supports BERT-style and Longformer models.
 
 Architecture:
     ClassifierToolAdapter:
@@ -42,49 +41,7 @@ Usage:
 from __future__ import annotations
 
 from .adapter import ClassifierToolAdapter
-
-# Global instance
-_classifier_adapter: ClassifierToolAdapter | None = None
-
-
-def get_classifier_adapter() -> ClassifierToolAdapter:
-    """Get the global classifier adapter instance.
-    
-    Lazily initializes the classifier using config values from environment.
-    """
-    global _classifier_adapter
-    
-    if _classifier_adapter is None:
-        from src.config import (
-            TOOL_MODEL,
-            TOOL_GPU_FRAC,
-            TOOL_DECISION_THRESHOLD,
-            TOOL_COMPILE,
-            TOOL_MAX_LENGTH,
-            TOOL_MICROBATCH_MAX_SIZE,
-            TOOL_MICROBATCH_MAX_DELAY_MS,
-        )
-        from src.config.timeouts import TOOL_TIMEOUT_S
-        
-        _classifier_adapter = ClassifierToolAdapter(
-            model_path=TOOL_MODEL,
-            threshold=TOOL_DECISION_THRESHOLD,
-            compile_model=TOOL_COMPILE,
-            max_length=TOOL_MAX_LENGTH,
-            batch_max_size=TOOL_MICROBATCH_MAX_SIZE,
-            batch_max_delay_ms=TOOL_MICROBATCH_MAX_DELAY_MS,
-            request_timeout_s=TOOL_TIMEOUT_S,
-            gpu_memory_frac=TOOL_GPU_FRAC,
-        )
-    
-    return _classifier_adapter
-
-
-def reset_classifier_adapter() -> None:
-    """Reset the global classifier adapter (for testing)."""
-    global _classifier_adapter
-    _classifier_adapter = None
-
+from .factory import get_classifier_adapter, reset_classifier_adapter
 
 __all__ = [
     "ClassifierToolAdapter",

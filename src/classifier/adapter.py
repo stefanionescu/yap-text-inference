@@ -9,15 +9,23 @@ This module provides the high-level ClassifierToolAdapter that:
 5. Coordinates micro-batching for efficiency
 
 The adapter is the main entry point for tool/screenshot classification.
-It uses a separate, lightweight model rather than the full chat model
-for faster inference on intent detection.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+
 import torch  # type: ignore[import]
 
+from src.config.tool import (
+    TOOL_MIN_TIMEOUT_S,
+    TOOL_MIN_GPU_FRAC,
+    TOOL_MAX_GPU_FRAC,
+    TOOL_POSITIVE_RESULT,
+    TOOL_NEGATIVE_RESULT,
+    TOOL_POSITIVE_LABEL_INDEX,
+)
 from .backend import TorchClassifierBackend
 from .batch import BatchExecutor
 from .model_info import ClassifierModelInfo, build_model_info
@@ -41,9 +49,6 @@ class ClassifierToolAdapter:
         dtype: Torch dtype (float16 for GPU, float32 for CPU).
         request_timeout_s: Maximum wait time for batch results.
     """
-
-    # Track which GPU devices have had memory fraction configured
-    _memory_fraction_configured: set[int] = set()
 
     def __init__(
         self,
@@ -75,8 +80,9 @@ class ClassifierToolAdapter:
         self.threshold = threshold
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = torch.float16 if self.device.startswith("cuda") else torch.float32
-        self.request_timeout_s = max(0.1, float(request_timeout_s))
+        self.request_timeout_s = max(TOOL_MIN_TIMEOUT_S, float(request_timeout_s))
         self._gpu_memory_frac = gpu_memory_frac
+        self._memory_fraction_configured: set[int] = set()
 
         self._configure_gpu_limit()
         self._model_info: ClassifierModelInfo = build_model_info(model_path, max_length)
@@ -105,60 +111,39 @@ class ClassifierToolAdapter:
     # ============================================================================
     # Internal helpers
     # ============================================================================
+    def _get_device_index(self) -> int:
+        """Get CUDA device index from device string."""
+        try:
+            idx = torch.device(self.device).index
+            return idx if idx is not None else torch.cuda.current_device()
+        except Exception:
+            return torch.cuda.current_device()
 
     def _configure_gpu_limit(self) -> None:
-        if not self.device.startswith("cuda"):
+        """Configure GPU memory limit for the classifier."""
+        if not self.device.startswith("cuda") or self._gpu_memory_frac is None:
             return
-        if self._gpu_memory_frac is None:
-            return
-        if not hasattr(torch.cuda, "set_per_process_memory_fraction"):
-            logger.warning(
-                "classifier: torch build missing set_per_process_memory_fraction; skipping TOOL_GPU_FRAC"
-            )
-            return
-        try:
-            fraction = float(self._gpu_memory_frac)
-        except (TypeError, ValueError):
-            logger.warning("classifier: invalid TOOL_GPU_FRAC value %r; expected float", self._gpu_memory_frac)
-            return
-        if not (0.0 < fraction <= 1.0):
-            logger.warning("classifier: TOOL_GPU_FRAC %.3f out of range (0,1]; ignoring", fraction)
-            return
-        fraction = max(0.01, min(fraction, 0.90))
-        try:
-            torch_device = torch.device(self.device)
-        except Exception:
-            torch_device = torch.device("cuda")
-        device_index = torch_device.index
-        if device_index is None:
-            device_index = torch.cuda.current_device()
+
+        device_index = self._get_device_index()
         if device_index in self._memory_fraction_configured:
             return
+
+        fraction = max(TOOL_MIN_GPU_FRAC, min(self._gpu_memory_frac, TOOL_MAX_GPU_FRAC))
         try:
             torch.cuda.set_per_process_memory_fraction(fraction, device_index)
             self._memory_fraction_configured.add(device_index)
-            logger.info(
-                "classifier: reserved %.1f%% of cuda:%s for tool model (TOOL_GPU_FRAC)",
-                fraction * 100.0,
-                device_index,
-            )
+            logger.info("classifier: reserved %.1f%% of cuda:%s", fraction * 100.0, device_index)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("classifier: failed to honor TOOL_GPU_FRAC=%.3f (%s)", fraction, exc)
+            logger.warning("classifier: failed to set GPU memory fraction: %s", exc)
 
     def _format_input(self, user_utt: str, user_history: str = "") -> str:
-        history = (user_history or "").strip()
-        lines: list[str] = []
-        if history:
-            lines.append(history)
-        current = user_utt.strip()
-        if current:
-            lines.append(current)
-        return "\n".join(lines)
+        """Combine history and current utterance into classifier input."""
+        parts = [p for p in [(user_history or "").strip(), user_utt.strip()] if p]
+        return "\n".join(parts)
 
     # ============================================================================
     # Public API
     # ============================================================================
-
     def classify(self, user_utt: str, user_history: str = "") -> tuple[bool, float]:
         """Classify whether a screenshot should be taken.
         
@@ -174,11 +159,8 @@ class ClassifierToolAdapter:
         text = self._format_input(user_utt, user_history)
         probs = self._batch.classify(text, timeout_s=self.request_timeout_s)
 
-        if len(probs) < 2:
-            p_yes = float(probs[-1])
-        else:
-            p_yes = float(probs[1])
-
+        # Binary classification: index 1 is the positive class probability
+        p_yes = float(probs[TOOL_POSITIVE_LABEL_INDEX])
         should_take = p_yes >= self.threshold
         return should_take, p_yes
 
@@ -202,9 +184,7 @@ class ClassifierToolAdapter:
             p_yes,
             user_utt[:80],
         )
-        if should_take:
-            return '[{"name": "take_screenshot"}]'
-        return "[]"
+        return json.dumps(TOOL_POSITIVE_RESULT if should_take else TOOL_NEGATIVE_RESULT)
 
 
 __all__ = ["ClassifierToolAdapter"]

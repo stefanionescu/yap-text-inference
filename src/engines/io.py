@@ -1,17 +1,27 @@
-"""Lightweight IO helpers for vllm engine."""
+"""Shared IO helpers for inference engines."""
 
 from __future__ import annotations
 
 import contextlib
 import json
 import os
+from pathlib import Path
 from typing import Any
+
+__all__ = ["read_json_file", "write_json_file"]
 
 JsonValue = Any
 
 
 def read_json_file(path: str | os.PathLike[str], *, encoding: str = "utf-8") -> JsonValue | None:
-    """Best-effort JSON loader that returns None if the file is unreadable."""
+    """Best-effort JSON loader that returns None if the file is unreadable.
+    
+    Works with both str paths and Path objects.
+    """
+    # Handle Path objects
+    if isinstance(path, Path) and not path.exists():
+        return None
+    
     try:
         with open(path, encoding=encoding) as fh:
             return json.load(fh)
@@ -38,5 +48,3 @@ def write_json_file(
             os.remove(tmp_path)
         return False
 
-
-__all__ = ["read_json_file", "write_json_file"]

@@ -41,7 +41,12 @@ from src.helpers.model_profiles import (
     model_requires_fla_runtime,
     model_uses_mla,
 )
-from src.config import CHAT_QUANTIZATION, KV_DTYPE, QUANTIZATION
+from src.config import (
+    CHAT_QUANTIZATION,
+    DEFAULT_MAX_BATCHED_TOKENS,
+    KV_DTYPE,
+    QUANTIZATION,
+)
 from src.helpers.env import env_flag
 from src.helpers.models import is_local_model_path
 from .memory_tuning import (
@@ -71,6 +76,54 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
     )
 
 
+def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None, dict]:
+    """Resolve the quantization backend and detect from model config if needed.
+    
+    Returns:
+        Tuple of (inference_quant, quant_payload) where quant_payload contains
+        detected quantization metadata.
+    """
+    if not raw_quant:
+        return None, {}
+    
+    inference_quant = raw_quant
+    quant_payload = {}
+    
+    if raw_quant == "awq":
+        inference_quant = "awq_marlin"
+        detected_quant, quant_payload = detect_quantization_backend(model)
+        if detected_quant:
+            inference_quant = detected_quant
+            log_detected_quantization(model, detected_quant, quant_payload)
+    
+    return inference_quant, quant_payload
+
+
+def _resolve_max_batched_tokens(model_origin: str) -> int:
+    """Resolve max batched tokens from env, profile, or default."""
+    env_batched = os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT")
+    if env_batched:
+        return int(env_batched)
+    
+    profile_batched = get_max_batched_tokens(model_origin)
+    if profile_batched is not None:
+        return profile_batched
+    
+    return DEFAULT_MAX_BATCHED_TOKENS
+
+
+def _resolve_dtype(
+    needs_bfloat16: bool,
+    inference_quant: str | None,
+) -> str:
+    """Resolve the dtype based on model requirements and quantization."""
+    if needs_bfloat16:
+        return "bfloat16"
+    if inference_quant in {"awq", "awq_marlin", "compressed-tensors", "fp8"}:
+        return "float16"
+    return "auto"
+
+
 def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineArgs:
     """Build vLLM AsyncEngineArgs with all optimizations applied.
     
@@ -95,36 +148,21 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     if attention_backend:
         attention_backend = attention_backend.strip()
         os.environ.pop("VLLM_ATTENTION_BACKEND", None)
+    
     # Normalize/validate KV cache dtype
     kv_dtype_value = (KV_DTYPE or "").strip()
 
-    # Select quantization for the chat engine
-    selected_quant = CHAT_QUANTIZATION or QUANTIZATION
+    # Resolve quantization backend
+    raw_quant = CHAT_QUANTIZATION or QUANTIZATION
+    inference_quant, _ = _resolve_quantization(model, raw_quant)
 
-    raw_quant = selected_quant
-    inference_quant = raw_quant
-    if raw_quant == "awq":
-        inference_quant = "awq_marlin"
-        detected_quant, quant_payload = detect_quantization_backend(model)
-        if detected_quant:
-            inference_quant = detected_quant
-            log_detected_quantization(model, detected_quant, quant_payload)
-
+    # Resolve model origin for profile lookups
     model_origin = resolve_model_origin(model)
 
-    # Prefill chunk sizing: check profile first, then env var, then default.
-    # Some models (e.g., Mistral 3.2) need higher values for acceptable TTFB.
-    env_batched = os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT")
-    profile_batched = get_max_batched_tokens(model_origin)
-    if env_batched:
-        # Explicit env var takes precedence
-        max_batched = int(env_batched)
-    elif profile_batched is not None:
-        # Use profile-specific value
-        max_batched = profile_batched
-    else:
-        # Default fallback
-        max_batched = 256
+    # Resolve max batched tokens (env > profile > default)
+    max_batched = _resolve_max_batched_tokens(model_origin)
+
+    # Check model requirements from profile
     needs_bfloat16 = model_requires_bfloat16(model_origin)
     needs_memory_opt = model_needs_memory_optimization(model_origin)
     needs_fla = model_requires_fla_runtime(model_origin)
@@ -138,11 +176,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     if uses_mla or needs_fla:
         attention_backend = None
 
-    dtype_value = "auto"
-    if needs_bfloat16:
-        dtype_value = "bfloat16"
-    elif inference_quant in {"awq", "awq_marlin", "compressed-tensors", "fp8"}:
-        dtype_value = "float16"
+    # Resolve dtype based on model requirements
+    dtype_value = _resolve_dtype(needs_bfloat16, inference_quant)
 
     kwargs = dict(
         model=model,
