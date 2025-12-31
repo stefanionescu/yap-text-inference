@@ -20,7 +20,7 @@ from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
 )
-from tests.config.env import get_float_env, get_int_env
+from tests.helpers.env import get_float_env, get_int_env
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.rate import SlidingWindowPacer
 from tests.helpers.stream import StreamTracker

@@ -124,11 +124,14 @@ async def _consume_stream(ws, tracker: _StreamTracker) -> dict[str, Any]:
 
 def _error_from_message(msg: dict[str, Any]) -> dict[str, Any]:
     """Extract error information from an error message."""
-    error_code = msg.get("error_code", "")
-    error_message = msg.get("message", "unknown error")
-    if error_code:
-        return {"ok": False, "error": f"{error_code}: {error_message}"}
-    return {"ok": False, "error": error_message}
+    from tests.helpers.errors import ServerError
+    error = ServerError.from_message(msg)
+    return {
+        "ok": False,
+        "error": str(error),
+        "error_code": error.error_code,
+        "recoverable": error.is_recoverable(),
+    }
 
 
 async def _one_connection(

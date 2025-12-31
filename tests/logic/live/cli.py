@@ -21,6 +21,8 @@ import os
 import signal
 from dataclasses import dataclass
 
+from tests.helpers.errors import IdleTimeoutError
+
 from .client import LiveClient
 from .commands import dispatch_command
 from .errors import LiveClientError, LiveConnectionClosed, LiveInputClosed
@@ -136,9 +138,18 @@ class InteractiveRunner:
                 continue
 
             try:
-                await self.client.send_user_message(line)
+                result = await self.client.send_user_message(line)
+                if not result.ok:
+                    # Display error nicely without closing connection
+                    self._print_error(result.format_error())
+                    if not result.is_recoverable:
+                        logger.warning("Fatal error; exiting interactive mode.")
+                        break
             except LiveConnectionClosed:
                 logger.warning("Connection closed; exiting interactive mode.")
+                break
+            except IdleTimeoutError:
+                logger.warning("Connection closed due to inactivity; exiting.")
                 break
 
     async def _read_line(self) -> str:
@@ -168,6 +179,11 @@ class InteractiveRunner:
     def _print_banner(self) -> None:
         """Display the startup banner with persona info."""
         print_help(self.registry.available_names(), self.client.session.persona.name)
+
+    def _print_error(self, message: str) -> None:
+        """Print an error message in a user-friendly format."""
+        print(f"\n⚠️  {message}\n")
+        print("you >", end=" ", flush=True)
 
     async def _watch_disconnect(self) -> None:
         """Monitor for server disconnect and trigger shutdown if needed."""
