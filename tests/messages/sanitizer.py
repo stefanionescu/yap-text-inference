@@ -1,4 +1,5 @@
 """Streaming sanitizer regression cases."""
+# ruff: noqa: E501  # Test data - long strings are intentional
 
 STREAMING_SANITIZER_CASES = [
     # Basics / duplicates / overlap

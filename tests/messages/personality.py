@@ -1,4 +1,5 @@
 """Personality-related test prompts."""
+# ruff: noqa: E501  # Test data - long strings are intentional
 
 # Message to check bot's name/identity after switching personality
 PERSONALITY_NAME_CHECK_MESSAGE = "Wait, who are you again? What's your name?"

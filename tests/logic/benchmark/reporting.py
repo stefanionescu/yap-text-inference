@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Iterable
+from typing import Any
+from collections.abc import Iterable
 
 
 # ============================================================================

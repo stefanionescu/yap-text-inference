@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Awaitable, Callable
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 from tests.helpers.errors import ServerError
 from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.stream import StreamTracker
 
 logger = logging.getLogger(__name__)
+
+# Type alias for message handler functions
+_Handler = Callable[[dict[str, Any]], Awaitable[bool | None] | bool | None]
 
 
 # ============================================================================
@@ -79,7 +83,7 @@ def _handle_error(msg: dict[str, Any]) -> None:
     raise ServerError.from_message(msg)
 
 
-def _build_exchange_handlers(tracker: StreamTracker, exchange_idx: int) -> dict[str, Callable[[dict[str, Any]], Awaitable[bool | None] | bool | None]]:
+def _build_exchange_handlers(tracker: StreamTracker, exchange_idx: int) -> dict[str, _Handler]:
     return {
         "ack": lambda msg: _handle_ack(msg, tracker, exchange_idx),
         "toolcall": lambda msg: (_handle_toolcall(msg, tracker, exchange_idx) or True),

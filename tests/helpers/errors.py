@@ -67,7 +67,7 @@ class ServerError(TestClientError):
     """
 
     # Map error_code -> specific exception class
-    _SUBCLASS_MAP: dict[str, type["ServerError"]] = {}
+    _SUBCLASS_MAP: dict[str, type[ServerError]] = {}
 
     def __init__(
         self,
@@ -82,7 +82,7 @@ class ServerError(TestClientError):
         super().__init__(f"{error_code}: {message}")
 
     @classmethod
-    def from_message(cls, msg: dict[str, Any]) -> "ServerError":
+    def from_message(cls, msg: dict[str, Any]) -> ServerError:
         """Create an appropriate ServerError subclass from a server error message.
         
         Args:

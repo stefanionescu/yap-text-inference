@@ -44,7 +44,7 @@ def _parse_args() -> argparse.Namespace:
         default=CONNECTION_IDLE_EXPECT_SECONDS,
         help=(
             "Seconds to wait for the server's idle watchdog to close a connection. "
-            f"Defaults to CONNECTION_IDLE_EXPECT_SECONDS or WS_IDLE_TIMEOUT_S."
+            "Defaults to CONNECTION_IDLE_EXPECT_SECONDS or WS_IDLE_TIMEOUT_S."
         ),
     )
     parser.add_argument(

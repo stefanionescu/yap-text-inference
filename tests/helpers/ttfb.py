@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Mapping, Sequence
 
 
 def _percentile(samples: Sequence[float], frac: float) -> float:
@@ -64,7 +65,7 @@ class TTFBAggregator:
                 continue
             stats = _build_stats(samples)
             sink(
-                (
+                
                     f"{label} [{kind}] "
                     f"first={stats['first']:.2f} "
                     f"avg={stats['average']:.2f} "
@@ -72,7 +73,7 @@ class TTFBAggregator:
                     f"p90={stats['p90']:.2f} "
                     f"p95={stats['p95']:.2f} "
                     f"samples={stats['count']}"
-                )
+                
             )
 
 

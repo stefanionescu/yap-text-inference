@@ -139,13 +139,14 @@ def _handle_done(msg: dict[str, Any], tracker: StreamTracker, phase_label: str |
 def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) -> None:
     """Handle error messages with helpful hints."""
     error = ServerError.from_message(msg)
-    logger.error("%sServer error %s: %s", _phase_prefix(phase_label), error.error_code, error.message)
+    prefix = _phase_prefix(phase_label)
+    logger.error("%sServer error %s: %s", prefix, error.error_code, error.message)
     if error.error_code == "authentication_failed":
-        logger.info("%sHINT: Check your TEXT_API_KEY environment variable (currently: '%s')", _phase_prefix(phase_label), api_key)
+        logger.info("%sHINT: Check your TEXT_API_KEY (currently: '%s')", prefix, api_key)
     elif error.error_code == "server_at_capacity":
-        logger.info("%sHINT: Server is busy. Try again later.", _phase_prefix(phase_label))
+        logger.info("%sHINT: Server is busy. Try again later.", prefix)
     elif error.is_recoverable():
-        logger.info("%sHINT: %s", _phase_prefix(phase_label), error.format_for_user())
+        logger.info("%sHINT: %s", prefix, error.format_for_user())
     raise error
 
 

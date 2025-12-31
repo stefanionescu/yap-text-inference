@@ -21,11 +21,15 @@ import os
 import signal
 from dataclasses import dataclass
 
-from tests.helpers.errors import IdleTimeoutError
+from tests.helpers.errors import (
+    ConnectionClosedError,
+    IdleTimeoutError,
+    InputClosedError,
+    TestClientError,
+)
 
 from .client import LiveClient
 from .commands import dispatch_command
-from .errors import LiveClientError, LiveConnectionClosed, LiveInputClosed
 from .personas import PersonaRegistry
 
 logger = logging.getLogger("live")
@@ -84,7 +88,7 @@ class InteractiveRunner:
         if disconnect_task in done:
             await self._cancel_task(
                 loop_task,
-                suppress=(asyncio.CancelledError, LiveInputClosed, LiveConnectionClosed),
+                suppress=(asyncio.CancelledError, InputClosedError, ConnectionClosedError),
             )
         else:
             await self._cancel_task(disconnect_task)
@@ -119,13 +123,13 @@ class InteractiveRunner:
         while True:
             try:
                 line = await self._read_line()
-            except LiveInputClosed as exc:
+            except InputClosedError as exc:
                 if not self._closing:
                     logger.info("%s", exc)
                 else:
                     logger.debug("stdin closed while shutting down: %s", exc)
                 break
-            except LiveClientError as exc:
+            except TestClientError as exc:
                 logger.error("send failed: %s", exc)
                 raise
 
@@ -145,7 +149,7 @@ class InteractiveRunner:
                     if not result.is_recoverable:
                         logger.warning("Fatal error; exiting interactive mode.")
                         break
-            except LiveConnectionClosed:
+            except ConnectionClosedError:
                 logger.warning("Connection closed; exiting interactive mode.")
                 break
             except IdleTimeoutError:
@@ -161,7 +165,7 @@ class InteractiveRunner:
         try:
             line = await self.stdin_task
         except asyncio.CancelledError as exc:
-            raise LiveInputClosed("input cancelled") from exc
+            raise InputClosedError("input cancelled") from exc
         finally:
             self.stdin_task = None
         return line.strip()
@@ -231,9 +235,9 @@ async def _ainput(prompt: str) -> str:
     try:
         return await loop.run_in_executor(None, lambda: input(prompt))
     except EOFError as exc:
-        raise LiveInputClosed("stdin closed") from exc
+        raise InputClosedError("stdin closed") from exc
     except KeyboardInterrupt as exc:
-        raise LiveInputClosed("keyboard interrupt") from exc
+        raise InputClosedError("keyboard interrupt") from exc
 
 
 def print_help(current: str, verbose: bool = False) -> None:

@@ -28,15 +28,15 @@ from typing import Any
 import websockets  # type: ignore[import-not-found]
 
 from tests.helpers.errors import (
+    ConnectionClosedError,
     IdleTimeoutError,
     RateLimitError,
     ServerError,
+    TestClientError,
     is_idle_timeout_close,
 )
 from tests.helpers.message import iter_messages
 from tests.helpers.ws import send_client_end
-
-from .errors import LiveClientError, LiveConnectionClosed, LiveServerError
 from .personas import PersonaDefinition
 from .session import LiveSession
 from .stream import StreamTracker, round_ms
@@ -189,9 +189,15 @@ class LiveClient:
             return
         code = ack.get("code")
         if code == 204:
-            logger.info("Persona already set to gender=%s personality=%s; no server-side change", ack.get("gender"), ack.get("personality"))
+            logger.info(
+                "Persona already set to gender=%s personality=%s; no server-side change",
+                ack.get("gender"), ack.get("personality"),
+            )
             return
-        logger.info("Persona updated → gender=%s personality=%s (code=%s)", ack.get("gender"), ack.get("personality"), code)
+        logger.info(
+            "Persona updated → gender=%s personality=%s (code=%s)",
+            ack.get("gender"), ack.get("personality"), code,
+        )
         self.session.replace_persona(persona)
 
     async def close(self) -> None:
@@ -213,7 +219,7 @@ class LiveClient:
         try:
             await self.ws.send(json.dumps(payload))
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
-            raise LiveConnectionClosed("WebSocket closed while sending payload") from exc
+            raise ConnectionClosedError("WebSocket closed while sending payload") from exc
 
     async def _stream_response(self, tracker: StreamTracker, *, print_user_prompt: bool = True) -> StreamResult:
         """Stream and process the server response."""
@@ -242,7 +248,7 @@ class LiveClient:
                     return self._handle_error_frame(msg, state)
                 logger.debug("Ignoring message type=%s payload=%s", msg_type, msg)
         except asyncio.TimeoutError as exc:
-            raise LiveClientError(f"recv timeout after {self.recv_timeout:.1f}s") from exc
+            raise TestClientError(f"recv timeout after {self.recv_timeout:.1f}s") from exc
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
             close_code = getattr(exc, "code", None)
             close_reason = getattr(exc, "reason", None)
@@ -252,7 +258,7 @@ class LiveClient:
             logger.info("Server closed the WebSocket (code=%s)", close_code)
             asyncio.create_task(self.close())
             return StreamResult(text=tracker.final_text, ok=True)
-        raise LiveClientError("WebSocket closed before receiving 'done'")
+        raise TestClientError("WebSocket closed before receiving 'done'")
 
     def _handle_toolcall_frame(self, msg: dict[str, Any], tracker: StreamTracker) -> None:
         ttfb = tracker.record_toolcall()
@@ -281,7 +287,7 @@ class LiveClient:
         _log_server_error(msg)
         if error.is_recoverable():
             return StreamResult(text=state.tracker.final_text, ok=False, error=error)
-        raise LiveServerError(error.message, code=error.error_code)
+        raise error
 
     async def _wait_for_chat_prompt_ack(self) -> dict[str, Any]:
         try:
@@ -291,12 +297,12 @@ class LiveClient:
                     return msg
                 if msg_type == "error":
                     _log_server_error(msg)
-                    raise LiveServerError(msg.get("message", "server error"))
+                    raise ServerError.from_message(msg)
         except asyncio.TimeoutError as exc:
-            raise LiveClientError("timed out waiting for chat_prompt ack") from exc
+            raise TestClientError("timed out waiting for chat_prompt ack") from exc
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
-            raise LiveConnectionClosed("WebSocket closed while waiting for chat_prompt ack") from exc
-        raise LiveClientError("WebSocket closed before receiving chat_prompt ack")
+            raise ConnectionClosedError("WebSocket closed while waiting for chat_prompt ack") from exc
+        raise TestClientError("WebSocket closed before receiving chat_prompt ack")
 
 
 __all__ = ["LiveClient", "StreamResult"]
