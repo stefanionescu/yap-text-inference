@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
+# TRT logging - sources shared logging utilities.
+#
+# This wrapper exists so runtime scripts can source logs.sh from the same
+# directory without knowing about the common/ layout.
 
-# Logging utilities for Docker scripts (prefix-based, emoji in message)
-# Usage: log_info "[prefix] message" or log_warn "[prefix] ⚠ message"
-# Emoji should be placed after [prefix] in the message itself
-
-log_info() { echo "$*"; }
-log_warn() { echo "$*" >&2; }
-log_error() { echo "$*" >&2; }
-log_success() { echo "$*"; }
-
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../../common/scripts/logs.sh"

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Download tool classifier model from HuggingFace at Docker build time."""
+"""Download tool classifier model from HuggingFace at Docker build time.
+
+This shared module is used by both TRT and vLLM Docker builds to download the
+tool classifier model. The tool model is a PyTorch model that runs on both
+engines without engine-specific compilation.
+"""
 
 import os
 import sys
@@ -26,7 +31,7 @@ def download_tool_model(repo_id: str, target_dir: str, token: str | None = None)
         token=token,
     )
 
-    print("[build] ✓ Tool model downloaded")
+    print("[build] ✓ Tool model downloaded and baked into image")
 
 
 def main() -> None:
@@ -42,12 +47,11 @@ def main() -> None:
                 token = f.read().strip() or None
 
     if not repo_id:
-        print("[build] No TOOL_MODEL set - skipping tool model download")
+        print("[build] No TOOL_MODEL specified - skipping tool model download")
         return
 
     try:
         download_tool_model(repo_id, target_dir, token)
-        print("[build] ✓ Tool model baked into image")
     except Exception as e:
         print(f"[build] ERROR: Failed to download tool model: {e}", file=sys.stderr)
         sys.exit(1)

@@ -52,10 +52,11 @@ PLATFORM="${PLATFORM:-linux/amd64}"
 BUILD_CONTEXT="${SCRIPT_DIR}"
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile"
 
-# Modules
-source "${SCRIPT_DIR}/scripts/logs.sh"
-source "${SCRIPT_DIR}/scripts/build/docker.sh"
-source "${SCRIPT_DIR}/scripts/build/args.sh"
+# Modules - shared utilities from common, engine-specific from local
+COMMON_DIR="${SCRIPT_DIR}/../common"
+source "${COMMON_DIR}/scripts/logs.sh"
+source "${COMMON_DIR}/scripts/build/docker.sh"
+source "${COMMON_DIR}/scripts/build/args.sh"
 source "${SCRIPT_DIR}/scripts/build/context.sh"
 source "${SCRIPT_DIR}/scripts/build/validate.sh"
 
