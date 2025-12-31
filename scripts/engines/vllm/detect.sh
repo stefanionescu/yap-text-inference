@@ -17,56 +17,24 @@ source "${_VLLM_DETECT_DIR}/../../lib/env/flashinfer.sh"
 # Detect CUDA version from torch (for FlashInfer wheel selection)
 vllm_detect_cuda_version() {
   local python_exec="${1:-python}"
-  
-  "${python_exec}" - <<'PY' 2>/dev/null || true
-import sys
-try:
-    import torch
-    cu = (torch.version.cuda or '').strip()
-    if not cu:
-        sys.exit(1)
-    print(cu.replace('.', ''))  # e.g., 12.6 -> 126
-except Exception:
-    sys.exit(1)
-PY
+  "${python_exec}" -m src.scripts.vllm.detection cuda-version 2>/dev/null || true
 }
 
 # Detect torch major.minor version (for FlashInfer wheel selection)
 vllm_detect_torch_version() {
   local python_exec="${1:-python}"
-  
-  "${python_exec}" - <<'PY' 2>/dev/null || true
-import sys
-try:
-    import torch
-    ver = torch.__version__.split('+', 1)[0]
-    parts = ver.split('.')
-    print(f"{parts[0]}.{parts[1]}")  # e.g., 2.9.0 -> 2.9
-except Exception:
-    sys.exit(1)
-PY
+  "${python_exec}" -m src.scripts.vllm.detection torch-version 2>/dev/null || true
 }
 
 # Check if vLLM is installed
 vllm_is_installed() {
   local python_exec="${1:-python}"
-  
-  if "${python_exec}" -c "import vllm" 2>/dev/null; then
-    return 0
-  fi
-  return 1
+  "${python_exec}" -m src.scripts.vllm.detection is-installed 2>/dev/null
 }
 
 # Get vLLM version
 vllm_get_version() {
   local python_exec="${1:-python}"
-  
-  "${python_exec}" - <<'PY' 2>/dev/null || echo "unknown"
-try:
-    import vllm
-    print(vllm.__version__)
-except Exception:
-    print("unknown")
-PY
+  "${python_exec}" -m src.scripts.vllm.detection version 2>/dev/null || echo "unknown"
 }
 

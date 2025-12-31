@@ -90,15 +90,7 @@ detect_persona_variants() {
   fi
 
   local py_output=""
-  if py_output="$("${PY_BIN}" - <<'PY' 2>/dev/null
-from tests.config.defaults import PERSONA_VARIANTS
-for gender, personality, _ in PERSONA_VARIANTS:
-    if not gender:
-        continue
-    personality = personality or ""
-    print(f"{gender}:{personality}")
-PY
-)"; then
+  if py_output="$("${PY_BIN}" -m src.scripts.warmup list 2>/dev/null)"; then
     while IFS= read -r line; do
       line="$(trim_string "${line}")"
       if [ -z "${line}" ]; then

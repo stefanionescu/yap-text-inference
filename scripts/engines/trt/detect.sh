@@ -183,23 +183,9 @@ trt_assert_cuda13_driver() {
   # Method A: Use cuda-python if available (most accurate - queries actual driver)
   if command -v python >/dev/null 2>&1; then
     local py_driver
-    py_driver=$(
-      python - <<'PY' 2>/dev/null
-try:
-    try:
-        from cuda.bindings import runtime as cudart
-    except Exception:
-        from cuda import cudart
-    err, ver = cudart.cudaDriverGetVersion()
-    if err == 0:
-        # ver is e.g. 13020 for CUDA 13.2
-        major = ver // 1000
-        minor = (ver % 1000) // 10
-        print(f"{major}.{minor}")
-except Exception:
-    pass
-PY
-    ) || true
+    local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
+    py_driver=$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python -m src.scripts.trt.detection driver-version 2>/dev/null) || true
     if [ -n "$py_driver" ]; then
       driver_ver="$py_driver"
       driver_source="cuda-python"
@@ -245,23 +231,10 @@ trt_list_remote_engines() {
   if [ -z "${repo_id}" ]; then
     return 1
   fi
-  
+
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
-PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON 2>/dev/null || true
-import sys
-from src.scripts.filters import configure
-configure()
-try:
-    from huggingface_hub import list_repo_tree
-    items = list(list_repo_tree('${repo_id}', path_in_repo='trt-llm/engines', repo_type='model'))
-    for item in items:
-        if item.path.startswith('trt-llm/engines/') and item.path.count('/') == 2:
-            label = item.path.split('/')[-1]
-            print(label)
-except Exception as exc:
-    print(f'Error: {exc}', file=sys.stderr)
-    sys.exit(1)
-PYTHON
+  PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python -m src.scripts.trt.detection list-engines "${repo_id}" 2>/dev/null || true
 }
 
 # Parse engine label into components
