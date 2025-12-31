@@ -2,6 +2,10 @@
 
 # Warmup/bench-specific configuration shared across scripts.
 
+_WARMUP_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../common/constants.sh
+source "${_WARMUP_ENV_DIR}/../common/constants.sh"
+
 warmup_normalize_positive_int() {
   local var_name="${1:-}"
   local default_val="${2:-1}"
@@ -39,14 +43,14 @@ warmup_init_defaults() {
   log_dir="${LOG_DIR:-${root_dir}/logs}"
   run_dir="${RUN_DIR:-${root_dir}/.run}"
 
-  export WARMUP_HEALTH_POLL_INTERVAL_SECS="${WARMUP_HEALTH_POLL_INTERVAL_SECS:-2}"
-  export WARMUP_RUN_DELAY_SECS="${WARMUP_RUN_DELAY_SECS:-1}"
-  export WARMUP_DEFAULT_CONN_FALLBACK="${WARMUP_DEFAULT_CONN_FALLBACK:-8}"
+  export WARMUP_HEALTH_POLL_INTERVAL_SECS="${WARMUP_HEALTH_POLL_INTERVAL_SECS:-${SCRIPTS_WARMUP_HEALTH_POLL_INTERVAL_SECS_DEFAULT}}"
+  export WARMUP_RUN_DELAY_SECS="${WARMUP_RUN_DELAY_SECS:-${SCRIPTS_WARMUP_RUN_DELAY_SECS_DEFAULT}}"
+  export WARMUP_DEFAULT_CONN_FALLBACK="${WARMUP_DEFAULT_CONN_FALLBACK:-${SCRIPTS_WARMUP_DEFAULT_CONN_FALLBACK}}"
 
   export WARMUP_LOG_FILE="${WARMUP_LOG_FILE:-${log_dir}/warmup.log}"
   export WARMUP_LOCK_FILE="${WARMUP_LOCK_FILE:-${run_dir}/warmup.lock}"
   export WARMUP_HEALTH_CHECK_SCRIPT="${WARMUP_HEALTH_CHECK_SCRIPT:-${script_dir}/lib/common/health.sh}"
 
-  warmup_normalize_positive_int WARMUP_TIMEOUT_SECS 300
-  warmup_normalize_positive_int WARMUP_RETRIES 1
+  warmup_normalize_positive_int WARMUP_TIMEOUT_SECS "${SCRIPTS_WARMUP_TIMEOUT_SECS_DEFAULT}"
+  warmup_normalize_positive_int WARMUP_RETRIES "${SCRIPTS_WARMUP_RETRIES_DEFAULT}"
 }

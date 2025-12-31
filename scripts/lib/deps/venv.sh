@@ -1,19 +1,15 @@
 #!/usr/bin/env bash
 
-# Virtual environment helpers
+# Virtual environment helpers.
 
 _VENV_HELPERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./pip.sh
 source "${_VENV_HELPERS_DIR}/pip.sh"
+# shellcheck source=../common/constants.sh
+source "${_VENV_HELPERS_DIR}/../common/constants.sh"
 
-# =============================================================================
-# PYTHON VERSION REQUIREMENTS
-# =============================================================================
-# TensorRT-LLM 1.2.0rc5 requires Python 3.10 specifically.
-# Python 3.11 does NOT work reliably (see ADVANCED.md).
-# vLLM works with Python 3.10-3.12.
-
-TRT_REQUIRED_PYTHON_VERSION="3.10"
+# Alias for backward compatibility with existing code.
+TRT_REQUIRED_PYTHON_VERSION="${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}"
 
 # =============================================================================
 # PYTHON RUNTIME HELPERS

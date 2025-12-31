@@ -2,8 +2,10 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+export ROOT_DIR
 source "${SCRIPT_DIR}/../lib/common/warnings.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
+source "${SCRIPT_DIR}/../lib/deps/venv.sh"
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
   log_warn "[gpu] ⚠ nvidia-smi not found; ensure this RunPod image has NVIDIA drivers."
@@ -12,8 +14,9 @@ elif ! nvidia-smi >/dev/null 2>&1; then
 fi
 
 # Print CUDA/Torch ABI hint if available
-if [ -d "${ROOT_DIR}/.venv" ]; then
-  CU_VER=$("${ROOT_DIR}/.venv/bin/python" - <<'PY' || true
+venv_dir="$(get_venv_dir)"
+if [ -d "${venv_dir}" ]; then
+  CU_VER=$("${venv_dir}/bin/python" - <<'PY' || true
 import sys
 try:
     import torch

@@ -5,6 +5,8 @@
 _RUNTIME_PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../noise/logging.sh
 source "${_RUNTIME_PIPELINE_DIR}/../noise/logging.sh"
+# shellcheck source=../common/constants.sh
+source "${_RUNTIME_PIPELINE_DIR}/../common/constants.sh"
 
 # Prepare server.log for a new run, trimming oversized files and ensuring the
 # .run directory exists so downstream helpers can rely on pid/log state.
@@ -14,7 +16,7 @@ runtime_pipeline_prepare_log() {
   mkdir -p "${root_dir}/.run"
 
   if [ -f "${server_log}" ]; then
-    local max_keep_bytes=$((100 * 1024 * 1024))  # 100MB
+    local max_keep_bytes="${SCRIPTS_MAX_SERVER_LOG_BYTES}"
     local size
     size=$(wc -c <"${server_log}" 2>/dev/null || echo 0)
     if [ "${size}" -gt "${max_keep_bytes}" ]; then
@@ -22,7 +24,8 @@ runtime_pipeline_prepare_log() {
       local tmp_file="${root_dir}/.server.log.trim"
       if tail -c "${max_keep_bytes}" "${server_log}" > "${tmp_file}" 2>/dev/null; then
         mv "${tmp_file}" "${server_log}" 2>/dev/null || true
-        echo "[server] Trimmed server.log to latest 100MB (removed ${offset} bytes)" >> "${server_log}"
+        local size_mb=$((max_keep_bytes / 1024 / 1024))
+        echo "[server] Trimmed server.log to latest ${size_mb}MB (removed ${offset} bytes)" >> "${server_log}"
       fi
     fi
   fi
