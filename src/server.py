@@ -68,7 +68,7 @@ from .config import (
     INFERENCE_ENGINE,
 )
 from .helpers.validation import validate_env
-from .helpers.runtime import configure_runtime_env
+from .engines.vllm.setup import configure_runtime_env
 from .config.logging import configure_logging
 from .engines import (
     get_engine,

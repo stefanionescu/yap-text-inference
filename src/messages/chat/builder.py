@@ -1,4 +1,13 @@
-"""Prompt building helpers for chat prompts using dynamic inputs."""
+"""Prompt building helpers for chat prompts using dynamic inputs.
+
+This module provides functions to build chat prompts using the tokenizer's
+native chat template. It handles system prompts, conversation history,
+and proper role alternation required by various model templates.
+
+Key Functions:
+    build_chat_prompt_with_prefix: Build a complete chat prompt with user query
+    build_chat_warm_prompt: Build a prompt for warming persona/history without query
+"""
 
 from __future__ import annotations
 
@@ -6,9 +15,9 @@ import logging
 from functools import lru_cache
 from collections.abc import Sequence
 
-from ..config.chat import CHAT_TEMPLATE_ENABLE_THINKING
-from ..tokens.tokenizer import get_chat_tokenizer
-from ..handlers.session.history import parse_history_as_tuples
+from ...config.chat import CHAT_TEMPLATE_ENABLE_THINKING
+from ...tokens.tokenizer import get_chat_tokenizer
+from ...handlers.session.history import parse_history_as_tuples
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +25,10 @@ logger = logging.getLogger(__name__)
 # in config so deployments can reason about it centrally (default: disabled).
 _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKING}
 
+
+# ============================================================================
+# Public API
+# ============================================================================
 
 def build_chat_prompt_with_prefix(
     static_prefix: str,
@@ -41,6 +54,10 @@ def build_chat_warm_prompt(
     messages = _build_messages(system_prompt, history_turns, user_utt=None)
     return _apply_chat_template(messages, add_generation_prompt=True)
 
+
+# ============================================================================
+# Internal Helpers
+# ============================================================================
 
 def _build_messages(
     system_prompt: str,

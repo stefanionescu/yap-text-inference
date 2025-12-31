@@ -4,7 +4,7 @@ from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
 from ...tokens import count_tokens_chat, trim_history_preserve_messages_chat
-from ...helpers.prompts import build_chat_warm_prompt
+from ..chat.builder import build_chat_warm_prompt
 from .warm_utils import warm_chat_segment, sanitize_optional_prompt
 from ...handlers.websocket.helpers import safe_send_json
 

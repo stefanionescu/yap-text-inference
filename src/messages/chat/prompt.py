@@ -12,23 +12,23 @@ import random
 import uuid
 from typing import Any
 from fastapi import WebSocket
-from ..handlers.session import session_handler
-from ..config import DEPLOY_CHAT
-from ..handlers.websocket.helpers import safe_send_json
-from ..config.chat import CHAT_PROMPT_RATE_LIMIT_MESSAGES
-from ..tokens import (
+from ...handlers.session import session_handler
+from ...config import DEPLOY_CHAT
+from ...handlers.websocket.helpers import safe_send_json
+from ...config.chat import CHAT_PROMPT_RATE_LIMIT_MESSAGES
+from ...tokens import (
     count_tokens_chat,
     trim_history_preserve_messages_chat,
 )
-from ..config import (
+from ...config import (
     HISTORY_MAX_TOKENS,
     CHAT_PROMPT_MAX_TOKENS,
     CHAT_PROMPT_UPDATE_MAX_PER_WINDOW,
     CHAT_PROMPT_UPDATE_WINDOW_SECONDS,
 )
-from ..engines import get_engine, create_sampling_params
-from ..helpers.prompts import build_chat_warm_prompt
-from .validators import (
+from ...engines import get_engine, create_sampling_params
+from .builder import build_chat_warm_prompt
+from ..validators import (
     ValidationError,
     require_prompt,
     sanitize_prompt_with_limit,
