@@ -42,7 +42,7 @@ from typing import Any
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
 from ...engines.base import BaseEngine
-from ...helpers.async_compat import timeout as async_timeout
+from ..async_compat import timeout as async_timeout
 
 logger = logging.getLogger(__name__)
 STREAM_LABEL = "chat"  # Log prefix for chat streams

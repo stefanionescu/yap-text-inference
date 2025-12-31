@@ -62,6 +62,7 @@ These rules describe how every source file should be structured so that our agen
 - Use files like `ADVANCED.md` for in-depth walkthroughs or niche knowledge that only applies to specialized contributors.
 - Avoid emojis or emoticons in every Markdown file; keep the tone professional and clear.
 - Every Markdown file (other than `AGENTS.md`) must include a concise contents table or list immediately below its high-level description to help readers navigate.
+- Never embed directory structures or tree listings inside README/Markdown files (and do not include them in code comments either); describe behavior and architecture instead of filesystem layouts.
 - Whenever a feature or task is completed (not just partially done), review the README and any advanced docs to ensure they reflect the latest behavior.
 
 ## Readability and Style

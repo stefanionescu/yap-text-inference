@@ -1,28 +1,11 @@
 #!/usr/bin/env bash
+# vLLM-specific warmup wrapper.
+#
+# Delegates to the shared warmup script with the vLLM engine prefix.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/logs.sh"
+COMMON_DIR="${SCRIPT_DIR}/../../common/scripts"
 
-# Warmup script - waits for server to be ready and runs initial validation
-
-MAX_WAIT=300
-WAIT_INTERVAL=5
-ELAPSED=0
-
-while [ $ELAPSED -lt $MAX_WAIT ]; do
-  if curl -sf http://localhost:8000/healthz >/dev/null 2>&1; then
-    log_success "[vllm-warmup] ✓ Server is healthy after ${ELAPSED}s"
-    break
-  fi
-  sleep $WAIT_INTERVAL
-  ELAPSED=$((ELAPSED + WAIT_INTERVAL))
-done
-
-if [ $ELAPSED -ge $MAX_WAIT ]; then
-  log_warn "[vllm-warmup] ⚠ Server did not become healthy within ${MAX_WAIT}s"
-  exit 0
-fi
-
-log_success "[warmup] ✓ Ready"
-
+exec "${COMMON_DIR}/warmup.sh" "vllm"

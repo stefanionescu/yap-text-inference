@@ -153,3 +153,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Default command
 CMD ["/app/scripts/main.sh"]
+
+LABEL org.opencontainers.image.title="Yap Text Inference vLLM (CUDA 13.0, Py311)" \
+      org.opencontainers.image.description="vLLM inference image for pre-quantized AWQ/GPTQ models." \
+      org.opencontainers.image.source="https://github.com/Yap-With-AI/yap-text-inference"
