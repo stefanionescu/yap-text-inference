@@ -69,7 +69,7 @@ from ...messages.start import handle_start_message
 from ...messages.warm.warm_history import handle_warm_history_message
 from ...messages.warm.warm_persona import handle_warm_persona_message
 from ..rate_limit import RateLimitError, SlidingWindowRateLimiter
-from ..connection_handler import connection_handler
+from ..connections import connections
 from ..session import abort_session_requests, session_handler
 from .lifecycle import WebSocketLifecycle
 from .errors import reject_connection, send_error
@@ -119,8 +119,8 @@ async def _prepare_connection(ws: WebSocket) -> bool:
         )
         return False
 
-    if not await connection_handler.connect(ws):
-        capacity_info = connection_handler.get_capacity_info()
+    if not await connections.connect(ws):
+        capacity_info = connections.get_capacity_info()
         await reject_connection(
             ws,
             error_code="server_at_capacity",
@@ -275,7 +275,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
 
     logger.info(
         "WebSocket connection accepted. Active: %s",
-        connection_handler.get_connection_count(),
+        connections.get_connection_count(),
     )
 
     try:
@@ -346,8 +346,8 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                 await lifecycle.stop()
         session_duration = await _cleanup_session(session_id)
         if admitted:
-            await connection_handler.disconnect(ws)
-            remaining = connection_handler.get_connection_count()
+            await connections.disconnect(ws)
+            remaining = connections.get_connection_count()
             logger.info("WebSocket connection closed. Active: %s", remaining)
             should_reset = (
                 session_id is not None and
