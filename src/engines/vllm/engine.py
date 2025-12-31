@@ -227,3 +227,14 @@ async def shutdown_engine() -> None:
 async def clear_caches_on_disconnect() -> None:
     """Force cache reset when all clients disconnect."""
     await reset_engine_caches("all_clients_disconnected", force=True)
+
+
+__all__ = [
+    "VLLMEngine",
+    "get_engine",
+    "shutdown_engine",
+    "reset_engine_caches",
+    "cache_reset_reschedule_event",
+    "seconds_since_last_cache_reset",
+    "clear_caches_on_disconnect",
+]

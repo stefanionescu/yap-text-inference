@@ -1,7 +1,21 @@
-"""Session management helpers."""
+"""Session management helpers.
 
-from .manager import SessionHandler, abort_session_requests, session_handler
+This package provides session state management for the inference server.
+Sessions track per-connection data including:
+
+- Persona configuration (gender, personality, custom prompts)
+- Conversation history and turn tracking
+- Active request IDs for cancellation
+- Rate limiting state for prompt updates
+- Screen prefix customization
+
+Key components:
+- SessionHandler: Central session coordinator
+- session_handler: Global singleton instance
+- abort_session_requests: Clean request cancellation
+"""
+
+from .abort import abort_session_requests
+from .manager import SessionHandler, session_handler
 
 __all__ = ["SessionHandler", "session_handler", "abort_session_requests"]
-
-

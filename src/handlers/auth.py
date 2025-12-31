@@ -85,3 +85,10 @@ async def authenticate_websocket(websocket: WebSocket) -> bool:
         return False
     logger.info("WebSocket connection authenticated successfully")
     return True
+
+
+__all__ = [
+    "validate_api_key",
+    "get_api_key",
+    "authenticate_websocket",
+]

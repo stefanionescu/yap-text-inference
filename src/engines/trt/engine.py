@@ -230,3 +230,10 @@ async def get_engine() -> TRTEngine:
 async def shutdown_engine() -> None:
     """Shut down the TRT chat engine if it has been initialized."""
     await _engine_singleton.shutdown()
+
+
+__all__ = [
+    "TRTEngine",
+    "get_engine",
+    "shutdown_engine",
+]

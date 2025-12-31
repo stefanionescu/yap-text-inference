@@ -15,7 +15,6 @@ from __future__ import annotations
 import html
 import re
 
-from ...config.chat import DIGIT_WORDS
 from ...config.filters import (
     ACTION_EMOTE_PATTERN,
     COLLAPSE_SPACES_PATTERN,
@@ -25,7 +24,6 @@ from ...config.filters import (
     ELLIPSIS_PATTERN,
     ELLIPSIS_TRAILING_DOT_PATTERN,
     ELLIPSIS_TRAILING_SPACE_PATTERN,
-    EMAIL_PATTERN,
     EMOJI_PATTERN,
     EMOTICON_PATTERN,
     EXAGGERATED_OH_PATTERN,
@@ -35,11 +33,10 @@ from ...config.filters import (
     NEWLINE_TOKEN_PATTERN,
     SPACE_BEFORE_PUNCT_PATTERN,
     SPACED_DOT_RUN_PATTERN,
-    TRAILING_STREAM_UNSTABLE_CHARS,
 )
 from .common import _strip_escaped_quotes
-
-from phonenumbers import PhoneNumberMatcher  # type: ignore[import-untyped]
+from .suffix import compute_stable_and_tail_lengths
+from .verbalize import verbalize_emails, verbalize_phone_numbers
 
 
 class StreamingSanitizer:
@@ -81,7 +78,7 @@ class StreamingSanitizer:
         self._prefix_pending = prefix_state
         self._capital_pending = capital_state
 
-        stable_len, tail_len = _split_stable_and_tail_lengths(
+        stable_len, tail_len = compute_stable_and_tail_lengths(
             raw_tail=self._raw_tail,
             sanitized=sanitized,
             max_tail=self._MAX_TAIL,
@@ -175,8 +172,8 @@ def _sanitize_stream_chunk(
         prefix_pending = False
 
     # Verbalize emails and phone numbers early (before dash replacement etc.)
-    cleaned = _verbalize_emails(cleaned)
-    cleaned = _verbalize_phone_numbers(cleaned)
+    cleaned = verbalize_emails(cleaned)
+    cleaned = verbalize_phone_numbers(cleaned)
     cleaned = ACTION_EMOTE_PATTERN.sub("", cleaned)
     cleaned = _strip_asterisks(cleaned)
     cleaned = ELLIPSIS_PATTERN.sub("...", cleaned)
@@ -211,35 +208,6 @@ def _sanitize_stream_chunk(
     return cleaned, prefix_pending, capital_pending
 
 
-def _split_stable_and_tail_lengths(
-    raw_tail: str,
-    sanitized: str,
-    max_tail: int,
-) -> tuple[int, int]:
-    """Compute how much of the sanitized text is stable vs tail to buffer."""
-    if not sanitized:
-        return 0, 0
-
-    unstable = _unstable_suffix_len(sanitized)
-    html_guard = _html_entity_suffix_len(sanitized)
-    html_tag_guard = _html_tag_suffix_len(raw_tail)
-    email_guard = _email_suffix_len(raw_tail)
-    phone_guard = _phone_suffix_len(raw_tail)
-
-    tail_len = min(
-        len(sanitized),
-        max(unstable, html_guard, html_tag_guard, email_guard, phone_guard, 0),
-    )
-    stable_len = len(sanitized) - tail_len
-
-    # Bound the retained tail to avoid unbounded buffering
-    if tail_len > max_tail:
-        stable_len = len(sanitized) - max_tail
-        tail_len = max_tail
-
-    return stable_len, tail_len
-
-
 def _common_prefix_len(a: str, b: str) -> int:
     """Length of the longest common prefix of a and b."""
     max_len = min(len(a), len(b))
@@ -247,62 +215,6 @@ def _common_prefix_len(a: str, b: str) -> int:
     while idx < max_len and a[idx] == b[idx]:
         idx += 1
     return idx
-
-
-def _unstable_suffix_len(text: str) -> int:
-    idx = len(text)
-    while idx > 0 and text[idx - 1] in TRAILING_STREAM_UNSTABLE_CHARS:
-        idx -= 1
-    # Keep any trailing run of dots (partial ellipsis)
-    while idx > 0 and text[idx - 1] == ".":
-        idx -= 1
-    return len(text) - idx
-
-
-def _html_entity_suffix_len(text: str) -> int:
-    match = re.search(r"&[A-Za-z]{0,10}$", text)
-    if not match:
-        return 0
-    return len(text) - match.start()
-
-
-def _html_tag_suffix_len(raw_text: str) -> int:
-    """Retain trailing text only if the last '<' is not yet closed by a '>'."""
-    if not raw_text:
-        return 0
-    last_lt = raw_text.rfind("<")
-    if last_lt == -1:
-        return 0
-    last_gt = raw_text.rfind(">")
-    if last_gt > last_lt:
-        return 0
-    return min(len(raw_text) - last_lt, 256)
-
-
-def _email_suffix_len(raw_text: str) -> int:
-    """Retain trailing text that could still form a valid email across chunks."""
-    if not raw_text:
-        return 0
-    # Common case: if the tail already has a full email, keep nothing extra
-    if EMAIL_PATTERN.search(raw_text):
-        # Still keep a small guard in case of partial second email
-        return min(16, len(raw_text))
-
-    # Partial email guard (local@ or local@domain)
-    partial = re.search(r"[A-Za-z0-9._%+-]+@?[A-Za-z0-9.-]*$", raw_text)
-    if not partial:
-        return 0
-    return min(len(raw_text) - partial.start(), 256)
-
-
-def _phone_suffix_len(raw_text: str) -> int:
-    """Retain trailing digits/+/-/spaces that could still form a phone number."""
-    if not raw_text:
-        return 0
-    partial = re.search(r"[+\d][\d \-\(\)]*$", raw_text)
-    if not partial:
-        return 0
-    return min(len(raw_text) - partial.start(), 64)
 
 
 def _normalize_exaggerated_oh(match: re.Match[str]) -> str:
@@ -343,66 +255,6 @@ def _strip_emoji_like_tokens(text: str) -> str:
     text = EMOJI_PATTERN.sub(" ", text)
     text = EMOTICON_PATTERN.sub(" ", text)
     return _collapse_spaces(text)
-
-
-def _verbalize_email(email: str) -> str:
-    """Convert email to spoken form: me@you.com → me at you dot com."""
-    result = email.replace("@", " at ")
-    result = result.replace(".", " dot ")
-    return result
-
-
-def _verbalize_emails(text: str) -> str:
-    """Find and verbalize all email addresses in text."""
-    if not text:
-        return ""
-
-    def replace_email(match: re.Match[str]) -> str:
-        return _verbalize_email(match.group(0))
-
-    return EMAIL_PATTERN.sub(replace_email, text)
-
-
-def _verbalize_phone_digit(char: str) -> str:
-    """Convert a single phone character to spoken form."""
-    if char == "+":
-        return "plus"
-    if char in DIGIT_WORDS:
-        return DIGIT_WORDS[char]
-    return ""
-
-
-def _verbalize_phone_number(raw_number: str) -> str:
-    """Convert phone number to spoken form: +1 234 → plus one two three four."""
-    words: list[str] = []
-    for char in raw_number:
-        word = _verbalize_phone_digit(char)
-        if word:
-            words.append(word)
-    return " ".join(words)
-
-
-def _verbalize_phone_numbers(text: str) -> str:
-    """Find and verbalize phone numbers with international format (+XX...)."""
-    if not text:
-        return text
-
-    matches: list[tuple[int, int, str]] = []
-
-    # region=None only matches international format with explicit + country code
-    for match in PhoneNumberMatcher(text, None):
-        matches.append((match.start, match.end, _verbalize_phone_number(match.raw_string)))
-
-    if not matches:
-        return text
-
-    # Replace from end to start to preserve positions
-    matches.sort(key=lambda x: x[0], reverse=True)
-    result = text
-    for start, end, verbalized in matches:
-        result = result[:start] + verbalized + result[end:]
-
-    return result
 
 
 __all__ = ["StreamingSanitizer"]

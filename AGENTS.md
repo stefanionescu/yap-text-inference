@@ -17,7 +17,10 @@ These rules describe how every source file should be structured so that our agen
 - Order logic so that internal helpers appear before any public exports. Readers should encounter the private plumbing before the API surface.
 - Export each public symbol from a single, well-defined place—preferably the module’s `__init__.py`—instead of re-exporting it through multiple files.
 - If a public symbol is exported but unused, decide whether it should be removed, relocated, or refactored—unused exports are almost always a code smell.
-- Keep total file length at or under 300 lines. Split the module whenever you approach that limit.
+- Avoid instantiating a singleton or global instance in the same file that defines the class; create those instances from a dedicated assembly point (e.g., the server entry module).
+- Never trigger work at import time—do not auto-call functions when the module loads. Expose callable entry points and let the importer execute them explicitly.
+- Keep total file length at or under 350 lines. Split the module whenever you approach that limit.
+- Never delete comments just to meet the line limit; the cap refers to executable code, and removing documentation for the sake of numbers is counterproductive.
 - Use section dividers exactly in this format, followed by a single blank line before the first symbol:
   ```
   # ============================================================================
@@ -40,6 +43,8 @@ These rules describe how every source file should be structured so that our agen
 - Execution- or engine-specific logic must remain inside their respective directories (`execution`, `engines`, etc.).
 - All token-related concerns—including tokenization utilities and tokenizer interactions—belong under the `tokens` subdirectory.
 - Scripts that need Python helpers should import them from `src/scripts`; keep that directory organized by category subfolders (e.g., `filtering`) or by clearly named single-purpose modules when no category is necessary.
+- Watch the directory layout: avoid subdirectories that contain a single file unless the file is intentionally split into multiple modules soon. Either split the logic further, move shared portions into `helpers`, or relocate the file into a better-suited directory and remove the redundant subfolder.
+- When refactoring a large file into related modules, consider introducing a new subdirectory to host that cluster so the related pieces stay together and the parent directory remains organized.
 
 ## Documentation
 - Keep the primary README focused on the essential concepts: overall logic, how the scripts operate, and anything every developer must know to get started quickly.
