@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import os
 import traceback
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import torch
@@ -22,11 +20,9 @@ from src.helpers.calibration import (
 )
 from src.helpers.model_profiles import get_model_profile
 
-from ..calibration import CalibrationConfig
-from ..config_fixes import apply_post_quantization_fixes
-from ..metadata import save_quantization_metadata
-
-__all__ = ["quantize"]
+from .calibration import CalibrationConfig
+from .config_fixes import apply_post_quantization_fixes
+from .metadata import save_quantization_metadata
 
 
 @dataclass
@@ -238,3 +234,6 @@ def _persist_metadata(
 
 def _is_dataset_registration_error(exc: Exception) -> bool:
     return "Unable to find" in str(exc) and "TextGenerationDataset" in str(exc)
+
+
+__all__ = ["quantize"]
