@@ -4,6 +4,7 @@ Expectations tailored to this repository’s layout and inference workflows. Use
 
 ## Configuration and parameters
 - Avoid inline magic values; store configuration knobs in the `config/` directory. Reuse an existing module when possible before adding new ones.
+- For feature flags that enable behavior when set, treat absence as “off.” Don’t introduce redundant “disable” flags—only the enabling flag should be needed.
 
 ## Directories and code reuse
 - Keep code DRY; prefer reusing existing helpers over duplicating logic.
@@ -22,4 +23,3 @@ Expectations tailored to this repository’s layout and inference workflows. Use
 - Factor out logic shared by multiple Docker images (e.g., TRT and VLLM) into a common subdirectory; keep image-specific scripts and helpers inside that image’s folder.
 - Each Docker image directory must include its own README explaining how to build and run it; the root `docker/README.md` should cover overall layout and entry points.
 - Keep Dockerfiles focused on setup steps; move non-trivial logic into scripts or Python files and invoke them from the Dockerfile.
-

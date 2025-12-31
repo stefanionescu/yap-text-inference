@@ -81,6 +81,8 @@ Key flags:
   --no-show-hf-logs     Hide Hugging Face logs (default)
   --show-trt-logs       Show TensorRT-LLM build/quantization logs
   --no-show-trt-logs    Hide TensorRT logs (default)
+  --show-llmcompressor-logs   Show LLMCompressor/AutoAWQ calibration progress
+  --no-show-llmcompressor-logs Hide LLMCompressor logs (default)
 
 This script always:
   • Stops the server
@@ -164,6 +166,11 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   # Pass show-trt-logs flag if requested
   if [ "${SHOW_TRT_LOGS:-0}" = "1" ]; then
     main_args+=("--show-trt-logs")
+  fi
+  
+  # Pass show-llmcompressor-logs flag if requested
+  if [ "${SHOW_LLMCOMPRESSOR_LOGS:-0}" = "1" ]; then
+    main_args+=("--show-llmcompressor-logs")
   fi
   
   # Add model(s) based on deploy mode

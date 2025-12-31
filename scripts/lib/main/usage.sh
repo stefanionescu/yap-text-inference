@@ -92,10 +92,12 @@ main_usage() {
   echo "  --no-push-engine    Skip engine push (default)"
   echo ""
   echo "Debugging:"
-  echo "  --show-hf-logs      Show Hugging Face download/upload progress bars"
-  echo "  --no-show-hf-logs   Hide Hugging Face logs (default)"
-  echo "  --show-trt-logs     Show TensorRT-LLM build/quantization logs"
-  echo "  --no-show-trt-logs  Hide TensorRT logs (default)"
+  echo "  --show-hf-logs              Show Hugging Face download/upload progress bars"
+  echo "  --no-show-hf-logs           Hide Hugging Face logs (default)"
+  echo "  --show-trt-logs             Show TensorRT-LLM build/quantization logs"
+  echo "  --no-show-trt-logs          Hide TensorRT logs (default)"
+  echo "  --show-llmcompressor-logs   Show LLMCompressor/AutoAWQ calibration progress"
+  echo "  --no-show-llmcompressor-logs Hide LLMCompressor logs (default)"
   exit 1
 }
 
