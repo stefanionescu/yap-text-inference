@@ -2,10 +2,13 @@
 
 This package provides handlers for different WebSocket message types:
 
-start.py:
+start/:
     Handles initial conversation start messages. Validates input,
     extracts persona/gender/personality configuration, and initiates
     the tool-then-chat execution flow.
+    - handler.py: Main start message handler
+    - dispatch.py: Execution path routing
+    - sampling.py: Sampling parameter extraction
 
 followup.py:
     Handles subsequent messages within an existing session.
@@ -33,3 +36,11 @@ warm/:
     Session warmup utilities for priming history and personas
     before the first user message.
 """
+
+from .start import handle_start_message, StartPlan, dispatch_execution
+
+__all__ = [
+    "handle_start_message",
+    "StartPlan",
+    "dispatch_execution",
+]

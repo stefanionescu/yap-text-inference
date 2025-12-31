@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..config import (
+from ...config import (
     CHAT_TEMPERATURE_MIN,
     CHAT_TEMPERATURE_MAX,
     CHAT_TOP_P_MIN,
@@ -37,7 +37,7 @@ from ..config import (
     CHAT_FREQUENCY_PENALTY_MAX,
     DEPLOY_CHAT,
 )
-from .validators import ValidationError
+from ..validators import ValidationError
 
 
 # Sampling field configuration: (name, type, min, max, invalid_code, range_code)

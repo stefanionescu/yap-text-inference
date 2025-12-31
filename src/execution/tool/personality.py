@@ -198,3 +198,6 @@ def match_gender_personality_phrase(
                     return (gender, canonical_personality)
     
     return None
+
+
+__all__ = ["match_personality_phrase", "match_gender_personality_phrase"]

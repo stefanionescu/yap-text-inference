@@ -27,7 +27,7 @@ from .time import format_session_timestamp
 
 from .config import update_session_config as _update_config, resolve_screen_prefix
 from .history import HistoryController
-from .prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
+from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 from .rate_limiting import (
     consume_chat_prompt_update as _consume_rate_limit,
     get_chat_prompt_last_update_at as _get_rate_limit_ts,

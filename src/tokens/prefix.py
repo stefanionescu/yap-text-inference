@@ -1,4 +1,4 @@
-"""Screen prefix utilities for session management.
+"""Screen prefix token counting and stripping utilities.
 
 This module handles the screen prefix logic for chat sessions:
 
@@ -15,24 +15,21 @@ This module handles the screen prefix logic for chat sessions:
 3. Effective Budget Calculation:
    - Computes available tokens for user messages after prefix reservation
    - Supports both start messages (check_screen) and followups (screen_checked)
-
-These utilities are extracted from SessionHandler to keep the main class
-focused on session lifecycle and state management.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.config import (
+from ..config import (
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
     USER_UTT_MAX_TOKENS,
 )
-from src.tokens import count_tokens_chat
+from .token_utils import count_tokens_chat
 
 if TYPE_CHECKING:
-    from .state import SessionState
+    from ..handlers.session.state import SessionState
 
 
 def count_prefix_tokens(prefix: str | None) -> int:
