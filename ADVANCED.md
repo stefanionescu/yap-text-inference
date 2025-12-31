@@ -49,7 +49,7 @@ Yap supports two inference engines selected at deployment time:
 | `INFERENCE_ENGINE=trt` | `--trt` | **Yes** |
 | `INFERENCE_ENGINE=vllm` | `--vllm` | No |
 
-The engine is locked at startup. Switching engines requires a full restart with environment wipe:
+Switching engines requires a restart with environment wipe:
 
 ```bash
 # Switch from TRT to vLLM (triggers full wipe)
@@ -73,9 +73,8 @@ vLLM-specific environment variables:
 | `AWQ_CACHE_DIR` | `.awq` | Local cache for AWQ exports |
 
 **Cache Management:**
-- vLLM periodically resets prefix and multimodal caches to prevent fragmentation
+- vLLM resets prefix caches periodically to prevent fragmentation
 - Configure interval with `CACHE_RESET_INTERVAL_SECONDS` (default: 600)
-- Force immediate reset via `reset_engine_caches()` (internal Python API for developers extending the codebase)
 
 ### TensorRT-LLM Configuration
 
@@ -96,7 +95,7 @@ TRT-LLM-specific environment variables:
 
 **Batch Size Configuration:**
 
-TRT-LLM engines have a `max_batch_size` baked in at build time. This determines how many sequences can be batched together in a single forward pass—it is **not** the same as `MAX_CONCURRENT_CONNECTIONS` (WebSocket connections).
+TRT-LLM engines have `max_batch_size` baked in at build time. This is not the same as `MAX_CONCURRENT_CONNECTIONS`.
 
 | Variable | When Required | Description |
 |----------|---------------|-------------|
@@ -121,7 +120,7 @@ export TRT_BATCH_SIZE=16
 bash scripts/main.sh --trt 4bit <pre-built-engine-model> <tool_model>
 ```
 
-At runtime, the server validates that `TRT_BATCH_SIZE` ≤ engine's max and logs both values at startup.
+The server validates that `TRT_BATCH_SIZE` ≤ engine's max at startup.
 
 **AWQ Quantization Tuning:**
 
@@ -145,13 +144,7 @@ Override with `QUANTIZATION=fp8` or `QUANTIZATION=int8_sq`.
 
 **MoE Model Support:**
 
-Mixture-of-Experts models (e.g., Qwen3-30B-A3B) are automatically detected by:
-- Naming convention: `-aXb` suffix (e.g., `qwen3-30b-a3b`)
-- Model type markers: `moe`, `mixtral`, `deepseek-v2/v3`, `ernie-4.5`
-
-MoE models follow the same quantization formats as dense models:
-- **4-bit:** INT4-AWQ
-- **8-bit:** FP8 on sm89/sm90, INT8-SQ on sm80
+MoE models (e.g., Qwen3-30B-A3B) are auto-detected by name patterns (`-aXb`, `moe`, `mixtral`, etc.) and use the same quantization as dense models.
 
 **Engine Build Metadata:**
 
@@ -192,7 +185,7 @@ Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tai
 
 ## Linting
 
-Use the existing repo virtualenv (the same one that `scripts/main.sh` / `scripts/steps/03_install_deps.sh` provision). If you're on a fresh machine and that env isn't there yet, run `bash scripts/steps/03_install_deps.sh` first. Then install the dev extras and run the integrated lint script:
+Use the repo virtualenv. If it doesn't exist, run `bash scripts/steps/03_install_deps.sh` first:
 
 ```bash
 # ensure you're inside the repo venv
@@ -202,11 +195,11 @@ bash scripts/lint.sh
 # exit the subshell when finished
 ```
 
-`scripts/lint.sh` runs Ruff across `src` and `tests`, then ShellCheck over every tracked `*.sh`, exiting non-zero if anything fails.
+`scripts/lint.sh` runs Ruff on Python and ShellCheck on shell scripts.
 
 ## API — WebSocket `/ws`
 
-The server maintains persistent WebSocket connections with session-based user assignment. Each client provides a `session_id` for user identification, and the connection can handle multiple requests over time with automatic interruption support.
+The server uses persistent WebSocket connections. Each client provides a `session_id`, and a connection can handle multiple requests with automatic interruption support.
 
 ### WebSocket Protocol Highlights
 
@@ -219,16 +212,15 @@ The server maintains persistent WebSocket connections with session-based user as
 - **Idle timeout**: Connections with no activity for 150 s (configurable via `WS_IDLE_TIMEOUT_S`) are closed with code `4000`. Send periodic pings or requests to stay connected longer.
 - **Sentinel shortcuts**: The default `WS_END_SENTINEL="__END__"` / `WS_CANCEL_SENTINEL="__CANCEL__"` are accepted as raw text frames for clients that can't emit JSON.
 - **Rate limits**: Rolling-window quotas for both general messages and cancel messages are enforced per connection, while persona updates are limited per session. Tune the behavior via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS`, `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS`, and `CHAT_PROMPT_UPDATE_MAX_PER_WINDOW` / `CHAT_PROMPT_UPDATE_WINDOW_SECONDS` (see `src/config/limits.py` for defaults).
-- **Capacity guard**: Admissions are gated by a global semaphore (configurable via `MAX_CONCURRENT_CONNECTIONS` and `WS_HANDSHAKE_ACQUIRE_TIMEOUT_S`). When the server returns `server_at_capacity`, retry with backoff.
-- **Done frame contract**: Every turn ends with `{"type":"done","usage":{...}}` when it succeeds, or `{"type":"done","cancelled":true}` when it's interrupted (explicit cancel or barge-in).
+- **Connection limit**: New connections are limited by `MAX_CONCURRENT_CONNECTIONS`. When the server returns `server_at_capacity`, retry with backoff.
+- **Done frame**: Every turn ends with `{"type":"done","usage":{...}}` on success, or `{"type":"done","cancelled":true}` when interrupted.
 
 ### Connection Lifecycle
-1. Client connects to `ws://server:8000/ws?api_key=your_key` (with authentication)
-2. Client sends `start` message with `session_id` to assign/identify user
-3. Connection stays open for multiple requests (up to server connection limit)
+1. Client connects to `ws://server:8000/ws?api_key=your_key`
+2. Client sends `start` message with `session_id`
+3. Connection stays open for multiple requests
 4. Session state (persona, settings) persists across requests
-5. New `start` messages automatically cancel previous requests (barge-in)
-6. Connections are limited to protect GPU resources
+5. New `start` messages cancel any in-progress request (barge-in)
 
 ### Authentication Methods
 ```javascript
@@ -242,8 +234,8 @@ const ws = new WebSocket('ws://server:8000/ws', [], {
 ```
 
 ### Connection Limit Handling
-- If server is at capacity, connection will be rejected with error code `server_at_capacity`
-- Clients should implement retry logic with exponential backoff
+- If at capacity, connection is rejected with `server_at_capacity`
+- Retry with exponential backoff
 
 ### Messages You Send
 
@@ -295,10 +287,10 @@ Warm persona/history (cache priming; optional)
 { "type": "warm_history", "history_text": "..." }
 ```
 
-- `warm_persona` primes only the system/persona prompt. Reuse hits as long as the persona (chat_prompt) stays the same.
-- `warm_history` primes persona + runtime_text + the provided history. It only pays off if the very next request uses the exact same persona/runtime/history; any change means re-warm.
-- Switching persona mid-connection invalidates the old warmed prefix; send a new `warm_persona` (and `warm_history` if you need history reuse) for the new persona.
-- History changes frequently, so send `warm_history` immediately before the request that will consume that specific history snapshot.
+- `warm_persona` primes the system prompt. Reuse hits as long as the persona stays the same.
+- `warm_history` primes persona + runtime_text + history. Only useful if the next request uses the exact same values.
+- Switching persona invalidates the warmed prefix; send a new `warm_persona` for the new persona.
+- Send `warm_history` right before the request that uses that history.
 
 ### What You Receive
 
@@ -358,10 +350,10 @@ Response handling:
 
 ### Rate Limits
 
-- **Per connection:** General messages and cancel messages are governed by rolling-window quotas. Configure them via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS`.
-- **Per session:** Persona updates (`chat_prompt` messages) share their own rolling window controlled by `CHAT_PROMPT_UPDATE_MAX_PER_WINDOW` / `CHAT_PROMPT_UPDATE_WINDOW_SECONDS`.
+- **Per connection:** Messages and cancels have rate limits. Configure via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS`.
+- **Per session:** Persona updates have their own limit via `CHAT_PROMPT_UPDATE_MAX_PER_WINDOW` / `CHAT_PROMPT_UPDATE_WINDOW_SECONDS`.
 
-The defaults are defined in `src/config/limits.py`, but every limiter can be tuned (or disabled by setting its limit or window to `0`) through environment variables. Sliding windows ensure slots free up gradually as time passes rather than on fixed minute boundaries.
+Defaults are in `src/config/limits.py`. Set limit or window to `0` to disable.
 
 ## Quantization Notes
 
@@ -421,13 +413,9 @@ bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 
 ### Pushing Quantized Exports to Hugging Face
 
-Uploads **only** happen when you pass `--push-quant` to the launcher you're using (`scripts/main.sh` or `scripts/restart.sh`). No flag, no upload—environment variables alone will never trigger a push.
+Pass `--push-quant` to `scripts/main.sh` or `scripts/restart.sh` to upload quantized models to HuggingFace. Without the flag, nothing is uploaded.
 
-Supported upload targets:
-- vLLM AWQ/W4A16 exports produced by the 4-bit quantizer (chat engine)
-- TensorRT-LLM checkpoints/engines built from 4-bit (`int4_awq`) or 8-bit (`fp8` / `int8_sq`) quantization runs
-
-When `--push-quant` is specified, the script validates required parameters **at the very beginning** (before any downloads or heavy operations). If validation fails, the script exits immediately with a clear error message.
+Uploads: vLLM AWQ/W4A16 exports or TRT-LLM checkpoints/engines (4-bit or 8-bit).
 
 **Required whenever `--push-quant` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
@@ -436,9 +424,9 @@ When `--push-quant` is specified, the script validates required parameters **at 
 **Optional:**
 - `HF_PUSH_PRIVATE` – `1` for private repo (default), `0` for public
 
-Uploads always push to the `main` branch. Repos are auto-created if they don't exist.
+Repos are auto-created if they don't exist.
 
-**Example (both engines use the same params):**
+**Examples:**
 
 ```bash
 export HF_TOKEN="hf_your_api_token"
@@ -461,15 +449,13 @@ bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 4bit
 bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 8bit
 ```
 
-**Note:** The `--push-quant` flag is the **only** way to enable HF uploads.
-
-The pipeline writes metadata files (`awq_metadata.json` or `build_metadata.json`, including the resolved quant method such as `int4_awq`, `fp8`, or `int8_sq`) and `README.md` into each quantized folder for transparency and reproducibility.
+The pipeline writes metadata (`awq_metadata.json` or `build_metadata.json`) and `README.md` to each quantized folder.
 
 ## Test Clients
 
-All CLI harnesses run against the same WebSocket stack; use them to validate behavior end to end. Unless otherwise noted, run them through `scripts/activate.sh` so you pick up whichever venv exists (`VENV_DIR`, `/opt/venv`, or repo `.venv`). Example: `bash scripts/activate.sh python3 tests/warmup.py`. For the lightweight CPU-only path described in [Local Test Dependencies](#local-test-dependencies), keep sourcing `.venv-local/bin/activate`.
+All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/warmup.py`) or source `.venv-local/bin/activate` for CPU-only testing.
 
-> **Tool-only deployments:** Pass `--no-chat-prompt` to skip sending chat prompts when the server is deployed in tool-only mode. By default, clients send the chat persona prompt. `scripts/warmup.sh` auto-detects `DEPLOY_MODE` / `DEPLOY_CHAT` / `DEPLOY_TOOL` and forwards `--no-chat-prompt` to `tests/warmup.py` and `tests/bench.py` when appropriate.
+> **Tool-only deployments:** Pass `--no-chat-prompt` to skip chat prompts. `scripts/warmup.sh` auto-detects the deploy mode and forwards this flag when needed.
 
 ### Warmup Test Client
 
@@ -496,7 +482,7 @@ RECV_TIMEOUT_SEC=120 \
 python3 tests/warmup.py --gender female --personality savage "hey there"
 ```
 
-To compare cold vs warm responses on the exact same connection, append `--double-ttfb`. The client will send two identical `start` messages back-to-back, tagging every log/metric with `phase=first|second` so you can spot caching effects without launching separate runs.
+Append `--double-ttfb` to send two identical requests back-to-back and compare cold vs warm latency.
 
 ### Interactive Live Client
 
@@ -525,7 +511,7 @@ TEXT_API_KEY=your_api_key python3 tests/personality.py \
   --delay 2
 ```
 
-Cycles through 5 personalities (flirty, savage, religious, delulu, spiritual) alternating between genders while maintaining conversation history. Requires a chat model deployment.
+Cycles through 5 personalities while alternating genders and maintaining conversation history. Requires a chat model.
 
 `PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
 
@@ -539,7 +525,7 @@ TEXT_API_KEY=your_api_key python3 tests/gender.py \
   --delay 2
 ```
 
-Cycles through `PERSONA_VARIANTS` (gender configurations) while maintaining conversation history. Requires a chat model deployment.
+Cycles through gender configurations while maintaining conversation history. Requires a chat model.
 
 Both tests share the same CLI flags:
 - `--switches`: Number of chat prompt switches (default 5)
@@ -555,7 +541,7 @@ TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:
 
 Supports `--no-chat-prompt` for tool-only deployments.
 
-Streams a fixed 10-turn script (`tests/messages/conversation.py`) to verify bounded-history eviction and KV-cache reuse.
+Streams a 10-turn script to test history eviction and KV-cache reuse.
 
 ### Screen Analysis / Toolcall Test
 
@@ -563,7 +549,7 @@ Streams a fixed 10-turn script (`tests/messages/conversation.py`) to verify boun
 TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
 ```
 
-Ensures toolcall decisions fire before the follow-up chat stream. Override `SERVER_WS_URL`, `GENDER`, or `PERSONALITY` as needed, and pass `--no-chat-prompt` when the chat engine is disabled.
+Tests that toolcall decisions fire before chat streaming. Pass `--no-chat-prompt` for tool-only deployments.
 
 ### Tool Regression Test
 
@@ -590,70 +576,59 @@ python3 tests/bench.py --gender female --personality flirty "who was Columbus?"
 python3 tests/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
-Reports p50/p95 latencies while hammering the WebSocket endpoint with concurrent sessions.
+Reports p50/p95 latencies under concurrent load.
 
-Pass `--double-ttfb` to keep each connection open for two sequential transactions. The report prints separate percentile tables (`[first]`, `[second]`) so you can contrast first-token latency for cold vs warm sessions without running the suite twice.
+Pass `--double-ttfb` to run two sequential transactions per connection and compare cold vs warm latency.
 
 ## Persona and History Behavior
 
-- Chat prompts are rendered using each model's own tokenizer
-- **vLLM:** Prefix caching reuses any repeated history/prompts within the process. If you swap a companion's system prompt, history KV stays hot.
-- **TensorRT-LLM:** Block reuse provides automatic KV cache management without explicit resets.
-- To guarantee a hit before speaking, send a `warm_persona` upfront.
-- Lifecycle guidance:
-  - Persona/system prompt is long-lived: warm once per persona value.
-  - History is short-lived: warm_history matters only when the request that follows uses the same persona/runtime/history; re-warm after any change.
-  - Switching persona/system prompt: cache matching resets; re-warm for the new persona (and history if needed).
-  - Using runtime_text: include the same runtime_text when calling warm_history, or the cache won’t match.
+- Chat prompts are rendered using each model's tokenizer
+- **vLLM:** Prefix caching reuses repeated prompts. Swapping the system prompt keeps history KV hot.
+- **TensorRT-LLM:** Block reuse handles KV cache automatically.
+- Send `warm_persona` before speaking to guarantee a cache hit.
+- Persona is long-lived (warm once); history is short-lived (re-warm after changes).
 
 ## Known Issues
 
 ### TRT-LLM Python Version Mismatch
 
-TensorRT-LLM 1.2.0 (and variations like 1.2.0rc5) documentation claims Python 3.11 support, but **Python 3.11 does not work reliably**. Use **Python 3.10** instead.
+TRT-LLM 1.2.0 claims Python 3.11 support but it doesn't work reliably. Use Python 3.10.
 
 ### CUDA 13.0 Requirement
 
-TensorRT-LLM 1.2.0rc5 requires **CUDA 13.0** and **PyTorch 2.9.0**. The TRT-LLM package specifies `torch<=2.9.0,>=2.9.0a0` as a dependency constraint.
-
-If you see pip dependency resolver warnings about torch versions during installation, ensure you're using:
+TRT-LLM 1.2.0rc5 requires CUDA 13.0 and PyTorch 2.9.0. Use:
 - `torch==2.9.0+cu130` with `--index-url https://download.pytorch.org/whl/cu130`
-- `torchvision==0.24.0+cu130` (matching torch 2.9.0).
+- `torchvision==0.24.0+cu130`
 
 ### Base Docker Image Selection
 
-**The base Docker image matters a lot.** Installing OpenMPI packages (`libopenmpi3` / `libopenmpi3t64` and `openmpi-common`) via `scripts/setup/bootstrap.sh` can inadvertently **downgrade CUDA below 13.0** depending on the base image's package repositories and pinned versions.
-
-Since TensorRT-LLM requires CUDA 13.0+, this silent downgrade will break deployment with cryptic errors.
+Installing OpenMPI packages can silently downgrade CUDA below 13.0, breaking TRT-LLM.
 
 **Workarounds:**
-1. Use a base image with CUDA 13.0 pre-installed and proper apt pinning
-2. Pin MPI package versions explicitly via `MPI_VERSION_PIN` environment variable before running bootstrap
-3. Verify CUDA version after bootstrap: `nvcc --version` should show 13.0+
+1. Use a base image with CUDA 13.0 and proper apt pinning
+2. Pin MPI versions via `MPI_VERSION_PIN` before bootstrap
+3. Verify: `nvcc --version` should show 13.0+
 
 ### CUDA Device Unavailable
 
-Symptom:
-- During TRT quantization or Torch smoke tests, Torch logs `Device 0 seems unavailable` or `cudaErrorDevicesUnavailable`, even though `nvidia-smi` shows the GPU (e.g., H100 PCIe) and `TORCH_CUDA_ARCH_LIST` is set.
+Torch logs `Device 0 seems unavailable` even though `nvidia-smi` shows the GPU.
 
-Root causes:
-- Container is mapped to the wrong device node (e.g., only `/dev/nvidia7` present, no `/dev/nvidia0`).
-- Stale or wedged GPU assignment from the scheduler; MIG or device numbering mismatch.
-- GPU is in a bad state (needs reset/reboot).
+Causes:
+- Container mapped to wrong device node
+- Stale GPU assignment or MIG mismatch
+- GPU needs reset
 
 Fixes:
-- Restart the container with a clean GPU mapping: `--gpus all` or `--gpus '"device=0"'` (or the specific UUID). Verify `/dev/nvidia0` exists inside the container.
-- If the assigned GPU stays bad, switch to a different GPU/instance.
-- As a last resort, reset the GPU (`nvidia-smi --gpu-reset -i 0`) or reboot the host if safe.
+- Restart container with `--gpus all` or specific UUID
+- Switch to a different GPU
+- Reset GPU: `nvidia-smi --gpu-reset -i 0`
 
 ## GPU Memory Fractions
 
-GPU memory is allocated based on deployment mode:
+- Single model: 90%
+- Both models: 70% chat, 20% tool
 
-- Single model: 90% GPU memory (chat-only or tool-only)
-- Both models: Chat gets 70%, Tool gets 20%
-
-Override as needed:
+Override:
 
 ```bash
 export CHAT_GPU_FRAC=0.60
@@ -661,6 +636,4 @@ export TOOL_GPU_FRAC=0.25
 bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 ```
 
-**TensorRT-LLM specific:**
-- `TRT_KV_FREE_GPU_FRAC` controls KV cache memory (defaults to `CHAT_GPU_FRAC`)
-- Engine build uses `TRT_MAX_BATCH_SIZE` to pre-allocate KV cache slots (see [TensorRT-LLM Configuration](#tensorrt-llm-configuration) for details)
+**TRT-LLM:** `TRT_KV_FREE_GPU_FRAC` controls KV cache memory (defaults to `CHAT_GPU_FRAC`). Engine build uses `TRT_MAX_BATCH_SIZE` for KV cache slots.
