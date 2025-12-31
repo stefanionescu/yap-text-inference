@@ -30,11 +30,13 @@ cli_validate_deploy_mode() {
 cli_set_engine_value() {
   local value="$1"
   local context="$2"
+  # shellcheck disable=SC2034  # nameref variable assigned for caller
   local -n engine_ref="$3"
   if [ -z "${value}" ]; then
     log_err "${context} ✗ --engine requires a value (trt|vllm)"
     return 1
   fi
+  # shellcheck disable=SC2034  # nameref variable assigned for caller
   engine_ref="${value}"
   return 0
 }
@@ -42,6 +44,7 @@ cli_set_engine_value() {
 cli_set_deploy_mode_value() {
   local value="$1"
   local context="$2"
+  # shellcheck disable=SC2034  # nameref variable assigned for caller
   local -n deploy_ref="$3"
   if [ -z "${value}" ]; then
     log_err "${context} ✗ --deploy-mode requires a value (both|chat|tool)"
@@ -51,6 +54,7 @@ cli_set_deploy_mode_value() {
     log_err "${context} ✗ Invalid deploy mode '${value}'. Expected both|chat|tool."
     return 1
   fi
+  # shellcheck disable=SC2034  # nameref variable assigned for caller
   deploy_ref="${value}"
   return 0
 }

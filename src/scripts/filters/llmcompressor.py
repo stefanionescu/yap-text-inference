@@ -12,7 +12,7 @@ import logging
 import os
 import re
 import sys
-from typing import Iterable
+from collections.abc import Iterable
 
 from src.config.filters import LLMCOMPRESSOR_NOISE_PATTERNS
 

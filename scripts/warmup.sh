@@ -47,8 +47,8 @@ cleanup_lock() {
 
 trim_string() {
   local value="${1:-}"
-  value="${value#${value%%[![:space:]]*}}"
-  value="${value%${value##*[![:space:]]}}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
   echo "${value}"
 }
 

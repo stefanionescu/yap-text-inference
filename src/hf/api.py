@@ -8,7 +8,7 @@ if TYPE_CHECKING:  # pragma: no cover - optional dependency
     from huggingface_hub import HfApi
 
 
-def get_hf_api(token: str) -> "HfApi | None":
+def get_hf_api(token: str) -> HfApi | None:
     """Return an authenticated HfApi client, or None if unavailable."""
     try:
         from huggingface_hub import HfApi
@@ -19,7 +19,7 @@ def get_hf_api(token: str) -> "HfApi | None":
 
 
 def create_repo_if_needed(
-    api: "HfApi",
+    api: HfApi,
     repo_id: str,
     token: str,
     private: bool,
@@ -33,7 +33,7 @@ def create_repo_if_needed(
         print(f"[hf] Warning: Could not create repo {repo_id}: {exc}")
 
 
-def verify_repo_exists(api: "HfApi", repo_id: str, token: str) -> bool:
+def verify_repo_exists(api: HfApi, repo_id: str, token: str) -> bool:
     """Return True if repo exists and is accessible to the token."""
     try:
         api.repo_info(repo_id=repo_id, token=token)

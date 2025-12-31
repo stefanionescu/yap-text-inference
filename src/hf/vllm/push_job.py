@@ -28,7 +28,7 @@ __all__ = [
 class AWQPushJob:
     """Coordinates metadata refresh and upload for AWQ exports."""
 
-    api: "HfApi"
+    api: HfApi
     repo_id: str
     token: str
     branch: str

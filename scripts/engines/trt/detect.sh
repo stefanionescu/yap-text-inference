@@ -80,8 +80,7 @@ trt_get_current_engine_label() {
 # Get the quantization script for a model
 # Uses the standard quantize.py for all models (including MoE)
 trt_get_quantize_script() {
-  local model="${1:-}"
-  local trtllm_repo="${2:-${TRT_REPO_DIR}}"
+  local trtllm_repo="${1:-${TRT_REPO_DIR}}"
   
   echo "${trtllm_repo}/examples/quantization/quantize.py"
 }
@@ -414,7 +413,6 @@ trt_download_prebuilt_engine() {
   mkdir -p "${target_dir}"
   
   local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
-  local show_hf_logs="${SHOW_HF_LOGS:-0}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" python <<PYTHON; then
 import os
 import sys

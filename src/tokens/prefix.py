@@ -105,7 +105,7 @@ def strip_screen_prefix(
 
 
 def get_effective_user_utt_max_tokens(
-    state: "SessionState | None",
+    state: SessionState | None,
     *,
     for_followup: bool = False,
 ) -> int:

@@ -68,7 +68,7 @@ _push_quant_value_is_supported() {
     awq|gptq|gptq_marlin|4bit|int4_*|fp4)
       return 0
       ;;
-    8bit|fp8|fp8_*|int8|int8_*|int8_sq)
+    8bit|fp8|fp8_*|int8_sq|int8|int8_*)
       return 0
       ;;
   esac
@@ -106,8 +106,6 @@ push_quant_apply_policy() {
 # Must be called after HF_AWQ_PUSH and INFERENCE_ENGINE are set
 # Usage: validate_push_quant_prereqs <deploy_mode>
 validate_push_quant_prereqs() {
-  local deploy_mode="${1:-both}"
-  
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return 0
   fi

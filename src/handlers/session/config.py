@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 def update_session_config(
-    state: "SessionState",
+    state: SessionState,
     chat_gender: str | None = None,
     chat_personality: str | None = None,
     chat_prompt: str | None = None,
@@ -108,7 +108,7 @@ def update_session_config(
 
 
 def resolve_screen_prefix(
-    state: "SessionState | None",
+    state: SessionState | None,
     default: str,
     *,
     is_checked: bool = False,

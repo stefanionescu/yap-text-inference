@@ -34,27 +34,27 @@ if TYPE_CHECKING:
 CANCELLED_SENTINEL = "__CANCELLED__"
 
 
-def set_active_request(state: "SessionState", request_id: str) -> None:
+def set_active_request(state: SessionState, request_id: str) -> None:
     """Set the active chat request ID for the session."""
     state.active_request_id = request_id
 
 
-def set_tool_request(state: "SessionState", request_id: str) -> None:
+def set_tool_request(state: SessionState, request_id: str) -> None:
     """Set the active tool request ID for the session."""
     state.tool_request_id = request_id
 
 
-def get_tool_request_id(state: "SessionState | None") -> str:
+def get_tool_request_id(state: SessionState | None) -> str:
     """Get the current tool request ID, or empty string if none."""
     return state.tool_request_id or "" if state else ""
 
 
-def clear_tool_request_id(state: "SessionState") -> None:
+def clear_tool_request_id(state: SessionState) -> None:
     """Clear the tool request ID."""
     state.tool_request_id = None
 
 
-def is_request_cancelled(state: "SessionState | None", request_id: str) -> bool:
+def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
     """Check if a request has been cancelled or superseded.
     
     A request is considered cancelled if:
@@ -80,7 +80,7 @@ def is_request_cancelled(state: "SessionState | None", request_id: str) -> bool:
 
 
 def track_task(
-    state: "SessionState",
+    state: SessionState,
     task: asyncio.Task,
     get_state_callback: callable,
 ) -> None:
@@ -107,12 +107,12 @@ def track_task(
     task.add_done_callback(_clear_task)
 
 
-def has_running_task(state: "SessionState | None") -> bool:
+def has_running_task(state: SessionState | None) -> bool:
     """Check if the session has a running task."""
     return bool(state and state.task and not state.task.done())
 
 
-def cancel_session_requests(state: "SessionState") -> None:
+def cancel_session_requests(state: SessionState) -> None:
     """Mark the session as cancelled and cancel any running task.
     
     Sets active_request_id to CANCELLED_SENTINEL so that any in-flight
@@ -123,7 +123,7 @@ def cancel_session_requests(state: "SessionState") -> None:
         state.task.cancel()
 
 
-def cleanup_session_requests(state: "SessionState | None") -> dict[str, str]:
+def cleanup_session_requests(state: SessionState | None) -> dict[str, str]:
     """Extract and clear request IDs from the session.
     
     Used during cleanup to capture what requests were active before

@@ -10,7 +10,7 @@ import io
 import logging
 import re
 import sys
-from typing import Iterable
+from collections.abc import Iterable
 
 from src.config.filters import VLLM_NOISE_PATTERNS
 

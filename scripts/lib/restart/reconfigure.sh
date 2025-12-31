@@ -51,7 +51,6 @@ _restart_autodetect_quantization() {
 
 _restart_normalize_quantization_flag() {
   local value="${1:-}"
-  local model="${2:-${CHAT_MODEL:-}}"
   if [ -z "${value}" ]; then
     echo ""
     return

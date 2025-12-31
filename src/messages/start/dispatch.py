@@ -55,7 +55,7 @@ class StartPlan:
     sampling_overrides: dict[str, float | int] | None = None
 
 
-async def dispatch_execution(ws: "WebSocket", plan: StartPlan) -> None:
+async def dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
     """Dispatch execution based on deployment configuration.
     
     Routes to the appropriate execution path:
@@ -75,7 +75,7 @@ async def dispatch_execution(ws: "WebSocket", plan: StartPlan) -> None:
         await _run_tool_only(ws, plan)
 
 
-async def _run_sequential(ws: "WebSocket", plan: StartPlan) -> None:
+async def _run_sequential(ws: WebSocket, plan: StartPlan) -> None:
     """Run sequential tool-then-chat execution."""
     logger.info("handle_start: sequential execution session_id=%s", plan.session_id)
     await run_execution(
@@ -90,7 +90,7 @@ async def _run_sequential(ws: "WebSocket", plan: StartPlan) -> None:
     )
 
 
-async def _run_chat_only(ws: "WebSocket", plan: StartPlan) -> None:
+async def _run_chat_only(ws: WebSocket, plan: StartPlan) -> None:
     """Run chat-only streaming execution."""
     logger.info("handle_start: chat-only streaming session_id=%s", plan.session_id)
     final_text = await stream_chat_response(
@@ -114,7 +114,7 @@ async def _run_chat_only(ws: "WebSocket", plan: StartPlan) -> None:
     )
 
 
-async def _run_tool_only(ws: "WebSocket", plan: StartPlan) -> None:
+async def _run_tool_only(ws: WebSocket, plan: StartPlan) -> None:
     """Run tool-only classification execution."""
     logger.info("handle_start: tool-only routing session_id=%s", plan.session_id)
     try:

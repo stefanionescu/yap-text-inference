@@ -26,7 +26,7 @@ _HF_ENGINES_PATH_FMT = "trt-llm/engines/{engine_label}"
 class TRTPushJob:
     """Encapsulates the TRT checkpoint+engine push workflow for testability."""
 
-    api: "HfApi"
+    api: HfApi
     repo_id: str
     token: str
     branch: str

@@ -64,7 +64,7 @@ restart_basic() {
   LAST_TOOL="${TOOL_MODEL:-$(runtime_guard_read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")}"
   LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-$(runtime_guard_read_last_config_value "CHAT_QUANTIZATION" "${ROOT_DIR}")}"
 
-  if [ -z "${LAST_DEPLOY}" ] || [ -z "${LAST_CHAT}" -a "${LAST_DEPLOY}" != "tool" ] || [ -z "${LAST_TOOL}" -a "${LAST_DEPLOY}" != "chat" ]; then
+  if [ -z "${LAST_DEPLOY}" ] || { [ -z "${LAST_CHAT}" ] && [ "${LAST_DEPLOY}" != "tool" ]; } || { [ -z "${LAST_TOOL}" ] && [ "${LAST_DEPLOY}" != "chat" ]; }; then
     log_err "[restart] ✗ Unable to determine previous deployment configuration. Run a full deployment first."
     exit 1
   fi

@@ -145,6 +145,7 @@ export TRT_TARGET_CHAT
 # If TRT is not the target engine, exit quietly
 if [ "${TRT_TARGET_CHAT}" = "0" ]; then
   # Return 0 when sourced, exit 0 when executed
+  # shellcheck disable=SC2317  # Intentional: return when sourced, exit when executed
   return 0 2>/dev/null || exit 0
 fi
 

@@ -10,7 +10,7 @@ import argparse
 import os
 import runpy
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 
 # ============================================================================

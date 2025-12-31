@@ -178,7 +178,7 @@ class InteractiveRunner:
 
     def _print_banner(self) -> None:
         """Display the startup banner with persona info."""
-        print_help(self.registry.available_names(), self.client.session.persona.name)
+        print_help(self.client.session.persona.name)
 
     def _print_error(self, message: str) -> None:
         """Print an error message in a user-friendly format."""
@@ -236,12 +236,12 @@ async def _ainput(prompt: str) -> str:
         raise LiveInputClosed("keyboard interrupt") from exc
 
 
-def print_help(names: list[str], current: str, verbose: bool = False) -> None:
+def print_help(current: str, verbose: bool = False) -> None:
     """Print the help banner or detailed command list."""
     if verbose:
         print(
             "\nCommands:\n"
-            "  /help                Show this message\n"
+            "  /help                Get help with a command\n"
             "  /list                Show persona names\n"
             "  /persona <name>      Switch persona+gender mid-session\n"
             "  /history             Print accumulated conversation log\n"
@@ -250,7 +250,7 @@ def print_help(names: list[str], current: str, verbose: bool = False) -> None:
             "  /stop|/quit          Stop and close the session\n"
             "\n"
             "Any line without a leading '/' is sent to the assistant.\n"
-            "Personas are loaded from tests/prompts/detailed.py (default: anna_flirty).\n"
+            "Use /list to see available personas.\n"
         )
     else:
         print(

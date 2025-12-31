@@ -252,7 +252,9 @@ def collect_metadata(
 
     metadata.setdefault(
         "quant_portability_note",
-        "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX) or reuse one of the prebuild engines in case they match your GPU.",
+        "INT4-AWQ checkpoints are portable across sm89/sm90+ GPUs; rebuild engines for "
+        "the target GPU (e.g., H100/H200/B200/Blackwell, L40S, 4090/RTX) or reuse one of "
+        "the prebuild engines in case they match your GPU.",
     )
 
     return metadata

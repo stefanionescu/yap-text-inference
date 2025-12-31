@@ -111,9 +111,6 @@ trt_quantize_model() {
     qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
   
-  local kv_cache_dtype
-  kv_cache_dtype=$(trt_resolve_kv_cache_dtype "${qformat}")
-
   # Check if already quantized
   if [ -d "${output_dir}" ] && [ -f "${output_dir}/config.json" ]; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
@@ -312,7 +309,7 @@ trt_validate_checkpoint() {
     log_err "[quant] ✗ No .safetensors files found in checkpoint directory"
     log_err "[quant] Expected model weights at: ${ckpt_dir}/*.safetensors"
     log_info "[quant] Directory contents:"
-    ls -la "${ckpt_dir}" 2>/dev/null | head -20 | while read -r line; do
+    find "${ckpt_dir}" -maxdepth 1 -printf '%M %u %g %s %f\n' 2>/dev/null | head -20 | while read -r line; do
       log_info "[quant]   ${line}"
     done
     return 1
