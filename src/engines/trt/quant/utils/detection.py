@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import subprocess
 
+from src.config.gpu import SM_COMPUTE_CAPABILITY, DEFAULT_COMPUTE_CAPABILITY
+
 
 def detect_tensorrt_llm_version() -> str:
     """Detect TensorRT-LLM version at runtime."""
@@ -49,14 +51,6 @@ def detect_gpu_name() -> str:
         return "unknown"
 
 
-# SM architecture to compute capability mapping
-SM_COMPUTE_CAPABILITY: dict[str, tuple[str, str]] = {
-    "sm89": ("8.9", "Ada Lovelace / RTX 40 series"),
-    "sm90": ("9.0", "Hopper / H100"),
-    "sm100": ("10.0", "Blackwell / B200"),
-}
-
-
 def get_compute_capability_info(sm_arch: str) -> dict[str, str]:
     """Derive compute capability info from SM architecture.
     
@@ -74,6 +68,7 @@ def get_compute_capability_info(sm_arch: str) -> dict[str, str]:
         cc, note = SM_COMPUTE_CAPABILITY[sm_key]
         return {"min_compute_capability": cc, "gpu_arch_note": note}
     
-    # Default fallback
-    return {"min_compute_capability": "8.9", "gpu_arch_note": "Ada Lovelace+"}
+    # Default fallback from config
+    cc, note = DEFAULT_COMPUTE_CAPABILITY
+    return {"min_compute_capability": cc, "gpu_arch_note": note}
 

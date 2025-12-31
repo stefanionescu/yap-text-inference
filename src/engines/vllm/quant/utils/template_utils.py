@@ -1,5 +1,4 @@
-"""Template utilities for generating AWQ model documentation.
-"""
+"""Template utilities for generating AWQ model documentation."""
 
 import json
 import os

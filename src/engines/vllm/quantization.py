@@ -1,8 +1,20 @@
-"""Quantization metadata helpers for vLLM engine configuration."""
+"""Quantization metadata helpers for vLLM engine configuration.
+
+This module provides utilities for:
+1. Sanitization: Removing unsupported dtype fields from quant configs
+2. Detection: Finding and parsing quantization metadata from local/remote models
+3. Resolution: Mapping quantization method names to vLLM backends
+
+The functions are organized in logical sections:
+- Sanitization (strip unsupported fields from configs)
+- Detection (find quant backend from local or HF models)
+- Resolution (resolve model origins and log metadata)
+"""
 
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from typing import Any
 
 from src.config import (
@@ -10,32 +22,28 @@ from src.config import (
     QUANT_CONFIG_FILENAMES,
     UNSUPPORTED_QUANT_DTYPE_FIELDS,
 )
+from src.config.quantization import QUANT_NAME_MAPPING
 from src.helpers.models import is_local_model_path
 from ..io import read_json_file, write_json_file
 
-__all__ = [
-    "detect_quantization_backend",
-    "log_detected_quantization",
-    "resolve_model_origin",
-    "sanitize_quantization_metadata",
-    "strip_unsupported_quant_fields",
-    "UNSUPPORTED_QUANT_DTYPE_FIELDS",
-]
 
+# ============================================================================
+# Sanitization - Remove unsupported fields from quant configs
+# ============================================================================
 
-def sanitize_quantization_metadata(model_path: str) -> None:
+def sanitize_quant_metadata(model_path: str) -> None:
     """Remove unsupported dtype keys from local or cached remote config files."""
     if not model_path:
         return
     if is_local_model_path(model_path):
-        _sanitize_quant_files_in_dir(model_path)
+        _sanitize_local_configs(model_path)
         return
     if "/" not in model_path:
         return
-    _sanitize_remote_quant_files(model_path)
+    _sanitize_remote_configs(model_path)
 
 
-def strip_unsupported_quant_fields(payload: Any) -> bool:
+def strip_unsupported_fields(payload: Any) -> bool:
     """Recursively delete unsupported dtype keys from a JSON-compatible object."""
 
     def _strip(obj: Any) -> bool:
@@ -55,15 +63,15 @@ def strip_unsupported_quant_fields(payload: Any) -> bool:
     return _strip(payload)
 
 
-def _sanitize_quant_files_in_dir(model_path: str) -> None:
+def _sanitize_local_configs(model_path: str) -> None:
     """Sanitize quantization config files in a local directory."""
     for filename in QUANT_CONFIG_FILENAMES:
         candidate = os.path.join(model_path, filename)
         if os.path.isfile(candidate):
-            _sanitize_json_file(candidate)
+            _sanitize_config_file(candidate)
 
 
-def _sanitize_remote_quant_files(model_path: str) -> None:
+def _sanitize_remote_configs(model_path: str) -> None:
     """Sanitize quantization config files from a remote HuggingFace repo."""
     download_fn = _get_hf_download_fn()
     if download_fn is None:
@@ -72,15 +80,15 @@ def _sanitize_remote_quant_files(model_path: str) -> None:
     for filename in QUANT_CONFIG_FILENAMES:
         downloaded = download_fn(model_path, filename)
         if downloaded:
-            _sanitize_json_file(downloaded)
+            _sanitize_config_file(downloaded)
 
 
-def _sanitize_json_file(path: str) -> None:
+def _sanitize_config_file(path: str) -> None:
     """Sanitize a single JSON config file by removing unsupported fields."""
     payload = read_json_file(path)
     if payload is None:
         return
-    if not strip_unsupported_quant_fields(payload):
+    if not strip_unsupported_fields(payload):
         return
     if write_json_file(path, payload):
         print(
@@ -91,11 +99,8 @@ def _sanitize_json_file(path: str) -> None:
         print(f"[config] Warning: failed to sanitize quantization metadata at {path}")
 
 
-def _get_hf_download_fn():
-    """Return a function to download files from HuggingFace, or None if unavailable.
-    
-    Returns a callable(repo_id, filename) -> local_path | None
-    """
+def _get_hf_download_fn() -> Callable[[str, str], str | None] | None:
+    """Return a function to download files from HuggingFace, or None if unavailable."""
     try:
         from huggingface_hub import hf_hub_download
     except Exception as exc:
@@ -120,17 +125,25 @@ def _get_hf_download_fn():
     return download
 
 
-def detect_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
-    """Attempt both local and remote detection for llmcompressor exports."""
-    sanitize_quantization_metadata(model_path)
-    method, payload = _detect_local_quantization_backend(model_path)
+# ============================================================================
+# Detection - Find and parse quantization metadata
+# ============================================================================
+
+def detect_quant_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
+    """Detect quantization backend from local or remote model configs.
+    
+    Attempts local detection first, then remote HuggingFace if needed.
+    Also sanitizes any unsupported dtype fields found.
+    """
+    sanitize_quant_metadata(model_path)
+    method, payload = _detect_local(model_path)
     if method:
         return method, payload
-    return _detect_remote_quantization_backend(model_path)
+    return _detect_remote(model_path)
 
 
-def log_detected_quantization(model_path: str, method: str, payload: dict[str, Any]) -> None:
-    """Emit a concise description of the quantization metadata."""
+def log_quant_detection(model_path: str, method: str, payload: dict[str, Any]) -> None:
+    """Log a concise description of the detected quantization metadata."""
     quant_cfg = _extract_quant_config(payload)
     w_bit = quant_cfg.get("w_bit")
     q_group = quant_cfg.get("q_group_size")
@@ -155,6 +168,10 @@ def log_detected_quantization(model_path: str, method: str, payload: dict[str, A
     print(f"[config] Detected {method} quantization for {model_path}: {detail_str}")
 
 
+# ============================================================================
+# Resolution - Resolve model origins and normalize quant names
+# ============================================================================
+
 def resolve_model_origin(model_path: str) -> str:
     """Best effort to determine the underlying HF repo for local AWQ exports."""
     if not model_path:
@@ -169,17 +186,10 @@ def resolve_model_origin(model_path: str) -> str:
     return model_path
 
 
-def _detect_from_config_files(
-    file_resolver,
+def _detect_from_configs(
+    file_resolver: Callable[[str], str | None],
 ) -> tuple[str | None, dict[str, Any]]:
-    """Detect quantization method from config files using a resolver function.
-    
-    Args:
-        file_resolver: Callable(filename) -> local_path | None
-        
-    Returns:
-        Tuple of (quant_method, payload) or (None, {}) if not found.
-    """
+    """Detect quantization method from config files using a resolver function."""
     for filename in QUANT_CONFIG_FILENAMES:
         path = file_resolver(filename)
         if not path:
@@ -187,13 +197,13 @@ def _detect_from_config_files(
         payload = read_json_file(path)
         if payload is None:
             continue
-        quant_method = _extract_quantization_method(payload)
+        quant_method = _extract_quant_method(payload)
         if quant_method:
             return quant_method, payload if isinstance(payload, dict) else {}
     return None, {}
 
 
-def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
+def _detect_local(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect local model files to detect the quantization backend."""
     if not is_local_model_path(model_path):
         return None, {}
@@ -202,10 +212,10 @@ def _detect_local_quantization_backend(model_path: str) -> tuple[str | None, dic
         candidate = os.path.join(model_path, filename)
         return candidate if os.path.isfile(candidate) else None
 
-    return _detect_from_config_files(resolve_local)
+    return _detect_from_configs(resolve_local)
 
 
-def _detect_remote_quantization_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
+def _detect_remote(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect remote Hugging Face repos for quantization metadata."""
     if not model_path or "/" not in model_path or is_local_model_path(model_path):
         return None, {}
@@ -214,22 +224,20 @@ def _detect_remote_quantization_backend(model_path: str) -> tuple[str | None, di
     if download_fn is None:
         return None, {}
 
-    def resolve_remote(filename: str) -> str | None:
-        return download_fn(model_path, filename)
-
-    return _detect_from_config_files(resolve_remote)
+    return _detect_from_configs(download_fn)
 
 
 def _extract_quant_config(payload: Any) -> dict[str, Any]:
+    """Extract quantization config from a config payload."""
     if not isinstance(payload, dict):
         return {}
     config = payload.get("quantization_config")
     if isinstance(config, dict):
         return config
-    return payload if isinstance(payload, dict) else {}
+    return payload
 
 
-def _extract_quantization_method(payload: Any) -> str | None:
+def _extract_quant_method(payload: Any) -> str | None:
     """Extract the declared quantization method from a config payload."""
     if not isinstance(payload, dict):
         return None
@@ -238,7 +246,7 @@ def _extract_quantization_method(payload: Any) -> str | None:
         for key in ("quantization_method", "quant_method", "quantization"):
             value = data.get(key)
             if isinstance(value, str):
-                normalized = _normalize_quantization_name(value)
+                normalized = _normalize_quant_name(value)
                 if normalized:
                     return normalized
         return None
@@ -252,23 +260,28 @@ def _extract_quantization_method(payload: Any) -> str | None:
         nested_value = _from_dict(nested)
         if nested_value:
             return nested_value
-        return _normalize_quantization_name(nested.get("quantization_method")) or "compressed-tensors"
+        return _normalize_quant_name(nested.get("quantization_method")) or "compressed-tensors"
 
     return None
 
 
-def _normalize_quantization_name(name: str | None) -> str | None:
+def _normalize_quant_name(name: str | None) -> str | None:
     """Normalize various quantization labels to vLLM's expected names."""
     if not name:
         return None
     normalized = name.strip().lower().replace("_", "-")
-    mapping = {
-        "awq": "awq_marlin",
-        "awq-marlin": "awq_marlin",
-        "compressed-tensors": "compressed-tensors",
-        "compressedtensors": "compressed-tensors",
-        "compressed_tensors": "compressed-tensors",
-        "compressed-tensor": "compressed-tensors",
-        "autoround": "compressed-tensors",
-    }
-    return mapping.get(normalized)
+    return QUANT_NAME_MAPPING.get(normalized)
+
+
+__all__ = [
+    # Sanitization
+    "sanitize_quant_metadata",
+    "strip_unsupported_fields",
+    # Detection
+    "detect_quant_backend",
+    "log_quant_detection",
+    # Resolution
+    "resolve_model_origin",
+    # Re-exports
+    "UNSUPPORTED_QUANT_DTYPE_FIELDS",
+]

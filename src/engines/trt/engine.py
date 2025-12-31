@@ -6,7 +6,7 @@ due to its built-in KV cache block reuse mechanism.
 
 Architecture:
     - TRTEngine: BaseEngine implementation wrapping TensorRT-LLM
-    - Singleton pattern with async-safe initialization via _ENGINE_LOCK
+    - Uses AsyncSingleton pattern for thread-safe initialization
     - Pre-compiled engines loaded from TRT_ENGINE_DIR
 
 Key Differences from vLLM:
@@ -44,6 +44,7 @@ from src.config import (
     TRT_ENGINE_DIR,
 )
 from ..base import BaseEngine, EngineOutput, EngineNotReadyError
+from ..singleton import AsyncSingleton
 from .config import (
     build_kv_cache_config,
     read_checkpoint_model_type,
@@ -51,9 +52,6 @@ from .config import (
 )
 
 logger = logging.getLogger(__name__)
-
-_ENGINE: "TRTEngine | None" = None
-_ENGINE_LOCK = asyncio.Lock()
 
 
 class TRTEngine(BaseEngine):
@@ -167,19 +165,16 @@ class TRTEngine(BaseEngine):
         return False
 
 
-async def _ensure_engine() -> TRTEngine:
-    """Ensure the TRT-LLM engine is initialized."""
-    if not DEPLOY_CHAT:
-        raise RuntimeError("Chat engine requested but DEPLOY_CHAT=0")
+# ============================================================================
+# Global engine management (using AsyncSingleton pattern)
+# ============================================================================
+class _TRTEngineSingleton(AsyncSingleton[TRTEngine]):
+    """Singleton manager for the TRT-LLM engine."""
     
-    global _ENGINE
-    if _ENGINE is not None:
-        return _ENGINE
-
-    async with _ENGINE_LOCK:
-        if _ENGINE is not None:
-            return _ENGINE
-        
+    async def _create_instance(self) -> TRTEngine:
+        """Create the TRT-LLM engine instance."""
+        if not DEPLOY_CHAT:
+            raise RuntimeError("Chat engine requested but DEPLOY_CHAT=0")
         if not CHAT_MODEL:
             raise RuntimeError("CHAT_MODEL is not configured; cannot start chat engine")
         
@@ -219,26 +214,19 @@ async def _ensure_engine() -> TRTEngine:
         # Run engine loading in thread pool since it's blocking
         llm = await asyncio.to_thread(LLM, **kwargs)
         
-        _ENGINE = TRTEngine(llm, CHAT_MODEL)
+        engine = TRTEngine(llm, CHAT_MODEL)
         logger.info("TRT-LLM: chat engine ready")
-        return _ENGINE
+        return engine
+
+
+_engine_singleton = _TRTEngineSingleton()
 
 
 async def get_engine() -> TRTEngine:
     """Return the singleton TRT chat engine instance."""
-    return await _ensure_engine()
+    return await _engine_singleton.get()
 
 
 async def shutdown_engine() -> None:
     """Shut down the TRT chat engine if it has been initialized."""
-    global _ENGINE
-    engine = _ENGINE
-    if engine is None:
-        return
-
-    async with _ENGINE_LOCK:
-        engine = _ENGINE
-        if engine is None:
-            return
-        await engine.shutdown()
-        _ENGINE = None
+    await _engine_singleton.shutdown()

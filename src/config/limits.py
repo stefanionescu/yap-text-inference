@@ -138,6 +138,17 @@ BATCH_SCALE_MIN_RATIO = float(os.getenv("BATCH_SCALE_MIN_RATIO", "0.1"))
 BATCH_SCALE_MIN_TOKENS = int(os.getenv("BATCH_SCALE_MIN_TOKENS", "64"))
 BATCH_SCALE_MIN_SEQS = int(os.getenv("BATCH_SCALE_MIN_SEQS", "4"))
 
+# Memory optimization constants
+# When a model needs memory optimization and GPU frac exceeds this, clamp it
+MEMORY_OPT_GPU_FRAC_CAP = float(os.getenv("MEMORY_OPT_GPU_FRAC_CAP", "0.85"))
+
+# MoE calibration limits (MoE models need fewer samples to avoid OOM)
+MOE_CALIBRATION_SAMPLES_LIMIT = int(os.getenv("MOE_CALIBRATION_SAMPLES_LIMIT", "32"))
+
+# Download retry configuration
+DOWNLOAD_MAX_RETRIES = int(os.getenv("DOWNLOAD_MAX_RETRIES", "3"))
+DOWNLOAD_BACKOFF_MAX_SECONDS = int(os.getenv("DOWNLOAD_BACKOFF_MAX_SECONDS", "5"))
+
 # GPU fraction cap for batching: matches CHAT_GPU_FRAC based on deployment mode
 # When both chat and tool are deployed: default 0.70
 # When only chat is deployed: default 0.90
@@ -209,4 +220,11 @@ __all__ = [
     "BATCH_SCALE_MIN_TOKENS",
     "BATCH_SCALE_MIN_SEQS",
     "BATCH_SCALE_GPU_FRAC_CAP",
+    # Memory optimization
+    "MEMORY_OPT_GPU_FRAC_CAP",
+    # MoE calibration
+    "MOE_CALIBRATION_SAMPLES_LIMIT",
+    # Download retry
+    "DOWNLOAD_MAX_RETRIES",
+    "DOWNLOAD_BACKOFF_MAX_SECONDS",
 ]

@@ -5,6 +5,25 @@ SUPPORTED_ENGINES: tuple[str, ...] = ("vllm", "trt")
 
 VLLM_QUANTIZATIONS: set[str] = {"awq", "gptq", "gptq_marlin"}
 
+# Quantization methods that require float16 dtype
+FLOAT16_QUANT_METHODS: frozenset[str] = frozenset({
+    "awq",
+    "awq_marlin",
+    "compressed-tensors",
+    "fp8",
+})
+
+# Mapping from various quantization labels to vLLM's expected names
+QUANT_NAME_MAPPING: dict[str, str] = {
+    "awq": "awq_marlin",
+    "awq-marlin": "awq_marlin",
+    "compressed-tensors": "compressed-tensors",
+    "compressedtensors": "compressed-tensors",
+    "compressed_tensors": "compressed-tensors",
+    "compressed-tensor": "compressed-tensors",
+    "autoround": "compressed-tensors",
+}
+
 # TRT-specific quantization formats
 # - int4_awq: 4-bit AWQ for all models (dense and MoE)
 # - fp8: 8-bit FP8 (Hopper H100/H200 sm90, Ada L40S/RTX 40 series sm89)
@@ -50,6 +69,8 @@ __all__ = [
     "TRT_QUANTIZATIONS",
     "TRT_FP8_SM_ARCHS",
     "VLLM_QUANTIZATIONS",
+    "FLOAT16_QUANT_METHODS",
+    "QUANT_NAME_MAPPING",
     "AWQ_MODEL_MARKERS",
     "TOKENIZER_FILES",
     "CHAT_TEMPLATE_FILES",

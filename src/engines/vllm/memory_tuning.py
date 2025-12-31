@@ -25,6 +25,7 @@ from src.config.limits import (
     MAX_NUM_SEQS_MEMORY_OPT_BASELINE,
     MAX_NUM_SEQS_MIN_FLOOR,
 )
+from ..warnings import warn_once
 
 __all__ = [
     "auto_max_num_seqs",
@@ -34,19 +35,13 @@ __all__ = [
     "scale_batching_limits",
 ]
 
-_CUDA_MEM_WARNING_EMITTED = False
-_KV_DTYPE_WARNING_EMITTED = False
-
 
 def read_cuda_memory_snapshot() -> tuple[int, int] | None:
     """Return (free_bytes, total_bytes) for the current CUDA device."""
-    global _CUDA_MEM_WARNING_EMITTED
     try:
         import torch
     except Exception as exc:
-        if not _CUDA_MEM_WARNING_EMITTED:
-            print(f"[config] Warning: torch unavailable for CUDA mem introspection ({exc})")
-            _CUDA_MEM_WARNING_EMITTED = True
+        warn_once("cuda_torch_import", f"torch unavailable for CUDA mem introspection ({exc})")
         return None
 
     if not torch.cuda.is_available() or torch.cuda.device_count() == 0:
@@ -58,9 +53,7 @@ def read_cuda_memory_snapshot() -> tuple[int, int] | None:
             free_bytes, total_bytes = torch.cuda.mem_get_info()
         return int(free_bytes), int(total_bytes)
     except Exception as exc:
-        if not _CUDA_MEM_WARNING_EMITTED:
-            print(f"[config] Warning: unable to read torch.cuda.mem_get_info ({exc})")
-            _CUDA_MEM_WARNING_EMITTED = True
+        warn_once("cuda_mem_info", f"unable to read torch.cuda.mem_get_info ({exc})")
         return None
 
 
@@ -149,7 +142,6 @@ def auto_max_num_seqs(gpu_frac: float, needs_memory_opt: bool) -> int:
 
 def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> None:
     """Attach the appropriate KV cache controls based on engine mode."""
-    global _KV_DTYPE_WARNING_EMITTED
     normalized = kv_dtype.strip().lower()
     if not normalized or normalized == "auto":
         return
@@ -159,17 +151,16 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
             os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
             print("[config] V1 engine: FP8 KV cache enabled")
         elif normalized.startswith("int8"):
-            if not _KV_DTYPE_WARNING_EMITTED:
-                print(
-                    "[config] V1 engine: INT8 KV cache requested. FlashInfer will use fp16 KV cache."
-                )
-                _KV_DTYPE_WARNING_EMITTED = True
+            warn_once(
+                "kv_dtype_int8",
+                "V1 engine: INT8 KV cache requested. FlashInfer will use fp16 KV cache.",
+                prefix="[config]",
+            )
         else:
-            if not _KV_DTYPE_WARNING_EMITTED:
-                print(
-                    f"[config] Warning: kv_cache_dtype={normalized} may not be supported by V1 engine."
-                )
-                _KV_DTYPE_WARNING_EMITTED = True
+            warn_once(
+                f"kv_dtype_{normalized}",
+                f"kv_cache_dtype={normalized} may not be supported by V1 engine.",
+            )
         return
 
     kwargs["kv_cache_dtype"] = normalized

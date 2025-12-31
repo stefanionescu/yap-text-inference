@@ -15,7 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover - import only for type checking
     from .engine import (
         VLLMEngine,
         cache_reset_reschedule_event,
-        clear_all_engine_caches_on_disconnect,
+        clear_caches_on_disconnect,
         get_engine,
         reset_engine_caches,
         seconds_since_last_cache_reset,
@@ -46,5 +46,5 @@ __all__ = [
     "reset_engine_caches",
     "cache_reset_reschedule_event",
     "seconds_since_last_cache_reset",
-    "clear_all_engine_caches_on_disconnect",
+    "clear_caches_on_disconnect",
 ]

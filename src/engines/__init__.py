@@ -19,7 +19,7 @@ vLLM and TensorRT-LLM inference backends. The module handles:
 4. Cache Management (vLLM only):
    - reset_engine_caches(): Clear prefix/multimodal caches
    - cache_reset_reschedule_event(): Event for cache reset daemon
-   - clear_all_engine_caches_on_disconnect(): Cleanup on last client
+   - clear_caches_on_disconnect(): Cleanup on last client
    - TRT-LLM uses block reuse instead of explicit cache resets
 
 Engine Selection:
@@ -123,10 +123,10 @@ def seconds_since_last_cache_reset() -> float:
         return 0.0
 
 
-async def clear_all_engine_caches_on_disconnect() -> None:
+async def clear_caches_on_disconnect() -> None:
     """Clear caches when all clients disconnect (vLLM only)."""
     if INFERENCE_ENGINE == "vllm":
-        from .vllm import clear_all_engine_caches_on_disconnect as vllm_clear
+        from .vllm import clear_caches_on_disconnect as vllm_clear
         await vllm_clear()
     # TRT-LLM: no-op
 
@@ -150,7 +150,7 @@ __all__ = [
     "reset_engine_caches",
     "cache_reset_reschedule_event",
     "seconds_since_last_cache_reset",
-    "clear_all_engine_caches_on_disconnect",
+    "clear_caches_on_disconnect",
     "engine_supports_cache_reset",
 ]
 
