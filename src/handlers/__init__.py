@@ -6,7 +6,7 @@ auth.py:
     API key validation for HTTP and WebSocket connections.
     Supports both query parameter and header-based authentication.
 
-connection_handler.py:
+connections.py:
     Manages WebSocket connection slots with semaphore-based limiting.
     Prevents server overload by rejecting connections at capacity.
 
