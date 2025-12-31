@@ -18,7 +18,7 @@ except Exception as exc:  # pragma: no cover - import error path
 
 # Add repo root (and src) to path so we can import src modules even when run directly
 _script_dir = Path(__file__).resolve().parent
-_project_root = _script_dir.parents[4]  # .../src/engines/vllm/awq/hf -> repo root
+_project_root = _script_dir.parents[4]  # .../src/engines/vllm/quant/hf -> repo root
 _src_root = _project_root / "src"
 for _path in (_project_root, _src_root):
     if str(_path) not in sys.path:
@@ -31,7 +31,7 @@ if not env_flag("SHOW_HF_LOGS", False):
     import src.scripts.log_filter  # noqa: F401 - suppress HF progress bars
 
 from src.config.quantization import AWQ_MODEL_MARKERS
-from src.engines.vllm.awq.utils.template_utils import generate_readme
+from src.engines.vllm.quant.utils.template_utils import generate_readme
 
 
 def _regenerate_readme(folder: Path, metadata: dict[str, Any]) -> None:

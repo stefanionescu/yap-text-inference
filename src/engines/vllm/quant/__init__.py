@@ -1,4 +1,4 @@
-"""AWQ Quantization Package"""
+"""vLLM Quantization Package (AWQ via llmcompressor)."""
 
 from .core import AWQQuantizer, CalibrationConfig
 from .utils.model_utils import is_awq_dir
