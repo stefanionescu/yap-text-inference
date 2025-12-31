@@ -2,13 +2,13 @@
 
 This package provides the infrastructure for handling client connections:
 
-auth.py:
-    API key validation for HTTP and WebSocket connections.
-    Supports both query parameter and header-based authentication.
-
 connections.py:
     Manages WebSocket connection slots with semaphore-based limiting.
     Prevents server overload by rejecting connections at capacity.
+
+instances.py:
+    Singleton instances for ConnectionHandler and SessionHandler.
+    Serves as the assembly point for global handler objects.
 
 rate_limit.py:
     Sliding window rate limiter for per-connection message throttling.
@@ -23,6 +23,7 @@ session/:
 
 websocket/:
     WebSocket message routing and lifecycle:
+    - auth.py: API key validation for HTTP and WebSocket connections
     - Connection lifecycle with idle timeout (lifecycle.py)
     - Message parsing and validation (parser.py)
     - Error response helpers (errors.py)

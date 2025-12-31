@@ -157,3 +157,6 @@ async def run_toolcall(
 
     # Route to classifier
     return await _run_classifier_toolcall(session_id, user_utt, req_id)
+
+
+__all__ = ["run_toolcall"]

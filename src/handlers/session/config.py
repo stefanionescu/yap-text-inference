@@ -26,7 +26,7 @@ from src.config import (
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
-from .prefix import count_prefix_tokens
+from ...tokens.prefix import count_prefix_tokens
 
 if TYPE_CHECKING:
     from .state import SessionState

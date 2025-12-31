@@ -35,6 +35,11 @@ from .token_utils import (
     trim_history_preserve_messages_tool,
     build_user_history_for_tool,
 )
+from .prefix import (
+    count_prefix_tokens,
+    strip_screen_prefix,
+    get_effective_user_utt_max_tokens,
+)
 
 __all__ = [
     # Chat
@@ -46,6 +51,10 @@ __all__ = [
     "trim_text_to_token_limit_tool",
     "trim_history_preserve_messages_tool",
     "build_user_history_for_tool",
+    # Prefix
+    "count_prefix_tokens",
+    "strip_screen_prefix",
+    "get_effective_user_utt_max_tokens",
 ]
 
 

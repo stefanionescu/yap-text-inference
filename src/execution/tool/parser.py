@@ -1,4 +1,17 @@
-"""Tool result parsing utilities."""
+"""Tool result parsing utilities.
+
+This module parses the JSON output from the tool classifier into structured
+results for the execution pipeline. The classifier returns JSON arrays like:
+
+    '[{"name": "take_screenshot"}]'  -> Tool call requested
+    '[]'                              -> No tool call
+
+Edge Case Handling:
+    - Strips markdown code fences (```json ... ```)
+    - Handles trailing code fence artifacts
+    - Gracefully handles malformed JSON
+    - Returns (None, False) for cancelled/empty results
+"""
 
 import json
 import re
@@ -70,3 +83,6 @@ def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
                 is_tool = False
     
     return raw_field, is_tool
+
+
+__all__ = ["parse_tool_result"]
