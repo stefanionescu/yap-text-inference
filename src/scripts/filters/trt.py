@@ -14,7 +14,7 @@ import sys
 import warnings
 from typing import Iterable
 
-from src.scripts.filter_constants import TRTLLM_NOISE_PATTERNS
+from src.config.filters import TRTLLM_NOISE_PATTERNS
 
 __all__ = ["configure_trt_logging", "NoiseFilterStream", "is_trt_noise"]
 

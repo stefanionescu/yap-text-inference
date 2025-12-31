@@ -15,11 +15,11 @@ from __future__ import annotations
 import html
 import re
 
+from ...config.chat import DIGIT_WORDS
 from ...config.filters import (
     ACTION_EMOTE_PATTERN,
     COLLAPSE_SPACES_PATTERN,
     DASH_PATTERN,
-    DIGIT_WORDS,
     DOUBLE_DOT_SPACE_PATTERN,
     DOT_RUN_PATTERN,
     ELLIPSIS_PATTERN,

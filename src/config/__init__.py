@@ -1,6 +1,6 @@
 """Aggregator of configuration modules.
 
-This module re-exports the config API from smaller modules:
+This module re-exports configuration constants from smaller modules:
 - deploy: deployment mode and model selection
 - gpu: GPU memory and architecture
 - engine: inference engine selection
@@ -10,6 +10,9 @@ This module re-exports the config API from smaller modules:
 - models: allowlists
 - limits: token and concurrency limits
 - secrets: secrets like API_KEY
+
+Note: Helper functions (validate_env, configure_runtime_env, etc.) should be
+imported directly from src.helpers, not from this module.
 """
 
 from .deploy import (
@@ -77,7 +80,6 @@ from .quantization import (
     TRT_FP8_SM_ARCHS,
     VLLM_QUANTIZATIONS,
 )
-from ..helpers.quantization import normalize_engine
 from .limits import (
     CHAT_MAX_LEN,
     CHAT_MAX_OUT,
@@ -124,115 +126,7 @@ from .websocket import (
 )
 
 
-# Lazy imports for helper functions to avoid circular imports
-_helpers_cache = None
-
-
-def _get_helper_functions():
-    """Lazy import helper functions to avoid circular imports."""
-    global _helpers_cache
-    if _helpers_cache is not None:
-        return _helpers_cache
-    
-    from src.helpers.runtime import configure_runtime_env
-    from src.helpers.validation import validate_env, _allow_prequantized_override
-    from src.helpers.models import (
-        is_valid_model,
-        is_classifier_model,
-        is_moe_model,
-        get_all_base_chat_models,
-        get_allowed_chat_models,
-        is_local_model_path,
-    )
-    from src.helpers.quantization import (
-        classify_prequantized_model,
-        classify_trt_prequantized_model,
-        is_awq_model_name,
-        is_trt_awq_model_name,
-        is_trt_8bit_model_name,
-        is_trt_prequantized_model,
-        gpu_supports_fp8,
-        map_quant_mode_to_trt,
-    )
-    
-    _helpers_cache = {
-        'configure_runtime_env': configure_runtime_env,
-        'validate_env': validate_env,
-        '_allow_prequantized_override': _allow_prequantized_override,
-        '_is_valid_model': is_valid_model,
-        'is_classifier_model': is_classifier_model,
-        'is_moe_model': is_moe_model,
-        'get_all_base_chat_models': get_all_base_chat_models,
-        'get_allowed_chat_models': get_allowed_chat_models,
-        'is_local_model_path': is_local_model_path,
-        'classify_prequantized_model': classify_prequantized_model,
-        'classify_trt_prequantized_model': classify_trt_prequantized_model,
-        'is_awq_model_name': is_awq_model_name,
-        'is_trt_awq_model_name': is_trt_awq_model_name,
-        'is_trt_8bit_model_name': is_trt_8bit_model_name,
-        'is_trt_prequantized_model': is_trt_prequantized_model,
-        'gpu_supports_fp8': gpu_supports_fp8,
-        'map_quant_mode_to_trt': map_quant_mode_to_trt,
-    }
-    return _helpers_cache
-
-
-def __getattr__(name):
-    """Lazy attribute access for helper functions."""
-    helper_names = {
-        'configure_runtime_env', 'validate_env', '_allow_prequantized_override',
-        '_is_valid_model', 'is_classifier_model', 'is_moe_model',
-        'get_all_base_chat_models', 'get_allowed_chat_models', 'is_local_model_path',
-        'classify_prequantized_model', 'classify_trt_prequantized_model',
-        'is_awq_model_name', 'is_trt_awq_model_name', 'is_trt_8bit_model_name', 'is_trt_prequantized_model',
-        'gpu_supports_fp8', 'map_quant_mode_to_trt',
-    }
-    if name in helper_names:
-        return _get_helper_functions()[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def _run_startup_validation():
-    """Run model validation checks at startup."""
-    helpers = _get_helper_functions()
-    _is_valid_model = helpers['_is_valid_model']
-    _allow_prequantized_override = helpers['_allow_prequantized_override']
-    is_classifier_model = helpers['is_classifier_model']
-    is_local_model_path = helpers['is_local_model_path']
-    is_awq_model_name = helpers['is_awq_model_name']
-    get_allowed_chat_models = helpers['get_allowed_chat_models']
-    allowed_chat_models = get_allowed_chat_models(INFERENCE_ENGINE)
-    
-    if DEPLOY_CHAT and not _is_valid_model(CHAT_MODEL, allowed_chat_models, "chat"):
-        if not _allow_prequantized_override(CHAT_MODEL, "chat"):
-            raise ValueError(f"CHAT_MODEL must be allowlisted, got: {CHAT_MODEL}")
-
-    if DEPLOY_TOOL:
-        # Tool models must be classifiers
-        if not is_classifier_model(TOOL_MODEL):
-            raise ValueError("TOOL_MODEL must be a classifier model; vLLM tool engines are no longer supported")
-        # Only validate against allowlist for HuggingFace models, not local paths
-        if not is_local_model_path(TOOL_MODEL) and TOOL_MODEL not in ALLOWED_TOOL_MODELS:
-            raise ValueError(
-                f"TOOL_MODEL classifier must be allowlisted, got: {TOOL_MODEL}"
-            )
-
-    # Additional safety: AWQ requires non-GPTQ chat weights (except for pre-quantized AWQ models)
-    if (QUANTIZATION == "awq" and DEPLOY_CHAT and CHAT_MODEL and
-        "GPTQ" in CHAT_MODEL and not is_awq_model_name(CHAT_MODEL)):
-        raise ValueError(
-            "For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
-            f"Got: {CHAT_MODEL}. Use a pre-quantized AWQ model or a float model instead."
-        )
-
-
-# Run startup validation (deferred to avoid circular imports)
-_run_startup_validation()
-
-
 __all__ = [
-    "configure_runtime_env",
-    "validate_env",
     # deploy
     "DEPLOY_MODE",
     "DEPLOY_CHAT",
@@ -281,26 +175,15 @@ __all__ = [
     "TOOL_MAX_LENGTH",
     "TOOL_MICROBATCH_MAX_SIZE",
     "TOOL_MICROBATCH_MAX_DELAY_MS",
-    # models/validation
+    # models
     "ALLOWED_BASE_CHAT_MODELS",
     "ALLOWED_BASE_MOE_CHAT_MODELS",
     "ALLOWED_VLLM_QUANT_CHAT_MODELS",
     "ALLOWED_TRT_QUANT_CHAT_MODELS",
     "ALLOWED_TOOL_MODELS",
-    "is_classifier_model",
-    "is_moe_model",
-    "get_all_base_chat_models",
-    "get_allowed_chat_models",
-    "is_local_model_path",
-    # quantization helpers
+    # quantization
     "TRT_FP8_SM_ARCHS",
     "VLLM_QUANTIZATIONS",
-    "normalize_engine",
-    "is_awq_model_name",
-    "is_trt_awq_model_name",
-    "is_trt_prequantized_model",
-    "gpu_supports_fp8",
-    "map_quant_mode_to_trt",
     # limits
     "CHAT_MAX_LEN",
     "CHAT_MAX_OUT",

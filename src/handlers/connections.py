@@ -55,15 +55,20 @@ class ConnectionHandler:
 
     def __init__(
         self,
-        max_connections: int = MAX_CONCURRENT_CONNECTIONS,
+        max_connections: int | None = None,
         acquire_timeout: float = WS_HANDSHAKE_ACQUIRE_TIMEOUT_S,
     ):
         """Initialize the connection handler.
         
         Args:
             max_connections: Maximum concurrent connections to allow.
+                Defaults to MAX_CONCURRENT_CONNECTIONS from config.
             acquire_timeout: Seconds to wait when server is at capacity.
         """
+        if max_connections is None:
+            if MAX_CONCURRENT_CONNECTIONS is None:
+                raise RuntimeError("MAX_CONCURRENT_CONNECTIONS not configured")
+            max_connections = MAX_CONCURRENT_CONNECTIONS
         self.max_connections = max_connections
         self.acquire_timeout = acquire_timeout
         self.active_connections: set[WebSocket] = set()

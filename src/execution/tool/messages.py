@@ -13,7 +13,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from ...config.filters import CONTROL_FUNCTION_MESSAGES
+from ...config.chat import CONTROL_FUNCTION_MESSAGES
 
 if TYPE_CHECKING:
     from ...handlers.session.state import SessionState

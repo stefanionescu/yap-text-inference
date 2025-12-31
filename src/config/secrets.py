@@ -4,9 +4,8 @@ import os
 
 
 # API Key for authentication (all endpoints except /healthz)
-TEXT_API_KEY = os.getenv("TEXT_API_KEY")
-if not TEXT_API_KEY:
-    raise ValueError("TEXT_API_KEY environment variable is required")
+# Validated at runtime by helpers/validation.py
+TEXT_API_KEY: str | None = os.getenv("TEXT_API_KEY")
 
 
 __all__ = ["TEXT_API_KEY"]
