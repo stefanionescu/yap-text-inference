@@ -1,11 +1,10 @@
 """Personality switch test utilities and runner."""
 
 __all__ = [
-    "runner",
-    "session",
     "messaging",
+    "runner",
     "sequences",
-    "tracker",
+    "session",
 ]
 
 

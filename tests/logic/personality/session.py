@@ -2,17 +2,10 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from tests.helpers.ttfb import TTFBAggregator
-
-_TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _TEST_DIR not in sys.path:
-    sys.path.insert(0, _TEST_DIR)
-
 from tests.messages.personality import PERSONALITY_CONVERSATION_MESSAGES
 
 

@@ -3,26 +3,20 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import sys
 import uuid
 
 import websockets  # type: ignore[import-not-found]
 
-_TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _TEST_DIR not in sys.path:
-    sys.path.insert(0, _TEST_DIR)
-
-from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.ttfb import TTFBAggregator
-from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
     PERSONALITY_PERSONA_VARIANTS,
 )
-from tests.messages.personality import PERSONALITY_CONVERSATION_MESSAGES
 from tests.helpers.env import get_float_env, get_int_env
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.ttfb import TTFBAggregator
+from tests.helpers.ws import send_client_end, with_api_key
+from tests.messages.personality import PERSONALITY_CONVERSATION_MESSAGES
 
 from .sequences import run_initial_exchange, run_remaining_sequence, run_switch_sequence
 from .session import PersonaSession, PersonaVariant

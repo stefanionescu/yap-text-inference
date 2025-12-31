@@ -3,20 +3,15 @@
 from __future__ import annotations
 
 import json
-import os
-import sys
 from typing import Any
-
-_TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _TEST_DIR not in sys.path:
-    sys.path.insert(0, _TEST_DIR)
 
 from tests.config import DEFAULT_PERSONALITIES
 from tests.helpers.errors import ServerError
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.stream import StreamTracker
+
 from .session import PersonaSession, PersonaVariant
-from .tracker import StreamTracker
 
 
 async def collect_response(ws, tracker: StreamTracker) -> str:

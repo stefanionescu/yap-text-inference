@@ -2,17 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import sys
 from typing import Any, Awaitable, Callable
 
-_test_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _test_dir not in sys.path:
-    sys.path.insert(0, _test_dir)
-
-from tests.helpers.errors import ServerError  # noqa: E402
-from tests.helpers.message import dispatch_message, iter_messages  # noqa: E402
-from tests.helpers.stream import StreamTracker  # noqa: E402
+from tests.helpers.errors import ServerError
+from tests.helpers.message import dispatch_message, iter_messages
+from tests.helpers.stream import StreamTracker
 
 logger = logging.getLogger(__name__)
 
