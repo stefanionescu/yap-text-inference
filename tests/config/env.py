@@ -1,35 +1,13 @@
 """Environment-based configuration for test utilities.
 
-This module reads test configuration from environment variables and provides
-sensible defaults. It includes WebSocket connection settings, timeout values,
-and rate-limiting parameters used across all test clients.
+Reads test configuration from environment variables and provides sensible
+defaults. Includes WebSocket connection settings, timeout values, and
+rate-limiting parameters used across all test clients.
 """
 
 from __future__ import annotations
 
 import os
-
-
-def get_int_env(key: str, fallback: int) -> int:
-    """Read an integer from an environment variable with a fallback."""
-    raw = os.getenv(key)
-    if raw is None:
-        return fallback
-    try:
-        return int(raw)
-    except ValueError:
-        return fallback
-
-
-def get_float_env(key: str, fallback: float) -> float:
-    """Read a float from an environment variable with a fallback."""
-    raw = os.getenv(key)
-    if raw is None:
-        return fallback
-    try:
-        return float(raw)
-    except ValueError:
-        return fallback
 
 
 DEFAULT_SERVER_WS_URL = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
@@ -52,6 +30,4 @@ __all__ = [
     "POST_TOOL_IDLE_MIN_S",
     "TOOL_WS_MESSAGE_WINDOW_SECONDS",
     "TOOL_WS_MAX_MESSAGES_PER_WINDOW",
-    "get_int_env",
-    "get_float_env",
 ]

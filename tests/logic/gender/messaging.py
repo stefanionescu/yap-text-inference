@@ -51,9 +51,7 @@ async def collect_response(ws, tracker: StreamTracker) -> str:
             return tracker.final_text
 
         if t == "error":
-            error_code = msg.get("error_code", "unknown")
-            message = msg.get("message", str(msg))
-            raise ServerError(error_code, message)
+            raise ServerError.from_message(msg)
 
     raise RuntimeError("WebSocket closed before receiving 'done'")
 

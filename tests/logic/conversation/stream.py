@@ -118,9 +118,7 @@ def _handle_done(msg: dict[str, Any], tracker: StreamTracker, exchange_idx: int)
 
 
 def _handle_error(msg: dict[str, Any]) -> None:
-    error_code = msg.get("error_code", "unknown")
-    message = msg.get("message", str(msg))
-    raise ServerError(error_code, message)
+    raise ServerError.from_message(msg)
 
 
 __all__ = ["stream_exchange"]

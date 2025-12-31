@@ -37,10 +37,12 @@ from tests.helpers.cli import (
     build_sampling_payload,
 )
 from tests.helpers.ws import connect_with_retries, with_api_key
+from tests.helpers.errors import IdleTimeoutError
 from tests.logic.live import (
     DEFAULT_PERSONA_NAME,
     LiveClient,
     LiveConnectionClosed,
+    LiveIdleTimeout,
     LiveServerError,
     LiveSession,
     PersonaRegistry,
@@ -121,14 +123,24 @@ async def _run(args: argparse.Namespace) -> None:
     except asyncio.TimeoutError:
         logger.error("Timed out while connecting to %s", args.server)
         raise SystemExit(1) from None
-    except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK):
-        logger.warning("Server closed the connection. Exiting.")
+    except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
+        close_code = getattr(exc, "code", None)
+        close_reason = getattr(exc, "reason", None)
+        if close_code == 4000 or (close_reason and "idle" in str(close_reason).lower()):
+            logger.info("Session ended due to inactivity. Goodbye!")
+        else:
+            logger.warning("Server closed the connection (code=%s). Exiting.", close_code)
+    except (IdleTimeoutError, LiveIdleTimeout):
+        logger.info("Session ended due to inactivity. Goodbye!")
     except LiveServerError as exc:
         if exc.code == "authentication_failed":
             logger.error(
                 "Authentication failed: server rejected the provided API key. "
                 "Double-check `--api-key` or `TEXT_API_KEY`."
             )
+            raise SystemExit(1) from exc
+        if exc.code == "server_at_capacity":
+            logger.error("Server is busy. Please try again later.")
             raise SystemExit(1) from exc
         logger.error("Server error: %s", exc)
         raise SystemExit(1) from exc

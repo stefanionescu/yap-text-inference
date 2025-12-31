@@ -12,11 +12,8 @@ import json
 from typing import Any
 from collections.abc import Awaitable, Callable, Mapping
 
+from .errors import MessageParseError
 from .ws import recv_raw
-
-
-class MessageParseError(RuntimeError):
-    """Raised when a websocket frame cannot be parsed into JSON."""
 
 
 def parse_message(raw: str) -> dict[str, Any]:

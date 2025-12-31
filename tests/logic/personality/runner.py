@@ -22,7 +22,7 @@ from tests.config import (
     PERSONALITY_PERSONA_VARIANTS,
 )
 from tests.messages.personality import PERSONALITY_CONVERSATION_MESSAGES
-from tests.config.env import get_float_env, get_int_env
+from tests.helpers.env import get_float_env, get_int_env
 
 from .sequences import run_initial_exchange, run_remaining_sequence, run_switch_sequence
 from .session import PersonaSession, PersonaVariant
