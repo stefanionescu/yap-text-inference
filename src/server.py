@@ -36,7 +36,6 @@ import asyncio
 import logging
 import multiprocessing
 import os
-import time
 
 # ============================================================================
 # CRITICAL: Set multiprocessing start method to 'spawn' BEFORE any imports
@@ -64,7 +63,6 @@ from fastapi.responses import ORJSONResponse
 from .config import (
     DEPLOY_CHAT,
     DEPLOY_TOOL,
-    CACHE_RESET_INTERVAL_SECONDS,
     INFERENCE_ENGINE,
 )
 from .helpers.validation import validate_env
@@ -73,11 +71,11 @@ from .config.logging import configure_logging
 from .engines import (
     get_engine,
     shutdown_engine,
-    reset_engine_caches,
-    cache_reset_reschedule_event,
-    seconds_since_last_cache_reset,
     engine_supports_cache_reset,
+    warm_chat_engine,
+    warm_classifier,
 )
+from .engines.vllm.cache_daemon import ensure_cache_reset_daemon
 from .handlers.websocket import handle_websocket_connection
 
 logger = logging.getLogger(__name__)
@@ -87,54 +85,6 @@ app = FastAPI(default_response_class=ORJSONResponse)
 configure_logging()
 configure_runtime_env()
 validate_env()
-
-
-# Global task reference for the cache reset daemon
-# This allows the daemon to be stopped on shutdown
-_cache_reset_task: asyncio.Task | None = None
-
-
-async def _warm_chat_engine(getter):
-    """Ensure the chat engine is constructed before serving traffic.
-    
-    This pre-warms the inference engine during server startup, which:
-    - Loads model weights into GPU memory
-    - Compiles CUDA kernels (if using vLLM)
-    - Validates the configuration
-    
-    Args:
-        getter: Async callable that returns the engine instance.
-    
-    Note:
-        For vLLM, this can take 30-60 seconds for large models.
-        For TRT-LLM, this loads pre-compiled engines and is faster.
-    """
-    start = time.perf_counter()
-    engine_name = "TRT-LLM" if INFERENCE_ENGINE == "trt" else "vLLM"
-    logger.info("preload_engines: warming %s chat engine...", engine_name)
-    await getter()
-    elapsed = time.perf_counter() - start
-    logger.info("preload_engines: %s chat engine ready in %.2fs", engine_name, elapsed)
-
-
-async def _warm_classifier() -> None:
-    """Ensure the classifier adapter is constructed before serving traffic.
-    
-    The classifier is a lightweight PyTorch model used for screenshot
-    intent detection. It runs separately from the main chat engine and
-    is much faster to load (~5-10 seconds).
-    
-    This runs in a thread pool to avoid blocking the event loop during
-    model loading.
-    """
-    from .classifier import get_classifier_adapter
-
-    start = time.perf_counter()
-    logger.info("preload_engines: warming tool classifier adapter...")
-    # Run in thread pool - model loading is synchronous and blocking
-    await asyncio.to_thread(get_classifier_adapter)
-    elapsed = time.perf_counter() - start
-    logger.info("preload_engines: tool classifier ready in %.2fs", elapsed)
 
 
 @app.on_event("startup")
@@ -154,10 +104,10 @@ async def preload_engines() -> None:
 
     # Warm engines concurrently based on deployment configuration
     if DEPLOY_CHAT:
-        tasks.append(asyncio.create_task(_warm_chat_engine(get_engine)))
+        tasks.append(asyncio.create_task(warm_chat_engine(get_engine)))
 
     if DEPLOY_TOOL:
-        tasks.append(asyncio.create_task(_warm_classifier()))
+        tasks.append(asyncio.create_task(warm_classifier()))
 
     if not tasks:
         return
@@ -168,7 +118,7 @@ async def preload_engines() -> None:
     # Start background cache management for vLLM
     # TRT-LLM uses built-in block reuse and doesn't need this
     if engine_supports_cache_reset():
-        _ensure_cache_reset_daemon()
+        ensure_cache_reset_daemon()
     else:
         logger.info("cache reset daemon: disabled (TRT-LLM uses block reuse)")
 
@@ -201,77 +151,3 @@ async def favicon():
 async def websocket_endpoint(websocket: WebSocket):
     """Main WebSocket endpoint for chat interactions."""
     await handle_websocket_connection(websocket)
-
-
-def _ensure_cache_reset_daemon() -> None:
-    """Start the cache reset daemon if configuration enables it.
-    
-    The cache reset daemon periodically clears vLLM's prefix cache and
-    multimodal cache to prevent memory fragmentation over time. This is
-    especially important for:
-    - Long-running deployments
-    - High-volume traffic with diverse prompts
-    - Models with prefix caching enabled
-    
-    Note:
-        Only called for vLLM. TRT-LLM uses block reuse and handles memory
-        management differently (no periodic reset needed).
-    """
-    global _cache_reset_task
-    # Don't start if already running
-    if _cache_reset_task and not _cache_reset_task.done():
-        return
-    # Don't start if cache reset is disabled
-    if CACHE_RESET_INTERVAL_SECONDS <= 0:
-        return
-    _cache_reset_task = asyncio.create_task(cache_reset_daemon())
-
-
-async def cache_reset_daemon() -> None:
-    """Background task to periodically reset vLLM caches.
-    
-    This daemon runs on a configurable interval (default 600s) and:
-    1. Resets the prefix cache (frees computed attention states)
-    2. Resets the multimodal cache (frees image/audio embeddings)
-    
-    The daemon uses an event-based scheduling system that can be interrupted
-    when a long session ends, triggering an immediate reset instead of
-    waiting for the timer.
-    
-    Note:
-        This daemon only runs for vLLM. TRT-LLM handles memory management
-        through its built-in KV cache block reuse mechanism, which
-        automatically reclaims memory without explicit resets.
-    """
-    interval = CACHE_RESET_INTERVAL_SECONDS
-    if interval <= 0:
-        logger.info("cache reset daemon disabled")
-        return
-
-    # Event used to interrupt the wait (e.g., after a long session ends)
-    event = cache_reset_reschedule_event()
-    logger.info("cache reset daemon started interval=%ss", interval)
-
-    while True:
-        # Check if we were signaled to reset immediately
-        if event.is_set():
-            event.clear()
-            continue
-
-        # Calculate remaining wait time
-        wait = max(0.0, interval - seconds_since_last_cache_reset())
-        if wait <= 0:
-            # Timer expired - reset caches now
-            await reset_engine_caches("timer", force=True)
-            continue
-
-        try:
-            # Wait for either the timer or an interrupt signal
-            await asyncio.wait_for(event.wait(), timeout=wait)
-        except asyncio.TimeoutError:
-            # Timer expired - reset caches
-            await reset_engine_caches("timer", force=True)
-        else:
-            # Event was set - someone requested a reschedule
-            if event.is_set():
-                event.clear()

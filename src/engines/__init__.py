@@ -45,6 +45,7 @@ from src.config import INFERENCE_ENGINE
 
 from .base import BaseEngine, EngineOutput, EngineNotReadyError, EngineShutdownError
 from .sampling import create_sampling_params
+from .warmup import warm_chat_engine, warm_classifier
 
 if TYPE_CHECKING:
     pass
@@ -152,5 +153,8 @@ __all__ = [
     "seconds_since_last_cache_reset",
     "clear_caches_on_disconnect",
     "engine_supports_cache_reset",
+    # Warmup utilities
+    "warm_chat_engine",
+    "warm_classifier",
 ]
 

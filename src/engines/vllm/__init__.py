@@ -1,48 +1,23 @@
 """vLLM engine implementation.
 
-This package exposes the vLLM-based inference backend while keeping the
-heavy `vllm` dependency lazily imported. Quantization utilities that only
-need the AWQ helpers can safely import ``src.engines.vllm`` without pulling
-the runtime wheel into their virtual environment.
+This package provides the vLLM-based inference backend. The heavy vLLM
+dependency is only loaded when this package is actually imported - the
+parent engines module defers imports to runtime via function-level imports.
 """
 
 from __future__ import annotations
 
-from importlib import import_module
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:  # pragma: no cover - import only for type checking
-    from .engine import (
-        VLLMEngine,
-        cache_reset_reschedule_event,
-        clear_caches_on_disconnect,
-        get_engine,
-        reset_engine_caches,
-        seconds_since_last_cache_reset,
-        shutdown_engine,
-    )
-    from .setup import configure_runtime_env
-
-
-def __getattr__(name: str):
-    """Lazily expose engine symbols to avoid importing vLLM eagerly."""
-
-    if name not in __all__:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-    # setup can be imported directly without vLLM
-    if name == "configure_runtime_env":
-        module = import_module(".setup", __name__)
-    else:
-        module = import_module(".engine", __name__)
-    value = getattr(module, name)
-    globals()[name] = value  # Cache attribute for future lookups
-    return value
-
-
-def __dir__() -> list[str]:
-    return sorted(set(__all__ + list(globals().keys())))
-
+from .cache_daemon import ensure_cache_reset_daemon
+from .engine import (
+    VLLMEngine,
+    cache_reset_reschedule_event,
+    clear_caches_on_disconnect,
+    get_engine,
+    reset_engine_caches,
+    seconds_since_last_cache_reset,
+    shutdown_engine,
+)
+from .setup import configure_runtime_env
 
 __all__ = [
     "VLLMEngine",
@@ -53,4 +28,5 @@ __all__ = [
     "seconds_since_last_cache_reset",
     "clear_caches_on_disconnect",
     "configure_runtime_env",
+    "ensure_cache_reset_daemon",
 ]

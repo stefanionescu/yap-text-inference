@@ -21,7 +21,6 @@ These rules describe how every source file should be structured so that our agen
 - Avoid instantiating a singleton or global instance in the same file that defines the class; create those instances from a dedicated assembly point (e.g., the server entry module).
 - Never trigger work at import time—do not auto-call functions when the module loads. Expose callable entry points and let the importer execute them explicitly.
 - Keep total file length at or under 350 lines. Split the module whenever you approach that limit.
-- Never delete comments just to meet the line limit; the cap refers to executable code, and removing documentation for the sake of numbers is counterproductive.
 - Exception: data-heavy fixtures such as regression test cases or persona/prompt definitions (e.g., modules under `tests/`) may exceed the 350-line cap when splitting would reduce readability or introduce unnecessary indirection.
 - Use section dividers exactly in this format, followed by a single blank line before the first symbol:
   ```
@@ -61,13 +60,12 @@ These rules describe how every source file should be structured so that our agen
 ## Documentation
 - Keep the primary README focused on the essential concepts: overall logic, how the scripts operate, and anything every developer must know to get started quickly.
 - Use files like `ADVANCED.md` for in-depth walkthroughs or niche knowledge that only applies to specialized contributors.
-- Avoid emojis or emoticons in every Markdown file and in code comments; keep the tone professional and clear.
+- Avoid emojis or emoticons in every Markdown file; keep the tone professional and clear.
 - Every Markdown file (other than `AGENTS.md`) must include a concise contents table or list immediately below its high-level description to help readers navigate.
 - Whenever a feature or task is completed (not just partially done), review the README and any advanced docs to ensure they reflect the latest behavior.
 
 ## Readability and Style
 - Favor descriptive, clear names. Avoid vague terms like “maybe” in identifiers.
-- Write a bit more commentary than usual, especially when explaining non-obvious control flow or algorithms.
 - Keep every function clean and organized; keep indentation shallow and split helpers whenever doing so improves clarity.
 - When refactoring, remove deprecated or unused logic entirely instead of leaving wrappers or compatibility shims; implement the new behavior cleanly.
 - Delete unused parameters or arguments as soon as they become dead weight so signatures always reflect the active logic.
@@ -75,3 +73,9 @@ These rules describe how every source file should be structured so that our agen
 - If you encounter code smells or risky patterns, surface a warning to the developer before applying changes so the issue can be discussed.
 - When a function grows deeply nested or relies on many chained conditionals/loops, refactor it into smaller pieces to keep the implementation straightforward.
 - Strive for human readability above all else: clear ordering, straightforward control flow, and obvious intent in every block.
+
+## Comments
+- Keep code comments professional and concise—no emojis or emoticons, and avoid conversational tone.
+- Describe what the surrounding code does right now. Never reference previous refactors, legacy decisions, or historical behavior unless the current implementation literally depends on that context.
+- Err on the side of slightly more commentary for non-obvious control flow; focus on intent (the “why”) over narrating line-by-line execution.
+- Do not delete useful comments just to satisfy the 350-line cap. If a file grows too large, split or reorganize the code while preserving the documentation.

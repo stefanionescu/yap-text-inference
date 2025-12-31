@@ -10,9 +10,6 @@ This module re-exports configuration constants from smaller modules:
 - models: allowlists
 - limits: token and concurrency limits
 - secrets: secrets like API_KEY
-
-Note: Helper functions (validate_env, configure_runtime_env, etc.) should be
-imported directly from src.helpers, not from this module.
 """
 
 from .deploy import (
