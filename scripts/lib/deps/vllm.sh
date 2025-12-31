@@ -33,6 +33,7 @@ _vllm_install_quant_env() {
 # Main entry point for vLLM dependency installation
 # Call this after venv is set up and activated
 vllm_install_deps() {
+  log_blank
   log_info "[vllm] Installing vLLM dependencies..."
   
   filter_requirements_without_flashinfer || return 1
