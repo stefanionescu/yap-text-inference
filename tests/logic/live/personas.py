@@ -15,6 +15,7 @@ import importlib
 from dataclasses import dataclass
 from typing import Any
 
+from tests.config import DEFAULT_PERSONA_NAME, PERSONA_MODULE
 from tests.helpers.prompt import normalize_gender
 
 
@@ -30,14 +31,6 @@ class PersonaDefinition:
     gender: str
     personality: str
     prompt: str
-
-
-# ============================================================================
-# Constants
-# ============================================================================
-
-PERSONA_MODULE = "tests.prompts.detailed"
-DEFAULT_PERSONA_NAME = "anna_flirty"
 
 
 # ============================================================================

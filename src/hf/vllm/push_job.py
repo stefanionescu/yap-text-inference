@@ -15,14 +15,6 @@ from src.quantization.vllm.utils.template_utils import generate_readme
 if TYPE_CHECKING:  # pragma: no cover - optional dependency
     from huggingface_hub import HfApi
 
-__all__ = [
-    "AWQPushJob",
-    "classify_prequantized_source",
-    "load_metadata",
-    "regenerate_readme",
-    "resolve_token",
-]
-
 
 @dataclass
 class AWQPushJob:
@@ -141,3 +133,12 @@ def classify_prequantized_source(value: str | None) -> str | None:
     if "gptq" in lowered:
         return "gptq"
     return None
+
+
+__all__ = [
+    "AWQPushJob",
+    "classify_prequantized_source",
+    "load_metadata",
+    "regenerate_readme",
+    "resolve_token",
+]

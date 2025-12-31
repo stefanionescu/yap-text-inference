@@ -17,8 +17,6 @@ from vllm.engine.async_llm_engine import AsyncLLMEngine
 
 from src.config import UNSUPPORTED_QUANT_DTYPE_FIELDS
 
-__all__ = ["create_engine_with_fallback"]
-
 logger = logging.getLogger(__name__)
 
 
@@ -127,4 +125,7 @@ def create_engine_with_fallback(engine_args: AsyncEngineArgs) -> AsyncLLMEngine:
             "vLLM: engine args include unsupported quant dtype knobs; retrying without scale/zp dtype fields"
         )
         return _build(fallback_args)
+
+
+__all__ = ["create_engine_with_fallback"]
 

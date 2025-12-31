@@ -16,12 +16,6 @@ from collections.abc import Iterable
 
 from src.config.filters import LLMCOMPRESSOR_NOISE_PATTERNS
 
-__all__ = [
-    "configure_llmcompressor_logging",
-    "LLMCompressorNoiseFilterStream",
-    "is_llmcompressor_noise",
-]
-
 logger = logging.getLogger("log_filter")
 
 _STREAMS_PATCHED = False
@@ -139,4 +133,11 @@ def configure_llmcompressor_logging() -> None:
     _suppress_llmcompressor_loggers()
     _suppress_llmcompressor_tqdm()
     _install_stream_filters()
+
+
+__all__ = [
+    "configure_llmcompressor_logging",
+    "LLMCompressorNoiseFilterStream",
+    "is_llmcompressor_noise",
+]
 

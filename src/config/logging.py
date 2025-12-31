@@ -11,6 +11,9 @@ APP_LOG_FORMAT = os.getenv(
     "%(levelname)s %(asctime)s [%(name)s:%(lineno)d] %(message)s",
 )
 
+# Log labels for stream types
+CHAT_STREAM_LABEL = "chat"
+
 
 def configure_logging() -> None:
     """Initialize root logging configuration once per process."""
@@ -29,6 +32,7 @@ def configure_logging() -> None:
 __all__ = [
     "APP_LOG_LEVEL",
     "APP_LOG_FORMAT",
+    "CHAT_STREAM_LABEL",
     "configure_logging",
 ]
 

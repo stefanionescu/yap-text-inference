@@ -41,11 +41,11 @@ from dataclasses import dataclass
 from typing import Any
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
+from src.config.logging import CHAT_STREAM_LABEL
 from ...engines.base import BaseEngine
 from ..async_compat import timeout as async_timeout
 
 logger = logging.getLogger(__name__)
-STREAM_LABEL = "chat"  # Log prefix for chat streams
 
 # Type for cancellation check callbacks
 CancelCheck = Callable[[], bool | Awaitable[bool]] | None
@@ -138,7 +138,7 @@ class ChatStreamController:
         self._start_time = start
         logger.info(
             "%s_stream: start session_id=%s req_id=%s timeout_s=%.2f flush_ms=%.1f",
-            STREAM_LABEL,
+            CHAT_STREAM_LABEL,
             cfg.session_id,
             cfg.request_id,
             cfg.timeout_s,
@@ -163,14 +163,14 @@ class ChatStreamController:
             self._cancelled = True
             logger.info(
                 "%s_stream: cancelled session_id=%s req_id=%s",
-                STREAM_LABEL,
+                CHAT_STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
             )
         except asyncio.TimeoutError:
             logger.warning(
                 "%s_stream: timeout session_id=%s req_id=%s",
-                STREAM_LABEL,
+                CHAT_STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
             )
@@ -183,7 +183,7 @@ class ChatStreamController:
             elapsed_ms = (time.perf_counter() - start) * 1000.0
             logger.info(
                 "%s_stream: end session_id=%s req_id=%s total_len=%s ms=%.1f",
-                STREAM_LABEL,
+                CHAT_STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
                 len(self._full_text),
@@ -255,7 +255,7 @@ class ChatStreamController:
             cfg = self._cfg
             logger.info(
                 "%s_stream: first token session_id=%s req_id=%s ttfb_ms=%.1f",
-                STREAM_LABEL,
+                CHAT_STREAM_LABEL,
                 cfg.session_id,
                 cfg.request_id,
                 self._ttfb_ms,

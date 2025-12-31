@@ -73,6 +73,18 @@ else:
 _trt_calib_batch_env = os.getenv("TRT_CALIB_BATCH_SIZE", "").strip()
 TRT_CALIB_BATCH_SIZE = int(_trt_calib_batch_env) if _trt_calib_batch_env else 16
 
+# Engine metadata filenames
+TRT_ENGINE_CONFIG_FILE = "config.json"
+TRT_BUILD_METADATA_FILE = "build_metadata.json"
+TRT_TOKENIZER_CONFIG_FILE = "tokenizer_config.json"
+
+# Checkpoint suffixes for tokenizer discovery
+TRT_CHECKPOINT_SUFFIXES = ("-int4_awq-ckpt", "-fp8-ckpt", "-int8_sq-ckpt", "-ckpt")
+
+# HuggingFace paths for TRT engine uploads
+TRT_HF_CHECKPOINTS_PATH = "trt-llm/checkpoints"
+TRT_HF_ENGINES_PATH_FMT = "trt-llm/engines/{engine_label}"
+
 
 __all__ = [
     "TRT_ENGINE_DIR",
@@ -89,4 +101,10 @@ __all__ = [
     "TRT_CALIB_SIZE",
     "TRT_CALIB_BATCH_SIZE",
     "TRT_CALIB_SEQLEN",
+    "TRT_ENGINE_CONFIG_FILE",
+    "TRT_BUILD_METADATA_FILE",
+    "TRT_TOKENIZER_CONFIG_FILE",
+    "TRT_CHECKPOINT_SUFFIXES",
+    "TRT_HF_CHECKPOINTS_PATH",
+    "TRT_HF_ENGINES_PATH_FMT",
 ]

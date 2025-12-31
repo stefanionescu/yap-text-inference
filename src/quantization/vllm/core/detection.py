@@ -172,20 +172,6 @@ def log_quant_detection(model_path: str, method: str, payload: dict[str, Any]) -
 # Resolution - Resolve model origins and normalize quant names
 # ============================================================================
 
-def resolve_model_origin(model_path: str) -> str:
-    """Best effort to determine the underlying HF repo for local AWQ exports."""
-    if not model_path:
-        return ""
-    if is_local_model_path(model_path):
-        meta_path = os.path.join(model_path, AWQ_METADATA_FILENAME)
-        payload = read_json_file(meta_path)
-        if isinstance(payload, dict):
-            source = payload.get("source_model")
-            if isinstance(source, str) and source.strip():
-                return source.strip()
-    return model_path
-
-
 def _detect_from_configs(
     file_resolver: Callable[[str], str | None],
 ) -> tuple[str | None, dict[str, Any]]:
@@ -274,6 +260,20 @@ def _normalize_quant_name(name: str | None) -> str | None:
         return None
     normalized = name.strip().lower().replace("_", "-")
     return QUANT_NAME_MAPPING.get(normalized)
+
+
+def resolve_model_origin(model_path: str) -> str:
+    """Best effort to determine the underlying HF repo for local AWQ exports."""
+    if not model_path:
+        return ""
+    if is_local_model_path(model_path):
+        meta_path = os.path.join(model_path, AWQ_METADATA_FILENAME)
+        payload = read_json_file(meta_path)
+        if isinstance(payload, dict):
+            source = payload.get("source_model")
+            if isinstance(source, str) and source.strip():
+                return source.strip()
+    return model_path
 
 
 __all__ = [

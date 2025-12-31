@@ -11,13 +11,6 @@ from collections.abc import Iterable
 
 from src.config.filters import HF_DOWNLOAD_GROUPS, HF_UPLOAD_GROUPS, HF_ALL_GROUPS
 
-__all__ = [
-    "configure_hf_logging",
-    "enable_hf_progress",
-    "disable_hf_progress",
-    "label_hf_snapshot_progress",
-]
-
 logger = logging.getLogger("log_filter")
 
 
@@ -128,4 +121,12 @@ def configure_hf_logging(
         disable_hf_progress(HF_DOWNLOAD_GROUPS)
     if disable_uploads:
         disable_hf_progress(HF_UPLOAD_GROUPS)
+
+
+__all__ = [
+    "configure_hf_logging",
+    "enable_hf_progress",
+    "disable_hf_progress",
+    "label_hf_snapshot_progress",
+]
 
