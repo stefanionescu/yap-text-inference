@@ -134,7 +134,9 @@ def main() -> None:
     from tests.logic.benchmark.runner import run_benchmark
 
     args = _parse_args()
-    asyncio.run(run_benchmark(args))
+    success = asyncio.run(run_benchmark(args))
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -318,8 +318,7 @@ Capacity errors
 {
   "type": "error",
   "error_code": "server_at_capacity",
-  "message": "Server is at capacity.",
-  "capacity": {"active": 24, "max": 24, "available": 0, "at_capacity": true}
+  "message": "Server cannot accept new connections. Please try again later."
 }
 ```
 

@@ -35,6 +35,7 @@ from tests.helpers.cli import (
     add_sampling_args,
     build_sampling_payload,
 )
+from tests.helpers.errors import ServerError
 from tests.config import (
     DEFAULT_SERVER_WS_URL,
     PERSONALITY_SWITCH_DEFAULT,
@@ -78,15 +79,18 @@ def main() -> None:
 
     args = _parse_args()
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
-    asyncio.run(
-        run_test(
-            args.server,
-            args.api_key,
-            switches,
-            args.delay,
-            args.sampling or None,
+    try:
+        asyncio.run(
+            run_test(
+                args.server,
+                args.api_key,
+                switches,
+                args.delay,
+                args.sampling or None,
+            )
         )
-    )
+    except ServerError:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

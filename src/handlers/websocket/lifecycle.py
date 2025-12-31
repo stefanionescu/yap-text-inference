@@ -87,6 +87,11 @@ class WebSocketLifecycle:
 
         self._last_activity = time.monotonic()
 
+    def should_close(self) -> bool:
+        """Check if the connection should be closed (idle timeout fired)."""
+
+        return self._stop_event.is_set()
+
     def start(self) -> asyncio.Task:
         """Start the watchdog task (idempotent)."""
 
@@ -119,6 +124,7 @@ class WebSocketLifecycle:
                 # Check if connection has been idle too long
                 if (time.monotonic() - self._last_activity) >= self._idle_timeout_s:
                     logger.info("WebSocket idle timeout reached; closing connection")
+                    self._stop_event.set()  # Signal handler to exit
                     await self._close_ws()
                     break
         except asyncio.CancelledError:

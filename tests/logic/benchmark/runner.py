@@ -145,15 +145,15 @@ async def _one_connection(
     """Execute one or two transactions over a single WebSocket connection."""
     phases = 2 if double_ttfb else 1
     results: list[dict[str, Any]] = []
+    auth_url = with_api_key(url, api_key=api_key)
 
-    async def _session() -> None:
-        auth_url = with_api_key(url, api_key=api_key)
+    try:
         async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=None)) as ws:
             try:
                 for phase in range(1, phases + 1):
                     try:
-                        results.append(
-                            await _send_transaction(
+                        result = await asyncio.wait_for(
+                            _send_transaction(
                                 ws,
                                 gender,
                                 style,
@@ -161,16 +161,18 @@ async def _one_connection(
                                 message,
                                 sampling,
                                 phase,
-                            )
+                            ),
+                            timeout=timeout_s,
                         )
+                        results.append(result)
+                    except asyncio.TimeoutError:
+                        results.append({"ok": False, "error": "timeout", "phase": phase})
+                        break
                     except Exception as phase_err:
                         results.append({"ok": False, "error": str(phase_err), "phase": phase})
                         break
             finally:
                 await send_client_end(ws)
-
-    try:
-        await asyncio.wait_for(_session(), timeout=timeout_s)
     except Exception as e:
         if len(results) < phases:
             results.append({"ok": False, "error": str(e), "phase": len(results) + 1})
@@ -235,8 +237,12 @@ async def _worker(
     return out
 
 
-async def run_benchmark(args) -> None:
-    """Main benchmark entry point - parse args and execute the benchmark."""
+async def run_benchmark(args) -> bool:
+    """Main benchmark entry point - parse args and execute the benchmark.
+    
+    Returns:
+        True if all requests succeeded, False if any failed.
+    """
     (
         url,
         api_key,
@@ -275,6 +281,9 @@ async def run_benchmark(args) -> None:
         results = await _run_instant_benchmark(requests, concurrency, *common_opts)
 
     print_report(url, requests, concurrency, results, double_ttfb=double_ttfb)
+    
+    # Return False if any request failed
+    return all(r.get("ok") for r in results)
 
 
 def _extract_session_options(

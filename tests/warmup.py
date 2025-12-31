@@ -44,6 +44,7 @@ from tests.helpers.cli import (
     add_sampling_args,
     build_sampling_payload,
 )
+from tests.helpers.errors import ServerError
 from tests.logic.warmup.runner import run_once
 
 
@@ -82,6 +83,8 @@ def main() -> None:
     args = _parse_args()
     try:
         asyncio.run(run_once(args))
+    except ServerError:
+        sys.exit(1)
     except KeyboardInterrupt:
         pass
 
