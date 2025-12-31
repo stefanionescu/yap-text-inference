@@ -10,7 +10,7 @@ import argparse
 import os
 import sys
 
-from src.engines.vllm.quant.core import AWQQuantizer, CalibrationConfig
+from src.quantization.vllm.core import AWQQuantizer, CalibrationConfig
 from src.helpers.models import is_classifier_model
 
 

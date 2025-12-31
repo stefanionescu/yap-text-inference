@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 from src.config.quantization import AWQ_MODEL_MARKERS
-from src.engines.hf import create_repo_if_needed
-from src.engines.vllm.quant.utils.template_utils import generate_readme
+from src.hf import create_repo_if_needed
+from src.quantization.vllm.utils.template_utils import generate_readme
 
 if TYPE_CHECKING:  # pragma: no cover - optional dependency
     from huggingface_hub import HfApi
