@@ -229,7 +229,7 @@ log_blank
 
 # Skip engine build if we're using a pre-built engine from HuggingFace
 if [ "${USING_PREBUILT_ENGINE:-0}" = "1" ]; then
-  log_info "[build] Using pre-built engine from HuggingFace: ${TRT_ENGINE_DIR}"
+  log_info "[build] Using pre-built engine from HuggingFace..."
 else
   # Get engine directory
   ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")

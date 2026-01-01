@@ -103,16 +103,25 @@ def validate_trt_installation() -> tuple[bool, str]:
     Returns:
         Tuple of (success, version_or_error_message).
     """
+    import logging
+    import warnings
+
     try:
-        # Suppress library's own version log during import
+        # Suppress library's noisy output during import:
+        # - stdout: version banner
+        # - warnings: "Python 3.10 below recommended 3.11" UserWarning
+        # - logging: various debug/info messages
         old_stdout = sys.stdout
         sys.stdout = io.StringIO()
+        logging.disable(logging.WARNING)
+        warnings.filterwarnings("ignore", message=".*below the recommended.*")
         try:
             import tensorrt_llm
 
             version = tensorrt_llm.__version__
         finally:
             sys.stdout = old_stdout
+            logging.disable(logging.NOTSET)
 
         print(f"[trt] ✓ TensorRT-LLM {version} installed")
         return True, version

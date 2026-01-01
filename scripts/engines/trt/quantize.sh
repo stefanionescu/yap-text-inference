@@ -229,7 +229,6 @@ trt_download_prequantized() {
   fi
   
   log_info "[model] Downloading pre-quantized TRT model..."
-  
   # Check if already downloaded
   local ckpt_dir="${target_dir}/trt-llm/checkpoints"
   if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
