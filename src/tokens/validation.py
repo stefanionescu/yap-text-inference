@@ -15,12 +15,9 @@ HuggingFace repo IDs are validated at tokenizer load time instead.
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass
 
-
-# Pattern for HuggingFace repo IDs: org/model-name or user/model-name
-_HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$")
+from ..config.models import HF_REPO_PATTERN
 
 
 def _is_huggingface_repo_id(path: str) -> bool:
@@ -35,7 +32,7 @@ def _is_huggingface_repo_id(path: str) -> bool:
     if os.path.exists(path):
         return False
     # Check if it matches the HF repo ID pattern
-    return bool(_HF_REPO_PATTERN.match(path))
+    return bool(HF_REPO_PATTERN.match(path))
 
 
 @dataclass(slots=True)
