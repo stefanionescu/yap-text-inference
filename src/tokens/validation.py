@@ -8,13 +8,34 @@ Validation checks for:
 1. tokenizer.json (fast tokenizers library format)
 2. tokenizer_config.json (transformers AutoTokenizer format)
 
-At least one of these must exist for the model to be usable.
+At least one of these must exist for local model directories.
+HuggingFace repo IDs are validated at tokenizer load time instead.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
+
+
+# Pattern for HuggingFace repo IDs: org/model-name or user/model-name
+_HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$")
+
+
+def _is_huggingface_repo_id(path: str) -> bool:
+    """Check if a path looks like a HuggingFace repo ID.
+    
+    HuggingFace repo IDs have the format: org/model-name or user/model-name
+    This is distinct from local paths which typically start with / or ./
+    """
+    if not path:
+        return False
+    # If it exists locally, it's not a remote repo ID
+    if os.path.exists(path):
+        return False
+    # Check if it matches the HF repo ID pattern
+    return bool(_HF_REPO_PATTERN.match(path))
 
 
 @dataclass(slots=True)
@@ -22,27 +43,29 @@ class TokenizerValidationResult:
     """Result of tokenizer validation.
     
     Attributes:
-        valid: True if a tokenizer was found locally.
+        valid: True if a tokenizer was found locally or path is a HF repo.
         error_message: Human-readable error if validation failed.
         model_path: The path that was validated.
         has_tokenizer_json: Whether tokenizer.json exists.
         has_tokenizer_config: Whether tokenizer_config.json exists.
+        is_remote: True if this is a HuggingFace repo ID (not validated locally).
     """
     valid: bool
     error_message: str | None
     model_path: str
     has_tokenizer_json: bool
     has_tokenizer_config: bool
+    is_remote: bool = False
 
 
 def validate_tokenizer_exists(model_path: str) -> TokenizerValidationResult:
     """Validate that a tokenizer exists locally for the given model.
     
-    Checks for tokenizer.json (tokenizers library) or tokenizer_config.json
-    (transformers AutoTokenizer). At least one must exist.
+    For local directories: Checks for tokenizer.json or tokenizer_config.json.
+    For HuggingFace repo IDs: Skips validation (tokenizer fetched at load time).
     
     Args:
-        model_path: Local directory path to the model.
+        model_path: Local directory path or HuggingFace repo ID.
         
     Returns:
         TokenizerValidationResult with validation status and details.
@@ -54,6 +77,17 @@ def validate_tokenizer_exists(model_path: str) -> TokenizerValidationResult:
             model_path=model_path,
             has_tokenizer_json=False,
             has_tokenizer_config=False,
+        )
+
+    # HuggingFace repo IDs are validated at load time, not here
+    if _is_huggingface_repo_id(model_path):
+        return TokenizerValidationResult(
+            valid=True,
+            error_message=None,
+            model_path=model_path,
+            has_tokenizer_json=False,
+            has_tokenizer_config=False,
+            is_remote=True,
         )
 
     if not os.path.isdir(model_path):

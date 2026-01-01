@@ -349,6 +349,10 @@ restart_reconfigure_models() {
   push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"
   validate_push_quant_prereqs "${DEPLOY_MODE}"
 
+  # Honor --push-engine for TRT engine uploads
+  push_engine_apply_policy "${INFERENCE_ENGINE:-trt}" "restart"
+  validate_push_engine_prereqs
+
   # Validate selections against allowlists before continuing
   if ! validate_models_early; then
     exit 1

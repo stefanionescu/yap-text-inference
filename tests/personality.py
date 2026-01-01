@@ -31,9 +31,6 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-
-setup_repo_path()
-
 from tests.helpers.cli import (
     add_connection_args,
     add_sampling_args,
@@ -78,6 +75,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Thin orchestrator: parse CLI args and run the test."""
+    setup_repo_path()
     from tests.logic.personality.runner import run_test
 
     args = _parse_args()

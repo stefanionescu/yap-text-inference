@@ -70,8 +70,11 @@ Key flags:
   --install-deps        Reinstall dependencies inside .venv before restart
   --reset-models        Delete cached models/HF data and redeploy new models
   --keep-models         Reuse existing quantized caches (default)
+
+HuggingFace uploads (mutually exclusive):
   --push-quant          Upload cached 4-bit exports to Hugging Face before relaunch
   --push-engine         Push locally-built TRT engine to source HF repo (prequant models only)
+  NOTE: --push-quant and --push-engine cannot be used together
   --chat-model <repo>   Chat model to deploy (required with --reset-models chat/both)
   --tool-model <repo>   Tool model to deploy (required with --reset-models tool/both)
   --chat-quant <val>    Override chat/base quantization (4bit|8bit|fp8|gptq|gptq_marlin|awq).

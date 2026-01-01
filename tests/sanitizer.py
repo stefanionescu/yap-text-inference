@@ -1,4 +1,8 @@
-"""Streaming sanitizer test."""
+"""Streaming sanitizer test.
+
+Tests that the StreamingSanitizer produces the same output whether text is
+streamed in chunks or processed in a single pass.
+"""
 
 from __future__ import annotations
 
@@ -10,12 +14,16 @@ import pytest
 from tests.helpers.setup import setup_repo_path
 from tests.messages import STREAMING_SANITIZER_CASES
 
-setup_repo_path()
 
-# Set required env vars before importing src modules
-os.environ.setdefault("DEPLOY_MODE", "none")
-os.environ.setdefault("MAX_CONCURRENT_CONNECTIONS", "1")
-os.environ.setdefault("TEXT_API_KEY", "test")
+def _ensure_test_env() -> None:
+    """Set required env vars before importing src modules."""
+    setup_repo_path()
+    os.environ.setdefault("DEPLOY_MODE", "none")
+    os.environ.setdefault("MAX_CONCURRENT_CONNECTIONS", "1")
+    os.environ.setdefault("TEXT_API_KEY", "test")
+
+
+_ensure_test_env()
 
 from src.messages.sanitize.stream_sanitizer import (
     StreamingSanitizer,

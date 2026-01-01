@@ -8,24 +8,14 @@ for all test scripts.
 
 from __future__ import annotations
 
-try:  # When /tests is on sys.path
-    from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
-    from tests.prompts.detailed import (
-        ANNA_FLIRTY,
-        ANNA_RELIGIOUS,
-        ANNA_SPIRITUAL,
-        MARK_SAVAGE,
-        MARK_DELULU,
-    )
-except ModuleNotFoundError:  # When repo root is on sys.path
-    from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
-    from tests.prompts.detailed import (
-        ANNA_FLIRTY,
-        ANNA_RELIGIOUS,
-        ANNA_SPIRITUAL,
-        MARK_SAVAGE,
-        MARK_DELULU,
-    )
+from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
+from tests.prompts.detailed import (
+    ANNA_FLIRTY,
+    ANNA_RELIGIOUS,
+    ANNA_SPIRITUAL,
+    MARK_SAVAGE,
+    MARK_DELULU,
+)
 
 # Default personalities for tool phrase matching
 # Keys are personality names, values are lists of synonyms

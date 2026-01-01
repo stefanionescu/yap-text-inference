@@ -127,6 +127,11 @@ restart_parse_args() {
     return 1
   fi
 
+  # Validate mutually exclusive flags
+  if ! args_validate_common_state; then
+    return 1
+  fi
+
   args_export_common_state
   export INSTALL_DEPS DEPLOY_MODE
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE

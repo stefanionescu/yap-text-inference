@@ -18,6 +18,22 @@ args_init_common_state() {
   INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}"
 }
 
+# Validate that mutually exclusive flags are not both set.
+# Returns 0 if valid, 1 if invalid (with error message).
+args_validate_common_state() {
+  # --push-quant and --push-engine are mutually exclusive
+  if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ] && [ "${HF_ENGINE_PUSH_REQUESTED:-0}" = "1" ]; then
+    log_err "[args] ✗ --push-quant and --push-engine are mutually exclusive."
+    log_blank
+    log_err "[args]   --push-quant: Upload freshly quantized model to a new/existing HF repo"
+    log_err "[args]   --push-engine: Add locally-built engine to an existing prequantized HF repo"
+    log_blank
+    log_err "[args]   Choose one based on your use case."
+    return 1
+  fi
+  return 0
+}
+
 # Export all common argument state variables.
 args_export_common_state() {
   export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS
