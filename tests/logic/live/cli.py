@@ -27,6 +27,7 @@ from tests.helpers.errors import (
     InputClosedError,
     TestClientError,
 )
+from tests.helpers.fmt import cyan, yellow, bold, dim
 
 from .client import LiveClient
 from .commands import dispatch_command
@@ -161,7 +162,7 @@ class InteractiveRunner:
         loop = asyncio.get_running_loop()
         if self.stdin_task:
             self.stdin_task.cancel()
-        self.stdin_task = loop.create_task(_ainput("you > "))
+        self.stdin_task = loop.create_task(_ainput(f"{cyan('USER')} "))
         try:
             line = await self.stdin_task
         except asyncio.CancelledError as exc:
@@ -186,8 +187,8 @@ class InteractiveRunner:
 
     def _print_error(self, message: str) -> None:
         """Print an error message in a user-friendly format."""
-        print(f"\n⚠️  {message}\n")
-        print("you >", end=" ", flush=True)
+        print(f"\n{yellow('⚠')}  {message}\n")
+        print(f"{cyan('USER')} ", end="", flush=True)
 
     async def _watch_disconnect(self) -> None:
         """Monitor for server disconnect and trigger shutdown if needed."""
@@ -244,21 +245,21 @@ def print_help(current: str, verbose: bool = False) -> None:
     """Print the help banner or detailed command list."""
     if verbose:
         print(
-            "\nCommands:\n"
-            "  /help                Get help with a command\n"
-            "  /list                Show persona names\n"
-            "  /persona <name>      Switch persona+gender mid-session\n"
-            "  /history             Print accumulated conversation log\n"
-            "  /info                Show session/persona metadata\n"
-            "  /stats [on|off]      Toggle metrics + chat TTFB logging\n"
-            "  /stop|/quit          Stop and close the session\n"
+            f"\n{bold('Commands:')}\n"
+            f"  {dim('/help')}                Get help with a command\n"
+            f"  {dim('/list')}                Show persona names\n"
+            f"  {dim('/persona <name>')}      Switch persona+gender mid-session\n"
+            f"  {dim('/history')}             Print accumulated conversation log\n"
+            f"  {dim('/info')}                Show session/persona metadata\n"
+            f"  {dim('/stats [on|off]')}      Toggle metrics logging\n"
+            f"  {dim('/stop|/quit')}          Stop and close the session\n"
             "\n"
             "Any line without a leading '/' is sent to the assistant.\n"
             "Use /list to see available personas.\n"
         )
     else:
         print(
-            "\nInteractive mode ready. Type /help for commands.\n"
+            f"\n{bold('Interactive mode ready.')} Type /help for commands.\n"
             f"Current persona: {current}\n"
         )
 

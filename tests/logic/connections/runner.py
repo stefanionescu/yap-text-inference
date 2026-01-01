@@ -10,15 +10,20 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 from collections.abc import Awaitable, Callable
 
 import websockets
 
 from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
+from tests.helpers.fmt import (
+    section_header,
+    connection_test_header,
+    connection_status,
+    connection_pass,
+    connection_fail,
+    dim,
+)
 from tests.helpers.ws import connect_with_retries, send_client_end
-
-logger = logging.getLogger("connections")
 
 
 def _open_connection(ws_url: str):
@@ -34,22 +39,22 @@ def _open_connection(ws_url: str):
 
 async def _test_normal_connection(ws_url: str, wait_seconds: float) -> None:
     async with _open_connection(ws_url) as ws:
-        logger.info("[normal] connected; sleeping for %.1fs", wait_seconds)
+        print(connection_status("normal", f"connected, sleeping {wait_seconds:.1f}s..."))
         await asyncio.sleep(max(0.0, wait_seconds))
         await send_client_end(ws)
-        logger.info("[normal] graceful close sent")
+        print(connection_status("normal", "graceful close sent"))
 
 
 async def _test_quick_connect_close(ws_url: str) -> None:
     async with _open_connection(ws_url) as ws:
-        logger.info("[quick] connected; sending end immediately")
+        print(connection_status("quick", "connected, closing immediately..."))
         await send_client_end(ws)
-        logger.info("[quick] close frame flushed")
+        print(connection_status("quick", "close frame flushed"))
 
 
 async def _test_ping_pong(ws_url: str) -> None:
     async with _open_connection(ws_url) as ws:
-        logger.info("[ping] sending ping control frame")
+        print(connection_status("ping", "sending ping frame..."))
         await ws.send(json.dumps({"type": "ping"}))
         try:
             payload = await asyncio.wait_for(ws.recv(), timeout=5.0)
@@ -58,7 +63,7 @@ async def _test_ping_pong(ws_url: str) -> None:
         msg = json.loads(payload)
         if msg.get("type") != "pong":
             raise RuntimeError(f"expected pong, got {msg.get('type')}")
-        logger.info("[ping] received pong response")
+        print(connection_status("ping", "received pong response"))
         await send_client_end(ws)
 
 
@@ -72,10 +77,7 @@ async def _test_idle_watchdog(
         raise RuntimeError("idle wait is zero; use --idle-expect-seconds")
 
     async with _open_connection(ws_url) as ws:
-        logger.info(
-            "[idle] waiting up to %.1fs for server to close idle connection",
-            total_wait,
-        )
+        print(connection_status("idle", f"waiting up to {total_wait:.0f}s for server timeout..."))
         try:
             await asyncio.wait_for(ws.recv(), timeout=total_wait)
             raise RuntimeError("server sent data before idle close")
@@ -85,11 +87,7 @@ async def _test_idle_watchdog(
                 f"(expected idle timeout: {expect_seconds:.0f}s)"
             )
         except websockets.ConnectionClosed as exc:
-            logger.info(
-                "[idle] server closed connection (code=%s reason=%s)",
-                exc.code,
-                exc.reason,
-            )
+            print(connection_status("idle", f"server closed (code={exc.code} reason={exc.reason})"))
 
 
 async def run_connection_suite(
@@ -115,15 +113,30 @@ async def run_connection_suite(
         ),
     ]
 
+    print(f"\n{section_header('CONNECTION TESTS')}\n")
+    
     success = True
+    passed = 0
+    failed = 0
+    
     for label, factory in tests:
-        logger.info("==== Running %s connection test ====", label)
+        print(connection_test_header(label))
         try:
             await factory()
-            logger.info("[%s] PASS", label)
+            print(connection_pass(label))
+            passed += 1
         except Exception as exc:  # noqa: BLE001
             success = False
-            logger.error("[%s] FAIL: %s", label, exc)
+            failed += 1
+            print(connection_fail(label, str(exc)))
+    
+    # Summary
+    print(f"\n{dim('─' * 40)}")
+    if success:
+        print(f"  All {passed} tests passed")
+    else:
+        print(f"  {passed} passed, {failed} failed")
+    
     return success
 
 

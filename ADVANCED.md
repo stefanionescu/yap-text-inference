@@ -26,12 +26,24 @@ This document covers advanced operations, configuration, and deep-dive details f
   - [TensorRT-LLM Quantization Details](#tensorrt-llm-quantization-details)
   - [Pushing Quantized Exports to Hugging Face](#pushing-quantized-exports-to-hugging-face)
 - [Test Clients](#test-clients)
+  - [Warmup Test Client](#warmup-test-client)
+  - [Interactive Live Client](#interactive-live-client)
+  - [Personality Switch Test](#personality-switch-test)
+  - [Gender Switch Test](#gender-switch-test)
+  - [Conversation History Test](#conversation-history-test)
+  - [Screen Analysis / Toolcall Test](#screen-analysis--toolcall-test)
+  - [Tool Regression Test](#tool-regression-test)
+  - [Benchmark Client](#benchmark-client)
+  - [History Recall Test](#history-recall-test)
+  - [Connection Lifecycle Test](#connection-lifecycle-test)
+  - [Latency Metrics in Multi-Turn Tests](#latency-metrics-in-multi-turn-tests)
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
 - [Known Issues](#known-issues)
   - [TRT-LLM Python Version Mismatch](#trt-llm-python-version-mismatch)
   - [CUDA 13.0 Requirement](#cuda-130-requirement)
   - [Base Docker Image Selection](#base-docker-image-selection)
+  - [CUDA Device Unavailable](#cuda-device-unavailable)
 
 ## Authentication Coverage
 
@@ -599,6 +611,26 @@ Flags:
 - `--normal-wait`: Seconds to keep connection open before sending end (default: 2)
 - `--idle-expect-seconds`: Expected idle timeout from server (default: 150)
 - `--idle-grace-seconds`: Buffer before failing the idle test (default: 15)
+
+### Latency Metrics in Multi-Turn Tests
+
+Multi-turn tests report latency statistics with the **first message excluded from averages and percentiles**.
+
+The first message in a conversation includes prefill overhead for the system prompt, chat prompt, and any warm history. This makes it significantly slower than subsequent messages where the KV cache is already populated. To provide accurate steady-state latency metrics:
+
+- **FIRST** row: Shows the first message latency separately (includes prefill overhead)
+- **Remaining rows** (TTFB, 3-WORDS, SENTENCE): avg/p50/p90/p95 computed from messages 2+ only
+
+Example output:
+```
+─────────────[ LATENCY SUMMARY ]─────────────
+  FIRST  (includes prefill)  ttfb=679ms  3w=149ms  sent=670ms
+      TTFB  avg=   110ms  p50=   109ms  p90=   128ms  p95=   141ms  (n=5)
+   3-WORDS  avg=   155ms  p50=   152ms  p90=   169ms  p95=   185ms  (n=5)
+  SENTENCE  avg=   450ms  p50=   411ms  p90=   670ms  p95=   892ms  (n=5)
+```
+
+This separation ensures the reported percentiles reflect real conversational latency after the initial prompt processing.
 
 ## Persona and History Behavior
 

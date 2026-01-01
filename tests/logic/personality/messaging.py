@@ -7,6 +7,13 @@ from typing import Any
 
 from tests.config import DEFAULT_PERSONALITIES
 from tests.helpers.errors import ServerError
+from tests.helpers.fmt import (
+    exchange_header,
+    exchange_footer,
+    format_user,
+    format_assistant,
+    format_metrics_inline,
+)
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
 from tests.helpers.stream import StreamTracker
@@ -20,21 +27,12 @@ async def collect_response(ws, tracker: StreamTracker) -> str:
         t = msg.get("type")
 
         if t == "toolcall":
-            ttfb = tracker.record_toolcall()
-            status = msg.get("status")
-            if ttfb is not None:
-                print(f"  [toolcall] status={status} ttfb_ms={ttfb:.2f}")
+            tracker.record_toolcall()
             continue
 
         if t == "token":
             chunk = msg.get("text", "")
-            metrics = tracker.record_token(chunk)
-            if metrics.get("chat_ttfb_ms") is not None:
-                print(f"  [chat] ttfb_ms={metrics['chat_ttfb_ms']:.2f}")
-            if metrics.get("time_to_first_3_words_ms") is not None:
-                print(f"  [chat] first_3_words_ms={metrics['time_to_first_3_words_ms']:.2f}")
-            if metrics.get("time_to_first_complete_sentence_ms") is not None:
-                print(f"  [chat] first_sentence_ms={metrics['time_to_first_complete_sentence_ms']:.2f}")
+            tracker.record_token(chunk)
             continue
 
         if t == "final":
@@ -79,12 +77,14 @@ async def send_start_request(
     await ws.send(json.dumps(payload))
     reply = await collect_response(ws, tracker)
     metrics = tracker.finalize_metrics()
-    print(
-        f"[persona={variant.personality} gender={variant.gender}] "
-        f"user: {user_text!r}"
-    )
-    print(f"  -> assistant: {reply!r}")
-    print(f"  -> metrics: {json.dumps(metrics)}")
+    
+    # Clean formatted output
+    print(exchange_header(persona=variant.personality, gender=variant.gender))
+    print(f"  {format_user(user_text)}")
+    print(f"  {format_assistant(reply)}")
+    print(f"  {format_metrics_inline(metrics)}")
+    print(exchange_footer())
+    
     return reply, metrics
 
 

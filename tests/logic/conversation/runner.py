@@ -21,6 +21,15 @@ from tests.config import (
     DEFAULT_PERSONALITY,
 )
 from tests.helpers.env import get_float_env, get_int_env
+from tests.helpers.fmt import (
+    section_header,
+    exchange_header,
+    exchange_footer,
+    format_user,
+    format_assistant,
+    format_metrics_inline,
+    dim,
+)
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.rate import SlidingWindowPacer
 from tests.helpers.stream import StreamTracker
@@ -67,7 +76,10 @@ async def run_conversation(
         sampling=sampling,
     )
 
-    logger.info("Connecting to %s (session=%s)", ws_url, session.session_id)
+    print(f"\n{section_header('CONVERSATION TEST')}")
+    print(dim(f"  session: {session.session_id}"))
+    print(dim(f"  persona: {personality}/{gender}\n"))
+    
     message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
     ttfb_aggregator = TTFBAggregator()
 
@@ -81,17 +93,23 @@ async def run_conversation(
             for idx, user_text in enumerate(prompts, start=1):
                 tracker = StreamTracker()
                 payload = build_start_payload(session, user_text)
-                logger.info("---- Exchange %02d ----", idx)
-                logger.info("User → %r", user_text)
+                
+                print(exchange_header(idx=idx))
+                print(f"  {format_user(user_text)}")
+                
                 await message_pacer.wait_turn()
                 await ws.send(json.dumps(payload))
                 assistant_text, metrics = await stream_exchange(ws, tracker, recv_timeout, idx)
                 session.append_exchange(user_text, assistant_text)
                 ttfb_aggregator.record(metrics)
-                logger.info("Assistant ← %s", assistant_text)
+                
+                print(f"  {format_assistant(assistant_text)}")
+                print(f"  {format_metrics_inline(metrics)}")
+                print(exchange_footer())
         finally:
+            print()
             if ttfb_aggregator.has_samples():
-                ttfb_aggregator.emit(logger.info)
+                ttfb_aggregator.emit(print)
             await send_client_end(ws)
 
 

@@ -1,4 +1,4 @@
-"""Main test runner for personality switch tests."""
+"""Main test runner for gender switch tests."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from tests.config import (
     PERSONA_VARIANTS,
 )
 from tests.helpers.env import get_float_env, get_int_env
+from tests.helpers.fmt import section_header, dim
 from tests.helpers.rate import SlidingWindowPacer
 from tests.helpers.ttfb import TTFBAggregator
 from tests.helpers.ws import send_client_end, with_api_key
@@ -140,8 +141,12 @@ async def run_test(
     delay_s: int,
     sampling: dict[str, float | int] | None,
 ) -> None:
-    """Run the personality switch test."""
+    """Run the gender switch test."""
     url = with_api_key(ws_url, api_key=api_key)
+    
+    print(f"\n{section_header('GENDER SWITCH TEST')}")
+    print(dim(f"  switches: {switches}, delay: {delay_s}s\n"))
+    
     ttfb_aggregator = TTFBAggregator()
     session = _build_session(sampling)
     session.ttfb_aggregator = ttfb_aggregator
@@ -150,5 +155,6 @@ async def run_test(
     try:
         await _execute_test(url, session, variants, switches, delay_s, message_pacer, persona_pacer)
     finally:
+        print()
         if ttfb_aggregator.has_samples():
             ttfb_aggregator.emit(print)
