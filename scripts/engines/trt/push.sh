@@ -171,7 +171,7 @@ trt_push_engine_to_hf() {
     "${python_exe}"
     "-W" "ignore::RuntimeWarning"
     "-m" "src.hf.trt.hf_push"
-    "--engine-only"
+    "push-engine"
     "--engine-dir" "${engine_dir}"
     "--repo-id" "${target_repo}"
     "--token" "${token}"
