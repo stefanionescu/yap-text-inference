@@ -256,11 +256,11 @@ WARM_HISTORY: list[dict[str, str]] = [
     },
     {
         "role": "user",
-        "content": "That's super helpful, thanks. You know what, I should bring some homemade bread to Jake's place next time I visit. He's always feeding those four dogs but never remembers to feed himself properly.",
+        "content": "That's super helpful, thanks. I'm getting excited about this whole baking thing honestly. It's nice to have a hobby that produces something tangible you can share with people.",
     },
     {
         "role": "assistant",
-        "content": "Ha, that tracks for someone who keeps adopting rescue dogs! Fresh sourdough would definitely be appreciated. You could even do a smaller boule or batard if a full loaf feels like too much to gift. Half the recipe, half the commitment.",
+        "content": "That's the best part about baking! There's something really satisfying about handing someone a fresh loaf and watching their face light up. Plus it makes you popular at potlucks and dinner parties, which is never a bad thing.",
     },
     {
         "role": "user",
