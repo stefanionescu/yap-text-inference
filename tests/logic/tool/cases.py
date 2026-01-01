@@ -66,14 +66,14 @@ def build_cases() -> list[ToolTestCase]:
     return cases
 
 
-def render_history(history: Sequence[CaseStep]) -> str:
-    """Render a sequence of case steps as conversation history text."""
+def render_history(history: Sequence[CaseStep]) -> list[dict[str, str]]:
+    """Render a sequence of case steps as conversation history."""
     if not history:
-        return ""
-    lines: list[str] = []
+        return []
+    messages: list[dict[str, str]] = []
     for step in history:
-        lines.append(f"User: {step.text}")
-    return "\n".join(lines)
+        messages.append({"role": "user", "content": step.text})
+    return messages
 
 
 __all__ = ["build_cases", "render_history"]

@@ -23,7 +23,7 @@ class PersonaSession:
     """Tracks session state, history, and prompt progression."""
 
     session_id: str
-    history: str = ""
+    history: list[dict[str, str]] = field(default_factory=list)
     prompt_index: int = 0
     prompts: Sequence[str] = field(default_factory=lambda: tuple(CONVERSATION_HISTORY_MESSAGES))
     sampling: dict[str, float | int] | None = None
@@ -43,9 +43,7 @@ class PersonaSession:
 
     def append_exchange(self, user_text: str, assistant_text: str) -> None:
         """Append a user-assistant exchange to the history."""
-        transcript = "\n".join(
-            chunk for chunk in (self.history, f"User: {user_text}", f"Assistant: {assistant_text}") if chunk
-        )
-        self.history = transcript.strip()
+        self.history.append({"role": "user", "content": user_text})
+        self.history.append({"role": "assistant", "content": assistant_text})
 
 

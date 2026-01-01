@@ -108,7 +108,7 @@ def _build_payload(session_id: str, cfg: BenchmarkConfig) -> dict[str, Any]:
         "gender": cfg.gender,
         "personality": cfg.style,
         "personalities": DEFAULT_PERSONALITIES,
-        "history_text": "",
+        "history": [],
         "user_utterance": cfg.message,
     }
     if cfg.chat_prompt is not None:

@@ -67,7 +67,7 @@ async def send_start_request(
         "personality": variant.personality,
         "personalities": DEFAULT_PERSONALITIES,
         "chat_prompt": variant.chat_prompt,
-        "history_text": session.history,
+        "history": session.history,
         "user_utterance": user_text,
     }
     if session.sampling:
@@ -113,7 +113,6 @@ async def send_persona_update(
         "gender": variant.gender,
         "personality": variant.personality,
         "chat_prompt": variant.chat_prompt,
-        "history_text": session.history,
     }
     if persona_pacer:
         await persona_pacer.wait_turn()

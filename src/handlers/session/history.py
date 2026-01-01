@@ -4,16 +4,12 @@ This module handles the transformation between structured conversation history
 (HistoryTurn objects) and text representations. It supports:
 
 1. Rendering: Converting structured turns to text format for prompt building
-2. Parsing: Converting text transcripts back to structured turns
+2. Parsing: Converting JSON array to structured turns
 3. Trimming: Keeping history within token budgets for both chat and tool models
 4. Extraction: Getting user-only texts for classifier/tool routing
 
-History Format:
-    User: First user message
-    Assistant: First assistant response
-    
-    User: Second user message
-    Assistant: Second assistant response
+API Input Format:
+    [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
 
 Two separate trimming strategies are used:
 - Chat model: Uses HISTORY_MAX_TOKENS with the chat tokenizer
@@ -115,6 +111,54 @@ def parse_history_text(history_text: str) -> list[HistoryTurn]:
         elif line.strip():
             current_user.append(line)
             mode = "user"
+    _flush()
+    return turns
+
+
+def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
+    """Parse JSON message array into structured HistoryTurn objects.
+    
+    Accepts the standard chat format: [{role: "user", content: "..."}, ...]
+    Groups consecutive user/assistant messages into turns.
+    
+    Args:
+        messages: List of {role, content} dicts. Role must be "user" or "assistant".
+        
+    Returns:
+        List of HistoryTurn objects with generated UUIDs.
+    """
+    if not messages:
+        return []
+
+    turns: list[HistoryTurn] = []
+    current_user: list[str] = []
+    current_assistant: list[str] = []
+
+    def _flush() -> None:
+        nonlocal current_user, current_assistant
+        if not current_user and not current_assistant:
+            return
+        turns.append(HistoryTurn(
+            turn_id=uuid.uuid4().hex,
+            user="\n\n".join(current_user).strip(),
+            assistant="\n\n".join(current_assistant).strip(),
+        ))
+        current_user, current_assistant = [], []
+
+    for msg in messages:
+        role = msg.get("role", "").lower().strip()
+        content = (msg.get("content") or "").strip()
+        if not content:
+            continue
+
+        if role == "user":
+            # If we have assistant content, flush the turn before starting new user
+            if current_assistant:
+                _flush()
+            current_user.append(content)
+        elif role == "assistant":
+            current_assistant.append(content)
+
     _flush()
     return turns
 
@@ -221,6 +265,15 @@ class HistoryController:
 
     def set_text(self, state: SessionState, history_text: str) -> str:
         state.history_turns = parse_history_text(history_text)
+        trim_history(state)
+        return render_history(state.history_turns)
+
+    def set_messages(self, state: SessionState, messages: list[dict]) -> str:
+        """Set history from JSON message array [{role, content}, ...].
+        
+        Parses messages, trims to fit token budget, returns rendered history.
+        """
+        state.history_turns = parse_history_messages(messages)
         trim_history(state)
         return render_history(state.history_turns)
 

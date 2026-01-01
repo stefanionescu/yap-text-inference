@@ -127,7 +127,7 @@ async def run_once(
         "gender": DEFAULT_GENDER,
         "personality": DEFAULT_PERSONALITY,
         "personalities": DEFAULT_PERSONALITIES,
-        "history_text": "",
+        "history": [],
         "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
         "chat_prompt": chat_prompt,
     }
@@ -150,7 +150,6 @@ async def run_once(
             followup_payload = {
                 "type": "followup",
                 "analysis_text": SCREEN_ANALYSIS_TEXT,
-                "history_text": "",
             }
             await ws.send(json.dumps(followup_payload))
             final_followup = await _consume_followup(ws)
