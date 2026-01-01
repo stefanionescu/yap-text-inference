@@ -90,16 +90,14 @@ def exchange_footer() -> str:
 # Message formatting
 # ============================================================================
 
-def format_user(text: str, max_len: int = 80) -> str:
+def format_user(text: str) -> str:
     """Format a user message."""
-    display = text if len(text) <= max_len else text[:max_len-3] + "..."
-    return f"{cyan('USER')}  {display}"
+    return f"{cyan('USER')}  {text}"
 
 
-def format_assistant(text: str, max_len: int = 120) -> str:
+def format_assistant(text: str) -> str:
     """Format an assistant message."""
-    display = text if len(text) <= max_len else text[:max_len-3] + "..."
-    return f"{magenta('ASST')}  {display}"
+    return f"{magenta('ASST')}  {text}"
 
 
 def format_metrics_inline(metrics: dict[str, Any]) -> str:

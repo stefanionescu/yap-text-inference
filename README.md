@@ -189,7 +189,7 @@ bash scripts/main.sh --vllm chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit
 
 ## Inference Engines
 
-Yap supports two inference backends:
+The server supports two inference backends:
 
 | Feature | vLLM | TensorRT-LLM |
 |---------|------|--------------|
