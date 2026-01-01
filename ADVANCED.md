@@ -249,7 +249,10 @@ Start a turn
   "persona_style": "savage|flirty|...",
   "gender": "woman|man",
   "user_identity": "woman|man|non-binary",
-  "history_text": "...prior transcript...",
+  "history": [
+    {"role": "user", "content": "previous message"},
+    {"role": "assistant", "content": "previous reply"}
+  ],
   "user_utterance": "hey—open spotify and queue my mix"
 }
 ```
@@ -279,18 +282,6 @@ Keep the connection warm during long pauses
 
 - Server replies with `{"type":"pong"}` and resets the idle timer (default idle timeout: 150s, set via `WS_IDLE_TIMEOUT_S`).
 - Incoming `{"type":"pong"}` frames are treated as no-ops so clients can mirror the heartbeat without extra logic.
-
-Warm persona/history (cache priming; optional)
-
-```json
-{ "type": "warm_persona", "chat_prompt": "..." }
-{ "type": "warm_history", "history_text": "..." }
-```
-
-- `warm_persona` primes the system prompt. Reuse hits as long as the persona stays the same.
-- `warm_history` primes persona + runtime_text + history. Only useful if the next request uses the exact same values.
-- Switching persona invalidates the warmed prefix; send a new `warm_persona` for the new persona.
-- Send `warm_history` right before the request that uses that history.
 
 ### What You Receive
 
@@ -583,10 +574,8 @@ Pass `--double-ttfb` to run two sequential transactions per connection and compa
 ## Persona and History Behavior
 
 - Chat prompts are rendered using each model's tokenizer
-- **vLLM:** Prefix caching reuses repeated prompts. Swapping the system prompt keeps history KV hot.
+- **vLLM:** Prefix caching reuses repeated prompts automatically. Swapping the system prompt keeps history KV hot.
 - **TensorRT-LLM:** Block reuse handles KV cache automatically.
-- Send `warm_persona` before speaking to guarantee a cache hit.
-- Persona is long-lived (warm once); history is short-lived (re-warm after changes).
 
 ## Known Issues
 

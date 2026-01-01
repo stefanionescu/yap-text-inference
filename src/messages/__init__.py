@@ -33,10 +33,6 @@ sanitize/:
     - stream_sanitizer.py: Normalize generated text in real-time
     - common.py: Shared sanitization patterns
 
-warm/:
-    Session warmup utilities for priming history and personas
-    before the first user message.
-
 Import from submodules directly to avoid circular imports:
     from src.messages.start import handle_start_message
     from src.messages.chat.builder import build_chat_prompt_with_prefix
