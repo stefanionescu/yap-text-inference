@@ -103,8 +103,20 @@ restart_parse_args() {
     esac
   done
 
+  # REQUIRE deploy mode to be explicitly specified (no default)
+  if [ -z "${DEPLOY_MODE}" ] && [ -z "${RECONFIG_DEPLOY_MODE}" ]; then
+    log_err "[restart] ✗ Deploy mode is required."
+    log_err "[restart]   You must specify one of: both, chat, or tool"
+    log_blank
+    log_err "[restart]   Examples:"
+    log_err "[restart]     bash scripts/restart.sh both"
+    log_err "[restart]     bash scripts/restart.sh chat --vllm"
+    log_err "[restart]     bash scripts/restart.sh --deploy-mode tool"
+    return 1
+  fi
+
   # Inherit from --deploy-mode flag if DEPLOY_MODE wasn't set as positional
-  if ! DEPLOY_MODE="$(cli_validate_deploy_mode "${DEPLOY_MODE:-${RECONFIG_DEPLOY_MODE:-both}}")"; then
+  if ! DEPLOY_MODE="$(cli_validate_deploy_mode "${DEPLOY_MODE:-${RECONFIG_DEPLOY_MODE}}")"; then
     log_err "[restart] ✗ Invalid deploy mode '${DEPLOY_MODE}'. Expected both|chat|tool."
     return 1
   fi

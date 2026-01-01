@@ -254,6 +254,30 @@ WARM_HISTORY: list[dict[str, str]] = [
         "role": "assistant",
         "content": "Sourdough actually keeps way better than commercial bread because of the acidity from fermentation. Cut side down on a cutting board, it'll stay good for 4 to 5 days at room temperature. After that you can slice and freeze it, then just toast slices directly from frozen.",
     },
+    {
+        "role": "user",
+        "content": "That's super helpful, thanks. You know what, I should bring some homemade bread to Jake's place next time I visit. He's always feeding those four dogs but never remembers to feed himself properly.",
+    },
+    {
+        "role": "assistant",
+        "content": "Ha, that tracks for someone who keeps adopting rescue dogs! Fresh sourdough would definitely be appreciated. You could even do a smaller boule or batard if a full loaf feels like too much to gift. Half the recipe, half the commitment.",
+    },
+    {
+        "role": "user",
+        "content": "Good idea. Oh that reminds me, I should probably figure out what omiyage to bring back from Japan for people. I've heard gift giving is a big deal there and you're supposed to bring stuff back for coworkers and friends.",
+    },
+    {
+        "role": "assistant",
+        "content": "You've done your research! Omiyage culture is definitely a thing. The good news is that every train station and tourist area has dedicated omiyage shops with beautifully packaged regional sweets and snacks. Tokyo Banana, various mochi varieties, and regional Kit Kat flavors are all popular choices that travel well.",
+    },
+    {
+        "role": "user",
+        "content": "Regional Kit Kat flavors? That sounds wild. What kind of flavors are we talking about here?",
+    },
+    {
+        "role": "assistant",
+        "content": "Japan takes Kit Kats incredibly seriously. You'll find matcha green tea, sake, strawberry cheesecake, roasted sweet potato, wasabi, and dozens of regional exclusives. Some flavors are only available in specific cities or seasons. There are entire shops dedicated just to Kit Kats in Tokyo. It's honestly kind of overwhelming in the best way.",
+    },
 ]
 
 # Follow-up messages to test recall of the conversation history

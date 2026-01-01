@@ -43,8 +43,9 @@ stop_existing_warmup_processes "${ROOT_DIR}"
 usage() {
   cat <<'USAGE'
 Usage:
-  restart.sh [deploy_mode] [--trt|--vllm] [--install-deps] [--keep-models]
+  restart.sh <deploy_mode> [--trt|--vllm] [--install-deps] [--keep-models]
       Quick restart that reuses existing quantized caches (default behavior).
+      NOTE: deploy_mode (both|chat|tool) is REQUIRED.
 
   restart.sh --reset-models --deploy-mode both \
              --chat-model <repo_or_path> --tool-model <repo_or_path> \
@@ -60,8 +61,8 @@ Inference Engines:
   NOTE: Switching engines (trt <-> vllm) triggers FULL environment wipe:
         all HF caches, pip deps, quantized models, and engine artifacts.
 
-Deploy modes:
-  both (default)  - Deploy chat + tool engines
+Deploy modes (REQUIRED):
+  both            - Deploy chat + tool engines
   chat            - Deploy chat-only
   tool            - Deploy tool-only
 
@@ -90,10 +91,10 @@ Required environment variables:
   TEXT_API_KEY, HF_TOKEN (or HUGGINGFACE_HUB_TOKEN), MAX_CONCURRENT_CONNECTIONS
 
 Examples:
-  bash scripts/restart.sh                  # TRT engine with existing caches
-  bash scripts/restart.sh --vllm           # Switch to vLLM (triggers full wipe)
+  bash scripts/restart.sh both             # TRT engine with existing caches
+  bash scripts/restart.sh --vllm both      # Switch to vLLM (triggers full wipe)
   bash scripts/restart.sh chat             # Chat-only restart
-  bash scripts/restart.sh both --install-deps
+  bash scripts/restart.sh tool --install-deps  # Tool-only with deps reinstall
   bash scripts/restart.sh --reset-models \
        --deploy-mode both \
        --chat-model SicariusSicariiStuff/Impish_Nemo_12B \
