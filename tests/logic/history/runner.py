@@ -27,6 +27,8 @@ from tests.helpers.fmt import (
     format_assistant,
     format_metrics_inline,
     dim,
+    green,
+    yellow,
 )
 from tests.helpers.message import iter_messages
 from tests.helpers.prompt import select_chat_prompt
@@ -41,10 +43,20 @@ from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 # ============================================================================
 
 
-async def _collect_response(ws, tracker: StreamTracker) -> str:
-    """Collect streaming response until done message, tracking metrics."""
+async def _collect_response(ws, tracker: StreamTracker) -> tuple[str, dict[str, Any] | None]:
+    """Collect streaming response until done message, tracking metrics.
+    
+    Returns:
+        Tuple of (response_text, history_info_or_none).
+    """
+    history_info = None
     async for msg in iter_messages(ws):
         t = msg.get("type")
+
+        if t == "ack":
+            # Capture history info from ack if present
+            history_info = msg.get("history")
+            continue
 
         if t == "toolcall":
             tracker.record_toolcall()
@@ -61,7 +73,7 @@ async def _collect_response(ws, tracker: StreamTracker) -> str:
             continue
 
         if t == "done":
-            return tracker.final_text
+            return tracker.final_text, history_info
 
         if t == "error":
             raise ServerError.from_message(msg)
@@ -81,8 +93,12 @@ async def _send_start_request(
     ttfb_aggregator: TTFBAggregator,
     idx: int,
     total: int,
-) -> tuple[str, dict[str, Any]]:
-    """Send a start request and collect the response with metrics tracking."""
+) -> tuple[str, dict[str, Any], dict[str, Any] | None]:
+    """Send a start request and collect the response with metrics tracking.
+    
+    Returns:
+        Tuple of (reply_text, metrics, history_info_or_none).
+    """
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
@@ -98,7 +114,7 @@ async def _send_start_request(
 
     tracker = StreamTracker()
     await ws.send(json.dumps(payload))
-    reply = await _collect_response(ws, tracker)
+    reply, history_info = await _collect_response(ws, tracker)
     metrics = tracker.finalize_metrics()
 
     # Clean formatted output
@@ -109,7 +125,17 @@ async def _send_start_request(
     print(exchange_footer())
 
     ttfb_aggregator.record(metrics)
-    return reply, metrics
+    return reply, metrics, history_info
+
+
+def _format_history_info(history_info: dict[str, Any]) -> str:
+    """Format history info for display."""
+    input_msgs = history_info.get("input_messages", 0)
+    retained = history_info.get("retained_turns", 0)
+    trimmed = history_info.get("trimmed", False)
+    
+    status = yellow("trimmed") if trimmed else green("retained")
+    return f"  {dim('history:')} {input_msgs} msgs → {retained} turns ({status})"
 
 
 async def _run_history_sequence(
@@ -127,7 +153,7 @@ async def _run_history_sequence(
     total = len(HISTORY_RECALL_MESSAGES)
 
     for idx, user_text in enumerate(HISTORY_RECALL_MESSAGES, 1):
-        reply, _ = await _send_start_request(
+        reply, _, history_info = await _send_start_request(
             ws,
             session_id,
             gender,
@@ -140,6 +166,11 @@ async def _run_history_sequence(
             idx,
             total,
         )
+        # Print history info on first request (when warm history was sent)
+        if idx == 1 and history_info:
+            print(_format_history_info(history_info))
+            print()
+        
         # Append the exchange to history for subsequent messages
         history.append({"role": "user", "content": user_text})
         history.append({"role": "assistant", "content": reply})

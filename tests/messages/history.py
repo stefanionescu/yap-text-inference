@@ -24,7 +24,15 @@ WARM_HISTORY: list[dict[str, str]] = [
     },
     {
         "role": "user",
-        "content": "That's good to know. What about safety though? I've never done solo travel before and I'm a bit worried about that.",
+        "content": "Oh totally unrelated but I need to vent for a sec. My friend Jake just texted me and apparently he adopted another rescue dog, which brings his total to four. The guy lives in a one bedroom apartment, I have no idea how he manages it.",
+    },
+    {
+        "role": "assistant",
+        "content": "Ha, that's quite the commitment! Four dogs in a one bedroom sounds chaotic but honestly some people just have that energy. Is he one of those people who works from home so he can actually manage the walking and feeding schedules?",
+    },
+    {
+        "role": "user",
+        "content": "Yeah he's fully remote, does something with data engineering I think. Anyway sorry for the tangent, back to Japan stuff. What about safety though? I've never done solo travel before and I'm a bit worried about that.",
     },
     {
         "role": "assistant",
@@ -112,7 +120,15 @@ WARM_HISTORY: list[dict[str, str]] = [
     },
     {
         "role": "user",
-        "content": "Alright, I'm feeling way more confident about this whole thing now. Let me ask you something completely different though. I've been getting into baking bread lately, specifically sourdough.",
+        "content": "Alright, I'm feeling way more confident about this whole thing now. Oh speaking of travel, my coworker Priya just got back from Vietnam last week and she said the street food there was life changing. She's already planning to go back next year.",
+    },
+    {
+        "role": "assistant",
+        "content": "Vietnam is incredible for food! The pho, banh mi, bun cha, it's all amazing. And it's super affordable compared to Japan too. Maybe that could be your next solo trip after you conquer Japan?",
+    },
+    {
+        "role": "user",
+        "content": "Maybe! She showed me so many photos of Hoi An and it looked gorgeous with all those lanterns. Anyway let me ask you something completely different though. I've been getting into baking bread lately, specifically sourdough.",
     },
     {
         "role": "assistant",
@@ -206,6 +222,38 @@ WARM_HISTORY: list[dict[str, str]] = [
         "role": "assistant",
         "content": "Try bumping up your temperature after you remove the lid. Some bakers start at 500 degrees Fahrenheit with the lid on, then drop to 450 or even 475 after removing it. The higher heat helps with browning but watch your bottom since Dutch ovens can run hot and burn the base.",
     },
+    {
+        "role": "user",
+        "content": "I'll try that next time. What about adding stuff to the dough like olives or cheese or whatever? I've seen some really beautiful loaves with mix ins.",
+    },
+    {
+        "role": "assistant",
+        "content": "Mix ins are fun but they add some complexity. The general rule is to add them during the final set of folds, not at the beginning. If you add wet ingredients like olives too early, they release moisture and mess with your hydration calculations. Cheese can make things greasy if you overdo it.",
+    },
+    {
+        "role": "user",
+        "content": "What would you recommend for a first timer with mix ins? Something forgiving?",
+    },
+    {
+        "role": "assistant",
+        "content": "Rosemary and roasted garlic is a classic combination that's pretty forgiving. The rosemary stays relatively dry and the roasted garlic adds amazing flavor without throwing off your dough too much. Just make sure the garlic is actually roasted until it's soft and sweet, not raw.",
+    },
+    {
+        "role": "user",
+        "content": "That sounds delicious actually. My mom used to make this amazing garlic bread when I was a kid and I've been chasing that flavor ever since.",
+    },
+    {
+        "role": "assistant",
+        "content": "There's definitely something special about recreating those childhood food memories. Sourdough with roasted garlic folded in and maybe some flaky salt on top could get you pretty close. The fermentation adds a depth that regular bread just doesn't have.",
+    },
+    {
+        "role": "user",
+        "content": "Alright one last question. How long can I actually keep a loaf before it goes stale? I live alone so a whole loaf is a lot for me.",
+    },
+    {
+        "role": "assistant",
+        "content": "Sourdough actually keeps way better than commercial bread because of the acidity from fermentation. Cut side down on a cutting board, it'll stay good for 4 to 5 days at room temperature. After that you can slice and freeze it, then just toast slices directly from frozen.",
+    },
 ]
 
 # Follow-up messages to test recall of the conversation history
@@ -216,6 +264,8 @@ HISTORY_RECALL_MESSAGES: list[str] = [
     "Remind me what flour brand you recommended for sourdough?",
     "You gave me a specific temperature range for bulk fermentation. What was it?",
     "What was your advice about scoring cold versus warm dough?",
+    "Hey I mentioned a coworker earlier who traveled somewhere recently. What was her name and where did she go?",
+    "Did I ever mention someone named Jake? What did I say about him?",
 ]
 
 __all__ = ["WARM_HISTORY", "HISTORY_RECALL_MESSAGES"]
