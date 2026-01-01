@@ -31,7 +31,9 @@ HF_ALL_GROUPS: tuple[str, ...] = HF_DOWNLOAD_GROUPS + HF_UPLOAD_GROUPS
 # ============================================================================
 
 # Patterns for suppressing TensorRT-LLM and modelopt log noise during quantization
+# and engine initialization. TRT-LLM emits verbose logs directly to stdout/stderr.
 TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # === Quantization-related noise ===
     re.compile(r"\[TensorRT-LLM].*TensorRT LLM version", re.IGNORECASE),
     re.compile(r"`?torch_dtype`?\s*(is\s+)?deprecated", re.IGNORECASE),
     re.compile(r"Registered <class 'transformers\.models\..+'> to _QuantAttention", re.IGNORECASE),
@@ -41,6 +43,59 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"Loading extension modelopt", re.IGNORECASE),
     re.compile(r"Loaded extension modelopt", re.IGNORECASE),
     re.compile(r"current rank:\s*\d+,\s*tp rank:\s*\d+,\s*pp rank:\s*\d+", re.IGNORECASE),
+
+    # === Engine initialization noise ===
+    # Dated TRT-LLM logs: [01/01/2026-17:31:12] [TRT-LLM] [I/W] message
+    re.compile(r"^\[\d{2}/\d{2}/\d{4}-\d{2}:\d{2}:\d{2}\]\s*\[TRT-LLM\]\s*\[[IWE]\]"),
+    # Bracketed TensorRT-LLM logs: [TensorRT-LLM][INFO/WARNING] message
+    re.compile(r"^\[TensorRT-LLM\]\[(?:INFO|WARNING|ERROR)\]"),
+    # Python version warnings from tensorrt_llm modules
+    re.compile(r"Current Python version.*below the recommended", re.IGNORECASE),
+    re.compile(r"upgrade to Python.*for the best experience", re.IGNORECASE),
+    # Implicitly setting config warnings
+    re.compile(r"Implicitly setting \w+Config\.\w+", re.IGNORECASE),
+    # Set PluginConfig messages
+    re.compile(r"Set PluginConfig\.\w+ to", re.IGNORECASE),
+    # MPI session messages
+    re.compile(r"rank \d+ using MpiPoolSession", re.IGNORECASE),
+    re.compile(r"Refreshed the MPI local session", re.IGNORECASE),
+    re.compile(r"MPI size:\s*\d+.*rank:\s*\d+", re.IGNORECASE),
+    re.compile(r"Rank \d+ is using GPU \d+", re.IGNORECASE),
+    # Package distribution warnings
+    re.compile(r"Multiple distributions found for package", re.IGNORECASE),
+    # trust_remote_code warning from tokenizers
+    re.compile(r"The argument `?trust_remote_code`? is to be used with Auto classes", re.IGNORECASE),
+    # Build config ignored warning
+    re.compile(r"The build_config is ignored for model format", re.IGNORECASE),
+    # TRTGptModel config lines
+    re.compile(r"TRTGptModel\s+\w+:", re.IGNORECASE),
+    # Engine loading/inspection messages
+    re.compile(r"Loaded engine size:", re.IGNORECASE),
+    re.compile(r"Engine load time", re.IGNORECASE),
+    re.compile(r"Engine version.*found in the config file", re.IGNORECASE),
+    re.compile(r"Inspecting the engine to identify potential runtime issues", re.IGNORECASE),
+    re.compile(r"The profiling verbosity of the engine", re.IGNORECASE),
+    re.compile(r"Using an engine plan file across different models", re.IGNORECASE),
+    # Memory usage changes
+    re.compile(r"\[MemUsageChange\]", re.IGNORECASE),
+    re.compile(r"Memory usage when calculating max tokens", re.IGNORECASE),
+    # KV cache and block allocation
+    re.compile(r"Blocks per window size:", re.IGNORECASE),
+    re.compile(r"Max KV cache blocks per sequence:", re.IGNORECASE),
+    re.compile(r"Number of tokens per block:", re.IGNORECASE),
+    re.compile(r"Allocated.*for max tokens in paged KV cache", re.IGNORECASE),
+    # Scheduler/feature messages
+    re.compile(r"Capacity Scheduler Policy:", re.IGNORECASE),
+    re.compile(r"Context Chunking Scheduler Policy:", re.IGNORECASE),
+    re.compile(r"CacheTransceiver is disabled", re.IGNORECASE),
+    # Gather logits settings
+    re.compile(r"gatherContextLogits:", re.IGNORECASE),
+    re.compile(r"gatherGenerationLogits:", re.IGNORECASE),
+    # Using user-specified devices
+    re.compile(r"Using user-specified devices:", re.IGNORECASE),
+    # LLM backend selection
+    re.compile(r"Using LLM with TensorRT backend", re.IGNORECASE),
+    re.compile(r"Using default gpus_per_node:", re.IGNORECASE),
 )
 
 
