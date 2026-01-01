@@ -127,7 +127,7 @@ quant_resolve_settings() {
 # Usage: main_apply_quantization <forced_mode> <chat_hint>
 main_apply_quantization() {
   quant_resolve_settings \
-    "${DEPLOY_MODE_SELECTED}" \
+    "${DEPLOY_MODE_SELECTED:-}" \
     "${CHAT_MODEL_NAME}" \
     "${1:-auto}" \
     "${2:-}" \
