@@ -23,8 +23,7 @@ TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
 
 # Required Python version for TRT-LLM
 # Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc5
-TRT_REQUIRED_PYTHON_VERSION="${TRT_REQUIRED_PYTHON_VERSION:-3.10}"
-export TRT_REQUIRED_PYTHON_VERSION
+# Uses centralized constant from scripts/lib/common/constants.sh
 
 # Derived configurations
 TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"

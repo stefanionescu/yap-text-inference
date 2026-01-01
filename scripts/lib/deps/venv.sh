@@ -8,19 +8,16 @@ source "${_VENV_HELPERS_DIR}/pip.sh"
 # shellcheck source=../common/constants.sh
 source "${_VENV_HELPERS_DIR}/../common/constants.sh"
 
-# Alias for backward compatibility with existing code.
-TRT_REQUIRED_PYTHON_VERSION="${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}"
-
 # =============================================================================
 # PYTHON RUNTIME HELPERS
 # =============================================================================
 
 _venv_install_python310_deadsnakes() {
-  log_info "[python] Installing Python ${TRT_REQUIRED_PYTHON_VERSION} via deadsnakes PPA..."
+  log_info "[python] Installing Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} via deadsnakes PPA..."
 
   if ! command -v apt-get >/dev/null 2>&1; then
-    log_err "[python] ✗ apt-get not available. Python ${TRT_REQUIRED_PYTHON_VERSION} installation requires Ubuntu/Debian."
-    log_err "[python] ✗ Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually."
+    log_err "[python] ✗ apt-get not available. Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} installation requires Ubuntu/Debian."
+    log_err "[python] ✗ Please install Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} manually."
     return 1
   fi
 
@@ -48,16 +45,16 @@ _venv_install_python310_deadsnakes() {
 
   DEBIAN_FRONTEND=noninteractive ${run_apt} install -y --no-install-recommends \
     python3.10 python3.10-venv python3.10-dev || {
-    log_err "[python] ✗ Failed to install Python ${TRT_REQUIRED_PYTHON_VERSION}"
+    log_err "[python] ✗ Failed to install Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}"
     return 1
   }
 
-  log_info "[python] ✓ Python ${TRT_REQUIRED_PYTHON_VERSION} installed successfully"
+  log_info "[python] ✓ Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} installed successfully"
 }
 
 _venv_python_reports_version() {
   local py_bin="$1"
-  local expected_minor="${2:-${TRT_REQUIRED_PYTHON_VERSION}}"
+  local expected_minor="${2:-${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}}"
 
   if ! command -v "${py_bin}" >/dev/null 2>&1; then
     return 1
@@ -75,22 +72,22 @@ ensure_python_runtime_for_engine() {
   local engine="${1:-${INFERENCE_ENGINE:-vllm}}"
 
   if [[ "${engine,,}" = "trt" ]]; then
-    if _venv_python_reports_version "python${TRT_REQUIRED_PYTHON_VERSION}"; then
+    if _venv_python_reports_version "python${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}"; then
       return 0
     fi
 
-    log_warn "[python] ⚠ Python ${TRT_REQUIRED_PYTHON_VERSION} not found. TRT-LLM requires Python ${TRT_REQUIRED_PYTHON_VERSION}."
-    log_info "[python] Attempting to install Python ${TRT_REQUIRED_PYTHON_VERSION}..."
+    log_warn "[python] ⚠ Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} not found. TRT-LLM requires Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}."
+    log_info "[python] Attempting to install Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}..."
 
     if _venv_install_python310_deadsnakes; then
       return 0
     fi
 
-    log_err "[python] ✗ Cannot proceed without Python ${TRT_REQUIRED_PYTHON_VERSION}"
+    log_err "[python] ✗ Cannot proceed without Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}"
     log_err "[python]   TensorRT-LLM 1.2.0rc5 does NOT work with Python 3.11 or 3.12"
-    log_err "[python]   Please install Python ${TRT_REQUIRED_PYTHON_VERSION} manually:"
+    log_err "[python]   Please install Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} manually:"
     log_err "[python]     Ubuntu/Debian: apt install python3.10 python3.10-venv python3.10-dev"
-    log_err "[python]     Or use the Docker image which has Python ${TRT_REQUIRED_PYTHON_VERSION} pre-installed"
+    log_err "[python]     Or use the Docker image which has Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} pre-installed"
     return 1
   fi
 
@@ -214,12 +211,12 @@ get_python_binary_for_engine() {
   
   if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
     # TRT requires Python 3.10 specifically
-    if command -v "python${TRT_REQUIRED_PYTHON_VERSION}" >/dev/null 2>&1; then
-      echo "python${TRT_REQUIRED_PYTHON_VERSION}"
+    if command -v "python${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}" >/dev/null 2>&1; then
+      echo "python${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}"
     elif command -v python3.10 >/dev/null 2>&1; then
       echo "python3.10"
     else
-      log_err "[venv] ✗ Python ${TRT_REQUIRED_PYTHON_VERSION} required for TRT-LLM but not found"
+      log_err "[venv] ✗ Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} required for TRT-LLM but not found"
       log_err "[venv] ✗ Install it first: bash scripts/steps/02_python_env.sh"
       return 1
     fi
@@ -252,8 +249,8 @@ validate_venv_python_version() {
   current_version=$("${venv_python}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
   
   if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
-    if [ "${current_version}" != "${TRT_REQUIRED_PYTHON_VERSION}" ]; then
-      log_warn "[venv] ⚠ TRT requires Python ${TRT_REQUIRED_PYTHON_VERSION} but venv has ${current_version}"
+    if [ "${current_version}" != "${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}" ]; then
+      log_warn "[venv] ⚠ TRT requires Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} but venv has ${current_version}"
       return 1
     fi
   fi

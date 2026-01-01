@@ -100,11 +100,6 @@ _runtime_guard_force_engine_wipe() {
   log_blank
 }
 
-# Backward compatibility alias
-runtime_guard_force_engine_wipe() {
-  _runtime_guard_force_engine_wipe "$@"
-}
-
 # =============================================================================
 # UNIFIED ENGINE SWITCH HANDLING
 # =============================================================================
