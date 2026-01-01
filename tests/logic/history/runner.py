@@ -43,20 +43,20 @@ from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 # ============================================================================
 
 
-async def _collect_response(ws, tracker: StreamTracker) -> tuple[str, dict[str, Any] | None]:
-    """Collect streaming response until done message, tracking metrics.
-    
-    Returns:
-        Tuple of (response_text, history_info_or_none).
-    """
-    history_info = None
+async def _wait_for_ack(ws) -> dict[str, Any] | None:
+    """Wait for ack message and return history info if present."""
+    async for msg in iter_messages(ws):
+        if msg.get("type") == "ack":
+            return msg.get("history")
+        if msg.get("type") == "error":
+            raise ServerError.from_message(msg)
+    return None
+
+
+async def _collect_response(ws, tracker: StreamTracker) -> str:
+    """Collect streaming response until done message, tracking metrics."""
     async for msg in iter_messages(ws):
         t = msg.get("type")
-
-        if t == "ack":
-            # Capture history info from ack if present
-            history_info = msg.get("history")
-            continue
 
         if t == "toolcall":
             tracker.record_toolcall()
@@ -73,12 +73,51 @@ async def _collect_response(ws, tracker: StreamTracker) -> tuple[str, dict[str, 
             continue
 
         if t == "done":
-            return tracker.final_text, history_info
+            return tracker.final_text
 
         if t == "error":
             raise ServerError.from_message(msg)
 
     raise RuntimeError("WebSocket closed before receiving 'done'")
+
+
+def _build_start_payload(
+    session_id: str,
+    gender: str,
+    personality: str,
+    chat_prompt: str,
+    history: list[dict[str, str]],
+    user_text: str,
+    sampling: dict[str, float | int] | None,
+) -> dict[str, Any]:
+    """Build the start message payload."""
+    payload: dict[str, Any] = {
+        "type": "start",
+        "session_id": session_id,
+        "gender": gender,
+        "personality": personality,
+        "personalities": DEFAULT_PERSONALITIES,
+        "chat_prompt": chat_prompt,
+        "history": history,
+        "user_utterance": user_text,
+    }
+    if sampling:
+        payload["sampling"] = sampling
+    return payload
+
+
+def _print_exchange(
+    idx: int,
+    user_text: str,
+    reply: str,
+    metrics: dict[str, Any],
+) -> None:
+    """Print a formatted exchange."""
+    print(exchange_header(idx=idx))
+    print(f"  {format_user(user_text)}")
+    print(f"  {format_assistant(reply)}")
+    print(f"  {format_metrics_inline(metrics)}")
+    print(exchange_footer())
 
 
 async def _send_start_request(
@@ -92,40 +131,29 @@ async def _send_start_request(
     sampling: dict[str, float | int] | None,
     ttfb_aggregator: TTFBAggregator,
     idx: int,
-    total: int,
-) -> tuple[str, dict[str, Any], dict[str, Any] | None]:
+) -> tuple[str, dict[str, Any]]:
     """Send a start request and collect the response with metrics tracking.
     
     Returns:
-        Tuple of (reply_text, metrics, history_info_or_none).
+        Tuple of (reply_text, metrics).
     """
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": session_id,
-        "gender": gender,
-        "personality": personality,
-        "personalities": DEFAULT_PERSONALITIES,
-        "chat_prompt": chat_prompt,
-        "history": history,
-        "user_utterance": user_text,
-    }
-    if sampling:
-        payload["sampling"] = sampling
+    payload = _build_start_payload(
+        session_id, gender, personality, chat_prompt, history, user_text, sampling
+    )
 
     tracker = StreamTracker()
     await ws.send(json.dumps(payload))
-    reply, history_info = await _collect_response(ws, tracker)
+    
+    # Wait for ack (discard history info - only used on first request)
+    await _wait_for_ack(ws)
+    
+    # Collect the response
+    reply = await _collect_response(ws, tracker)
     metrics = tracker.finalize_metrics()
 
-    # Clean formatted output
-    print(exchange_header(idx=idx))
-    print(f"  {format_user(user_text)}")
-    print(f"  {format_assistant(reply)}")
-    print(f"  {format_metrics_inline(metrics)}")
-    print(exchange_footer())
-
+    _print_exchange(idx, user_text, reply, metrics)
     ttfb_aggregator.record(metrics)
-    return reply, metrics, history_info
+    return reply, metrics
 
 
 def _format_history_info(history_info: dict[str, Any]) -> str:
@@ -135,7 +163,21 @@ def _format_history_info(history_info: dict[str, Any]) -> str:
     trimmed = history_info.get("trimmed", False)
     
     status = yellow("trimmed") if trimmed else green("retained")
-    return f"  {dim('history:')} {input_msgs} msgs → {retained} turns ({status})"
+    return f"{input_msgs} msgs → {retained} turns ({status})"
+
+
+def _print_header(
+    personality: str,
+    gender: str,
+    history_info: dict[str, Any] | None,
+) -> None:
+    """Print the test header with history info."""
+    print(f"\n{section_header('HISTORY RECALL TEST')}")
+    print(dim(f"  warm history: {len(WARM_HISTORY)} messages"))
+    if history_info:
+        print(dim(f"  server kept:  {_format_history_info(history_info)}"))
+    print(dim(f"  recall tests: {len(HISTORY_RECALL_MESSAGES)} messages"))
+    print(dim(f"  persona: {personality}/{gender}\n"))
 
 
 async def _run_history_sequence(
@@ -150,10 +192,33 @@ async def _run_history_sequence(
     """Run through all history recall messages."""
     # Start with the pre-built history
     history: list[dict[str, str]] = list(WARM_HISTORY)
-    total = len(HISTORY_RECALL_MESSAGES)
+    
+    # First request: get history info for header, then print header before exchange
+    first_user_text = HISTORY_RECALL_MESSAGES[0]
+    payload = _build_start_payload(
+        session_id, gender, personality, chat_prompt, history, first_user_text, sampling
+    )
+    
+    tracker = StreamTracker()
+    await ws.send(json.dumps(payload))
+    history_info = await _wait_for_ack(ws)
+    
+    # Print header with history info before first exchange
+    _print_header(personality, gender, history_info)
+    
+    # Collect first response
+    reply = await _collect_response(ws, tracker)
+    metrics = tracker.finalize_metrics()
+    _print_exchange(1, first_user_text, reply, metrics)
+    ttfb_aggregator.record(metrics)
+    
+    # Update history
+    history.append({"role": "user", "content": first_user_text})
+    history.append({"role": "assistant", "content": reply})
 
-    for idx, user_text in enumerate(HISTORY_RECALL_MESSAGES, 1):
-        reply, _, history_info = await _send_start_request(
+    # Remaining requests
+    for idx, user_text in enumerate(HISTORY_RECALL_MESSAGES[1:], 2):
+        reply, _ = await _send_start_request(
             ws,
             session_id,
             gender,
@@ -164,14 +229,7 @@ async def _run_history_sequence(
             sampling,
             ttfb_aggregator,
             idx,
-            total,
         )
-        # Print history info on first request (when warm history was sent)
-        if idx == 1 and history_info:
-            print(_format_history_info(history_info))
-            print()
-        
-        # Append the exchange to history for subsequent messages
         history.append({"role": "user", "content": user_text})
         history.append({"role": "assistant", "content": reply})
 
@@ -193,11 +251,6 @@ async def run_test(
     ttfb_aggregator = TTFBAggregator()
     session_id = f"history-{uuid.uuid4()}"
     chat_prompt = select_chat_prompt(gender)
-
-    print(f"\n{section_header('HISTORY RECALL TEST')}")
-    print(dim(f"  warm history: {len(WARM_HISTORY)} messages"))
-    print(dim(f"  recall tests: {len(HISTORY_RECALL_MESSAGES)} messages"))
-    print(dim(f"  persona: {personality}/{gender}\n"))
 
     async with websockets.connect(
         url,
