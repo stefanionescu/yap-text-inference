@@ -1,6 +1,7 @@
 from .client import LiveClient, StreamResult
 from .cli import interactive_loop
 from .personas import DEFAULT_PERSONA_NAME, PersonaDefinition, PersonaRegistry
+from .runner import run
 from .session import LiveSession
 from .stream import StreamTracker
 
@@ -13,4 +14,5 @@ __all__ = [
     "StreamResult",
     "StreamTracker",
     "interactive_loop",
+    "run",
 ]

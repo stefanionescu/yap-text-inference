@@ -488,7 +488,8 @@ Flags:
 - `--server`: explicit URL (falls back to `SERVER_WS_URL`, appends `/ws` if missing)
 - `--api-key`: override `TEXT_API_KEY`
 - `--persona/-p`: persona key from `tests/prompts/detailed.py` (defaults to `anna_flirty`)
-- `--recv-timeout`: override `DEFAULT_RECV_TIMEOUT_SEC`
+- `--timeout`: receive timeout in seconds (default 60)
+- `--warm`: start with pre-built conversation history for testing recall
 - `--no-chat-prompt`: disable chat prompts for tool-only deployments; persona switches are disabled automatically when chat prompts are off
 - positional text: optional opener message
 
