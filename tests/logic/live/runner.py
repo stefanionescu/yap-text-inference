@@ -22,6 +22,7 @@ from tests.helpers.errors import (
     IdleTimeoutError,
     ServerError,
 )
+from tests.helpers.fmt import section_header, dim
 from tests.helpers.ws import connect_with_retries, with_api_key
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 
@@ -53,7 +54,6 @@ async def run(
     if warm:
         initial_history = list(WARM_HISTORY)
         initial_message = HISTORY_RECALL_MESSAGES[0]
-        logger.info("Starting with warm history (%d messages)", len(initial_history))
     else:
         initial_history = []
         initial_message = (
@@ -68,7 +68,12 @@ async def run(
         sampling=sampling,
     )
 
-    # Print interactive banner before any assistant output
+    # Print header and banner
+    print(f"\n{section_header('LIVE SESSION')}")
+    print(dim(f"  server: {server_url}"))
+    print(dim(f"  persona: {persona.name} ({persona.personality}/{persona.gender})"))
+    if warm:
+        print(dim(f"  warm history: {len(initial_history)} messages"))
     print_help(persona.name)
 
     ws_url = with_api_key(server_url, api_key=api_key)

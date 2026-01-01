@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import os
 import uuid
 from typing import Any
@@ -27,6 +26,18 @@ from tests.config import (
     WARMUP_FALLBACK_MESSAGE,
 )
 from tests.helpers.errors import ServerError
+from tests.helpers.fmt import (
+    section_header,
+    exchange_header,
+    exchange_footer,
+    format_user,
+    format_assistant,
+    format_metrics_inline,
+    dim,
+    bold,
+    red,
+    yellow,
+)
 from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.stream import StreamTracker
@@ -34,17 +45,10 @@ from tests.helpers.util import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
 
-logger = logging.getLogger(__name__)
-
 
 # ============================================================================
 # Internal Helpers
 # ============================================================================
-
-
-def _phase_prefix(phase_label: str | None) -> str:
-    """Return a log prefix for multi-phase transactions."""
-    return f"[{phase_label}] " if phase_label else ""
 
 
 def _build_start_payload(
@@ -72,93 +76,65 @@ def _build_start_payload(
     return payload
 
 
-def _log_unknown_message(msg: dict[str, Any], phase_label: str | None) -> bool:
-    """Log unknown message types at debug level."""
-    logger.debug("%sIgnoring message type=%s payload=%s", _phase_prefix(phase_label), msg.get("type"), msg)
+def _log_unknown_message(msg: dict[str, Any]) -> bool:
+    """Ignore unknown message types."""
     return True
 
 
-def _handle_ack(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> bool:
+def _handle_ack(msg: dict[str, Any], tracker: StreamTracker) -> bool:
     """Handle ACK messages."""
     ack_for = msg.get("for")
     if ack_for == "start":
         tracker.ack_seen = True
-        now = msg.get("now")
-        gender = msg.get("gender")
-        persona = msg.get("personality")
-        logger.info("%sACK start → now='%s' gender=%s personality=%s", _phase_prefix(phase_label), now, gender, persona)
-    elif ack_for == "set_persona":
-        logger.info("%sACK set_persona → %s", _phase_prefix(phase_label), json.dumps(msg, ensure_ascii=False))
     return True
 
 
-def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
-    """Handle toolcall messages and log TTFB."""
-    status = msg.get("status")
-    logger.info("%sTOOLCALL status=%s raw=%s", _phase_prefix(phase_label), status, msg.get("raw"))
-    ttfb_ms = tracker.record_toolcall()
-    if ttfb_ms is not None:
-        logger.info("%sTOOLCALL ttfb_ms=%.2f", _phase_prefix(phase_label), ttfb_ms)
+def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker) -> None:
+    """Handle toolcall messages."""
+    tracker.record_toolcall()
 
 
-def _handle_token(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
-    """Handle token messages and log timing metrics."""
+def _handle_token(msg: dict[str, Any], tracker: StreamTracker) -> None:
+    """Handle token messages."""
     chunk = msg.get("text", "")
-    metrics = tracker.record_token(chunk)
-    chat_ttfb = metrics.get("chat_ttfb_ms")
-    if chat_ttfb is not None:
-        logger.info("%sCHAT ttfb_ms=%.2f", _phase_prefix(phase_label), chat_ttfb)
-    first_3 = metrics.get("time_to_first_3_words_ms")
-    if first_3 is not None:
-        logger.info("%sCHAT time_to_first_3_words_ms=%.2f", _phase_prefix(phase_label), first_3)
-    first_sentence = metrics.get("time_to_first_complete_sentence_ms")
-    if first_sentence is not None:
-        logger.info("%sCHAT time_to_first_complete_sentence_ms=%.2f", _phase_prefix(phase_label), first_sentence)
+    tracker.record_token(chunk)
 
 
-def _handle_final(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
+def _handle_final(msg: dict[str, Any], tracker: StreamTracker) -> None:
     """Handle final messages with normalized text."""
     normalized = msg.get("normalized_text") or tracker.final_text
     if normalized:
         tracker.final_text = normalized
 
 
-def _handle_done(msg: dict[str, Any], tracker: StreamTracker, phase_label: str | None) -> None:
-    """Handle done messages and log final metrics."""
+def _handle_done(msg: dict[str, Any], tracker: StreamTracker) -> dict[str, Any]:
+    """Handle done messages and return metrics."""
     cancelled = bool(msg.get("cancelled"))
-    metrics_payload = {"type": "metrics", **tracker.finalize_metrics(cancelled)}
-    final_text_payload = {"type": "final_text", "text": tracker.final_text}
-    if phase_label:
-        metrics_payload["phase"] = phase_label
-        final_text_payload["phase"] = phase_label
-    logger.info(json.dumps(metrics_payload, ensure_ascii=False))
-    logger.info(json.dumps(final_text_payload, ensure_ascii=False))
-    return False
+    return {"_done": True, "metrics": tracker.finalize_metrics(cancelled)}
 
 
-def _handle_error(msg: dict[str, Any], api_key: str, phase_label: str | None) -> None:
+def _handle_error(msg: dict[str, Any], api_key: str) -> None:
     """Handle error messages with helpful hints."""
     error = ServerError.from_message(msg)
-    prefix = _phase_prefix(phase_label)
-    logger.error("%sServer error %s: %s", prefix, error.error_code, error.message)
+    print(f"  {red('ERROR')} {error.error_code}: {error.message}")
     if error.error_code == "authentication_failed":
-        logger.info("%sHINT: Check your TEXT_API_KEY (currently: '%s')", prefix, api_key)
+        print(dim(f"  HINT: Check your TEXT_API_KEY (currently: '{api_key[:8]}...')"))
     elif error.error_code == "server_at_capacity":
-        logger.info("%sHINT: Server is busy. Try again later.", prefix)
+        print(dim("  HINT: Server is busy. Try again later."))
     elif error.is_recoverable():
-        logger.info("%sHINT: %s", prefix, error.format_for_user())
+        print(dim(f"  HINT: {error.format_for_user()}"))
     raise error
 
 
-def _build_stream_handlers(tracker: StreamTracker, api_key: str, phase_label: str | None):
+def _build_stream_handlers(tracker: StreamTracker, api_key: str):
     """Build message type handlers for stream processing."""
     return {
-        "ack": lambda msg: _handle_ack(msg, tracker, phase_label),
-        "toolcall": lambda msg: (_handle_toolcall(msg, tracker, phase_label) or True),
-        "token": lambda msg: (_handle_token(msg, tracker, phase_label) or True),
-        "final": lambda msg: (_handle_final(msg, tracker, phase_label) or True),
-        "done": lambda msg: _handle_done(msg, tracker, phase_label),
-        "error": lambda msg: _handle_error(msg, api_key, phase_label),
+        "ack": lambda msg: _handle_ack(msg, tracker),
+        "toolcall": lambda msg: (_handle_toolcall(msg, tracker) or True),
+        "token": lambda msg: (_handle_token(msg, tracker) or True),
+        "final": lambda msg: (_handle_final(msg, tracker) or True),
+        "done": lambda msg: _handle_done(msg, tracker),
+        "error": lambda msg: _handle_error(msg, api_key),
     }
 
 
@@ -167,31 +143,51 @@ async def _stream_session(
     tracker: StreamTracker,
     recv_timeout: float,
     api_key: str,
-    phase_label: str | None = None,
-) -> None:
-    """Stream and log the server response."""
-    handlers = _build_stream_handlers(tracker, api_key, phase_label)
-    done_seen = False
+) -> dict[str, Any] | None:
+    """Stream the server response and return metrics."""
+    handlers = _build_stream_handlers(tracker, api_key)
+    done_payload: dict[str, Any] | None = None
     try:
         async for msg in iter_messages(ws, timeout=recv_timeout):
-            should_continue = await dispatch_message(
+            result = await dispatch_message(
                 msg,
                 handlers,
-                default=lambda payload: _log_unknown_message(payload, phase_label),
+                default=_log_unknown_message,
             )
-            if should_continue is False:
-                done_seen = True
+            if isinstance(result, dict) and result.get("_done"):
+                done_payload = result
+                break
+            if result is False:
                 break
     except ServerError:
-        raise  # Propagate server errors to caller
+        raise
     except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
-        logger.warning("Connection closed by server")
+        print(dim("  connection closed by server"))
     except asyncio.TimeoutError:
-        logger.error("recv timeout after %.1fs", recv_timeout)
+        print(f"  {red('TIMEOUT')} after {recv_timeout:.1f}s")
+    
     if not tracker.ack_seen:
-        logger.warning("no ACK(start) received from server")
-    if not done_seen:
-        logger.warning("stream terminated before receiving 'done'")
+        print(dim("  warning: no ACK received"))
+    
+    return done_payload
+
+
+def _print_transaction_result(
+    phase: str | None,
+    user_msg: str,
+    tracker: StreamTracker,
+    metrics: dict[str, Any],
+) -> None:
+    """Print formatted transaction result."""
+    if phase:
+        print(exchange_header(persona=phase.upper()))
+    else:
+        print(exchange_header())
+    
+    print(f"  {format_user(user_msg)}")
+    print(f"  {format_assistant(tracker.final_text)}")
+    print(f"  {format_metrics_inline(metrics)}")
+    print(exchange_footer())
 
 
 # ============================================================================
@@ -220,7 +216,13 @@ async def run_once(args) -> None:
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
     chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
-    logger.info("Connecting to %s (with API key auth)", server_ws_url)
+    
+    # Print header
+    test_name = "WARMUP (double-ttfb)" if double_ttfb else "WARMUP"
+    print(f"\n{section_header(test_name)}")
+    print(dim(f"  server: {server_ws_url}"))
+    print(dim(f"  persona: {personality}/{gender}\n"))
+
     async with connect_with_retries(
         lambda: websockets.connect(
             ws_url_with_auth,
@@ -231,6 +233,7 @@ async def run_once(args) -> None:
     ) as ws:
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
         num_transactions = 2 if double_ttfb else 1
+        
         try:
             for idx in range(num_transactions):
                 phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
@@ -244,10 +247,17 @@ async def run_once(args) -> None:
                     user_msg,
                     sampling_overrides,
                 )
-                if double_ttfb:
-                    logger.info("%sSending start message for %s transaction", _phase_prefix(phase_label), phase_label)
+                
                 await ws.send(json.dumps(start_payload))
-                await _stream_session(ws, tracker, recv_timeout, api_key, phase_label if double_ttfb else None)
+                done_payload = await _stream_session(ws, tracker, recv_timeout, api_key)
+                
+                metrics = {}
+                if done_payload:
+                    metrics = done_payload.get("metrics", {})
+                else:
+                    metrics = tracker.finalize_metrics(cancelled=True)
+                
+                _print_transaction_result(phase_label, user_msg, tracker, metrics)
         finally:
             await send_client_end(ws)
 

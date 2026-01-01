@@ -35,6 +35,7 @@ from tests.helpers.errors import (
     TestClientError,
     is_idle_timeout_close,
 )
+from tests.helpers.fmt import dim, cyan, magenta, format_metrics_inline
 from tests.helpers.message import iter_messages
 from tests.helpers.ws import send_client_end
 from .personas import PersonaDefinition
@@ -69,7 +70,7 @@ class _StreamPrinter:
         if not chunk:
             return
         if not self.printed_header:
-            print("\ncompanion >", end=" ", flush=True)
+            print(f"\n{magenta('ASST')} ", end="", flush=True)
             self.printed_header = True
         print(chunk, end="", flush=True)
 
@@ -266,13 +267,13 @@ class LiveClient:
 
     def _handle_done_frame(self, msg: dict[str, Any], state: _StreamState, *, print_user_prompt: bool) -> StreamResult:
         state.printer.finish()
-        if print_user_prompt:
-            print("you >", end=" ", flush=True)
         cancelled = bool(msg.get("cancelled"))
-        if state.pending_chat_ttfb is not None and self._stats_enabled:
-            logger.info("CHAT ttfb_ms=%.2f", state.pending_chat_ttfb)
         if self._stats_enabled:
-            logger.info("metrics: %s", json.dumps(state.tracker.finalize_metrics(cancelled), ensure_ascii=False))
+            metrics = state.tracker.finalize_metrics(cancelled)
+            print(dim(f"     {format_metrics_inline(metrics)}"))
+            print()
+        if print_user_prompt:
+            print(f"{cyan('USER')} ", end="", flush=True)
         return StreamResult(text=state.tracker.final_text, ok=True, cancelled=cancelled)
 
     def _handle_connection_closed(self, msg: dict[str, Any], tracker: StreamTracker) -> StreamResult:

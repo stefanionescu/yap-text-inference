@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 from collections.abc import Awaitable, Callable
 
 from tests.helpers.errors import ServerError
+from tests.helpers.fmt import format_metrics_inline
 from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.stream import StreamTracker
 
@@ -27,39 +27,19 @@ def _log_unknown_exchange_message(msg: dict[str, Any], exchange_idx: int) -> boo
 
 def _handle_ack(msg: dict[str, Any], tracker: StreamTracker, exchange_idx: int) -> bool:
     tracker.ack_seen = True
-    logger.info(
-        "Exchange %02d ACK(%s) gender=%s personality=%s",
-        exchange_idx,
-        msg.get("for"),
-        msg.get("gender"),
-        msg.get("personality"),
-    )
+    # Silently acknowledge - no need for verbose output
     return True
 
 
 def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker, exchange_idx: int) -> None:
-    ttfb = tracker.record_toolcall()
-    logger.info("Exchange %02d TOOLCALL status=%s", exchange_idx, msg.get("status"))
-    if ttfb is not None:
-        logger.info("Exchange %02d TOOLCALL ttfb_ms=%.2f", exchange_idx, ttfb)
+    tracker.record_toolcall()
+    # Silently record - metrics shown at end
 
 
 def _handle_token(msg: dict[str, Any], tracker: StreamTracker, exchange_idx: int) -> None:
     chunk = msg.get("text", "")
-    metrics = tracker.record_token(chunk)
-    chat_ttfb = metrics.get("chat_ttfb_ms")
-    if chat_ttfb is not None:
-        logger.info("Exchange %02d CHAT ttfb_ms=%.2f", exchange_idx, chat_ttfb)
-    first_three = metrics.get("time_to_first_3_words_ms")
-    if first_three is not None:
-        logger.info("Exchange %02d CHAT time_to_first_3_words_ms=%.2f", exchange_idx, first_three)
-    first_sentence = metrics.get("time_to_first_complete_sentence_ms")
-    if first_sentence is not None:
-        logger.info(
-            "Exchange %02d CHAT time_to_first_complete_sentence_ms=%.2f",
-            exchange_idx,
-            first_sentence,
-        )
+    tracker.record_token(chunk)
+    # Silently record - metrics shown at end
 
 
 def _handle_final(msg: dict[str, Any], tracker: StreamTracker) -> None:
@@ -71,11 +51,6 @@ def _handle_final(msg: dict[str, Any], tracker: StreamTracker) -> None:
 def _handle_done(msg: dict[str, Any], tracker: StreamTracker, exchange_idx: int) -> bool:
     cancelled = bool(msg.get("cancelled"))
     metrics = tracker.finalize_metrics(cancelled)
-    logger.info(
-        "Exchange %02d metrics: %s",
-        exchange_idx,
-        json.dumps(metrics, ensure_ascii=False),
-    )
     return {"_done": True, "metrics": metrics}
 
 
