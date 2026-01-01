@@ -399,5 +399,24 @@ restart_reconfigure_models() {
     restart_push_cached_awq_models "${DEPLOY_MODE}"
   fi
 
+  # Push TRT engine if requested and we didn't go through the quantizer
+  # (quantizer handles its own push; this handles cached/prebuilt engines)
+  if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+    # Load engine dir from saved env if not already set
+    if [ -z "${TRT_ENGINE_DIR:-}" ]; then
+      local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
+      if [ -f "${trt_env_file}" ]; then
+        # shellcheck disable=SC1090
+        source "${trt_env_file}"
+        TRT_ENGINE_DIR="${TRTLLM_ENGINE_DIR:-}"
+      fi
+    fi
+    if [ -n "${TRT_ENGINE_DIR:-}" ] && [ -d "${TRT_ENGINE_DIR}" ]; then
+      trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${CHAT_MODEL:-}"
+    else
+      log_warn "[restart] ⚠ --push-engine specified but no TRT engine found to push"
+    fi
+  fi
+
   restart_server_background
 }

@@ -242,6 +242,11 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; th
     exit 1
   fi
   log_info "[restart] ✓ TRT engine validated"
+
+  # Push TRT engine if requested (for cached/prebuilt engines)
+  if [ "${HF_ENGINE_PUSH:-0}" = "1" ]; then
+    trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${CHAT_MODEL:-}"
+  fi
   log_blank
 fi
 
