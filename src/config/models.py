@@ -156,6 +156,8 @@ ALLOWED_TOOL_MODELS: list[str] = [
 ]
 
 __all__ = [
+    # Patterns
+    "HF_REPO_PATTERN",
     # Model lists
     "ALLOWED_BASE_CHAT_MODELS",
     "ALLOWED_BASE_MOE_CHAT_MODELS",
