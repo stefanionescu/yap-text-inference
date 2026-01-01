@@ -217,10 +217,12 @@ def _resolve_history(session_id: str, msg: dict[str, Any]) -> tuple[str, dict[st
             input_count = len(history_messages)
             rendered = session_handler.set_history_messages(session_id, history_messages)
             retained_count = session_handler.get_history_turn_count(session_id)
+            history_tokens = count_tokens_chat(rendered) if rendered else 0
             history_info = {
                 "input_messages": input_count,
                 "retained_turns": retained_count,
                 "trimmed": retained_count < (input_count // 2),  # Rough heuristic: turns ≈ messages/2
+                "history_tokens": history_tokens,
             }
             return rendered, history_info
     return session_handler.get_history_text(session_id), None
