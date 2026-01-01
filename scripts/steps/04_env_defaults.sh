@@ -4,7 +4,7 @@ THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Respect existing ROOT_DIR when this file is sourced; fall back to repo root when executed directly
 # Repo root is two levels up from steps/ when executed directly
 ROOT_DIR="${ROOT_DIR:-$(cd "${THIS_SCRIPT_DIR}/../.." && pwd)}"
-source "${THIS_SCRIPT_DIR}/../lib/common/warnings.sh"
+source "${THIS_SCRIPT_DIR}/../lib/noise/python.sh"
 source "${THIS_SCRIPT_DIR}/../lib/common/log.sh"
 
 # Shared library functions

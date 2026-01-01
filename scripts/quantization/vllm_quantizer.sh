@@ -3,7 +3,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC2034  # sourced helpers rely on ROOT_DIR
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-source "${SCRIPT_DIR}/../lib/common/warnings.sh"
+source "${SCRIPT_DIR}/../lib/noise/python.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 
 # vLLM quantization helpers
