@@ -90,8 +90,8 @@ main_parse_cli() {
     return 1
   fi
 
-  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE}")"; then
-    log_err "[main] ✗ Unknown engine type '${INFERENCE_ENGINE}'. Expected trt|vllm."
+  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE:-vllm}")"; then
+    log_err "[main] ✗ Unknown engine type '${INFERENCE_ENGINE:-}'. Expected trt|vllm."
     return 1
   fi
 
@@ -164,10 +164,10 @@ main_parse_cli() {
 
 # Export models to environment variables
 main_export_models() {
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
-    export CHAT_MODEL="${CHAT_MODEL_NAME}"
+  if [ "${DEPLOY_MODE:-}" = "both" ] || [ "${DEPLOY_MODE:-}" = "chat" ]; then
+    export CHAT_MODEL="${CHAT_MODEL_NAME:-}"
   fi
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
-    export TOOL_MODEL="${TOOL_MODEL_NAME}"
+  if [ "${DEPLOY_MODE:-}" = "both" ] || [ "${DEPLOY_MODE:-}" = "tool" ]; then
+    export TOOL_MODEL="${TOOL_MODEL_NAME:-}"
   fi
 }

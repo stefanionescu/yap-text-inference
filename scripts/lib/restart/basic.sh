@@ -36,7 +36,7 @@ wipe_dependencies_for_reinstall() {
 
 # Shared install-deps handler used by both generic and AWQ restart paths
 restart_run_install_deps_if_needed() {
-  if [ "${INSTALL_DEPS}" != "1" ]; then
+  if [ "${INSTALL_DEPS:-0}" != "1" ]; then
     return 0
   fi
   
@@ -97,12 +97,12 @@ restart_basic() {
 
   # Non-AWQ path
   # shellcheck disable=SC2153  # DEPLOY_MODE is set by the caller via env
-  local SELECTED_DEPLOY="${DEPLOY_MODE}"
+  local SELECTED_DEPLOY="${DEPLOY_MODE:-}"
   if [ -z "${SELECTED_DEPLOY}" ] || ! [[ "${SELECTED_DEPLOY}" =~ ^(both|chat|tool)$ ]]; then
     SELECTED_DEPLOY="${DEPLOY_MODE:-${LAST_DEPLOY:-both}}"
   fi
 
-  if [ "${DEPLOY_MODE}" = "tool" ]; then
+  if [ "${DEPLOY_MODE:-}" = "tool" ]; then
     unset QUANTIZATION CHAT_QUANTIZATION
   else
     # Default to "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh

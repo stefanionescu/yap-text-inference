@@ -115,7 +115,7 @@ ensure_cuda_ready_for_engine "restart" || exit 1
 
 # Torch/TorchVision mismatch causes runtime import errors; remove mismatched wheels
 torch_cuda_mismatch_guard "[restart]"
-if [ "${TORCHVISION_CUDA_MISMATCH_DETECTED:-0}" = "1" ] && [ "${INSTALL_DEPS}" != "1" ]; then
+if [ "${TORCHVISION_CUDA_MISMATCH_DETECTED:-0}" = "1" ] && [ "${INSTALL_DEPS:-0}" != "1" ]; then
   log_info "[restart] torch/torchvision mismatch detected; forcing --install-deps for clean reinstall"
   INSTALL_DEPS=1
   export INSTALL_DEPS
@@ -203,7 +203,7 @@ NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
 # Check if venv exists (skip if --install-deps will create it)
 venv_dir="${VENV_DIR:-$(get_venv_dir)}"
-if [ "${INSTALL_DEPS}" != "1" ] && [ ! -d "${venv_dir}" ]; then
+if [ "${INSTALL_DEPS:-0}" != "1" ] && [ ! -d "${venv_dir}" ]; then
   log_err "[restart] ✗ No virtual environment found at ${venv_dir}"
   log_err "[restart] ✗ Run with --install-deps to create it, or run full deployment first"
   exit 1
