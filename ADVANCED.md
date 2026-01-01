@@ -595,6 +595,21 @@ TEXT_API_KEY=your_api_key python3 tests/history.py --temperature 0.8 --top_p 0.9
 
 Connects with a pre-built conversation history, then sends follow-up messages to test the assistant's recall of earlier exchanges. Tracks TTFB for each response and prints summary statistics (p50, p90, p95). Useful for validating prefix caching and KV cache reuse.
 
+**Benchmark mode:** pass `--bench` to run concurrent connections with warm history:
+
+```bash
+# 8 connections, 4 concurrent (defaults)
+TEXT_API_KEY=your_api_key python3 tests/history.py --bench
+
+# Custom load: 16 connections, 8 concurrent
+TEXT_API_KEY=your_api_key python3 tests/history.py --bench -n 16 -c 8
+
+# With custom timeout
+TEXT_API_KEY=your_api_key python3 tests/history.py --bench -n 32 -c 16 --timeout 300
+```
+
+Each connection starts with the full warm history and cycles through all recall messages. Output matches the benchmark client format with p50/p95 latencies.
+
 ### Connection Lifecycle Test
 
 ```bash

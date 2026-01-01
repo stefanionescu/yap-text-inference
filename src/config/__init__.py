@@ -13,6 +13,7 @@ This module re-exports configuration constants from smaller modules:
 """
 
 from .deploy import (
+    HF_REPO_PATTERN,
     DEPLOY_MODE,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
@@ -66,7 +67,6 @@ from .tool import (
     TOOL_MICROBATCH_MAX_DELAY_MS,
 )
 from .models import (
-    HF_REPO_PATTERN,
     ALLOWED_BASE_CHAT_MODELS,
     ALLOWED_BASE_MOE_CHAT_MODELS,
     ALLOWED_VLLM_QUANT_CHAT_MODELS,
@@ -126,6 +126,7 @@ from .websocket import (
 
 __all__ = [
     # deploy
+    "HF_REPO_PATTERN",
     "DEPLOY_MODE",
     "DEPLOY_CHAT",
     "DEPLOY_TOOL",
@@ -174,7 +175,6 @@ __all__ = [
     "TOOL_MICROBATCH_MAX_SIZE",
     "TOOL_MICROBATCH_MAX_DELAY_MS",
     # models
-    "HF_REPO_PATTERN",
     "ALLOWED_BASE_CHAT_MODELS",
     "ALLOWED_BASE_MOE_CHAT_MODELS",
     "ALLOWED_VLLM_QUANT_CHAT_MODELS",

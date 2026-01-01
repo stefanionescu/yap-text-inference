@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from ..config.models import HF_REPO_PATTERN
+from ..config.deploy import HF_REPO_PATTERN
 
 
 def _is_huggingface_repo_id(path: str) -> bool:

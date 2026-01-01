@@ -117,9 +117,11 @@ _DEFAULT_LOGIT_BIAS = {
 # - DeepSeek V2/V3: Fullwidth vertical bars and "User:" prefix
 
 INFERENCE_STOP = [
-    # ChatML format
+    # ChatML format (including partial tokenization variants)
     "<|im_end|>",
+    "<|im_end|",
     "|im_end|>",
+    "|im_end|",
     "<|im_start|>",
     "<|im_start|",
     "<|assistant|>",

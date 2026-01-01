@@ -170,9 +170,11 @@ if __name__ == "__main__":
         sys.exit(0 if result else 1)
 
     elif cmd == "list-engines" and len(sys.argv) >= 3:
-        from src.scripts.filters import configure
+        from src.helpers.env import env_flag
 
-        configure()
+        if not env_flag("SHOW_HF_LOGS", False):
+            from src.scripts.filters import configure
+            configure()
         engines = list_remote_engines(sys.argv[2])
         for engine in engines:
             print(engine)
