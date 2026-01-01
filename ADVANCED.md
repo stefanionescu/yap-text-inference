@@ -572,6 +572,34 @@ Reports p50/p95 latencies under concurrent load.
 
 Pass `--double-ttfb` to run two sequential transactions per connection and compare cold vs warm latency.
 
+### History Recall Test
+
+```bash
+# run inside the scripts/activate.sh environment
+TEXT_API_KEY=your_api_key python3 tests/history.py
+TEXT_API_KEY=your_api_key python3 tests/history.py --gender male --personality flirty
+TEXT_API_KEY=your_api_key python3 tests/history.py --temperature 0.8 --top_p 0.9
+```
+
+Connects with a pre-built conversation history, then sends follow-up messages to test the assistant's recall of earlier exchanges. Tracks TTFB for each response and prints summary statistics (p50, p90, p95). Useful for validating prefix caching and KV cache reuse.
+
+### Connection Lifecycle Test
+
+```bash
+# run inside the scripts/activate.sh environment
+TEXT_API_KEY=your_api_key python3 tests/connections.py
+TEXT_API_KEY=your_api_key python3 tests/connections.py --normal-wait 5 --idle-expect-seconds 150
+```
+
+Tests WebSocket connection lifecycle:
+- **Normal close**: Opens a connection, waits, sends `end` frame, verifies clean shutdown
+- **Idle timeout**: Opens a connection, stays idle, verifies server closes with code `4000`
+
+Flags:
+- `--normal-wait`: Seconds to keep connection open before sending end (default: 2)
+- `--idle-expect-seconds`: Expected idle timeout from server (default: 150)
+- `--idle-grace-seconds`: Buffer before failing the idle test (default: 15)
+
 ## Persona and History Behavior
 
 - Chat prompts are rendered using each model's tokenizer

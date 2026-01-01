@@ -51,10 +51,13 @@ async def _test_ping_pong(ws_url: str) -> None:
     async with _open_connection(ws_url) as ws:
         logger.info("[ping] sending ping control frame")
         await ws.send(json.dumps({"type": "ping"}))
-        payload = await asyncio.wait_for(ws.recv(), timeout=5.0)
+        try:
+            payload = await asyncio.wait_for(ws.recv(), timeout=5.0)
+        except asyncio.TimeoutError:
+            raise RuntimeError("no pong response within 5s")
         msg = json.loads(payload)
         if msg.get("type") != "pong":
-            raise RuntimeError(f"expected pong, received {msg}")
+            raise RuntimeError(f"expected pong, got {msg.get('type')}")
         logger.info("[ping] received pong response")
         await send_client_end(ws)
 
@@ -66,18 +69,21 @@ async def _test_idle_watchdog(
 ) -> None:
     total_wait = max(0.0, expect_seconds) + max(0.0, grace_seconds)
     if total_wait == 0:
-        raise RuntimeError("idle wait is zero; set --idle-expect-seconds to a positive value")
+        raise RuntimeError("idle wait is zero; use --idle-expect-seconds")
 
     async with _open_connection(ws_url) as ws:
         logger.info(
-            "[idle] waiting up to %.1fs for the server to close the idle connection",
+            "[idle] waiting up to %.1fs for server to close idle connection",
             total_wait,
         )
         try:
             await asyncio.wait_for(ws.recv(), timeout=total_wait)
-            raise RuntimeError("server sent unexpected payload before idle close")
-        except asyncio.TimeoutError as exc:
-            raise RuntimeError("server did not close the connection within the idle window") from exc
+            raise RuntimeError("server sent data before idle close")
+        except asyncio.TimeoutError:
+            raise RuntimeError(
+                f"server did not close within {total_wait:.0f}s "
+                f"(expected idle timeout: {expect_seconds:.0f}s)"
+            )
         except websockets.ConnectionClosed as exc:
             logger.info(
                 "[idle] server closed connection (code=%s reason=%s)",
@@ -115,9 +121,9 @@ async def run_connection_suite(
         try:
             await factory()
             logger.info("[%s] PASS", label)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             success = False
-            logger.exception("[%s] FAIL", label)
+            logger.error("[%s] FAIL: %s", label, exc)
     return success
 
 
