@@ -278,6 +278,14 @@ WARM_HISTORY: list[dict[str, str]] = [
         "role": "assistant",
         "content": "Japan takes Kit Kats incredibly seriously. You'll find matcha green tea, sake, strawberry cheesecake, roasted sweet potato, wasabi, and dozens of regional exclusives. Some flavors are only available in specific cities or seasons. There are entire shops dedicated just to Kit Kats in Tokyo. It's honestly kind of overwhelming in the best way.",
     },
+    {
+        "role": "user",
+        "content": "Okay I'm definitely making a Kit Kat run part of my itinerary now. This whole conversation has honestly made me way more excited and less nervous about the trip. I think I'm finally ready to book those flights.",
+    },
+    {
+        "role": "assistant",
+        "content": "That's awesome to hear! You've clearly done a lot of thinking and research already, and that preparation is going to pay off. Solo travel can be intimidating at first but Japan is genuinely one of the best places to do it. You're going to have an incredible time, and hey, you'll come back with great stories and a suitcase full of weird Kit Kats.",
+    },
 ]
 
 # Follow-up messages to test recall of the conversation history

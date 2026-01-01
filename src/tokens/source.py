@@ -92,10 +92,13 @@ def resolve_transformers_target(
     """Determine the best target for loading a transformers tokenizer.
     
     Priority:
-    1. If remote repo, use it directly
-    2. If local with tokenizer.json, use local path
-    3. If AWQ with source model, use source model from HF
-    4. Otherwise use local path
+    1. If remote repo, use it directly (HF will cache locally)
+    2. If local directory, always use local_only=True
+    
+    For local directories (including AWQ quantized models), we enforce
+    local_only=True to ensure tokenizers are loaded from the model
+    directory itself. This prevents silently fetching from HuggingFace
+    when local tokenizer files are missing.
     
     Args:
         path_or_repo: Original path or repo.
@@ -105,11 +108,9 @@ def resolve_transformers_target(
         TransformersTarget with identifier and local_only flag.
     """
     if not source.is_local:
+        # Remote HuggingFace repo - transformers will cache locally
         return TransformersTarget(path_or_repo, False)
-    if source.tokenizer_json_path and os.path.isfile(source.tokenizer_json_path):
-        return TransformersTarget(path_or_repo, True)
-    if source.awq_metadata_model:
-        return TransformersTarget(source.awq_metadata_model, False)
+    # Local directory - always enforce local-only loading
     return TransformersTarget(path_or_repo, True)
 
 

@@ -8,6 +8,7 @@ from src.config.trt import TRT_ENGINE_DIR
 from src.config.quantization import SUPPORTED_ENGINES
 from src.config.limits import MAX_CONCURRENT_CONNECTIONS
 from src.config.secrets import TEXT_API_KEY
+from src.tokens.validation import validate_model_tokenizer
 from .models import is_classifier_model
 from .quantization import classify_prequantized_model
 
@@ -79,6 +80,16 @@ def validate_env() -> None:
             errors.append(
                 "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'awq', '8bit', or '4bit' for TRT"
             )
+
+    # Validate tokenizers exist locally for configured models
+    chat_tok_error = validate_model_tokenizer(CHAT_MODEL, "CHAT_MODEL", DEPLOY_CHAT)
+    if chat_tok_error:
+        errors.append(chat_tok_error)
+
+    tool_tok_error = validate_model_tokenizer(TOOL_MODEL, "TOOL_MODEL", DEPLOY_TOOL)
+    if tool_tok_error:
+        errors.append(tool_tok_error)
+
     if errors:
         raise ValueError("; ".join(errors))
 
