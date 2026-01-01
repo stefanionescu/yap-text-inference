@@ -235,6 +235,7 @@ trt_validate_mpi_runtime() {
 
 # Validate TensorRT-LLM installation
 trt_validate_installation() {
+  log_blank
   log_info "[trt] Validating TRT wheel installation..."
 
   # Check TensorRT-LLM version

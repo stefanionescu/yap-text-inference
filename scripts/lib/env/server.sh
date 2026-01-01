@@ -31,5 +31,14 @@ server_init_network_defaults() {
     )
   fi
   export SERVER_HEALTH_URLS
+
+  # Local health URLs always use localhost - these are for startup probes
+  # where we need to check the server from within the same container/host.
+  # SERVER_HOST might be an external hostname that's not routable internally.
+  SERVER_LOCAL_HEALTH_URLS=(
+    "http://127.0.0.1:${SERVER_PORT}/healthz"
+    "http://127.0.0.1:${SERVER_PORT}/health"
+  )
+  export SERVER_LOCAL_HEALTH_URLS
 }
 

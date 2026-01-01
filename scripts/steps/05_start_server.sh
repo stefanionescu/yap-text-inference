@@ -19,9 +19,11 @@ server_init_network_defaults
 warmup_init_defaults "${ROOT_DIR}" "${SCRIPT_DIR}/.."
 
 # Wait for server health with timeout. Exits with error if not healthy in time.
+# Uses SERVER_LOCAL_HEALTH_URLS (localhost) since we're checking from within
+# the same host/container. SERVER_HOST might be an external hostname.
 wait_for_server_health() {
   local deadline=$((SECONDS + WARMUP_TIMEOUT_SECS))
-  local urls=("${SERVER_HEALTH_URLS[@]}")
+  local urls=("${SERVER_LOCAL_HEALTH_URLS[@]}")
   while (( SECONDS <= deadline )); do
     if bash "${WARMUP_HEALTH_CHECK_SCRIPT}" "${urls[@]}" >/dev/null 2>&1; then
       return 0
