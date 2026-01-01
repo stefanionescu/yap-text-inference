@@ -1,6 +1,7 @@
 """Typed message fixtures grouped by test area."""
 
 from .conversation import CONVERSATION_HISTORY_MESSAGES
+from .history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from .sanitizer import STREAMING_SANITIZER_CASES
 from .warmup import WARMUP_DEFAULT_MESSAGES
 from .gender import GENDER_NAME_CHECK_MESSAGE
@@ -10,6 +11,8 @@ from .screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 
 __all__ = [
     "STREAMING_SANITIZER_CASES",
+    "WARM_HISTORY",
+    "HISTORY_RECALL_MESSAGES",
     "WARMUP_DEFAULT_MESSAGES",
     "TOOL_DEFAULT_MESSAGES",
     "CONVERSATION_HISTORY_MESSAGES",
