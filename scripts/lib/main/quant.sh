@@ -139,7 +139,7 @@ main_apply_quantization() {
 # Usage: main_get_quant_hint
 # Returns: quantization hint or empty string
 main_get_quant_hint() {
-  if [ "${DEPLOY_MODE_SELECTED}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
+  if [ "${DEPLOY_MODE_SELECTED:-}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
     model_detect_quantization_hint "${CHAT_MODEL_NAME}"
   fi
 }
