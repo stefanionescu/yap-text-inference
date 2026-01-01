@@ -112,14 +112,14 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     updated_config = session_handler.get_session_config(session_id)
     static_prefix = updated_config.get("chat_prompt") or ""
     runtime_text = ""
-    history_text = _resolve_history(session_id, msg)
+    history_text, history_info = _resolve_history(session_id, msg)
     user_utt = _trim_user_utterance(msg.get("user_utterance", ""), session_id)
     # Track user utterance for pairing with assistant response later.
     # Don't re-fetch history_text - it already contains previous turns,
     # and user_utt is passed separately to the prompt builder.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
 
-    if not await safe_send_json(ws, _build_ack_payload(session_id, session_config, updated_config)):
+    if not await safe_send_json(ws, _build_ack_payload(session_id, session_config, updated_config, history_info)):
         return
     logger.info("handle_start: ack sent session_id=%s", session_id)
 
@@ -202,16 +202,28 @@ def _extract_personalities(msg: dict[str, Any]) -> dict[str, list[str]] | None:
     return validate_personalities_list(raw_personalities)
 
 
-def _resolve_history(session_id: str, msg: dict[str, Any]) -> str:
+def _resolve_history(session_id: str, msg: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
     """Resolve history from message.
     
     Accepts: "history": [{role: "user", content: "..."}, ...]
+    
+    Returns:
+        Tuple of (rendered_history_text, history_info_dict_or_none).
+        history_info is only returned when warm history was sent.
     """
     if "history" in msg:
         history_messages = msg.get("history")
         if isinstance(history_messages, list):
-            return session_handler.set_history_messages(session_id, history_messages)
-    return session_handler.get_history_text(session_id)
+            input_count = len(history_messages)
+            rendered = session_handler.set_history_messages(session_id, history_messages)
+            retained_count = session_handler.get_history_turn_count(session_id)
+            history_info = {
+                "input_messages": input_count,
+                "retained_turns": retained_count,
+                "trimmed": retained_count < (input_count // 2),  # Rough heuristic: turns ≈ messages/2
+            }
+            return rendered, history_info
+    return session_handler.get_history_text(session_id), None
 
 
 def _trim_user_utterance(user_utt: str, session_id: str) -> str:
@@ -230,8 +242,9 @@ def _build_ack_payload(
     session_id: str,
     base_config: dict[str, Any],
     updated_config: dict[str, Any],
+    history_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "type": "ack",
         "for": "start",
         "ok": True,
@@ -241,6 +254,9 @@ def _build_ack_payload(
         "personality": updated_config.get("chat_personality"),
         "chat_prompt": bool(updated_config.get("chat_prompt")),
     }
+    if history_info is not None:
+        payload["history"] = history_info
+    return payload
 
 
 __all__ = ["handle_start_message"]

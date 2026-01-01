@@ -242,6 +242,11 @@ class SessionHandler:
         state.touch()
         return rendered
 
+    def get_history_turn_count(self, session_id: str) -> int:
+        """Get the number of history turns currently stored for a session."""
+        state = self._get_state(session_id)
+        return len(state.history_turns) if state else 0
+
     def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
         state = self._ensure_state(session_id)
         normalized_user = strip_screen_prefix(
