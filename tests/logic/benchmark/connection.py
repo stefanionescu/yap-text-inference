@@ -13,6 +13,7 @@ import uuid
 from typing import Any
 
 import websockets
+from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from tests.config import DEFAULT_PERSONALITIES
 from tests.helpers.message import iter_messages
@@ -23,32 +24,6 @@ from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
 from .types import BenchmarkConfig
 
 WS_MAX_QUEUE = None
-
-
-async def _open_connection(auth_url: str):
-    """Open a WebSocket connection with retry logic.
-    
-    Returns the WebSocket or None if connection fails.
-    """
-    try:
-        ctx = connect_with_retries(
-            lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)
-        )
-        return await ctx.__aenter__()
-    except Exception:
-        return None
-
-
-async def _close_connection(ws) -> None:
-    """Close a WebSocket connection gracefully."""
-    try:
-        await send_client_end(ws)
-    except Exception:
-        pass
-    try:
-        await ws.close()
-    except Exception:
-        pass
 
 
 async def _execute_phase(
@@ -133,29 +108,35 @@ async def _consume_stream(
     Returns:
         Result dict with metrics on success or error details on failure.
     """
-    async for msg in iter_messages(ws):
-        msg_type = msg.get("type")
+    try:
+        async for msg in iter_messages(ws):
+            msg_type = msg.get("type")
 
-        if msg_type == "toolcall":
-            tracker.record_toolcall()
-            continue
+            if msg_type == "toolcall":
+                tracker.record_toolcall()
+                continue
 
-        if msg_type == "token":
-            tracker.record_token(msg.get("text", ""))
-            continue
+            if msg_type == "token":
+                tracker.record_token(msg.get("text", ""))
+                continue
 
-        if msg_type == "final":
-            normalized = msg.get("normalized_text")
-            if normalized:
-                tracker.final_text = normalized
-            continue
+            if msg_type == "final":
+                normalized = msg.get("normalized_text")
+                if normalized:
+                    tracker.final_text = normalized
+                continue
 
-        if msg_type == "done":
-            cancelled = bool(msg.get("cancelled"))
-            return _build_success_result(tracker, phase, cancelled)
+            if msg_type == "done":
+                cancelled = bool(msg.get("cancelled"))
+                return _build_success_result(tracker, phase, cancelled)
 
-        if msg_type == "error":
-            return _build_error_result(msg, phase)
+            if msg_type == "error":
+                return _build_error_result(msg, phase)
+
+    except ConnectionClosedOK:
+        return error_result("connection_closed_ok", phase=phase)
+    except ConnectionClosedError as exc:
+        return error_result(f"connection_closed: code={exc.code}", phase=phase)
 
     return error_result("stream ended before 'done'", phase=phase)
 
@@ -192,8 +173,7 @@ def _build_error_result(msg: dict[str, Any], phase: int) -> dict[str, Any]:
 async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
     """Execute one or two transactions over a single WebSocket connection.
     
-    This is a flattened version of the previous deeply-nested _one_connection.
-    Error handling is simplified by using early returns and helper functions.
+    Uses proper async context manager for connection lifecycle management.
     
     Args:
         cfg: Benchmark configuration with all connection parameters.
@@ -205,20 +185,26 @@ async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
 
-    ws = await _open_connection(auth_url)
-    if ws is None:
-        return [error_result("connection_failed", phase=1)]
-
     try:
-        for phase in range(1, phases + 1):
-            result = await _execute_phase(ws, cfg, phase)
-            results.append(result)
-            if not result.get("ok"):
-                break
-    finally:
-        await _close_connection(ws)
+        async with connect_with_retries(
+            lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)
+        ) as ws:
+            try:
+                for phase in range(1, phases + 1):
+                    result = await _execute_phase(ws, cfg, phase)
+                    results.append(result)
+                    if not result.get("ok"):
+                        break
+            finally:
+                await send_client_end(ws)
+    except (ConnectionClosedOK, ConnectionClosedError) as exc:
+        if not results:
+            return [error_result(f"connection_closed: {exc}", phase=1)]
+    except Exception as exc:
+        if not results:
+            return [error_result(f"connection_failed: {exc}", phase=1)]
 
-    return results
+    return results if results else [error_result("connection_failed", phase=1)]
 
 
 __all__ = ["execute_connection"]

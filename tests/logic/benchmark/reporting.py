@@ -51,6 +51,13 @@ def _format_error_line(raw_error: str, all_errors: list[dict[str, Any]]) -> str:
         suffix = f" ({', '.join(details)})" if details else ""
         return f"server_at_capacity. Details: {suffix}"
 
+    if "connection_closed_ok" in normalized:
+        closed_count = sum(1 for err in all_errors if "connection_closed" in str(err.get("error", "")).lower())
+        return f"server closed connection (code 1000) before response completed ({closed_count} connections affected)"
+
+    if "connection_closed" in normalized:
+        return f"server closed connection unexpectedly: {message}"
+
     return message
 
 
