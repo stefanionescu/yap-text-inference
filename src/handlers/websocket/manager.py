@@ -9,8 +9,6 @@ Message Types:
     cancel      - Abort active generation request
     followup    - Continue conversation (skip tool routing)
     chat_prompt - Update persona mid-session
-    warm_persona- Pre-warm model with persona prefix
-    warm_history- Pre-warm model with history context
     ping/pong   - Keep-alive heartbeat
     end         - Client-initiated disconnect
 """
@@ -44,8 +42,6 @@ from ...messages.cancel import handle_cancel_message
 from ...messages.chat.prompt import handle_chat_prompt
 from ...messages.followup import handle_followup_message
 from ...messages.start import handle_start_message
-from ...messages.warm.warm_history import handle_warm_history_message
-from ...messages.warm.warm_persona import handle_warm_persona_message
 from ..rate_limit import SlidingWindowRateLimiter
 from ..instances import connections
 from ..session import abort_session_requests, session_handler
@@ -66,11 +62,6 @@ _SESSION_MESSAGE_HANDLERS: dict[str, SessionHandlerFn] = {
     "chat_prompt": handle_chat_prompt,
 }
 
-# Handlers that receive only (ws, payload) - no session_id needed
-_PAYLOAD_ONLY_HANDLERS: dict[str, Callable[[WebSocket, dict[str, Any]], Any]] = {
-    "warm_persona": handle_warm_persona_message,
-    "warm_history": handle_warm_history_message,
-}
 
 
 async def _prepare_connection(ws: WebSocket) -> bool:
@@ -256,12 +247,6 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
             if msg_type == "cancel":
                 logger.info("WS recv: cancel session_id=%s", session_id)
                 await handle_cancel_message(ws, session_id, msg.get("request_id"))
-                continue
-
-            handler = _PAYLOAD_ONLY_HANDLERS.get(msg_type)
-            if handler:
-                logger.info("WS recv: %s", msg_type)
-                await handler(ws, msg)
                 continue
 
             session_handler_fn = _SESSION_MESSAGE_HANDLERS.get(msg_type)
