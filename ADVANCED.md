@@ -54,7 +54,7 @@ This document covers advanced operations, configuration, and deep-dive details f
 
 ### Engine Selection
 
-Yap supports two inference engines selected at deployment time:
+The server supports two inference engines selected at deployment time:
 
 | Environment Variable | CLI Flag | Default |
 |---------------------|----------|---------|

@@ -4,7 +4,7 @@ Docker setup for Yap's text inference API with models baked into the image.
 
 ## Engine Options
 
-Yap supports two inference engines:
+The server supports two inference engines:
 
 | Engine | Best For | Requirements |
 |--------|----------|--------------|
