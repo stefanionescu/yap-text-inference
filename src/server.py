@@ -57,6 +57,14 @@ os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")  # Match main pro
 os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")  # Faster startup
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", os.environ.get("CUDA_VISIBLE_DEVICES", "0"))
 
+# ============================================================================
+# Apply log noise filters BEFORE importing engine libraries
+# This suppresses verbose TRT-LLM/vLLM output unless SHOW_*_LOGS is set.
+# Must happen before any tensorrt_llm/vllm imports to set env vars early.
+# ============================================================================
+from src.scripts.filters import configure as configure_log_filters
+configure_log_filters()
+
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import ORJSONResponse
 
