@@ -156,14 +156,14 @@ async def _send_start_request(
     return reply, metrics
 
 
-def _format_history_info(history_info: dict[str, Any]) -> str:
-    """Format history info for display."""
-    input_msgs = history_info.get("input_messages", 0)
+def _format_history_kept(history_info: dict[str, Any]) -> str:
+    """Format the 'history kept' line for display."""
     retained = history_info.get("retained_turns", 0)
+    tokens = history_info.get("history_tokens", 0)
     trimmed = history_info.get("trimmed", False)
     
     status = yellow("trimmed") if trimmed else green("retained")
-    return f"{input_msgs} msgs → {retained} turns ({status})"
+    return f"{retained} turns, {tokens} tokens ({status})"
 
 
 def _print_header(
@@ -173,9 +173,13 @@ def _print_header(
 ) -> None:
     """Print the test header with history info."""
     print(f"\n{section_header('HISTORY RECALL TEST')}")
-    print(dim(f"  warm history: {len(WARM_HISTORY)} messages"))
     if history_info:
-        print(dim(f"  server kept:  {_format_history_info(history_info)}"))
+        input_msgs = history_info.get("input_messages", 0)
+        retained = history_info.get("retained_turns", 0)
+        print(dim(f"  history in:   {input_msgs} msgs → {retained} turns"))
+        print(dim(f"  history kept: {_format_history_kept(history_info)}"))
+    else:
+        print(dim(f"  warm history: {len(WARM_HISTORY)} messages"))
     print(dim(f"  recall tests: {len(HISTORY_RECALL_MESSAGES)} messages"))
     print(dim(f"  persona: {personality}/{gender}\n"))
 
