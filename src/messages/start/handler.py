@@ -58,7 +58,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
             - gender: Required, "male" or "female"
             - personality: Required, personality identifier
             - chat_prompt: Required if DEPLOY_CHAT, the system prompt
-            - history_text: Optional, previous conversation
+            - history: Optional, [{role, content}, ...] array
             - user_utterance: The user's message
             - sampling: Optional sampling parameter overrides
             - personalities: Required if DEPLOY_TOOL, personality mappings
@@ -74,7 +74,7 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
         session_id,
         msg.get("gender"),
         msg.get("personality"),
-        len(msg.get("history_text", "")),
+        len(msg.get("history", [])),
         len(msg.get("user_utterance", "")),
     )
     session_config = session_handler.initialize_session(session_id)
@@ -203,9 +203,14 @@ def _extract_personalities(msg: dict[str, Any]) -> dict[str, list[str]] | None:
 
 
 def _resolve_history(session_id: str, msg: dict[str, Any]) -> str:
-    if "history_text" in msg:
-        incoming_history = msg.get("history_text") or ""
-        return session_handler.set_history_text(session_id, incoming_history)
+    """Resolve history from message.
+    
+    Accepts: "history": [{role: "user", content: "..."}, ...]
+    """
+    if "history" in msg:
+        history_messages = msg.get("history")
+        if isinstance(history_messages, list):
+            return session_handler.set_history_messages(session_id, history_messages)
     return session_handler.get_history_text(session_id)
 
 

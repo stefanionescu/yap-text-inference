@@ -232,6 +232,16 @@ class SessionHandler:
         state.touch()
         return rendered
 
+    def set_history_messages(self, session_id: str, messages: list[dict]) -> str:
+        """Set history from JSON message array [{role, content}, ...].
+        
+        Parses messages into turns, trims to fit token budget.
+        """
+        state = self._ensure_state(session_id)
+        rendered = self._history.set_messages(state, messages)
+        state.touch()
+        return rendered
+
     def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
         state = self._ensure_state(session_id)
         normalized_user = strip_screen_prefix(

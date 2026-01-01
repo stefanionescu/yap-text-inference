@@ -36,7 +36,7 @@ def build_start_payload(
     ctx: SessionContext,
     user_text: str,
     *,
-    history_text: str = "",
+    history: list[dict[str, str]] | None = None,
     personalities: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build the start message payload for a conversation turn.
@@ -44,7 +44,7 @@ def build_start_payload(
     Args:
         ctx: Session context with gender, personality, and optional chat_prompt.
         user_text: The user's message text.
-        history_text: Accumulated conversation history (default empty).
+        history: Conversation history as [{role, content}, ...] (default empty).
         personalities: Optional personality list override (default DEFAULT_PERSONALITIES).
     
     Returns:
@@ -56,7 +56,7 @@ def build_start_payload(
         "gender": ctx.gender,
         "personality": ctx.personality,
         "personalities": personalities if personalities is not None else DEFAULT_PERSONALITIES,
-        "history_text": history_text,
+        "history": history if history is not None else [],
         "user_utterance": user_text,
     }
     if ctx.chat_prompt is not None:
@@ -68,14 +68,11 @@ def build_start_payload(
 
 def build_chat_prompt_payload(
     ctx: SessionContext,
-    *,
-    history_text: str = "",
 ) -> dict[str, Any]:
     """Build a chat_prompt update payload for mid-session persona changes.
     
     Args:
         ctx: Session context with the new persona settings.
-        history_text: Current conversation history.
     
     Returns:
         A dict ready to be JSON-serialized and sent over WebSocket.
@@ -86,7 +83,6 @@ def build_chat_prompt_payload(
         "gender": ctx.gender,
         "personality": ctx.personality,
         "chat_prompt": ctx.chat_prompt,
-        "history_text": history_text,
     }
 
 

@@ -124,7 +124,10 @@ async def _handle_history_command(
     _ = registry, raw_command  # unused
     if client.session.history:
         print("\n--- conversation history ---")
-        print(client.session.history)
+        for msg in client.session.history:
+            role = msg.get("role", "unknown").capitalize()
+            content = msg.get("content", "")
+            print(f"{role}: {content}")
         print("--- end history ---")
     else:
         logger.info("History is empty")

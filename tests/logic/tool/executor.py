@@ -143,7 +143,7 @@ def _build_step_payload(
         "gender": cfg.gender,
         "personality": cfg.personality,
         "personalities": DEFAULT_PERSONALITIES,
-        "history_text": render_history(history),
+        "history": render_history(history),
         "user_utterance": user_text,
     }
     if cfg.chat_prompt is not None:

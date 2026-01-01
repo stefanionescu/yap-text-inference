@@ -247,7 +247,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                     "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
                     msg.get("session_id"),
                     msg.get("gender"),
-                    len(msg.get("history_text", "")),
+                    len(msg.get("history", [])),
                     len(msg.get("user_utterance", "")),
                 )
                 session_id = await _handle_start_command(ws, msg, session_id)

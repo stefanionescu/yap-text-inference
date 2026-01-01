@@ -155,8 +155,24 @@ LEADING_NEWLINE_TOKENS_PATTERN = re.compile(r"^(?:\s*(?:\\n|/n|\r?\n)+\s*)")
 COLLAPSE_SPACES_PATTERN = re.compile(r"[ \t]{2,}")
 # Strip any whitespace after ellipsis (... followed by spaces → ...)
 ELLIPSIS_TRAILING_SPACE_PATTERN = re.compile(r"\.\.\.\s+")
-# Replace one or more dashes/hyphens with a single space
-DASH_PATTERN = re.compile(r"-+")
+# Emdash variants: -- or actual em/en-dash unicode characters → space
+EMDASH_PATTERN = re.compile(r"--+|—|–")
+# Math subtraction: digit - digit with spaces on both sides (avoids phone numbers like 555-1234)
+SUBTRACTION_PATTERN = re.compile(r"(\d)\s+-\s+(\d)")
+# Negative number: dash immediately before digit, not preceded by word char
+NEGATIVE_NUMBER_PATTERN = re.compile(r"(?<!\w)-(\d)")
+# Word hyphen: letter-letter (compound words) → space
+WORD_HYPHEN_PATTERN = re.compile(r"([A-Za-z])-([A-Za-z])")
+
+# Temperature units with degree symbol
+TEMP_FAHRENHEIT_PATTERN = re.compile(r"°\s*F\b", re.IGNORECASE)
+TEMP_CELSIUS_PATTERN = re.compile(r"°\s*C\b", re.IGNORECASE)
+TEMP_KELVIN_PATTERN = re.compile(r"°\s*K\b", re.IGNORECASE)
+# Standalone degree symbol (not followed by F/C/K)
+DEGREE_SYMBOL_PATTERN = re.compile(r"°(?!\s*[FCK])", re.IGNORECASE)
+
+# Percent sign
+PERCENT_PATTERN = re.compile(r"%")
 
 # Email detection pattern (comprehensive but not overly strict)
 EMAIL_PATTERN = re.compile(
@@ -197,7 +213,15 @@ __all__ = [
     "LEADING_NEWLINE_TOKENS_PATTERN",
     "COLLAPSE_SPACES_PATTERN",
     "ELLIPSIS_TRAILING_SPACE_PATTERN",
-    "DASH_PATTERN",
+    "EMDASH_PATTERN",
+    "SUBTRACTION_PATTERN",
+    "NEGATIVE_NUMBER_PATTERN",
+    "WORD_HYPHEN_PATTERN",
+    "TEMP_FAHRENHEIT_PATTERN",
+    "TEMP_CELSIUS_PATTERN",
+    "TEMP_KELVIN_PATTERN",
+    "DEGREE_SYMBOL_PATTERN",
+    "PERCENT_PATTERN",
     "EMAIL_PATTERN",
 ]
 

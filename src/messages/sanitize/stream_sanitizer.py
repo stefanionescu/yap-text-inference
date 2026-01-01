@@ -18,21 +18,29 @@ import re
 from ...config.filters import (
     ACTION_EMOTE_PATTERN,
     COLLAPSE_SPACES_PATTERN,
-    DASH_PATTERN,
+    DEGREE_SYMBOL_PATTERN,
     DOUBLE_DOT_SPACE_PATTERN,
     DOT_RUN_PATTERN,
     ELLIPSIS_PATTERN,
     ELLIPSIS_TRAILING_DOT_PATTERN,
     ELLIPSIS_TRAILING_SPACE_PATTERN,
+    EMDASH_PATTERN,
     EMOJI_PATTERN,
     EMOTICON_PATTERN,
     EXAGGERATED_OH_PATTERN,
     FREESTYLE_PREFIX_PATTERN,
     HTML_TAG_PATTERN,
     LEADING_NEWLINE_TOKENS_PATTERN,
+    NEGATIVE_NUMBER_PATTERN,
     NEWLINE_TOKEN_PATTERN,
+    PERCENT_PATTERN,
     SPACE_BEFORE_PUNCT_PATTERN,
     SPACED_DOT_RUN_PATTERN,
+    SUBTRACTION_PATTERN,
+    TEMP_CELSIUS_PATTERN,
+    TEMP_FAHRENHEIT_PATTERN,
+    TEMP_KELVIN_PATTERN,
+    WORD_HYPHEN_PATTERN,
 )
 from .common import _strip_escaped_quotes
 from .suffix import compute_stable_and_tail_lengths
@@ -188,8 +196,18 @@ def _sanitize_stream_chunk(
     cleaned = SPACED_DOT_RUN_PATTERN.sub(".", cleaned)
     # Ensure a space after period if followed by an alnum (avoid smushing words)
     cleaned = re.sub(r"\.(?=[A-Za-z0-9])", ". ", cleaned)
-    # Replace dashes/hyphens with space (before space collapsing)
-    cleaned = DASH_PATTERN.sub(" ", cleaned)
+    # Verbalize temperature units before other replacements
+    cleaned = TEMP_FAHRENHEIT_PATTERN.sub(" degrees Fahrenheit", cleaned)
+    cleaned = TEMP_CELSIUS_PATTERN.sub(" degrees Celsius", cleaned)
+    cleaned = TEMP_KELVIN_PATTERN.sub(" degrees Kelvin", cleaned)
+    cleaned = DEGREE_SYMBOL_PATTERN.sub(" degrees", cleaned)
+    # Verbalize percent sign
+    cleaned = PERCENT_PATTERN.sub(" percent", cleaned)
+    # Handle dashes/hyphens contextually (order matters: specific → general)
+    cleaned = SUBTRACTION_PATTERN.sub(r"\1 minus \2", cleaned)
+    cleaned = NEGATIVE_NUMBER_PATTERN.sub(r" minus \1", cleaned)
+    cleaned = WORD_HYPHEN_PATTERN.sub(r"\1 \2", cleaned)
+    cleaned = EMDASH_PATTERN.sub(" ", cleaned)
     cleaned = cleaned.replace("'", "'")
     cleaned = SPACE_BEFORE_PUNCT_PATTERN.sub(r"\1", cleaned)
     cleaned = _strip_escaped_quotes(cleaned)

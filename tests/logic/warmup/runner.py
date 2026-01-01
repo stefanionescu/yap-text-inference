@@ -62,7 +62,7 @@ def _build_start_payload(
         "gender": gender,
         "personality": personality,
         "personalities": DEFAULT_PERSONALITIES,
-        "history_text": "",
+        "history": [],
         "user_utterance": user_msg,
     }
     if chat_prompt is not None:

@@ -2,15 +2,19 @@
 
 from fastapi import WebSocket
 
-from ...config import DEPLOY_CHAT, HISTORY_MAX_TOKENS
-from ...tokens import count_tokens_chat, trim_history_preserve_messages_chat
+from ...config import DEPLOY_CHAT
+from ...handlers.session.history import parse_history_messages, render_history, trim_history
+from ...handlers.session.state import SessionState
 from ..chat.builder import build_chat_warm_prompt
 from .warm_utils import warm_chat_segment, sanitize_optional_prompt
 from ...handlers.websocket.helpers import safe_send_json
 
 
 async def handle_warm_history_message(ws: WebSocket, msg: dict) -> None:
-    """Handle 'warm_history' message type."""
+    """Handle 'warm_history' message type.
+    
+    Accepts: "history": [{role: "user", content: "..."}, ...]
+    """
     if not DEPLOY_CHAT:
         await safe_send_json(ws, {
             "type": "error",
@@ -18,12 +22,16 @@ async def handle_warm_history_message(ws: WebSocket, msg: dict) -> None:
         })
         return
     
-    history_text = msg.get("history_text", "")
-    if count_tokens_chat(history_text) > HISTORY_MAX_TOKENS:
-        history_text = trim_history_preserve_messages_chat(
-            history_text,
-            HISTORY_MAX_TOKENS,
-        )
+    # Parse and trim history
+    history_messages = msg.get("history", [])
+    if not isinstance(history_messages, list):
+        history_messages = []
+    
+    # Use a temporary state for trimming
+    temp_state = SessionState(session_id="warm", meta={})
+    temp_state.history_turns = parse_history_messages(history_messages)
+    trim_history(temp_state)
+    history_text = render_history(temp_state.history_turns)
 
     try:
         # Optional persona/runtime so cache warmup matches real prompts

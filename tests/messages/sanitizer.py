@@ -201,6 +201,53 @@ STREAMING_SANITIZER_CASES = [
     ("Multiple. . . periods. . separated.", [8, 18, 30]),
     ("End with spaced dots. . .", [8, 18]),
     ("Period. .Word without space.", [6, 12, 22]),
+
+    # Temperature units (°F, °C, °K → degrees Fahrenheit/Celsius/Kelvin)
+    ("It's 72°F outside today.", [5, 12, 22]),
+    ("The temperature is 20°C in the lab.", [10, 22, 35]),
+    ("Absolute zero is 0°K theoretically.", [10, 20, 32]),
+    ("Room temp ranges from 68°F to 72°F typically.", [12, 25, 38, 50]),
+    ("Water boils at 100° C and freezes at 0° C.", [10, 22, 35, 48]),
+    ("Rotate 45° to the left.", [6, 14, 24]),
+    ("A 90° angle is perpendicular.", [4, 12, 26]),
+    ("Mixed temps 32°F equals 0°C exactly.", [8, 18, 30, 42]),
+
+    # Percent sign (% → percent)
+    ("The test showed 85% accuracy.", [8, 18, 28]),
+    ("Only 50% of users completed it.", [6, 14, 26]),
+    ("100% pure and natural.", [5, 12, 22]),
+    ("Growth was 12.5% this quarter.", [8, 18, 30]),
+    ("Split 50% here and 50% there.", [6, 14, 24, 32]),
+    ("A 0% chance of rain today.", [4, 12, 24]),
+    ("Increased by 200% over baseline.", [8, 18, 30]),
+
+    # Dash/hyphen contextual handling
+    # Emdashes (-- or — or –) → space
+    ("Hello--world becomes hello world.", [6, 14, 28]),
+    ("Text—with emdash—here works.", [6, 16, 28]),
+    ("En dash – also replaced.", [5, 12, 22]),
+    ("Multiple---dashes collapse.", [8, 18, 28]),
+    # Math subtraction (digit - digit with spaces) → minus
+    ("Calculate 10 - 5 for the answer.", [8, 16, 28]),
+    ("The result is 100 - 50 equals fifty.", [10, 20, 32]),
+    ("Simple math 1 - 2 becomes one minus two.", [8, 16, 30]),
+    ("Expression 42 - 17 evaluates correctly.", [10, 20, 35]),
+    # Negative numbers (-digit) → minus
+    ("Temperature dropped to -15 degrees.", [12, 24, 35]),
+    ("The value is -42 today.", [8, 16, 24]),
+    ("Coordinates are -73 longitude.", [10, 20, 32]),
+    ("Range from -10 to 10.", [6, 14, 22]),
+    # Word hyphens (letter-letter) → space
+    ("The well-known author spoke.", [6, 16, 28]),
+    ("A self-driving car arrived.", [4, 16, 28]),
+    ("High-quality products only.", [6, 18, 28]),
+    ("Re-enter the building now.", [4, 14, 26]),
+    ("Multi-word-compound here.", [6, 16, 26]),
+    # Mixed dash scenarios
+    ("The price is $20-$30 for entry.", [8, 18, 30]),
+    ("Year range 2020-2024 covered.", [8, 18, 28]),
+    ("Pages 10-15 are missing.", [6, 14, 24]),
+    ("It's -5°F and dropping--brrr.", [6, 14, 24]),
 ]
 
 __all__ = ["STREAMING_SANITIZER_CASES"]
