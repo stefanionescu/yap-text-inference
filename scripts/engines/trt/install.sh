@@ -21,10 +21,6 @@ source "${_TRT_INSTALL_DIR}/../../lib/deps/pip.sh"
 # Centralized TRT-LLM version - THIS IS THE SINGLE SOURCE OF TRUTH
 TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
 
-# Required Python version for TRT-LLM
-# Python 3.10 is the ONLY reliably working version for TRT-LLM 1.2.0rc5
-# Uses centralized constant from scripts/lib/common/constants.sh
-
 # Derived configurations
 TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
 TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
