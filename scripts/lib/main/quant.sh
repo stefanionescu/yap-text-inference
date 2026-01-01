@@ -127,8 +127,8 @@ quant_resolve_settings() {
 # Usage: main_apply_quantization <forced_mode> <chat_hint>
 main_apply_quantization() {
   quant_resolve_settings \
-    "${DEPLOY_MODE_SELECTED:-}" \
-    "${CHAT_MODEL_NAME}" \
+    "${DEPLOY_MODE:-}" \
+    "${CHAT_MODEL_NAME:-}" \
     "${1:-auto}" \
     "${2:-}" \
     "${QUANTIZATION:-}" \
@@ -139,7 +139,7 @@ main_apply_quantization() {
 # Usage: main_get_quant_hint
 # Returns: quantization hint or empty string
 main_get_quant_hint() {
-  if [ "${DEPLOY_MODE_SELECTED:-}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
-    model_detect_quantization_hint "${CHAT_MODEL_NAME}"
+  if [ "${DEPLOY_MODE:-}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
+    model_detect_quantization_hint "${CHAT_MODEL_NAME:-}"
   fi
 }

@@ -6,17 +6,17 @@
 # Log current configuration
 main_log_config() {
   log_blank
-  if [ "${DEPLOY_MODE_SELECTED}" = "tool" ]; then
+  if [ "${DEPLOY_MODE:-}" = "tool" ]; then
     log_info "[main] Configuration:, tool-only, precision=float16"
   else
-    log_info "[main] Configuration: engine=${INFERENCE_ENGINE}, quantization=${QUANT_MODE:-auto}"
+    log_info "[main] Configuration: engine=${INFERENCE_ENGINE:-vllm}, quantization=${QUANT_MODE:-auto}"
   fi
-  log_info "[main] Deploy mode: ${DEPLOY_MODE}"
-  if [ "${DEPLOY_MODE}" != "tool" ]; then
-    log_info "[main] Chat model: ${CHAT_MODEL_NAME}"
+  log_info "[main] Deploy mode: ${DEPLOY_MODE:-both}"
+  if [ "${DEPLOY_MODE:-}" != "tool" ]; then
+    log_info "[main] Chat model: ${CHAT_MODEL_NAME:-}"
   fi
-  if [ "${DEPLOY_MODE}" != "chat" ]; then
-    log_info "[main] Tool model: ${TOOL_MODEL_NAME}"
+  if [ "${DEPLOY_MODE:-}" != "chat" ]; then
+    log_info "[main] Tool model: ${TOOL_MODEL_NAME:-}"
   fi
 }
 
@@ -27,7 +27,7 @@ main_build_deploy_cmd() {
   local script_dir="$1"
   local quantizer="quantization/vllm_quantizer.sh"
   local engine_label="vLLM"
-  if [ "${INFERENCE_ENGINE}" = "trt" ]; then
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
     quantizer="quantization/trt_quantizer.sh"
     engine_label="TRT"
   fi
