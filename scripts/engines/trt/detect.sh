@@ -377,9 +377,7 @@ trt_download_prebuilt_engine() {
     target_dir="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}/${model_name}-trt-engine"
   fi
   
-  log_info "[engine] Downloading pre-built engine: ${engine_label}"
-  log_info "[engine]   From: ${repo_id}"
-  log_info "[engine]   To: ${target_dir}"
+  log_info "[engine] Downloading pre-built engine..."
   
   hf_enable_transfer "[engine]" "python" || true
   
@@ -410,7 +408,8 @@ snapshot_download(
     local_dir='${target_dir}',
     allow_patterns=['trt-llm/engines/${engine_label}/**']
 )
-print('✓ Downloaded pre-built engine', file=sys.stderr)
+print('[engine] ✓ Downloaded pre-built engine', file=sys.stderr)
+print(file=sys.stderr)
 PYTHON
     log_err "[engine] ✗ Failed to download pre-built engine"
     return 1

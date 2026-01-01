@@ -66,7 +66,6 @@ from .config import (
     INFERENCE_ENGINE,
 )
 from .helpers.validation import validate_env
-from .engines.vllm.setup import configure_runtime_env
 from .config.logging import configure_logging
 from .engines import (
     get_engine,
@@ -75,7 +74,6 @@ from .engines import (
     warm_chat_engine,
     warm_classifier,
 )
-from .engines.vllm.cache_daemon import ensure_cache_reset_daemon
 from .handlers.websocket import handle_websocket_connection
 
 logger = logging.getLogger(__name__)
@@ -83,7 +81,12 @@ logger = logging.getLogger(__name__)
 app = FastAPI(default_response_class=ORJSONResponse)
 
 configure_logging()
-configure_runtime_env()
+
+# Engine-specific runtime setup - only load vLLM modules when using vLLM
+if INFERENCE_ENGINE == "vllm":
+    from .engines.vllm.setup import configure_runtime_env
+    configure_runtime_env()
+
 validate_env()
 
 
@@ -118,6 +121,7 @@ async def preload_engines() -> None:
     # Start background cache management for vLLM
     # TRT-LLM uses built-in block reuse and doesn't need this
     if engine_supports_cache_reset():
+        from .engines.vllm.cache_daemon import ensure_cache_reset_daemon
         ensure_cache_reset_daemon()
     else:
         logger.info("cache reset daemon: disabled (TRT-LLM uses block reuse)")

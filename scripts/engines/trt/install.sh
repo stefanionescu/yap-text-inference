@@ -200,7 +200,7 @@ trt_validate_python_libraries() {
   log_info "[trt] Checking Python shared library..."
   local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
-      python -m src.scripts.trt.validation python-libs; then
+      python -W ignore::RuntimeWarning -m src.scripts.trt.validation python-libs; then
     return 1
   fi
 }
@@ -210,7 +210,7 @@ trt_validate_cuda_runtime() {
   log_info "[trt] Checking CUDA Python bindings..."
   local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
-      python -m src.scripts.trt.validation cuda-runtime 2>&1; then
+      python -W ignore::RuntimeWarning -m src.scripts.trt.validation cuda-runtime 2>&1; then
     log_err "[trt] ✗ CUDA Python bindings not working"
     log_err "[trt] ✗ Hint: Ensure cuda-python>=13.0 and that CUDA_HOME/lib64 contains CUDA 13 runtime libraries"
     return 1
@@ -227,7 +227,7 @@ trt_validate_mpi_runtime() {
     log_info "[trt] Checking MPI runtime..."
     local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
     PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
-      python -m src.scripts.trt.validation mpi
+      python -W ignore::RuntimeWarning -m src.scripts.trt.validation mpi
   else
     log_info "[trt] Skipping MPI check (NEED_MPI=0)"
   fi
@@ -241,7 +241,7 @@ trt_validate_installation() {
   local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   local trt_output
   trt_output=$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
-    python -m src.scripts.trt.validation trt-install 2>&1) || {
+    python -W ignore::RuntimeWarning -m src.scripts.trt.validation trt-install 2>&1) || {
     log_err "[trt] ✗ TensorRT-LLM not installed or not importable"
     echo "${trt_output}" >&2
     return 1
