@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-End-to-end exercise of toolcall → chat and follow-up (screen analysis) flow.
+Screen analysis follow-up regression test CLI.
+
+Parses command-line arguments and defers execution to screen_analysis.runner.
 
 Flow:
  1) Connect to /ws and send a 'start' that should trigger toolcall YES.
@@ -17,102 +19,23 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
-import uuid
 import sys
 from pathlib import Path
-
-import websockets
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-
-setup_repo_path()
-
 from tests.helpers.cli import (
     add_connection_args,
     add_sampling_args,
     build_sampling_payload,
 )
-from tests.helpers.fmt import (
-    section_header,
-    exchange_header,
-    exchange_footer,
-    format_user,
-    format_assistant,
-    format_metrics_inline,
-    dim,
-    green,
-    red,
-    yellow,
-)
-from tests.helpers.message import iter_messages
-from tests.helpers.stream import StreamTracker
-from tests.helpers.ws import send_client_end, with_api_key
 from tests.config import (
     DEFAULT_GENDER,
-    DEFAULT_PERSONALITIES,
-    DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
-    DEFAULT_WS_PING_INTERVAL,
-    DEFAULT_WS_PING_TIMEOUT,
 )
-from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 from tests.helpers.prompt import select_chat_prompt
-
-
-async def _consume_initial_response(ws, tracker: StreamTracker) -> tuple[bool, str]:
-    """Consume initial response, tracking if toolcall YES was received."""
-    saw_tool_yes = False
-    async for msg in iter_messages(ws):
-        t = msg.get("type")
-
-        if t == "ack":
-            tracker.ack_seen = True
-            continue
-        if t == "toolcall":
-            status = (msg.get("status") or "").lower()
-            tracker.record_toolcall()
-            if status == "yes":
-                saw_tool_yes = True
-                print(f"  {green('TOOLCALL')} status=YES")
-            else:
-                print(f"  {yellow('TOOLCALL')} status={status.upper()}")
-            continue
-        if t == "token":
-            chunk = msg.get("text", "")
-            tracker.record_token(chunk)
-            continue
-        if t == "final":
-            if msg.get("normalized_text"):
-                tracker.final_text = msg["normalized_text"]
-            continue
-        if t == "done":
-            break
-        if t == "error":
-            raise RuntimeError(msg)
-    return saw_tool_yes, tracker.final_text
-
-
-async def _consume_followup(ws, tracker: StreamTracker) -> str:
-    """Consume followup response."""
-    async for msg in iter_messages(ws):
-        t = msg.get("type")
-        if t == "token":
-            chunk = msg.get("text", "")
-            tracker.record_token(chunk)
-            continue
-        if t == "final":
-            if msg.get("normalized_text"):
-                tracker.final_text = msg["normalized_text"]
-            continue
-        if t == "done":
-            break
-        if t == "error":
-            raise RuntimeError(msg)
-    return tracker.final_text
 
 
 def _parse_args() -> argparse.Namespace:
@@ -127,80 +50,11 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
-async def run_once(
-    server: str,
-    api_key: str | None,
-    sampling: dict[str, float | int] | None,
-    chat_prompt: str,
-) -> None:
-    ws_url = with_api_key(server, api_key=api_key)
-    session_id = str(uuid.uuid4())
+def main() -> None:
+    """Run the screen analysis flow test."""
+    setup_repo_path()
+    from tests.logic.screen_analysis import run_once
 
-    start_payload = {
-        "type": "start",
-        "session_id": session_id,
-        "gender": DEFAULT_GENDER,
-        "personality": DEFAULT_PERSONALITY,
-        "personalities": DEFAULT_PERSONALITIES,
-        "history": [],
-        "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
-        "chat_prompt": chat_prompt,
-    }
-    if sampling:
-        start_payload["sampling"] = sampling
-
-    print(f"\n{section_header('SCREEN ANALYSIS TEST')}")
-    print(dim(f"  server: {server}"))
-    print(dim(f"  persona: {DEFAULT_PERSONALITY}/{DEFAULT_GENDER}\n"))
-
-    async with websockets.connect(
-        ws_url,
-        max_queue=None,
-        ping_interval=DEFAULT_WS_PING_INTERVAL,
-        ping_timeout=DEFAULT_WS_PING_TIMEOUT,
-    ) as ws:
-        try:
-            # Phase 1: Initial request (should trigger toolcall YES)
-            print(exchange_header(idx=1, persona="INITIAL"))
-            print(f"  {format_user(SCREEN_ANALYSIS_USER_REPLY)}")
-            
-            tracker1 = StreamTracker()
-            await ws.send(json.dumps(start_payload))
-            saw_tool_yes, short_text = await _consume_initial_response(ws, tracker1)
-            metrics1 = tracker1.finalize_metrics()
-            
-            print(f"  {format_assistant(short_text)}")
-            print(f"  {format_metrics_inline(metrics1)}")
-            print(exchange_footer())
-            
-            if not saw_tool_yes:
-                print(f"\n  {red('FAIL')} Did not receive toolcall 'yes'")
-                raise RuntimeError("Did not receive toolcall 'yes'")
-
-            # Phase 2: Followup with analysis text
-            print(exchange_header(idx=2, persona="FOLLOWUP"))
-            print(f"  {dim('(sending screen analysis text...)')}")
-            
-            followup_payload = {
-                "type": "followup",
-                "analysis_text": SCREEN_ANALYSIS_TEXT,
-            }
-            tracker2 = StreamTracker()
-            await ws.send(json.dumps(followup_payload))
-            final_followup = await _consume_followup(ws, tracker2)
-            metrics2 = tracker2.finalize_metrics()
-            
-            print(f"  {format_assistant(final_followup)}")
-            print(f"  {format_metrics_inline(metrics2)}")
-            print(exchange_footer())
-            
-            print(f"\n  {green('✓ PASS')} Screen analysis flow completed successfully")
-            
-        finally:
-            await send_client_end(ws)
-
-
-if __name__ == "__main__":
     args = _parse_args()
     chat_prompt = select_chat_prompt(DEFAULT_GENDER)
 
@@ -212,3 +66,7 @@ if __name__ == "__main__":
             chat_prompt,
         )
     )
+
+
+if __name__ == "__main__":
+    main()

@@ -24,6 +24,12 @@ Adding New Models:
     3. Add to the appropriate list based on architecture
 """
 
+import re
+
+# Pattern for HuggingFace repo IDs: org/model-name or user/model-name
+# Used to distinguish remote repos from local paths
+HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$")
+
 ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B", # unstable above 0.8 temp when using 4bit quant; decent <=0.6
     "TheDrummer/Theia-21B-v2", # mid intelligence; ok for cheaper long runs

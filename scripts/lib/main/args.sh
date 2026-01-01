@@ -155,6 +155,11 @@ main_parse_cli() {
   CHAT_MODEL_NAME="${chat_model}"
   TOOL_MODEL_NAME="${tool_model}"
 
+  # Validate mutually exclusive flags
+  if ! args_validate_common_state; then
+    return 1
+  fi
+
   args_export_common_state
   export QUANT_TYPE DEPLOY_MODE
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
