@@ -33,7 +33,13 @@ from tests.helpers.fmt import (
     yellow,
 )
 from tests.helpers.message import iter_messages
-from tests.helpers.stream import StreamTracker
+from tests.helpers.stream import (
+    create_tracker,
+    finalize_metrics,
+    record_token,
+    record_toolcall,
+)
+from tests.helpers.types import StreamState
 from tests.helpers.ws import send_client_end, with_api_key
 from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 
@@ -43,18 +49,18 @@ from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS
 # ============================================================================
 
 
-async def _consume_initial_response(ws, tracker: StreamTracker) -> tuple[bool, str]:
+async def _consume_initial_response(ws, state: StreamState) -> tuple[bool, str]:
     """Consume initial response, tracking if toolcall YES was received."""
     saw_tool_yes = False
     async for msg in iter_messages(ws):
         t = msg.get("type")
 
         if t == "ack":
-            tracker.ack_seen = True
+            state.ack_seen = True
             continue
         if t == "toolcall":
             status = (msg.get("status") or "").lower()
-            tracker.record_toolcall()
+            record_toolcall(state)
             if status == "yes":
                 saw_tool_yes = True
                 print(f"  {green('TOOLCALL')} status=YES")
@@ -62,37 +68,35 @@ async def _consume_initial_response(ws, tracker: StreamTracker) -> tuple[bool, s
                 print(f"  {yellow('TOOLCALL')} status={status.upper()}")
             continue
         if t == "token":
-            chunk = msg.get("text", "")
-            tracker.record_token(chunk)
+            record_token(state, msg.get("text", ""))
             continue
         if t == "final":
             if msg.get("normalized_text"):
-                tracker.final_text = msg["normalized_text"]
+                state.final_text = msg["normalized_text"]
             continue
         if t == "done":
             break
         if t == "error":
             raise RuntimeError(msg)
-    return saw_tool_yes, tracker.final_text
+    return saw_tool_yes, state.final_text
 
 
-async def _consume_followup(ws, tracker: StreamTracker) -> str:
+async def _consume_followup(ws, state: StreamState) -> str:
     """Consume followup response."""
     async for msg in iter_messages(ws):
         t = msg.get("type")
         if t == "token":
-            chunk = msg.get("text", "")
-            tracker.record_token(chunk)
+            record_token(state, msg.get("text", ""))
             continue
         if t == "final":
             if msg.get("normalized_text"):
-                tracker.final_text = msg["normalized_text"]
+                state.final_text = msg["normalized_text"]
             continue
         if t == "done":
             break
         if t == "error":
             raise RuntimeError(msg)
-    return tracker.final_text
+    return state.final_text
 
 
 def _build_start_payload(
@@ -127,16 +131,7 @@ async def run_once(
     sampling: dict[str, float | int] | None,
     chat_prompt: str,
 ) -> None:
-    """Execute the screen analysis flow test.
-    
-    Flow:
-    1. Connect to /ws and send a 'start' that should trigger toolcall YES.
-    2. Observe 'toolcall' frame and streaming tokens/final from the first request.
-    3. Send a 'followup' message with analysis text; expect a second streamed answer.
-    
-    Raises:
-        RuntimeError: If toolcall is not YES or if server returns an error.
-    """
+    """Execute the screen analysis flow test."""
     ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
     start_payload = _build_start_payload(session_id, chat_prompt, sampling)
@@ -156,10 +151,10 @@ async def run_once(
             print(exchange_header(idx=1, persona="INITIAL"))
             print(f"  {format_user(SCREEN_ANALYSIS_USER_REPLY)}")
 
-            tracker1 = StreamTracker()
+            state1 = create_tracker()
             await ws.send(json.dumps(start_payload))
-            saw_tool_yes, short_text = await _consume_initial_response(ws, tracker1)
-            metrics1 = tracker1.finalize_metrics()
+            saw_tool_yes, short_text = await _consume_initial_response(ws, state1)
+            metrics1 = finalize_metrics(state1)
 
             print(f"  {format_assistant(short_text)}")
             print(f"  {format_metrics_inline(metrics1)}")
@@ -177,10 +172,10 @@ async def run_once(
                 "type": "followup",
                 "analysis_text": SCREEN_ANALYSIS_TEXT,
             }
-            tracker2 = StreamTracker()
+            state2 = create_tracker()
             await ws.send(json.dumps(followup_payload))
-            final_followup = await _consume_followup(ws, tracker2)
-            metrics2 = tracker2.finalize_metrics()
+            final_followup = await _consume_followup(ws, state2)
+            metrics2 = finalize_metrics(state2)
 
             print(f"  {format_assistant(final_followup)}")
             print(f"  {format_metrics_inline(metrics2)}")
@@ -193,4 +188,3 @@ async def run_once(
 
 
 __all__ = ["run_once"]
-

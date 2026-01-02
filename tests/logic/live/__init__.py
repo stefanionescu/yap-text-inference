@@ -3,7 +3,7 @@ from .cli import interactive_loop
 from .personas import DEFAULT_PERSONA_NAME, PersonaDefinition, PersonaRegistry
 from .runner import run
 from .session import LiveSession
-from .stream import StreamTracker
+from .stream import StreamState
 
 __all__ = [
     "DEFAULT_PERSONA_NAME",
@@ -12,7 +12,7 @@ __all__ = [
     "PersonaDefinition",
     "PersonaRegistry",
     "StreamResult",
-    "StreamTracker",
+    "StreamState",
     "interactive_loop",
     "run",
 ]

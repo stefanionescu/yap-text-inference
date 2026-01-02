@@ -32,8 +32,19 @@ from tests.helpers.fmt import (
 )
 from tests.helpers.message import iter_messages
 from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.stream import StreamTracker
-from tests.helpers.ttfb import TTFBAggregator
+from tests.helpers.stream import (
+    consume_stream,
+    create_tracker,
+    finalize_metrics,
+    StreamError,
+)
+from tests.helpers.ttfb import (
+    create_ttfb_aggregator,
+    emit_ttfb_summary,
+    has_ttfb_samples,
+    record_ttfb,
+)
+from tests.helpers.types import StreamState, TTFBSamples
 from tests.helpers.ws import send_client_end, with_api_key
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 
@@ -53,32 +64,12 @@ async def _wait_for_ack(ws) -> dict[str, Any] | None:
     return None
 
 
-async def _collect_response(ws, tracker: StreamTracker) -> str:
+async def _collect_response(ws, state: StreamState) -> str:
     """Collect streaming response until done message, tracking metrics."""
-    async for msg in iter_messages(ws):
-        t = msg.get("type")
-
-        if t == "toolcall":
-            tracker.record_toolcall()
-            continue
-
-        if t == "token":
-            chunk = msg.get("text", "")
-            tracker.record_token(chunk)
-            continue
-
-        if t == "final":
-            if msg.get("normalized_text"):
-                tracker.final_text = msg["normalized_text"]
-            continue
-
-        if t == "done":
-            return tracker.final_text
-
-        if t == "error":
-            raise ServerError.from_message(msg)
-
-    raise RuntimeError("WebSocket closed before receiving 'done'")
+    try:
+        return await consume_stream(ws, state)
+    except StreamError as exc:
+        raise ServerError.from_message(exc.message) from exc
 
 
 def _build_start_payload(
@@ -129,30 +120,22 @@ async def _send_start_request(
     history: list[dict[str, str]],
     user_text: str,
     sampling: dict[str, float | int] | None,
-    ttfb_aggregator: TTFBAggregator,
+    ttfb_samples: TTFBSamples,
     idx: int,
 ) -> tuple[str, dict[str, Any]]:
-    """Send a start request and collect the response with metrics tracking.
-    
-    Returns:
-        Tuple of (reply_text, metrics).
-    """
+    """Send a start request and collect the response with metrics tracking."""
     payload = _build_start_payload(
         session_id, gender, personality, chat_prompt, history, user_text, sampling
     )
 
-    tracker = StreamTracker()
+    state = create_tracker()
     await ws.send(json.dumps(payload))
-    
-    # Wait for ack (discard history info - only used on first request)
     await _wait_for_ack(ws)
-    
-    # Collect the response
-    reply = await _collect_response(ws, tracker)
-    metrics = tracker.finalize_metrics()
+    reply = await _collect_response(ws, state)
+    metrics = finalize_metrics(state)
 
     _print_exchange(idx, user_text, reply, metrics)
-    ttfb_aggregator.record(metrics)
+    record_ttfb(ttfb_samples, metrics)
     return reply, metrics
 
 
@@ -191,36 +174,30 @@ async def _run_history_sequence(
     personality: str,
     chat_prompt: str,
     sampling: dict[str, float | int] | None,
-    ttfb_aggregator: TTFBAggregator,
+    ttfb_samples: TTFBSamples,
 ) -> None:
     """Run through all history recall messages."""
-    # Start with the pre-built history
     history: list[dict[str, str]] = list(WARM_HISTORY)
     
-    # First request: get history info for header, then print header before exchange
     first_user_text = HISTORY_RECALL_MESSAGES[0]
     payload = _build_start_payload(
         session_id, gender, personality, chat_prompt, history, first_user_text, sampling
     )
     
-    tracker = StreamTracker()
+    state = create_tracker()
     await ws.send(json.dumps(payload))
     history_info = await _wait_for_ack(ws)
     
-    # Print header with history info before first exchange
     _print_header(personality, gender, history_info)
     
-    # Collect first response
-    reply = await _collect_response(ws, tracker)
-    metrics = tracker.finalize_metrics()
+    reply = await _collect_response(ws, state)
+    metrics = finalize_metrics(state)
     _print_exchange(1, first_user_text, reply, metrics)
-    ttfb_aggregator.record(metrics)
+    record_ttfb(ttfb_samples, metrics)
     
-    # Update history
     history.append({"role": "user", "content": first_user_text})
     history.append({"role": "assistant", "content": reply})
 
-    # Remaining requests
     for idx, user_text in enumerate(HISTORY_RECALL_MESSAGES[1:], 2):
         reply, _ = await _send_start_request(
             ws,
@@ -231,7 +208,7 @@ async def _run_history_sequence(
             history,
             user_text,
             sampling,
-            ttfb_aggregator,
+            ttfb_samples,
             idx,
         )
         history.append({"role": "user", "content": user_text})
@@ -252,7 +229,7 @@ async def run_test(
 ) -> None:
     """Run the history recall test."""
     url = with_api_key(ws_url, api_key=api_key)
-    ttfb_aggregator = TTFBAggregator()
+    ttfb_samples = create_ttfb_aggregator()
     session_id = f"history-{uuid.uuid4()}"
     chat_prompt = select_chat_prompt(gender)
 
@@ -269,14 +246,14 @@ async def run_test(
                 personality,
                 chat_prompt,
                 sampling,
-                ttfb_aggregator,
+                ttfb_samples,
             )
         finally:
             await send_client_end(ws)
 
     print()
-    if ttfb_aggregator.has_samples():
-        ttfb_aggregator.emit(print)
+    if has_ttfb_samples(ttfb_samples):
+        emit_ttfb_summary(ttfb_samples, print)
     else:
         print(dim("No TTFB samples collected"))
 

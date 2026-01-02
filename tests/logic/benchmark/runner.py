@@ -9,6 +9,7 @@ TTFB, chat TTFB, time to first sentence, and time to first 3 words.
 from __future__ import annotations
 
 from tests.config import BENCHMARK_FALLBACK_MESSAGE
+from tests.helpers.concurrency import sanitize_concurrency
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.selection import choose_message
 
@@ -43,13 +44,6 @@ def _build_config(args) -> BenchmarkConfig:
     )
 
 
-def _sanitize_workload_args(requests: int, concurrency: int) -> tuple[int, int]:
-    """Ensure request and concurrency values are valid."""
-    safe_requests = max(1, requests)
-    safe_concurrency = max(1, min(concurrency, safe_requests))
-    return safe_requests, safe_concurrency
-    
-
 async def run_benchmark(args) -> bool:
     """Main benchmark entry point - parse args and execute the benchmark.
     
@@ -57,7 +51,7 @@ async def run_benchmark(args) -> bool:
         True if all requests succeeded, False if any failed.
     """
     cfg = _build_config(args)
-    requests, concurrency = _sanitize_workload_args(
+    requests, concurrency = sanitize_concurrency(
         int(args.requests),
         int(args.concurrency),
     )

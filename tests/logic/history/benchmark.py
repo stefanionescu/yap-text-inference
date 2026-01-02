@@ -10,9 +10,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from tests.helpers.concurrency import distribute_requests, sanitize_concurrency
 from tests.helpers.prompt import select_chat_prompt
 from tests.logic.benchmark.reporting import print_report
-from tests.logic.benchmark.workers import distribute_requests
 from tests.messages.history import HISTORY_RECALL_MESSAGES
 
 from .connection import execute_history_connection
@@ -38,13 +38,6 @@ def _build_config(
         timeout_s=timeout_s,
         sampling=sampling,
     )
-
-
-def _sanitize_workload_args(requests: int, concurrency: int) -> tuple[int, int]:
-    """Ensure request and concurrency values are valid."""
-    safe_requests = max(1, requests)
-    safe_concurrency = max(1, min(concurrency, safe_requests))
-    return safe_requests, safe_concurrency
 
 
 async def _run_worker(count: int, cfg: HistoryBenchConfig) -> list[dict[str, Any]]:
@@ -101,7 +94,7 @@ async def run_history_benchmark(
         True if all transactions succeeded, False if any failed.
     """
     cfg = _build_config(url, api_key, gender, personality, timeout_s, sampling)
-    requests, concurrency = _sanitize_workload_args(requests, concurrency)
+    requests, concurrency = sanitize_concurrency(requests, concurrency)
 
     results = await _run_concurrent_benchmark(requests, concurrency, cfg)
 

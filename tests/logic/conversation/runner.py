@@ -32,8 +32,13 @@ from tests.helpers.fmt import (
 )
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.stream import StreamTracker
-from tests.helpers.ttfb import TTFBAggregator
+from tests.helpers.stream import create_tracker
+from tests.helpers.ttfb import (
+    create_ttfb_aggregator,
+    emit_ttfb_summary,
+    has_ttfb_samples,
+    record_ttfb,
+)
 from tests.helpers.ws import send_client_end, with_api_key
 
 from .session import ConversationSession, build_start_payload
@@ -54,12 +59,7 @@ async def run_conversation(
     recv_timeout: float,
     sampling: dict[str, float | int] | None,
 ) -> None:
-    """
-    Execute a multi-turn conversation test.
-
-    Connects to the WebSocket server and replays the given prompts, tracking
-    TTFB and other metrics for each exchange.
-    """
+    """Execute a multi-turn conversation test."""
     if not prompts:
         raise ValueError("Conversation prompt list is empty; nothing to send.")
 
@@ -81,7 +81,7 @@ async def run_conversation(
     print(dim(f"  persona: {personality}/{gender}\n"))
     
     message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
-    ttfb_aggregator = TTFBAggregator()
+    ttfb_samples = create_ttfb_aggregator()
 
     async with websockets.connect(
         ws_url_with_auth,
@@ -91,7 +91,7 @@ async def run_conversation(
     ) as ws:
         try:
             for idx, user_text in enumerate(prompts, start=1):
-                tracker = StreamTracker()
+                state = create_tracker()
                 payload = build_start_payload(session, user_text)
                 
                 print(exchange_header(idx=idx))
@@ -99,17 +99,17 @@ async def run_conversation(
                 
                 await message_pacer.wait_turn()
                 await ws.send(json.dumps(payload))
-                assistant_text, metrics = await stream_exchange(ws, tracker, recv_timeout, idx)
+                assistant_text, metrics = await stream_exchange(ws, state, recv_timeout, idx)
                 session.append_exchange(user_text, assistant_text)
-                ttfb_aggregator.record(metrics)
+                record_ttfb(ttfb_samples, metrics)
                 
                 print(f"  {format_assistant(assistant_text)}")
                 print(f"  {format_metrics_inline(metrics)}")
                 print(exchange_footer())
         finally:
             print()
-            if ttfb_aggregator.has_samples():
-                ttfb_aggregator.emit(print)
+            if has_ttfb_samples(ttfb_samples):
+                emit_ttfb_summary(ttfb_samples, print)
             await send_client_end(ws)
 
 

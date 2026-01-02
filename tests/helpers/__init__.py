@@ -25,8 +25,6 @@ from .errors import (
     ServerError,
     TestClientError,
     ValidationError,
-    error_from_close,
-    is_idle_timeout_close,
 )
 from .fmt import (
     bold,
@@ -50,14 +48,33 @@ from .fmt import (
 )
 from .math import round_ms, secs_to_ms
 from .message import dispatch_message, iter_messages, parse_message
-from .payloads import SessionContext, build_chat_prompt_payload, build_start_payload
+from .payloads import build_chat_prompt_payload, build_start_payload
+from .types import (
+    BenchmarkResultData,
+    SessionContext,
+    StreamState,
+    TTFBSamples,
+)
 from .prompt import normalize_gender, select_chat_prompt
 from .rate import SlidingWindowPacer
-from .regex import contains_complete_sentence, has_at_least_n_words
-from .results import BenchmarkResult, error_result, success_result
+from .regex import contains_complete_sentence, word_count_at_least
+from .results import error_result, success_result, result_to_dict
 from .setup import setup_repo_path
-from .stream import StreamTracker
-from .ttfb import TTFBAggregator
+from .concurrency import distribute_requests, sanitize_concurrency
+from .stream import (
+    consume_stream,
+    create_tracker,
+    finalize_metrics,
+    record_token,
+    record_toolcall,
+    StreamError,
+)
+from .ttfb import (
+    create_ttfb_aggregator,
+    emit_ttfb_summary,
+    has_ttfb_samples,
+    record_ttfb,
+)
 from .selection import choose_message
 from .ws import connect_with_retries, recv_raw, send_client_end, with_api_key
 
@@ -84,8 +101,6 @@ __all__ = [
     "ServerError",
     "TestClientError",
     "ValidationError",
-    "error_from_close",
-    "is_idle_timeout_close",
     # fmt
     "bold",
     "cyan",
@@ -113,9 +128,13 @@ __all__ = [
     "iter_messages",
     "parse_message",
     # payloads
-    "SessionContext",
     "build_chat_prompt_payload",
     "build_start_payload",
+    # types
+    "BenchmarkResultData",
+    "SessionContext",
+    "StreamState",
+    "TTFBSamples",
     # prompt
     "normalize_gender",
     "select_chat_prompt",
@@ -123,17 +142,28 @@ __all__ = [
     "SlidingWindowPacer",
     # regex
     "contains_complete_sentence",
-    "has_at_least_n_words",
+    "word_count_at_least",
     # results
-    "BenchmarkResult",
     "error_result",
     "success_result",
+    "result_to_dict",
     # setup
     "setup_repo_path",
+    # concurrency
+    "distribute_requests",
+    "sanitize_concurrency",
     # stream
-    "StreamTracker",
+    "consume_stream",
+    "create_tracker",
+    "finalize_metrics",
+    "record_token",
+    "record_toolcall",
+    "StreamError",
     # ttfb
-    "TTFBAggregator",
+    "create_ttfb_aggregator",
+    "emit_ttfb_summary",
+    "has_ttfb_samples",
+    "record_ttfb",
     # selection
     "choose_message",
     # ws

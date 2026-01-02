@@ -23,10 +23,9 @@ def contains_complete_sentence(text: str) -> bool:
     return False
 
 
-def has_at_least_n_words(text: str, n: int) -> bool:
+def word_count_at_least(text: str, n: int) -> bool:
     """Return True if the text contains at least n whitespace-delimited tokens."""
-    # Whitespace-delimited token count; counts punctuation-attached tokens as words
     return len(text.strip().split()) >= n
 
 
-__all__ = ["contains_complete_sentence", "has_at_least_n_words"]
+__all__ = ["contains_complete_sentence", "word_count_at_least"]

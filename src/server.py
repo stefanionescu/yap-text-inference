@@ -3,7 +3,7 @@
 This module initializes and runs the inference server, supporting both vLLM and
 TensorRT-LLM backends. It provides:
 
-- REST endpoints for health checks (/healthz, /)
+- REST endpoints for health checks (/health, /healthz, /)
 - WebSocket endpoint for chat interactions (/ws)
 - Automatic engine warm-up on startup
 - Periodic cache reset for vLLM (prevents KV cache fragmentation)
@@ -144,13 +144,19 @@ async def stop_engines() -> None:
 @app.get("/")
 async def root():
     """Root endpoint for load balancer health checks."""
-    return {"status": "ok", "engine": INFERENCE_ENGINE}
+    return {"status": "ok"}
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint (no authentication required)."""
+    return {"status": "ok"}
 
 
 @app.get("/healthz")
 async def healthz():
     """Health check endpoint (no authentication required)."""
-    return {"status": "ok", "engine": INFERENCE_ENGINE}
+    return {"status": "ok"}
 
 
 @app.get("/favicon.ico", status_code=204)

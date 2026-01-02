@@ -11,28 +11,11 @@ Payload Types:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from tests.config import DEFAULT_PERSONALITIES
 
-
-@dataclass(frozen=True)
-class SessionContext:
-    """Immutable context for building session payloads.
-    
-    Holds the stable session-level parameters that remain constant across
-    multiple messages within the same connection.
-    
-    Note: chat_prompt is required - the server requires a system prompt
-    when DEPLOY_CHAT is enabled.
-    """
-
-    session_id: str
-    gender: str
-    personality: str
-    chat_prompt: str  # Required - use select_chat_prompt(gender) to get one
-    sampling: dict[str, float | int] | None = None
+from .types import SessionContext
 
 
 def build_start_payload(
@@ -98,7 +81,6 @@ def build_chat_prompt_payload(
 
 
 __all__ = [
-    "SessionContext",
     "build_start_payload",
     "build_chat_prompt_payload",
 ]
