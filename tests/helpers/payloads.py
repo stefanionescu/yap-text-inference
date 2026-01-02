@@ -23,12 +23,15 @@ class SessionContext:
     
     Holds the stable session-level parameters that remain constant across
     multiple messages within the same connection.
+    
+    Note: chat_prompt is required - the server requires a system prompt
+    when DEPLOY_CHAT is enabled.
     """
 
     session_id: str
     gender: str
     personality: str
-    chat_prompt: str | None = None
+    chat_prompt: str  # Required - use select_chat_prompt(gender) to get one
     sampling: dict[str, float | int] | None = None
 
 
@@ -42,25 +45,33 @@ def build_start_payload(
     """Build the start message payload for a conversation turn.
     
     Args:
-        ctx: Session context with gender, personality, and optional chat_prompt.
+        ctx: Session context with gender, personality, and chat_prompt.
         user_text: The user's message text.
         history: Conversation history as [{role, content}, ...] (default empty).
         personalities: Optional personality list override (default DEFAULT_PERSONALITIES).
     
     Returns:
         A dict ready to be JSON-serialized and sent over WebSocket.
+        
+    Raises:
+        ValueError: If chat_prompt is empty.
     """
+    if not ctx.chat_prompt:
+        raise ValueError(
+            "chat_prompt is required. "
+            "Use select_chat_prompt(gender) to get a valid prompt."
+        )
+    
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": ctx.session_id,
         "gender": ctx.gender,
         "personality": ctx.personality,
         "personalities": personalities if personalities is not None else DEFAULT_PERSONALITIES,
+        "chat_prompt": ctx.chat_prompt,
         "history": history if history is not None else [],
         "user_utterance": user_text,
     }
-    if ctx.chat_prompt is not None:
-        payload["chat_prompt"] = ctx.chat_prompt
     if ctx.sampling:
         payload["sampling"] = ctx.sampling
     return payload

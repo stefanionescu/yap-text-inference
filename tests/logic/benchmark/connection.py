@@ -76,18 +76,27 @@ async def _send_and_stream(
 
 
 def _build_payload(session_id: str, cfg: BenchmarkConfig) -> dict[str, Any]:
-    """Build the start message payload."""
+    """Build the start message payload.
+    
+    Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
+    The select_chat_prompt helper should always return a valid prompt.
+    """
+    if cfg.chat_prompt is None:
+        raise ValueError(
+            "chat_prompt is required for benchmark. "
+            "Use select_chat_prompt(gender) to get a valid prompt."
+        )
+    
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
         "gender": cfg.gender,
         "personality": cfg.style,
         "personalities": DEFAULT_PERSONALITIES,
+        "chat_prompt": cfg.chat_prompt,
         "history": [],
         "user_utterance": cfg.message,
     }
-    if cfg.chat_prompt is not None:
-        payload["chat_prompt"] = cfg.chat_prompt
     if cfg.sampling:
         payload["sampling"] = cfg.sampling
     return payload

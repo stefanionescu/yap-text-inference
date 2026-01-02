@@ -55,22 +55,30 @@ def _build_start_payload(
     session_id: str,
     gender: str,
     personality: str,
-    chat_prompt: str | None,
+    chat_prompt: str,
     user_msg: str,
     sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
-    """Build the start message payload."""
+    """Build the start message payload.
+    
+    Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
+    """
+    if not chat_prompt:
+        raise ValueError(
+            "chat_prompt is required for warmup. "
+            "Use select_chat_prompt(gender) to get a valid prompt."
+        )
+    
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": session_id,
         "gender": gender,
         "personality": personality,
         "personalities": DEFAULT_PERSONALITIES,
+        "chat_prompt": chat_prompt,
         "history": [],
         "user_utterance": user_msg,
     }
-    if chat_prompt is not None:
-        payload["chat_prompt"] = chat_prompt
     if sampling:
         payload["sampling"] = sampling
     return payload
@@ -206,7 +214,6 @@ async def run_once(args) -> None:
     gender = args.gender or gender_env or DEFAULT_GENDER
     personality = args.personality or personality_env or DEFAULT_PERSONALITY
     sampling_overrides = getattr(args, "sampling", None) or None
-    skip_chat_prompt = bool(getattr(args, "no_chat_prompt", False))
     double_ttfb = bool(getattr(args, "double_ttfb", False))
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
@@ -215,7 +222,8 @@ async def run_once(args) -> None:
         fallback=WARMUP_FALLBACK_MESSAGE,
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
-    chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
+    # chat_prompt is required - always select one based on gender
+    chat_prompt = select_chat_prompt(gender)
     
     # Print header
     test_name = "WARMUP (double-ttfb)" if double_ttfb else "WARMUP"

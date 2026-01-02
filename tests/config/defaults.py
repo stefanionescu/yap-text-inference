@@ -8,11 +8,11 @@ for all test scripts.
 
 from __future__ import annotations
 
-from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
 from tests.prompts.detailed import (
     ANNA_FLIRTY,
     ANNA_RELIGIOUS,
     ANNA_SPIRITUAL,
+    MARK_FLIRTY,
     MARK_SAVAGE,
     MARK_DELULU,
 )
@@ -52,8 +52,8 @@ PERSONALITY_SWITCH_DELAY_SECONDS = 10
 PERSONALITY_REPLIES_PER_SWITCH = 2
 
 PERSONA_VARIANTS = [
-    ("female", "flirty", FEMALE_PROMPT),
-    ("male", "flirty", MALE_PROMPT),
+    ("female", "flirty", ANNA_FLIRTY),
+    ("male", "flirty", MARK_FLIRTY),
 ]
 
 # Personality test variants: alternating Anna/Mark with different personalities

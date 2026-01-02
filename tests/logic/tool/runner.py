@@ -92,9 +92,8 @@ async def run_suite(
     else:
         print("No tool cases to run.")
 
-    chat_prompt = None if skip_chat_prompt else select_chat_prompt(gender)
-    if chat_prompt is None:
-        print("Tool-only suite running without chat prompts.")
+    # chat_prompt is required - always select one based on gender
+    chat_prompt = select_chat_prompt(gender)
 
     cfg = RunnerConfig(
         ws_url=ws_url,

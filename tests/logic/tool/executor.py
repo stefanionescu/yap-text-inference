@@ -136,19 +136,26 @@ def _build_step_payload(
     user_text: str,
     history: list[CaseStep],
 ) -> dict[str, Any]:
-    """Build the start message payload for a step."""
-    payload: dict[str, Any] = {
+    """Build the start message payload for a step.
+    
+    Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
+    """
+    if not cfg.chat_prompt:
+        raise ValueError(
+            "chat_prompt is required for tool tests. "
+            "Use select_chat_prompt(gender) to get a valid prompt."
+        )
+    
+    return {
         "type": "start",
         "session_id": session_id,
         "gender": cfg.gender,
         "personality": cfg.personality,
         "personalities": DEFAULT_PERSONALITIES,
+        "chat_prompt": cfg.chat_prompt,
         "history": render_history(history),
         "user_utterance": user_text,
     }
-    if cfg.chat_prompt is not None:
-        payload["chat_prompt"] = cfg.chat_prompt
-    return payload
 
 
 def _check_step_result(

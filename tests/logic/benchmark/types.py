@@ -17,13 +17,16 @@ class BenchmarkConfig:
     
     Consolidates all session-level options that were previously passed
     as individual parameters through _one_connection, _worker, etc.
+    
+    Note: chat_prompt is required - the server requires a system prompt
+    when DEPLOY_CHAT is enabled.
     """
 
     url: str
     api_key: str | None
     gender: str
     style: str
-    chat_prompt: str | None
+    chat_prompt: str  # Required - use select_chat_prompt(gender) to get one
     message: str
     timeout_s: float
     sampling: dict[str, float | int] | None
