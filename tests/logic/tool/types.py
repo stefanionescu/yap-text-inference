@@ -32,12 +32,16 @@ class ToolTestCase:
 
 @dataclass(frozen=True)
 class RunnerConfig:
-    """Configuration for the tool test runner."""
+    """Configuration for the tool test runner.
+    
+    Note: chat_prompt is required - the server requires a system prompt
+    when DEPLOY_CHAT is enabled.
+    """
 
     ws_url: str
     gender: str
     personality: str
-    chat_prompt: str | None
+    chat_prompt: str  # Required - use select_chat_prompt(gender) to get one
     timeout_s: float
     ping_interval: int
     ping_timeout: int

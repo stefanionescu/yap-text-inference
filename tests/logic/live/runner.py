@@ -63,7 +63,6 @@ async def run(
     session = LiveSession(
         session_id=f"live-{uuid.uuid4()}",
         persona=persona,
-        include_chat_prompt=True,
         history=initial_history,
         sampling=sampling,
     )

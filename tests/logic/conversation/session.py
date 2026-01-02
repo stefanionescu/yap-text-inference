@@ -15,12 +15,16 @@ from tests.config import DEFAULT_PERSONALITIES
 
 @dataclass
 class ConversationSession:
-    """Track state for a multi-turn conversation session."""
+    """Track state for a multi-turn conversation session.
+    
+    Note: chat_prompt is required - the server requires a system prompt
+    when DEPLOY_CHAT is enabled.
+    """
 
     session_id: str
     gender: str
     personality: str
-    chat_prompt: str | None
+    chat_prompt: str  # Required - use select_chat_prompt(gender) to get one
     history: list[dict[str, str]] = field(default_factory=list)
     sampling: dict[str, float | int] | None = None
 
@@ -31,18 +35,27 @@ class ConversationSession:
 
 
 def build_start_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:
-    """Build the start message payload for a conversation turn."""
+    """Build the start message payload for a conversation turn.
+    
+    Raises:
+        ValueError: If chat_prompt is empty.
+    """
+    if not session.chat_prompt:
+        raise ValueError(
+            "chat_prompt is required. "
+            "Use select_chat_prompt(gender) to get a valid prompt."
+        )
+    
     payload: dict[str, Any] = {
         "type": "start",
         "session_id": session.session_id,
         "gender": session.gender,
         "personality": session.personality,
         "personalities": DEFAULT_PERSONALITIES,
+        "chat_prompt": session.chat_prompt,
         "history": session.history,
         "user_utterance": user_text,
     }
-    if session.chat_prompt is not None:
-        payload["chat_prompt"] = session.chat_prompt
     if session.sampling:
         payload["sampling"] = session.sampling
     return payload
