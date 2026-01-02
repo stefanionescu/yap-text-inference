@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+from copy import deepcopy
 from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -18,6 +19,7 @@ from vllm.engine.async_llm_engine import AsyncLLMEngine
 from src.config import QUANT_CONFIG_FILENAMES, UNSUPPORTED_QUANT_DTYPE_FIELDS
 from src.helpers.io import read_json_file
 from src.helpers.models import is_local_model_path
+from src.quantization.vllm.core.detection import strip_unsupported_fields
 
 logger = logging.getLogger(__name__)
 
@@ -55,19 +57,16 @@ def _get_engine_args_field_names(engine_args: AsyncEngineArgs) -> list[str]:
     return names
 
 
-def _strip_fields_from_dict(data: dict[str, Any]) -> bool:
-    """Recursively strip unsupported quant dtype fields from a dict.
+def _strip_fields_from_dict(data: Any) -> bool:
+    """Recursively strip unsupported quant dtype fields (dicts or lists).
     
-    Returns True if any fields were removed.
+    Delegates to the shared quantization sanitization helper so that
+    list-valued configs (e.g., layer-wise settings) are handled too.
     """
-    removed = False
-    for key in list(data.keys()):
-        if key in UNSUPPORTED_QUANT_DTYPE_FIELDS:
-            del data[key]
-            removed = True
-        elif isinstance(data[key], dict):
-            removed |= _strip_fields_from_dict(data[key])
-    return removed
+    try:
+        return strip_unsupported_fields(data)
+    except Exception:
+        return False
 
 
 def _sanitize_config_file_in_place(path: str) -> bool:
@@ -152,6 +151,31 @@ def _sanitize_model_configs(model_path: str) -> bool:
     return sanitized
 
 
+def _clean_quantization_config(value: Any) -> tuple[Any, bool]:
+    """Return a sanitized copy of quantization_config and whether it changed."""
+    if value is None:
+        return value, False
+    
+    # Convert Pydantic/dataclass objects to plain data for mutation
+    for attr in ("model_dump", "dict"):
+        if hasattr(value, attr):
+            try:
+                value = getattr(value, attr)()
+                break
+            except Exception:
+                pass
+    else:
+        if not isinstance(value, (dict, list)) and hasattr(value, "__dict__"):
+            value = dict(getattr(value, "__dict__", {}))
+    
+    if not isinstance(value, (dict, list)):
+        return value, False
+    
+    cleaned = deepcopy(value)
+    removed = _strip_fields_from_dict(cleaned)
+    return cleaned, removed
+
+
 def _strip_unsupported_quant_dtype_fields(engine_args: AsyncEngineArgs) -> AsyncEngineArgs | None:
     """Rebuild engine args without unsupported quant dtype fields.
 
@@ -178,12 +202,10 @@ def _strip_unsupported_quant_dtype_fields(engine_args: AsyncEngineArgs) -> Async
 
         value = getattr(engine_args, name)
         
-        # Clean nested quantization_config dict if present
-        if name == "quantization_config" and isinstance(value, dict):
-            cleaned = {k: v for k, v in value.items() if k not in UNSUPPORTED_QUANT_DTYPE_FIELDS}
-            if cleaned != value:
-                fields_removed = True
-            value = cleaned
+        # Clean nested quantization_config payloads (dicts, lists, pydantic)
+        if name == "quantization_config":
+            value, removed = _clean_quantization_config(value)
+            fields_removed |= removed
 
         filtered_kwargs[name] = value
 
