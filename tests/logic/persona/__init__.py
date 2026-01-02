@@ -6,7 +6,6 @@ personality) and personality tests (switching personality across genders).
 """
 
 from .messaging import (
-    collect_response,
     send_persona_update,
     send_start_request,
     send_user_exchange,
@@ -23,7 +22,6 @@ from .types import PersonaSwitchConfig
 
 __all__ = [
     # messaging
-    "collect_response",
     "send_persona_update",
     "send_start_request",
     "send_user_exchange",
