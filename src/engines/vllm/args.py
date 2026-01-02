@@ -89,6 +89,11 @@ def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None
     inference_quant = raw_quant
     quant_payload = {}
     
+    # Always sanitize quant metadata to strip scale_dtype/zp_dtype fields
+    # that vLLM V1 rejects. Must happen before vLLM loads the config.
+    from src.quantization.vllm.core.detection import sanitize_quant_metadata
+    sanitize_quant_metadata(model)
+    
     if raw_quant == "awq":
         inference_quant = "awq_marlin"
         detected_quant, quant_payload = detect_quant_backend(model)
