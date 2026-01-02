@@ -18,7 +18,11 @@ Error Hierarchy:
     │   ├── IdleTimeoutError - Server closed due to inactivity
     │   └── ConnectionRejectedError - Server rejected connection attempt
     ├── MessageParseError - Failed to parse WebSocket frame as JSON
-    └── InputClosedError - stdin closed (EOF) or keyboard interrupt
+    ├── InputClosedError - stdin closed (EOF) or keyboard interrupt
+    └── StreamError - Stream consumption encountered a server error
+    
+    PromptSelectionError (ValueError)
+    └── Prompt selection failed due to invalid parameters
 
 Server Error Codes (from src/handlers/websocket/errors.py):
     - authentication_failed: Invalid or missing API key
@@ -231,6 +235,25 @@ class ConnectionClosedError(ConnectionError):
             parts.append(f"reason={close_reason}")
         super().__init__(" ".join(parts))
 
+    @classmethod
+    def from_close(
+        cls,
+        close_code: int | None,
+        close_reason: str | None,
+    ) -> "ConnectionClosedError":
+        """Create an appropriate ConnectionClosedError from close code/reason.
+        
+        Args:
+            close_code: The WebSocket close code.
+            close_reason: The close reason string.
+            
+        Returns:
+            IdleTimeoutError if this was an idle timeout, else ConnectionClosedError.
+        """
+        if IdleTimeoutError.matches(close_code, close_reason):
+            return IdleTimeoutError(close_code=close_code, close_reason=close_reason)
+        return cls(close_code=close_code, close_reason=close_reason)
+
 
 class IdleTimeoutError(ConnectionClosedError):
     """Raised when the server closes the connection due to inactivity.
@@ -248,6 +271,23 @@ class IdleTimeoutError(ConnectionClosedError):
         close_reason: str | None = "idle_timeout",
     ):
         super().__init__(message, close_code=close_code, close_reason=close_reason)
+
+    @staticmethod
+    def matches(close_code: int | None, close_reason: str | None) -> bool:
+        """Check if a WebSocket close represents an idle timeout.
+        
+        Args:
+            close_code: The WebSocket close code.
+            close_reason: The close reason string.
+            
+        Returns:
+            True if this close was due to idle timeout.
+        """
+        if close_code == 4000:
+            return True
+        if close_reason and "idle" in close_reason.lower():
+            return True
+        return False
 
 
 class ConnectionRejectedError(ConnectionError):
@@ -280,47 +320,16 @@ class InputClosedError(TestClientError):
     """Raised when stdin closes (EOF) or user presses Ctrl+C."""
 
 
-# ============================================================================
-# Utility Functions
-# ============================================================================
+class StreamError(TestClientError):
+    """Raised when stream consumption encounters a server error."""
+
+    def __init__(self, message: dict[str, Any]) -> None:
+        self.message = message
+        super().__init__(str(message))
 
 
-def is_idle_timeout_close(close_code: int | None, close_reason: str | None) -> bool:
-    """Check if a WebSocket close represents an idle timeout.
-    
-    Args:
-        close_code: The WebSocket close code.
-        close_reason: The close reason string.
-        
-    Returns:
-        True if this close was due to idle timeout.
-    """
-    if close_code == 4000:
-        return True
-    if close_reason and "idle" in close_reason.lower():
-        return True
-    return False
-
-
-def error_from_close(
-    close_code: int | None,
-    close_reason: str | None,
-) -> ConnectionClosedError:
-    """Create an appropriate ConnectionClosedError from close code/reason.
-    
-    Args:
-        close_code: The WebSocket close code.
-        close_reason: The close reason string.
-        
-    Returns:
-        IdleTimeoutError if this was an idle timeout, else ConnectionClosedError.
-    """
-    if is_idle_timeout_close(close_code, close_reason):
-        return IdleTimeoutError(close_code=close_code, close_reason=close_reason)
-    return ConnectionClosedError(
-        close_code=close_code,
-        close_reason=close_reason,
-    )
+class PromptSelectionError(ValueError):
+    """Raised when prompt selection fails due to invalid parameters."""
 
 
 __all__ = [
@@ -342,7 +351,6 @@ __all__ = [
     # Other errors
     "MessageParseError",
     "InputClosedError",
-    # Utilities
-    "is_idle_timeout_close",
-    "error_from_close",
+    "StreamError",
+    "PromptSelectionError",
 ]

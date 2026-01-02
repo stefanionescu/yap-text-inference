@@ -15,15 +15,21 @@ from typing import Any
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-from tests.config import DEFAULT_PERSONALITIES
+from tests.config import DEFAULT_PERSONALITIES, WS_MAX_QUEUE
 from tests.helpers.message import iter_messages
 from tests.helpers.results import error_result
-from tests.helpers.stream import StreamTracker
+from tests.helpers.stream import create_tracker, record_toolcall, record_token
+from tests.helpers.types import StreamState
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
 
 from .types import BenchmarkConfig
 
-WS_MAX_QUEUE = None
+
+def _ms_since_sent(state: StreamState, timestamp: float | None) -> float | None:
+    """Calculate milliseconds elapsed since the request was sent."""
+    if timestamp is None:
+        return None
+    return (timestamp - state.sent_ts) * 1000.0
 
 
 async def _execute_phase(
@@ -31,16 +37,7 @@ async def _execute_phase(
     cfg: BenchmarkConfig,
     phase: int,
 ) -> dict[str, Any]:
-    """Execute a single transaction phase with timeout handling.
-    
-    Args:
-        ws: Open WebSocket connection.
-        cfg: Benchmark configuration.
-        phase: Phase number (1 or 2).
-    
-    Returns:
-        Result dict with ok status and metrics or error.
-    """
+    """Execute a single transaction phase with timeout handling."""
     try:
         return await asyncio.wait_for(
             _send_and_stream(ws, cfg, phase),
@@ -57,30 +54,17 @@ async def _send_and_stream(
     cfg: BenchmarkConfig,
     phase: int,
 ) -> dict[str, Any]:
-    """Send a start message and stream the response.
-    
-    Args:
-        ws: Open WebSocket connection.
-        cfg: Benchmark configuration.
-        phase: Phase number for result tagging.
-    
-    Returns:
-        Result dict with metrics on success or error details on failure.
-    """
+    """Send a start message and stream the response."""
     session_id = str(uuid.uuid4())
     payload = _build_payload(session_id, cfg)
-    tracker = StreamTracker()
+    state = create_tracker()
 
     await ws.send(json.dumps(payload))
-    return await _consume_stream(ws, tracker, phase)
+    return await _consume_stream(ws, state, phase)
 
 
 def _build_payload(session_id: str, cfg: BenchmarkConfig) -> dict[str, Any]:
-    """Build the start message payload.
-    
-    Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
-    The select_chat_prompt helper should always return a valid prompt.
-    """
+    """Build the start message payload."""
     if cfg.chat_prompt is None:
         raise ValueError(
             "chat_prompt is required for benchmark. "
@@ -104,40 +88,31 @@ def _build_payload(session_id: str, cfg: BenchmarkConfig) -> dict[str, Any]:
 
 async def _consume_stream(
     ws,
-    tracker: StreamTracker,
+    state: StreamState,
     phase: int,
 ) -> dict[str, Any]:
-    """Consume the response stream and collect metrics.
-    
-    Args:
-        ws: Open WebSocket connection.
-        tracker: StreamTracker for timing metrics.
-        phase: Phase number for result tagging.
-    
-    Returns:
-        Result dict with metrics on success or error details on failure.
-    """
+    """Consume the response stream and collect metrics."""
     try:
         async for msg in iter_messages(ws):
             msg_type = msg.get("type")
 
             if msg_type == "toolcall":
-                tracker.record_toolcall()
+                record_toolcall(state)
                 continue
 
             if msg_type == "token":
-                tracker.record_token(msg.get("text", ""))
+                record_token(state, msg.get("text", ""))
                 continue
 
             if msg_type == "final":
                 normalized = msg.get("normalized_text")
                 if normalized:
-                    tracker.final_text = normalized
+                    state.final_text = normalized
                 continue
 
             if msg_type == "done":
                 cancelled = bool(msg.get("cancelled"))
-                return _build_success_result(tracker, phase, cancelled)
+                return _build_success_result(state, phase, cancelled)
 
             if msg_type == "error":
                 return _build_error_result(msg, phase)
@@ -151,7 +126,7 @@ async def _consume_stream(
 
 
 def _build_success_result(
-    tracker: StreamTracker,
+    state: StreamState,
     phase: int,
     cancelled: bool,
 ) -> dict[str, Any]:
@@ -159,10 +134,10 @@ def _build_success_result(
     return {
         "ok": not cancelled,
         "phase": phase,
-        "ttfb_toolcall_ms": tracker.toolcall_ttfb_ms,
-        "ttfb_chat_ms": tracker._ms_since_sent(tracker.first_token_ts),
-        "first_sentence_ms": tracker._ms_since_sent(tracker.first_sentence_ts),
-        "first_3_words_ms": tracker._ms_since_sent(tracker.first_3_words_ts),
+        "ttfb_toolcall_ms": state.toolcall_ttfb_ms,
+        "ttfb_chat_ms": _ms_since_sent(state, state.first_token_ts),
+        "first_sentence_ms": _ms_since_sent(state, state.first_sentence_ts),
+        "first_3_words_ms": _ms_since_sent(state, state.first_3_words_ts),
     }
 
 
@@ -180,16 +155,7 @@ def _build_error_result(msg: dict[str, Any], phase: int) -> dict[str, Any]:
 
 
 async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
-    """Execute one or two transactions over a single WebSocket connection.
-    
-    Uses proper async context manager for connection lifecycle management.
-    
-    Args:
-        cfg: Benchmark configuration with all connection parameters.
-    
-    Returns:
-        List of result dicts, one per transaction phase.
-    """
+    """Execute one or two transactions over a single WebSocket connection."""
     phases = 2 if cfg.double_ttfb else 1
     results: list[dict[str, Any]] = []
     auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
@@ -217,4 +183,3 @@ async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
 
 
 __all__ = ["execute_connection"]
-

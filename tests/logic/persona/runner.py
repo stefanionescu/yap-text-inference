@@ -16,7 +16,11 @@ from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
 from tests.helpers.env import get_float_env, get_int_env
 from tests.helpers.fmt import section_header, dim
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.ttfb import TTFBAggregator
+from tests.helpers.ttfb import (
+    create_ttfb_aggregator,
+    emit_ttfb_summary,
+    has_ttfb_samples,
+)
 from tests.helpers.ws import send_client_end, with_api_key
 
 from .sequences import run_initial_exchange, run_remaining_sequence, run_switch_sequence
@@ -174,27 +178,18 @@ async def run_persona_test(
     delay_s: int,
     sampling: dict[str, float | int] | None,
 ) -> None:
-    """Run a persona switch test with the given configuration.
-    
-    Args:
-        ws_url: WebSocket server URL.
-        api_key: API key for authentication.
-        config: Test configuration with prompts, variants, and settings.
-        switches: Number of persona switches to perform.
-        delay_s: Seconds to wait between switches.
-        sampling: Optional sampling parameter overrides.
-    """
+    """Run a persona switch test with the given configuration."""
     url = with_api_key(ws_url, api_key=api_key)
     
     print(f"\n{section_header(config.test_name)}")
     print(dim(f"  switches: {switches}, delay: {delay_s}s\n"))
     
-    ttfb_aggregator = TTFBAggregator()
+    ttfb_samples = create_ttfb_aggregator()
     prompts = tuple(config.prompts)
     variants_tuple = tuple(config.variants)
     
     session = _build_session(prompts, sampling)
-    session.ttfb_aggregator = ttfb_aggregator
+    session.ttfb_samples = ttfb_samples
     variants = _load_variants(variants_tuple)
     message_pacer, persona_pacer = _build_pacers()
     
@@ -205,9 +200,8 @@ async def run_persona_test(
         )
     finally:
         print()
-        if ttfb_aggregator.has_samples():
-            ttfb_aggregator.emit(print)
+        if has_ttfb_samples(ttfb_samples):
+            emit_ttfb_summary(ttfb_samples, print)
 
 
 __all__ = ["run_persona_test"]
-

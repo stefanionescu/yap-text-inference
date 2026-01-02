@@ -4,16 +4,6 @@ This module provides the LiveClient class that wraps a WebSocket connection
 and provides high-level methods for sending messages, changing personas, and
 streaming responses. It handles message parsing, error reporting, and stats
 logging.
-
-Error Handling:
-    The client uses a two-tier error handling strategy:
-    
-    1. Fatal errors (thrown): Connection issues, auth failures, and other
-       errors that require closing the connection. These raise exceptions.
-    
-    2. Recoverable errors (returned): Rate limits and transient errors that
-       can be displayed to the user without closing the connection. These
-       are returned as StreamResult objects with error information.
 """
 
 from __future__ import annotations
@@ -33,14 +23,20 @@ from tests.helpers.errors import (
     RateLimitError,
     ServerError,
     TestClientError,
-    is_idle_timeout_close,
 )
 from tests.helpers.fmt import dim, cyan, magenta, format_metrics_inline
 from tests.helpers.message import iter_messages
 from tests.helpers.ws import send_client_end
 from .personas import PersonaDefinition
 from .session import LiveSession
-from .stream import StreamTracker, round_ms
+from .stream import (
+    StreamState,
+    create_tracker,
+    finalize_metrics,
+    record_token,
+    record_toolcall,
+    round_ms,
+)
 
 logger = logging.getLogger("live")
 
@@ -81,15 +77,15 @@ class _StreamPrinter:
 
 
 @dataclass
-class _StreamState:
+class _StreamContext:
     """Track state during response streaming."""
 
-    tracker: StreamTracker
+    state: StreamState
     printer: _StreamPrinter = field(default_factory=_StreamPrinter)
     pending_chat_ttfb: float | None = None
 
     def handle_token(self, chunk: str) -> None:
-        metrics = self.tracker.record_token(chunk)
+        metrics = record_token(self.state, chunk)
         self.printer.write_chunk(chunk)
         chat_ttfb = metrics.get("chat_ttfb_ms")
         if chat_ttfb is not None and self.pending_chat_ttfb is None:
@@ -142,9 +138,9 @@ class LiveClient:
     async def send_user_message(self, text: str) -> StreamResult:
         """Send a user message and return the result with assistant's response."""
         payload = self.session.build_start_payload(text)
-        tracker = StreamTracker()
+        state = create_tracker()
         await self._send_json(payload)
-        result = await self._stream_response(tracker, print_user_prompt=False)
+        result = await self._stream_response(state, print_user_prompt=False)
         if result.ok:
             self.session.append_exchange(text, result.text)
         return result
@@ -222,72 +218,72 @@ class LiveClient:
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
             raise ConnectionClosedError("WebSocket closed while sending payload") from exc
 
-    async def _stream_response(self, tracker: StreamTracker, *, print_user_prompt: bool = True) -> StreamResult:
+    async def _stream_response(self, state: StreamState, *, print_user_prompt: bool = True) -> StreamResult:
         """Stream and process the server response."""
-        state = _StreamState(tracker)
+        ctx = _StreamContext(state)
         try:
             async for msg in iter_messages(self.ws, timeout=self.recv_timeout):
                 msg_type = msg.get("type")
                 if msg_type == "ack":
-                    tracker.ack_seen = True
+                    state.ack_seen = True
                     continue
                 if msg_type == "toolcall":
-                    self._handle_toolcall_frame(msg, tracker)
+                    self._handle_toolcall_frame(msg, state)
                     continue
                 if msg_type == "token":
-                    state.handle_token(msg.get("text", ""))
+                    ctx.handle_token(msg.get("text", ""))
                     continue
                 if msg_type == "final":
                     if normalized := msg.get("normalized_text"):
-                        tracker.final_text = normalized
+                        state.final_text = normalized
                     continue
                 if msg_type == "connection_closed":
-                    return self._handle_connection_closed(msg, tracker)
+                    return self._handle_connection_closed(msg, state)
                 if msg_type == "done":
-                    return self._handle_done_frame(msg, state, print_user_prompt=print_user_prompt)
+                    return self._handle_done_frame(msg, ctx, print_user_prompt=print_user_prompt)
                 if msg_type == "error":
-                    return self._handle_error_frame(msg, state)
+                    return self._handle_error_frame(msg, ctx)
                 logger.debug("Ignoring message type=%s payload=%s", msg_type, msg)
         except asyncio.TimeoutError as exc:
             raise TestClientError(f"recv timeout after {self.recv_timeout:.1f}s") from exc
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
             close_code = getattr(exc, "code", None)
             close_reason = getattr(exc, "reason", None)
-            if is_idle_timeout_close(close_code, close_reason):
+            if IdleTimeoutError.matches(close_code, close_reason):
                 logger.info("Server closed due to idle timeout")
                 raise IdleTimeoutError(close_code=close_code, close_reason=close_reason) from exc
             logger.info("Server closed the WebSocket (code=%s)", close_code)
             asyncio.create_task(self.close())
-            return StreamResult(text=tracker.final_text, ok=True)
+            return StreamResult(text=state.final_text, ok=True)
         raise TestClientError("WebSocket closed before receiving 'done'")
 
-    def _handle_toolcall_frame(self, msg: dict[str, Any], tracker: StreamTracker) -> None:
-        ttfb = tracker.record_toolcall()
+    def _handle_toolcall_frame(self, msg: dict[str, Any], state: StreamState) -> None:
+        ttfb = record_toolcall(state)
         logger.info("TOOLCALL status=%s ttfb_ms=%s", msg.get("status"), round_ms(ttfb))
 
-    def _handle_done_frame(self, msg: dict[str, Any], state: _StreamState, *, print_user_prompt: bool) -> StreamResult:
-        state.printer.finish()
+    def _handle_done_frame(self, msg: dict[str, Any], ctx: _StreamContext, *, print_user_prompt: bool) -> StreamResult:
+        ctx.printer.finish()
         cancelled = bool(msg.get("cancelled"))
         if self._stats_enabled:
-            metrics = state.tracker.finalize_metrics(cancelled)
+            metrics = finalize_metrics(ctx.state, cancelled)
             print(dim(f"     {format_metrics_inline(metrics)}"))
             print()
         if print_user_prompt:
             print(f"{cyan('USER')} ", end="", flush=True)
-        return StreamResult(text=state.tracker.final_text, ok=True, cancelled=cancelled)
+        return StreamResult(text=ctx.state.final_text, ok=True, cancelled=cancelled)
 
-    def _handle_connection_closed(self, msg: dict[str, Any], tracker: StreamTracker) -> StreamResult:
+    def _handle_connection_closed(self, msg: dict[str, Any], state: StreamState) -> StreamResult:
         reason = msg.get("reason") or "server_request"
         logger.info("Server signaled connection_closed reason=%s", reason)
-        return StreamResult(text=tracker.final_text, ok=True)
+        return StreamResult(text=state.final_text, ok=True)
 
-    def _handle_error_frame(self, msg: dict[str, Any], state: _StreamState) -> StreamResult:
+    def _handle_error_frame(self, msg: dict[str, Any], ctx: _StreamContext) -> StreamResult:
         """Handle an error message frame."""
-        state.printer.finish()
+        ctx.printer.finish()
         error = ServerError.from_message(msg)
         _log_server_error(msg)
         if error.is_recoverable():
-            return StreamResult(text=state.tracker.final_text, ok=False, error=error)
+            return StreamResult(text=ctx.state.final_text, ok=False, error=error)
         raise error
 
     async def _wait_for_chat_prompt_ack(self) -> dict[str, Any]:

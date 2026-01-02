@@ -10,7 +10,6 @@ log_info "[trt] Setting environment defaults (TRT-LLM image)..."
 source "${SCRIPT_DIR}/env/helpers.sh"
 source "${SCRIPT_DIR}/env/models.sh"
 source "${SCRIPT_DIR}/env/trt_config.sh"
-source "${SCRIPT_DIR}/env/tokens.sh"
 source "${SCRIPT_DIR}/env/gpu_detect.sh"
 
 # Validate that the baked-in engine is compatible with the runtime GPU

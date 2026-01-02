@@ -10,22 +10,10 @@ import asyncio
 import time
 from typing import Any
 
+from tests.helpers.concurrency import distribute_requests
+
 from .connection import execute_connection
 from .types import BenchmarkConfig
-
-
-def distribute_requests(total: int, concurrency: int) -> list[int]:
-    """Distribute requests across workers as evenly as possible.
-    
-    Args:
-        total: Total number of requests to distribute.
-        concurrency: Number of workers.
-    
-    Returns:
-        List of request counts per worker.
-    """
-    base, remainder = divmod(total, concurrency)
-    return [base + (1 if i < remainder else 0) for i in range(concurrency)]
 
 
 async def run_worker(count: int, cfg: BenchmarkConfig) -> list[dict[str, Any]]:
@@ -118,7 +106,6 @@ async def run_windowed_benchmark(
 
 
 __all__ = [
-    "distribute_requests",
     "run_worker",
     "run_instant_benchmark",
     "run_windowed_benchmark",

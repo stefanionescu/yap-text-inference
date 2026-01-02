@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from tests.helpers.ttfb import TTFBAggregator
+from tests.helpers.types import TTFBSamples
 
 
 @dataclass(frozen=True)
@@ -23,34 +23,21 @@ class PersonaVariant:
 
 @dataclass
 class PersonaSession:
-    """Tracks session state, history, and prompt progression.
-    
-    Attributes:
-        session_id: Unique session identifier.
-        prompts: Sequence of user prompts to cycle through.
-        history: Accumulated conversation history.
-        prompt_index: Current position in the prompts sequence.
-        sampling: Optional sampling parameter overrides.
-        ttfb_aggregator: Optional metrics aggregator.
-    """
+    """Tracks session state, history, and prompt progression."""
 
     session_id: str
     prompts: Sequence[str]
     history: list[dict[str, str]] = field(default_factory=list)
     prompt_index: int = 0
     sampling: dict[str, float | int] | None = None
-    ttfb_aggregator: TTFBAggregator | None = None
+    ttfb_samples: TTFBSamples | None = None
 
     def has_remaining_prompts(self) -> bool:
         """Check if there are more prompts to process."""
         return self.prompt_index < len(self.prompts)
 
     def next_script_prompt(self) -> str:
-        """Get the next prompt from the script and advance the index.
-        
-        Raises:
-            RuntimeError: If no prompts remain.
-        """
+        """Get the next prompt from the script and advance the index."""
         if not self.has_remaining_prompts():
             raise RuntimeError("No prompts remaining; cannot produce user prompt.")
         prompt = self.prompts[self.prompt_index]
@@ -64,4 +51,3 @@ class PersonaSession:
 
 
 __all__ = ["PersonaSession", "PersonaVariant"]
-

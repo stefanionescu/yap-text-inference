@@ -34,13 +34,12 @@ from tests.helpers.fmt import (
     format_assistant,
     format_metrics_inline,
     dim,
-    bold,
     red,
-    yellow,
 )
 from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.stream import StreamTracker
+from tests.helpers.stream import create_tracker, finalize_metrics, record_token, record_toolcall
+from tests.helpers.types import StreamState
 from tests.helpers.selection import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
@@ -59,10 +58,7 @@ def _build_start_payload(
     user_msg: str,
     sampling: dict[str, float | int] | None,
 ) -> dict[str, Any]:
-    """Build the start message payload.
-    
-    Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
-    """
+    """Build the start message payload."""
     if not chat_prompt:
         raise ValueError(
             "chat_prompt is required for warmup. "
@@ -89,36 +85,35 @@ def _log_unknown_message(msg: dict[str, Any]) -> bool:
     return True
 
 
-def _handle_ack(msg: dict[str, Any], tracker: StreamTracker) -> bool:
+def _handle_ack(msg: dict[str, Any], state: StreamState) -> bool:
     """Handle ACK messages."""
     ack_for = msg.get("for")
     if ack_for == "start":
-        tracker.ack_seen = True
+        state.ack_seen = True
     return True
 
 
-def _handle_toolcall(msg: dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_toolcall(msg: dict[str, Any], state: StreamState) -> None:
     """Handle toolcall messages."""
-    tracker.record_toolcall()
+    record_toolcall(state)
 
 
-def _handle_token(msg: dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_token(msg: dict[str, Any], state: StreamState) -> None:
     """Handle token messages."""
-    chunk = msg.get("text", "")
-    tracker.record_token(chunk)
+    record_token(state, msg.get("text", ""))
 
 
-def _handle_final(msg: dict[str, Any], tracker: StreamTracker) -> None:
+def _handle_final(msg: dict[str, Any], state: StreamState) -> None:
     """Handle final messages with normalized text."""
-    normalized = msg.get("normalized_text") or tracker.final_text
+    normalized = msg.get("normalized_text") or state.final_text
     if normalized:
-        tracker.final_text = normalized
+        state.final_text = normalized
 
 
-def _handle_done(msg: dict[str, Any], tracker: StreamTracker) -> dict[str, Any]:
+def _handle_done(msg: dict[str, Any], state: StreamState) -> dict[str, Any]:
     """Handle done messages and return metrics."""
     cancelled = bool(msg.get("cancelled"))
-    return {"_done": True, "metrics": tracker.finalize_metrics(cancelled)}
+    return {"_done": True, "metrics": finalize_metrics(state, cancelled)}
 
 
 def _handle_error(msg: dict[str, Any], api_key: str) -> None:
@@ -134,26 +129,26 @@ def _handle_error(msg: dict[str, Any], api_key: str) -> None:
     raise error
 
 
-def _build_stream_handlers(tracker: StreamTracker, api_key: str):
+def _build_stream_handlers(state: StreamState, api_key: str):
     """Build message type handlers for stream processing."""
     return {
-        "ack": lambda msg: _handle_ack(msg, tracker),
-        "toolcall": lambda msg: (_handle_toolcall(msg, tracker) or True),
-        "token": lambda msg: (_handle_token(msg, tracker) or True),
-        "final": lambda msg: (_handle_final(msg, tracker) or True),
-        "done": lambda msg: _handle_done(msg, tracker),
+        "ack": lambda msg: _handle_ack(msg, state),
+        "toolcall": lambda msg: (_handle_toolcall(msg, state) or True),
+        "token": lambda msg: (_handle_token(msg, state) or True),
+        "final": lambda msg: (_handle_final(msg, state) or True),
+        "done": lambda msg: _handle_done(msg, state),
         "error": lambda msg: _handle_error(msg, api_key),
     }
 
 
 async def _stream_session(
     ws,
-    tracker: StreamTracker,
+    state: StreamState,
     recv_timeout: float,
     api_key: str,
 ) -> dict[str, Any] | None:
     """Stream the server response and return metrics."""
-    handlers = _build_stream_handlers(tracker, api_key)
+    handlers = _build_stream_handlers(state, api_key)
     done_payload: dict[str, Any] | None = None
     try:
         async for msg in iter_messages(ws, timeout=recv_timeout):
@@ -174,7 +169,7 @@ async def _stream_session(
     except asyncio.TimeoutError:
         print(f"  {red('TIMEOUT')} after {recv_timeout:.1f}s")
     
-    if not tracker.ack_seen:
+    if not state.ack_seen:
         print(dim("  warning: no ACK received"))
     
     return done_payload
@@ -183,7 +178,7 @@ async def _stream_session(
 def _print_transaction_result(
     phase: str | None,
     user_msg: str,
-    tracker: StreamTracker,
+    state: StreamState,
     metrics: dict[str, Any],
 ) -> None:
     """Print formatted transaction result."""
@@ -193,7 +188,7 @@ def _print_transaction_result(
         print(exchange_header())
     
     print(f"  {format_user(user_msg)}")
-    print(f"  {format_assistant(tracker.final_text)}")
+    print(f"  {format_assistant(state.final_text)}")
     print(f"  {format_metrics_inline(metrics)}")
     print(exchange_footer())
 
@@ -222,10 +217,8 @@ async def run_once(args) -> None:
         fallback=WARMUP_FALLBACK_MESSAGE,
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
-    # chat_prompt is required - always select one based on gender
     chat_prompt = select_chat_prompt(gender)
     
-    # Print header
     test_name = "WARMUP (double-ttfb)" if double_ttfb else "WARMUP"
     print(f"\n{section_header(test_name)}")
     print(dim(f"  server: {server_ws_url}"))
@@ -245,7 +238,7 @@ async def run_once(args) -> None:
         try:
             for idx in range(num_transactions):
                 phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
-                tracker = StreamTracker()
+                state = create_tracker()
                 session_id = str(uuid.uuid4())
                 start_payload = _build_start_payload(
                     session_id,
@@ -257,15 +250,15 @@ async def run_once(args) -> None:
                 )
                 
                 await ws.send(json.dumps(start_payload))
-                done_payload = await _stream_session(ws, tracker, recv_timeout, api_key)
+                done_payload = await _stream_session(ws, state, recv_timeout, api_key)
                 
                 metrics = {}
                 if done_payload:
                     metrics = done_payload.get("metrics", {})
                 else:
-                    metrics = tracker.finalize_metrics(cancelled=True)
+                    metrics = finalize_metrics(state, cancelled=True)
                 
-                _print_transaction_result(phase_label, user_msg, tracker, metrics)
+                _print_transaction_result(phase_label, user_msg, state, metrics)
         finally:
             await send_client_end(ws)
 

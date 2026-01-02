@@ -85,6 +85,9 @@ DEFAULT_WS_PATH = "/ws"
 # Progress bar display
 PROGRESS_BAR_WIDTH = 30
 
+# WebSocket queue limit (None = unlimited)
+WS_MAX_QUEUE = None
+
 # Persona registry defaults
 PERSONA_MODULE = "tests.prompts.detailed"
 DEFAULT_PERSONA_NAME = "anna_flirty"
@@ -120,6 +123,7 @@ __all__ = [
     "CONNECTION_IDLE_GRACE_DEFAULT",
     "DEFAULT_WS_PATH",
     "PROGRESS_BAR_WIDTH",
+    "WS_MAX_QUEUE",
     "PERSONA_MODULE",
     "DEFAULT_PERSONA_NAME",
 ]

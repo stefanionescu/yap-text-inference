@@ -20,7 +20,14 @@ from tests.helpers.fmt import (
 )
 from tests.helpers.message import iter_messages
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.stream import StreamTracker
+from tests.helpers.stream import (
+    create_tracker,
+    finalize_metrics,
+    record_token,
+    record_toolcall,
+)
+from tests.helpers.ttfb import record_ttfb
+from tests.helpers.types import StreamState
 
 from .session import PersonaSession, PersonaVariant
 
@@ -39,37 +46,36 @@ async def _wait_for_ack(ws) -> None:
             raise ServerError.from_message(msg)
 
 
-# ============================================================================
-# Public API
-# ============================================================================
-
-
-async def collect_response(ws, tracker: StreamTracker) -> str:
+async def _collect_response(ws, state: StreamState) -> str:
     """Collect streaming response until done message, tracking metrics."""
     async for msg in iter_messages(ws):
         t = msg.get("type")
 
         if t == "toolcall":
-            tracker.record_toolcall()
+            record_toolcall(state)
             continue
 
         if t == "token":
-            chunk = msg.get("text", "")
-            tracker.record_token(chunk)
+            record_token(state, msg.get("text", ""))
             continue
 
         if t == "final":
             if msg.get("normalized_text"):
-                tracker.final_text = msg["normalized_text"]
+                state.final_text = msg["normalized_text"]
             continue
 
         if t == "done":
-            return tracker.final_text
+            return state.final_text
 
         if t == "error":
             raise ServerError.from_message(msg)
 
     raise RuntimeError("WebSocket closed before receiving 'done'")
+
+
+# ============================================================================
+# Public API
+# ============================================================================
 
 
 async def send_start_request(
@@ -96,13 +102,12 @@ async def send_start_request(
     if message_pacer:
         await message_pacer.wait_turn()
 
-    tracker = StreamTracker()
+    state = create_tracker()
     await ws.send(json.dumps(payload))
     await _wait_for_ack(ws)
-    reply = await collect_response(ws, tracker)
-    metrics = tracker.finalize_metrics()
+    reply = await _collect_response(ws, state)
+    metrics = finalize_metrics(state)
     
-    # Clean formatted output
     print(exchange_header(persona=variant.personality, gender=variant.gender))
     print(f"  {format_user(user_text)}")
     print(f"  {format_assistant(reply)}")
@@ -165,15 +170,13 @@ async def send_user_exchange(
         message_pacer=message_pacer,
     )
     session.append_exchange(user_text, assistant_text)
-    if session.ttfb_aggregator is not None:
-        session.ttfb_aggregator.record(metrics)
+    if session.ttfb_samples is not None:
+        record_ttfb(session.ttfb_samples, metrics)
 
 
 __all__ = [
-    "collect_response",
     "send_persona_update",
     "send_start_request",
     "send_user_exchange",
     "wait_for_chat_prompt_ack",
 ]
-

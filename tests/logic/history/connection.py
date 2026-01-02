@@ -14,16 +14,16 @@ from typing import Any
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-from tests.config import DEFAULT_PERSONALITIES
+from tests.config import DEFAULT_PERSONALITIES, WS_MAX_QUEUE
 from tests.helpers.message import iter_messages
 from tests.helpers.results import error_result
-from tests.helpers.stream import StreamTracker
+from tests.helpers.errors import StreamError
+from tests.helpers.stream import consume_stream, create_tracker
+from tests.helpers.types import StreamState
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 
 from .types import HistoryBenchConfig
-
-WS_MAX_QUEUE = None
 
 
 def _build_payload(
@@ -48,6 +48,13 @@ def _build_payload(
     return payload
 
 
+def _ms_since_sent(state: StreamState, timestamp: float | None) -> float | None:
+    """Calculate milliseconds elapsed since the request was sent."""
+    if timestamp is None:
+        return None
+    return (timestamp - state.sent_ts) * 1000.0
+
+
 async def _wait_for_ack(ws) -> None:
     """Wait for ack message, discarding history info."""
     async for msg in iter_messages(ws):
@@ -57,31 +64,12 @@ async def _wait_for_ack(ws) -> None:
             raise RuntimeError(f"Server error: {msg}")
 
 
-async def _consume_stream(ws, tracker: StreamTracker) -> str:
+async def _consume_stream_wrapper(ws, state: StreamState) -> str:
     """Consume streaming response until done, tracking metrics."""
-    async for msg in iter_messages(ws):
-        msg_type = msg.get("type")
-
-        if msg_type == "toolcall":
-            tracker.record_toolcall()
-            continue
-
-        if msg_type == "token":
-            tracker.record_token(msg.get("text", ""))
-            continue
-
-        if msg_type == "final":
-            if msg.get("normalized_text"):
-                tracker.final_text = msg["normalized_text"]
-            continue
-
-        if msg_type == "done":
-            return tracker.final_text
-
-        if msg_type == "error":
-            raise RuntimeError(f"Server error: {msg}")
-
-    raise RuntimeError("Stream ended before 'done'")
+    try:
+        return await consume_stream(ws, state)
+    except StreamError as exc:
+        raise RuntimeError(f"Server error: {exc.message}") from exc
 
 
 async def _execute_transaction(
@@ -114,35 +102,25 @@ async def _send_and_stream(
 ) -> dict[str, Any]:
     """Send a start message and stream the response."""
     payload = _build_payload(session_id, cfg, history, user_text)
-    tracker = StreamTracker()
+    state = create_tracker()
 
     await ws.send(json.dumps(payload))
     await _wait_for_ack(ws)
-    reply = await _consume_stream(ws, tracker)
+    reply = await _consume_stream_wrapper(ws, state)
 
     return {
         "ok": True,
         "phase": phase,
         "reply": reply,
-        "ttfb_toolcall_ms": tracker.toolcall_ttfb_ms,
-        "ttfb_chat_ms": tracker._ms_since_sent(tracker.first_token_ts),
-        "first_sentence_ms": tracker._ms_since_sent(tracker.first_sentence_ts),
-        "first_3_words_ms": tracker._ms_since_sent(tracker.first_3_words_ts),
+        "ttfb_toolcall_ms": state.toolcall_ttfb_ms,
+        "ttfb_chat_ms": _ms_since_sent(state, state.first_token_ts),
+        "first_sentence_ms": _ms_since_sent(state, state.first_sentence_ts),
+        "first_3_words_ms": _ms_since_sent(state, state.first_3_words_ts),
     }
 
 
 async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, Any]]:
-    """Execute multiple transactions over a single WebSocket connection.
-
-    Each connection starts with WARM_HISTORY and cycles through all
-    HISTORY_RECALL_MESSAGES, building conversation as it goes.
-
-    Args:
-        cfg: History benchmark configuration.
-
-    Returns:
-        List of result dicts, one per recall message.
-    """
+    """Execute multiple transactions over a single WebSocket connection."""
     results: list[dict[str, Any]] = []
     auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
     session_id = f"history-bench-{uuid.uuid4()}"
@@ -162,7 +140,6 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
                     if not result.get("ok"):
                         break
 
-                    # Append exchange to history for next transaction
                     reply = result.get("reply", "")
                     history.append({"role": "user", "content": user_text})
                     history.append({"role": "assistant", "content": reply})
@@ -179,4 +156,3 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
 
 
 __all__ = ["execute_history_connection"]
-
