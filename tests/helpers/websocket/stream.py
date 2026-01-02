@@ -1,7 +1,7 @@
 """Streaming token metrics tracking and consumption.
 
 This module provides functions for tracking streaming token metrics and
-consuming WebSocket response streams. Uses StreamState from types.py for
+consuming WebSocket response streams. Uses StreamState from metrics for
 data storage.
 """
 
@@ -10,11 +10,10 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from .errors import StreamError
-from .math import round_ms
+from tests.helpers.errors import StreamError
+from tests.helpers.metrics import StreamState, round_ms
+from tests.helpers.regex import contains_complete_sentence, word_count_at_least
 from .message import iter_messages
-from .regex import contains_complete_sentence, word_count_at_least
-from .types import StreamState
 
 
 # ============================================================================
@@ -126,10 +125,10 @@ async def consume_stream(ws, state: StreamState) -> str:
 
 
 __all__ = [
-    "StreamError",
     "create_tracker",
     "record_toolcall",
     "record_token",
     "finalize_metrics",
     "consume_stream",
 ]
+

@@ -12,7 +12,7 @@ import json
 from typing import Any
 from collections.abc import Awaitable, Callable, Mapping
 
-from .errors import MessageParseError
+from tests.helpers.errors import MessageParseError
 from .ws import recv_raw
 
 
@@ -70,3 +70,4 @@ __all__ = [
     "iter_messages",
     "parse_message",
 ]
+

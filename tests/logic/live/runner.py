@@ -23,7 +23,7 @@ from tests.helpers.errors import (
     ServerError,
 )
 from tests.helpers.fmt import section_header, dim
-from tests.helpers.ws import connect_with_retries, with_api_key
+from tests.helpers.websocket import connect_with_retries, with_api_key
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 
 from .cli import interactive_loop, print_help

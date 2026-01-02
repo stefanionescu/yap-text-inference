@@ -23,7 +23,7 @@ from tests.helpers.fmt import (
     connection_fail,
     dim,
 )
-from tests.helpers.ws import connect_with_retries, send_client_end
+from tests.helpers.websocket import connect_with_retries, send_client_end
 
 
 def _open_connection(ws_url: str):

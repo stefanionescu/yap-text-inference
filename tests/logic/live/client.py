@@ -25,8 +25,7 @@ from tests.helpers.errors import (
     TestClientError,
 )
 from tests.helpers.fmt import dim, cyan, magenta, format_metrics_inline
-from tests.helpers.message import iter_messages
-from tests.helpers.ws import send_client_end
+from tests.helpers.websocket import iter_messages, send_client_end
 from .personas import PersonaDefinition
 from .session import LiveSession
 from .stream import (

@@ -36,12 +36,20 @@ from tests.helpers.fmt import (
     dim,
     red,
 )
-from tests.helpers.message import dispatch_message, iter_messages
+from tests.helpers.metrics import StreamState
 from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.stream import create_tracker, finalize_metrics, record_token, record_toolcall
-from tests.helpers.types import StreamState
 from tests.helpers.selection import choose_message
-from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
+from tests.helpers.websocket import (
+    connect_with_retries,
+    create_tracker,
+    dispatch_message,
+    finalize_metrics,
+    iter_messages,
+    record_token,
+    record_toolcall,
+    send_client_end,
+    with_api_key,
+)
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
 
 

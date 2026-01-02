@@ -14,8 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from tests.config import DEFAULT_PERSONALITIES
-
-from .types import SessionContext
+from tests.helpers.metrics import SessionContext
 
 
 def build_start_payload(

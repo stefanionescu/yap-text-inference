@@ -14,7 +14,7 @@ if __package__ in {None, ""}:
 
 from tests.helpers.setup import setup_repo_path
 from tests.helpers.cli import add_connection_args
-from tests.helpers.ws import with_api_key
+from tests.helpers.websocket import with_api_key
 from tests.config import (
     CONNECTION_NORMAL_WAIT_SECONDS,
     CONNECTION_IDLE_EXPECT_SECONDS,

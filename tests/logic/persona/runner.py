@@ -16,12 +16,12 @@ from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
 from tests.helpers.env import get_float_env, get_int_env
 from tests.helpers.fmt import section_header, dim
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.ttfb import (
+from tests.helpers.metrics import (
     create_ttfb_aggregator,
     emit_ttfb_summary,
     has_ttfb_samples,
 )
-from tests.helpers.ws import send_client_end, with_api_key
+from tests.helpers.websocket import send_client_end, with_api_key
 
 from .sequences import run_initial_exchange, run_remaining_sequence, run_switch_sequence
 from .session import PersonaSession, PersonaVariant

@@ -32,15 +32,16 @@ from tests.helpers.fmt import (
     section_header,
     yellow,
 )
-from tests.helpers.message import iter_messages
-from tests.helpers.stream import (
+from tests.helpers.metrics import StreamState
+from tests.helpers.websocket import (
     create_tracker,
     finalize_metrics,
+    iter_messages,
     record_token,
     record_toolcall,
+    send_client_end,
+    with_api_key,
 )
-from tests.helpers.types import StreamState
-from tests.helpers.ws import send_client_end, with_api_key
 from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 
 

@@ -7,9 +7,14 @@ from typing import Any
 from collections.abc import Awaitable, Callable
 
 from tests.helpers.errors import ServerError
-from tests.helpers.message import dispatch_message, iter_messages
-from tests.helpers.stream import finalize_metrics, record_token, record_toolcall
-from tests.helpers.types import StreamState
+from tests.helpers.metrics import StreamState
+from tests.helpers.websocket import (
+    dispatch_message,
+    finalize_metrics,
+    iter_messages,
+    record_token,
+    record_toolcall,
+)
 
 logger = logging.getLogger(__name__)
 
