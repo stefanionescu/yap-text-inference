@@ -218,39 +218,25 @@ def _strip_unsupported_quant_dtype_fields(engine_args: AsyncEngineArgs) -> Async
     return new_args
 
 
-def _is_unsupported_quant_dtype_error(error: Exception) -> bool:
-    """Check if error is a ValidationError about unsupported quant dtype fields."""
-    if error.__class__.__name__ != "ValidationError":
-        return False
-    message = str(error)
-    return bool(message) and any(field in message for field in UNSUPPORTED_QUANT_DTYPE_FIELDS)
-
-
 def create_engine_with_fallback(engine_args: AsyncEngineArgs) -> AsyncLLMEngine:
-    """Create an engine with fallback for unsupported quant dtype fields.
+    """Create an engine, stripping unsupported quant dtype fields first.
     
     Handles two cases:
     1. Local AWQ models need offline mode to prevent Hub lookups
     2. Legacy quant configs with scale_dtype/zp_dtype need those fields stripped
+    
+    vLLM V1's AsyncEngineArgs may have scale_dtype/zp_dtype as class attributes
+    with None values. VllmConfig rejects these, so we must strip them BEFORE
+    attempting to build the engine.
     """
-    def _build(args: AsyncEngineArgs) -> AsyncLLMEngine:
-        is_local_awq = getattr(args, "_is_local_awq", False)
-        ctx = _local_model_offline_context() if is_local_awq else contextlib.nullcontext()
-        with ctx:
-            return AsyncLLMEngine.from_engine_args(args)
-
-    try:
-        return _build(engine_args)
-    except Exception as exc:  # noqa: BLE001
-        if not _is_unsupported_quant_dtype_error(exc):
-            raise
-        fallback_args = _strip_unsupported_quant_dtype_fields(engine_args)
-        if fallback_args is None:
-            raise
-        logger.warning(
-            "vLLM: engine args include unsupported quant dtype knobs; retrying without scale/zp dtype fields"
-        )
-        return _build(fallback_args)
+    # Proactively strip unsupported fields before any build attempt
+    sanitized_args = _strip_unsupported_quant_dtype_fields(engine_args)
+    args_to_use = sanitized_args if sanitized_args is not None else engine_args
+    
+    is_local_awq = getattr(args_to_use, "_is_local_awq", False)
+    ctx = _local_model_offline_context() if is_local_awq else contextlib.nullcontext()
+    with ctx:
+        return AsyncLLMEngine.from_engine_args(args_to_use)
 
 
 __all__ = ["create_engine_with_fallback"]
