@@ -85,12 +85,34 @@ def _sanitize_remote_configs(model_path: str) -> None:
 
 def _sanitize_config_file(path: str) -> None:
     """Sanitize a single JSON config file by removing unsupported fields."""
+    import stat
+    
     payload = read_json_file(path)
     if payload is None:
         return
     if not strip_unsupported_fields(payload):
         return
-    if write_json_file(path, payload):
+    
+    # HF cache blobs are often read-only; try to make writable before writing
+    original_mode = None
+    try:
+        file_stat = os.stat(path)
+        if not (file_stat.st_mode & stat.S_IWUSR):
+            original_mode = file_stat.st_mode
+            os.chmod(path, file_stat.st_mode | stat.S_IWUSR)
+    except OSError:
+        pass  # If we can't check/change permissions, try writing anyway
+    
+    success = write_json_file(path, payload)
+    
+    # Restore original permissions if we changed them
+    if original_mode is not None:
+        try:
+            os.chmod(path, original_mode)
+        except OSError:
+            pass
+    
+    if success:
         print(
             "[config] Sanitized quantization metadata for "
             f"{path}: removed {', '.join(UNSUPPORTED_QUANT_DTYPE_FIELDS)}"
