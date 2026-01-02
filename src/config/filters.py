@@ -221,7 +221,8 @@ DOUBLE_DOT_SPACE_PATTERN = re.compile(r"\.\.\s*")
 EXAGGERATED_OH_PATTERN = re.compile(r"\b[oO][oOhH]+\b")
 ELLIPSIS_TRAILING_DOT_PATTERN = re.compile(r"\.\.\.\s*\.")
 LETTERS_ONLY_PATTERN = re.compile(r"^[A-Za-z]+$")
-DOT_RUN_PATTERN = re.compile(r"\.{2,}")
+# Match 4+ dots to collapse to ellipsis (preserve 3-dot ellipsis "...")
+DOT_RUN_PATTERN = re.compile(r"\.{4,}")
 # Dots separated by spaces like ". . " or ". . ." → single period
 SPACED_DOT_RUN_PATTERN = re.compile(r"(?:\.\s+)+\.")
 
