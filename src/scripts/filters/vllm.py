@@ -146,6 +146,16 @@ class SuppressedFDContext:
         self._devnull: int | None = None
     
     def __enter__(self) -> "SuppressedFDContext":
+        # Flush all Python and C stdio buffers before redirecting
+        sys.stdout.flush()
+        sys.stderr.flush()
+        try:
+            import ctypes
+            libc = ctypes.CDLL(None)
+            libc.fflush(None)  # Flush all C stdio streams
+        except Exception:
+            pass
+        
         self._devnull = os.open(os.devnull, os.O_WRONLY)
         
         if self._suppress_stdout:
@@ -159,7 +169,14 @@ class SuppressedFDContext:
         return self
     
     def __exit__(self, *args) -> None:
-        # Flush Python streams before restoring
+        # Flush any remaining output before restoring
+        try:
+            import ctypes
+            libc = ctypes.CDLL(None)
+            libc.fflush(None)
+        except Exception:
+            pass
+        
         sys.stdout.flush()
         sys.stderr.flush()
         
