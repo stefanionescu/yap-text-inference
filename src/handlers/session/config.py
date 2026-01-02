@@ -66,11 +66,9 @@ def update_session_config(
         changed["chat_gender"] = chat_gender
 
     if chat_personality is not None:
-        cpers = chat_personality or None
-        if isinstance(cpers, str):
-            cpers = cpers.lower()
-        meta["chat_personality"] = cpers
-        changed["chat_personality"] = cpers
+        # chat_personality is already normalized/lowercased by validators
+        meta["chat_personality"] = chat_personality or None
+        changed["chat_personality"] = chat_personality or None
 
     if chat_prompt is not None:
         cp = chat_prompt or None

@@ -57,8 +57,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gender",
         dest="gender",
-        choices=["female", "male", "woman", "man"],
-        help="gender (normalized by server)",
+        choices=["female", "male"],
+        help="gender",
     )
     parser.add_argument(
         "--personality",

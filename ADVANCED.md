@@ -250,16 +250,20 @@ const ws = new WebSocket('ws://server:8000/ws', [], {
 
 ### Messages You Send
 
-Start a turn
+Start a turn:
 
 ```json
 {
   "type": "start",
   "session_id": "<stable-per-user uuid>",
-  "persona_text": "...optional full persona...",
-  "persona_style": "savage|flirty|...",
-  "gender": "woman|man",
-  "user_identity": "woman|man|non-binary",
+  "chat_prompt": "...full system prompt for the assistant...",
+  "personality": "savage|flirty|...",
+  "gender": "female|male",
+  "personalities": {
+    "flirty": ["horny", "sexy"],
+    "savage": ["unfiltered"],
+    "friendly": []
+  },
   "history": [
     {"role": "user", "content": "previous message"},
     {"role": "assistant", "content": "previous reply"}
@@ -268,7 +272,7 @@ Start a turn
 }
 ```
 
-Cancel a turn
+Cancel a turn:
 
 ```json
 { "type": "cancel" }
@@ -276,7 +280,7 @@ Cancel a turn
 - Shortcut: send the literal `__CANCEL__` string (configurable via `WS_CANCEL_SENTINEL`) when clients cannot emit JSON.
 - Optional: include `"request_id"` to get it echoed back in the server's `{"type":"done","cancelled":true}` acknowledgement.
 
-Gracefully end a session
+Gracefully end a session:
 
 ```json
 { "type": "end" }
