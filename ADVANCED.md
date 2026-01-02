@@ -80,7 +80,6 @@ vLLM-specific environment variables:
 | `VLLM_USE_V1` | `1` | Enable vLLM V1 engine |
 | `VLLM_ATTENTION_BACKEND` | auto | Force attention backend (e.g., `FLASH_ATTN`, `FLASHINFER`) |
 | `ENFORCE_EAGER` | `0` | Disable CUDA graphs for debugging |
-| `VLLM_ALLOW_LONG_MAX_MODEL_LEN` | `1` | Allow context lengths beyond model config |
 | `KV_DTYPE` | auto | KV cache dtype (`auto`, `fp8`, `int8`) |
 | `AWQ_CACHE_DIR` | `.awq` | Local cache for AWQ exports |
 

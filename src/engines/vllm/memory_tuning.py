@@ -88,22 +88,6 @@ def scale_batching_limits(
     return scaled_tokens, scaled_seqs
 
 
-def get_max_num_seqs_override() -> int | None:
-    """Return env-provided max_num_seqs override for the chat engine."""
-    keys = ["MAX_NUM_SEQS_CHAT", "MAX_NUM_SEQS"]
-    for key in keys:
-        value = os.getenv(key)
-        if not value:
-            continue
-        try:
-            parsed = int(value)
-        except ValueError:
-            continue
-        if parsed > 0:
-            return parsed
-    return None
-
-
 def _resolve_baseline_for_gpu_memory(total_gib: float, current_baseline: int) -> int:
     """Select the appropriate baseline based on GPU memory size."""
     for threshold, tier_baseline in _GPU_BASELINE_TIERS:
@@ -163,7 +147,6 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
 __all__ = [
     "auto_max_num_seqs",
     "configure_kv_cache",
-    "get_max_num_seqs_override",
     "read_cuda_memory_snapshot",
     "scale_batching_limits",
 ]
