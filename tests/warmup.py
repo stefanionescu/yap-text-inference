@@ -40,7 +40,6 @@ if __package__ in {None, ""}:
 from tests.helpers.setup import setup_repo_path
 from tests.helpers.cli import (
     add_connection_args,
-    add_chat_prompt_arg,
     add_sampling_args,
     build_sampling_payload,
 )
@@ -54,7 +53,6 @@ def _parse_args() -> argparse.Namespace:
 
     add_connection_args(parser)
     add_sampling_args(parser)
-    add_chat_prompt_arg(parser)
 
     parser.add_argument(
         "--gender",

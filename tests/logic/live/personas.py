@@ -110,4 +110,4 @@ class PersonaRegistry:
         return sorted({persona.name for persona in personas})
 
 
-__all__ = ["DEFAULT_PERSONA_NAME", "PersonaDefinition", "PersonaRegistry", "PERSONA_MODULE"]
+__all__ = ["PersonaDefinition", "PersonaRegistry"]

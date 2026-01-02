@@ -1,9 +1,8 @@
 """CLI argument helpers for test utilities.
 
 This module provides reusable argparse argument groups shared by all test
-scripts. It includes connection args (server URL, API key), sampling override
-args (temperature, top_p, etc.), and the chat prompt skip flag for tool-only
-deployments.
+scripts. It includes connection args (server URL, API key) and sampling
+override args (temperature, top_p, etc.).
 """
 
 from __future__ import annotations
@@ -112,23 +111,8 @@ def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, flo
     return payload
 
 
-def add_chat_prompt_arg(parser: ArgumentParser) -> None:
-    """
-    Register a flag to skip sending chat prompts on connection start.
-
-    Use --no-chat-prompt for tool-only deployments where no chat model is available.
-    """
-    parser.add_argument(
-        "--no-chat-prompt",
-        action="store_true",
-        dest="no_chat_prompt",
-        help="Skip sending chat prompt (for tool-only deployments)",
-    )
-
-
 __all__ = [
     "add_connection_args",
     "add_sampling_args",
-    "add_chat_prompt_arg",
     "build_sampling_payload",
 ]

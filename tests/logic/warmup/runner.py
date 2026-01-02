@@ -41,7 +41,7 @@ from tests.helpers.fmt import (
 from tests.helpers.message import dispatch_message, iter_messages
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.stream import StreamTracker
-from tests.helpers.util import choose_message
+from tests.helpers.selection import choose_message
 from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
 
