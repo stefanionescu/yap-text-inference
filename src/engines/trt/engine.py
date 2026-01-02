@@ -30,13 +30,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from collections.abc import AsyncGenerator
 
-try:
+if TYPE_CHECKING:
     from tensorrt_llm.executor import GenerationResult  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    GenerationResult = Any  # type: ignore[misc,assignment]
+else:
+    GenerationResult = Any  # Actual import happens lazily inside SuppressedFDContext
 
 from src.config import (
     CHAT_MODEL,
