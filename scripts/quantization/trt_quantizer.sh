@@ -286,5 +286,3 @@ if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     log_info "[quant]   Use --push-quant to push local quantization artifacts instead"
   fi
 fi
-
-log_blank

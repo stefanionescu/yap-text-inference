@@ -299,6 +299,9 @@ done
 
 cd "${ROOT_DIR}"
 
+echo ""
+log_to_server "[warmup] Starting GPU warmup..."
+
 for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
   IFS='|' read -r persona_gender persona_personality <<<"${persona}"
   persona_gender="$(trim_string "${persona_gender}")"

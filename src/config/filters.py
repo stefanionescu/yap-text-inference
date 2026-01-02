@@ -96,6 +96,15 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # LLM backend selection
     re.compile(r"Using LLM with TensorRT backend", re.IGNORECASE),
     re.compile(r"Using default gpus_per_node:", re.IGNORECASE),
+
+    # === Application TRT startup logs ===
+    # Python logging format: INFO YYYY-MM-DD HH:MM:SS,mmm [module:line] message
+    # Suppress verbose startup logs from src.engines.trt.* modules
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.trt\.(setup|engine):\d+\]"),
+    # Warmup logs specifically for TRT-LLM
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*TRT-LLM", re.IGNORECASE),
+    # Cache daemon message about TRT block reuse
+    re.compile(r"cache reset daemon:.*TRT-LLM", re.IGNORECASE),
 )
 
 
