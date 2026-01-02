@@ -32,14 +32,13 @@ from tests.helpers.fmt import (
 )
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.stream import create_tracker
-from tests.helpers.ttfb import (
+from tests.helpers.metrics import (
     create_ttfb_aggregator,
     emit_ttfb_summary,
     has_ttfb_samples,
     record_ttfb,
 )
-from tests.helpers.ws import send_client_end, with_api_key
+from tests.helpers.websocket import create_tracker, send_client_end, with_api_key
 
 from .session import ConversationSession, build_start_payload
 from .stream import stream_exchange

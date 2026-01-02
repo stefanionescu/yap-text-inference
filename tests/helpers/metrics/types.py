@@ -67,3 +67,4 @@ __all__ = [
     "TTFBSamples",
     "BenchmarkResultData",
 ]
+

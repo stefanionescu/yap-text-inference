@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from tests.helpers.message import iter_messages
+from tests.helpers.websocket import iter_messages
 
 from .types import TurnResult
 

@@ -16,11 +16,16 @@ import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from tests.config import DEFAULT_PERSONALITIES, WS_MAX_QUEUE
-from tests.helpers.message import iter_messages
-from tests.helpers.results import error_result
-from tests.helpers.stream import create_tracker, record_toolcall, record_token
-from tests.helpers.types import StreamState
-from tests.helpers.ws import connect_with_retries, send_client_end, with_api_key
+from tests.helpers.metrics import StreamState, error_result
+from tests.helpers.websocket import (
+    connect_with_retries,
+    create_tracker,
+    iter_messages,
+    record_token,
+    record_toolcall,
+    send_client_end,
+    with_api_key,
+)
 
 from .types import BenchmarkConfig
 

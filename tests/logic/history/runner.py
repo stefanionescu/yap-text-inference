@@ -30,22 +30,24 @@ from tests.helpers.fmt import (
     green,
     yellow,
 )
-from tests.helpers.message import iter_messages
-from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.stream import (
-    consume_stream,
-    create_tracker,
-    finalize_metrics,
-    StreamError,
-)
-from tests.helpers.ttfb import (
+from tests.helpers.errors import StreamError
+from tests.helpers.metrics import (
+    StreamState,
+    TTFBSamples,
     create_ttfb_aggregator,
     emit_ttfb_summary,
     has_ttfb_samples,
     record_ttfb,
 )
-from tests.helpers.types import StreamState, TTFBSamples
-from tests.helpers.ws import send_client_end, with_api_key
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.websocket import (
+    consume_stream,
+    create_tracker,
+    finalize_metrics,
+    iter_messages,
+    send_client_end,
+    with_api_key,
+)
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 
 

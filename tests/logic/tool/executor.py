@@ -21,9 +21,9 @@ from tests.config import (
     TOOL_WS_MESSAGE_WINDOW_SECONDS,
     TOOL_WS_MAX_MESSAGES_PER_WINDOW,
 )
-from tests.helpers.math import secs_to_ms
+from tests.helpers.metrics import secs_to_ms
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.ws import connect_with_retries, send_client_end
+from tests.helpers.websocket import connect_with_retries, send_client_end
 
 from .cases import render_history
 from .drain import DrainConfig, drain_response

@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from tests.helpers.types import TTFBSamples
+from tests.helpers.metrics import TTFBSamples
 
 
 @dataclass(frozen=True)

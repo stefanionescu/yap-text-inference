@@ -10,7 +10,7 @@ import math
 from typing import Any
 from collections.abc import Callable, Mapping, Sequence
 
-from .fmt import section_header, bold, dim
+from tests.helpers.fmt import section_header, bold, dim
 from .types import TTFBSamples
 
 
@@ -191,3 +191,4 @@ __all__ = [
     "has_ttfb_samples",
     "emit_ttfb_summary",
 ]
+

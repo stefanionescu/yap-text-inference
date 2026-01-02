@@ -20,9 +20,11 @@ from .errors import (
     InternalServerError,
     InvalidMessageError,
     MessageParseError,
+    PromptSelectionError,
     RateLimitError,
     ServerAtCapacityError,
     ServerError,
+    StreamError,
     TestClientError,
     ValidationError,
 )
@@ -46,37 +48,43 @@ from .fmt import (
     test_header,
     yellow,
 )
-from .math import round_ms, secs_to_ms
-from .message import dispatch_message, iter_messages, parse_message
-from .payloads import build_chat_prompt_payload, build_start_payload
-from .types import (
+from .metrics import (
     BenchmarkResultData,
     SessionContext,
     StreamState,
     TTFBSamples,
+    create_ttfb_aggregator,
+    emit_ttfb_summary,
+    error_result,
+    has_ttfb_samples,
+    record_ttfb,
+    result_to_dict,
+    round_ms,
+    secs_to_ms,
+    success_result,
 )
 from .prompt import normalize_gender, select_chat_prompt
 from .rate import SlidingWindowPacer
 from .regex import contains_complete_sentence, word_count_at_least
-from .results import error_result, success_result, result_to_dict
 from .setup import setup_repo_path
 from .concurrency import distribute_requests, sanitize_concurrency
-from .stream import (
+from .selection import choose_message
+from .websocket import (
+    build_chat_prompt_payload,
+    build_start_payload,
+    connect_with_retries,
     consume_stream,
     create_tracker,
+    dispatch_message,
     finalize_metrics,
+    iter_messages,
+    parse_message,
     record_token,
     record_toolcall,
-    StreamError,
+    recv_raw,
+    send_client_end,
+    with_api_key,
 )
-from .ttfb import (
-    create_ttfb_aggregator,
-    emit_ttfb_summary,
-    has_ttfb_samples,
-    record_ttfb,
-)
-from .selection import choose_message
-from .ws import connect_with_retries, recv_raw, send_client_end, with_api_key
 
 __all__ = [
     # cli
@@ -96,9 +104,11 @@ __all__ = [
     "InternalServerError",
     "InvalidMessageError",
     "MessageParseError",
+    "PromptSelectionError",
     "RateLimitError",
     "ServerAtCapacityError",
     "ServerError",
+    "StreamError",
     "TestClientError",
     "ValidationError",
     # fmt
@@ -120,21 +130,20 @@ __all__ = [
     "section_header",
     "test_header",
     "yellow",
-    # math
-    "round_ms",
-    "secs_to_ms",
-    # message
-    "dispatch_message",
-    "iter_messages",
-    "parse_message",
-    # payloads
-    "build_chat_prompt_payload",
-    "build_start_payload",
-    # types
+    # metrics
     "BenchmarkResultData",
     "SessionContext",
     "StreamState",
     "TTFBSamples",
+    "create_ttfb_aggregator",
+    "emit_ttfb_summary",
+    "error_result",
+    "has_ttfb_samples",
+    "record_ttfb",
+    "result_to_dict",
+    "round_ms",
+    "secs_to_ms",
+    "success_result",
     # prompt
     "normalize_gender",
     "select_chat_prompt",
@@ -143,31 +152,25 @@ __all__ = [
     # regex
     "contains_complete_sentence",
     "word_count_at_least",
-    # results
-    "error_result",
-    "success_result",
-    "result_to_dict",
     # setup
     "setup_repo_path",
     # concurrency
     "distribute_requests",
     "sanitize_concurrency",
-    # stream
-    "consume_stream",
-    "create_tracker",
-    "finalize_metrics",
-    "record_token",
-    "record_toolcall",
-    "StreamError",
-    # ttfb
-    "create_ttfb_aggregator",
-    "emit_ttfb_summary",
-    "has_ttfb_samples",
-    "record_ttfb",
     # selection
     "choose_message",
-    # ws
+    # websocket
+    "build_chat_prompt_payload",
+    "build_start_payload",
     "connect_with_retries",
+    "consume_stream",
+    "create_tracker",
+    "dispatch_message",
+    "finalize_metrics",
+    "iter_messages",
+    "parse_message",
+    "record_token",
+    "record_toolcall",
     "recv_raw",
     "send_client_end",
     "with_api_key",
