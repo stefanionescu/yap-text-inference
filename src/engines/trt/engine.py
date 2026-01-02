@@ -195,8 +195,13 @@ class _TRTEngineSingleton(AsyncSingleton[TRTEngine]):
         
         logger.info("TRT-LLM: building chat engine (engine_dir=%s, tokenizer=%s)", engine_dir, CHAT_MODEL)
         
-        # Import TRT-LLM lazily to avoid import errors when not using TRT
-        from tensorrt_llm._tensorrt_engine import LLM
+        # Check if user wants to see TRT logs
+        from src.helpers.env import env_flag
+        show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
+        
+        # Configure TRT-LLM's logger to suppress verbose output
+        from src.scripts.filters.trt import configure_trt_logger, SuppressedFDContext
+        configure_trt_logger()
         
         kwargs: dict[str, Any] = {
             "model": engine_dir,
@@ -211,8 +216,15 @@ class _TRTEngineSingleton(AsyncSingleton[TRTEngine]):
         if kv_cfg:
             kwargs["kv_cache_config"] = kv_cfg
         
-        # Run engine loading in thread pool since it's blocking
-        llm = await asyncio.to_thread(LLM, **kwargs)
+        # Import and create LLM - suppress C++ stdout/stderr unless user wants logs
+        # TRT-LLM's C++ code writes directly to file descriptors, bypassing Python
+        if show_trt_logs:
+            from tensorrt_llm._tensorrt_engine import LLM
+            llm = await asyncio.to_thread(LLM, **kwargs)
+        else:
+            with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
+                from tensorrt_llm._tensorrt_engine import LLM
+                llm = await asyncio.to_thread(LLM, **kwargs)
         
         engine = TRTEngine(llm, CHAT_MODEL)
         logger.info("TRT-LLM: chat engine ready")
