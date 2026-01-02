@@ -62,7 +62,11 @@ from src.quantization.vllm.core.detection import (
     log_quant_detection,
     resolve_model_origin,
 )
-from .tokenizer import inject_tokenizer_kwargs
+from .tokenizer import inject_tokenizer_kwargs, install_autoconfig_sanitizer
+
+# Install AutoConfig patch early to strip unsupported quant dtype fields
+# before vLLM loads any model configs
+install_autoconfig_sanitizer()
 
 
 def _ensure_fla_runtime_available(model_identifier: str) -> None:

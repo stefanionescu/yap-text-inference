@@ -8,12 +8,14 @@ from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
+from src.config import UNSUPPORTED_QUANT_DTYPE_FIELDS
 from src.helpers.model_profiles import get_model_profile
 from src.helpers.model_profiles import normalize_model_id
 from src.helpers.log_once import warn_once
 
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
 _FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
+_AUTOCONFIG_PATCH_INSTALLED = False
 
 
 def _resolve_tokenizer_kwarg_key() -> str | None:
@@ -133,4 +135,50 @@ def _normalize_tokenizer_identifier(candidate: Any) -> str:
     return normalize_model_id(str(candidate))
 
 
-__all__ = ["inject_tokenizer_kwargs"]
+def install_autoconfig_sanitizer() -> bool:
+    """Patch AutoConfig.from_pretrained to strip unsupported quant dtype fields.
+    
+    vLLM V1 rejects scale_dtype and zp_dtype in VllmConfig, but compressed-tensors
+    adds these as None defaults when parsing quantization_config. This patch strips
+    them from the loaded config before vLLM sees them.
+    """
+    global _AUTOCONFIG_PATCH_INSTALLED
+
+    if _AUTOCONFIG_PATCH_INSTALLED:
+        return True
+
+    try:
+        from transformers import AutoConfig
+    except Exception:
+        return False
+
+    original = AutoConfig.from_pretrained.__func__
+
+    def _patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
+        config = original(cls, pretrained_model_name_or_path, *args, **kwargs)
+        _strip_quant_dtype_fields(config)
+        return config
+
+    AutoConfig._yap_original_from_pretrained = original
+    AutoConfig.from_pretrained = classmethod(_patched_from_pretrained)
+    _AUTOCONFIG_PATCH_INSTALLED = True
+    return True
+
+
+def _strip_quant_dtype_fields(config: Any) -> None:
+    """Remove unsupported quant dtype fields from a loaded config object."""
+    quant_config = getattr(config, "quantization_config", None)
+    if not isinstance(quant_config, dict):
+        return
+
+    removed = []
+    for field in UNSUPPORTED_QUANT_DTYPE_FIELDS:
+        if field in quant_config:
+            del quant_config[field]
+            removed.append(field)
+
+    if removed:
+        print(f"[config] Stripped unsupported quant fields from loaded config: {', '.join(removed)}")
+
+
+__all__ = ["inject_tokenizer_kwargs", "install_autoconfig_sanitizer"]

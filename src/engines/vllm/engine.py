@@ -169,7 +169,20 @@ class _VLLMEngineSingleton(AsyncSingleton[VLLMEngine]):
         
         logger.info("vLLM: building chat engine (model=%s)", CHAT_MODEL)
         engine_args = make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN)
-        raw_engine = create_engine_with_fallback(engine_args)
+        
+        # Check if user wants to see vLLM logs
+        from src.helpers.env import env_flag
+        show_vllm_logs = env_flag("SHOW_VLLM_LOGS", False)
+        
+        # Suppress C++ and worker stdout/stderr during engine creation
+        # Worker processes inherit redirected fds, so their output is also suppressed
+        if show_vllm_logs:
+            raw_engine = create_engine_with_fallback(engine_args)
+        else:
+            from src.scripts.filters.vllm import SuppressedFDContext
+            with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
+                raw_engine = create_engine_with_fallback(engine_args)
+        
         engine = VLLMEngine(raw_engine)
         logger.info("vLLM: chat engine ready")
         return engine
