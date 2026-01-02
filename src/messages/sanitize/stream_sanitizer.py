@@ -190,8 +190,8 @@ def _sanitize_stream_chunk(
     cleaned = ELLIPSIS_TRAILING_DOT_PATTERN.sub("...", cleaned)
     # Strip any trailing space after ellipsis
     cleaned = ELLIPSIS_TRAILING_SPACE_PATTERN.sub("...", cleaned)
-    # Collapse any run of 2+ dots to a single period
-    cleaned = DOT_RUN_PATTERN.sub(".", cleaned)
+    # Collapse any run of 4+ dots to ellipsis (preserves "...")
+    cleaned = DOT_RUN_PATTERN.sub("...", cleaned)
     # Collapse dots separated by spaces (". . " or ". . .") to a single period
     cleaned = SPACED_DOT_RUN_PATTERN.sub(".", cleaned)
     # Ensure a space after period if followed by an alnum (avoid smushing words)
