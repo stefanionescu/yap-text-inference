@@ -129,6 +129,17 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"The argument `?trust_remote_code`? is to be used with Auto classes", re.IGNORECASE),
     # Multiple distributions warning (pip/packaging)
     re.compile(r"Multiple distributions found for package", re.IGNORECASE),
+
+    # === Application vLLM startup logs ===
+    # Python logging format: INFO YYYY-MM-DD HH:MM:SS,mmm [module:line] message
+    # Suppress verbose startup logs from src.engines.vllm.* modules
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args):\d+\]"),
+    # Warmup logs specifically for vLLM
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*vLLM", re.IGNORECASE),
+    # [config] prefixed messages from engine/tokenizer setup
+    re.compile(r"^\[config\]\s+(?:Detected|Applied|V1 engine)", re.IGNORECASE),
+    # Cache daemon started message
+    re.compile(r"cache reset daemon started", re.IGNORECASE),
 )
 
 

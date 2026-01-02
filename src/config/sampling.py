@@ -115,6 +115,7 @@ _DEFAULT_LOGIT_BIAS = {
 # - Gemma 3: <|eot_id|>, <|start_header_id|>
 # - Kimi: <|im_user|>, <|im_system|>, [EOS], [EOT]
 # - DeepSeek V2/V3: Fullwidth vertical bars and "User:" prefix
+# - Mistral: [INST], [/INST]
 
 INFERENCE_STOP = [
     # ChatML format (including partial tokenization variants)
@@ -142,6 +143,9 @@ INFERENCE_STOP = [
     "<｜end▁of▁sentence｜>",
     "<｜begin▁of▁sentence｜>",
     "User:",  # DeepSeek uses "User:" prefix
+    # Mistral format
+    "[INST]",
+    "[/INST]",
     # General
     "[SYSTEM_PROMPT]",
     "[/SYSTEM_PROMPT]",
