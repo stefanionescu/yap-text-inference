@@ -1,8 +1,8 @@
-"""Engine creation with fallback handling for legacy configs.
+"""Engine creation with vLLM V1 compatibility workaround.
 
-This module handles:
-1. Local AWQ model loading (forces offline mode)
-2. Stripping unsupported scale_dtype/zp_dtype fields from vLLM V1
+vLLM has a bug where AsyncEngineArgs contains scale_dtype and zp_dtype fields
+that VllmConfig rejects with 'extra inputs not permitted'. This module patches
+the engine creation to filter these out.
 """
 
 from __future__ import annotations
@@ -10,6 +10,8 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+from functools import wraps
+from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -40,36 +42,55 @@ def _local_model_offline_context():
             os.environ.pop("TRANSFORMERS_OFFLINE", None)
 
 
-def _delete_unsupported_attrs(engine_args: AsyncEngineArgs) -> None:
-    """Delete unsupported dtype attributes from engine args instance.
+def _patch_create_engine_config(engine_args: AsyncEngineArgs) -> None:
+    """Patch create_engine_config to filter unsupported fields before VllmConfig.
     
-    vLLM V1's AsyncEngineArgs may have scale_dtype/zp_dtype as class attributes
-    with None defaults. VllmConfig rejects these, so we must delete them from
-    the instance to prevent them from being passed to create_engine_config().
+    vLLM's AsyncEngineArgs has scale_dtype/zp_dtype as dataclass fields that
+    VllmConfig rejects. We wrap create_engine_config to intercept and filter.
     """
-    for field in UNSUPPORTED_QUANT_DTYPE_FIELDS:
+    original_method = engine_args.create_engine_config
+    
+    @wraps(original_method)
+    def patched_create_engine_config(*args: Any, **kwargs: Any) -> Any:
+        # The issue is inside VllmConfig.__init__ which is called by the original
+        # method. We need to patch VllmConfig temporarily.
+        from vllm.config import VllmConfig
+        
+        original_init = VllmConfig.__init__
+        
+        @wraps(original_init)
+        def filtered_init(self: Any, *init_args: Any, **init_kwargs: Any) -> None:
+            # Remove the problematic fields before passing to pydantic
+            for field in UNSUPPORTED_QUANT_DTYPE_FIELDS:
+                init_kwargs.pop(field, None)
+            return original_init(self, *init_args, **init_kwargs)
+        
+        VllmConfig.__init__ = filtered_init
         try:
-            delattr(engine_args, field)
-        except AttributeError:
-            pass  # Field doesn't exist on this instance
+            return original_method(*args, **kwargs)
+        finally:
+            VllmConfig.__init__ = original_init
+    
+    # Replace the method on this specific instance
+    engine_args.create_engine_config = patched_create_engine_config
 
 
 def create_engine_with_fallback(engine_args: AsyncEngineArgs) -> AsyncLLMEngine:
-    """Create an engine, handling legacy quant configs.
+    """Create an engine with vLLM V1 compatibility fixes.
     
     1. Sanitizes model config files (removes scale_dtype/zp_dtype from JSON)
-    2. Deletes unsupported attrs from engine_args instance
+    2. Patches create_engine_config to filter unsupported fields
     3. Uses offline mode for local AWQ models
     """
-    # Sanitize config files on disk (local or HF cached)
+    # Sanitize config files on disk
     model_path = getattr(engine_args, "model", None)
     if model_path:
         sanitize_quant_metadata(model_path)
     
-    # Delete unsupported attrs from the engine args instance itself
-    _delete_unsupported_attrs(engine_args)
+    # Patch the instance method to filter unsupported fields
+    _patch_create_engine_config(engine_args)
     
-    # Use offline mode for local AWQ to prevent Hub lookups
+    # Use offline mode for local AWQ
     is_local_awq = getattr(engine_args, "_is_local_awq", False)
     ctx = _local_model_offline_context() if is_local_awq else contextlib.nullcontext()
     
