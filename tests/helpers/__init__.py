@@ -5,7 +5,6 @@ submodules. Import from here when you need standard test utilities.
 """
 
 from .cli import (
-    add_chat_prompt_arg,
     add_connection_args,
     add_sampling_args,
     build_sampling_payload,
@@ -59,12 +58,11 @@ from .results import BenchmarkResult, error_result, success_result
 from .setup import setup_repo_path
 from .stream import StreamTracker
 from .ttfb import TTFBAggregator
-from .util import choose_message
+from .selection import choose_message
 from .ws import connect_with_retries, recv_raw, send_client_end, with_api_key
 
 __all__ = [
     # cli
-    "add_chat_prompt_arg",
     "add_connection_args",
     "add_sampling_args",
     "build_sampling_payload",
@@ -136,7 +134,7 @@ __all__ = [
     "StreamTracker",
     # ttfb
     "TTFBAggregator",
-    # util
+    # selection
     "choose_message",
     # ws
     "connect_with_retries",

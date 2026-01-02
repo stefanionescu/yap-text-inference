@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from tests.config import BENCHMARK_FALLBACK_MESSAGE
 from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.util import choose_message
+from tests.helpers.selection import choose_message
 
 from .reporting import print_report
 from .types import BenchmarkConfig

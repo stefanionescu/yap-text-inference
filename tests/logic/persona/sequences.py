@@ -1,10 +1,13 @@
-"""Test sequence orchestration for personality switch tests."""
+"""Test sequence orchestration for persona switch tests.
+
+This module provides the high-level sequence functions that coordinate
+the flow of persona switch tests: initial exchange, switch sequences,
+and remaining message completion.
+"""
 
 from __future__ import annotations
 
-from tests.config import PERSONALITY_REPLIES_PER_SWITCH
 from tests.helpers.rate import SlidingWindowPacer
-from tests.messages.personality import PERSONALITY_NAME_CHECK_MESSAGE
 
 from .messaging import send_persona_update, send_user_exchange
 from .session import PersonaSession, PersonaVariant
@@ -32,6 +35,8 @@ async def run_switch_sequence(
     ws,
     session: PersonaSession,
     variant: PersonaVariant,
+    name_check_message: str,
+    replies_per_switch: int,
     *,
     persona_pacer: SlidingWindowPacer | None = None,
     message_pacer: SlidingWindowPacer | None = None,
@@ -50,10 +55,10 @@ async def run_switch_sequence(
         ws,
         session,
         variant,
-        PERSONALITY_NAME_CHECK_MESSAGE,
+        name_check_message,
         message_pacer=message_pacer,
     )
-    for _ in range(PERSONALITY_REPLIES_PER_SWITCH):
+    for _ in range(replies_per_switch):
         if not session.has_remaining_prompts():
             break
         user_text = session.next_script_prompt()
@@ -83,4 +88,11 @@ async def run_remaining_sequence(
             user_text,
             message_pacer=message_pacer,
         )
+
+
+__all__ = [
+    "run_initial_exchange",
+    "run_remaining_sequence",
+    "run_switch_sequence",
+]
 

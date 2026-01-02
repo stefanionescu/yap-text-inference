@@ -1,4 +1,8 @@
-"""WebSocket message handling for personality tests."""
+"""WebSocket message handling for persona switch tests.
+
+This module provides the messaging primitives for sending start requests,
+persona updates, and collecting streaming responses during switch tests.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +23,25 @@ from tests.helpers.rate import SlidingWindowPacer
 from tests.helpers.stream import StreamTracker
 
 from .session import PersonaSession, PersonaVariant
+
+
+# ============================================================================
+# Internal Helpers
+# ============================================================================
+
+
+async def _wait_for_ack(ws) -> None:
+    """Wait for ack message, discarding the payload."""
+    async for msg in iter_messages(ws):
+        if msg.get("type") == "ack":
+            return
+        if msg.get("type") == "error":
+            raise ServerError.from_message(msg)
+
+
+# ============================================================================
+# Public API
+# ============================================================================
 
 
 async def collect_response(ws, tracker: StreamTracker) -> str:
@@ -75,6 +98,7 @@ async def send_start_request(
 
     tracker = StreamTracker()
     await ws.send(json.dumps(payload))
+    await _wait_for_ack(ws)
     reply = await collect_response(ws, tracker)
     metrics = tracker.finalize_metrics()
     
@@ -143,4 +167,13 @@ async def send_user_exchange(
     session.append_exchange(user_text, assistant_text)
     if session.ttfb_aggregator is not None:
         session.ttfb_aggregator.record(metrics)
+
+
+__all__ = [
+    "collect_response",
+    "send_persona_update",
+    "send_start_request",
+    "send_user_exchange",
+    "wait_for_chat_prompt_ack",
+]
 

@@ -39,11 +39,27 @@ from tests.helpers.cli import (
 from tests.helpers.errors import ServerError
 from tests.config import (
     DEFAULT_SERVER_WS_URL,
+    PERSONALITY_PERSONA_VARIANTS,
     PERSONALITY_SWITCH_DEFAULT,
     PERSONALITY_SWITCH_DELAY_SECONDS,
     PERSONALITY_SWITCH_MAX,
     PERSONALITY_SWITCH_MIN,
+    PERSONALITY_REPLIES_PER_SWITCH,
+    PERSONALITY_NAME_CHECK_MESSAGE,
+    PERSONALITY_CONVERSATION_MESSAGES,
 )
+from tests.logic.persona import run_persona_test, PersonaSwitchConfig
+
+
+def _build_config() -> PersonaSwitchConfig:
+    """Build configuration for personality switch tests."""
+    return PersonaSwitchConfig(
+        test_name="PERSONALITY SWITCH TEST",
+        prompts=tuple(PERSONALITY_CONVERSATION_MESSAGES),
+        name_check_message=PERSONALITY_NAME_CHECK_MESSAGE,
+        variants=tuple(PERSONALITY_PERSONA_VARIANTS),
+        replies_per_switch=PERSONALITY_REPLIES_PER_SWITCH,
+    )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -73,11 +89,28 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> None:
-    """Thin orchestrator: parse CLI args and run the test."""
-    setup_repo_path()
-    from tests.logic.personality.runner import run_test
+async def run_test(
+    ws_url: str,
+    api_key: str | None,
+    switches: int,
+    delay_s: int,
+    sampling: dict[str, float | int] | None,
+) -> None:
+    """Run the personality switch test."""
+    config = _build_config()
+    await run_persona_test(
+        ws_url=ws_url,
+        api_key=api_key,
+        config=config,
+        switches=switches,
+        delay_s=delay_s,
+        sampling=sampling,
+    )
 
+
+def main() -> None:
+    """Parse CLI args and run the test."""
+    setup_repo_path()
     args = _parse_args()
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
     try:
@@ -96,4 +129,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -38,11 +38,27 @@ from tests.helpers.cli import (
 from tests.helpers.errors import ServerError
 from tests.config import (
     DEFAULT_SERVER_WS_URL,
+    PERSONA_VARIANTS,
     PERSONALITY_SWITCH_DEFAULT,
     PERSONALITY_SWITCH_DELAY_SECONDS,
     PERSONALITY_SWITCH_MAX,
     PERSONALITY_SWITCH_MIN,
+    PERSONALITY_REPLIES_PER_SWITCH,
+    CONVERSATION_HISTORY_MESSAGES,
+    GENDER_NAME_CHECK_MESSAGE,
 )
+from tests.logic.persona import run_persona_test, PersonaSwitchConfig
+
+
+def _build_config() -> PersonaSwitchConfig:
+    """Build configuration for gender switch tests."""
+    return PersonaSwitchConfig(
+        test_name="GENDER SWITCH TEST",
+        prompts=tuple(CONVERSATION_HISTORY_MESSAGES),
+        name_check_message=GENDER_NAME_CHECK_MESSAGE,
+        variants=tuple(PERSONA_VARIANTS),
+        replies_per_switch=PERSONALITY_REPLIES_PER_SWITCH,
+    )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -72,11 +88,28 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> None:
-    """Thin orchestrator: parse CLI args and run the test."""
-    setup_repo_path()
-    from tests.logic.gender.runner import run_test
+async def run_test(
+    ws_url: str,
+    api_key: str | None,
+    switches: int,
+    delay_s: int,
+    sampling: dict[str, float | int] | None,
+) -> None:
+    """Run the gender switch test."""
+    config = _build_config()
+    await run_persona_test(
+        ws_url=ws_url,
+        api_key=api_key,
+        config=config,
+        switches=switches,
+        delay_s=delay_s,
+        sampling=sampling,
+    )
 
+
+def main() -> None:
+    """Parse CLI args and run the test."""
+    setup_repo_path()
     args = _parse_args()
     switches = max(PERSONALITY_SWITCH_MIN, min(PERSONALITY_SWITCH_MAX, args.switches))
     try:
@@ -95,4 +128,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

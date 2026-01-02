@@ -17,7 +17,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-from tests.helpers.cli import add_connection_args, add_chat_prompt_arg
+from tests.helpers.cli import add_connection_args
 from tests.helpers.ws import with_api_key
 from tests.config import (
     DEFAULT_GENDER,
@@ -29,7 +29,6 @@ from tests.logic.tool.runner import run_suite
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")
     add_connection_args(parser)
-    add_chat_prompt_arg(parser)
     parser.add_argument(
         "--gender",
         default=DEFAULT_GENDER,
@@ -95,7 +94,6 @@ def main() -> None:
                 concurrency=max(1, args.concurrency),
                 limit=args.limit,
                 show_successes=args.show_successes,
-                skip_chat_prompt=args.no_chat_prompt,
                 max_steps_per_case=args.max_steps,
             )
         )

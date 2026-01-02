@@ -82,6 +82,9 @@ CONNECTION_IDLE_GRACE_DEFAULT = 15.0
 # WebSocket defaults
 DEFAULT_WS_PATH = "/ws"
 
+# Progress bar display
+PROGRESS_BAR_WIDTH = 30
+
 # Persona registry defaults
 PERSONA_MODULE = "tests.prompts.detailed"
 DEFAULT_PERSONA_NAME = "anna_flirty"
@@ -116,6 +119,7 @@ __all__ = [
     "CONNECTION_IDLE_EXPECT_DEFAULT",
     "CONNECTION_IDLE_GRACE_DEFAULT",
     "DEFAULT_WS_PATH",
+    "PROGRESS_BAR_WIDTH",
     "PERSONA_MODULE",
     "DEFAULT_PERSONA_NAME",
 ]
