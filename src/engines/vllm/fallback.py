@@ -15,7 +15,9 @@ from typing import Any
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
-from src.config import UNSUPPORTED_QUANT_DTYPE_FIELDS
+from src.config import QUANT_CONFIG_FILENAMES, UNSUPPORTED_QUANT_DTYPE_FIELDS
+from src.helpers.io import read_json_file
+from src.helpers.models import is_local_model_path
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,68 @@ def _get_engine_args_field_names(engine_args: AsyncEngineArgs) -> list[str]:
     return names
 
 
+def _load_and_sanitize_quant_config(model_path: str) -> dict[str, Any] | None:
+    """Load quantization config from model and strip unsupported fields.
+    
+    Returns the sanitized config dict, or None if no config found.
+    """
+    if not model_path:
+        return None
+    
+    # Resolve path for local or HF cached models
+    if is_local_model_path(model_path):
+        base_path = model_path
+    else:
+        # For remote models, try to find the HF cache location
+        try:
+            from huggingface_hub import hf_hub_download
+            token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
+            cache_dir = os.getenv("HF_HOME")
+            
+            for filename in QUANT_CONFIG_FILENAMES:
+                try:
+                    cached_path = hf_hub_download(
+                        repo_id=model_path,
+                        filename=filename,
+                        token=token,
+                        cache_dir=cache_dir,
+                        local_files_only=True,  # Don't download, just find cached
+                    )
+                    payload = read_json_file(cached_path)
+                    if payload and isinstance(payload, dict):
+                        quant_cfg = payload.get("quantization_config", payload)
+                        if isinstance(quant_cfg, dict):
+                            # Strip unsupported fields
+                            sanitized = {
+                                k: v for k, v in quant_cfg.items()
+                                if k not in UNSUPPORTED_QUANT_DTYPE_FIELDS
+                            }
+                            return sanitized
+                except Exception:
+                    continue
+        except ImportError:
+            pass
+        return None
+    
+    # Try each config filename for local models
+    for filename in QUANT_CONFIG_FILENAMES:
+        candidate = os.path.join(base_path, filename)
+        if not os.path.isfile(candidate):
+            continue
+        payload = read_json_file(candidate)
+        if payload and isinstance(payload, dict):
+            quant_cfg = payload.get("quantization_config", payload)
+            if isinstance(quant_cfg, dict):
+                # Strip unsupported fields
+                sanitized = {
+                    k: v for k, v in quant_cfg.items()
+                    if k not in UNSUPPORTED_QUANT_DTYPE_FIELDS
+                }
+                return sanitized
+    
+    return None
+
+
 def _strip_unsupported_quant_dtype_fields(engine_args: AsyncEngineArgs) -> AsyncEngineArgs | None:
     """Rebuild engine args without unsupported quant dtype fields.
 
@@ -64,6 +128,19 @@ def _strip_unsupported_quant_dtype_fields(engine_args: AsyncEngineArgs) -> Async
     source_names = _get_engine_args_field_names(engine_args)
     filtered_kwargs: dict[str, Any] = {}
     removed = False
+    
+    # Check if we need to load quantization_config from model files
+    has_quant_config = (
+        hasattr(engine_args, "quantization_config") 
+        and isinstance(engine_args.quantization_config, dict)
+    )
+    loaded_quant_config: dict[str, Any] | None = None
+    
+    if not has_quant_config and hasattr(engine_args, "model"):
+        # Load and sanitize quant config from model files
+        loaded_quant_config = _load_and_sanitize_quant_config(engine_args.model)
+        if loaded_quant_config:
+            removed = True
 
     for name in source_names:
         if name in UNSUPPORTED_QUANT_DTYPE_FIELDS:
@@ -82,6 +159,10 @@ def _strip_unsupported_quant_dtype_fields(engine_args: AsyncEngineArgs) -> Async
             value = cleaned
 
         filtered_kwargs[name] = value
+    
+    # Inject loaded quant config if we loaded one
+    if loaded_quant_config and "quantization_config" not in filtered_kwargs:
+        filtered_kwargs["quantization_config"] = loaded_quant_config
 
     if not removed:
         return None
