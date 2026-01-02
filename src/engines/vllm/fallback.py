@@ -75,6 +75,8 @@ def _sanitize_config_file_in_place(path: str) -> bool:
     
     Returns True if file was modified.
     """
+    import stat
+    
     payload = read_json_file(path)
     if not payload or not isinstance(payload, dict):
         return False
@@ -82,9 +84,27 @@ def _sanitize_config_file_in_place(path: str) -> bool:
     if not _strip_fields_from_dict(payload):
         return False
     
-    # Write back - this may fail if file is read-only
+    # HF cache blobs are often read-only; try to make writable before writing
+    original_mode = None
+    try:
+        file_stat = os.stat(path)
+        if not (file_stat.st_mode & stat.S_IWUSR):
+            original_mode = file_stat.st_mode
+            os.chmod(path, file_stat.st_mode | stat.S_IWUSR)
+    except OSError:
+        pass
+    
     from src.helpers.io import write_json_file
-    return write_json_file(path, payload)
+    success = write_json_file(path, payload)
+    
+    # Restore original permissions if we changed them
+    if original_mode is not None:
+        try:
+            os.chmod(path, original_mode)
+        except OSError:
+            pass
+    
+    return success
 
 
 def _sanitize_model_configs(model_path: str) -> bool:
