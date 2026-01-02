@@ -4,8 +4,8 @@ This module provides helpers for:
 1. Local AWQ model loading (forcing offline mode)
 2. Stripping unsupported quantization dtype fields from engine args
 
-Note: The primary defense against scale_dtype/zp_dtype is the AutoConfig patch
-installed by args.py (via install_autoconfig_sanitizer). The fallback here catches
+Note: The primary defense against scale_dtype/zp_dtype is the VllmConfig patch
+installed by args.py (via install_vllmconfig_sanitizer). The fallback here catches
 any edge cases where the fields slip through to engine arg creation.
 """
 
