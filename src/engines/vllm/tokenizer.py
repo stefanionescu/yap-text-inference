@@ -15,7 +15,7 @@ from src.helpers.log_once import warn_once
 
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
 _FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
-_AUTOCONFIG_PATCH_INSTALLED = False
+_VLLMCONFIG_PATCH_INSTALLED = False
 
 
 def _resolve_tokenizer_kwarg_key() -> str | None:
@@ -135,50 +135,40 @@ def _normalize_tokenizer_identifier(candidate: Any) -> str:
     return normalize_model_id(str(candidate))
 
 
-def install_autoconfig_sanitizer() -> bool:
-    """Patch AutoConfig.from_pretrained to strip unsupported quant dtype fields.
+def install_vllmconfig_sanitizer() -> bool:
+    """Patch VllmConfig.__init__ to filter unsupported quant dtype fields.
     
-    vLLM V1 rejects scale_dtype and zp_dtype in VllmConfig, but compressed-tensors
-    adds these as None defaults when parsing quantization_config. This patch strips
-    them from the loaded config before vLLM sees them.
+    vLLM V1's VllmConfig rejects scale_dtype and zp_dtype, but compressed-tensors
+    adds these as None defaults. This patch strips them from kwargs before
+    pydantic validation runs.
     """
-    global _AUTOCONFIG_PATCH_INSTALLED
+    global _VLLMCONFIG_PATCH_INSTALLED
 
-    if _AUTOCONFIG_PATCH_INSTALLED:
+    if _VLLMCONFIG_PATCH_INSTALLED:
         return True
 
     try:
-        from transformers import AutoConfig
+        from vllm.config import VllmConfig
     except Exception:
         return False
 
-    original = AutoConfig.from_pretrained.__func__
+    original_init = VllmConfig.__init__
 
-    def _patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
-        config = original(cls, pretrained_model_name_or_path, *args, **kwargs)
-        _strip_quant_dtype_fields(config)
-        return config
+    def _patched_init(self, *args, **kwargs):
+        # Strip unsupported quant dtype fields before pydantic validates
+        removed = []
+        for field in UNSUPPORTED_QUANT_DTYPE_FIELDS:
+            if field in kwargs:
+                del kwargs[field]
+                removed.append(field)
+        if removed:
+            print(f"[config] Filtered unsupported VllmConfig fields: {', '.join(removed)}")
+        return original_init(self, *args, **kwargs)
 
-    AutoConfig._yap_original_from_pretrained = original
-    AutoConfig.from_pretrained = classmethod(_patched_from_pretrained)
-    _AUTOCONFIG_PATCH_INSTALLED = True
+    VllmConfig._yap_original_init = original_init
+    VllmConfig.__init__ = _patched_init
+    _VLLMCONFIG_PATCH_INSTALLED = True
     return True
 
 
-def _strip_quant_dtype_fields(config: Any) -> None:
-    """Remove unsupported quant dtype fields from a loaded config object."""
-    quant_config = getattr(config, "quantization_config", None)
-    if not isinstance(quant_config, dict):
-        return
-
-    removed = []
-    for field in UNSUPPORTED_QUANT_DTYPE_FIELDS:
-        if field in quant_config:
-            del quant_config[field]
-            removed.append(field)
-
-    if removed:
-        print(f"[config] Stripped unsupported quant fields from loaded config: {', '.join(removed)}")
-
-
-__all__ = ["inject_tokenizer_kwargs", "install_autoconfig_sanitizer"]
+__all__ = ["inject_tokenizer_kwargs", "install_vllmconfig_sanitizer"]
