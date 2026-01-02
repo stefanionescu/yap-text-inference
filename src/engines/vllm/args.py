@@ -83,12 +83,6 @@ def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None
         Tuple of (inference_quant, quant_payload) where quant_payload contains
         detected quantization metadata.
     """
-    # Always sanitize quant metadata to strip scale_dtype/zp_dtype fields
-    # that vLLM V1 rejects. Must happen before vLLM loads the config.
-    # This runs even for pre-quantized models where raw_quant is None.
-    from src.quantization.vllm.core.detection import sanitize_quant_metadata
-    sanitize_quant_metadata(model)
-    
     if not raw_quant:
         return None, {}
     
