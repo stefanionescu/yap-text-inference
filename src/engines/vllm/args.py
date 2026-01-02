@@ -62,11 +62,7 @@ from src.quantization.vllm.core.detection import (
     log_quant_detection,
     resolve_model_origin,
 )
-from .tokenizer import inject_tokenizer_kwargs, install_vllmconfig_sanitizer
-
-# Install VllmConfig patch to filter unsupported quant dtype fields
-# that compressed-tensors adds as None defaults
-install_vllmconfig_sanitizer()
+from .tokenizer import inject_tokenizer_kwargs
 
 
 def _ensure_fla_runtime_available(model_identifier: str) -> None:

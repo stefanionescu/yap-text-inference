@@ -8,14 +8,12 @@ from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.config import UNSUPPORTED_QUANT_DTYPE_FIELDS
 from src.helpers.model_profiles import get_model_profile
 from src.helpers.model_profiles import normalize_model_id
 from src.helpers.log_once import warn_once
 
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
 _FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
-_VLLMCONFIG_PATCH_INSTALLED = False
 
 
 def _resolve_tokenizer_kwarg_key() -> str | None:
@@ -135,40 +133,4 @@ def _normalize_tokenizer_identifier(candidate: Any) -> str:
     return normalize_model_id(str(candidate))
 
 
-def install_vllmconfig_sanitizer() -> bool:
-    """Patch VllmConfig.__init__ to filter unsupported quant dtype fields.
-    
-    vLLM V1's VllmConfig rejects scale_dtype and zp_dtype, but compressed-tensors
-    adds these as None defaults. This patch strips them from kwargs before
-    pydantic validation runs.
-    """
-    global _VLLMCONFIG_PATCH_INSTALLED
-
-    if _VLLMCONFIG_PATCH_INSTALLED:
-        return True
-
-    try:
-        from vllm.config import VllmConfig
-    except Exception:
-        return False
-
-    original_init = VllmConfig.__init__
-
-    def _patched_init(self, *args, **kwargs):
-        # Strip unsupported quant dtype fields before pydantic validates
-        removed = []
-        for field in UNSUPPORTED_QUANT_DTYPE_FIELDS:
-            if field in kwargs:
-                del kwargs[field]
-                removed.append(field)
-        if removed:
-            print(f"[config] Filtered unsupported VllmConfig fields: {', '.join(removed)}")
-        return original_init(self, *args, **kwargs)
-
-    VllmConfig._yap_original_init = original_init
-    VllmConfig.__init__ = _patched_init
-    _VLLMCONFIG_PATCH_INSTALLED = True
-    return True
-
-
-__all__ = ["inject_tokenizer_kwargs", "install_vllmconfig_sanitizer"]
+__all__ = ["inject_tokenizer_kwargs"]
