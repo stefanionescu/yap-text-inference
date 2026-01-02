@@ -108,7 +108,7 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
 VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # vLLM bracketed log format: INFO 12-31 19:07:25 [model.py:514] message
     re.compile(r"^(?:INFO|WARNING|DEBUG)\s+\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+\[[\w.]+:\d+\]"),
-    # Worker process prefixed logs: (EngineCore_DP0 pid=60611) INFO ...
+    # Worker process prefixed logs: (EngineCore_DP0 pid=60611) INFO/WARNING ...
     re.compile(r"^\(EngineCore_\w+\s+pid=\d+\)\s+(?:INFO|WARNING|DEBUG)\s+\d{2}-\d{2}"),
     # CUDA graph capturing progress bars
     re.compile(r"Capturing CUDA graphs.*\d+%", re.IGNORECASE),
@@ -116,6 +116,10 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"Loading safetensors checkpoint shards:\s*\d+%", re.IGNORECASE),
     # Empty worker process line (just prefix with no content)
     re.compile(r"^\(EngineCore_\w+\s+pid=\d+\)\s*$"),
+    # trust_remote_code warning from transformers
+    re.compile(r"The argument `?trust_remote_code`? is to be used with Auto classes", re.IGNORECASE),
+    # Multiple distributions warning (pip/packaging)
+    re.compile(r"Multiple distributions found for package", re.IGNORECASE),
 )
 
 
