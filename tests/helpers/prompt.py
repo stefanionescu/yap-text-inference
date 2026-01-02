@@ -34,7 +34,7 @@ def select_chat_prompt(gender: str | None) -> str:
     normalize to "female".
     
     Args:
-        gender: "female" or "male" (or variants like "woman"/"man")
+        gender: "female" or "male"
         
     Returns:
         The full chat prompt string for the given gender with flirty personality.

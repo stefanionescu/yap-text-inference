@@ -34,6 +34,7 @@ from ..validators import (
     sanitize_prompt_with_limit,
     validate_required_gender,
     validate_required_personality,
+    validate_personality_in_list,
 )
 
 _ERROR_CODE_MAP = {
@@ -71,13 +72,16 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     # Required fields
     raw_gender = msg.get("gender")
     raw_personality = msg.get("personality")
-    raw_prompt = msg.get("chat_prompt") or msg.get("persona_text")
+    raw_prompt = msg.get("chat_prompt")
     history_text = session_handler.get_history_text(session_id)
 
     # Validate gender and personality first
     try:
         g = validate_required_gender(raw_gender)
         norm_personality = validate_required_personality(raw_personality)
+        # Validate personality is in the session's personalities list
+        personalities = session_handler.get_personalities(session_id)
+        validate_personality_in_list(norm_personality, personalities)
     except ValidationError as err:
         await _send_ack_error(ws, err)
         return
@@ -97,7 +101,7 @@ async def handle_chat_prompt(ws: WebSocket, msg: dict[str, Any], session_id: str
     try:
         base_prompt = require_prompt(
             raw_prompt,
-            error_code="invalid_chat_prompt",
+            error_code="missing_chat_prompt",
             message="chat_prompt is required",
         )
         chat_prompt = sanitize_prompt_with_limit(

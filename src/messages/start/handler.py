@@ -144,7 +144,7 @@ def _validate_persona(msg: dict[str, Any]) -> tuple[str, str]:
 
 
 def _extract_chat_prompt(msg: dict[str, Any]) -> str | None:
-    raw_chat_prompt = msg.get("chat_prompt") or msg.get("persona_text")
+    raw_chat_prompt = msg.get("chat_prompt")
     if not DEPLOY_CHAT:
         return None
     required_chat_prompt = require_prompt(
