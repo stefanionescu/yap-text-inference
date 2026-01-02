@@ -54,7 +54,6 @@ from src.helpers.models import is_local_model_path
 from .memory_tuning import (
     auto_max_num_seqs,
     configure_kv_cache,
-    get_max_num_seqs_override,
     scale_batching_limits,
 )
 from src.quantization.vllm.core.detection import (
@@ -184,14 +183,11 @@ def _apply_memory_tuning(
     if requirements.needs_memory_opt and gpu_frac > MEMORY_OPT_GPU_FRAC_CAP:
         kwargs["gpu_memory_utilization"] = min(gpu_frac, MEMORY_OPT_GPU_FRAC_CAP)
     
-    # Resolve max_num_seqs dynamically
-    max_num_seqs = get_max_num_seqs_override()
-    if max_num_seqs is None:
-        max_num_seqs = auto_max_num_seqs(
-            gpu_frac=kwargs["gpu_memory_utilization"],
-            needs_memory_opt=requirements.needs_memory_opt,
-        )
-    kwargs["max_num_seqs"] = max_num_seqs
+    # Resolve max_num_seqs dynamically based on GPU memory
+    kwargs["max_num_seqs"] = auto_max_num_seqs(
+        gpu_frac=kwargs["gpu_memory_utilization"],
+        needs_memory_opt=requirements.needs_memory_opt,
+    )
 
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineArgs:

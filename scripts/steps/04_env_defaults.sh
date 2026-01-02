@@ -13,7 +13,6 @@ source "${LIB_DIR}/env/detect.sh"
 source "${LIB_DIR}/env/paths.sh"
 source "${LIB_DIR}/env/quantization.sh"
 source "${LIB_DIR}/env/deploy.sh"
-source "${LIB_DIR}/env/limits.sh"
 source "${LIB_DIR}/env/engine.sh"
 source "${LIB_DIR}/env/awq.sh"
 source "${THIS_SCRIPT_DIR}/../engines/trt/detect.sh"
@@ -28,8 +27,6 @@ log_info "[env] Setting environment defaults..."
 detect_flashinfer
 
 setup_deploy_mode_and_validate || exit 1
-
-apply_limits_and_timeouts
 
 apply_engine_defaults
 

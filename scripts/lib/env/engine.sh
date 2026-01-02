@@ -3,10 +3,10 @@
 # Engine-level defaults and backend gating
 
 apply_engine_defaults() {
-  # vLLM engine selection; attention backend chosen in Python unless explicitly set here
-  export VLLM_USE_V1=${VLLM_USE_V1:-1}
-  export ENFORCE_EAGER=${ENFORCE_EAGER:-0}
-  export VLLM_ALLOW_LONG_MAX_MODEL_LEN=${VLLM_ALLOW_LONG_MAX_MODEL_LEN:-1}
+  # vLLM engine settings are handled by Python in src/server.py and
+  # src/engines/vllm/setup.py using os.environ.setdefault().
+  # This includes VLLM_USE_V1, ENFORCE_EAGER, etc.
+
   export AWQ_CACHE_DIR="${ROOT_DIR}/.awq"
 
   # Backend selection is centralized in Python. Only export if explicitly set.
@@ -26,5 +26,4 @@ apply_engine_defaults() {
     fi
   fi
 }
-
 

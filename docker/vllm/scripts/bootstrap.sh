@@ -10,7 +10,6 @@ log_info "[vllm] Setting environment defaults (vLLM AWQ image)..."
 source "${SCRIPT_DIR}/env/helpers.sh"
 source "${SCRIPT_DIR}/env/python_flashinfer.sh"
 source "${SCRIPT_DIR}/env/awq_models.sh"
-source "${SCRIPT_DIR}/env/limits.sh"
 source "${SCRIPT_DIR}/env/gpu_detect.sh"
 source "${SCRIPT_DIR}/env/final_defaults.sh"
 
