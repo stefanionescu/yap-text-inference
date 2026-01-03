@@ -42,6 +42,7 @@ from typing import Any
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
 from src.config.logging import CHAT_STREAM_LABEL
+from src.errors import StreamCancelledError
 from ...engines.base import BaseEngine
 from ..async_compat import timeout as async_timeout
 
@@ -49,15 +50,6 @@ logger = logging.getLogger(__name__)
 
 # Type for cancellation check callbacks
 CancelCheck = Callable[[], bool | Awaitable[bool]] | None
-
-
-class StreamCancelledError(Exception):
-    """Raised when a cooperative cancel check requests termination.
-    
-    This exception is used for clean stream termination when the
-    cancel_check callback returns True. It allows callers to
-    distinguish cancellation from other errors.
-    """
 
 
 @dataclass(slots=True)

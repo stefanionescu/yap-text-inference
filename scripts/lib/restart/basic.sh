@@ -141,7 +141,7 @@ restart_basic() {
 
   # 1. Stop server first (before any deps/env work)
   log_section "[restart] Stopping server (preserving models and dependencies)..."
-  NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
+  FULL_CLEANUP=0 "${SCRIPT_DIR}/stop.sh"
 
   # 2. Handle --install-deps (wipe and reinstall all dependencies)
   restart_run_install_deps_if_needed

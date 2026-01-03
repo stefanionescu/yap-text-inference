@@ -13,9 +13,12 @@ The functions are organized in logical sections:
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Callable
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from src.config import (
     AWQ_METADATA_FILENAME,
@@ -113,12 +116,13 @@ def _sanitize_config_file(path: str) -> None:
             pass
     
     if success:
-        print(
-            "[config] Sanitized quantization metadata for "
-            f"{path}: removed {', '.join(UNSUPPORTED_QUANT_DTYPE_FIELDS)}"
+        logger.info(
+            "[config] Sanitized quantization metadata for %s: removed %s",
+            path,
+            ", ".join(UNSUPPORTED_QUANT_DTYPE_FIELDS),
         )
     else:
-        print(f"[config] Warning: failed to sanitize quantization metadata at {path}")
+        logger.warning("[config] Failed to sanitize quantization metadata at %s", path)
 
 
 def _get_hf_download_fn() -> Callable[[str, str], str | None] | None:
@@ -126,7 +130,7 @@ def _get_hf_download_fn() -> Callable[[str, str], str | None] | None:
     try:
         from huggingface_hub import hf_hub_download
     except Exception as exc:
-        print(f"[config] Warning: huggingface_hub not available ({exc})")
+        logger.warning("[config] huggingface_hub not available: %s", exc)
         return None
 
     token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
@@ -187,7 +191,7 @@ def log_quant_detection(model_path: str, method: str, payload: dict[str, Any]) -
         details.append(f"awq_version={version}")
 
     detail_str = ", ".join(details) if details else "no metadata found"
-    print(f"[config] Detected {method} quantization for {model_path}: {detail_str}")
+    logger.info("[config] Detected %s quantization for %s: %s", method, model_path, detail_str)
 
 
 # ============================================================================

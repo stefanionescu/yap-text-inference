@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from src.errors import ValidationError
 from ..config import (
     PERSONALITY_MAX_LEN,
     SCREEN_PREFIX_MAX_CHARS,
@@ -15,15 +16,6 @@ from .input import (
     normalize_gender,
     normalize_personality,
 )
-
-
-class ValidationError(Exception):
-    """Structured validation failure with error code metadata."""
-
-    def __init__(self, error_code: str, message: str) -> None:
-        super().__init__(message)
-        self.error_code = error_code
-        self.message = message
 
 
 def validate_required_gender(raw_gender: str | None) -> str:

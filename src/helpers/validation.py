@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.config.deploy import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_MODEL, TOOL_MODEL
+
+logger = logging.getLogger(__name__)
 from src.config.engine import INFERENCE_ENGINE, QUANTIZATION, CHAT_QUANTIZATION
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.quantization import SUPPORTED_ENGINES
@@ -36,7 +40,12 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
         return False
     if kind not in {"awq", "gptq"}:
         return False
-    print(f"[WARNING] Using pre-quantized {kind.upper()} {model_type} model not in approved list: {model}")
+    logger.warning(
+        "Using pre-quantized %s %s model not in approved list: %s",
+        kind.upper(),
+        model_type,
+        model,
+    )
     return True
 
 

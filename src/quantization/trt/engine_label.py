@@ -15,19 +15,12 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from src.errors import EngineLabelError
 from .detection import (
     detect_cuda_version,
     detect_gpu_name,
     detect_tensorrt_llm_version,
 )
-
-
-# ============================================================================
-# Exceptions
-# ============================================================================
-
-class EngineLabelError(Exception):
-    """Raised when engine label cannot be determined."""
 
 
 # ============================================================================

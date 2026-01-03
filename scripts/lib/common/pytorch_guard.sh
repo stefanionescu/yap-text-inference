@@ -33,40 +33,8 @@ torch_cuda_mismatch_guard() {
   fi
 
   set +e
-  "${py_bin}" - <<'PY' >"${tmp_output}" 2>&1
-import importlib.util
-import sys
-
-torch_spec = importlib.util.find_spec("torch")
-if torch_spec is None:
-    sys.exit(0)
-
-import torch  # noqa: E402
-
-vision_spec = importlib.util.find_spec("torchvision")
-if vision_spec is None:
-    sys.exit(0)
-
-try:
-    import torchvision  # noqa: F401,E402
-except Exception as exc:  # noqa: BLE001
-    message = str(exc).strip()
-    needle = "PyTorch and torchvision were compiled with different CUDA major versions"
-    if needle in message:
-        print(message)
-        torch_ver = getattr(torch, "__version__", "")
-        torch_cuda = (getattr(torch.version, "cuda", "") or "").strip()
-        if torch_ver:
-            summary = f"torch=={torch_ver}"
-            if torch_cuda:
-                summary += f" (CUDA {torch_cuda})"
-            print(summary)
-        sys.exit(42)
-    sys.exit(0)
-
-sys.exit(0)
-PY
-
+  PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
+    "${py_bin}" -m src.scripts.torch_guard >"${tmp_output}" 2>&1
   detect_rc=$?
   if [[ "${previous_opts}" == *e* ]]; then
     set -e

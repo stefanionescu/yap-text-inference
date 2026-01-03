@@ -87,8 +87,8 @@ _runtime_guard_force_engine_wipe() {
   
   log_section "[server] ⚠ Engine switch detected: ${from_engine} → ${to_engine}"
   
-  # Force full nuke (engine switch requires fresh deps)
-  if ! NUKE_ALL=1 bash "${script_dir}/stop.sh"; then
+  # Force full cleanup (engine switch requires fresh deps)
+  if ! FULL_CLEANUP=1 bash "${script_dir}/stop.sh"; then
     log_err "[server] ✗ stop.sh failed during engine wipe"
     return 1
   fi
@@ -228,13 +228,13 @@ runtime_guard_stop_server_if_needed() {
        "${root_dir}"
   then
     log_info "[server] Existing server matches requested config; stopping without clearing caches."
-    if ! NUKE_ALL=0 bash "${script_dir}/stop.sh"; then
+    if ! FULL_CLEANUP=0 bash "${script_dir}/stop.sh"; then
       log_err "[server] ✗ stop.sh failed during light stop"
       return 1
     fi
   else
     log_info "[server] Requested configuration differs; performing full reset before redeploy."
-    if ! NUKE_ALL=1 bash "${script_dir}/stop.sh"; then
+    if ! FULL_CLEANUP=1 bash "${script_dir}/stop.sh"; then
       log_err "[server] ✗ stop.sh failed during full reset"
       return 1
     fi

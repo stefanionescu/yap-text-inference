@@ -13,18 +13,9 @@ _awq_read_source_model() {
     echo ""
     return
   fi
-  python3 - <<'PY' "${meta}" || true
-import json, sys
-path = sys.argv[1]
-try:
-    with open(path, "r", encoding="utf-8") as fh:
-        data = json.load(fh)
-    source = (data.get("source_model") or "").strip()
-    if source:
-        print(source)
-except Exception:
-    pass
-PY
+  local python_root="${ROOT_DIR:-$(cd "${RESTART_LIB_DIR}/../../.." && pwd)}"
+  PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python3 -m src.scripts.awq source-model "${meta}" 2>/dev/null || true
 }
 
 restart_detect_awq_models() {
