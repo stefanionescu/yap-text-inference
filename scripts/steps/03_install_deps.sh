@@ -2,8 +2,8 @@
 # =============================================================================
 # Dependency Installation
 # =============================================================================
-# Installs Python dependencies into the virtual environment. Handles both
-# vLLM and TRT-LLM engines, including system dependencies (MPI for TRT).
+# Installs Python dependencies into the virtual environment. Handles vLLM,
+# TRT-LLM engines, and tool-only mode (lightweight PyTorch + transformers).
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,9 +20,40 @@ source "${LIB_DIR}/deps/pip.sh"
 source "${LIB_DIR}/deps/venv.sh"
 source "${LIB_DIR}/env/torch.sh"
 
-# Engine detection
+# Engine and deploy mode detection
 ENGINE="${INFERENCE_ENGINE:-vllm}"
 ENGINE_LOWER="$(echo "${ENGINE}" | tr '[:upper:]' '[:lower:]')"
+DEPLOY_MODE="${DEPLOY_MODE:-both}"
+
+# =============================================================================
+# TOOL-ONLY MODE (LIGHTWEIGHT)
+# =============================================================================
+# Tool-only deployments use a PyTorch classifier (no TRT-LLM or vLLM needed).
+# Skip heavy engine dependencies and use minimal requirements.
+
+if [ "${DEPLOY_MODE}" = "tool" ]; then
+  log_info "[deps] Tool-only mode: installing lightweight dependencies..."
+  
+  export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
+  
+  deps_export_pip
+  ensure_ca_certificates
+  export_ca_bundle_env_vars
+  ensure_torch_cuda_arch_list
+  ensure_virtualenv || exit 1
+  ensure_pip_in_venv || exit 1
+  activate_venv "${VENV_DIR}" || exit 1
+  
+  # Install lightweight tool-only requirements
+  log_info "[deps] Installing tool-only requirements..."
+  if ! pip install --no-cache-dir -r "${ROOT_DIR}/requirements-tool.txt"; then
+    log_err "[deps] ✗ Failed to install tool-only requirements"
+    exit 1
+  fi
+  
+  log_info "[deps] ✓ Tool-only dependencies installed"
+  exit 0
+fi
 
 # =============================================================================
 # ENGINE-SPECIFIC SETUP

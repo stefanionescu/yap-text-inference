@@ -86,8 +86,11 @@ _runtime_guard_force_engine_wipe() {
   local root_dir="$2"
   local from_engine="$3"
   local to_engine="$4"
+  local suppress_message="${5:-0}"
   
-  log_section "[server] ⚠ Engine switch detected: ${from_engine} → ${to_engine}"
+  if [ "${suppress_message}" != "1" ]; then
+    log_section "[server] ⚠ Engine switch detected: ${from_engine} → ${to_engine}"
+  fi
   
   # Force full cleanup (engine switch requires fresh deps)
   if ! FULL_CLEANUP=1 bash "${script_dir}/stop.sh"; then
@@ -98,7 +101,11 @@ _runtime_guard_force_engine_wipe() {
   # Also remove engine-specific directories
   cleanup_engine_artifacts "${root_dir}"
   
-  log_info "[server] Engine wipe complete. Ready for fresh ${to_engine} deployment."
+  if [ "${suppress_message}" != "1" ]; then
+    log_info "[server] Engine wipe complete. Ready for fresh ${to_engine} deployment."
+  else
+    log_info "[server] Environment wipe complete. Ready for tool-only deployment."
+  fi
   log_blank
 }
 
@@ -108,7 +115,7 @@ _runtime_guard_force_engine_wipe() {
 # Single entry point for handling engine switches across all scripts.
 # Call this at the start of main.sh/restart.sh BEFORE any heavy operations.
 #
-# Usage: runtime_guard_handle_engine_switch <script_dir> <root_dir> <desired_engine>
+# Usage: runtime_guard_handle_engine_switch <script_dir> <root_dir> <desired_engine> [deploy_mode]
 # Returns: 0 if engine switch was handled (wipe done), 1 if no switch needed,
 #          2 if a wipe was attempted but failed
 # Sets: ENGINE_SWITCH_HANDLED=1 if wipe was performed
@@ -117,6 +124,7 @@ runtime_guard_handle_engine_switch() {
   local script_dir="$1"
   local root_dir="$2"
   local desired_engine="${3:-trt}"
+  local deploy_mode="${4:-${DEPLOY_MODE:-both}}"
   
   # Skip if already handled in this session
   if [ "${ENGINE_SWITCH_HANDLED:-0}" = "1" ]; then
@@ -135,8 +143,13 @@ runtime_guard_handle_engine_switch() {
   norm_desired="$(echo "${desired_engine}" | tr '[:upper:]' '[:lower:]')"
   norm_last="$(echo "${last_engine}" | tr '[:upper:]' '[:lower:]')"
   
-  # Perform the wipe
-  if ! _runtime_guard_force_engine_wipe "${script_dir}" "${root_dir}" "${norm_last}" "${norm_desired}"; then
+  # Perform the wipe (suppress engine switch message for tool-only mode since it doesn't use engines)
+  local suppress_message=0
+  if [ "${deploy_mode}" = "tool" ]; then
+    suppress_message=1
+  fi
+  
+  if ! _runtime_guard_force_engine_wipe "${script_dir}" "${root_dir}" "${norm_last}" "${norm_desired}" "${suppress_message}"; then
     log_err "[server] ✗ Engine switch wipe failed"
     return 2  # Error
   fi
@@ -198,8 +211,9 @@ runtime_guard_stop_server_if_needed() {
   local desired_engine="${1:-trt}"
 
   # Handle engine switching via unified function (skips if already handled)
+  # Pass deploy mode to suppress engine switch messaging for tool-only deployments
   local switch_result=0
-  runtime_guard_handle_engine_switch "${script_dir}" "${root_dir}" "${desired_engine}" || switch_result=$?
+  runtime_guard_handle_engine_switch "${script_dir}" "${root_dir}" "${desired_engine}" "${desired_deploy}" || switch_result=$?
   
   case "${switch_result}" in
     0)

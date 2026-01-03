@@ -17,7 +17,12 @@ from typing import Any
 from fastapi import WebSocket
 
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
-from ...tokens import count_tokens_chat, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
+from ...tokens import (
+    count_tokens_chat,
+    count_tokens_tool,
+    trim_text_to_token_limit_chat,
+    trim_text_to_token_limit_tool,
+)
 from ...handlers.session import session_handler
 from ...handlers.websocket.helpers import safe_send_json
 from .dispatch import StartPlan, dispatch_execution
@@ -181,7 +186,7 @@ def _resolve_history(session_id: str, msg: dict[str, Any]) -> tuple[str, dict[st
             input_count = len(history_messages)
             rendered = session_handler.set_history_messages(session_id, history_messages)
             retained_count = session_handler.get_history_turn_count(session_id)
-            history_tokens = count_tokens_chat(rendered) if rendered else 0
+            history_tokens = _count_history_tokens(rendered)
             history_info = {
                 "input_messages": input_count,
                 "retained_turns": retained_count,
@@ -190,6 +195,17 @@ def _resolve_history(session_id: str, msg: dict[str, Any]) -> tuple[str, dict[st
             }
             return rendered, history_info
     return session_handler.get_history_text(session_id), None
+
+
+def _count_history_tokens(rendered: str) -> int:
+    """Count history tokens using the appropriate tokenizer for the deployment mode."""
+    if not rendered:
+        return 0
+    if DEPLOY_CHAT:
+        return count_tokens_chat(rendered)
+    if DEPLOY_TOOL:
+        return count_tokens_tool(rendered)
+    return 0
 
 
 def _trim_user_utterance(user_utt: str, session_id: str) -> str:

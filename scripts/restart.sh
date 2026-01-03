@@ -138,7 +138,7 @@ fi
 # Check for engine switching - this requires FULL environment wipe
 # Uses unified handler to avoid duplicate logic with main.sh
 ENGINE_SWITCH_RESULT=0
-runtime_guard_handle_engine_switch "${SCRIPT_DIR}" "${ROOT_DIR}" "${INFERENCE_ENGINE}" || ENGINE_SWITCH_RESULT=$?
+runtime_guard_handle_engine_switch "${SCRIPT_DIR}" "${ROOT_DIR}" "${INFERENCE_ENGINE}" "${DEPLOY_MODE}" || ENGINE_SWITCH_RESULT=$?
 
 if [ "${ENGINE_SWITCH_RESULT}" = "2" ]; then
   log_err "[restart] ✗ Engine switch failed"
