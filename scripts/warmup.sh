@@ -99,7 +99,7 @@ cd "${ROOT_DIR}"
 
 # Small delay to let Uvicorn's buffered output flush before warmup messages
 sleep 0.1
-log_blank
+echo  # Blank line to stdout (log_blank goes to stderr, can get interleaved)
 log_info "[warmup] Starting GPU warmup..."
 echo "[warmup] Starting GPU warmup..." >> "${ROOT_DIR}/server.log"
 

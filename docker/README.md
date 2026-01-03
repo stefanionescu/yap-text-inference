@@ -1,6 +1,6 @@
 # Yap Text Inference Docker Setup
 
-Docker setup for Yap's text inference API with models baked into the image.
+Docker setup for Yap's text inference server with models baked into the image.
 
 ## Engine Options
 
@@ -196,26 +196,6 @@ ENGINE=trt \
   bash docker/build.sh
 ```
 
-### TRT Engine Repo Structure
-
-Your HuggingFace engine repo should contain:
-```
-your-engine-repo/
-├── trt-llm/
-│   ├── checkpoint/           # Tokenizer and config files
-│   │   ├── config.json
-│   │   ├── tokenizer.json
-│   │   └── ...
-│   └── engines/
-│       ├── sm90_trt-llm-0.17.0_cuda12.8/   # H100
-│       │   ├── rank0.engine
-│       │   ├── config.json
-│       │   └── ...
-│       └── sm89_trt-llm-0.17.0_cuda12.8/   # L40S/4090
-│           ├── rank0.engine
-│           └── ...
-```
-
 ### TRT Build Variables
 
 | Variable | Required | Description |
@@ -348,11 +328,7 @@ docker run -it --gpus all --rm \
   /bin/bash
 ```
 
----
-
 ## API Usage
 
 - **Health**: `GET /healthz` (no auth)
 - **WebSocket**: `ws://localhost:8000/ws?api_key=your_key`
-
-See README.md for full API docs.

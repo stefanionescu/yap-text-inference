@@ -57,6 +57,26 @@ server_kill_and_cleanup() {
 # CONFIGURATION LOGGING
 # =============================================================================
 
+# Read kv_cache_dtype from TRT engine build metadata.
+# For TRT-LLM, KV cache dtype is baked into the engine at build time and
+# cannot be changed at runtime. The KV_DTYPE env var is ignored by TRT.
+# Returns: kv_cache_dtype value, or empty string on failure
+# Usage: kv_dtype=$(_read_trt_kv_dtype "/path/to/engine")
+_read_trt_kv_dtype() {
+  local engine_dir="${1:-}"
+  local metadata_file="${engine_dir}/build_metadata.json"
+  
+  if [ ! -f "${metadata_file}" ]; then
+    return 0
+  fi
+  
+  python3 -c "
+import json
+with open('${metadata_file}') as f:
+    print(json.load(f).get('kv_cache_dtype', ''))
+" 2>/dev/null || true
+}
+
 # Log current deployment configuration.
 # Usage: server_log_config
 server_log_config() {
@@ -80,7 +100,22 @@ server_log_config() {
   else
     log_info "[server]   QUANT_MODE=${QUANT_MODE:-auto}"
     log_info "[server]   BACKEND=${QUANTIZATION:-}"
-    log_info "[server]   KV_DTYPE=${KV_DTYPE:-}"
+    
+    # For TRT: show the actual KV dtype baked into the engine
+    # For vLLM: show the KV_DTYPE env var (which vLLM uses at runtime)
+    local kv_dtype_display="${KV_DTYPE:-}"
+    local kv_dtype_source=""
+    
+    if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ -n "${TRT_ENGINE_DIR:-}" ]; then
+      local engine_kv_dtype
+      engine_kv_dtype="$(_read_trt_kv_dtype "${TRT_ENGINE_DIR}")"
+      if [ -n "${engine_kv_dtype}" ]; then
+        kv_dtype_display="${engine_kv_dtype}"
+        kv_dtype_source=" [from engine]"
+      fi
+    fi
+    
+    log_info "[server]   KV_DTYPE=${kv_dtype_display}${kv_dtype_source}"
   fi
 }
 
