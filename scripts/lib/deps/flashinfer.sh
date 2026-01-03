@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# FlashInfer installation helper
+# =============================================================================
+# FlashInfer Installation
+# =============================================================================
+# Handles FlashInfer wheel installation with CUDA version detection.
+# FlashInfer provides optimized attention kernels for vLLM.
 
 _FI_DEP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_FI_DEP_DIR}/venv.sh"

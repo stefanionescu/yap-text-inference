@@ -84,8 +84,10 @@ TRT_AWQ_BLOCK_SIZE="${TRT_AWQ_BLOCK_SIZE:-128}"
 # For larger models or those needing more calibration data, increase
 TRT_CALIB_SIZE="${TRT_CALIB_SIZE:-64}"
 
-# Calibration batch size: dynamically set based on model profile
-# Gemma/heavy models: smaller batch (8), standard models: 16
+# Calibration batch size: dynamically set based on model profile.
+# Gemma/heavy models: smaller batch (8), standard models: 16.
+# NOTE: Python default in src/config/trt.py is 16; shell leaves empty and relies
+# on trt_resolve_calib_batch_size() to pick model-appropriate values at runtime.
 TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-}"
 
 # Calibration sequence length: derived from CHAT_MAX_LEN + CHAT_MAX_OUT

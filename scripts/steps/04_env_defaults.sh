@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Environment Defaults Setup
+# =============================================================================
+# Configures environment variables for the selected deployment mode and engine.
+# Sets up GPU-specific optimizations, quantization defaults, and cache paths.
+
 set -euo pipefail
 THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Respect existing ROOT_DIR when this file is sourced; fall back to repo root when executed directly

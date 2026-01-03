@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Generic (non-AWQ) restart path for scripts/restart.sh
-# Requires: SCRIPT_DIR, ROOT_DIR
+# =============================================================================
+# Basic Restart Helpers
+# =============================================================================
+# Generic restart path for scripts/restart.sh when not using cached AWQ models.
+# Handles dependency installation and standard server restart flow.
 
 _RESTART_BASIC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../noise/logging.sh

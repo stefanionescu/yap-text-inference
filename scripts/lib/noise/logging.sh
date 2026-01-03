@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Helpers for filtering noisy server logs (e.g., warmup websocket chatter).
+# =============================================================================
+# Log Noise Filtering
+# =============================================================================
+# Helpers for filtering noisy server logs during warmup (e.g., websocket
+# connection messages) while preserving important diagnostic output.
 
 _noise_is_warmup_running() {
   local lock_file="${1:-}"

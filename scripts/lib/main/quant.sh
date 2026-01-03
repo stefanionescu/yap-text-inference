@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Quantization resolution for main.sh
-#
-# Functions to determine the appropriate quantization backend
-# based on model type, user flags, and pre-quantized model detection.
+# =============================================================================
+# Quantization Resolution for Main Script
+# =============================================================================
+# Functions to determine the appropriate quantization backend based on
+# model type, user flags, and pre-quantized model detection.
 
 # Resolve the 4-bit backend based on model classification
 # Usage: main_resolve_4bit_backend <chat_model>

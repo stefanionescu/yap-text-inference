@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-
-# Argument parsing for main.sh.
-# Performs a single-pass parse that understands every supported switch,
-# quantization shorthand, and deploy-mode override. Parsed values are
-# exported so downstream scripts do not need to re-process argv.
+# =============================================================================
+# Main Script Argument Parser
+# =============================================================================
+# Argument parsing for main.sh. Performs single-pass parsing of engine flags,
+# quantization shortcuts, deploy modes, and model arguments.
 
 _MAIN_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/args.sh

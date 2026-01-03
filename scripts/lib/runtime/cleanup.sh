@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-
-# Shared cleanup helpers used by stop.sh and runtime guard utilities.
+# =============================================================================
+# Runtime Cleanup Utilities
+# =============================================================================
+# Shared cleanup helpers for stopping processes, removing caches, and
+# cleaning up runtime state (lock files, PID files, logs).
 
 _CLEANUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_CLEANUP_DIR}/../noise/python.sh"
 source "${_CLEANUP_DIR}/../common/log.sh"
 source "${_CLEANUP_DIR}/../deps/venv.sh"
 
+# Remove directories silently.
+# Usage: _cleanup_remove_dirs <dir1> [dir2] ...
 _cleanup_remove_dirs() {
-  shift  # Skip label argument (used for caller context)
   local dir
   for dir in "$@"; do
     [ -z "${dir}" ] && continue
@@ -18,17 +22,17 @@ _cleanup_remove_dirs() {
 
 cleanup_repo_hf_cache() {
   local root_dir="$1"
-  _cleanup_remove_dirs "repo hf cache" "${root_dir}/.hf"
+  _cleanup_remove_dirs "${root_dir}/.hf"
 }
 
 cleanup_repo_pip_cache() {
   local root_dir="$1"
-  _cleanup_remove_dirs "repo pip cache" "${root_dir}/.pip_cache"
+  _cleanup_remove_dirs "${root_dir}/.pip_cache"
 }
 
 cleanup_repo_runtime_caches() {
   local root_dir="$1"
-  _cleanup_remove_dirs "repo runtime cache" \
+  _cleanup_remove_dirs \
     "${root_dir}/.vllm_cache" \
     "${root_dir}/.flashinfer" \
     "${root_dir}/.xformers" \
@@ -39,20 +43,20 @@ cleanup_repo_runtime_caches() {
 
 cleanup_repo_engine_artifacts() {
   local root_dir="$1"
-  _cleanup_remove_dirs "engine artifact" \
+  _cleanup_remove_dirs \
     "${root_dir}/.awq" \
     "${root_dir}/.trtllm-repo" \
     "${root_dir}/models"
 }
 
 cleanup_system_vllm_caches() {
-  _cleanup_remove_dirs "cache" \
+  _cleanup_remove_dirs \
     "$HOME/.cache/vllm" "/root/.cache/vllm" "/workspace/.cache/vllm" \
     "$HOME/.cache/flashinfer" "/root/.cache/flashinfer" "/workspace/.cache/flashinfer"
 }
 
 cleanup_system_trt_caches() {
-  _cleanup_remove_dirs "cache" \
+  _cleanup_remove_dirs \
     "$HOME/.cache/tensorrt_llm" "/root/.cache/tensorrt_llm" \
     "$HOME/.cache/tensorrt" "/root/.cache/tensorrt" \
     "$HOME/.cache/nvidia" "/root/.cache/nvidia" \
@@ -65,7 +69,7 @@ cleanup_system_trt_caches() {
 }
 
 cleanup_system_compiler_caches() {
-  _cleanup_remove_dirs "cache" \
+  _cleanup_remove_dirs \
     "$HOME/.cache/torch" "/root/.cache/torch" "/workspace/.cache/torch" \
     "$HOME/.cache/torch_extensions" "/root/.cache/torch_extensions" \
     "$HOME/.torch_inductor" "/root/.torch_inductor" "/workspace/.cache/triton" \
@@ -73,7 +77,7 @@ cleanup_system_compiler_caches() {
 }
 
 cleanup_system_nvidia_caches() {
-  _cleanup_remove_dirs "cache" "$HOME/.nv" "/root/.nv"
+  _cleanup_remove_dirs "$HOME/.nv" "/root/.nv"
 }
 
 # Gracefully stop the uvicorn session tracked by server.pid (if present); falls
@@ -128,26 +132,26 @@ cleanup_runtime_state() {
 
 cleanup_venvs() {
   local root_dir="$1"
-  
+
   # Use get_venv_dir() to detect the actual venv location (handles /opt/venv for Docker)
   local detected_venv
   detected_venv="$(get_venv_dir)"
-  
+
   # Clean detected venv first (could be /opt/venv or repo-local)
   if [ -n "${detected_venv}" ] && [ -d "${detected_venv}" ]; then
     log_info "[cleanup] Removing detected venv: ${detected_venv}"
     rm -rf "${detected_venv}" || true
   fi
-  
+
   local quant_venv
   quant_venv="${QUANT_VENV_DIR:-$(get_quant_venv_dir)}"
   if [ -n "${quant_venv}" ] && [ -d "${quant_venv}" ]; then
     log_info "[cleanup] Removing quantization venv: ${quant_venv}"
     rm -rf "${quant_venv}" || true
   fi
-  
+
   # Also clean all possible repo-local venv locations
-  _cleanup_remove_dirs "venv" \
+  _cleanup_remove_dirs \
     "${root_dir}/.venv" \
     "${root_dir}/.venv-trt" \
     "${root_dir}/.venv-vllm" \
@@ -155,7 +159,7 @@ cleanup_venvs() {
     "${root_dir}/venv" \
     "${root_dir}/env" \
     "${root_dir}/.env"
-  
+
   # Clean /opt/venv if it exists (Docker prebaked venv)
   if [ -d "/opt/venv" ]; then
     log_info "[cleanup] Removing Docker venv: /opt/venv"
@@ -168,7 +172,7 @@ cleanup_venvs() {
 }
 
 cleanup_hf_caches() {
-  _cleanup_remove_dirs "HF cache" \
+  _cleanup_remove_dirs \
     "${HF_HOME:-}" \
     "${TRANSFORMERS_CACHE:-}" \
     "${HUGGINGFACE_HUB_CACHE:-}" \
@@ -177,7 +181,7 @@ cleanup_hf_caches() {
     "/root/.cache/huggingface" \
     "/root/.cache/huggingface/hub"
 
-  _cleanup_remove_dirs "HF config" \
+  _cleanup_remove_dirs \
     "$HOME/.huggingface" "/root/.huggingface" \
     "$HOME/.config/huggingface" "/root/.config/huggingface" \
     "$HOME/.local/share/huggingface" "/root/.local/share/huggingface"
@@ -195,7 +199,7 @@ cleanup_misc_caches() {
   cleanup_system_trt_caches
   cleanup_system_compiler_caches
   cleanup_system_nvidia_caches
-  _cleanup_remove_dirs "cache" \
+  _cleanup_remove_dirs \
     "/workspace/.cache/huggingface" \
     "/workspace/.cache/pip"
 }
@@ -222,7 +226,7 @@ cleanup_pip_caches() {
     [ -n "${sys_cache}" ] && [ -d "${sys_cache}" ] && rm -rf "${sys_cache}" || true
   fi
   
-  _cleanup_remove_dirs "pip cache" \
+  _cleanup_remove_dirs \
     "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip" "${PIP_CACHE_DIR:-}"
 }
 
@@ -257,7 +261,7 @@ cleanup_tmp_dirs() {
 }
 
 cleanup_home_cache_roots() {
-  _cleanup_remove_dirs "cache root" "$HOME/.cache" "/root/.cache"
+  _cleanup_remove_dirs "$HOME/.cache" "/root/.cache"
   [ -n "${XDG_CACHE_HOME:-}" ] && [ -d "${XDG_CACHE_HOME}" ] && rm -rf "${XDG_CACHE_HOME}" || true
 }
 

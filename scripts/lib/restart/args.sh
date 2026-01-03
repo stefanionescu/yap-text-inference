@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Argument parsing for scripts/restart.sh.
-# Sets DEPLOY_MODE, INSTALL_DEPS, INFERENCE_ENGINE and related state variables.
+# =============================================================================
+# Restart Script Argument Parser
+# =============================================================================
+# Argument parsing for scripts/restart.sh. Handles deploy mode, engine flags,
+# model reconfiguration, and dependency installation options.
 
 _RESTART_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/args.sh

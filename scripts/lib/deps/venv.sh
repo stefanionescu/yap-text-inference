@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Virtual environment helpers.
+# =============================================================================
+# Virtual Environment Management
+# =============================================================================
+# Helpers for creating, validating, and activating Python virtual environments.
+# Handles engine-specific Python version requirements (Python 3.10 for TRT-LLM).
 
 _VENV_HELPERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./pip.sh

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Helpers shared by main.sh and restart.sh for log rotation and background launches.
+# =============================================================================
+# Runtime Pipeline Utilities
+# =============================================================================
+# Helpers for log rotation, background server launches, and output streaming
+# with noise filtering. Shared by main.sh and restart.sh.
 
 _RUNTIME_PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../noise/logging.sh

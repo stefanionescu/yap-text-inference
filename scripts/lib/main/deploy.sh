@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Deployment execution for main.sh
-#
-# Functions to log configuration and build the deployment command.
+# =============================================================================
+# Main Script Deployment Helpers
+# =============================================================================
+# Functions to log configuration and execute the deployment step sequence.
 
 # Log current configuration
 main_log_config() {

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Helpers for suppressing noisy Python warnings at the interpreter level.
+# =============================================================================
+# Python Warning Suppression
+# =============================================================================
+# Helpers for configuring PYTHONWARNINGS to suppress noisy library warnings
+# (e.g., deprecation notices from transformers, torch, etc.).
 
 python_warning_add_filter() {
   local filter="${1:-}"

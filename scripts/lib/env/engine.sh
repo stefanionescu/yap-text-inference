@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Engine-level defaults and backend gating
+# =============================================================================
+# Engine-Level Configuration
+# =============================================================================
+# Applies engine-specific defaults for vLLM and TRT-LLM. Most vLLM settings
+# are handled in Python; this module handles shell-level configuration.
 
 apply_engine_defaults() {
   # vLLM engine settings are handled by Python in src/server.py and

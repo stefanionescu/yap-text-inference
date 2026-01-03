@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Stop script environment defaults.
+# =============================================================================
+# Stop Script Defaults
+# =============================================================================
+# Initializes flags for stop.sh including cleanup mode (light vs full)
+# and hard reset behavior.
 
 stop_init_flags() {
   export HARD_RESET="${HARD_RESET:-0}"

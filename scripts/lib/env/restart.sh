@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-
-# Environment defaults and dependency installation for scripts/restart.sh
-# Requires: SCRIPT_DIR, ROOT_DIR, INSTALL_DEPS
-# Note: restart_run_install_deps_if_needed is defined in restart/basic.sh
+# =============================================================================
+# Restart Environment Defaults
+# =============================================================================
+# Environment defaults and dependency installation for scripts/restart.sh.
+# Applies cached configuration and triggers deps install when requested.
 
 restart_apply_defaults_and_deps() {
   # Handle --install-deps (uses shared helper from basic.sh)

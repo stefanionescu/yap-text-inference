@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Centralized constants for shell scripts.
-# Import this file to access shared configuration values.
+# =============================================================================
+# Shell Script Constants
+# =============================================================================
+# Centralized constants shared across shell scripts. Import this file to
+# access configuration values like timeouts, limits, and version requirements.
 # shellcheck disable=SC2034  # Variables are used by sourcing scripts.
 
 # Python version required for TensorRT-LLM engine.

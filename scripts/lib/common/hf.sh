@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Shared Hugging Face helpers
+# =============================================================================
+# Hugging Face Utilities
+# =============================================================================
+# Shared helpers for Hugging Face Hub operations including fast transfers
+# and progress bar configuration.
 
 hf_enable_transfer() {
   local prefix="${1:-[hf]}"

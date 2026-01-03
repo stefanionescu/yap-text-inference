@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Dependency Installation
+# =============================================================================
+# Installs Python dependencies into the virtual environment. Handles both
+# vLLM and TRT-LLM engines, including system dependencies (MPI for TRT).
+
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"

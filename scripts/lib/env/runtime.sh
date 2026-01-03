@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Common repo-level runtime helpers for shell scripts.
+# =============================================================================
+# Runtime Directory Helpers
+# =============================================================================
+# Initializes run and log directories under the repository root. Ensures
+# required directories exist for PID files, locks, and server logs.
 
 # Initialize run/log directories under the repo root and ensure they exist.
 # Usage: runtime_init_repo_paths "${ROOT_DIR}"

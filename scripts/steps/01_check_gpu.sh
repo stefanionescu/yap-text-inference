@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# =============================================================================
+# GPU Availability Check
+# =============================================================================
+# Verifies that NVIDIA GPU drivers are available and functional.
+# Logs warnings if nvidia-smi is missing or fails.
+
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
