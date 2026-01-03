@@ -32,6 +32,7 @@ source "${SCRIPT_DIR}/lib/restart/launch.sh"
 source "${SCRIPT_DIR}/engines/vllm/push.sh"
 source "${SCRIPT_DIR}/engines/trt/push.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
+source "${SCRIPT_DIR}/engines/trt/quantize.sh"
 source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
 
@@ -189,15 +190,26 @@ restart_basic
 restart_detect_awq_models "${DEPLOY_MODE}"
 
 # Validate --push-quant is not used with prequantized models (non-reconfigure path)
+# Exception: allow push if local TRT checkpoint exists (locally quantized artifacts)
 if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ] && [ "${CHAT_AWQ_SOURCE_KIND:-}" = "prequant" ]; then
-  log_err "[restart] ✗ Cannot use --push-quant with a prequantized model."
-  log_err "[restart]   Model '${CHAT_AWQ_SOURCE:-}' is already quantized."
-  log_err "[restart]   There are no local quantization artifacts to upload."
-  log_blank
-  log_err "[restart]   Options:"
-  log_err "[restart]     1. Remove --push-quant to use the prequantized model directly"
-  log_err "[restart]     2. Use a base (non-quantized) model if you want to quantize and push"
-  exit 1
+  local_trt_exists=0
+  if [ "${INFERENCE_ENGINE:-}" = "trt" ]; then
+    trt_ckpt_dir=$(trt_get_checkpoint_dir "${CHAT_MODEL:-}" "${TRT_QUANT_METHOD:-int4_awq}")
+    if trt_validate_checkpoint "${trt_ckpt_dir}" 2>/dev/null; then
+      local_trt_exists=1
+    fi
+  fi
+  
+  if [ "${local_trt_exists}" != "1" ]; then
+    log_err "[restart] ✗ Cannot use --push-quant with a prequantized model."
+    log_err "[restart]   Model '${CHAT_AWQ_SOURCE:-}' is already quantized."
+    log_err "[restart]   There are no local quantization artifacts to upload."
+    log_blank
+    log_err "[restart]   Options:"
+    log_err "[restart]     1. Remove --push-quant to use the prequantized model directly"
+    log_err "[restart]     2. Use a base (non-quantized) model if you want to quantize and push"
+    exit 1
+  fi
 fi
 
 # Validate we have at least one valid source
