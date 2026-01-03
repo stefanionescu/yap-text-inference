@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Torch/CUDA environment utilities
+# =============================================================================
+# PyTorch/CUDA Configuration
+# =============================================================================
+# Configures TORCH_CUDA_ARCH_LIST and detects PyTorch CUDA versions.
+# Ensures correct CUDA architecture settings for GPU compilation.
 
 ensure_torch_cuda_arch_list() {
   if [ -z "${TORCH_CUDA_ARCH_LIST:-}" ]; then

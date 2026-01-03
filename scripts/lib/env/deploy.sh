@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Deploy mode and validation helpers
+# =============================================================================
+# Deploy Mode Configuration
+# =============================================================================
+# Validates and configures deploy modes (chat, tool, both) and ensures
+# required models are specified for each deployment type.
 
 setup_deploy_mode_and_validate() {
   # Deploy mode: both | chat | tool (default: both)

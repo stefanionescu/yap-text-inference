@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-#
-# Helper to enter the correct virtual environment (repo .venv, /opt/venv, or a
-# custom VENV_DIR). When invoked with a command, it runs that command inside the
-# environment. When invoked without arguments, it opens an interactive shell
-# with the environment already activated.
+# =============================================================================
+# Virtual Environment Activation Helper
+# =============================================================================
+# Helper to enter the correct virtual environment (repo .venv, /opt/venv, or
+# a custom VENV_DIR). Runs commands inside the environment or opens an
+# interactive shell when invoked without arguments.
 
 set -euo pipefail
 

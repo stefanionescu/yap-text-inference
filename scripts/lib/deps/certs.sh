@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Certificate helpers for HTTPS downloads (HF, etc.)
+# =============================================================================
+# Certificate Utilities
+# =============================================================================
+# Ensures CA certificates are installed and configured for HTTPS downloads
+# from HuggingFace, PyPI, and other package sources.
 
 ensure_ca_certificates() {
   if [ "$(uname -s)" = "Linux" ] && [ ! -f "/etc/ssl/certs/ca-certificates.crt" ]; then

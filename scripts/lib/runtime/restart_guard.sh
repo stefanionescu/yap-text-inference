@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Shared helpers for detecting running deployments and comparing config snapshots.
-# Tracks engine type (vllm/trt) to detect engine switching that requires full wipe.
+# =============================================================================
+# Restart Guard Utilities
+# =============================================================================
+# Helpers for detecting running deployments and comparing config snapshots.
+# Detects engine switching (vLLM/TRT) that requires full environment wipe.
 
 _RUNTIME_GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/runtime/cleanup.sh

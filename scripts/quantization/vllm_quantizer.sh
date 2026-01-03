@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# =============================================================================
+# vLLM AWQ Quantization Entry Point
+# =============================================================================
+# Entry point for vLLM AWQ quantization pipeline. Handles pre-quantized model
+# detection and on-the-fly AWQ quantization for chat models.
+
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC2034  # sourced helpers rely on ROOT_DIR

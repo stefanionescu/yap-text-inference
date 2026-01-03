@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Warmup process management helpers
+# =============================================================================
+# Warmup Process Management
+# =============================================================================
+# Helpers for managing warmup process lifecycle including stopping existing
+# warmup processes and cleaning up stale lock files.
 
 stop_existing_warmup_processes() {
   local root_dir="${1:-${ROOT_DIR:-}}"

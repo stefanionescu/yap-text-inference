@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Warmup/bench-specific configuration shared across scripts.
+# =============================================================================
+# Warmup Configuration
+# =============================================================================
+# Configuration defaults for warmup and benchmark scripts including
+# timeouts, retry counts, and polling intervals.
 
 _WARMUP_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/constants.sh

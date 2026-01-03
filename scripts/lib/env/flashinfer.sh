@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Shared FlashInfer presence check helper
-# Usage: flashinfer_present_py "/path/to/python"
+# =============================================================================
+# FlashInfer Detection
+# =============================================================================
+# Checks whether FlashInfer is available in the Python environment.
+# FlashInfer provides optimized attention kernels for vLLM.
 
 flashinfer_present_py() {
   local py_exe="${1:-}"

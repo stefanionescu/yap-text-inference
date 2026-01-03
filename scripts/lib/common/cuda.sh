@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Shared CUDA guard utilities.
-# Ensures TRT-specific CUDA 13.x requirements are validated exactly once.
+# =============================================================================
+# CUDA Guard Utilities
+# =============================================================================
+# Validates CUDA driver requirements for TensorRT-LLM (CUDA 13.x).
+# Ensures validation runs exactly once per deployment.
 
 ensure_cuda_ready_for_engine() {
   local phase="${1:-engine}"

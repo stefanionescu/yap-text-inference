@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-
-# Logging helpers (prefix-based, no timestamps)
+# =============================================================================
+# Logging Utilities
+# =============================================================================
+# Simple prefix-based logging helpers that output to stderr.
 # Usage: log_info "[prefix] message" or log_warn "[prefix] message"
 
 log_info() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }

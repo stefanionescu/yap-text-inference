@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Python Environment Verification
+# =============================================================================
+# Verifies that the correct Python interpreter is available for the selected
+# inference engine. TRT-LLM requires Python 3.10; vLLM supports 3.10-3.12.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

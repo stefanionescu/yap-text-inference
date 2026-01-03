@@ -87,6 +87,59 @@ trt_get_current_engine_label() {
 }
 
 # =============================================================================
+# QUANTIZATION FORMAT DETECTION
+# =============================================================================
+
+# Detect TRT qformat from model name (for prequantized models).
+# Returns: int4_awq, fp8, int8_sq, or empty string if not detected.
+# Usage: trt_detect_qformat_from_name <model_name>
+trt_detect_qformat_from_name() {
+  local name="${1:-}"
+  if [ -z "${name}" ]; then
+    return 1
+  fi
+  local lowered="${name,,}"
+
+  if [[ "${lowered}" == *awq* ]]; then
+    echo "int4_awq"
+    return 0
+  fi
+  if [[ "${lowered}" == *fp8* ]]; then
+    echo "fp8"
+    return 0
+  fi
+  if [[ "${lowered}" == *int8* ]] || [[ "${lowered}" == *int-8* ]]; then
+    echo "int8_sq"
+    return 0
+  fi
+  if [[ "${lowered}" == *8bit* ]] || [[ "${lowered}" == *8-bit* ]]; then
+    echo "fp8"
+    return 0
+  fi
+  return 1
+}
+
+# Detect TRT qformat from checkpoint config.json via Python.
+# Returns: qformat string or empty on failure.
+# Usage: trt_detect_qformat_from_checkpoint <checkpoint_dir>
+trt_detect_qformat_from_checkpoint() {
+  local ckpt_dir="${1:-}"
+  if [ -z "${ckpt_dir}" ] || [ ! -f "${ckpt_dir}/config.json" ]; then
+    return 1
+  fi
+  local detected
+  local python_root="${ROOT_DIR:-${_TRT_DETECT_ROOT}}"
+  detected="$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python -m src.scripts.trt.detection qformat "${ckpt_dir}" 2>/dev/null || true)"
+  detected="${detected%%$'\n'}"
+  if [ -n "${detected}" ]; then
+    echo "${detected}"
+    return 0
+  fi
+  return 1
+}
+
+# =============================================================================
 # QUANTIZATION SCRIPT
 # =============================================================================
 
@@ -94,6 +147,6 @@ trt_get_current_engine_label() {
 # Uses the standard quantize.py for all models (including MoE)
 trt_get_quantize_script() {
   local trtllm_repo="${1:-${TRT_REPO_DIR}}"
-  
+
   echo "${trtllm_repo}/examples/quantization/quantize.py"
 }

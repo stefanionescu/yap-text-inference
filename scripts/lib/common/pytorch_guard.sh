@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-
-# PyTorch/TorchVision CUDA mismatch guard shared by main.sh and restart.sh.
-# Detects when the packages were built against different CUDA major versions
-# (which triggers a RuntimeError on import) and proactively uninstalls both so
-# the next dependency install can pull matching wheels from the correct index.
+# =============================================================================
+# PyTorch CUDA Mismatch Guard
+# =============================================================================
+# Detects PyTorch/TorchVision packages built against different CUDA versions
+# and proactively uninstalls them to prevent RuntimeError on import.
 
 # Usage: torch_cuda_mismatch_guard "[main]"  # prefix used in log output
 # Sets TORCHVISION_CUDA_MISMATCH_DETECTED=1 when it removes the packages.

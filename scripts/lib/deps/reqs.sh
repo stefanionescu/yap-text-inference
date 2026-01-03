@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Requirements installation helpers (excluding FlashInfer)
+# =============================================================================
+# Requirements File Utilities
+# =============================================================================
+# Helpers for selecting and installing requirements files based on the
+# inference engine (vLLM or TRT-LLM) and tracking installation state.
 
 # Get the correct requirements file based on inference engine
 get_requirements_file() {

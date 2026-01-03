@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Server endpoint defaults shared between shell scripts.
+# =============================================================================
+# Server Network Configuration
+# =============================================================================
+# Initializes server host, port, and health check URL defaults. Configures
+# both client-facing and internal bind addresses.
 
 server_init_network_defaults() {
   local default_client_host

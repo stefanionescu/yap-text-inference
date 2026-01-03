@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Repository-local cache and path defaults
+# =============================================================================
+# Cache and Path Configuration
+# =============================================================================
+# Configures repository-local cache directories for pip, Hugging Face,
+# and quantization artifacts.
 
 set_repo_cache_paths() {
   export PIP_CACHE_DIR="${ROOT_DIR}/.pip_cache"

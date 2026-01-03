@@ -9,39 +9,24 @@ _MODEL_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=string.sh
 source "${_MODEL_DETECT_DIR}/string.sh"
 
-# Alias for backward compatibility - use str_to_lower from string.sh
-_model_detect_lower() {
-  str_to_lower "$1"
-}
-
-# Alias for backward compatibility - use str_contains from string.sh
-_model_detect_has_marker() {
-  str_contains "$1" "$2"
-}
-
-# Alias for backward compatibility - use str_contains_any from string.sh
-_model_detect_has_any_marker() {
-  str_contains_any "$@"
-}
-
 model_detect_is_gptq_name() {
   local value="${1:-}"
   local lowered
-  lowered="$(_model_detect_lower "${value}")"
+  lowered="$(str_to_lower "${value}")"
   if [ -z "${lowered}" ]; then
     return 1
   fi
-  _model_detect_has_marker "${lowered}" "gptq"
+  str_contains "${lowered}" "gptq"
 }
 
 model_detect_has_w4a16_hint() {
   local value="${1:-}"
   local lowered
-  lowered="$(_model_detect_lower "${value}")"
+  lowered="$(str_to_lower "${value}")"
   if [ -z "${lowered}" ]; then
     return 1
   fi
-  _model_detect_has_any_marker "${lowered}" \
+  str_contains_any "${lowered}" \
     "w4a16" \
     "compressed-tensors" \
     "autoround"
@@ -50,11 +35,11 @@ model_detect_has_w4a16_hint() {
 model_detect_is_awq_name() {
   local value="${1:-}"
   local lowered
-  lowered="$(_model_detect_lower "${value}")"
+  lowered="$(str_to_lower "${value}")"
   if [ -z "${lowered}" ]; then
     return 1
   fi
-  if _model_detect_has_marker "${lowered}" "awq"; then
+  if str_contains "${lowered}" "awq"; then
     return 0
   fi
   model_detect_has_w4a16_hint "${lowered}"
@@ -102,27 +87,28 @@ model_detect_is_prequant_awq() {
 # =============================================================================
 
 # Check if model is a TRT pre-quantized model (AWQ or 8-bit)
+# Returns: trt_awq, trt_fp8, trt_int8, trt_8bit, or fails
 _model_detect_trt_prequant_kind() {
   local lowered="$1"
   if [ -z "${lowered}" ]; then
     return 1
   fi
-  if ! _model_detect_has_marker "${lowered}" "trt"; then
+  if ! str_contains "${lowered}" "trt"; then
     return 1
   fi
-  if _model_detect_has_marker "${lowered}" "awq"; then
+  if str_contains "${lowered}" "awq"; then
     echo "trt_awq"
     return 0
   fi
-  if _model_detect_has_marker "${lowered}" "fp8"; then
+  if str_contains "${lowered}" "fp8"; then
     echo "trt_fp8"
     return 0
   fi
-  if _model_detect_has_any_marker "${lowered}" "int8" "int-8"; then
+  if str_contains_any "${lowered}" "int8" "int-8"; then
     echo "trt_int8"
     return 0
   fi
-  if _model_detect_has_any_marker "${lowered}" "8bit" "8-bit"; then
+  if str_contains_any "${lowered}" "8bit" "8-bit"; then
     echo "trt_8bit"
     return 0
   fi
@@ -135,7 +121,7 @@ model_detect_is_trt_prequant() {
     return 1
   fi
   local lowered
-  lowered="$(_model_detect_lower "${value}")"
+  lowered="$(str_to_lower "${value}")"
   if _model_detect_trt_prequant_kind "${lowered}" >/dev/null; then
     return 0
   fi
@@ -149,18 +135,18 @@ model_detect_is_moe() {
     return 1
   fi
   local lowered
-  lowered="$(_model_detect_lower "${value}")"
-  
+  lowered="$(str_to_lower "${value}")"
+
   # Check for Qwen3 MoE naming: -aXb suffix
   if echo "${lowered}" | grep -qE -- '-a[0-9]+b'; then
     return 0
   fi
-  
+
   # Check common MoE markers
-  if _model_detect_has_any_marker "${lowered}" "moe" "mixtral" "deepseek-v2" "deepseek-v3" "ernie-4.5"; then
+  if str_contains_any "${lowered}" "moe" "mixtral" "deepseek-v2" "deepseek-v3" "ernie-4.5"; then
     return 0
   fi
-  
+
   return 1
 }
 
@@ -168,7 +154,7 @@ model_detect_is_moe() {
 model_detect_classify_trt() {
   local value="${1:-}"
   local lowered
-  lowered="$(_model_detect_lower "${value}")"
+  lowered="$(str_to_lower "${value}")"
   local kind=""
   if kind="$(_model_detect_trt_prequant_kind "${lowered}")"; then
     echo "${kind}"

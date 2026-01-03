@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Shared dependency installation helpers.
+# =============================================================================
+# Pip Installation Utilities
+# =============================================================================
+# Shared helpers for configuring pip behavior including caching, progress
+# bars, and binary preferences.
 
 deps_export_pip() {
   export PIP_ROOT_USER_ACTION=${PIP_ROOT_USER_ACTION:-ignore}

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-
-# Utilities for preserving user-provided env overrides across restart flows.
+# =============================================================================
+# Environment Override Utilities
+# =============================================================================
+# Captures and persists user-provided environment overrides across restart
+# flows so runtime configuration is not lost between server restarts.
 
 RESTART_RUNTIME_SNAPSHOT_DIRTY=${RESTART_RUNTIME_SNAPSHOT_DIRTY:-0}
 

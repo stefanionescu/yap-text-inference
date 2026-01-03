@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Launch helper for scripts/restart.sh
-# Requires: ROOT_DIR, INFERENCE_ENGINE
+# =============================================================================
+# Restart Launch Helper
+# =============================================================================
+# Server launch helper for scripts/restart.sh. Handles runtime config
+# persistence and delegates to pipeline utilities for background startup.
 
 restart_server_background() {
   if [ "${RESTART_RUNTIME_SNAPSHOT_DIRTY:-0}" = "1" ]; then

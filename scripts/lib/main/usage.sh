@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Usage documentation for main.sh
+# =============================================================================
+# Main Script Usage Documentation
+# =============================================================================
+# Prints command-line usage and examples for scripts/main.sh.
 
 main_usage() {
   echo "Usage:"

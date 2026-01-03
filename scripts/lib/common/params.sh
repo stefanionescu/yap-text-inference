@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# Common params validation helpers.
-# Expects log_err/log_warn/log_info to be available from log.sh.
+# =============================================================================
+# Parameter Validation Helpers
+# =============================================================================
+# Validates required environment variables and push flag configurations.
+# Ensures TEXT_API_KEY, HF_TOKEN, and MAX_CONCURRENT_CONNECTIONS are set.
 
 ensure_required_env_vars() {
   local has_errors=0

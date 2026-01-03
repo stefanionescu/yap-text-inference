@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-
-# AWQ model detection and environment wiring for scripts/restart.sh
-# Requires: ROOT_DIR
+# =============================================================================
+# AWQ Model Detection for Restart
+# =============================================================================
+# Detects cached AWQ models and wires environment variables for restart.sh
+# to reuse existing quantized model artifacts.
 
 RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${RESTART_LIB_DIR}/../common/awq.sh"
