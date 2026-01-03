@@ -7,7 +7,6 @@ source "${SCRIPT_DIR}/logs.sh"
 log_info "[trt] Setting environment defaults (TRT-LLM image)..."
 
 # Source modular env configuration
-source "${SCRIPT_DIR}/env/helpers.sh"
 source "${SCRIPT_DIR}/env/models.sh"
 source "${SCRIPT_DIR}/env/trt_config.sh"
 source "${SCRIPT_DIR}/env/gpu_detect.sh"

@@ -107,7 +107,9 @@ RUN printf "torch==2.9.0+cu130\ntorchvision==0.24.0+cu130\n" > /tmp/trt-constrai
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY download/ /app/download/
-RUN chmod +x /app/scripts/*.sh /app/download/*.py
+COPY common/ /app/common/
+COPY tests/ /app/tests/
+RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/download/*.py /app/common/scripts/*.sh 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
 # Production environment setup

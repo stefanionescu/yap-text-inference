@@ -5,4 +5,17 @@
 # directory without knowing about the common/ layout.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../../common/scripts/logs.sh"
+
+# Find common scripts directory (works in Docker and dev contexts)
+if [ -d "/app/common/scripts" ]; then
+  source "/app/common/scripts/logs.sh"
+elif [ -d "${SCRIPT_DIR}/../../common/scripts" ]; then
+  source "${SCRIPT_DIR}/../../common/scripts/logs.sh"
+else
+  # Fallback logging if common not found
+  log_info() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+  log_warn() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+  log_err()  { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+  log_success() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+  log_error() { log_err "$@"; }
+fi
