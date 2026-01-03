@@ -51,5 +51,4 @@ docker run -d --gpus all --name yap-server \
 |----------|---------|-------------|
 | `TEXT_API_KEY` | Required | API key |
 | `TRT_KV_FREE_GPU_FRAC` | 0.90 | GPU fraction for KV cache |
-| `TRT_KV_ENABLE_BLOCK_REUSE` | 0 | Enable KV cache block reuse |
 

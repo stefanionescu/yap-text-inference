@@ -290,7 +290,6 @@ Memory allocation:
 |----------|---------|-------------|
 | `TRT_KV_FREE_GPU_FRAC` | 0.90 (single) / 0.70 (both) | GPU fraction for TRT KV cache |
 | `TOOL_GPU_FRAC` | 0.90 (single) / 0.20 (both) | GPU memory for tool classifier |
-| `TRT_KV_ENABLE_BLOCK_REUSE` | 0 | Enable KV cache block reuse optimization |
 
 ---
 

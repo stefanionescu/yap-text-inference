@@ -16,7 +16,7 @@ Environment Variables:
 Usage:
   python3 tests/gender.py
   python3 tests/gender.py --switches 5 --delay 2
-  python3 tests/gender.py --temperature 0.8 --top_p 0.9
+  python3 tests/gender.py --temperature 0.8 --top-p 0.9
 """
 
 from __future__ import annotations

@@ -15,7 +15,6 @@ from typing import Any
 
 from src.config import (
     TRT_KV_FREE_GPU_FRAC,
-    TRT_KV_ENABLE_BLOCK_REUSE,
     TRT_RUNTIME_BATCH_SIZE,
 )
 from src.config.trt import TRT_ENGINE_CONFIG_FILE, TRT_BUILD_METADATA_FILE
@@ -33,8 +32,8 @@ def build_kv_cache_config() -> dict[str, Any]:
         with contextlib.suppress(ValueError):
             kv_cfg["free_gpu_memory_fraction"] = float(TRT_KV_FREE_GPU_FRAC)
     
-    if TRT_KV_ENABLE_BLOCK_REUSE:
-        kv_cfg["enable_block_reuse"] = True
+    # Always enable block reuse 
+    kv_cfg["enable_block_reuse"] = True
     
     return kv_cfg
 

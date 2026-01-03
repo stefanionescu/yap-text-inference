@@ -73,14 +73,6 @@ fi
 # Data type for compute
 TRT_DTYPE="${TRT_DTYPE:-float16}"
 
-# KV cache GPU fraction = CHAT_GPU_FRAC
-# 0.70 when both chat+tool deployed, 0.90 when chat-only
-if [ -z "${TRT_KV_FREE_GPU_FRAC:-}" ]; then
-  TRT_KV_FREE_GPU_FRAC="${CHAT_GPU_FRAC:-0.70}"
-fi
-
-TRT_KV_ENABLE_BLOCK_REUSE="${TRT_KV_ENABLE_BLOCK_REUSE:-0}"
-
 # =============================================================================
 # QUANTIZATION PARAMETERS (aligned with vLLM AWQ defaults from calibration.py)
 # =============================================================================
@@ -212,29 +204,19 @@ trt_resolve_kv_cache_dtype() {
   esac
 }
 
-# Log the derived TRT configuration
-trt_log_config() {
-  log_info "[trt] TRT-LLM Configuration:"
-  log_info "[trt]   Max batch size: ${TRT_MAX_BATCH_SIZE:-<not set>}"
-  log_info "[trt]   Max input length: ${TRT_MAX_INPUT_LEN}"
-  log_info "[trt]   Max output length: ${TRT_MAX_OUTPUT_LEN}"
-  log_info "[trt]   KV cache GPU fraction: ${TRT_KV_FREE_GPU_FRAC}"
-  log_info "[trt]   GPU SM arch: ${GPU_SM_ARCH:-auto-detect}"
-}
-
 # Validate TRT_MAX_BATCH_SIZE is set (called before engine build)
 trt_validate_batch_size() {
   if [ -z "${TRT_MAX_BATCH_SIZE:-}" ]; then
     log_err "[trt] ✗ TRT_MAX_BATCH_SIZE must be set when building a TRT engine."
-    log_err "[trt] ✗ This value is baked into the compiled engine and determines the maximum"
-    log_err "[trt] ✗ number of sequences that can be batched together in a single forward pass."
-    log_err "[trt] ✗ "
-    log_err "[trt] ✗ Example values based on model size:"
-    log_err "[trt] ✗   - 7-8B models: 32-64"
-    log_err "[trt] ✗   - 13B models: 16-32"
-    log_err "[trt] ✗   - 70B+ models: 8-16"
-    log_err "[trt] ✗ "
-    log_err "[trt] ✗ Set it via: export TRT_MAX_BATCH_SIZE=<value>"
+    log_err "[trt]   This value is baked into the compiled engine and determines the maximum"
+    log_err "[trt]   number of sequences that can be batched together in a single forward pass."
+    log_err ""
+    log_err "[trt] Example values based on model size:"
+    log_err "[trt]   - 7-8B models: 32-64"
+    log_err "[trt]   - 13B models: 16-32"
+    log_err "[trt]   - 70B+ models: 8-16"
+    log_err ""
+    log_err "[trt] Set it via: export TRT_MAX_BATCH_SIZE=<value>"
     return 1
   fi
   
@@ -255,7 +237,6 @@ trt_export_env() {
   export TRT_REPO_URL TRT_REPO_TAG TRT_REPO_DIR
   export GPU_SM_ARCH TRT_FP8_SM_ARCHS
   export TRT_MAX_BATCH_SIZE TRT_MAX_INPUT_LEN TRT_MAX_OUTPUT_LEN TRT_DTYPE
-  export TRT_KV_FREE_GPU_FRAC TRT_KV_ENABLE_BLOCK_REUSE
   export TRT_AWQ_BLOCK_SIZE TRT_CALIB_SIZE TRT_CALIB_BATCH_SIZE TRT_CALIB_SEQLEN
   export TRT_CHECKPOINT_DIR TRT_ENGINE_DIR TRT_CACHE_DIR TRT_MODELS_DIR
 }

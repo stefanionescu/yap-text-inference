@@ -102,7 +102,6 @@ TRT-LLM-specific environment variables:
 | `TRT_MAX_OUTPUT_LEN` | `CHAT_MAX_OUT` (150) | Maximum output token length |
 | `TRT_DTYPE` | `float16` | Compute precision |
 | `TRT_KV_FREE_GPU_FRAC` | `CHAT_GPU_FRAC` | GPU memory fraction for KV cache |
-| `TRT_KV_ENABLE_BLOCK_REUSE` | `0` | Enable KV block reuse (automatic) |
 
 **Batch Size Configuration:**
 
