@@ -62,7 +62,7 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Angelic_Eclipse_12B",
     "flammenai/Mahou-1.3-mistral-nemo-12B",
     "Qwen/Qwen3-32B",
-    "mistralai/Mistral-Small-Instruct-2409", # SHOULD MAKE QUANT
+    "mistralai/Mistral-Small-Instruct-2409",
     "ReadyArt/Broken-Tutu-24B-Unslop-v2.0",
     "Delta-Vector/Rei-24B-KTO",
     "ArliAI/Qwen2.5-32B-ArliAI-RPMax-v1.3",
@@ -119,29 +119,10 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
 
 ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     # Pre-quantized AWQ/W4A16 models
-    "yapwithai/delta-vector-rei-24B-kto-trt-awq",
-    "yapwithai/arliai-mistral-small-24B-arliai-rpmax-v1.4-trt-awq", # really dumb, not worth it
-    "yapwithai/arliai-qwen2.5-32B-arliai-rpmax-v1.3-trt-awq",
-    "yapwithai/mistral-small-24B-instruct-2501-trt-awq", # REALLY GOOD, not the best but can be massaged to work
-    "yapwithai/gryphe-pantheon-rp-1.6.2-22b-small-trt-awq",
-    "yapwithai/qwq-32B-trt-awq",
-    "yapwithai/steelstorage-l3-aethora-15B-v2-trt-awq",
-    "yapwithai/concedo-beepo-22B-trt-awq",
-    "yapwithai/gryphe-pantheon-rp-pure-1.6.2-22b-small-trt-awq",
-    "yapwithai/readyart-broken-tutu-24B-unslop-v2.0-trt-awq",
-    "yapwithai/readyart-broken-tutu-24B-transgression-v2.0-trt-awq", # LOVE the initial reactions, gotta test more # MUST REBUILD
-    "yapwithai/dphn-dolphin-mistral-24B-venice-edition-trt-awq", # Decent but a bit bland # MUST REBUILD
-    "yapwithai/thedrummer-magidonia-24B-v4.3-trt-awq", 
+    "yapwithai/readyart-broken-tutu-24B-transgression-v2.0-trt-awq", # LOVE the initial reactions, gotta test more
 
     # Pre-quantized FP8 models
-    "yapwithai/sicariussicariistuff-angelic-eclipse-12B-trt-fp8",
-    "yapwithai/sicariussicariistuff-impish-bloodmoon-12B-trt-fp8",
-    "yapwithai/sicariussicariistuff-impish-nemo-12B-trt-fp8",
-    "yapwithai/thedrummer-unslopnemo-12B-v4.1-trt-fp8",
-    "yapwithai/mistral-nemo-instruct-2407-trt-fp8",
-    "yapwithai/flammenai-mahou-1.3-mistral-nemo-12B-trt-fp8",
-    "yapwithai/delta-vector-ohashi-nemo-12B-trt-fp8",
-    "yapwithai/jinx-qwen3-14B-trt-fp8",
+    
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [

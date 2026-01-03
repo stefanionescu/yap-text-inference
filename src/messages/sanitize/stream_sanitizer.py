@@ -34,6 +34,7 @@ from ...config.filters import (
     NEGATIVE_NUMBER_PATTERN,
     NEWLINE_TOKEN_PATTERN,
     PERCENT_PATTERN,
+    SINGLE_LETTER_SUFFIX_PATTERN,
     SPACE_BEFORE_PUNCT_PATTERN,
     SPACED_DOT_RUN_PATTERN,
     SUBTRACTION_PATTERN,
@@ -207,6 +208,9 @@ def _sanitize_stream_chunk(
     # Handle dashes/hyphens contextually (order matters: specific → general)
     cleaned = SUBTRACTION_PATTERN.sub(r"\1 minus \2", cleaned)
     cleaned = NEGATIVE_NUMBER_PATTERN.sub(r" minus \1", cleaned)
+    # Single-letter suffix: vintage-y → vintagey (no space)
+    cleaned = SINGLE_LETTER_SUFFIX_PATTERN.sub(r"\1\2", cleaned)
+    # Compound words: well-known → well known (with space)
     cleaned = WORD_HYPHEN_PATTERN.sub(r"\1 \2", cleaned)
     cleaned = EMDASH_PATTERN.sub(" ", cleaned)
     cleaned = cleaned.replace("'", "'")

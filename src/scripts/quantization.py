@@ -77,9 +77,6 @@ def download_model(model_id: str, target_dir: str) -> None:
         print(f"[model] Download failed: {e}", file=sys.stderr)
         raise
 
-    elapsed = time.time() - start_time
-    print(f"[model] Download complete in {elapsed:.1f}s", file=sys.stderr)
-
 
 def download_prequantized(model_id: str, target_dir: str) -> None:
     """Download pre-quantized checkpoint assets from Hugging Face."""

@@ -254,14 +254,12 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; th
     log_err "[restart]     3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
     exit 1
   fi
-  log_info "[restart] ✓ TRT engine validated"
 
   # Push TRT engine if requested (for cached/prebuilt engines)
   # Skip if engine was downloaded from HuggingFace (no point pushing back what we downloaded)
   if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${USING_PREBUILT_ENGINE:-0}" != "1" ]; then
     trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${CHAT_MODEL:-}"
   fi
-  log_blank
 fi
 
 restart_server_background

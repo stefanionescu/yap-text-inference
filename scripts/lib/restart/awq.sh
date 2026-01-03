@@ -109,6 +109,10 @@ restart_validate_awq_push_prereqs() {
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return
   fi
+  # Skip AWQ artifact check for TRT - TRT has its own push logic in restart_push_cached_awq_models
+  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+    return
+  fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
     log_info "[restart] --push-quant specified but no local AWQ artifacts detected; uploads will be skipped."
     return
