@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from src.config.limits import (
     BATCH_SCALE_GPU_FRAC_CAP,
@@ -81,9 +84,12 @@ def scale_batching_limits(
     if max_seqs is not None:
         scaled_seqs = max(BATCH_SCALE_MIN_SEQS, int(max_seqs * ratio))
 
-    print(
-        f"[config] Scaling {engine_role} batching limits to {ratio:.2f}x "
-        f"(free {free_bytes / (1024**3):.1f} GiB vs budget {target_bytes / (1024**3):.1f} GiB)"
+    logger.info(
+        "[config] Scaling %s batching limits to %.2fx (free %.1f GiB vs budget %.1f GiB)",
+        engine_role,
+        ratio,
+        free_bytes / (1024**3),
+        target_bytes / (1024**3),
     )
     return scaled_tokens, scaled_seqs
 
@@ -125,7 +131,7 @@ def configure_kv_cache(kwargs: dict[str, Any], kv_dtype: str, use_v1: bool) -> N
     if use_v1:
         if normalized.startswith("fp8"):
             os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
-            print("[config] V1 engine: FP8 KV cache enabled")
+            logger.info("[config] V1 engine: FP8 KV cache enabled")
         elif normalized.startswith("int8"):
             warn_once(
                 "kv_dtype_int8",

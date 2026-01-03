@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-
-# Helpers for restart.sh reconfigure mode (model/quant switches without reinstalling deps)
+# =============================================================================
+# Restart Reconfiguration Helpers
+# =============================================================================
+# Functions for reconfiguring models and quantization during restart without
+# reinstalling dependencies. Handles model identity resolution, cache
+# preservation decisions, and quantization pipeline execution.
 
 RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${RESTART_LIB_DIR}/../common/model_detect.sh"
@@ -366,7 +370,7 @@ restart_reconfigure_models() {
   log_section "[restart] Reconfiguring models..."
 
   local resolved_venv="${VENV_DIR:-$(get_venv_dir)}"
-  NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
+  FULL_CLEANUP=0 "${SCRIPT_DIR}/stop.sh"
 
   if [ "${preserve_cache}" != "1" ]; then
     restart_clear_model_artifacts

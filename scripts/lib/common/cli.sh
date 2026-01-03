@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# =============================================================================
+# CLI Argument Utilities
+# =============================================================================
+# Provides utility functions for normalizing engine names and validating
+# deploy modes from command-line arguments.
 
 cli_normalize_engine() {
   local engine="${1:-trt}"

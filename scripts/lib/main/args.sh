@@ -90,7 +90,7 @@ main_parse_cli() {
     return 1
   fi
 
-  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE:-vllm}")"; then
+  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE}")"; then
     log_err "[main] ✗ Unknown engine type '${INFERENCE_ENGINE:-}'. Expected trt|vllm."
     return 1
   fi

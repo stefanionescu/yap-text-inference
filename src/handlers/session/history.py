@@ -1,15 +1,13 @@
-"""History parsing/rendering utilities for session handling.
+"""History rendering, trimming, and controller utilities.
 
 This module handles the transformation between structured conversation history
 (HistoryTurn objects) and text representations. It supports:
 
 1. Rendering: Converting structured turns to text format for prompt building
-2. Parsing: Converting JSON array to structured turns
-3. Trimming: Keeping history within token budgets for both chat and tool models
-4. Extraction: Getting user-only texts for classifier/tool routing
+2. Trimming: Keeping history within token budgets for both chat and tool models
+3. Extraction: Getting user-only texts for classifier/tool routing
 
-API Input Format:
-    [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+For parsing functions (text/JSON to HistoryTurn), see the parsing module.
 
 Two separate trimming strategies are used:
 - Chat model: Triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
@@ -32,6 +30,7 @@ from src.config import (
 )
 from src.tokens import build_user_history_for_tool, count_tokens_chat
 
+from .parsing import parse_history_as_tuples, parse_history_messages, parse_history_text
 from .state import HistoryTurn, SessionState
 
 
@@ -63,105 +62,6 @@ def render_history(turns: list[HistoryTurn]) -> str:
         if chunk:
             chunks.append(chunk)
     return "\n\n".join(chunks)
-
-
-def parse_history_text(history_text: str) -> list[HistoryTurn]:
-    """Parse text transcript back into structured HistoryTurn objects.
-    
-    Handles multi-line messages by accumulating lines until the next
-    role marker (User: or Assistant:) is encountered.
-    
-    Args:
-        history_text: Raw history in "User: X\\nAssistant: Y" format.
-        
-    Returns:
-        List of HistoryTurn objects with generated UUIDs.
-    """
-    text = (history_text or "").strip()
-    if not text:
-        return []
-
-    turns: list[HistoryTurn] = []
-    current_user: list[str] = []
-    current_assistant: list[str] = []
-    mode: str | None = None
-
-    def _flush() -> None:
-        nonlocal current_user, current_assistant, mode
-        if not current_user and not current_assistant:
-            return
-        turns.append(HistoryTurn(
-            turn_id=uuid.uuid4().hex,
-            user="\n".join(current_user).strip(),
-            assistant="\n".join(current_assistant).strip(),
-        ))
-        current_user, current_assistant, mode = [], [], None
-
-    for line in text.splitlines():
-        if line.startswith("User:"):
-            _flush()
-            current_user = [line[5:].lstrip()]
-            mode = "user"
-        elif line.startswith("Assistant:"):
-            current_assistant = [line[10:].lstrip()]
-            mode = "assistant"
-        elif mode == "assistant":
-            current_assistant.append(line)
-        elif mode == "user":
-            current_user.append(line)
-        elif line.strip():
-            current_user.append(line)
-            mode = "user"
-    _flush()
-    return turns
-
-
-def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
-    """Parse JSON message array into structured HistoryTurn objects.
-    
-    Accepts the standard chat format: [{role: "user", content: "..."}, ...]
-    Groups consecutive user/assistant messages into turns.
-    
-    Args:
-        messages: List of {role, content} dicts. Role must be "user" or "assistant".
-        
-    Returns:
-        List of HistoryTurn objects with generated UUIDs.
-    """
-    if not messages:
-        return []
-
-    turns: list[HistoryTurn] = []
-    current_user: list[str] = []
-    current_assistant: list[str] = []
-
-    def _flush() -> None:
-        nonlocal current_user, current_assistant
-        if not current_user and not current_assistant:
-            return
-        turns.append(HistoryTurn(
-            turn_id=uuid.uuid4().hex,
-            user="\n\n".join(current_user).strip(),
-            assistant="\n\n".join(current_assistant).strip(),
-        ))
-        current_user, current_assistant = [], []
-
-    for msg in messages:
-        role = msg.get("role", "").lower().strip()
-        content = (msg.get("content") or "").strip()
-        if not content:
-            continue
-
-        if role == "user":
-            # If we have assistant content, flush the turn before starting new user
-            if current_assistant:
-                _flush()
-            current_user.append(content)
-        elif role == "assistant":
-            current_assistant.append(content)
-
-    _flush()
-    return turns
 
 
 def trim_history(
@@ -245,22 +145,6 @@ def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
     if not turns:
         return []
     return [turn.user.strip() for turn in turns if turn.user and turn.user.strip()]
-
-
-def parse_history_as_tuples(history_text: str) -> list[tuple[str, str]]:
-    """Parse history text into (user, assistant) tuples.
-    
-    This is a convenience wrapper around parse_history_text for callers
-    that need the simpler tuple format (e.g., prompt builders).
-    
-    Args:
-        history_text: Raw history in "User: X\nAssistant: Y" format
-        
-    Returns:
-        List of (user_text, assistant_text) tuples
-    """
-    turns = parse_history_text(history_text)
-    return [(turn.user, turn.assistant) for turn in turns]
 
 
 class HistoryController:
@@ -349,3 +233,16 @@ class HistoryController:
         ))
         trim_history(state)
         return render_history(state.history_turns)
+
+
+__all__ = [
+    "render_history",
+    "trim_history",
+    "render_tool_history_text",
+    "get_user_texts",
+    "HistoryController",
+    # Re-export parsing functions for backwards compatibility
+    "parse_history_text",
+    "parse_history_messages",
+    "parse_history_as_tuples",
+]

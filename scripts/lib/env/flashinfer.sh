@@ -21,13 +21,9 @@ flashinfer_present_py() {
     return 1
   fi
 
-  if "${py_exe}" - <<'PY' >/dev/null 2>&1
-try:
-    import flashinfer  # noqa: F401
-except Exception:
-    raise SystemExit(1)
-PY
-  then
+  local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+  if PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
+     "${py_exe}" -m src.scripts.env_check flashinfer-check >/dev/null 2>&1; then
     return 0
   fi
 

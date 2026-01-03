@@ -7,6 +7,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Iterate on the plan when constraints or questions arise; proceed only after clear agreement.
 - Run project linters/tests from the CLI after implementation so the tree stays clean.
 - Whenever you rename or move a file/module, audit the codebase for imports and update them immediately so nothing keeps referring to the old path.
+- Before adding a new module, directory, or helper, document which existing files you evaluated and why extending them was rejected.
 
 ## Module layout
 - Prefer one class per file; split if a second class is needed.
@@ -40,6 +41,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 
 ## Readability and style
 - Favor clear, descriptive names; avoid vague identifiers.
+- Follow naming conventions consistently: `snake_case` for variables/functions, `PascalCase` for classes, `UPPER_SNAKE_CASE` for constants, and positive boolean predicates such as `is_ready` or `should_retry`.
 - Keep functions shallow and organized; split helpers when nesting grows.
 - Give each function a single, well-defined responsibility; extract unrelated work into helpers or new modules.
 - Limit side effects and keep inputs/outputs narrowly scoped; document any unavoidable shared state or exceptions.
@@ -71,6 +73,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Ship every behavioral change with a matching automated test (unit, integration, or system) that would fail without the change.
 - Keep tests deterministic by stubbing clocks, network calls, randomness, and filesystem writes; centralize shared fixtures so they can be reused.
 - Add a regression test for each bug fix that previously failed to prevent repeats; reference the failure scenario in the test’s docstring or comments.
+- Name test modules `test_*.py`, fixtures `fixture_*`, and doubles `fake_*`/`stub_*` so intent stays obvious.
 - Limit test modules to the smallest practical scope; extract reusable builders into helper modules or fixtures instead of duplicating factories inline.
 
 ## State and concurrency
@@ -78,3 +81,9 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Treat state objects as immutable snapshots; when an update is required, construct a new instance instead of mutating one that other callers might hold.
 - Pass state explicitly through function parameters instead of stashing it in globals or module-level caches.
 - When multiple async tasks or threads might touch the same resource, guard access with `asyncio.Lock`, `contextlib.AsyncExitStack`, or threading locks rather than relying on timing.
+
+## Shell and CLI scripts
+- Start every shell script with `#!/usr/bin/env bash` and `set -euo pipefail`; enable `IFS=$'\n\t'` when splitting on lines.
+- Declare read-only configuration with `readonly VAR=value` and prefer functions over inline command sequences for reuse.
+- Keep script function names in `snake_case` and log via a shared helper (`log_info`, `log_error`) rather than ad-hoc `echo` prefixes.
+- Before writing a new script, confirm whether the behavior belongs in an existing script under `scripts/` or `src/scripts/` and explain the decision in the change description.

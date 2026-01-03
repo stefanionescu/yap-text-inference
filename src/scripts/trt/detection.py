@@ -149,6 +149,63 @@ def read_checkpoint_quant_info(checkpoint_dir: str) -> dict[str, Any]:
         return {}
 
 
+def download_prebuilt_engine(
+    repo_id: str,
+    engine_label: str,
+    target_dir: str,
+) -> str | None:
+    """Download a pre-built TRT engine from HuggingFace.
+
+    Args:
+        repo_id: HuggingFace repository ID.
+        engine_label: Engine label (e.g., "sm90_trt-llm-1.2.0rc5_cuda13.0").
+        target_dir: Local directory to download to.
+
+    Returns:
+        Path to the downloaded engine directory, or None on failure.
+    """
+    import os
+
+    from src.helpers.env import env_flag
+
+    # Configure HF progress bars based on SHOW_HF_LOGS
+    if env_flag("SHOW_HF_LOGS", False):
+        os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
+        os.environ.pop("TQDM_DISABLE", None)
+        try:
+            from huggingface_hub.utils import enable_progress_bars
+
+            enable_progress_bars()
+        except Exception:
+            pass
+    else:
+        from src.scripts.filters import configure
+
+        configure()
+
+    try:
+        from huggingface_hub import snapshot_download
+
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=target_dir,
+            allow_patterns=[f"trt-llm/engines/{engine_label}/**"],
+        )
+        print("[engine] ✓ Downloaded pre-built engine", file=sys.stderr)
+        print(file=sys.stderr)
+
+        # Validate downloaded engine
+        engine_dir = Path(target_dir) / "trt-llm" / "engines" / engine_label
+        if engine_dir.is_dir() and list(engine_dir.glob("rank*.engine")):
+            return str(engine_dir)
+
+        print("[engine] ✗ Downloaded engine directory is invalid", file=sys.stderr)
+        return None
+    except Exception as exc:
+        print(f"[engine] ✗ Download failed: {exc}", file=sys.stderr)
+        return None
+
+
 if __name__ == "__main__":
     # CLI interface for shell scripts
     if len(sys.argv) < 2:
@@ -184,6 +241,12 @@ if __name__ == "__main__":
         info = read_checkpoint_quant_info(sys.argv[2])
         print(json.dumps(info))
         sys.exit(0)
+
+    elif cmd == "download-engine" and len(sys.argv) >= 5:
+        result = download_prebuilt_engine(sys.argv[2], sys.argv[3], sys.argv[4])
+        if result:
+            print(result)
+        sys.exit(0 if result else 1)
 
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)

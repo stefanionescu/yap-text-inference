@@ -16,15 +16,8 @@ fi
 # Print CUDA/Torch ABI hint if available
 venv_dir="$(get_venv_dir)"
 if [ -d "${venv_dir}" ]; then
-  CU_VER=$("${venv_dir}/bin/python" - <<'PY' || true
-import sys
-try:
-    import torch
-    print((torch.version.cuda or '').strip())
-except Exception:
-    sys.exit(1)
-PY
-  )
+  CU_VER=$(PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
+    "${venv_dir}/bin/python" -m src.scripts.env_check torch-cuda-version 2>/dev/null || true)
   if [ -n "${CU_VER:-}" ]; then
     log_info "[gpu] Torch CUDA version detected: ${CU_VER}"
   fi

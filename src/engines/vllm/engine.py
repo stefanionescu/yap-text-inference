@@ -29,14 +29,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import os
 import time
 from typing import Any
 from collections.abc import AsyncGenerator
 
-# Ensure V1 engine path before importing vLLM
-os.environ.setdefault("VLLM_USE_V1", "1")
-os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
+# Configure runtime environment before importing vLLM
+from .setup import configure_runtime_env
+configure_runtime_env()
 
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 

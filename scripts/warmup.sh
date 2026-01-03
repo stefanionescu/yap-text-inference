@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+# =============================================================================
+# GPU Warmup and Benchmark Script
+# =============================================================================
+# Runs warmup and benchmark tests against the running server to validate
+# deployment health. Supports multiple persona variants and tracks pass/fail
+# results for each phase.
+#
+# Usage: bash scripts/warmup.sh
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,11 +49,12 @@ cleanup_lock() {
   rm -f "${WARMUP_LOCK_FILE}" || true
 }
 
+# Use centralized string utilities
+source "${SCRIPT_DIR}/lib/common/string.sh"
+
+# Alias for existing code - use str_trim from string.sh
 trim_string() {
-  local value="${1:-}"
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
-  echo "${value}"
+  str_trim "$1"
 }
 
 add_persona_variant() {
@@ -283,7 +293,7 @@ fi
 
 log_warmup "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
 
-overall_ok=1
+warmup_all_passed=1
 prompt_mode="$(detect_prompt_mode)"
 PROMPT_MODE_FLAGS=()
 if [[ "${prompt_mode}" == "tool" ]]; then
@@ -319,7 +329,7 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
   warmup_label="warmup: ${persona_label}"
   warmup_prefix="$(safe_log_prefix "warmup_${persona_label}")"
   if ! run_with_retries "${warmup_label}" "${warmup_prefix}" "tests/warmup.py" "${PROMPT_MODE_FLAGS[@]}" "${persona_args[@]}"; then
-    overall_ok=0
+    warmup_all_passed=0
   fi
   sleep "${WARMUP_RUN_DELAY_SECS}"
 
@@ -333,12 +343,12 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
     "--requests" "${max_conn}" \
     "--concurrency" "${max_conn}" \
     "${persona_args[@]}"; then
-    overall_ok=0
+    warmup_all_passed=0
   fi
   sleep "${WARMUP_RUN_DELAY_SECS}"
 done
 
-if [[ "${overall_ok}" -eq 1 ]]; then
+if [[ "${warmup_all_passed}" -eq 1 ]]; then
   log_to_server "[warmup] ✓ Warmup + bench complete."
   exit 0
 fi

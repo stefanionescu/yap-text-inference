@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Server Stop Script
+# =============================================================================
+# Stops the inference server and performs cleanup operations.
+# Supports light stop (preserving venv/caches) or full cleanup.
+#
+# Usage: FULL_CLEANUP=0|1 bash scripts/stop.sh
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,13 +21,13 @@ stop_init_flags
 # =============================================================================
 # CLEANUP CONTROL FLAGS
 # =============================================================================
-# NUKE_ALL=0: Light stop - preserve venv, caches, models (for quick restart)
-# NUKE_ALL=1: Full stop - wipe EVERYTHING: venv, caches, models, all of it
+# FULL_CLEANUP=0: Light stop - preserve venv, caches, models (for quick restart)
+# FULL_CLEANUP=1: Full stop - wipe EVERYTHING: venv, caches, models, all of it
 # =============================================================================
-if [ "${NUKE_ALL}" = "0" ]; then
+if [ "${FULL_CLEANUP}" = "0" ]; then
   log_info "[stop] Light stop: preserving venv, caches, and models..."
 else
-  log_info "[stop] Full stop: nuking venv, caches, models..."
+  log_info "[stop] Full stop: wiping venv, caches, models..."
 fi
 
 log_info "[stop] Stopping uvicorn server session and clearing server.pid..."
@@ -29,7 +37,7 @@ cleanup_kill_engine_processes
 sleep 1
 
 # 4) Remove repo-local caches (models and compiled artifacts under the repo)
-if [ "${NUKE_ALL}" != "0" ]; then
+if [ "${FULL_CLEANUP}" != "0" ]; then
   log_info "[stop] Deleting repo caches, compiled artifacts, and checked-out models..."
   cleanup_repo_caches "${ROOT_DIR}"
   log_info "[stop] Removing Python virtual environments..."
@@ -39,7 +47,7 @@ fi
 log_info "[stop] Cleaning GPU processes (hard reset=${HARD_RESET})..."
 cleanup_gpu_processes "${HARD_RESET}"
 
-if [ "${NUKE_ALL}" != "0" ]; then
+if [ "${FULL_CLEANUP}" != "0" ]; then
   log_info "[stop] Deleting Hugging Face caches and configs..."
   cleanup_hf_caches
 fi
@@ -47,7 +55,7 @@ fi
 log_info "[stop] Deleting system/compiler runtime caches..."
 cleanup_misc_caches
 
-if [ "${NUKE_ALL}" != "0" ]; then
+if [ "${FULL_CLEANUP}" != "0" ]; then
   log_info "[stop] Purging pip caches..."
   cleanup_pip_caches
 fi
@@ -57,7 +65,7 @@ cleanup_python_artifacts "${ROOT_DIR}"
 log_info "[stop] Clearing /tmp and /dev/shm scratch directories..."
 cleanup_tmp_dirs
 
-if [ "${NUKE_ALL}" != "0" ]; then
+if [ "${FULL_CLEANUP}" != "0" ]; then
   log_info "[stop] Removing runtime state tracking..."
   cleanup_runtime_state "${ROOT_DIR}"
   log_info "[stop] Deleting home cache roots..."
@@ -67,8 +75,8 @@ fi
 log_info "[stop] Removing server log artifacts..."
 cleanup_server_artifacts "${ROOT_DIR}"
 
-if [ "${NUKE_ALL}" = "0" ]; then
+if [ "${FULL_CLEANUP}" = "0" ]; then
   log_info "[stop] Done. Repo preserved. Jupyter/console/container remain running."
 else
-  log_info "[stop] Done. Full stop cleanup complete. Restart to resume work."
+  log_info "[stop] Done. Full cleanup complete. Restart to resume work."
 fi

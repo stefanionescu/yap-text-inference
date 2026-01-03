@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Health Check Probe Script
+# =============================================================================
+# Performs HTTP health checks against one or more URLs. Returns success (0)
+# if any URL responds successfully, failure (1) otherwise.
+#
+# Usage: bash health.sh <url...>
+
 set -euo pipefail
 
 if [ $# -lt 1 ]; then

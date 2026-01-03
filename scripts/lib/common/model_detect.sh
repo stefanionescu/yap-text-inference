@@ -1,36 +1,27 @@
 #!/usr/bin/env bash
-
+# =============================================================================
+# Model Detection Utilities
+# =============================================================================
 # Helper utilities for inferring quantization hints from model identifiers.
+# Detects pre-quantized models (AWQ, GPTQ, TRT) and MoE architectures.
 
+_MODEL_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=string.sh
+source "${_MODEL_DETECT_DIR}/string.sh"
+
+# Alias for backward compatibility - use str_to_lower from string.sh
 _model_detect_lower() {
-  local value="${1:-}"
-  if [ -z "${value}" ]; then
-    echo ""
-    return
-  fi
-  if [[ -n "${BASH_VERSION:-}" && "${BASH_VERSION%%.*}" -ge 4 ]]; then
-    echo "${value,,}"
-  else
-    echo "${value}" | tr '[:upper:]' '[:lower:]'
-  fi
+  str_to_lower "$1"
 }
 
+# Alias for backward compatibility - use str_contains from string.sh
 _model_detect_has_marker() {
-  local lowered="$1"
-  local marker="$2"
-  [[ "${lowered}" == *"${marker}"* ]]
+  str_contains "$1" "$2"
 }
 
+# Alias for backward compatibility - use str_contains_any from string.sh
 _model_detect_has_any_marker() {
-  local lowered="$1"
-  shift
-  local marker
-  for marker in "$@"; do
-    if _model_detect_has_marker "${lowered}" "${marker}"; then
-      return 0
-    fi
-  done
-  return 1
+  str_contains_any "$@"
 }
 
 model_detect_is_gptq_name() {

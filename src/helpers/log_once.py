@@ -36,7 +36,7 @@ def warn_once(key: str, message: str, *, prefix: str = "[config]") -> bool:
     
     _emitted_warnings.add(key)
     full_message = f"{prefix} Warning: {message}" if prefix else f"Warning: {message}"
-    print(full_message)
+    logger.warning(full_message)
     return True
 
 
@@ -56,7 +56,7 @@ def info_once(key: str, message: str, *, prefix: str = "[config]") -> bool:
     
     _emitted_warnings.add(key)
     full_message = f"{prefix} {message}" if prefix else message
-    print(full_message)
+    logger.info(full_message)
     return True
 
 
@@ -71,4 +71,3 @@ def reset_warnings() -> None:
 
 
 __all__ = ["warn_once", "info_once", "has_warned", "reset_warnings"]
-

@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Yap Text Inference Server - Main Entry Point
+# =============================================================================
+# Primary startup script for deploying the inference server. Handles GPU
+# detection, model validation, quantization selection, and deployment
+# pipeline orchestration for both vLLM and TensorRT-LLM engines.
+#
+# Usage: bash scripts/main.sh [--trt|--vllm] <deploy_mode> [quant] <models...>
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

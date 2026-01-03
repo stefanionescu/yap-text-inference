@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034  # Variables are used by sourcing scripts.
-
-# Common argument parsing helpers shared by main.sh and restart.sh.
-# Provides unified parsing for logging flags, push flags, and engine selection.
+# =============================================================================
+# Common Argument Parsing Helpers
+# =============================================================================
+# Shared argument parsing utilities for main.sh and restart.sh. Provides
+# unified parsing for logging flags, push flags, and engine selection.
 
 # Initialize common argument state variables.
 # Call this before parsing to set up defaults.
+# NOTE: Default engine is TRT. This is the single source of truth for the default.
 args_init_common_state() {
   SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
   SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
@@ -15,6 +18,7 @@ args_init_common_state() {
   HF_AWQ_PUSH=0
   HF_ENGINE_PUSH_REQUESTED="${HF_ENGINE_PUSH_REQUESTED:-0}"
   HF_ENGINE_PUSH=0
+  # Default inference engine is TRT (TensorRT-LLM)
   INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}"
 }
 

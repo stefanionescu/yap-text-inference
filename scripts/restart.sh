@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Server Restart Script
+# =============================================================================
+# Restarts the inference server with optional model/quantization reconfiguration.
+# Supports quick restart (reusing caches) or full reconfiguration with new models.
+#
+# Usage: bash scripts/restart.sh <deploy_mode> [options]
+# See usage() below for full options.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -203,7 +212,7 @@ fi
 
 # Light stop - preserve models and dependencies (BEFORE deps install)
 log_section "[restart] Stopping server..."
-NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
+FULL_CLEANUP=0 "${SCRIPT_DIR}/stop.sh"
 
 # Check if venv exists (skip if --install-deps will create it)
 venv_dir="${VENV_DIR:-$(get_venv_dir)}"

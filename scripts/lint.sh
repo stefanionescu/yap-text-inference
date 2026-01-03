@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Linting Script
+# =============================================================================
+# Runs Ruff (Python) and ShellCheck (Bash) on the codebase.
+#
+# Usage: bash scripts/lint.sh [ruff-args...]
 
 set -euo pipefail
 

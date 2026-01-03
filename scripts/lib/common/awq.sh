@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# =============================================================================
+# AWQ Cache Utilities
+# =============================================================================
+# Helpers for detecting and resolving cached AWQ model artifacts.
 
 awq_chat_cache_ready() {
   local dir="$1"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 import os
 from typing import Any
 
@@ -11,6 +12,8 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from src.helpers.model_profiles import get_model_profile
 from src.helpers.model_profiles import normalize_model_id
 from src.helpers.log_once import warn_once
+
+logger = logging.getLogger(__name__)
 
 _FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
 _FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
@@ -112,9 +115,9 @@ def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
     AutoTokenizer._yap_original_from_pretrained = original
     AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)
     _FIX_MISTRAL_REGEX_PATCH_INSTALLED = True
-    print(
-        "[config] Applied AutoTokenizer monkeypatch for fix_mistral_regex "
-        f"(markers: {', '.join(sorted(_FIX_MISTRAL_REGEX_MARKERS))})"
+    logger.info(
+        "[config] Applied AutoTokenizer monkeypatch for fix_mistral_regex (markers: %s)",
+        ", ".join(sorted(_FIX_MISTRAL_REGEX_MARKERS)),
     )
     return True
 

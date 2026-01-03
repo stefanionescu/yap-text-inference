@@ -29,15 +29,7 @@ from dataclasses import dataclass
 from typing import Any
 from collections.abc import AsyncGenerator
 
-
-class EngineNotReadyError(Exception):
-    """Raised when the engine is not ready to serve requests."""
-    pass
-
-
-class EngineShutdownError(Exception):
-    """Raised when operations are attempted on a shutdown engine."""
-    pass
+from src.errors import EngineNotReadyError, EngineShutdownError
 
 
 @dataclass(slots=True)

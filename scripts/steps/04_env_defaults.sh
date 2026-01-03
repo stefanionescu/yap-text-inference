@@ -14,7 +14,6 @@ source "${LIB_DIR}/env/paths.sh"
 source "${LIB_DIR}/env/quantization.sh"
 source "${LIB_DIR}/env/deploy.sh"
 source "${LIB_DIR}/env/engine.sh"
-source "${LIB_DIR}/env/awq.sh"
 source "${THIS_SCRIPT_DIR}/../engines/trt/detect.sh"
 source "${LIB_DIR}/common/cuda.sh"
 
@@ -32,8 +31,6 @@ apply_engine_defaults
 
 # Speed up subsequent installs and centralize caches under repo
 set_repo_cache_paths
-
-apply_awq_env || exit 1
 
 # Backend selection remains centralized in Python; env override applied in apply_engine_defaults
 
