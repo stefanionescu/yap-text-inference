@@ -33,6 +33,17 @@ _ENV_CONFIGURED = False
 # Internal Helpers
 # ============================================================================
 
+def _apply_env_defaults() -> None:
+    """Apply all vLLM-related environment defaults."""
+    os.environ.setdefault("VLLM_USE_V1", "1")
+    os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
+    os.environ.setdefault("ENFORCE_EAGER", "0")
+    os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", os.environ.get("CUDA_VISIBLE_DEVICES", "0"))
+    os.environ.setdefault("CUDA_DEVICE_MAX_CONNECTIONS", "1")
+    os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
+
+
 def _select_attention_backend() -> None:
     """Set attention backend and KV dtype safeguards based on availability.
     
@@ -77,12 +88,7 @@ def configure_runtime_env(*, force: bool = False) -> None:
     if not force and env_flag(_SKIP_AUTOCONFIG_FLAG, False):
         return
 
-    # Ensure V1 engine is selected before importing any vLLM modules
-    os.environ.setdefault("VLLM_USE_V1", "1")
-    # vLLM docs recommend constraining CUDA streams + allocator defaults for stability
-    os.environ.setdefault("CUDA_DEVICE_MAX_CONNECTIONS", "1")
-    os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
-
+    _apply_env_defaults()
     _select_attention_backend()
     _ENV_CONFIGURED = True
 

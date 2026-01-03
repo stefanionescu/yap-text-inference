@@ -20,9 +20,13 @@ from tests.config import (
     TOOL_WS_MESSAGE_WINDOW_SECONDS,
     TOOL_WS_MAX_MESSAGES_PER_WINDOW,
 )
-from tests.helpers.metrics import secs_to_ms
+from tests.helpers.metrics import SessionContext, secs_to_ms
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.websocket import connect_with_retries, send_client_end
+from tests.helpers.websocket import (
+    build_start_payload,
+    connect_with_retries,
+    send_client_end,
+)
 
 from .cases import render_history
 from .drain import DrainConfig, drain_response
@@ -145,15 +149,13 @@ def _build_step_payload(
             "Use select_chat_prompt(gender) to get a valid prompt."
         )
     
-    return {
-        "type": "start",
-        "session_id": session_id,
-        "gender": cfg.gender,
-        "personality": cfg.personality,
-        "chat_prompt": cfg.chat_prompt,
-        "history": render_history(history),
-        "user_utterance": user_text,
-    }
+    ctx = SessionContext(
+        session_id=session_id,
+        gender=cfg.gender,
+        personality=cfg.personality,
+        chat_prompt=cfg.chat_prompt,
+    )
+    return build_start_payload(ctx, user_text, history=render_history(history))
 
 
 def _check_step_result(

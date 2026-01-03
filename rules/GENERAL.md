@@ -41,6 +41,8 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 ## Readability and style
 - Favor clear, descriptive names; avoid vague identifiers.
 - Keep functions shallow and organized; split helpers when nesting grows.
+- Give each function a single, well-defined responsibility; extract unrelated work into helpers or new modules.
+- Limit side effects and keep inputs/outputs narrowly scoped; document any unavoidable shared state or exceptions.
 - Avoid using 'maybe' in function or variable names.
 - Remove deprecated or unused logic rather than leaving shims.
 - Delete unused parameters promptly so signatures match active behavior.
@@ -52,3 +54,27 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Keep comments concise and focused on current behavior, NOT on past actions we took or refactors.
 - Prefer intent (“why”) over line-by-line narration, especially for non-obvious control flow.
 - Do not remove useful comments just to reduce length; reorganize instead when needed.
+
+## Function contracts and typing
+- Annotate every function and method with explicit type hints (no implicit `Any`); introduce Protocols or TypedDicts when structural typing is needed.
+- Give each public function, class, and module a docstring that states its purpose, key parameters, return value, and noteworthy side effects.
+- Validate inputs at the top of the function and fail fast with domain-specific errors or `ValueError`—never mutate caller data to “make it fit.”
+- Accept required data first, optional overrides second, and injected dependencies last; favor keyword-only parameters for behavioral toggles.
+
+## Error handling and logging
+- Define a module-level `logger = logging.getLogger(__name__)` and route all diagnostic output through it; never use `print` for runtime logging.
+- Raise purpose-built exceptions so callers can branch on intent; centralize exception classes per repo instead of inventing ad-hoc classes inline.
+- Wrap external I/O (network, subprocess, filesystem) in try/except blocks that attach enough context (IDs, payload sizes) before re-raising.
+- Do not swallow exceptions—either convert them to a typed error that propagates, or log and re-raise so upstream handlers can react.
+
+## Testing
+- Ship every behavioral change with a matching automated test (unit, integration, or system) that would fail without the change.
+- Keep tests deterministic by stubbing clocks, network calls, randomness, and filesystem writes; centralize shared fixtures so they can be reused.
+- Add a regression test for each bug fix that previously failed to prevent repeats; reference the failure scenario in the test’s docstring or comments.
+- Limit test modules to the smallest practical scope; extract reusable builders into helper modules or fixtures instead of duplicating factories inline.
+
+## State and concurrency
+- Model shared runtime state with frozen dataclasses or TypedDicts and keep their definitions in an obvious, centralized module so structure stays discoverable.
+- Treat state objects as immutable snapshots; when an update is required, construct a new instance instead of mutating one that other callers might hold.
+- Pass state explicitly through function parameters instead of stashing it in globals or module-level caches.
+- When multiple async tasks or threads might touch the same resource, guard access with `asyncio.Lock`, `contextlib.AsyncExitStack`, or threading locks rather than relying on timing.

@@ -164,14 +164,20 @@ def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
     return turns
 
 
-def trim_history(state: SessionState) -> None:
-    """Trim history when it exceeds HISTORY_MAX_TOKENS.
+def trim_history(
+    state: SessionState,
+    *,
+    trigger_tokens: int | None = None,
+    target_tokens: int | None = None,
+) -> None:
+    """Trim history when it exceeds the configured trigger.
     
-    Uses a two-threshold (hysteresis) approach:
+    Uses a two-threshold (hysteresis) approach by default:
     - Triggers when tokens exceed HISTORY_MAX_TOKENS
     - Trims down to TRIMMED_HISTORY_LENGTH
     
-    This prevents constant per-message trimming by creating headroom after each trim.
+    Supplying a lower trigger (e.g., TRIMMED_HISTORY_LENGTH) forces eager
+    trimming, which is useful when importing client-provided history.
     
     When classifier-only, no trimming is done here - the classifier adapter
     handles its own trimming using its own tokenizer.
@@ -183,6 +189,11 @@ def trim_history(state: SessionState) -> None:
     if not DEPLOY_CHAT:
         return
     
+    effective_trigger = trigger_tokens or HISTORY_MAX_TOKENS
+    effective_target = target_tokens or TRIMMED_HISTORY_LENGTH
+    if effective_target > effective_trigger:
+        effective_target = effective_trigger
+    
     rendered = render_history(state.history_turns)
     if not rendered:
         state.history_turns = []
@@ -190,11 +201,11 @@ def trim_history(state: SessionState) -> None:
     
     tokens = count_tokens_chat(rendered)
     # Only start trimming if we exceed the trigger threshold
-    if tokens <= HISTORY_MAX_TOKENS:
+    if tokens <= effective_trigger:
         return
     
     # Calculate tokens to remove and estimate turns to drop
-    tokens_to_remove = tokens - TRIMMED_HISTORY_LENGTH
+    tokens_to_remove = tokens - effective_target
     avg_tokens_per_turn = tokens // len(state.history_turns)
     estimated_drops = max(1, tokens_to_remove // max(1, avg_tokens_per_turn))
     
@@ -206,7 +217,7 @@ def trim_history(state: SessionState) -> None:
     # Verify and adjust if still over target (usually 0-1 more iterations)
     rendered = render_history(state.history_turns)
     tokens = count_tokens_chat(rendered) if rendered else 0
-    while state.history_turns and tokens > TRIMMED_HISTORY_LENGTH:
+    while state.history_turns and tokens > effective_target:
         state.history_turns.pop(0)
         rendered = render_history(state.history_turns)
         tokens = count_tokens_chat(rendered) if rendered else 0
@@ -289,7 +300,7 @@ class HistoryController:
 
     def set_text(self, state: SessionState, history_text: str) -> str:
         state.history_turns = parse_history_text(history_text)
-        trim_history(state)
+        trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
         return render_history(state.history_turns)
 
     def set_messages(self, state: SessionState, messages: list[dict]) -> str:
@@ -298,7 +309,7 @@ class HistoryController:
         Parses messages, trims to fit token budget, returns rendered history.
         """
         state.history_turns = parse_history_messages(messages)
-        trim_history(state)
+        trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
         return render_history(state.history_turns)
 
     def append_user_turn(self, state: SessionState, user_utt: str) -> str | None:

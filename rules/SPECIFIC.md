@@ -9,10 +9,24 @@ Expectations tailored to this repository’s layout and inference workflows. Use
 ## Directories and code reuse
 - Keep code DRY; prefer reusing existing helpers over duplicating logic.
 - Reserve `helpers/` for utilities that make sense across execution engines and other subdirectories.
-- Keep execution- or engine-specific logic inside `execution/` and `engines/` respectively.
-- Place all token-related utilities and tokenizer interactions under `tokens/`.
+- Keep execution- or engine-specific logic inside `execution/` and `engines/` respectively; never let handler or CLI modules reach into these internals directly.
+- Route all inbound and outbound transport concerns through `handlers/`; everything else must call `handlers` via typed methods rather than touching sockets or HTTP objects directly.
+- Keep conversational transforms inside `messages/` and reuse its validators whenever shaping chat or tool payloads.
+- Place all token-related utilities and tokenizer interactions under `tokens/`—do not replicate token math elsewhere.
 - Avoid subdirectories that contain a single file unless further splits are imminent. Otherwise, move logic into a better-suited location and remove the extra folder.
 - When refactoring large files into related modules, group them under a shared subdirectory to keep organization clear.
+
+## Errors and diagnostics
+- Define every runtime or domain-specific exception inside `src/errors/`, organized by feature (e.g., `src/errors/websocket.py`, `src/errors/tool.py`); import from there instead of declaring ad-hoc classes.
+- Re-export each public exception via `src/errors/__init__.py` so call sites can rely on `from src.errors import ToolDrainError`-style imports.
+- Tests that need runtime exceptions import them from `src/errors/`; test-only harness failures belong under `tests/helpers/errors/` and nowhere else.
+- Log formatting helpers or structured error payload builders also live next to their corresponding error classes inside `src/errors/` to keep context centralized.
+
+## State and data models
+- Store canonical dataclasses and TypedDicts that describe runtime state under `src/state/` with one module per concern (e.g., `session.py`, `tool.py`, `websocket.py`). Create the directory if it does not yet exist before adding state.
+- Treat the definitions in `src/state/` as the single source of truth; every layer (handlers, execution, engines) must import from there rather than redefining shapes.
+- Provide builders/factories for common state snapshots inside `tests/helpers/state/` so tests can compose consistent data without re-specifying every field.
+- When a new state concept appears, add it to `src/state/`, update `__all__`, and extend the matching helper builders before using it anywhere else.
 
 ## Scripts
 - Place Python helpers that power CLI scripts under `src/scripts`, organized by category directories when useful.
@@ -23,3 +37,9 @@ Expectations tailored to this repository’s layout and inference workflows. Use
 - Factor out logic shared by multiple Docker images (e.g., TRT and VLLM) into a common subdirectory; keep image-specific scripts and helpers inside that image’s folder.
 - Each Docker image directory must include its own README explaining how to build and run it; the root `docker/README.md` should cover overall layout and entry points.
 - Keep Dockerfiles focused on setup steps; move non-trivial logic into scripts or Python files and invoke them from the Dockerfile.
+
+## Testing layout
+- Every behavioral change must land with a focused test under the mirrored path in `tests/` (e.g., `src/tokens/source.py` → `tests/logic/tokens/test_source.py`); integration tests live under the closest matching feature directory.
+- Mirror the structure of `src/` under `tests/logic/` by feature area (handlers → `tests/logic/handlers`, tokens → `tests/logic/tokens`, etc.) so ownership is obvious.
+- Shared fixtures, websocket tooling, and regression harnesses belong under `tests/helpers/`; avoid importing test helpers from production code or vice versa.
+- When adding a new top-level directory in `src/`, immediately create the matching tree in `tests/` (even if empty) so future contributors know where tests should live.

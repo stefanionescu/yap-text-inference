@@ -10,6 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from tests.helpers.metrics import SessionContext
+from tests.helpers.websocket import build_start_payload as build_ws_start_payload
+
 
 @dataclass
 class ConversationSession:
@@ -38,24 +41,14 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
     Raises:
         ValueError: If chat_prompt is empty.
     """
-    if not session.chat_prompt:
-        raise ValueError(
-            "chat_prompt is required. "
-            "Use select_chat_prompt(gender) to get a valid prompt."
-        )
-    
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": session.session_id,
-        "gender": session.gender,
-        "personality": session.personality,
-        "chat_prompt": session.chat_prompt,
-        "history": session.history,
-        "user_utterance": user_text,
-    }
-    if session.sampling:
-        payload["sampling"] = session.sampling
-    return payload
+    ctx = SessionContext(
+        session_id=session.session_id,
+        gender=session.gender,
+        personality=session.personality,
+        chat_prompt=session.chat_prompt,
+        sampling=session.sampling,
+    )
+    return build_ws_start_payload(ctx, user_text, history=session.history)
 
 
 __all__ = ["ConversationSession", "build_start_payload"]

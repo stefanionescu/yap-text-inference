@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from tests.helpers.metrics import SessionContext
+from tests.helpers.websocket import build_start_payload as build_ws_start_payload
+
 from .personas import PersonaDefinition
 
 
@@ -21,24 +24,14 @@ class LiveSession:
 
     def build_start_payload(self, user_text: str) -> dict[str, Any]:
         """Build the start message payload for a conversation turn."""
-        if not self.persona.prompt:
-            raise ValueError(
-                "chat_prompt is required. "
-                "Use select_chat_prompt(gender) to get a valid prompt."
-            )
-        
-        payload: dict[str, Any] = {
-            "type": "start",
-            "session_id": self.session_id,
-            "gender": self.persona.gender,
-            "personality": self.persona.personality,
-            "chat_prompt": self.persona.prompt,
-            "history": self.history,
-            "user_utterance": user_text,
-        }
-        if self.sampling:
-            payload["sampling"] = self.sampling
-        return payload
+        ctx = SessionContext(
+            session_id=self.session_id,
+            gender=self.persona.gender,
+            personality=self.persona.personality,
+            chat_prompt=self.persona.prompt,
+            sampling=self.sampling,
+        )
+        return build_ws_start_payload(ctx, user_text, history=self.history)
 
     def append_exchange(self, user_text: str, assistant_text: str) -> None:
         self.history.append({"role": "user", "content": user_text})

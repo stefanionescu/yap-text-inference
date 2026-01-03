@@ -35,156 +35,69 @@ from tests.helpers.fmt import (
     dim,
     red,
 )
-from tests.helpers.metrics import StreamState
+from tests.helpers.metrics import SessionContext, StreamState
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.selection import choose_message
 from tests.helpers.websocket import (
+    build_start_payload,
     connect_with_retries,
     create_tracker,
-    dispatch_message,
     finalize_metrics,
-    iter_messages,
-    record_token,
-    record_toolcall,
     send_client_end,
     with_api_key,
 )
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
+from tests.logic.conversation.stream import stream_exchange
 
 
-# ============================================================================
-# Internal Helpers
-# ============================================================================
-
-
-def _build_start_payload(
-    session_id: str,
-    gender: str,
-    personality: str,
-    chat_prompt: str,
-    user_msg: str,
-    sampling: dict[str, float | int] | None,
-) -> dict[str, Any]:
-    """Build the start message payload."""
-    if not chat_prompt:
-        raise ValueError(
-            "chat_prompt is required for warmup. "
-            "Use select_chat_prompt(gender) to get a valid prompt."
-        )
-    
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": session_id,
-        "gender": gender,
-        "personality": personality,
-        "chat_prompt": chat_prompt,
-        "history": [],
-        "user_utterance": user_msg,
-    }
-    if sampling:
-        payload["sampling"] = sampling
-    return payload
-
-
-def _log_unknown_message(msg: dict[str, Any]) -> bool:
-    """Ignore unknown message types."""
-    return True
-
-
-def _handle_ack(msg: dict[str, Any], state: StreamState) -> bool:
-    """Handle ACK messages."""
-    ack_for = msg.get("for")
-    if ack_for == "start":
-        state.ack_seen = True
-    return True
-
-
-def _handle_toolcall(msg: dict[str, Any], state: StreamState) -> None:
-    """Handle toolcall messages."""
-    record_toolcall(state)
-
-
-def _handle_token(msg: dict[str, Any], state: StreamState) -> None:
-    """Handle token messages."""
-    record_token(state, msg.get("text", ""))
-
-
-def _handle_final(msg: dict[str, Any], state: StreamState) -> None:
-    """Handle final messages with normalized text."""
-    normalized = msg.get("normalized_text") or state.final_text
-    if normalized:
-        state.final_text = normalized
-
-
-def _handle_done(msg: dict[str, Any], state: StreamState) -> dict[str, Any]:
-    """Handle done messages and return metrics."""
-    cancelled = bool(msg.get("cancelled"))
-    return {"_done": True, "metrics": finalize_metrics(state, cancelled)}
-
-
-def _handle_error(msg: dict[str, Any], api_key: str) -> None:
-    """Handle error messages with helpful hints."""
-    error = ServerError.from_message(msg)
+def _print_server_error_hint(error: ServerError, api_key: str) -> None:
+    """Print human-friendly hints for server errors."""
     print(f"  {red('ERROR')} {error.error_code}: {error.message}")
     if error.error_code == "authentication_failed":
-        print(dim(f"  HINT: Check your TEXT_API_KEY (currently: '{api_key[:8]}...')"))
+        preview = f"{api_key[:8]}..." if api_key else "missing"
+        print(dim(f"  HINT: Check your TEXT_API_KEY (currently: '{preview}')"))
     elif error.error_code == "server_at_capacity":
         print(dim("  HINT: Server is busy. Try again later."))
     elif error.is_recoverable():
         print(dim(f"  HINT: {error.format_for_user()}"))
-    raise error
 
 
-def _build_stream_handlers(state: StreamState, api_key: str):
-    """Build message type handlers for stream processing."""
-    return {
-        "ack": lambda msg: _handle_ack(msg, state),
-        "toolcall": lambda msg: (_handle_toolcall(msg, state) or True),
-        "token": lambda msg: (_handle_token(msg, state) or True),
-        "final": lambda msg: (_handle_final(msg, state) or True),
-        "done": lambda msg: _handle_done(msg, state),
-        "error": lambda msg: _handle_error(msg, api_key),
-    }
-
-
-async def _stream_session(
+async def _stream_exchange(
     ws,
     state: StreamState,
     recv_timeout: float,
     api_key: str,
-) -> dict[str, Any] | None:
-    """Stream the server response and return metrics."""
-    handlers = _build_stream_handlers(state, api_key)
-    done_payload: dict[str, Any] | None = None
+    exchange_idx: int,
+) -> tuple[str, dict[str, Any]]:
+    """Consume a single exchange, returning assistant text and metrics."""
+    suppress_ack_warning = False
     try:
-        async for msg in iter_messages(ws, timeout=recv_timeout):
-            result = await dispatch_message(
-                msg,
-                handlers,
-                default=_log_unknown_message,
-            )
-            if isinstance(result, dict) and result.get("_done"):
-                done_payload = result
-                break
-            if result is False:
-                break
-    except ServerError:
+        assistant_text, metrics = await stream_exchange(
+            ws,
+            state,
+            recv_timeout,
+            exchange_idx,
+        )
+        return assistant_text, metrics
+    except ServerError as error:
+        suppress_ack_warning = True
+        _print_server_error_hint(error, api_key)
         raise
     except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
         print(dim("  connection closed by server"))
     except asyncio.TimeoutError:
         print(f"  {red('TIMEOUT')} after {recv_timeout:.1f}s")
-    
-    if not state.ack_seen:
-        print(dim("  warning: no ACK received"))
-    
-    return done_payload
+    finally:
+        if not suppress_ack_warning and not state.ack_seen:
+            print(dim("  warning: no ACK received"))
+
+    return state.final_text, finalize_metrics(state, cancelled=True)
 
 
 def _print_transaction_result(
     phase: str | None,
     user_msg: str,
-    state: StreamState,
+    assistant_text: str,
     metrics: dict[str, Any],
 ) -> None:
     """Print formatted transaction result."""
@@ -194,7 +107,7 @@ def _print_transaction_result(
         print(exchange_header())
     
     print(f"  {format_user(user_msg)}")
-    print(f"  {format_assistant(state.final_text)}")
+    print(f"  {format_assistant(assistant_text)}")
     print(f"  {format_metrics_inline(metrics)}")
     print(exchange_footer())
 
@@ -246,25 +159,24 @@ async def run_once(args) -> None:
                 phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
                 state = create_tracker()
                 session_id = str(uuid.uuid4())
-                start_payload = _build_start_payload(
-                    session_id,
-                    gender,
-                    personality,
-                    chat_prompt,
-                    user_msg,
-                    sampling_overrides,
+                ctx = SessionContext(
+                    session_id=session_id,
+                    gender=gender,
+                    personality=personality,
+                    chat_prompt=chat_prompt,
+                    sampling=sampling_overrides,
                 )
+                start_payload = build_start_payload(ctx, user_msg)
                 
                 await ws.send(json.dumps(start_payload))
-                done_payload = await _stream_session(ws, state, recv_timeout, api_key)
-                
-                metrics = {}
-                if done_payload:
-                    metrics = done_payload.get("metrics", {})
-                else:
-                    metrics = finalize_metrics(state, cancelled=True)
-                
-                _print_transaction_result(phase_label, user_msg, state, metrics)
+                assistant_text, metrics = await _stream_exchange(
+                    ws,
+                    state,
+                    recv_timeout,
+                    api_key,
+                    exchange_idx=idx + 1,
+                )
+                _print_transaction_result(phase_label, user_msg, assistant_text, metrics)
         finally:
             await send_client_end(ws)
 

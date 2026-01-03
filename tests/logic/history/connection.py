@@ -16,11 +16,13 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.errors import StreamError
-from tests.helpers.metrics import StreamState, error_result
+from tests.helpers.metrics import SessionContext, StreamState, error_result
 from tests.helpers.websocket import (
+    build_start_payload,
     connect_with_retries,
     consume_stream,
     create_tracker,
+    finalize_metrics,
     iter_messages,
     send_client_end,
     with_api_key,
@@ -28,34 +30,6 @@ from tests.helpers.websocket import (
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 
 from .types import HistoryBenchConfig
-
-
-def _build_payload(
-    session_id: str,
-    cfg: HistoryBenchConfig,
-    history: list[dict[str, str]],
-    user_text: str,
-) -> dict[str, Any]:
-    """Build the start message payload with history."""
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": session_id,
-        "gender": cfg.gender,
-        "personality": cfg.personality,
-        "chat_prompt": cfg.chat_prompt,
-        "history": history,
-        "user_utterance": user_text,
-    }
-    if cfg.sampling:
-        payload["sampling"] = cfg.sampling
-    return payload
-
-
-def _ms_since_sent(state: StreamState, timestamp: float | None) -> float | None:
-    """Calculate milliseconds elapsed since the request was sent."""
-    if timestamp is None:
-        return None
-    return (timestamp - state.sent_ts) * 1000.0
 
 
 async def _wait_for_ack(ws) -> None:
@@ -104,21 +78,29 @@ async def _send_and_stream(
     phase: int,
 ) -> dict[str, Any]:
     """Send a start message and stream the response."""
-    payload = _build_payload(session_id, cfg, history, user_text)
+    ctx = SessionContext(
+        session_id=session_id,
+        gender=cfg.gender,
+        personality=cfg.personality,
+        chat_prompt=cfg.chat_prompt,
+        sampling=cfg.sampling,
+    )
+    payload = build_start_payload(ctx, user_text, history=history)
     state = create_tracker()
 
     await ws.send(json.dumps(payload))
     await _wait_for_ack(ws)
     reply = await _consume_stream_wrapper(ws, state)
 
+    metrics = finalize_metrics(state)
     return {
-        "ok": True,
+        "ok": metrics.get("ok", True),
         "phase": phase,
         "reply": reply,
-        "ttfb_toolcall_ms": state.toolcall_ttfb_ms,
-        "ttfb_chat_ms": _ms_since_sent(state, state.first_token_ts),
-        "first_sentence_ms": _ms_since_sent(state, state.first_sentence_ts),
-        "first_3_words_ms": _ms_since_sent(state, state.first_3_words_ts),
+        "ttfb_toolcall_ms": metrics.get("ttfb_toolcall_ms"),
+        "ttfb_chat_ms": metrics.get("ttfb_chat_ms"),
+        "first_sentence_ms": metrics.get("time_to_first_complete_sentence_ms"),
+        "first_3_words_ms": metrics.get("time_to_first_3_words_ms"),
     }
 
 
