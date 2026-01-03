@@ -192,7 +192,32 @@ model_detect_any_prequant() {
   return 1
 }
 
+# Check if local TRT checkpoint exists for a model
+# Returns 0 if exists, 1 if not
+_model_detect_has_local_trt_checkpoint() {
+  local model_id="${1:-}"
+  local trt_cache="${TRT_CACHE_DIR:-${ROOT_DIR:-.}/.trt_cache}"
+  
+  if [ -z "${model_id}" ] || [ ! -d "${trt_cache}" ]; then
+    return 1
+  fi
+  
+  # Derive checkpoint name from model ID (same logic as trt_get_checkpoint_dir)
+  local model_name
+  model_name=$(basename "${model_id}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
+  
+  # Check for any checkpoint directory matching this model
+  for ckpt_dir in "${trt_cache}/${model_name}"-*-ckpt; do
+    if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
+      return 0
+    fi
+  done
+  
+  return 1
+}
+
 # Validate that --push-quant is not used with a prequantized model
+# Exception: allow if local TRT checkpoint exists (locally quantized artifacts)
 # Returns 0 if valid, 1 if invalid (with error messages)
 model_detect_validate_push_quant_prequant() {
   local chat_model="${1:-}"
@@ -208,6 +233,11 @@ model_detect_validate_push_quant_prequant() {
   prequant_model="$(model_detect_any_prequant "${chat_model}" "${tool_model}")"
   
   if [ -n "${prequant_model}" ]; then
+    # Allow push if local TRT checkpoint exists (model was quantized locally)
+    if _model_detect_has_local_trt_checkpoint "${prequant_model}"; then
+      return 0
+    fi
+    
     log_err "${prefix} ✗ Cannot use --push-quant with a prequantized model."
     log_err "${prefix}   Model '${prequant_model}' is already quantized."
     log_err "${prefix}   There are no local quantization artifacts to upload."
