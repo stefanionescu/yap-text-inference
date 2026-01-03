@@ -44,8 +44,6 @@ def select_chat_prompt(gender: str | None) -> str:
     """
     normalized = normalize_gender(gender)
     prompt = FEMALE_PROMPT if normalized == "female" else MALE_PROMPT
-
-    print(prompt)
     
     if not prompt or not prompt.strip():
         raise PromptSelectionError(

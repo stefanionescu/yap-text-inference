@@ -177,7 +177,10 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   exec bash "${SCRIPT_DIR}/main.sh" "${main_args[@]}"
 fi
 
-log_section "[restart] Engine: ${INFERENCE_ENGINE}"
+# Only show engine info when chat model is deployed (tool-only doesn't use an engine)
+if [ "${DEPLOY_MODE}" != "tool" ]; then
+  log_section "[restart] Engine: ${INFERENCE_ENGINE}"
+fi
 
 if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
   restart_reconfigure_models
