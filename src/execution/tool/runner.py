@@ -28,6 +28,7 @@ import asyncio
 import logging
 import time
 import uuid
+from collections.abc import Awaitable
 from typing import Any
 
 from ...classifier import get_classifier_adapter
@@ -127,4 +128,22 @@ async def run_toolcall(
     return await _run_classifier_toolcall(session_id, user_utt, req_id)
 
 
-__all__ = ["run_toolcall"]
+def launch_tool_request(
+    session_id: str,
+    user_utt: str,
+) -> tuple[str, Awaitable[dict[str, Any]]]:
+    """Create a tool request task and register its request ID."""
+    tool_req_id = f"tool-{uuid.uuid4()}"
+    session_handler.set_tool_request(session_id, tool_req_id)
+    tool_task = asyncio.create_task(
+        run_toolcall(
+            session_id,
+            user_utt,
+            request_id=tool_req_id,
+            mark_active=False,
+        )
+    )
+    return tool_req_id, tool_task
+
+
+__all__ = ["run_toolcall", "launch_tool_request"]

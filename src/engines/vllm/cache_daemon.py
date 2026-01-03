@@ -38,28 +38,6 @@ _cache_reset_task: asyncio.Task | None = None
 
 
 # ============================================================================
-# Public API
-# ============================================================================
-
-def ensure_cache_reset_daemon() -> None:
-    """Start the cache reset daemon if configuration enables it.
-
-    The cache reset daemon periodically clears vLLM's prefix cache and
-    multimodal cache to prevent memory fragmentation over time.
-
-    Safe to call multiple times - will not start duplicate daemons.
-    """
-    global _cache_reset_task
-    # Don't start if already running
-    if _cache_reset_task and not _cache_reset_task.done():
-        return
-    # Don't start if cache reset is disabled
-    if CACHE_RESET_INTERVAL_SECONDS <= 0:
-        return
-    _cache_reset_task = asyncio.create_task(_cache_reset_daemon_loop())
-
-
-# ============================================================================
 # Internal Daemon Loop
 # ============================================================================
 
@@ -106,6 +84,28 @@ async def _cache_reset_daemon_loop() -> None:
             # Event was set - someone requested a reschedule
             if event.is_set():
                 event.clear()
+
+
+# ============================================================================
+# Public API
+# ============================================================================
+
+def ensure_cache_reset_daemon() -> None:
+    """Start the cache reset daemon if configuration enables it.
+
+    The cache reset daemon periodically clears vLLM's prefix cache and
+    multimodal cache to prevent memory fragmentation over time.
+
+    Safe to call multiple times - will not start duplicate daemons.
+    """
+    global _cache_reset_task
+    # Don't start if already running
+    if _cache_reset_task and not _cache_reset_task.done():
+        return
+    # Don't start if cache reset is disabled
+    if CACHE_RESET_INTERVAL_SECONDS <= 0:
+        return
+    _cache_reset_task = asyncio.create_task(_cache_reset_daemon_loop())
 
 
 __all__ = ["ensure_cache_reset_daemon"]

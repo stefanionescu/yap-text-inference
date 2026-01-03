@@ -16,10 +16,12 @@ import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from tests.config import WS_MAX_QUEUE
-from tests.helpers.metrics import StreamState, error_result
+from tests.helpers.metrics import SessionContext, StreamState, error_result
 from tests.helpers.websocket import (
+    build_start_payload,
     connect_with_retries,
     create_tracker,
+    finalize_metrics,
     iter_messages,
     record_token,
     record_toolcall,
@@ -28,13 +30,6 @@ from tests.helpers.websocket import (
 )
 
 from .types import BenchmarkConfig
-
-
-def _ms_since_sent(state: StreamState, timestamp: float | None) -> float | None:
-    """Calculate milliseconds elapsed since the request was sent."""
-    if timestamp is None:
-        return None
-    return (timestamp - state.sent_ts) * 1000.0
 
 
 async def _execute_phase(
@@ -61,33 +56,23 @@ async def _send_and_stream(
 ) -> dict[str, Any]:
     """Send a start message and stream the response."""
     session_id = str(uuid.uuid4())
-    payload = _build_payload(session_id, cfg)
-    state = create_tracker()
-
-    await ws.send(json.dumps(payload))
-    return await _consume_stream(ws, state, phase)
-
-
-def _build_payload(session_id: str, cfg: BenchmarkConfig) -> dict[str, Any]:
-    """Build the start message payload."""
     if cfg.chat_prompt is None:
         raise ValueError(
             "chat_prompt is required for benchmark. "
             "Use select_chat_prompt(gender) to get a valid prompt."
         )
-    
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": session_id,
-        "gender": cfg.gender,
-        "personality": cfg.style,
-        "chat_prompt": cfg.chat_prompt,
-        "history": [],
-        "user_utterance": cfg.message,
-    }
-    if cfg.sampling:
-        payload["sampling"] = cfg.sampling
-    return payload
+    ctx = SessionContext(
+        session_id=session_id,
+        gender=cfg.gender,
+        personality=cfg.style,
+        chat_prompt=cfg.chat_prompt,
+        sampling=cfg.sampling,
+    )
+    payload = build_start_payload(ctx, cfg.message)
+    state = create_tracker()
+
+    await ws.send(json.dumps(payload))
+    return await _consume_stream(ws, state, phase)
 
 
 async def _consume_stream(
@@ -116,7 +101,8 @@ async def _consume_stream(
 
             if msg_type == "done":
                 cancelled = bool(msg.get("cancelled"))
-                return _build_success_result(state, phase, cancelled)
+            metrics = finalize_metrics(state, cancelled)
+            return _build_success_result(metrics, phase)
 
             if msg_type == "error":
                 return _build_error_result(msg, phase)
@@ -129,19 +115,15 @@ async def _consume_stream(
     return error_result("stream ended before 'done'", phase=phase)
 
 
-def _build_success_result(
-    state: StreamState,
-    phase: int,
-    cancelled: bool,
-) -> dict[str, Any]:
+def _build_success_result(metrics: dict[str, Any], phase: int) -> dict[str, Any]:
     """Build a success result from tracker metrics."""
     return {
-        "ok": not cancelled,
+        "ok": metrics.get("ok", True),
         "phase": phase,
-        "ttfb_toolcall_ms": state.toolcall_ttfb_ms,
-        "ttfb_chat_ms": _ms_since_sent(state, state.first_token_ts),
-        "first_sentence_ms": _ms_since_sent(state, state.first_sentence_ts),
-        "first_3_words_ms": _ms_since_sent(state, state.first_3_words_ts),
+        "ttfb_toolcall_ms": metrics.get("ttfb_toolcall_ms"),
+        "ttfb_chat_ms": metrics.get("ttfb_chat_ms"),
+        "first_sentence_ms": metrics.get("time_to_first_complete_sentence_ms"),
+        "first_3_words_ms": metrics.get("time_to_first_3_words_ms"),
     }
 
 

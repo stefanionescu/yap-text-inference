@@ -31,6 +31,7 @@ from tests.helpers.fmt import (
 )
 from tests.helpers.errors import StreamError
 from tests.helpers.metrics import (
+    SessionContext,
     StreamState,
     TTFBSamples,
     create_ttfb_aggregator,
@@ -40,6 +41,7 @@ from tests.helpers.metrics import (
 )
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.websocket import (
+    build_start_payload,
     consume_stream,
     create_tracker,
     finalize_metrics,
@@ -73,30 +75,6 @@ async def _collect_response(ws, state: StreamState) -> str:
         raise ServerError.from_message(exc.message) from exc
 
 
-def _build_start_payload(
-    session_id: str,
-    gender: str,
-    personality: str,
-    chat_prompt: str,
-    history: list[dict[str, str]],
-    user_text: str,
-    sampling: dict[str, float | int] | None,
-) -> dict[str, Any]:
-    """Build the start message payload."""
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": session_id,
-        "gender": gender,
-        "personality": personality,
-        "chat_prompt": chat_prompt,
-        "history": history,
-        "user_utterance": user_text,
-    }
-    if sampling:
-        payload["sampling"] = sampling
-    return payload
-
-
 def _print_exchange(
     idx: int,
     user_text: str,
@@ -113,20 +91,14 @@ def _print_exchange(
 
 async def _send_start_request(
     ws,
-    session_id: str,
-    gender: str,
-    personality: str,
-    chat_prompt: str,
+    ctx: SessionContext,
     history: list[dict[str, str]],
     user_text: str,
-    sampling: dict[str, float | int] | None,
     ttfb_samples: TTFBSamples,
     idx: int,
 ) -> tuple[str, dict[str, Any]]:
     """Send a start request and collect the response with metrics tracking."""
-    payload = _build_start_payload(
-        session_id, gender, personality, chat_prompt, history, user_text, sampling
-    )
+    payload = build_start_payload(ctx, user_text, history=history)
 
     state = create_tracker()
     await ws.send(json.dumps(payload))
@@ -178,11 +150,16 @@ async def _run_history_sequence(
 ) -> None:
     """Run through all history recall messages."""
     history: list[dict[str, str]] = list(WARM_HISTORY)
+    ctx = SessionContext(
+        session_id=session_id,
+        gender=gender,
+        personality=personality,
+        chat_prompt=chat_prompt,
+        sampling=sampling,
+    )
     
     first_user_text = HISTORY_RECALL_MESSAGES[0]
-    payload = _build_start_payload(
-        session_id, gender, personality, chat_prompt, history, first_user_text, sampling
-    )
+    payload = build_start_payload(ctx, first_user_text, history=history)
     
     state = create_tracker()
     await ws.send(json.dumps(payload))
@@ -201,13 +178,9 @@ async def _run_history_sequence(
     for idx, user_text in enumerate(HISTORY_RECALL_MESSAGES[1:], 2):
         reply, _ = await _send_start_request(
             ws,
-            session_id,
-            gender,
-            personality,
-            chat_prompt,
+            ctx,
             history,
             user_text,
-            sampling,
             ttfb_samples,
             idx,
         )

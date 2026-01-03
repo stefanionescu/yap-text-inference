@@ -45,59 +45,71 @@ def _iter_response_lines(result: CaseResult) -> Iterator[str]:
         yield f"        {label}: {_stringify(raw)}"
 
 
-def _print_case_block(title: str, results: Sequence[CaseResult]) -> None:
-    """Print a block of case results with a title."""
-    if not results:
-        return
-
-    print(title)
+def _case_lines(results: Sequence[CaseResult]) -> list[str]:
+    """Return the formatted lines for a list of case results."""
+    lines: list[str] = []
     for result in results:
-        print(_format_case_summary(result))
+        lines.append(_format_case_summary(result))
         failures = result.failures or []
         if failures:
             for idx, failure in enumerate(failures, start=1):
                 label = "failure" if len(failures) == 1 else f"failure[{idx}]"
                 detail = failure.detail or failure.reason
-                print(f"        {label}: {detail}")
+                lines.append(f"        {label}: {detail}")
         elif not result.success and result.detail:
-            print(f"        {result.detail}")
-        for line in _iter_response_lines(result):
-            print(line)
+            lines.append(f"        {result.detail}")
+        lines.extend(_iter_response_lines(result))
+    return lines
+
+
+def _case_block_lines(title: str, results: Sequence[CaseResult]) -> list[str]:
+    """Build full block lines (title + case lines)."""
+    if not results:
+        return []
+    return [title, *_case_lines(results)]
 
 
 def print_case_results(results: Sequence[CaseResult], *, include_successes: bool = False) -> None:
     """Print case results to stdout."""
-    if include_successes:
-        _print_case_block("=== Results ===", results)
-        return
-
-    failures = [r for r in results if not r.success]
-    _print_case_block("=== Failures ===", failures)
+    subset = results if include_successes else [r for r in results if not r.success]
+    title = "=== Results ===" if include_successes else "=== Failures ==="
+    for line in _case_block_lines(title, subset):
+        print(line)
 
 
-def print_summary(results: Sequence[CaseResult]) -> None:
-    """Print summary statistics to stdout."""
+def _summary_lines(results: Sequence[CaseResult]) -> list[str]:
+    """Build the summary lines shared by printers and formatters."""
     total = len(results)
     passed = sum(1 for r in results if r.success)
     failed = total - passed
     accuracy = (passed / total * 100.0) if total else 0.0
-    print("\n=== Summary ===")
-    print(f"Total test cases: {total}")
-    print(f"Passed: {passed}")
-    print(f"Failed: {failed}")
-    print(f"Accuracy: {accuracy:.1f}%")
+
+    lines = [
+        "\n=== Summary ===",
+        f"Total test cases: {total}",
+        f"Passed: {passed}",
+        f"Failed: {failed}",
+        f"Accuracy: {accuracy:.1f}%",
+    ]
 
     if failed:
         counter = Counter(r.reason or "unknown" for r in results if not r.success)
-        print("Failure breakdown:")
+        lines.append("Failure breakdown:")
         for reason, count in counter.items():
-            print(f"  - {reason}: {count}")
+            lines.append(f"  - {reason}: {count}")
 
-    _print_latency_summary(results)
+    lines.extend(_latency_summary_lines(results))
+    return lines
 
 
-def _print_latency_summary(results: Sequence[CaseResult]) -> None:
-    """Print latency statistics from step timings."""
+def print_summary(results: Sequence[CaseResult]) -> None:
+    """Print summary statistics to stdout."""
+    for line in _summary_lines(results):
+        print(line)
+
+
+def _latency_summary_lines(results: Sequence[CaseResult]) -> list[str]:
+    """Format latency statistics from step timings."""
     ttfb_samples: list[float] = []
     total_samples: list[float] = []
     for result in results:
@@ -110,23 +122,23 @@ def _print_latency_summary(results: Sequence[CaseResult]) -> None:
                 total_samples.append(timing.total_ms)
 
     if not ttfb_samples and not total_samples:
-        return
+        return []
 
-    print("\nLatency (tool response, ms):")
-    _print_latency_line("TTFB", ttfb_samples)
-    _print_latency_line("Total", total_samples)
+    lines = ["\nLatency (tool response, ms):"]
+    lines.append(_format_latency_line("TTFB", ttfb_samples))
+    lines.append(_format_latency_line("Total", total_samples))
+    return lines
 
 
-def _print_latency_line(label: str, samples: list[float]) -> None:
-    """Print a single latency statistics line."""
+def _format_latency_line(label: str, samples: list[float]) -> str:
+    """Format a single latency statistics line."""
     if not samples:
-        print(f"  {label}: no samples")
-        return
+        return f"  {label}: no samples"
     values = sorted(samples)
     p50 = _percentile(values, 50)
     p90 = _percentile(values, 90)
     p95 = _percentile(values, 95)
-    print(
+    return (
         f"  {label}: p50={p50:.1f} ms  p90={p90:.1f} ms  p95={p95:.1f} ms  (n={len(values)})"
     )
 
@@ -147,92 +159,17 @@ def _percentile(sorted_values: list[float], percentile: float) -> float:
     return d0 + d1
 
 
-def _format_case_block_string(title: str, results: Sequence[CaseResult]) -> str:
-    """Format a case block as a string instead of printing."""
-    if not results:
-        return ""
-    
-    lines = [title]
-    for result in results:
-        lines.append(_format_case_summary(result))
-        failures = result.failures or []
-        if failures:
-            for idx, failure in enumerate(failures, start=1):
-                label = "failure" if len(failures) == 1 else f"failure[{idx}]"
-                detail = failure.detail or failure.reason
-                lines.append(f"        {label}: {detail}")
-        elif not result.success and result.detail:
-            lines.append(f"        {result.detail}")
-        for line in _iter_response_lines(result):
-            lines.append(line)
-    return "\n".join(lines)
-
-
 def format_case_results(results: Sequence[CaseResult], *, include_successes: bool = False) -> str:
     """Format case results as a string instead of printing."""
-    if include_successes:
-        return _format_case_block_string("=== Results ===", results)
-    
-    failures = [r for r in results if not r.success]
-    return _format_case_block_string("=== Failures ===", failures)
+    subset = results if include_successes else [r for r in results if not r.success]
+    title = "=== Results ===" if include_successes else "=== Failures ==="
+    lines = _case_block_lines(title, subset)
+    return "\n".join(lines) if lines else ""
 
 
 def format_summary(results: Sequence[CaseResult]) -> str:
     """Format summary as a string instead of printing."""
-    total = len(results)
-    passed = sum(1 for r in results if r.success)
-    failed = total - passed
-    accuracy = (passed / total * 100.0) if total else 0.0
-    
-    lines = ["\n=== Summary ==="]
-    lines.append(f"Total test cases: {total}")
-    lines.append(f"Passed: {passed}")
-    lines.append(f"Failed: {failed}")
-    lines.append(f"Accuracy: {accuracy:.1f}%")
-    
-    if failed:
-        counter = Counter(r.reason or "unknown" for r in results if not r.success)
-        lines.append("Failure breakdown:")
-        for reason, count in counter.items():
-            lines.append(f"  - {reason}: {count}")
-    
-    # Add latency summary
-    ttfb_samples: list[float] = []
-    total_samples: list[float] = []
-    for result in results:
-        if not result.step_timings:
-            continue
-        for timing in result.step_timings:
-            if timing.ttfb_ms is not None:
-                ttfb_samples.append(timing.ttfb_ms)
-            if timing.total_ms is not None:
-                total_samples.append(timing.total_ms)
-    
-    if ttfb_samples or total_samples:
-        lines.append("\nLatency (tool response, ms):")
-        if ttfb_samples:
-            values = sorted(ttfb_samples)
-            p50 = _percentile(values, 50)
-            p90 = _percentile(values, 90)
-            p95 = _percentile(values, 95)
-            lines.append(
-                f"  TTFB: p50={p50:.1f} ms  p90={p90:.1f} ms  p95={p95:.1f} ms  (n={len(values)})"
-            )
-        else:
-            lines.append("  TTFB: no samples")
-        
-        if total_samples:
-            values = sorted(total_samples)
-            p50 = _percentile(values, 50)
-            p90 = _percentile(values, 90)
-            p95 = _percentile(values, 95)
-            lines.append(
-                f"  Total: p50={p50:.1f} ms  p90={p90:.1f} ms  p95={p95:.1f} ms  (n={len(values)})"
-            )
-        else:
-            lines.append("  Total: no samples")
-    
-    return "\n".join(lines)
+    return "\n".join(_summary_lines(results))
 
 
 def save_logs(

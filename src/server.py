@@ -35,7 +35,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import multiprocessing
-import os
 
 # ============================================================================
 # CRITICAL: Set multiprocessing start method to 'spawn' BEFORE any imports
@@ -46,16 +45,6 @@ try:
     multiprocessing.set_start_method("spawn", force=True)
 except RuntimeError:
     pass  # Already set - happens when running under certain test frameworks
-
-# ============================================================================
-# Set CUDA/vLLM environment variables BEFORE any vLLM/torch imports
-# These control engine behavior and must be set early in the process.
-# ============================================================================
-os.environ.setdefault("VLLM_USE_V1", "1")  # Use vLLM V1 engine (better performance)
-os.environ.setdefault("ENFORCE_EAGER", "0")  # Allow CUDA graphs
-os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")  # Match main process
-os.environ.setdefault("CUDA_MODULE_LOADING", "LAZY")  # Faster startup
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", os.environ.get("CUDA_VISIBLE_DEVICES", "0"))
 
 # ============================================================================
 # Apply log noise filters BEFORE importing engine libraries

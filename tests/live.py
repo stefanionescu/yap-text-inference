@@ -15,12 +15,14 @@ import argparse
 import asyncio
 import logging
 import sys
-from pathlib import Path
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+try:
+    from tests.helpers.setup import setup_repo_path
+except ModuleNotFoundError:
+    from helpers.setup import setup_repo_path  # type: ignore[import-not-found]
 
-from tests.helpers.setup import setup_repo_path
+setup_repo_path()
+
 from tests.config import (
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
@@ -70,7 +72,6 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    setup_repo_path()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
 

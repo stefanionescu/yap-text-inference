@@ -159,6 +159,132 @@ async def _cleanup_session(session_id: str | None) -> float:
     return duration
 
 
+def _create_rate_limiters() -> tuple[SlidingWindowRateLimiter, SlidingWindowRateLimiter]:
+    """Initialize per-connection rate limiters."""
+    message_limiter = SlidingWindowRateLimiter(
+        limit=WS_MAX_MESSAGES_PER_WINDOW,
+        window_seconds=WS_MESSAGE_WINDOW_SECONDS,
+    )
+    cancel_limiter = SlidingWindowRateLimiter(
+        limit=WS_MAX_CANCELS_PER_WINDOW,
+        window_seconds=WS_CANCEL_WINDOW_SECONDS,
+    )
+    return message_limiter, cancel_limiter
+
+
+async def _run_message_loop(
+    ws: WebSocket,
+    lifecycle: WebSocketLifecycle,
+    message_limiter: SlidingWindowRateLimiter,
+    cancel_limiter: SlidingWindowRateLimiter,
+) -> str | None:
+    """Receive, validate, and dispatch client messages."""
+    session_id: str | None = None
+
+    while True:
+        try:
+            raw_msg = await asyncio.wait_for(
+                ws.receive_text(),
+                timeout=WS_WATCHDOG_TICK_S * 2,
+            )
+        except asyncio.TimeoutError:
+            if lifecycle.should_close():
+                break
+            continue
+
+        try:
+            msg = parse_client_message(raw_msg)
+        except ValueError as exc:
+            await send_error(
+                ws,
+                error_code="invalid_message",
+                message=str(exc),
+            )
+            continue
+
+        lifecycle.touch()
+        msg_type = msg.get("type")
+
+        limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
+        if limiter and not await consume_limiter(ws, limiter, label):
+            continue
+
+        if await _handle_control_message(ws, msg_type, session_id):
+            break
+
+        if msg_type == "start":
+            logger.info(
+                "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
+                msg.get("session_id"),
+                msg.get("gender"),
+                len(msg.get("history", [])),
+                len(msg.get("user_utterance", "")),
+            )
+            session_id = await _handle_start_command(ws, msg, session_id)
+            continue
+
+        if msg_type == "cancel":
+            logger.info("WS recv: cancel session_id=%s", session_id)
+            await handle_cancel_message(ws, session_id, msg.get("request_id"))
+            continue
+
+        session_handler_fn = _SESSION_MESSAGE_HANDLERS.get(msg_type)
+        if session_handler_fn:
+            logger.info("WS recv: %s session_id=%s", msg_type, session_id)
+            await session_handler_fn(ws, msg, session_id)
+            continue
+
+        await send_error(
+            ws,
+            error_code="unknown_message_type",
+            message=f"Message type '{msg_type}' is not supported.",
+        )
+
+    return session_id
+
+
+async def _finalize_connection(
+    ws: WebSocket,
+    lifecycle: WebSocketLifecycle | None,
+    session_id: str | None,
+    admitted: bool,
+) -> None:
+    """Handle teardown actions after the connection loop exits."""
+    if lifecycle is not None:
+        with contextlib.suppress(Exception):
+            await lifecycle.stop()
+
+    session_duration = 0.0
+    try:
+        session_duration = await _cleanup_session(session_id)
+    except Exception:  # noqa: BLE001
+        logger.exception("WebSocket cleanup failed")
+
+    if not admitted:
+        return
+
+    with contextlib.suppress(Exception):
+        await connections.disconnect(ws)
+    remaining = connections.get_connection_count()
+    logger.info("WebSocket connection closed. Active: %s", remaining)
+    should_reset = (
+        session_id is not None and
+        session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
+    )
+    if should_reset:
+        with contextlib.suppress(Exception):
+            triggered = await reset_engine_caches("long_session", force=True)
+            if triggered:
+                logger.info(
+                    "cache reset after long session_id=%s duration=%.1fs",
+                    session_id,
+                    session_duration,
+                )
+    if remaining == 0:
+        with contextlib.suppress(Exception):
+            await clear_caches_on_disconnect()
+
+
 async def handle_websocket_connection(ws: WebSocket) -> None:
     """Handle WebSocket connection and route messages to appropriate handlers.
     
@@ -180,14 +306,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
 
     admitted = True
     session_id: str | None = None
-    message_limiter = SlidingWindowRateLimiter(
-        limit=WS_MAX_MESSAGES_PER_WINDOW,
-        window_seconds=WS_MESSAGE_WINDOW_SECONDS,
-    )
-    cancel_limiter = SlidingWindowRateLimiter(
-        limit=WS_MAX_CANCELS_PER_WINDOW,
-        window_seconds=WS_CANCEL_WINDOW_SECONDS,
-    )
+    message_limiter, cancel_limiter = _create_rate_limiters()
     lifecycle = WebSocketLifecycle(ws)
     lifecycle.start()
 
@@ -197,66 +316,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
     )
 
     try:
-        while True:
-            # Use timeout on receive so we can detect idle timeout closure
-            try:
-                raw_msg = await asyncio.wait_for(
-                    ws.receive_text(),
-                    timeout=WS_WATCHDOG_TICK_S * 2,
-                )
-            except asyncio.TimeoutError:
-                # Check if lifecycle signaled close (idle timeout)
-                if lifecycle.should_close():
-                    break
-                continue
-
-            try:
-                msg = parse_client_message(raw_msg)
-            except ValueError as exc:
-                await send_error(
-                    ws,
-                    error_code="invalid_message",
-                    message=str(exc),
-                )
-                continue
-
-            lifecycle.touch()
-            msg_type = msg.get("type")
-
-            limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
-            if limiter and not await consume_limiter(ws, limiter, label):
-                continue
-
-            if await _handle_control_message(ws, msg_type, session_id):
-                break
-
-            if msg_type == "start":
-                logger.info(
-                    "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
-                    msg.get("session_id"),
-                    msg.get("gender"),
-                    len(msg.get("history", [])),
-                    len(msg.get("user_utterance", "")),
-                )
-                session_id = await _handle_start_command(ws, msg, session_id)
-                continue
-
-            if msg_type == "cancel":
-                logger.info("WS recv: cancel session_id=%s", session_id)
-                await handle_cancel_message(ws, session_id, msg.get("request_id"))
-                continue
-
-            session_handler_fn = _SESSION_MESSAGE_HANDLERS.get(msg_type)
-            if session_handler_fn:
-                logger.info("WS recv: %s session_id=%s", msg_type, session_id)
-                await session_handler_fn(ws, msg, session_id)
-                continue
-
-            await send_error(
-                ws,
-                error_code="unknown_message_type",
-                message=f"Message type '{msg_type}' is not supported.",
-            )
+        session_id = await _run_message_loop(ws, lifecycle, message_limiter, cancel_limiter)
     except WebSocketDisconnect:
         pass
     except Exception as exc:  # noqa: BLE001
@@ -264,34 +324,4 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         with contextlib.suppress(Exception):
             await send_error(ws, error_code="internal_error", message=str(exc))
     finally:
-        if lifecycle is not None:
-            with contextlib.suppress(Exception):
-                await lifecycle.stop()
-
-        session_duration = 0.0
-        try:
-            session_duration = await _cleanup_session(session_id)
-        except Exception:  # noqa: BLE001
-            logger.exception("WebSocket cleanup failed")
-
-        if admitted:
-            with contextlib.suppress(Exception):
-                await connections.disconnect(ws)
-            remaining = connections.get_connection_count()
-            logger.info("WebSocket connection closed. Active: %s", remaining)
-            should_reset = (
-                session_id is not None and
-                session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
-            )
-            if should_reset:
-                with contextlib.suppress(Exception):
-                    triggered = await reset_engine_caches("long_session", force=True)
-                    if triggered:
-                        logger.info(
-                            "cache reset after long session_id=%s duration=%.1fs",
-                            session_id,
-                            session_duration,
-                        )
-            if remaining == 0:
-                with contextlib.suppress(Exception):
-                    await clear_caches_on_disconnect()
+        await _finalize_connection(ws, lifecycle, session_id, admitted)

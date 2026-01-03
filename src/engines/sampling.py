@@ -26,63 +26,6 @@ from typing import Any
 from src.config import INFERENCE_ENGINE
 
 
-def create_sampling_params(
-    *,
-    temperature: float = 1.0,
-    top_p: float = 1.0,
-    top_k: int = -1,
-    min_p: float = 0.0,
-    repetition_penalty: float = 1.0,
-    presence_penalty: float = 0.0,
-    frequency_penalty: float = 0.0,
-    max_tokens: int = 256,
-    stop: list[str] | None = None,
-    logit_bias: dict[int, float] | None = None,
-) -> Any:
-    """Create engine-specific sampling parameters.
-    
-    Args:
-        temperature: Sampling temperature (higher = more random).
-        top_p: Nucleus sampling probability threshold.
-        top_k: Top-K sampling limit (-1 = disabled).
-        min_p: Minimum probability threshold.
-        repetition_penalty: Penalty for repeated tokens.
-        presence_penalty: Penalty for tokens already present.
-        frequency_penalty: Penalty based on token frequency.
-        max_tokens: Maximum tokens to generate.
-        stop: Stop sequences.
-        logit_bias: Token ID to logit bias mapping.
-        
-    Returns:
-        Engine-specific SamplingParams instance.
-    """
-    if INFERENCE_ENGINE == "vllm":
-        return _create_vllm_params(
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            min_p=min_p,
-            repetition_penalty=repetition_penalty,
-            presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty,
-            max_tokens=max_tokens,
-            stop=stop,
-            logit_bias=logit_bias,
-        )
-    else:
-        return _create_trt_params(
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            min_p=min_p,
-            repetition_penalty=repetition_penalty,
-            presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty,
-            max_tokens=max_tokens,
-            stop=stop,
-        )
-
-
 def _create_vllm_params(
     *,
     temperature: float,
@@ -150,6 +93,63 @@ def _create_trt_params(
         kwargs["stop"] = stop
     
     return SamplingParams(**kwargs)
+
+
+def create_sampling_params(
+    *,
+    temperature: float = 1.0,
+    top_p: float = 1.0,
+    top_k: int = -1,
+    min_p: float = 0.0,
+    repetition_penalty: float = 1.0,
+    presence_penalty: float = 0.0,
+    frequency_penalty: float = 0.0,
+    max_tokens: int = 256,
+    stop: list[str] | None = None,
+    logit_bias: dict[int, float] | None = None,
+) -> Any:
+    """Create engine-specific sampling parameters.
+    
+    Args:
+        temperature: Sampling temperature (higher = more random).
+        top_p: Nucleus sampling probability threshold.
+        top_k: Top-K sampling limit (-1 = disabled).
+        min_p: Minimum probability threshold.
+        repetition_penalty: Penalty for repeated tokens.
+        presence_penalty: Penalty for tokens already present.
+        frequency_penalty: Penalty based on token frequency.
+        max_tokens: Maximum tokens to generate.
+        stop: Stop sequences.
+        logit_bias: Token ID to logit bias mapping.
+        
+    Returns:
+        Engine-specific SamplingParams instance.
+    """
+    if INFERENCE_ENGINE == "vllm":
+        return _create_vllm_params(
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            min_p=min_p,
+            repetition_penalty=repetition_penalty,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+            max_tokens=max_tokens,
+            stop=stop,
+            logit_bias=logit_bias,
+        )
+    else:
+        return _create_trt_params(
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            min_p=min_p,
+            repetition_penalty=repetition_penalty,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+            max_tokens=max_tokens,
+            stop=stop,
+        )
 
 
 __all__ = ["create_sampling_params"]

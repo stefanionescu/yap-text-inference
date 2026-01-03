@@ -27,12 +27,14 @@ import argparse
 import asyncio
 import os
 import sys
-from pathlib import Path
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+try:
+    from tests.helpers.setup import setup_repo_path
+except ModuleNotFoundError:
+    from helpers.setup import setup_repo_path  # type: ignore[import-not-found]
 
-from tests.helpers.setup import setup_repo_path
+setup_repo_path()
+
 from tests.helpers.cli import (
     add_connection_args,
     add_sampling_args,
@@ -141,7 +143,6 @@ def _run_benchmark(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """Thin orchestrator: parse CLI args and run the appropriate test mode."""
-    setup_repo_path()
     args = _parse_args()
 
     if args.bench:

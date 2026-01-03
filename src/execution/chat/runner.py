@@ -51,6 +51,47 @@ from .controller import ChatStreamConfig, ChatStreamController
 _logit_bias_cache: dict[int, float] | None = None
 
 
+def _get_logit_bias_map() -> dict[int, float]:
+    """Build logit bias map from text tokens to token IDs.
+    
+    The CHAT_LOGIT_BIAS config maps text strings to bias values.
+    This function converts those to token ID -> bias mappings
+    that the engine can use.
+    
+    The result is cached after first successful build.
+    
+    Returns:
+        Dict mapping token IDs to logit bias values.
+        Empty dict if no bias configured or tokenizer unavailable.
+    """
+    global _logit_bias_cache
+    if _logit_bias_cache is not None:
+        return _logit_bias_cache
+
+    if not CHAT_LOGIT_BIAS:
+        _logit_bias_cache = {}
+        return _logit_bias_cache
+
+    try:
+        tokenizer = get_chat_tokenizer()
+    except Exception:
+        return {}
+
+    id_bias: dict[int, float] = {}
+    for text, bias in CHAT_LOGIT_BIAS.items():
+        ids = tokenizer.encode_ids(text)
+        if not ids:
+            continue
+        for token_id in ids:
+            current = id_bias.get(token_id)
+            value = float(bias)
+            if current is None or value < current:
+                id_bias[token_id] = value
+
+    _logit_bias_cache = id_bias
+    return id_bias
+
+
 async def run_chat_generation(
     session_id: str,
     static_prefix: str,
@@ -144,47 +185,6 @@ async def run_chat_generation(
         tail = sanitizer.flush()
         if tail:
             yield tail
-
-
-def _get_logit_bias_map() -> dict[int, float]:
-    """Build logit bias map from text tokens to token IDs.
-    
-    The CHAT_LOGIT_BIAS config maps text strings to bias values.
-    This function converts those to token ID -> bias mappings
-    that the engine can use.
-    
-    The result is cached after first successful build.
-    
-    Returns:
-        Dict mapping token IDs to logit bias values.
-        Empty dict if no bias configured or tokenizer unavailable.
-    """
-    global _logit_bias_cache
-    if _logit_bias_cache is not None:
-        return _logit_bias_cache
-
-    if not CHAT_LOGIT_BIAS:
-        _logit_bias_cache = {}
-        return _logit_bias_cache
-
-    try:
-        tokenizer = get_chat_tokenizer()
-    except Exception:
-        return {}
-
-    id_bias: dict[int, float] = {}
-    for text, bias in CHAT_LOGIT_BIAS.items():
-        ids = tokenizer.encode_ids(text)
-        if not ids:
-            continue
-        for token_id in ids:
-            current = id_bias.get(token_id)
-            value = float(bias)
-            if current is None or value < current:
-                id_bias[token_id] = value
-
-    _logit_bias_cache = id_bias
-    return id_bias
 
 
 __all__ = ["run_chat_generation"]

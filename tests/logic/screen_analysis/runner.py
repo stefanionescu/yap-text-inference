@@ -31,8 +31,9 @@ from tests.helpers.fmt import (
     section_header,
     yellow,
 )
-from tests.helpers.metrics import StreamState
+from tests.helpers.metrics import SessionContext, StreamState
 from tests.helpers.websocket import (
+    build_start_payload,
     create_tracker,
     finalize_metrics,
     iter_messages,
@@ -99,26 +100,6 @@ async def _consume_followup(ws, state: StreamState) -> str:
     return state.final_text
 
 
-def _build_start_payload(
-    session_id: str,
-    chat_prompt: str,
-    sampling: dict[str, float | int] | None,
-) -> dict[str, Any]:
-    """Build the start message payload."""
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": session_id,
-        "gender": DEFAULT_GENDER,
-        "personality": DEFAULT_PERSONALITY,
-        "history": [],
-        "user_utterance": SCREEN_ANALYSIS_USER_REPLY,
-        "chat_prompt": chat_prompt,
-    }
-    if sampling:
-        payload["sampling"] = sampling
-    return payload
-
-
 # ============================================================================
 # Public API
 # ============================================================================
@@ -133,7 +114,14 @@ async def run_once(
     """Execute the screen analysis flow test."""
     ws_url = with_api_key(server, api_key=api_key)
     session_id = str(uuid.uuid4())
-    start_payload = _build_start_payload(session_id, chat_prompt, sampling)
+    ctx = SessionContext(
+        session_id=session_id,
+        gender=DEFAULT_GENDER,
+        personality=DEFAULT_PERSONALITY,
+        chat_prompt=chat_prompt,
+        sampling=sampling,
+    )
+    start_payload = build_start_payload(ctx, SCREEN_ANALYSIS_USER_REPLY)
 
     print(f"\n{section_header('SCREEN ANALYSIS TEST')}")
     print(dim(f"  server: {server}"))
