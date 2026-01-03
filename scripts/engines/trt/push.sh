@@ -67,6 +67,7 @@ trt_push_to_hf() {
     "${python_exe}"
     "-W" "ignore::RuntimeWarning"
     "-m" "src.hf.trt.hf_push"
+    "push"
     "--checkpoint-dir" "${checkpoint_dir}"
     "--repo-id" "${HF_PUSH_REPO_ID}"
     "--token" "${token}"
