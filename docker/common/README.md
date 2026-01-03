@@ -1,6 +1,6 @@
 # Shared Docker Utilities
 
-Scripts shared between TRT and vLLM Docker images.
+Scripts and utilities shared between TRT and vLLM Docker images.
 
 ## Contents
 
@@ -9,14 +9,74 @@ Scripts shared between TRT and vLLM Docker images.
 
 ## Scripts
 
-- `logs.sh` - Logging functions (`log_info`, `log_warn`, `log_error`, `log_success`)
-- `warmup.sh` - Waits for server health. Usage: `./warmup.sh trt` or `./warmup.sh vllm`
-- `build/args.sh` - Initializes Docker build flags
-- `build/docker.sh` - Docker helpers (`require_docker`, `ensure_docker_login`)
+### Logging (`scripts/logs.sh`)
+
+Logging functions aligned with `scripts/lib/common/log.sh`:
+- `log_info` - Standard info messages
+- `log_warn` - Warning messages  
+- `log_err` - Error messages
+- `log_success` - Success messages
+
+### Warmup (`scripts/warmup.sh`)
+
+Waits for server health and runs warmup tests. 
+
+Usage: `./warmup.sh [engine_prefix]`
+
+Features:
+- Health check polling with configurable timeout
+- Runs `tests/warmup.py` to exercise the model
+- Mirrors `scripts/warmup.sh` behavior
+
+Environment variables:
+- `WARMUP_MAX_WAIT` - Max seconds to wait for health (default: 300)
+- `RUN_WARMUP_TESTS` - Set to 0 to skip warmup tests
+- `WARMUP_RETRIES` - Number of retry attempts (default: 2)
+
+### GPU Detection (`scripts/gpu_detect.sh`)
+
+Unified GPU detection mirroring `scripts/lib/common/gpu_detect.sh`:
+- `gpu_detect_sm_arch` - Get SM architecture (e.g., sm90)
+- `gpu_detect_name` - Get GPU name
+- `gpu_detect_vram_gb` - Get VRAM in GB
+- `gpu_supports_fp8` - Check FP8 support
+- `gpu_init_detection` - Initialize and export GPU vars
+- `gpu_apply_env_defaults` - Set GPU-specific env vars
+
+### Deploy Mode (`scripts/deploy_mode.sh`)
+
+Shared deploy mode handling:
+- `normalize_deploy_mode` - Validate DEPLOY_MODE
+- `set_deploy_flags` - Set DEPLOY_CHAT/DEPLOY_TOOL flags
+- `validate_deploy_models` - Check required models
+- `init_deploy_mode` - Initialize all deploy config
+
+### Build Utilities (`scripts/build/`)
+
+- `args.sh` - Initializes Docker build flags
+- `docker.sh` - Docker helpers (`require_docker`, `ensure_docker_login`)
 
 ## Download Utilities
 
-`download_tool.py` - Downloads the tool classifier from HuggingFace. Used by both engines.
+### Shared Utils (`download/utils.py`)
+
+Common download functionality:
+- `get_hf_token()` - Get HuggingFace token from env or secret
+- `download_snapshot()` - Download from HuggingFace with patterns
+- `verify_files_exist()` - Validate downloaded files
+- `log_success()`, `log_skip()` - Logging helpers
+
+### Tool Model (`download/download_tool.py`)
+
+Downloads the tool classifier from HuggingFace. Used by both engines.
 
 Env vars: `TOOL_MODEL`, `TOOL_MODEL_PATH`, `HF_TOKEN`
 
+### Validation (`download/validate.py`)
+
+Model validation using `src/config` as source of truth:
+- Validates chat model pre-quantization markers
+- Validates tool model against allowlist
+- Validates TRT engine repo and label format
+
+Usage: `python validate.py` (reads from env vars)

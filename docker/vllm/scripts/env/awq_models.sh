@@ -1,35 +1,27 @@
 #!/usr/bin/env bash
+# vLLM deploy mode and quantization configuration.
+#
+# Sources shared deploy mode logic from common/ and sets vLLM-specific defaults.
 
-# Deployment selection: set at build time via Dockerfile ARG/ENV
-# DEPLOY_MODE, CHAT_MODEL, TOOL_MODEL are configured when the image is built
-export DEPLOY_MODE=${DEPLOY_MODE:-both}
-case "${DEPLOY_MODE}" in
-  both|chat|tool) ;;
-  *) log_warn "[vllm] ⚠ Invalid DEPLOY_MODE='${DEPLOY_MODE}', defaulting to 'both'"; export DEPLOY_MODE=both;;
-esac
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Convenience flags
-DEPLOY_CHAT=0; DEPLOY_TOOL=0
-if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then DEPLOY_CHAT=1; fi
-if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then DEPLOY_TOOL=1; fi
-export DEPLOY_CHAT DEPLOY_TOOL
-
-# Models are configured at build time - no defaults, image knows which models to use
-# These ENV vars are set in the Dockerfile during build
-if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
-  log_error "[vllm] ✗ CHAT_MODEL not configured in this image. This image was not built correctly."
-  exit 1
-fi
-if [ "${DEPLOY_TOOL}" = "1" ] && [ -z "${TOOL_MODEL:-}" ]; then
-  log_error "[vllm] ✗ TOOL_MODEL not configured in this image. This image was not built correctly."
+# Find common scripts directory (works in Docker and dev contexts)
+if [ -d "/app/common/scripts" ]; then
+  COMMON_SCRIPTS="/app/common/scripts"
+elif [ -d "${SCRIPT_DIR}/../../../common/scripts" ]; then
+  COMMON_SCRIPTS="${SCRIPT_DIR}/../../../common/scripts"
+else
+  echo "[vllm] ERROR: Cannot find common scripts directory" >&2
   exit 1
 fi
 
+# Source shared deploy mode logic
+source "${COMMON_SCRIPTS}/deploy_mode.sh"
 
-# Set quantization for chat model
-if [ "${QUANTIZATION:-awq}" = "awq" ]; then
-  if [ "${DEPLOY_CHAT}" = "1" ]; then
-    export CHAT_QUANTIZATION=awq
-  fi
+# Initialize deploy mode for vLLM
+init_deploy_mode "[vllm]" "vllm"
+
+# Set quantization for chat model (vLLM defaults to awq for pre-quantized models)
+if [ "${DEPLOY_CHAT}" = "1" ]; then
+  export CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-awq}"
 fi
-

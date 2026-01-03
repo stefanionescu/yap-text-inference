@@ -7,7 +7,6 @@ source "${SCRIPT_DIR}/logs.sh"
 log_info "[vllm] Setting environment defaults (vLLM AWQ image)..."
 
 # Source modular env configuration
-source "${SCRIPT_DIR}/env/helpers.sh"
 source "${SCRIPT_DIR}/env/python_flashinfer.sh"
 source "${SCRIPT_DIR}/env/awq_models.sh"
 source "${SCRIPT_DIR}/env/gpu_detect.sh"

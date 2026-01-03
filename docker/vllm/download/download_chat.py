@@ -4,49 +4,35 @@
 import os
 import sys
 
+# Add common download utils to path (works in both dev and Docker contexts)
+# In Docker: /app/download/ -> /app/common/download/
+# In dev: docker/vllm/download/ -> docker/common/download/
+script_dir = os.path.dirname(os.path.abspath(__file__))
+common_paths = [
+    os.path.join(script_dir, "..", "common", "download"),  # Docker: /app/common/download
+    os.path.join(script_dir, "..", "..", "common", "download"),  # Dev: docker/common/download
+]
+for path in common_paths:
+    if os.path.isdir(path):
+        sys.path.insert(0, path)
+        break
 
-def download_chat_model(repo_id: str, target_dir: str, token: str | None = None) -> None:
-    """Download complete chat model from HuggingFace.
-    
-    Args:
-        repo_id: HuggingFace repo ID for the chat model
-        target_dir: Local directory to store model files
-        token: Optional HuggingFace token for private repos
-    """
-    from huggingface_hub import snapshot_download
-
-    print(f"[build] Downloading chat model from {repo_id}...")
-    print(f"[build]   Target: {target_dir}")
-
-    os.makedirs(target_dir, exist_ok=True)
-
-    snapshot_download(
-        repo_id=repo_id,
-        local_dir=target_dir,
-        token=token,
-    )
-
-    print("[build] ✓ Chat model downloaded and baked into image")
+from utils import get_hf_token, download_snapshot, log_success, log_skip
 
 
 def main() -> None:
     repo_id = os.environ.get("CHAT_MODEL", "")
     target_dir = os.environ.get("CHAT_MODEL_PATH", "/opt/models/chat")
-
-    # Token from env or mounted secret
-    token = os.environ.get("HF_TOKEN") or None
-    if not token:
-        secret_path = "/run/secrets/hf_token"
-        if os.path.isfile(secret_path):
-            with open(secret_path) as f:
-                token = f.read().strip() or None
-
+    
     if not repo_id:
-        print("[build] No CHAT_MODEL specified - skipping chat model download")
+        log_skip("No CHAT_MODEL specified - skipping chat model download")
         return
-
+    
+    token = get_hf_token()
+    
     try:
-        download_chat_model(repo_id, target_dir, token)
+        download_snapshot(repo_id, target_dir, token=token)
+        log_success("Chat model downloaded and baked into image")
     except Exception as e:
         print(f"[build] ERROR: Failed to download chat model: {e}", file=sys.stderr)
         sys.exit(1)
@@ -54,4 +40,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

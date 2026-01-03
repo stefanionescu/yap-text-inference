@@ -1,24 +1,35 @@
 #!/usr/bin/env bash
+# TRT GPU detection and optimization.
+#
+# Sources shared GPU detection from common/ and applies TRT-specific defaults.
 
-# GPU detection for TRT-LLM
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-GPU_NAME=""
-GPU_SM=""
-
-if command -v nvidia-smi >/dev/null 2>&1; then
-  GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1 || true)
-  
-  # Get compute capability for SM architecture
-  cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 || true)
-  if [ -n "${cap}" ]; then
-    GPU_SM="sm${cap/./}"
-  fi
+# Find common scripts directory (works in Docker and dev contexts)
+if [ -d "/app/common/scripts" ]; then
+  COMMON_SCRIPTS="/app/common/scripts"
+elif [ -d "${SCRIPT_DIR}/../../../common/scripts" ]; then
+  COMMON_SCRIPTS="${SCRIPT_DIR}/../../../common/scripts"
+else
+  echo "[trt] ERROR: Cannot find common scripts directory" >&2
+  exit 1
 fi
 
-export DETECTED_GPU_NAME="${GPU_NAME}"
-export GPU_SM_ARCH="${GPU_SM}"
+# Source shared GPU detection
+source "${COMMON_SCRIPTS}/gpu_detect.sh"
 
-# Set GPU-specific defaults
+# Initialize GPU detection
+gpu_init_detection
+gpu_apply_env_defaults
+
+# Export GPU_SM for artifact resolution (removes "sm" prefix for compatibility)
+if [ -n "${GPU_SM_ARCH:-}" ]; then
+  export GPU_SM="${GPU_SM_ARCH}"
+fi
+
+# TRT-specific GPU optimizations
+GPU_NAME="${DETECTED_GPU_NAME:-}"
+
 case "${GPU_NAME}" in
   *H100*)
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
@@ -37,4 +48,3 @@ case "${GPU_NAME}" in
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
     ;;
 esac
-

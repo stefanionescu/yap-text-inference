@@ -117,12 +117,14 @@ WORKDIR /app
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY download/ /app/download/
+COPY common/ /app/common/
+COPY tests/ /app/tests/
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache /opt/models/chat /opt/models/tool
 
 # Set proper permissions
-RUN chmod +x /app/scripts/*.sh /app/download/*.py
+RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/download/*.py /app/common/scripts/*.sh 2>/dev/null || true
 
 # Cache directories
 ENV HF_HOME=/app/.hf
