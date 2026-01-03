@@ -94,11 +94,21 @@ async def _stream_exchange(
     return state.final_text, finalize_metrics(state, cancelled=True)
 
 
+def _format_tool_result(state: StreamState) -> str:
+    """Format tool-only result for display."""
+    if state.toolcall_status:
+        raw = state.toolcall_raw or {}
+        decision = raw.get("text", state.toolcall_status)
+        return f"[tool: {decision}]"
+    return "[tool: no response]"
+
+
 def _print_transaction_result(
     phase: str | None,
     user_msg: str,
     assistant_text: str,
     metrics: dict[str, Any],
+    state: StreamState | None = None,
 ) -> None:
     """Print formatted transaction result."""
     if phase:
@@ -107,7 +117,13 @@ def _print_transaction_result(
         print(exchange_header())
     
     print(f"  {format_user(user_msg)}")
-    print(f"  {format_assistant(assistant_text)}")
+    
+    # Show tool result when no chat response (tool-only mode)
+    if not assistant_text and state and state.toolcall_status:
+        print(f"  {format_assistant(_format_tool_result(state))}")
+    else:
+        print(f"  {format_assistant(assistant_text)}")
+    
     print(f"  {format_metrics_inline(metrics)}")
     print(exchange_footer())
 
@@ -176,7 +192,7 @@ async def run_once(args) -> None:
                     api_key,
                     exchange_idx=idx + 1,
                 )
-                _print_transaction_result(phase_label, user_msg, assistant_text, metrics)
+                _print_transaction_result(phase_label, user_msg, assistant_text, metrics, state)
         finally:
             await send_client_end(ws)
 

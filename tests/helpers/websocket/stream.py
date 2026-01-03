@@ -103,6 +103,9 @@ async def consume_stream(ws, state: StreamState) -> str:
 
         if msg_type == "toolcall":
             record_toolcall(state)
+            # Capture toolcall result for tool-only mode display
+            state.toolcall_status = msg.get("status")
+            state.toolcall_raw = msg.get("raw")
             continue
 
         if msg_type == "token":

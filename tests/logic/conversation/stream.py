@@ -38,6 +38,9 @@ def _handle_ack(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> b
 
 def _handle_toolcall(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> None:
     record_toolcall(state)
+    # Capture toolcall result for tool-only mode display
+    state.toolcall_status = msg.get("status")
+    state.toolcall_raw = msg.get("raw")
 
 
 def _handle_token(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> None:

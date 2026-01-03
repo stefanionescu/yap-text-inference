@@ -33,6 +33,8 @@ class StreamState:
     first_sentence_ts: float | None = None
     first_3_words_ts: float | None = None
     toolcall_ttfb_ms: float | None = None
+    toolcall_status: str | None = None
+    toolcall_raw: dict | None = None
     chunks: int = 0
 
 
