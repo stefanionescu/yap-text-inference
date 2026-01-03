@@ -190,18 +190,20 @@ EMOJI_PATTERN = re.compile(
 )
 
 EMOTICON_PATTERN = re.compile(
-    r"(?i)(?<![A-Za-z0-9])(?:"
-    r"[:=;8][-^]?[)dDpP(\\]/\\oO]|"
-    r":'\\(|"
-    r"<3|"
-    r":-?\\||"
-    r":-?/|"
-    r":3(?!\\d)|"
-    r";-?\\)|"
-    r"\\^\\_\\^|"
-    r"T_T|"
-    r"¯\\_\\(ツ\\)_/¯"
-    r")"
+    r"(?<![A-Za-z0-9])(?:"
+    r"[:=;8][-^]?[)dDpP(/\\oO]|"    # Basic: :) :D :P :O :( :/ :\ and variants
+    r":'\(|"                        # Crying: :'(
+    r"<3|"                          # Heart
+    r":-?\||"                       # Neutral: :| :-|
+    r":-?/|"                        # Uncertain: :/ :-/
+    r":3(?!\d)|"                    # Cat face :3 (not :30 time)
+    r";-?[)pPdD]|"                  # Wink variants: ;) ;P ;D ;-) ;-P
+    r"\^_\^|"                       # Japanese happy
+    r"T_T|"                         # Crying
+    r"[xX][dD](?![a-zA-Z])|"        # XD xD
+    r"\(?\u256F\u00B0\u25A1\u00B0\)?\u256F\uFE35\s*\u253B\u2501\u253B"  # Table flip
+    r")",
+    re.IGNORECASE,
 )
 
 ACTION_EMOTE_PATTERN = re.compile(

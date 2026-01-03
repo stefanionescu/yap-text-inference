@@ -194,8 +194,9 @@ def _sanitize_stream_chunk(
     cleaned = DOT_RUN_PATTERN.sub("...", cleaned)
     # Collapse dots separated by spaces (". . " or ". . .") to a single period
     cleaned = SPACED_DOT_RUN_PATTERN.sub(".", cleaned)
-    # Ensure a space after period if followed by an alnum (avoid smushing words)
-    cleaned = re.sub(r"\.(?=[A-Za-z0-9])", ". ", cleaned)
+    # Ensure a space after a standalone period if followed by alnum (avoid smushing words)
+    # BUT preserve ellipsis: don't add space after "..." followed by text
+    cleaned = re.sub(r"(?<!\.)\.(?!\.)(?=[A-Za-z0-9])", ". ", cleaned)
     # Verbalize temperature units before other replacements
     cleaned = TEMP_FAHRENHEIT_PATTERN.sub(" degrees Fahrenheit", cleaned)
     cleaned = TEMP_CELSIUS_PATTERN.sub(" degrees Celsius", cleaned)

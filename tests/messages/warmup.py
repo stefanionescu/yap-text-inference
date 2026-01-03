@@ -24,7 +24,7 @@ WARMUP_DEFAULT_MESSAGES = [
     #     "ON THE SCREEN NOW: A woman dressed in white is squatting confidently on a "
     #     "Jenga tower placed on a patio table, wearing heels and sunglasses."
     # ),
-    # "which apps do you work best with?",
+    "which apps do you work best with?",
     # "damn I wanna fap to a goat",
     # "ON THE SCREEN NOW: Big ass girl in doggy-style waiting to be rammed by massive black cock",
     # (

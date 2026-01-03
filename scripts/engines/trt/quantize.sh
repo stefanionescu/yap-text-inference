@@ -130,7 +130,7 @@ trt_quantize_model() {
   
   # Get the appropriate quantization script
   local quant_script
-  quant_script=$(trt_get_quantize_script "${model_id}" "${TRT_REPO_DIR}")
+  quant_script=$(trt_get_quantize_script "${TRT_REPO_DIR}")
   
   if [ ! -f "${quant_script}" ]; then
     log_err "[quant] ✗ Quantization script not found: ${quant_script}"
