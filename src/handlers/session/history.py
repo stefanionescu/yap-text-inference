@@ -12,7 +12,7 @@ API Input Format:
     [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
 
 Two separate trimming strategies are used:
-- Chat model: Uses HISTORY_MAX_TOKENS with the chat tokenizer
+- Chat model: Triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
 - Tool model: Uses TOOL_HISTORY_TOKENS and only considers user messages
 
 The HistoryController class provides a clean interface for session-scoped
@@ -27,6 +27,7 @@ from src.config import (
     DEPLOY_CHAT,
     DEPLOY_TOOL,
     HISTORY_MAX_TOKENS,
+    TRIMMED_HISTORY_LENGTH,
     TOOL_HISTORY_TOKENS,
 )
 from src.tokens import build_user_history_for_tool, count_tokens_chat
@@ -164,7 +165,13 @@ def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
 
 
 def trim_history(state: SessionState) -> None:
-    """Trim history by HISTORY_MAX_TOKENS when chat is deployed.
+    """Trim history when it exceeds HISTORY_MAX_TOKENS.
+    
+    Uses a two-threshold (hysteresis) approach:
+    - Triggers when tokens exceed HISTORY_MAX_TOKENS
+    - Trims down to TRIMMED_HISTORY_LENGTH
+    
+    This prevents constant per-message trimming by creating headroom after each trim.
     
     When classifier-only, no trimming is done here - the classifier adapter
     handles its own trimming using its own tokenizer.
@@ -182,7 +189,12 @@ def trim_history(state: SessionState) -> None:
         return
     
     tokens = count_tokens_chat(rendered)
-    while state.history_turns and tokens > HISTORY_MAX_TOKENS:
+    # Only start trimming if we exceed the trigger threshold
+    if tokens <= HISTORY_MAX_TOKENS:
+        return
+    
+    # Trim down to the target length
+    while state.history_turns and tokens > TRIMMED_HISTORY_LENGTH:
         state.history_turns.pop(0)
         rendered = render_history(state.history_turns)
         tokens = count_tokens_chat(rendered) if rendered else 0

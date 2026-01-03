@@ -6,7 +6,11 @@ from src.config.deploy import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_MODEL, TOOL_MODEL
 from src.config.engine import INFERENCE_ENGINE, QUANTIZATION, CHAT_QUANTIZATION
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.quantization import SUPPORTED_ENGINES
-from src.config.limits import MAX_CONCURRENT_CONNECTIONS
+from src.config.limits import (
+    MAX_CONCURRENT_CONNECTIONS,
+    HISTORY_MAX_TOKENS,
+    TRIMMED_HISTORY_LENGTH,
+)
 from src.config.secrets import TEXT_API_KEY
 from src.tokens.validation import validate_model_tokenizer
 from .models import is_classifier_model
@@ -47,6 +51,13 @@ def validate_env() -> None:
     # Required limits
     if MAX_CONCURRENT_CONNECTIONS is None:
         errors.append("MAX_CONCURRENT_CONNECTIONS environment variable is required")
+    
+    # History trimming configuration
+    if TRIMMED_HISTORY_LENGTH >= HISTORY_MAX_TOKENS:
+        errors.append(
+            f"TRIMMED_HISTORY_LENGTH ({TRIMMED_HISTORY_LENGTH}) must be less than "
+            f"HISTORY_MAX_TOKENS ({HISTORY_MAX_TOKENS})"
+        )
     
     # Model configuration
     if DEPLOY_CHAT and not CHAT_MODEL:

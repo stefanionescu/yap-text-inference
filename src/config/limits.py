@@ -6,7 +6,8 @@ protect against abuse. Limits are organized into categories:
 Context Limits:
     - CHAT_MAX_LEN: Maximum input context length (tokens)
     - CHAT_MAX_OUT: Maximum generation length (tokens)
-    - HISTORY_MAX_TOKENS: Maximum conversation history (tokens)
+    - HISTORY_MAX_TOKENS: Threshold that triggers history trimming (tokens)
+    - TRIMMED_HISTORY_LENGTH: Target length after trimming (tokens)
     - USER_UTT_MAX_TOKENS: Maximum user utterance (tokens)
     - CHAT_PROMPT_MAX_TOKENS: Maximum persona prompt (tokens)
 
@@ -72,7 +73,10 @@ MAX_SYNONYMS_PER_PERSONALITY = int(os.getenv("MAX_SYNONYMS_PER_PERSONALITY", "10
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
 # History and user limits (approximate tokens)
+# HISTORY_MAX_TOKENS: threshold that triggers trimming
+# TRIMMED_HISTORY_LENGTH: target length after trimming (must be < HISTORY_MAX_TOKENS)
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
+TRIMMED_HISTORY_LENGTH = int(os.getenv("TRIMMED_HISTORY_LENGTH", "2000"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "500"))
 
 # Persona update pacing (rolling window)
@@ -178,6 +182,7 @@ __all__ = [
     "MAX_SYNONYMS_PER_PERSONALITY",
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
+    "TRIMMED_HISTORY_LENGTH",
     "USER_UTT_MAX_TOKENS",
     "CHAT_PROMPT_UPDATE_WINDOW_SECONDS",
     "CHAT_PROMPT_UPDATE_MAX_PER_WINDOW",
