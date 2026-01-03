@@ -109,9 +109,17 @@ if __name__ == "__main__":
 
     if errors:
         for err in errors:
-            print(f"[validate] ✗ Model name validation failed: {err}", file=sys.stderr)
+            print(f"[validate] ✗ {err}", file=sys.stderr)
         sys.exit(1)
 
-    print("[validate] ✓ Model name validation passed")
+    # Print separate success messages for each validated model type
+    deploy_chat = deploy_mode in ("both", "chat")
+    deploy_tool = deploy_mode in ("both", "tool")
+    
+    if deploy_chat:
+        print("[validate] ✓ Chat model validation passed")
+    if deploy_tool:
+        print("[validate] ✓ Tool model validation passed")
+    
     sys.exit(0)
 
