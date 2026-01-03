@@ -202,8 +202,8 @@ _resolve_effective_quantization() {
 apply_quantization_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-}"
   
+  # Skip silently for tool-only mode (no chat engine to configure)
   if [ "${DEPLOY_CHAT:-0}" != "1" ]; then
-    log_info "[env] Skipping vLLM quantization defaults (chat engine disabled)"
     return
   fi
   

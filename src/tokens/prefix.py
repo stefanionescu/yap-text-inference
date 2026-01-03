@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 from ..config import (
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
+    DEPLOY_CHAT,
     USER_UTT_MAX_TOKENS,
 )
 from .token_utils import count_tokens_chat
@@ -42,9 +43,13 @@ def count_prefix_tokens(prefix: str | None) -> int:
         prefix: The prefix text to count tokens for.
         
     Returns:
-        Token count including the trailing space, or 0 if prefix is empty.
+        Token count including the trailing space, or 0 if prefix is empty
+        or chat model is not deployed (prefixes only apply to chat).
     """
     if not prefix:
+        return 0
+    # Screen prefixes only apply when chat model is deployed
+    if not DEPLOY_CHAT:
         return 0
     return count_tokens_chat(f"{prefix.strip()} ")
 
