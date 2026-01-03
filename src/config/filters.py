@@ -243,6 +243,9 @@ EMDASH_PATTERN = re.compile(r"--+|—|–")
 SUBTRACTION_PATTERN = re.compile(r"(\d)\s+-\s+(\d)")
 # Negative number: dash immediately before digit, not preceded by word char
 NEGATIVE_NUMBER_PATTERN = re.compile(r"(?<!\w)-(\d)")
+# Single-letter suffix hyphen: word-X (where X is single letter) → join without space
+# e.g., "vintage-y" → "vintagey", "80-s" → "80s"
+SINGLE_LETTER_SUFFIX_PATTERN = re.compile(r"(\w)-([A-Za-z])(?![A-Za-z])")
 # Word hyphen: letter-letter (compound words) → space
 WORD_HYPHEN_PATTERN = re.compile(r"([A-Za-z])-([A-Za-z])")
 
@@ -298,6 +301,7 @@ __all__ = [
     "EMDASH_PATTERN",
     "SUBTRACTION_PATTERN",
     "NEGATIVE_NUMBER_PATTERN",
+    "SINGLE_LETTER_SUFFIX_PATTERN",
     "WORD_HYPHEN_PATTERN",
     "TEMP_FAHRENHEIT_PATTERN",
     "TEMP_CELSIUS_PATTERN",

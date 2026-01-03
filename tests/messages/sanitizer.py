@@ -242,7 +242,15 @@ STREAMING_SANITIZER_CASES = [
     ("The value is -42 today.", [8, 16, 24]),
     ("Coordinates are -73 longitude.", [10, 20, 32]),
     ("Range from -10 to 10.", [6, 14, 22]),
-    # Word hyphens (letter-letter) → space
+    # Single-letter suffix hyphens (word-X → wordX, no space)
+    ("That adds a vintage-y vibe.", [8, 18, 26]),
+    ("It has a goth-y aesthetic.", [6, 14, 24]),
+    ("Very punk-y style today.", [6, 14, 22]),
+    ("The 80-s were wild.", [5, 12, 18]),
+    ("A jazz-y tune playing.", [4, 12, 22]),
+    ("Feeling tech-y lately.", [6, 14, 22]),
+    ("Super chill-y weather.", [6, 14, 22]),
+    # Word hyphens (letter-letter compound) → space
     ("The well-known author spoke.", [6, 16, 28]),
     ("A self-driving car arrived.", [4, 16, 28]),
     ("High-quality products only.", [6, 18, 28]),

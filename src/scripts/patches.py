@@ -101,14 +101,19 @@ def patch_attn_implementation_eager() -> bool:
 
 
 # Apply patches on import
+_patches_applied = []
+
 if patch_transformers_auto_docstring():
-    print(
-        "[patch] Applied transformers auto_docstring fix for Python 3.10 union types",
-        file=sys.stderr,
+    _patches_applied.append(
+        "[patch] Applied transformers auto_docstring fix for Python 3.10 union types"
     )
 
 if patch_attn_implementation_eager():
-    print(
-        "[patch] Applied transformers eager attention fix for flash attention loading",
-        file=sys.stderr,
+    _patches_applied.append(
+        "[patch] Applied transformers eager attention fix for flash attention loading"
     )
+
+if _patches_applied:
+    print(file=sys.stderr)  # Blank line before patches
+    for msg in _patches_applied:
+        print(msg, file=sys.stderr)

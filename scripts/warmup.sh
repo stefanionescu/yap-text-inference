@@ -97,7 +97,9 @@ cd "${ROOT_DIR}"
 # MAIN TEST LOOP
 # =============================================================================
 
-echo ""
+# Small delay to let Uvicorn's buffered output flush before warmup messages
+sleep 0.1
+log_blank
 log_info "[warmup] Starting GPU warmup..."
 echo "[warmup] Starting GPU warmup..." >> "${ROOT_DIR}/server.log"
 
