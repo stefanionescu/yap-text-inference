@@ -130,8 +130,8 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     "yapwithai/gryphe-pantheon-rp-pure-1.6.2-22b-small-trt-awq",
     "yapwithai/readyart-broken-tutu-24B-unslop-v2.0-trt-awq",
     "yapwithai/readyart-broken-tutu-24B-transgression-v2.0-trt-awq", # LOVE the initial reactions, gotta test more
-    "yapwithai/dphn-dolphin-mistral-24B-venice-edition-trt-awq", # Decent but a bit bland
-    "yapwithai/thedrummer-magidonia-24B-v4.3-trt-awq",
+    "yapwithai/dphn-dolphin-mistral-24B-venice-edition-trt-awq", # Decent but a bit bland # MUST REBUILD
+    "yapwithai/thedrummer-magidonia-24B-v4.3-trt-awq", 
 
     # Pre-quantized FP8 models
     "yapwithai/sicariussicariistuff-angelic-eclipse-12B-trt-fp8",
