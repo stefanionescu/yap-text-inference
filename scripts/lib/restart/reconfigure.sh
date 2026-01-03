@@ -401,7 +401,8 @@ restart_reconfigure_models() {
 
   # Push TRT engine if requested and we didn't go through the quantizer
   # (quantizer handles its own push; this handles cached/prebuilt engines)
-  if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+  # Skip if engine was downloaded from HuggingFace (no point pushing back what we downloaded)
+  if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${USING_PREBUILT_ENGINE:-0}" != "1" ]; then
     # Load engine dir from saved env if not already set
     if [ -z "${TRT_ENGINE_DIR:-}" ]; then
       local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"

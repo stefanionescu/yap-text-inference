@@ -17,7 +17,7 @@ Environment Variables:
 Usage:
   python3 tests/history.py
   python3 tests/history.py --gender male
-  python3 tests/history.py --temperature 0.8 --top_p 0.9
+  python3 tests/history.py --temperature 0.8 --top-p 0.9
   python3 tests/history.py --bench -n 16 -c 8
 """
 

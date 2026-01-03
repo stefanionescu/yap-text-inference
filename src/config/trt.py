@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 
-from ..helpers.env import env_flag
 from .gpu import CHAT_GPU_FRAC
 
 
@@ -51,12 +50,11 @@ TRT_DTYPE = os.getenv("TRT_DTYPE", "float16")
 
 # KV cache memory management - uses CHAT_GPU_FRAC
 TRT_KV_FREE_GPU_FRAC = float(os.getenv("TRT_KV_FREE_GPU_FRAC", str(CHAT_GPU_FRAC)))
-TRT_KV_ENABLE_BLOCK_REUSE = env_flag("TRT_KV_ENABLE_BLOCK_REUSE", False)
 
 # AWQ quantization parameters (aligned with vLLM AWQ defaults from calibration.py)
 # q_group_size/block_size: 128 matches vLLM AWQ
 TRT_AWQ_BLOCK_SIZE = int(os.getenv("TRT_AWQ_BLOCK_SIZE", "128"))
-# nsamples: 64 matches vLLM AWQ default
+# nsamples
 TRT_CALIB_SIZE = int(os.getenv("TRT_CALIB_SIZE", "64"))
 
 # Calibration sequence length: derived from context window
@@ -96,7 +94,6 @@ __all__ = [
     "TRT_MAX_OUTPUT_LEN",
     "TRT_DTYPE",
     "TRT_KV_FREE_GPU_FRAC",
-    "TRT_KV_ENABLE_BLOCK_REUSE",
     "TRT_AWQ_BLOCK_SIZE",
     "TRT_CALIB_SIZE",
     "TRT_CALIB_BATCH_SIZE",

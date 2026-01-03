@@ -17,7 +17,7 @@ Environment Variables:
 Usage:
   python3 tests/personality.py
   python3 tests/personality.py --switches 5 --delay 2
-  python3 tests/personality.py --temperature 0.8 --top_p 0.9
+  python3 tests/personality.py --temperature 0.8 --top-p 0.9
 """
 
 from __future__ import annotations

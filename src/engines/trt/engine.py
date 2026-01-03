@@ -21,7 +21,6 @@ Required Configuration:
 
 Optional Configuration:
     TRT_KV_FREE_GPU_FRAC: GPU fraction for KV cache
-    TRT_KV_ENABLE_BLOCK_REUSE: Enable cache block reuse
     TRT_BATCH_SIZE: Runtime batch size (must be <= engine's baked-in max)
 """
 
