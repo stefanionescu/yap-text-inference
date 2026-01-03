@@ -8,7 +8,6 @@ Message Types:
     start       - Initialize session with persona and start generation
     cancel      - Abort active generation request
     followup    - Continue conversation (skip tool routing)
-    chat_prompt - Update persona mid-session
     ping/pong   - Keep-alive heartbeat
     end         - Client-initiated disconnect
 """
@@ -39,7 +38,6 @@ from ...config.websocket import (
 )
 from ...engines import clear_caches_on_disconnect, reset_engine_caches
 from ...messages.cancel import handle_cancel_message
-from ...messages.chat.prompt import handle_chat_prompt
 from ...messages.followup import handle_followup_message
 from ...messages.start import handle_start_message
 from ..rate_limit import SlidingWindowRateLimiter
@@ -59,7 +57,6 @@ SessionHandlerFn = Callable[[WebSocket, dict[str, Any], str | None], Any]
 # Handlers that receive (ws, payload, session_id)
 _SESSION_MESSAGE_HANDLERS: dict[str, SessionHandlerFn] = {
     "followup": handle_followup_message,
-    "chat_prompt": handle_chat_prompt,
 }
 
 

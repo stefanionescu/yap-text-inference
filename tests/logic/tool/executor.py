@@ -16,7 +16,6 @@ from collections.abc import Callable, Sequence
 import websockets  # type: ignore[import-not-found]
 
 from tests.config import (
-    DEFAULT_PERSONALITIES,
     POST_TOOL_IDLE_MIN_S,
     TOOL_WS_MESSAGE_WINDOW_SECONDS,
     TOOL_WS_MAX_MESSAGES_PER_WINDOW,
@@ -151,7 +150,6 @@ def _build_step_payload(
         "session_id": session_id,
         "gender": cfg.gender,
         "personality": cfg.personality,
-        "personalities": DEFAULT_PERSONALITIES,
         "chat_prompt": cfg.chat_prompt,
         "history": render_history(history),
         "user_utterance": user_text,

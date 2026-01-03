@@ -14,7 +14,7 @@ from typing import Any
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-from tests.config import DEFAULT_PERSONALITIES, WS_MAX_QUEUE
+from tests.config import WS_MAX_QUEUE
 from tests.helpers.errors import StreamError
 from tests.helpers.metrics import StreamState, error_result
 from tests.helpers.websocket import (
@@ -42,7 +42,6 @@ def _build_payload(
         "session_id": session_id,
         "gender": cfg.gender,
         "personality": cfg.personality,
-        "personalities": DEFAULT_PERSONALITIES,
         "chat_prompt": cfg.chat_prompt,
         "history": history,
         "user_utterance": user_text,

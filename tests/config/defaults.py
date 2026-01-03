@@ -1,6 +1,6 @@
 """Default constants and persona variants for test utilities.
 
-This module contains hardcoded defaults for benchmarks, personality tests,
+This module contains hardcoded defaults for benchmarks, warmup/live tests,
 sampling parameters, and persona variants. These values are used when no
 environment override is provided and serve as the baseline configuration
 for all test scripts.
@@ -16,17 +16,6 @@ from tests.prompts.detailed import (
     MARK_SAVAGE,
     MARK_DELULU,
 )
-
-# Default personalities for tool phrase matching
-# Keys are personality names, values are lists of synonyms
-DEFAULT_PERSONALITIES: dict[str, list[str]] = {
-    "friendly": ["generic", "normal"],
-    "flirty": ["horny", "sexy", "turned on"],
-    "religious": ["priest", "pious"],
-    "delulu": ["delooloo", "de loo loo", "delusional"],
-    "savage": ["no cap", "unfiltered"],
-    "spiritual": ["zen", "new age", "mystic"],
-}
 
 WARMUP_FALLBACK_MESSAGE = "hey there! how are you today?"
 BENCHMARK_FALLBACK_MESSAGE = "who was Columbus?"
@@ -45,25 +34,9 @@ HISTORY_BENCH_DEFAULT_REQUESTS = 8
 HISTORY_BENCH_DEFAULT_CONCURRENCY = 4
 HISTORY_BENCH_DEFAULT_TIMEOUT_SEC = 180.0
 
-PERSONALITY_SWITCH_MIN = 1
-PERSONALITY_SWITCH_MAX = 10
-PERSONALITY_SWITCH_DEFAULT = 4
-PERSONALITY_SWITCH_DELAY_SECONDS = 10
-PERSONALITY_REPLIES_PER_SWITCH = 2
-
 PERSONA_VARIANTS = [
     ("female", "flirty", ANNA_FLIRTY),
     ("male", "flirty", MARK_FLIRTY),
-]
-
-# Personality test variants: alternating Anna/Mark with different personalities
-# Pattern: Anna flirty -> Mark savage -> Anna religious -> Mark delulu -> Anna spiritual
-PERSONALITY_PERSONA_VARIANTS = [
-    ("female", "flirty", ANNA_FLIRTY),
-    ("male", "savage", MARK_SAVAGE),
-    ("female", "religious", ANNA_RELIGIOUS),
-    ("male", "delulu", MARK_DELULU),
-    ("female", "spiritual", ANNA_SPIRITUAL),
 ]
 
 # Sampling defaults mirrored from src.config.sampling for CLI usage
@@ -93,7 +66,6 @@ PERSONA_MODULE = "tests.prompts.detailed"
 DEFAULT_PERSONA_NAME = "anna_flirty"
 
 __all__ = [
-    "DEFAULT_PERSONALITIES",
     "WARMUP_FALLBACK_MESSAGE",
     "BENCHMARK_FALLBACK_MESSAGE",
     "BENCHMARK_DEFAULT_REQUESTS",
@@ -105,13 +77,7 @@ __all__ = [
     "HISTORY_BENCH_DEFAULT_REQUESTS",
     "HISTORY_BENCH_DEFAULT_CONCURRENCY",
     "HISTORY_BENCH_DEFAULT_TIMEOUT_SEC",
-    "PERSONALITY_SWITCH_MIN",
-    "PERSONALITY_SWITCH_MAX",
-    "PERSONALITY_SWITCH_DEFAULT",
-    "PERSONALITY_SWITCH_DELAY_SECONDS",
-    "PERSONALITY_REPLIES_PER_SWITCH",
     "PERSONA_VARIANTS",
-    "PERSONALITY_PERSONA_VARIANTS",
     "CHAT_TEMPERATURE_DEFAULT",
     "CHAT_TOP_P_DEFAULT",
     "CHAT_TOP_K_DEFAULT",

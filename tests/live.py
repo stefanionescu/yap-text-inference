@@ -4,7 +4,7 @@
 - Starts a session using the same default prompt as warmup (anna_flirty)
 - Keeps the connection open so you can exchange messages from the CLI
     - Supports hot-reloading persona definitions from `tests/prompts/detailed.py`
-- Lets you switch personas mid-session via `chat_prompt` updates
+- Lets you select personas from `tests/prompts/detailed.py` via the `--persona` flag
 - Prints streaming tokens, metrics, and structured error information
 - Sends a graceful `{"type": "end"}` message on /stop, Ctrl+C, or server close
 """

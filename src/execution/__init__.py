@@ -16,18 +16,13 @@ chat/:
 tool/:
     Tool/classifier integration:
     - runner.py: Tool call execution with filters
-    - filter.py: Pre-filtering with regex patterns
+    - filter.py: Screenshot pre-filtering
     - parser.py: Parse tool results from classifier
-    - messages.py: Hard-coded control function responses
     - language.py: English detection filter
-    - personality.py: Personality matching logic
 
 Workflow Overview:
     User Message -> Tool Filter -> Tool Classifier -> Chat Model -> Response
     
-    If tool detects control function (switch_gender, etc.):
-        Return hard-coded response, skip chat model
-        
     If tool detects screenshot request:
         Prefix user message with "CHECK SCREEN" and run chat
 

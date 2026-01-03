@@ -37,6 +37,8 @@ This is a {{quant_method_upper}} quantized version of {{source_model_link}}, opt
 | **Quantization Method** | {{quant_method_upper}} |
 | **Precision** | {{w_bit}}-bit weights |
 | **KV Cache** | {{kv_cache_dtype}} |
+| **KV Cache Type** | {{kv_cache_type}} |
+| **KV Reuse** | {{kv_cache_reuse}} |
 | **Block/Group Size** | {{awq_block_size}} |
 | **TensorRT-LLM Version** | `{{tensorrt_llm_version}}` (used for quantization) |
 | **Max Batch Size** | {{max_batch_size}} |

@@ -1,6 +1,6 @@
 """Command handlers for the interactive live CLI.
 
-This module contains all slash-command handlers (/help, /list, /persona, etc.)
+This module contains all slash-command handlers (/help, /list, /info, etc.)
 used by the interactive loop. Each handler follows a uniform signature and
 returns a boolean indicating whether the session should exit.
 
@@ -13,8 +13,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
-
-from tests.helpers.errors import TestClientError
 
 if TYPE_CHECKING:
     from .client import LiveClient
@@ -86,30 +84,6 @@ async def _handle_list_command(
     _ = raw_command
     names = registry.available_names()
     logger.info("Available personas: %s", ", ".join(names))
-    return False
-
-
-async def _handle_persona_command(
-    arg: str,
-    client: LiveClient,
-    registry: PersonaRegistry,
-    *,
-    raw_command: str,
-) -> bool:
-    """Switch to a different persona by name."""
-    _ = raw_command
-    if not arg:
-        logger.warning("Usage: /persona <name>")
-        return False
-    try:
-        persona = registry.require(arg)
-    except ValueError as exc:
-        logger.error("%s", exc)
-        return False
-    try:
-        await client.change_persona(persona)
-    except TestClientError as exc:
-        logger.error("persona update failed: %s", exc)
     return False
 
 
@@ -198,7 +172,6 @@ CommandHandler = Callable[..., Awaitable[bool]]
 COMMAND_HANDLERS: dict[str, CommandHandler] = {
     "help": _handle_help_command,
     "list": _handle_list_command,
-    "persona": _handle_persona_command,
     "history": _handle_history_command,
     "info": _handle_info_command,
     "stats": _handle_stats_command,
@@ -208,7 +181,6 @@ COMMAND_HANDLERS: dict[str, CommandHandler] = {
 COMMAND_ALIASES: dict[str, str] = {
     "?": "help",
     "personas": "list",
-    "personality": "persona",
     "status": "info",
     "quit": "stop",
     "exit": "stop",

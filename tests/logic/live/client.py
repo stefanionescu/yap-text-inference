@@ -1,9 +1,8 @@
 """WebSocket client for interactive live sessions.
 
 This module provides the LiveClient class that wraps a WebSocket connection
-and provides high-level methods for sending messages, changing personas, and
-streaming responses. It handles message parsing, error reporting, and stats
-logging.
+and provides high-level methods for sending messages and streaming responses.
+It handles message parsing, error reporting, and stats logging.
 """
 
 from __future__ import annotations
@@ -26,7 +25,6 @@ from tests.helpers.errors import (
 )
 from tests.helpers.fmt import dim, cyan, magenta, format_metrics_inline
 from tests.helpers.websocket import iter_messages, send_client_end
-from .personas import PersonaDefinition
 from .session import LiveSession
 from .stream import (
     StreamState,
@@ -167,35 +165,6 @@ class LiveClient:
     async def wait_closed(self) -> None:
         await self.ws.wait_closed()
 
-    async def change_persona(self, persona: PersonaDefinition) -> None:
-        """Request a persona change mid-session."""
-        try:
-            payload = self.session.build_persona_payload(persona)
-        except ValueError as exc:
-            logger.warning("%s", exc)
-            return
-        logger.info(
-            "Requesting persona change → name=%s gender=%s personality=%s",
-            persona.name, persona.gender, persona.personality,
-        )
-        await self._send_json(payload)
-        ack = await self._wait_for_chat_prompt_ack()
-        if not ack.get("ok"):
-            logger.error("Persona update failed (code=%s): %s", ack.get("code"), ack.get("message", "unknown error"))
-            return
-        code = ack.get("code")
-        if code == 204:
-            logger.info(
-                "Persona already set to gender=%s personality=%s; no server-side change",
-                ack.get("gender"), ack.get("personality"),
-            )
-            return
-        logger.info(
-            "Persona updated → gender=%s personality=%s (code=%s)",
-            ack.get("gender"), ack.get("personality"), code,
-        )
-        self.session.replace_persona(persona)
-
     async def close(self) -> None:
         """Close the WebSocket connection gracefully."""
         if self._closed:
@@ -284,21 +253,6 @@ class LiveClient:
         if error.is_recoverable():
             return StreamResult(text=ctx.state.final_text, ok=False, error=error)
         raise error
-
-    async def _wait_for_chat_prompt_ack(self) -> dict[str, Any]:
-        try:
-            async for msg in iter_messages(self.ws, timeout=self.recv_timeout):
-                msg_type = msg.get("type")
-                if msg_type == "ack" and msg.get("for") == "chat_prompt":
-                    return msg
-                if msg_type == "error":
-                    _log_server_error(msg)
-                    raise ServerError.from_message(msg)
-        except asyncio.TimeoutError as exc:
-            raise TestClientError("timed out waiting for chat_prompt ack") from exc
-        except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
-            raise ConnectionClosedError("WebSocket closed while waiting for chat_prompt ack") from exc
-        raise TestClientError("WebSocket closed before receiving chat_prompt ack")
 
 
 __all__ = ["LiveClient", "StreamResult"]

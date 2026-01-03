@@ -17,7 +17,6 @@ import websockets
 
 from tests.config import (
     DEFAULT_GENDER,
-    DEFAULT_PERSONALITIES,
     DEFAULT_PERSONALITY,
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_SERVER_WS_URL,
@@ -78,7 +77,6 @@ def _build_start_payload(
         "session_id": session_id,
         "gender": gender,
         "personality": personality,
-        "personalities": DEFAULT_PERSONALITIES,
         "chat_prompt": chat_prompt,
         "history": [],
         "user_utterance": user_msg,

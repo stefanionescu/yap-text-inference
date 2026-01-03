@@ -14,7 +14,6 @@ from typing import Any
 import websockets  # type: ignore[import-not-found]
 
 from tests.config import (
-    DEFAULT_PERSONALITIES,
     DEFAULT_WS_PING_INTERVAL,
     DEFAULT_WS_PING_TIMEOUT,
 )
@@ -89,7 +88,6 @@ def _build_start_payload(
         "session_id": session_id,
         "gender": gender,
         "personality": personality,
-        "personalities": DEFAULT_PERSONALITIES,
         "chat_prompt": chat_prompt,
         "history": history,
         "user_utterance": user_text,
