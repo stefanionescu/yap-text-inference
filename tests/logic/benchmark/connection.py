@@ -101,8 +101,8 @@ async def _consume_stream(
 
             if msg_type == "done":
                 cancelled = bool(msg.get("cancelled"))
-            metrics = finalize_metrics(state, cancelled)
-            return _build_success_result(metrics, phase)
+                metrics = finalize_metrics(state, cancelled)
+                return _build_success_result(metrics, phase)
 
             if msg_type == "error":
                 return _build_error_result(msg, phase)
