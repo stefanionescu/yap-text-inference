@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,13 @@ def _infer_weight_bits(quant_method: str) -> str:
     return "unknown"
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "off", "no"}
+
+
 # ============================================================================
 # Metadata Collection Helpers
 # ============================================================================
@@ -128,6 +136,8 @@ def _collect_env_metadata(
 ) -> dict[str, Any]:
     """Collect metadata from environment variables and runtime detection."""
     env_info = EnvironmentInfo.from_env()
+    kv_cache_type = os.getenv("TRT_KV_CACHE_TYPE", "paged")
+    kv_cache_reuse_enabled = _env_flag("TRT_KV_CACHE_REUSE", kv_cache_type == "paged")
 
     return {
         "sm_arch": env_info.sm_arch,
@@ -135,6 +145,8 @@ def _collect_env_metadata(
         "cuda_toolkit": env_info.cuda_version,
         "tensorrt_llm_version": env_info.trt_version,
         "kv_cache_dtype": _infer_kv_cache_dtype(quant_method),
+        "kv_cache_type": kv_cache_type,
+        "kv_cache_reuse": "enabled" if kv_cache_reuse_enabled else "disabled",
         "awq_block_size": _env_int("TRT_AWQ_BLOCK_SIZE", trt_config.TRT_AWQ_BLOCK_SIZE),
         "calib_size": _env_int("TRT_CALIB_SIZE", trt_config.TRT_CALIB_SIZE),
         "calib_seqlen": _env_int("TRT_CALIB_SEQLEN", trt_config.TRT_CALIB_SEQLEN),

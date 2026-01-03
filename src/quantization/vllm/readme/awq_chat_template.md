@@ -29,6 +29,12 @@ This model was quantized with [{quantizer_name}]({quantizer_link}) from {source_
 - Dataset: {calibration_dataset_effective}
 {calibration_samples_line}- Max sequence length: {calibration_seq_len}
 
+## Runtime Recommendations
+- Engine: {runtime_engine}
+- KV cache dtype: {runtime_kv_cache_dtype}
+- KV cache reuse: {runtime_kv_cache_reuse}
+- Paged attention: {runtime_paged_attention}
+
 ### {quantizer_recipe_heading}
 ```json
 {quant_summary}

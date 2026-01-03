@@ -10,8 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from tests.config import DEFAULT_PERSONALITIES
-
 
 @dataclass
 class ConversationSession:
@@ -51,7 +49,6 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
         "session_id": session.session_id,
         "gender": session.gender,
         "personality": session.personality,
-        "personalities": DEFAULT_PERSONALITIES,
         "chat_prompt": session.chat_prompt,
         "history": session.history,
         "user_utterance": user_text,

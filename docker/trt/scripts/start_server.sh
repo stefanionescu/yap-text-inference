@@ -135,6 +135,7 @@ PYPULL
         --gemm_plugin auto \
         --gpt_attention_plugin float16 \
         --context_fmha enable \
+        --use_paged_context_fmha enable \
         --kv_cache_type paged \
         --remove_input_padding enable \
         --max_input_len "${MAX_IN}" \

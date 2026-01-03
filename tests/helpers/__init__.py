@@ -70,7 +70,6 @@ from .setup import setup_repo_path
 from .concurrency import distribute_requests, sanitize_concurrency
 from .selection import choose_message
 from .websocket import (
-    build_chat_prompt_payload,
     build_start_payload,
     connect_with_retries,
     consume_stream,
@@ -160,7 +159,6 @@ __all__ = [
     # selection
     "choose_message",
     # websocket
-    "build_chat_prompt_payload",
     "build_start_payload",
     "connect_with_retries",
     "consume_stream",

@@ -248,7 +248,6 @@ def print_help(current: str, verbose: bool = False) -> None:
             f"\n{bold('Commands:')}\n"
             f"  {dim('/help')}                Get help with a command\n"
             f"  {dim('/list')}                Show persona names\n"
-            f"  {dim('/persona <name>')}      Switch persona+gender mid-session\n"
             f"  {dim('/history')}             Print accumulated conversation log\n"
             f"  {dim('/info')}                Show session/persona metadata\n"
             f"  {dim('/stats [on|off]')}      Toggle metrics logging\n"

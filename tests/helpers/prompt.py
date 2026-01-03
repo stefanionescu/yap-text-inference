@@ -8,7 +8,7 @@ Prompt sources:
   Used by: warmup, bench, connections, screen_analysis, tool, history tests
   
 - tests/prompts/detailed.py: Full personality matrix
-  Used by: gender, personality tests
+  Used by: live client persona registry and scripts that accept --persona
 """
 
 from __future__ import annotations

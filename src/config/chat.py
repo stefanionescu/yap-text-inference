@@ -34,36 +34,8 @@ CACHE_RESET_INTERVAL_SECONDS = float(os.getenv("CACHE_RESET_INTERVAL_SECONDS", "
 CACHE_RESET_MIN_SESSION_SECONDS = float(os.getenv("CACHE_RESET_MIN_SESSION_SECONDS", "300"))
 
 # ============================================================================
-# TOOL CONTINUATION
+# RESPONSE MESSAGES
 # ============================================================================
-
-# Tool function names that should proceed to chat generation after execution.
-# All other tool functions skip chat and return just the tool result.
-CHAT_CONTINUE_TOOLS: frozenset[str] = frozenset({"take_screenshot"})
-
-# ============================================================================
-# CANNED RESPONSES
-# ============================================================================
-
-# Hard-coded messages for control functions (switch_gender, switch_personality, etc.)
-# These are cycled per session to ensure variety
-CONTROL_FUNCTION_MESSAGES: tuple[str, ...] = (
-    "All done",
-    "Yup sure. Done.",
-    "Alright, gimme a second. Done.",
-    "Sure, it's done.",
-    "That's done for ya.",
-    "Sure thing, done.",
-    "Consider it done.",
-    "Right away. Done.",
-    "There you go.",
-    "No problem, done.",
-    "Easy, done.",
-    "You got it.",
-    "Yep, all set.",
-    "There ya go.",
-    "Cool, all set.",
-)
 
 # Hard-coded messages for message rate limit responses
 MESSAGE_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
@@ -71,14 +43,6 @@ MESSAGE_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
     "I'm a bit overwhelmed sorry, give me a moment to recover.",
     "Damn you really talk a lot, give me a second to recover.",
     "My head's spinning, you're sending too many messages."
-)
-
-# Hard-coded messages for chat prompt update rate limit responses
-CHAT_PROMPT_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
-    "I can't change moods that often, sorry.",
-    "I'm not a robot, wait a bit before you change my personality.",
-    "Nope sorry, you've changed my mood too many times.",
-    "Don't wanna, I'll do it later."
 )
 
 # ============================================================================
@@ -106,10 +70,7 @@ __all__ = [
     "CHAT_TEMPLATE_ENABLE_THINKING",
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",
-    "CHAT_CONTINUE_TOOLS",
-    "CONTROL_FUNCTION_MESSAGES",
     "MESSAGE_RATE_LIMIT_MESSAGES",
-    "CHAT_PROMPT_RATE_LIMIT_MESSAGES",
     "DIGIT_WORDS",
 ]
 

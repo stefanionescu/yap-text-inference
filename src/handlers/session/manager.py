@@ -28,11 +28,6 @@ from .time import format_session_timestamp
 from .config import update_session_config as _update_config, resolve_screen_prefix
 from .history import HistoryController
 from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
-from .rate_limiting import (
-    consume_chat_prompt_update as _consume_rate_limit,
-    get_chat_prompt_last_update_at as _get_rate_limit_ts,
-    set_chat_prompt_last_update_at as _set_rate_limit_ts,
-)
 from .requests import (
     CANCELLED_SENTINEL,
     is_request_cancelled as _is_cancelled,
@@ -142,20 +137,6 @@ class SessionHandler:
             screen_checked_prefix=screen_checked_prefix,
         )
 
-    def get_chat_prompt_last_update_at(self, session_id: str) -> float:
-        """Get timestamp of last chat prompt update."""
-        return _get_rate_limit_ts(self._ensure_state(session_id))
-
-    def set_chat_prompt_last_update_at(self, session_id: str, timestamp: float) -> None:
-        """Set timestamp of last chat prompt update."""
-        _set_rate_limit_ts(self._ensure_state(session_id), timestamp)
-
-    def consume_chat_prompt_update(
-        self, session_id: str, *, limit: int, window_seconds: float
-    ) -> float:
-        """Record a chat prompt update if within rate limit. Returns retry_in seconds or 0."""
-        return _consume_rate_limit(self._ensure_state(session_id), limit=limit, window_seconds=window_seconds)
-
     def get_session_config(self, session_id: str) -> dict[str, Any]:
         """Return a copy of the current session configuration."""
         state = self._get_state(session_id)
@@ -174,19 +155,6 @@ class SessionHandler:
         state = self._get_state(session_id) if session_id else None
         return resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
 
-    def set_personalities(self, session_id: str, personalities: dict[str, list[str]] | None) -> None:
-        """Store the personalities configuration for a session."""
-        self._ensure_state(session_id).personalities = personalities
-
-    def get_personalities(self, session_id: str) -> dict[str, list[str]] | None:
-        """Get the personalities configuration for a session."""
-        state = self._get_state(session_id)
-        return state.personalities if state else None
-
-    def pick_control_message(self, session_id: str) -> str:
-        """Pick a random control message for this session."""
-        from src.execution.tool.messages import pick_control_message
-        return pick_control_message(self._ensure_state(session_id))
 
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""

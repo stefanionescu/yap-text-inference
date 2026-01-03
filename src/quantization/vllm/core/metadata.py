@@ -9,6 +9,32 @@ from typing import Any
 from ..utils.template_utils import generate_readme
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "off", "no"}
+
+
+def _gather_runtime_metadata() -> dict[str, Any]:
+    kv_dtype = (
+        os.getenv("KV_DTYPE")
+        or os.getenv("VLLM_KV_CACHE_DTYPE")
+        or os.getenv("KV_CACHE_DTYPE")
+        or "auto"
+    )
+    use_v1 = _env_flag("VLLM_USE_V1", True)
+    paged_attention = _env_flag("VLLM_PAGED_ATTENTION", True)
+    kv_reuse = _env_flag("VLLM_KV_CACHE_REUSE", True if use_v1 else False)
+    return {
+        "kv_cache_dtype": kv_dtype,
+        "vllm_use_v1": use_v1,
+        "paged_attention": paged_attention,
+        "kv_cache_reuse": kv_reuse,
+        "engine_name": "vLLM V1" if use_v1 else "vLLM legacy scheduler",
+    }
+
+
 def save_quantization_metadata(
     *,
     output_dir: str,
@@ -21,12 +47,23 @@ def save_quantization_metadata(
 ) -> None:
     """Save metadata and generate README for a quantized model."""
 
+    runtime_metadata = _gather_runtime_metadata()
+
     metadata: dict[str, Any] = {
         "source_model": model_path,
         "awq_version": awq_version,
         "quantization_config": quant_config,
         "calibration_seqlen": target_seqlen,
         "pipeline": "yap-text-inference",
+        "runtime_config": runtime_metadata,
+        "runtime_engine": runtime_metadata["engine_name"],
+        "runtime_kv_cache_dtype": runtime_metadata["kv_cache_dtype"],
+        "runtime_kv_cache_reuse": "enabled"
+        if runtime_metadata["kv_cache_reuse"]
+        else "disabled",
+        "runtime_paged_attention": "enabled"
+        if runtime_metadata["paged_attention"]
+        else "disabled",
     }
 
     if dataset_info:

@@ -135,6 +135,16 @@ def generate_readme(
 
     license_info = compute_license_info(model_path, is_tool=is_tool, is_hf_model=is_hf_model)
 
+    runtime_config = metadata.get("runtime_config") or {}
+    runtime_engine = runtime_config.get("engine_name") or (
+        "vLLM V1" if runtime_config.get("vllm_use_v1", True) else "vLLM legacy scheduler"
+    )
+    runtime_kv_dtype = runtime_config.get("kv_cache_dtype", "auto")
+    runtime_kv_reuse = "enabled" if runtime_config.get("kv_cache_reuse", True) else "disabled"
+    runtime_paged_attention = (
+        "enabled" if runtime_config.get("paged_attention", True) else "disabled"
+    )
+
     template_vars = {
         'model_name': model_name,
         'base_model': base_model,
@@ -154,6 +164,12 @@ def generate_readme(
         'hf_size_note': hf_size_note,
         **quantizer_fields,
         **license_info,
+        'runtime_engine': metadata.get("runtime_engine", runtime_engine),
+        'runtime_kv_cache_dtype': metadata.get("runtime_kv_cache_dtype", runtime_kv_dtype),
+        'runtime_kv_cache_reuse': metadata.get("runtime_kv_cache_reuse", runtime_kv_reuse),
+        'runtime_paged_attention': metadata.get(
+            "runtime_paged_attention", runtime_paged_attention
+        ),
     }
 
     # Try to use template, fallback to basic if not found

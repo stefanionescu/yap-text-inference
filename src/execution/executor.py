@@ -33,7 +33,6 @@ from fastapi import WebSocket
 from .tool.parser import parse_tool_result
 from .chat import run_chat_generation
 from ..handlers.session import session_handler
-from ..config.chat import CHAT_CONTINUE_TOOLS
 from ..config.timeouts import TOOL_TIMEOUT_S
 from ..handlers.websocket.helpers import (
     cancel_task,
@@ -44,40 +43,6 @@ from ..handlers.websocket.helpers import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _should_skip_chat(raw_field: list | None) -> bool:
-    """Determine if chat generation should be skipped based on tool result.
-    
-    Control functions like personality/gender switches don't need the chat
-    model - they return hard-coded responses instead. This saves latency
-    and GPU resources for simple control operations.
-    
-    Args:
-        raw_field: Parsed tool result (list of tool dicts).
-        
-    Returns:
-        True if any detected tool is NOT in CHAT_CONTINUE_TOOLS.
-        
-    Chat is skipped for:
-        - switch_gender, switch_personality, switch_gender_and_personality
-        - start_freestyle, stop_freestyle
-        
-    Chat continues for:
-        - take_screenshot (needs CHECK SCREEN prefix)
-        - Empty results (no tool detected)
-    """
-    if not raw_field or not isinstance(raw_field, list):
-        return False
-    
-    # Check if any tool in the result is NOT in the continue set
-    for item in raw_field:
-        if isinstance(item, dict):
-            name = item.get("name")
-            if name and name not in CHAT_CONTINUE_TOOLS:
-                return True
-    
-    return False
 
 
 async def run_execution(
@@ -140,21 +105,6 @@ async def run_execution(
         # Tool says NO (or timed out): notify client
         await send_toolcall(ws, "no", raw_field)
         logger.info("sequential_exec: sent toolcall no")
-
-    # Check if we should skip chat (control functions like switch_gender, etc.)
-    if _should_skip_chat(raw_field):
-        # Control function detected - use hard-coded message instead of chat model
-        logger.info("sequential_exec: control function detected, using hard-coded response")
-        # Pick a cycled control message for variety
-        control_message = session_handler.pick_control_message(session_id)
-        # Send the message as token + final + done
-        await safe_send_json(ws, {"type": "token", "text": control_message})
-        await safe_send_json(ws, {"type": "final", "normalized_text": control_message})
-        await safe_send_json(ws, {"type": "done", "usage": {}})
-        # Record both user utterance and control message in history
-        session_handler.append_history_turn(session_id, user_utt, control_message)
-        logger.info("sequential_exec: done (control function, msg=%r)", control_message)
-        return
 
     # Start chat stream (for take_screenshot or no tool call)
     chat_req_id = f"chat-{uuid.uuid4()}"

@@ -19,7 +19,6 @@ Sampling Limits:
 Rate Limits:
     - WS_MAX_MESSAGES_PER_WINDOW: Message rate limit
     - WS_MAX_CANCELS_PER_WINDOW: Cancel rate limit
-    - CHAT_PROMPT_UPDATE_MAX_PER_WINDOW: Prompt update limit
 
 Memory Tuning:
     - MAX_NUM_SEQS_*: Batch size tuning by GPU size
@@ -65,10 +64,6 @@ CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "2000"))
 # Personality validation
 PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
 
-# Personalities list limits
-MAX_PERSONALITIES = int(os.getenv("MAX_PERSONALITIES", "50"))
-MAX_SYNONYMS_PER_PERSONALITY = int(os.getenv("MAX_SYNONYMS_PER_PERSONALITY", "10"))
-
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
@@ -78,10 +73,6 @@ STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
 TRIMMED_HISTORY_LENGTH = int(os.getenv("TRIMMED_HISTORY_LENGTH", "2000"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "500"))
-
-# Persona update pacing (rolling window)
-CHAT_PROMPT_UPDATE_WINDOW_SECONDS = float(os.getenv("CHAT_PROMPT_UPDATE_WINDOW_SECONDS", "60"))
-CHAT_PROMPT_UPDATE_MAX_PER_WINDOW = int(os.getenv("CHAT_PROMPT_UPDATE_MAX_PER_WINDOW", "4"))
 
 # WebSocket message/cancel rate limits (rolling window)
 WS_MESSAGE_WINDOW_SECONDS = float(os.getenv("WS_MESSAGE_WINDOW_SECONDS", "60"))
@@ -178,14 +169,10 @@ __all__ = [
     "CHAT_FREQUENCY_PENALTY_MAX",
     "CHAT_PROMPT_MAX_TOKENS",
     "PERSONALITY_MAX_LEN",
-    "MAX_PERSONALITIES",
-    "MAX_SYNONYMS_PER_PERSONALITY",
     "STREAM_FLUSH_MS",
     "HISTORY_MAX_TOKENS",
     "TRIMMED_HISTORY_LENGTH",
     "USER_UTT_MAX_TOKENS",
-    "CHAT_PROMPT_UPDATE_WINDOW_SECONDS",
-    "CHAT_PROMPT_UPDATE_MAX_PER_WINDOW",
     "WS_MESSAGE_WINDOW_SECONDS",
     "WS_MAX_MESSAGES_PER_WINDOW",
     "WS_CANCEL_WINDOW_SECONDS",

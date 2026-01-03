@@ -28,8 +28,6 @@ This document covers advanced operations, configuration, and deep-dive details f
 - [Test Clients](#test-clients)
   - [Warmup Test Client](#warmup-test-client)
   - [Interactive Live Client](#interactive-live-client)
-  - [Personality Switch Test](#personality-switch-test)
-  - [Gender Switch Test](#gender-switch-test)
   - [Conversation History Test](#conversation-history-test)
   - [Screen Analysis / Toolcall Test](#screen-analysis--toolcall-test)
   - [Tool Regression Test](#tool-regression-test)
@@ -221,7 +219,7 @@ The server uses persistent WebSocket connections. Each client provides a `sessio
 - **Heartbeat**: `{"type":"ping"}` keeps the socket active during long pauses. The server answers with `{"type":"pong"}`; receiving `{"type":"pong"}` from clients is treated as a no-op. Every ping/ack resets the idle timer.
 - **Idle timeout**: Connections with no activity for 150 s (configurable via `WS_IDLE_TIMEOUT_S`) are closed with code `4000`. Send periodic pings or requests to stay connected longer.
 - **Sentinel shortcuts**: The default `WS_END_SENTINEL="__END__"` / `WS_CANCEL_SENTINEL="__CANCEL__"` are accepted as raw text frames for clients that can't emit JSON.
-- **Rate limits**: Rolling-window quotas for both general messages and cancel messages are enforced per connection, while persona updates are limited per session. Tune the behavior via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS`, `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS`, and `CHAT_PROMPT_UPDATE_MAX_PER_WINDOW` / `CHAT_PROMPT_UPDATE_WINDOW_SECONDS` (see `src/config/limits.py` for defaults).
+- **Rate limits**: Rolling-window quotas for both general messages and cancel messages are enforced per connection. Tune the behavior via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS` (see `src/config/limits.py` for defaults).
 - **Connection limit**: New connections are limited by `MAX_CONCURRENT_CONNECTIONS`. When the server returns `server_at_capacity`, retry with backoff.
 - **Done frame**: Every turn ends with `{"type":"done","usage":{...}}` on success, or `{"type":"done","cancelled":true}` when interrupted.
 
@@ -258,11 +256,6 @@ Start a turn:
   "chat_prompt": "...full system prompt for the assistant...",
   "personality": "savage|flirty|...",
   "gender": "female|male",
-  "personalities": {
-    "flirty": ["horny", "sexy"],
-    "savage": ["unfiltered"],
-    "friendly": []
-  },
   "history": [
     {"role": "user", "content": "previous message"},
     {"role": "assistant", "content": "previous reply"}
@@ -356,7 +349,7 @@ Response handling:
 ### Rate Limits
 
 - **Per connection:** Messages and cancels have rate limits. Configure via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS`.
-- **Per session:** Persona updates have their own limit via `CHAT_PROMPT_UPDATE_MAX_PER_WINDOW` / `CHAT_PROMPT_UPDATE_WINDOW_SECONDS`.
+- **Per session:** Persona updates are not supported mid-session; the system prompt defined in the initial `start` message remains fixed.
 
 Defaults are in `src/config/limits.py`. Set limit or window to `0` to disable.
 
@@ -504,39 +497,8 @@ Flags:
 - `--persona/-p`: persona key from `tests/prompts/detailed.py` (defaults to `anna_flirty`)
 - `--timeout`: receive timeout in seconds (default 60)
 - `--warm`: start with pre-built conversation history for testing recall
-- `--no-chat-prompt`: disable chat prompts for tool-only deployments; persona switches are disabled automatically when chat prompts are off
+- `--no-chat-prompt`: disable chat prompts for tool-only deployments (screenshot-only)
 - positional text: optional opener message
-
-### Personality Switch Test
-
-```bash
-# run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/personality.py \
-  --server ws://127.0.0.1:8000 \
-  --switches 3 \
-  --delay 2
-```
-
-Cycles through 5 personalities while alternating genders and maintaining conversation history. Requires a chat model.
-
-`PERSONA_VARIANTS`, reply lists, and switch counts live in `tests/config`.
-
-### Gender Switch Test
-
-```bash
-# run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/gender.py \
-  --server ws://127.0.0.1:8000 \
-  --switches 3 \
-  --delay 2
-```
-
-Cycles through gender configurations while maintaining conversation history. Requires a chat model.
-
-Both tests share the same CLI flags:
-- `--switches`: Number of chat prompt switches (default 5)
-- `--delay`: Seconds between switches (default 2)
-- Sampling overrides: `--temperature`, `--top_p`, `--top_k`, `--min_p`, `--repetition_penalty`
 
 ### Conversation History Test
 

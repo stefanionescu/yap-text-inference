@@ -30,8 +30,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..rate_limit import SlidingWindowRateLimiter
-
 # Sessions are evicted after this many seconds of inactivity
 SESSION_IDLE_TTL_SECONDS = int(os.getenv("SESSION_IDLE_TTL_SECONDS", "1800"))
 
@@ -70,10 +68,6 @@ class SessionState:
         tool_request_id: ID of the current tool/classifier request.
         created_at: Monotonic timestamp when session was created.
         last_access: Monotonic timestamp of last activity (for TTL eviction).
-        chat_prompt_last_update_at: When the chat prompt was last updated.
-        chat_prompt_rate_limiter: Rate limiter for persona updates.
-        personalities: Mapping of personality names to synonyms (for matching).
-        used_control_messages: Set of control messages already shown (for variety).
         check_screen_prefix_tokens: Cached token count for screenshot prefix.
         screen_checked_prefix_tokens: Cached token count for followup prefix.
     """
@@ -86,13 +80,6 @@ class SessionState:
     tool_request_id: str | None = None  # Tool request tracking
     created_at: float = field(default_factory=time.monotonic)
     last_access: float = field(default_factory=time.monotonic)
-    chat_prompt_last_update_at: float = 0.0
-    chat_prompt_rate_limiter: SlidingWindowRateLimiter | None = None
-    # Personality mapping: {personality_name: [synonym1, synonym2, ...]}
-    # Set on connection via start message
-    personalities: dict[str, list[str]] | None = None
-    # Track used control messages to ensure variety (reset when all used)
-    used_control_messages: set[str] = field(default_factory=set)
     # Cached token counts for screen prefixes (computed once when prefixes are set)
     check_screen_prefix_tokens: int = 0
     screen_checked_prefix_tokens: int = 0

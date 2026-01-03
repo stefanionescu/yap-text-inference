@@ -5,7 +5,7 @@ connection handling, message parsing, payload building, and stream consumption.
 """
 
 from .message import dispatch_message, iter_messages, parse_message
-from .payloads import build_chat_prompt_payload, build_start_payload
+from .payloads import build_start_payload
 from .stream import (
     consume_stream,
     create_tracker,
@@ -21,7 +21,6 @@ __all__ = [
     "iter_messages",
     "parse_message",
     # payloads
-    "build_chat_prompt_payload",
     "build_start_payload",
     # stream
     "consume_stream",
