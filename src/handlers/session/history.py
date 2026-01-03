@@ -193,7 +193,19 @@ def trim_history(state: SessionState) -> None:
     if tokens <= HISTORY_MAX_TOKENS:
         return
     
-    # Trim down to the target length
+    # Calculate tokens to remove and estimate turns to drop
+    tokens_to_remove = tokens - TRIMMED_HISTORY_LENGTH
+    avg_tokens_per_turn = tokens // len(state.history_turns)
+    estimated_drops = max(1, tokens_to_remove // max(1, avg_tokens_per_turn))
+    
+    # Drop estimated turns in one batch (capped to leave at least 1 turn)
+    drops = min(estimated_drops, len(state.history_turns) - 1)
+    if drops > 0:
+        state.history_turns = state.history_turns[drops:]
+    
+    # Verify and adjust if still over target (usually 0-1 more iterations)
+    rendered = render_history(state.history_turns)
+    tokens = count_tokens_chat(rendered) if rendered else 0
     while state.history_turns and tokens > TRIMMED_HISTORY_LENGTH:
         state.history_turns.pop(0)
         rendered = render_history(state.history_turns)
