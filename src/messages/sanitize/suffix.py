@@ -49,7 +49,9 @@ def html_entity_suffix_len(text: str) -> int:
 def html_tag_suffix_len(raw_text: str) -> int:
     """Compute length to retain if last '<' is not closed.
     
-    Returns 0 if the last '<' has a matching '>' after it.
+    Returns 0 if:
+    - The last '<' has a matching '>' after it
+    - The '<' is followed by a digit (e.g., '<3' heart emoticon, not a tag)
     """
     if not raw_text:
         return 0
@@ -58,6 +60,9 @@ def html_tag_suffix_len(raw_text: str) -> int:
         return 0
     last_gt = raw_text.rfind(">")
     if last_gt > last_lt:
+        return 0
+    # '<' followed by digit is not an HTML tag (e.g., '<3' heart emoticon)
+    if last_lt + 1 < len(raw_text) and raw_text[last_lt + 1].isdigit():
         return 0
     return min(len(raw_text) - last_lt, 256)
 
@@ -95,6 +100,36 @@ def phone_suffix_len(raw_text: str) -> int:
     return min(len(raw_text) - partial.start(), 64)
 
 
+def emoticon_suffix_len(text: str) -> int:
+    """Compute length to retain for partial emoticon detection.
+    
+    Keeps trailing characters that could form a complete emoticon
+    across chunk boundaries. This prevents emitting partial emoticons
+    like ':' or ':-' that should be stripped when completed as ':-)'
+    """
+    if not text:
+        return 0
+    # Match potential partial emoticons at end of text:
+    # - Eyes only: : = ; 8
+    # - Eyes + nose: :- ;- =- :^ ;^ =^
+    # - Eyes + space (could be followed by emoticon): " :"
+    # - Potential heart: <
+    # - Potential XD: X or x at end
+    partial = re.search(
+        r"(?:"
+        r"[:=;8][-^]?|"        # Eyes with optional nose (no mouth yet)
+        r"<|"                   # Potential heart <3
+        r"[xX](?![a-zA-Z])|"    # Potential XD
+        r"\^_?|"                # Potential ^_^
+        r"[tT]_?"               # Potential T_T
+        r")$",
+        text,
+    )
+    if not partial:
+        return 0
+    return len(text) - partial.start()
+
+
 def compute_stable_and_tail_lengths(
     raw_tail: str,
     sanitized: str,
@@ -114,10 +149,11 @@ def compute_stable_and_tail_lengths(
     html_tag_guard = html_tag_suffix_len(raw_tail)
     email_guard = email_suffix_len(raw_tail)
     phone_guard = phone_suffix_len(raw_tail)
+    emoticon_guard = emoticon_suffix_len(raw_tail)
 
     tail_len = min(
         len(sanitized),
-        max(unstable, html_guard, html_tag_guard, email_guard, phone_guard, 0),
+        max(unstable, html_guard, html_tag_guard, email_guard, phone_guard, emoticon_guard, 0),
     )
     stable_len = len(sanitized) - tail_len
 
@@ -135,6 +171,7 @@ __all__ = [
     "html_tag_suffix_len",
     "email_suffix_len",
     "phone_suffix_len",
+    "emoticon_suffix_len",
     "compute_stable_and_tail_lengths",
 ]
 

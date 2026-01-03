@@ -151,8 +151,8 @@ done
 # =============================================================================
 
 if [[ "${warmup_all_passed}" -eq 1 ]]; then
-  log_info "[warmup] ✓ Warmup + bench complete."
-  echo "[warmup] ✓ Warmup + bench complete." >> "${ROOT_DIR}/server.log"
+  log_info "[warmup] ✓ Warmup complete."
+  echo "[warmup] ✓ Warmup complete." >> "${ROOT_DIR}/server.log"
   exit 0
 fi
 
