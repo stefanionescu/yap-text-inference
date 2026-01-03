@@ -13,7 +13,7 @@ WARMUP_DEFAULT_MESSAGES = [
     # "who was Columbus?",
     # "THIS DAY IS AWESOOOOOOOME!",
     # "compliment me in a hot way",
-    "who was Alexander Hamilton?",
+    # "who was Alexander Hamilton?",
     # "life sucks in Lewisham, fuck this",
     # (
     #     "ON THE SCREEN NOW: A gorgeous brunette in a tight white tee smirks "

@@ -1,0 +1,29 @@
+# Lightweight dependencies for tool-only deployment (classifier model).
+# The tool model uses plain PyTorch + HuggingFace transformers, no TRT-LLM or vLLM.
+#
+# Install via:
+#   pip install -r requirements-tool.txt
+#
+# NOTE: torch is installed separately via scripts to match CUDA toolkit version.
+
+--extra-index-url https://download.pytorch.org/whl/cu130
+
+# PyTorch (CUDA 13.0)
+torch==2.9.0+cu130 ; sys_platform == 'linux'
+
+# HuggingFace for AutoModelForSequenceClassification
+transformers==4.56.0
+huggingface_hub==0.36.0
+hf_transfer==0.1.8
+
+# Core server dependencies
+fastapi==0.121.3
+uvicorn[standard]==0.34.0
+websockets==12.0
+orjson==3.10.7
+python-dotenv==1.0.1
+
+# Text sanitization
+phonenumbers==9.0.3
+ftfy==6.2.3
+

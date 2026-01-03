@@ -120,9 +120,6 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
 ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
     # Pre-quantized AWQ/W4A16 models
     "yapwithai/readyart-broken-tutu-24B-transgression-v2.0-trt-awq", # LOVE the initial reactions, gotta test more
-
-    # Pre-quantized FP8 models
-    
 ]
 
 ALLOWED_TOOL_MODELS: list[str] = [
