@@ -22,6 +22,5 @@ ensure_docker_login() {
   if [ -n "${DOCKER_TOKEN:-}" ]; then
     echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USERNAME}" --password-stdin && return
   fi
-  log_warn "[build] ⚠ Not logged in to Docker Hub and no DOCKER_PASSWORD/DOCKER_TOKEN set; push may fail."
 }
 

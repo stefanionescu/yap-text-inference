@@ -19,11 +19,7 @@ from .workers import run_instant_benchmark, run_windowed_benchmark
 
 
 def _build_config(args) -> BenchmarkConfig:
-    """Build benchmark configuration from CLI arguments.
-    
-    Note: chat_prompt is always required by the server. The --no-chat-prompt
-    flag is no longer supported for benchmarks.
-    """
+    """Build benchmark configuration from CLI arguments."""
     message = choose_message(args.message, fallback=BENCHMARK_FALLBACK_MESSAGE)
     sampling = getattr(args, "sampling", None) or None
     double_ttfb = bool(getattr(args, "double_ttfb", False))

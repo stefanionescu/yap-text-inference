@@ -7,10 +7,10 @@ source "${SCRIPT_DIR}/logs.sh"
 log_info "[vllm] Setting environment defaults (vLLM AWQ image)..."
 
 # Source modular env configuration
-source "${SCRIPT_DIR}/env/python_flashinfer.sh"
-source "${SCRIPT_DIR}/env/awq_models.sh"
-source "${SCRIPT_DIR}/env/gpu_detect.sh"
-source "${SCRIPT_DIR}/env/final_defaults.sh"
+source "${SCRIPT_DIR}/env/runtime.sh"
+source "${SCRIPT_DIR}/env/deploy.sh"
+source "${SCRIPT_DIR}/env/gpu.sh"
+source "${SCRIPT_DIR}/env/defaults.sh"
 
 log_info "[vllm] Docker vLLM Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 if [ "${DEPLOY_CHAT}" = "1" ]; then

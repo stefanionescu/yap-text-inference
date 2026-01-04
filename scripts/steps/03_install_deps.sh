@@ -32,8 +32,6 @@ DEPLOY_MODE="${DEPLOY_MODE:-both}"
 # Skip heavy engine dependencies and use minimal requirements.
 
 if [ "${DEPLOY_MODE}" = "tool" ]; then
-  log_info "[deps] Tool-only mode: installing lightweight dependencies..."
-  
   export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
   
   deps_export_pip

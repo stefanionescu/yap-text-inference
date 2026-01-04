@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-
-# Final defaults if still unset
+# TRT fallback defaults.
+#
+# Sets fallback values for any configuration not already set.
 export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}
 
 # Performance tuning

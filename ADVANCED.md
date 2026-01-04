@@ -458,7 +458,7 @@ The pipeline writes metadata (`awq_metadata.json` or `build_metadata.json`) and 
 
 All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/warmup.py`) or source `.venv-local/bin/activate` for CPU-only testing.
 
-> **Tool-only deployments:** Pass `--no-chat-prompt` to skip chat prompts. `scripts/warmup.sh` auto-detects the deploy mode and forwards this flag when needed.
+> **Note:** Test clients always send a chat prompt. In tool-only deployments, the server ignores it automatically.
 
 ### Warmup Test Client
 
@@ -469,7 +469,6 @@ python3 tests/warmup.py "who was Columbus?"
 python3 tests/warmup.py --gender male --personality flirty "hello there"
 ```
 
-Append `--no-chat-prompt` for tool-only deployments where no chat model is available.
 
 Environment overrides honored by the client:
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
@@ -502,7 +501,6 @@ Flags:
 - `--persona/-p`: persona key from `tests/prompts/detailed.py` (defaults to `anna_flirty`)
 - `--timeout`: receive timeout in seconds (default 60)
 - `--warm`: start with pre-built conversation history for testing recall
-- `--no-chat-prompt`: disable chat prompts for tool-only deployments (screenshot-only)
 - positional text: optional opener message
 
 ### Conversation History Test
@@ -512,8 +510,6 @@ Flags:
 TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
 ```
 
-Supports `--no-chat-prompt` for tool-only deployments.
-
 Streams a 10-turn script to test history eviction and KV-cache reuse.
 
 ### Screen Analysis / Toolcall Test
@@ -522,7 +518,7 @@ Streams a 10-turn script to test history eviction and KV-cache reuse.
 TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
 ```
 
-Tests that toolcall decisions fire before chat streaming. Pass `--no-chat-prompt` for tool-only deployments.
+Tests that toolcall decisions fire before chat streaming.
 
 ### Tool Regression Test
 
@@ -538,7 +534,6 @@ TEXT_API_KEY=your_api_key python3 tests/tool.py \
 - `--timeout`: wait per tool decision (default 5 s)
 - `--concurrency`: parallel cases if the tool engine has capacity
 - `--limit`: cap the number of replayed cases for faster smoke runs
-- `--no-chat-prompt`: skip chat prompts for tool-only deployments
 
 ### Benchmark Client
 

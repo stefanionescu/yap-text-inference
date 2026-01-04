@@ -80,14 +80,6 @@ run_warmup_tests() {
   
   log_info "[${ENGINE_PREFIX}-warmup] Running warmup tests..."
   
-  # Determine prompt mode based on deploy configuration
-  local prompt_args=()
-  case "${DEPLOY_MODE:-both}" in
-    chat) ;;
-    tool) prompt_args+=(--no-chat-prompt) ;;
-    both) ;;
-  esac
-  
   # Run warmup with retries
   local attempt=1
   local warmup_log="${LOG_DIR}/warmup.log"
@@ -95,7 +87,7 @@ run_warmup_tests() {
   while [ $attempt -le $WARMUP_RETRIES ]; do
     log_info "[${ENGINE_PREFIX}-warmup] Warmup attempt ${attempt}/${WARMUP_RETRIES}"
     
-    if "${py_bin}" "${warmup_test}" "${prompt_args[@]}" > "${warmup_log}" 2>&1; then
+    if "${py_bin}" "${warmup_test}" > "${warmup_log}" 2>&1; then
       log_success "[${ENGINE_PREFIX}-warmup] ✓ Warmup tests passed"
       return 0
     fi

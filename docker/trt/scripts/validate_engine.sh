@@ -9,8 +9,8 @@
 # - SM arch mismatch → ERROR
 # - Tool-only deployment (no engine) → SKIP
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../logs.sh"
+_VALIDATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VALIDATE_SCRIPT_DIR}/logs.sh"
 
 validate_engine_gpu_compatibility() {
   local engine_dir="${TRT_ENGINE_DIR:-/opt/engines/trt-chat}"
