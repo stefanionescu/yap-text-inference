@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
+# vLLM runtime detection.
+#
+# Detects runtime capabilities like FlashInfer and sets quantization defaults.
 
 # Ensure QUANTIZATION is set (Docker vLLM AWQ stack defaults to 'awq')
 export QUANTIZATION=${QUANTIZATION:-awq}
+
+_RUNTIME_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Detect FlashInfer availability (optional fast-path)
 HAS_FLASHINFER=0
 if [ -f "/opt/venv/bin/python" ]; then
   PY_BIN="/opt/venv/bin/python"
-elif [ -f "${SCRIPT_DIR}/../../.venv/bin/python" ]; then
-  PY_BIN="${SCRIPT_DIR}/../../.venv/bin/python"
+elif [ -f "${_RUNTIME_SCRIPT_DIR}/../../.venv/bin/python" ]; then
+  PY_BIN="${_RUNTIME_SCRIPT_DIR}/../../.venv/bin/python"
 elif command -v python >/dev/null 2>&1; then
   PY_BIN="python"
 else

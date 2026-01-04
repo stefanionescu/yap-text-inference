@@ -3,7 +3,7 @@
 # Unified GPU Detection Utilities for Docker
 # =============================================================================
 # Single source of truth for GPU architecture detection across Docker images.
-# Mirrors scripts/lib/common/gpu_detect.sh for consistency.
+# Mirrors scripts/lib/common/gpu.sh for consistency.
 #
 # Priority order for detection:
 #   1. GPU_SM_ARCH env var (if already set)

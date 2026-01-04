@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-
-# TensorRT-LLM engine configuration
+# TensorRT-LLM engine configuration.
+#
+# Sets TRT engine paths and inference limits.
 
 # Engine directory - where the compiled TRT engine is stored
 export TRT_ENGINE_DIR=${TRT_ENGINE_DIR:-/opt/engines/trt-chat}

@@ -78,12 +78,6 @@ fi
 warmup_log_internal "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
 
 warmup_all_passed=1
-prompt_mode="$(warmup_detect_prompt_mode)"
-PROMPT_MODE_FLAGS=()
-if [[ "${prompt_mode}" == "tool" ]]; then
-  PROMPT_MODE_FLAGS=(--no-chat-prompt)
-fi
-warmup_log_internal "Using prompt mode '${prompt_mode}' for warmup + bench tests"
 
 warmup_detect_persona_variants "${PY_BIN}"
 for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
@@ -125,7 +119,7 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
     "${PY_BIN}" \
     "${LOG_DIR}" \
     "${WARMUP_RETRIES}" \
-    "tests/warmup.py" "${PROMPT_MODE_FLAGS[@]}" "${persona_args[@]}"; then
+    "tests/warmup.py" "${persona_args[@]}"; then
     warmup_all_passed=0
   fi
   sleep "${WARMUP_RUN_DELAY_SECS}"
@@ -139,7 +133,6 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
     "${LOG_DIR}" \
     "${WARMUP_RETRIES}" \
     "tests/bench.py" \
-    "${PROMPT_MODE_FLAGS[@]}" \
     "--requests" "${max_conn}" \
     "--concurrency" "${max_conn}" \
     "${persona_args[@]}"; then

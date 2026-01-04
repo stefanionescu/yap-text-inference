@@ -4,13 +4,13 @@
 # This wrapper exists so runtime scripts can source logs.sh from the same
 # directory without knowing about the common/ layout.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LOGS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Find common scripts directory (works in Docker and dev contexts)
 if [ -d "/app/common/scripts" ]; then
   source "/app/common/scripts/logs.sh"
-elif [ -d "${SCRIPT_DIR}/../../common/scripts" ]; then
-  source "${SCRIPT_DIR}/../../common/scripts/logs.sh"
+elif [ -d "${_LOGS_SCRIPT_DIR}/../../common/scripts" ]; then
+  source "${_LOGS_SCRIPT_DIR}/../../common/scripts/logs.sh"
 else
   # Fallback logging if common not found
   log_info() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
