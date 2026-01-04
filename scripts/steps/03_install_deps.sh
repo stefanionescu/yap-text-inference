@@ -43,10 +43,26 @@ if [ "${DEPLOY_MODE}" = "tool" ]; then
   activate_venv "${VENV_DIR}" || exit 1
   
   # Install lightweight tool-only requirements
+  # Apply tool noise filter unless SHOW_TOOL_LOGS is enabled
   log_info "[deps] Installing tool-only requirements..."
-  if ! pip install --no-cache-dir -r "${ROOT_DIR}/requirements-tool.txt"; then
-    log_err "[deps] ✗ Failed to install tool-only requirements"
-    exit 1
+  if [ "${SHOW_TOOL_LOGS:-0}" = "1" ]; then
+    pip install --no-cache-dir -r "${ROOT_DIR}/requirements-tool.txt" || {
+      log_err "[deps] ✗ Failed to install tool-only requirements"
+      exit 1
+    }
+  else
+    python -c "from src.scripts.filters.tool import configure_tool_logging; configure_tool_logging()" 2>/dev/null || true
+    pip install --no-cache-dir -r "${ROOT_DIR}/requirements-tool.txt" 2>&1 | python -c "
+import sys
+from src.scripts.filters.tool import is_tool_noise
+for line in sys.stdin:
+    if not is_tool_noise(line):
+        sys.stdout.write(line)
+        sys.stdout.flush()
+" || {
+      log_err "[deps] ✗ Failed to install tool-only requirements"
+      exit 1
+    }
   fi
   
   log_info "[deps] ✓ Tool-only dependencies installed"

@@ -14,6 +14,7 @@ args_init_common_state() {
   SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
   SHOW_VLLM_LOGS="${SHOW_VLLM_LOGS:-0}"
   SHOW_LLMCOMPRESSOR_LOGS="${SHOW_LLMCOMPRESSOR_LOGS:-0}"
+  SHOW_TOOL_LOGS="${SHOW_TOOL_LOGS:-0}"
   HF_AWQ_PUSH_REQUESTED="${HF_AWQ_PUSH_REQUESTED:-0}"
   HF_AWQ_PUSH=0
   HF_ENGINE_PUSH_REQUESTED="${HF_ENGINE_PUSH_REQUESTED:-0}"
@@ -40,7 +41,7 @@ args_validate_common_state() {
 
 # Export all common argument state variables.
 args_export_common_state() {
-  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS
+  export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS SHOW_TOOL_LOGS
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
   export INFERENCE_ENGINE
@@ -69,6 +70,10 @@ args_parse_common_flag() {
       ;;
     --show-llmcompressor-logs)
       SHOW_LLMCOMPRESSOR_LOGS=1
+      return 0
+      ;;
+    --show-tool-logs)
+      SHOW_TOOL_LOGS=1
       return 0
       ;;
     --push-quant)
@@ -120,6 +125,9 @@ args_build_forward_flags() {
   fi
   if [ "${SHOW_LLMCOMPRESSOR_LOGS:-0}" = "1" ]; then
     ARGS_FORWARD_FLAGS+=("--show-llmcompressor-logs")
+  fi
+  if [ "${SHOW_TOOL_LOGS:-0}" = "1" ]; then
+    ARGS_FORWARD_FLAGS+=("--show-tool-logs")
   fi
   if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ]; then
     ARGS_FORWARD_FLAGS+=("--push-quant")

@@ -144,6 +144,30 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 
 # ============================================================================
+# TOOL CLASSIFIER LOG NOISE PATTERNS
+# ============================================================================
+
+# Patterns for suppressing tool classifier warmup and dependency install noise.
+# These match pip output and classifier initialization logs during tool deployment.
+TOOL_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # torch_dtype deprecation warning from transformers
+    re.compile(r"`?torch_dtype`?\s*(is\s+)?deprecated", re.IGNORECASE),
+    # Classifier warmup logs from src.engines.warmup
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*tool classifier", re.IGNORECASE),
+    # Classifier ready logs from src.classifier.adapter
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.classifier\.adapter:\d+\]"),
+    # pip install output lines
+    re.compile(r"^(?:Requirement already satisfied|Collecting|Downloading|Installing collected packages|Successfully installed)", re.IGNORECASE),
+    re.compile(r"^\s+(?:Downloading|Using cached)\s+\S+\.whl", re.IGNORECASE),
+    re.compile(r"^\s+Attempting uninstall:", re.IGNORECASE),
+    re.compile(r"^\s+Found existing installation:", re.IGNORECASE),
+    re.compile(r"^\s+Uninstalling \S+:", re.IGNORECASE),
+    re.compile(r"^\s+Successfully uninstalled", re.IGNORECASE),
+    re.compile(r"^Looking in indexes:", re.IGNORECASE),
+)
+
+
+# ============================================================================
 # LLMCOMPRESSOR LOG NOISE PATTERNS
 # ============================================================================
 
@@ -274,6 +298,8 @@ __all__ = [
     "TRTLLM_NOISE_PATTERNS",
     # vLLM log noise patterns
     "VLLM_NOISE_PATTERNS",
+    # Tool classifier log noise patterns
+    "TOOL_NOISE_PATTERNS",
     # LLMCompressor log noise patterns
     "LLMCOMPRESSOR_NOISE_PATTERNS",
     # Text sanitization patterns

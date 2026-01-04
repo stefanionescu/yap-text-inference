@@ -6,12 +6,14 @@ This module orchestrates log filtering across multiple libraries:
 - TensorRT-LLM: Noise suppression via stream filters
 - vLLM: Engine initialization and worker process output
 - LLMCompressor/AutoAWQ: Calibration progress bars
+- Tool classifier: Warmup logs and pip install output
 
 Controlled by environment variables:
 - SHOW_HF_LOGS: Enable HuggingFace progress bars (default: False)
 - SHOW_TRT_LOGS: Enable TensorRT-LLM verbose output (default: False)
 - SHOW_VLLM_LOGS: Enable vLLM engine initialization output (default: False)
 - SHOW_LLMCOMPRESSOR_LOGS: Enable LLMCompressor/AutoAWQ calibration output (default: False)
+- SHOW_TOOL_LOGS: Enable tool classifier warmup and install output (default: False)
 
 Usage:
     # Call configure() early, before other libraries are imported
@@ -23,6 +25,7 @@ Usage:
     from src.scripts.filters.trt import configure_trt_logging
     from src.scripts.filters.vllm import configure_vllm_logging
     from src.scripts.filters.llmcompressor import configure_llmcompressor_logging
+    from src.scripts.filters.tool import configure_tool_logging
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ _transformers_module = None
 _trt_module = None
 _vllm_module = None
 _llmcompressor_module = None
+_tool_module = None
 
 logger = logging.getLogger("log_filter")
 
@@ -90,6 +94,15 @@ def configure_llmcompressor_logging() -> None:
     _llmcompressor_module.configure_llmcompressor_logging()
 
 
+def configure_tool_logging() -> None:
+    """Configure tool classifier logging (lazy import)."""
+    global _tool_module
+    if _tool_module is None:
+        from . import tool as _tool_module_local
+        _tool_module = _tool_module_local
+    _tool_module.configure_tool_logging()
+
+
 def configure() -> None:
     """Apply all log filters based on environment configuration.
     
@@ -107,6 +120,7 @@ def configure() -> None:
     show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
     show_vllm_logs = env_flag("SHOW_VLLM_LOGS", False)
     show_llmcompressor_logs = env_flag("SHOW_LLMCOMPRESSOR_LOGS", False)
+    show_tool_logs = env_flag("SHOW_TOOL_LOGS", False)
 
     # HuggingFace progress bars
     if not show_hf_logs:
@@ -135,6 +149,12 @@ def configure() -> None:
     else:
         logger.debug("LLMCompressor logs enabled via SHOW_LLMCOMPRESSOR_LOGS")
 
+    # Tool classifier noise suppression
+    if not show_tool_logs:
+        configure_tool_logging()
+    else:
+        logger.debug("Tool logs enabled via SHOW_TOOL_LOGS")
+
 
 __all__ = [
     "configure",
@@ -143,5 +163,6 @@ __all__ = [
     "configure_trt_logging",
     "configure_vllm_logging",
     "configure_llmcompressor_logging",
+    "configure_tool_logging",
 ]
 
