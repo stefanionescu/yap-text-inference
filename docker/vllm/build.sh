@@ -147,7 +147,8 @@ init_build_args
 BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 [[ -n "${CHAT_MODEL}" ]] && BUILD_ARGS+=(--build-arg "CHAT_MODEL=${CHAT_MODEL}")
 [[ -n "${TOOL_MODEL}" ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
-[[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--build-arg "HF_TOKEN=${HF_TOKEN}")
+# Pass HF_TOKEN as a secret (not a build arg) so it's not baked into the image
+[[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")
 
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 

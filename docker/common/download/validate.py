@@ -123,12 +123,15 @@ def validate_tool_model(model: str) -> tuple[bool, str]:
 
 
 def validate_trt_engine_repo(repo: str) -> tuple[bool, str]:
-    """Validate TRT engine repo configuration."""
+    """Validate TRT engine repo configuration.
+    
+    Note: TRT_ENGINE_REPO defaults to CHAT_MODEL in the build script, so this
+    validation only fails if neither is set.
+    """
     if not repo:
         return False, (
-            "✗ TRT_ENGINE_REPO is REQUIRED. "
-            "Pre-built engines must be baked into the Docker image. "
-            "Example: TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq"
+            "✗ TRT_ENGINE_REPO is not set and CHAT_MODEL is empty. "
+            "Set CHAT_MODEL (TRT_ENGINE_REPO defaults to it) or set TRT_ENGINE_REPO explicitly."
         )
     
     if "/" not in repo:

@@ -17,7 +17,6 @@ ENGINE=trt \
   DOCKER_USERNAME=myuser \
   DEPLOY_MODE=chat \
   CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
-  TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \
   TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
   TAG=trt-qwen30b-sm90 \
   bash docker/build.sh
@@ -39,7 +38,7 @@ docker run -d --gpus all --name yap-server \
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
 | `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
 | `CHAT_MODEL` | If chat/both | HF repo for tokenizer/checkpoint |
-| `TRT_ENGINE_REPO` | If chat/both | HF repo with pre-built engines |
+| `TRT_ENGINE_REPO` | No | HF repo with pre-built engines (defaults to `CHAT_MODEL`) |
 | `TRT_ENGINE_LABEL` | If chat/both | Engine directory (e.g., `sm90_trt-llm-0.17.0_cuda12.8`) |
 | `TOOL_MODEL` | If tool/both | Tool classifier HF repo |
 | `TAG` | Yes | Image tag (must start with `trt-`) |

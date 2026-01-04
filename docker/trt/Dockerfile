@@ -22,9 +22,6 @@ ARG TOOL_MODEL=""
 ARG TRT_ENGINE_REPO=""
 ARG TRT_ENGINE_LABEL=""
 
-# HuggingFace token for private repos
-ARG HF_TOKEN=""
-
 # TensorRT-LLM version configuration
 ARG TRTLLM_PIP_SPEC=tensorrt_llm==1.2.0rc5
 ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
@@ -151,7 +148,7 @@ RUN --mount=type=secret,id=hf_token,required=false \
 # Download tool model if specified
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/download_tool.py
+    python /app/common/download/download_tool.py
 
 # Cache directories
 ENV HF_HOME=/app/.hf

@@ -83,13 +83,13 @@ _validate_chat_model_shell() {
 }
 
 # Shell validation for TRT engine repo
+# Note: TRT_ENGINE_REPO defaults to CHAT_MODEL in build.sh
 _validate_trt_engine_repo_shell() {
     local repo="$1"
     
     if [[ -z "$repo" ]]; then
-        echo "[validate] ✗ TRT_ENGINE_REPO is REQUIRED" >&2
-        echo "[validate]   Pre-built engines must be baked into the Docker image" >&2
-        echo "[validate]   Example: TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq" >&2
+        echo "[validate] ✗ TRT_ENGINE_REPO is not set and CHAT_MODEL is empty" >&2
+        echo "[validate]   Set CHAT_MODEL (TRT_ENGINE_REPO defaults to it) or set TRT_ENGINE_REPO explicitly" >&2
         return 1
     fi
     

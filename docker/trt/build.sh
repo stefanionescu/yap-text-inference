@@ -25,9 +25,9 @@ CHAT_MODEL="${CHAT_MODEL:-}"
 TOOL_MODEL="${TOOL_MODEL:-}"
 
 # TRT Engine configuration (REQUIRED for chat/both modes)
-# TRT_ENGINE_REPO: HuggingFace repo containing pre-built TRT engines
+# TRT_ENGINE_REPO: HuggingFace repo containing pre-built TRT engines (defaults to CHAT_MODEL)
 # TRT_ENGINE_LABEL: Engine directory name (e.g., sm90_trt-llm-0.17.0_cuda12.8)
-TRT_ENGINE_REPO="${TRT_ENGINE_REPO:-}"
+TRT_ENGINE_REPO="${TRT_ENGINE_REPO:-${CHAT_MODEL}}"
 TRT_ENGINE_LABEL="${TRT_ENGINE_LABEL:-}"
 
 # HuggingFace token for private repos
@@ -76,7 +76,7 @@ usage() {
     echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
     echo "  CHAT_MODEL          - HuggingFace TRT-quantized model repo (required for chat/both)"
     echo "                        This repo contains the checkpoint for tokenizer"
-    echo "  TRT_ENGINE_REPO     - HuggingFace repo with pre-built TRT engines (required for chat/both)"
+    echo "  TRT_ENGINE_REPO     - HuggingFace repo with pre-built TRT engines (defaults to CHAT_MODEL)"
     echo "  TRT_ENGINE_LABEL    - Engine directory name in the repo (required for chat/both)"
     echo "                        Format: sm{arch}_trt-llm-{version}_cuda{version}"
     echo "                        Example: sm90_trt-llm-0.17.0_cuda12.8"
@@ -93,7 +93,6 @@ usage() {
     echo "  DOCKER_USERNAME=myuser \\"
     echo "    DEPLOY_MODE=chat \\"
     echo "    CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \\"
-    echo "    TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \\"
     echo "    TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \\"
     echo "    TAG=trt-qwen30b-sm90 \\"
     echo "    ./build.sh"
@@ -109,7 +108,6 @@ usage() {
     echo "  DOCKER_USERNAME=myuser \\"
     echo "    DEPLOY_MODE=both \\"
     echo "    CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \\"
-    echo "    TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \\"
     echo "    TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \\"
     echo "    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \\"
     echo "    TAG=trt-qwen3-full-sm90 \\"
@@ -161,7 +159,9 @@ BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 [[ -n "${TOOL_MODEL}" ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
 [[ -n "${TRT_ENGINE_REPO}" ]] && BUILD_ARGS+=(--build-arg "TRT_ENGINE_REPO=${TRT_ENGINE_REPO}")
 [[ -n "${TRT_ENGINE_LABEL}" ]] && BUILD_ARGS+=(--build-arg "TRT_ENGINE_LABEL=${TRT_ENGINE_LABEL}")
-[[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--build-arg "HF_TOKEN=${HF_TOKEN}")
+
+# Pass HF_TOKEN as a secret (not a build arg) so it's not baked into the image
+[[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")
 
 docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
 
