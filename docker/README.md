@@ -21,12 +21,16 @@ The build will fail if the tag doesn't follow this convention.
 
 ## Contents
 
+- [Engine Options](#engine-options)
+- [Tag Naming Convention](#tag-naming-convention)
 - [Quick Start](#quick-start)
 - [vLLM Engine](#vllm-engine)
 - [TensorRT-LLM Engine](#tensorrt-llm-engine)
 - [Running Containers](#running-containers)
 - [Environment Variables](#environment-variables)
+- [Health & Monitoring](#health--monitoring)
 - [Troubleshooting](#troubleshooting)
+- [API Usage](#api-usage)
 
 ## Quick Start
 

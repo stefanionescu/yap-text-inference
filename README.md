@@ -3,11 +3,11 @@
 A text inference server supporting **both vLLM and TensorRT-LLM** engines, optimized for pairing a chat model with a lightweight tool model for function calling. It can run:
 
 - A chat engine (vLLM or TRT-LLM) for roleplay / assistant flows
-- A tool-only router for function calls (e.g., triggering screenshot capture)
+- A tool-only router for function calls (triggers screenshot capture in the Yap app)
 - Either chat/tool independently or both together
 - FastAPI + WebSocket streaming
 
-> **How tool calls work:** The tool model is a small classifier (`AutoModelForSequenceClassification`) that decides if the client should capture a screenshot. All other behavior flows through the chat model with a fixed system prompt for the lifetime of the session.
+> **How tool calls work:** The tool model is a small classifier (`AutoModelForSequenceClassification`) that decides if the client should capture a screenshot.
 
 ## Contents
 
@@ -27,10 +27,11 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
 - [Advanced Usage and Tips](#advanced-usage-and-tips)
 
 ## Key Features
-- **Dual-engine support:** Choose between vLLM and TensorRT-LLM based on your deployment needs.
+
+- **Dual-engine support for chat:** Choose between vLLM and TensorRT-LLM based on your deployment needs.
 - Chat + tool deployment with optional chat-only or tool-only modes.
-- Tool-call-first detection: tool decisions fire before chat tokens.
-- Prefix caching (vLLM) or block reuse (TRT-LLM) for fast repeated prompts.
+- Tool-call-first detection: tool decisions fire before chat inference.
+- Prefix caching (vLLM) or block reuse (TRT-LLM).
 - Quantization support: AWQ/GPTQ/FP8 for vLLM; INT4-AWQ/FP8/INT8-SQ for TRT-LLM.
 - Built-in reliability: interrupts/barge-in, heartbeats, idle timeout (150s default), and rate limits.
 - Connection limits via `MAX_CONCURRENT_CONNECTIONS` and required API keys.
