@@ -73,12 +73,12 @@ fi
 # TRT_MAX_BATCH_SIZE is baked into the compiled engine and MUST be set.
 # This is NOT the same as MAX_CONCURRENT_CONNECTIONS (WebSocket connections).
 # Fail early before any heavy operations (downloads, quantization).
-if ! trt_validate_batch_size; then
+if ! validate_batch_size; then
   exit 1
 fi
 
 # Export TRT environment
-trt_export_env
+export_env
 
 # Determine the model to quantize
 MODEL_ID="${CHAT_MODEL:-}"
@@ -91,19 +91,19 @@ fi
 DID_QUANTIZE=0
 
 # Resolve quantization format (pass model ID for MoE detection)
-QFORMAT=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
+QFORMAT=$(resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
 _trt_export_quant_env "${QFORMAT}"
 
 # Check if model is already TRT pre-quantized
-if model_detect_is_trt_prequant "${MODEL_ID}"; then
-  trt_prequant_kind="$(model_detect_classify_trt "${MODEL_ID}")"
+if is_trt_prequant "${MODEL_ID}"; then
+  trt_prequant_kind="$(classify_trt "${MODEL_ID}")"
   if [ -n "${trt_prequant_kind}" ]; then
     log_info "[quant] Detected that we'll use a pre-quantized TRT model (${trt_prequant_kind})"
   else
     log_info "[quant] Detected that we'll use a pre-quantized TRT model: ${MODEL_ID}"
   fi
 
-  guessed_qformat="$(trt_detect_qformat_from_name "${MODEL_ID}" 2>/dev/null || true)"
+  guessed_qformat="$(detect_qformat_from_name "${MODEL_ID}" 2>/dev/null || true)"
   if [ -n "${guessed_qformat}" ]; then
     QFORMAT="${guessed_qformat}"
     _trt_export_quant_env "${QFORMAT}"
@@ -111,19 +111,19 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
   
   # Check for pre-built engine in the HF repo FIRST
   PREBUILT_ENGINE_LABEL=""
-  PREBUILT_ENGINE_LABEL=$(trt_find_compatible_engine "${MODEL_ID}") || true
+  PREBUILT_ENGINE_LABEL=$(find_compatible_engine "${MODEL_ID}") || true
   
   if [ -n "${PREBUILT_ENGINE_LABEL}" ]; then
     # Download the pre-built engine - skip engine building later
     log_info "[quant] Using pre-built engine: ${PREBUILT_ENGINE_LABEL}"
-    PREBUILT_ENGINE_DIR=$(trt_download_prebuilt_engine "${MODEL_ID}" "${PREBUILT_ENGINE_LABEL}") || {
+    PREBUILT_ENGINE_DIR=$(download_prebuilt_engine "${MODEL_ID}" "${PREBUILT_ENGINE_LABEL}") || {
       log_warn "[quant] ⚠ Failed to download pre-built engine, will build from checkpoint"
       PREBUILT_ENGINE_LABEL=""
     }
   fi
   
   # Download pre-quantized checkpoint (needed for tokenizer and config even if using pre-built engine)
-  CHECKPOINT_DIR=$(trt_download_prequantized "${MODEL_ID}")
+  CHECKPOINT_DIR=$(download_prequantized "${MODEL_ID}")
   if [ -z "${CHECKPOINT_DIR}" ]; then
     log_err "[quant] ✗ Failed to download pre-quantized model"
     exit 1
@@ -132,7 +132,7 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
   TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
   export TRT_CHECKPOINT_DIR
 
-  detected_qformat="$(trt_detect_qformat_from_checkpoint "${TRT_CHECKPOINT_DIR}" || true)"
+  detected_qformat="$(detect_qformat_from_checkpoint "${TRT_CHECKPOINT_DIR}" || true)"
   if [ -n "${detected_qformat}" ]; then
     QFORMAT="${detected_qformat}"
     _trt_export_quant_env "${QFORMAT}"
@@ -147,7 +147,7 @@ if model_detect_is_trt_prequant "${MODEL_ID}"; then
   fi
 else
   # Get checkpoint directory
-  CHECKPOINT_DIR=$(trt_get_checkpoint_dir "${MODEL_ID}" "${QFORMAT}")
+  CHECKPOINT_DIR=$(get_checkpoint_dir "${MODEL_ID}" "${QFORMAT}")
   
   # Check if checkpoint already exists
   if [ -d "${CHECKPOINT_DIR}" ] && [ -f "${CHECKPOINT_DIR}/config.json" ]; then
@@ -162,7 +162,7 @@ else
   
   # Quantize if needed
   if [ -z "${TRT_CHECKPOINT_DIR:-}" ]; then
-    if ! trt_quantize_model "${MODEL_ID}" "${CHECKPOINT_DIR}" "${QFORMAT}"; then
+    if ! quantize_model "${MODEL_ID}" "${CHECKPOINT_DIR}" "${QFORMAT}"; then
       log_err "[quant] ✗ Quantization failed"
       exit 1
     fi
@@ -173,7 +173,7 @@ else
 fi
 
 # Validate checkpoint
-if ! trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}"; then
+if ! validate_checkpoint "${TRT_CHECKPOINT_DIR}"; then
   log_err "[quant] ✗ Checkpoint validation failed"
   exit 1
 fi
@@ -189,7 +189,7 @@ if [ "${USING_PREBUILT_ENGINE:-0}" = "1" ]; then
   log_info "[build] Using pre-built engine from HuggingFace..."
 else
   # Get engine directory
-  ENGINE_DIR=$(trt_get_engine_dir "${MODEL_ID}" "${QFORMAT}")
+  ENGINE_DIR=$(get_engine_dir "${MODEL_ID}" "${QFORMAT}")
 
   # Check if engine already exists locally
   if [ -d "${ENGINE_DIR}" ] && ls "${ENGINE_DIR}"/rank*.engine >/dev/null 2>&1; then
@@ -204,7 +204,7 @@ else
 
   # Build engine if needed
   if [ -z "${TRT_ENGINE_DIR:-}" ]; then
-    if ! trt_build_engine "${TRT_CHECKPOINT_DIR}" "${ENGINE_DIR}"; then
+    if ! build_engine "${TRT_CHECKPOINT_DIR}" "${ENGINE_DIR}"; then
       log_err "[build] ✗ Engine build failed"
       exit 1
     fi
@@ -214,7 +214,7 @@ else
 fi
 
 # Validate engine
-if ! trt_validate_engine "${TRT_ENGINE_DIR}"; then
+if ! validate_engine "${TRT_ENGINE_DIR}"; then
   log_err "[build] ✗ Engine validation failed"
   exit 1
 fi
@@ -225,7 +225,7 @@ echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR}/.run/trt_engi
 
 # Optional: Push to HuggingFace (only when --push-quant flag is passed)
 if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then
-  trt_push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}"
+  push_to_hf "${TRT_CHECKPOINT_DIR}" "${TRT_ENGINE_DIR}"
 fi
 
 # Optional: Push engine only to existing HuggingFace repo (for prequantized models)
@@ -236,8 +236,8 @@ fi
 if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
   if [ "${USING_PREBUILT_ENGINE:-0}" = "1" ]; then
     log_info "[quant] --push-engine skipped: engine was downloaded from HuggingFace"
-  elif model_detect_is_trt_prequant "${MODEL_ID}"; then
-    trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${MODEL_ID}"
+  elif is_trt_prequant "${MODEL_ID}"; then
+    push_engine_to_hf "${TRT_ENGINE_DIR}" "${MODEL_ID}"
   else
     log_info "[quant] --push-engine specified but model is not prequantized; skipping"
     log_info "[quant]   Use --push-quant to push local quantization artifacts instead"

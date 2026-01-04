@@ -51,11 +51,11 @@ stop_existing_warmup_processes "${ROOT_DIR}"
 # Parse command line arguments
 if [ $# -lt 1 ]; then
   log_warn "[main] ⚠ Not enough arguments"
-  main_usage
+  show_usage
 fi
 
-if ! main_parse_cli "$@"; then
-  main_usage
+if ! parse_cli "$@"; then
+  show_usage
 fi
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
@@ -65,11 +65,11 @@ ensure_cuda_ready_for_engine "main" || exit 1
 torch_cuda_mismatch_guard "[main]"
 
 # Export models to environment
-main_export_models
+export_models
 
 # Validate --push-quant prerequisites early (before any heavy operations)
 # NOTE: actual push enablement is deferred until quantization is resolved
-if ! model_detect_validate_push_quant_prequant "${CHAT_MODEL:-}" "${TOOL_MODEL:-}" "${HF_AWQ_PUSH_REQUESTED:-0}" "[main]"; then
+if ! validate_push_quant_prequant "${CHAT_MODEL:-}" "${TOOL_MODEL:-}" "${HF_AWQ_PUSH_REQUESTED:-0}" "[main]"; then
   exit 1
 fi
 
@@ -81,8 +81,8 @@ if ! validate_models_early; then
 fi
 
 # Determine quantization hint and apply selection
-CHAT_QUANT_HINT="$(main_get_quant_hint)"
-main_apply_quantization "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
+CHAT_QUANT_HINT="$(get_quant_hint)"
+apply_quantization "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
 
 # Enable/disable push based on quantization (only allow 4-bit exports)
 push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "main"
@@ -102,7 +102,7 @@ DESIRED_ENGINE="${INFERENCE_ENGINE:-trt}"
 
 # If the server is already running, decide whether to keep caches or reset.
 # NOTE: Engine switch (vllm <-> trt) triggers FULL environment wipe automatically.
-runtime_guard_stop_server_if_needed \
+stop_server_if_needed \
   "${SCRIPT_DIR}" \
   "${ROOT_DIR}" \
   "${DESIRED_DEPLOY_MODE}" \
@@ -113,5 +113,5 @@ runtime_guard_stop_server_if_needed \
   "${DESIRED_ENGINE}"
 
 # Display configuration and run deployment
-main_log_config
-main_run_deploy "${ROOT_DIR}" "${SCRIPT_DIR}"
+log_deploy_config
+run_deploy "${ROOT_DIR}" "${SCRIPT_DIR}"

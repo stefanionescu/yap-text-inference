@@ -13,7 +13,7 @@ source "${_RUNTIME_PIPELINE_DIR}/../common/constants.sh"
 
 # Prepare server.log for a new run, trimming oversized files and ensuring the
 # .run directory exists so downstream helpers can rely on pid/log state.
-runtime_pipeline_prepare_log() {
+prepare_log() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local server_log="${root_dir}/server.log"
   mkdir -p "${root_dir}/.run"
@@ -42,14 +42,14 @@ runtime_pipeline_prepare_log() {
 #   $2 - command string to execute (typically the pipeline chain)
 #   $3 - follow flag (1 tails server log, 0 returns immediately)
 #   $4 - log prefix describing what is being launched
-runtime_pipeline_run_background() {
+run_background() {
   local root_dir="$1"
   local command_string="$2"
   local follow_logs="${3:-1}"
   local start_message="${4:-Starting background deployment...}"
 
   local server_log
-  server_log="$(runtime_pipeline_prepare_log "${root_dir}")"
+  server_log="$(prepare_log "${root_dir}")"
 
   log_blank
   log_info "[main] ${start_message}"

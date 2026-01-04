@@ -37,7 +37,7 @@ wipe_dependencies_for_reinstall() {
 }
 
 # Shared install-deps handler used by both generic and AWQ restart paths
-restart_run_install_deps_if_needed() {
+run_install_deps_if_needed() {
   if [ "${INSTALL_DEPS:-0}" != "1" ]; then
     return 0
   fi
@@ -58,13 +58,13 @@ restart_run_install_deps_if_needed() {
   FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
 }
 
-restart_basic() {
+run_basic_restart() {
   local LAST_QUANT LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_CHAT_QUANT
-  LAST_QUANT="${QUANTIZATION:-$(runtime_guard_read_last_config_value "QUANTIZATION" "${ROOT_DIR}")}"
-  LAST_DEPLOY="${DEPLOY_MODE:-$(runtime_guard_read_last_config_value "DEPLOY_MODE" "${ROOT_DIR}")}"
-  LAST_CHAT="${CHAT_MODEL:-$(runtime_guard_read_last_config_value "CHAT_MODEL" "${ROOT_DIR}")}"
-  LAST_TOOL="${TOOL_MODEL:-$(runtime_guard_read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")}"
-  LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-$(runtime_guard_read_last_config_value "CHAT_QUANTIZATION" "${ROOT_DIR}")}"
+  LAST_QUANT="${QUANTIZATION:-$(read_last_config_value "QUANTIZATION" "${ROOT_DIR}")}"
+  LAST_DEPLOY="${DEPLOY_MODE:-$(read_last_config_value "DEPLOY_MODE" "${ROOT_DIR}")}"
+  LAST_CHAT="${CHAT_MODEL:-$(read_last_config_value "CHAT_MODEL" "${ROOT_DIR}")}"
+  LAST_TOOL="${TOOL_MODEL:-$(read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")}"
+  LAST_CHAT_QUANT="${CHAT_QUANTIZATION:-$(read_last_config_value "CHAT_QUANTIZATION" "${ROOT_DIR}")}"
 
   if [ -z "${LAST_DEPLOY}" ] || { [ -z "${LAST_CHAT}" ] && [ "${LAST_DEPLOY}" != "tool" ]; } || { [ -z "${LAST_TOOL}" ] && [ "${LAST_DEPLOY}" != "chat" ]; }; then
     log_err "[restart] ✗ Unable to determine previous deployment configuration. Run a full deployment first."
@@ -146,7 +146,7 @@ restart_basic() {
   FULL_CLEANUP=0 "${SCRIPT_DIR}/stop.sh"
 
   # 2. Handle --install-deps (wipe and reinstall all dependencies)
-  restart_run_install_deps_if_needed
+  run_install_deps_if_needed
 
   # 3. Load environment defaults (after deps are installed)
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"

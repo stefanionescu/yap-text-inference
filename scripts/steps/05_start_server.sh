@@ -29,8 +29,8 @@ source "${SCRIPT_DIR}/../lib/env/warmup.sh"
 ensure_cuda_ready_for_engine "server" || exit 1
 
 # Initialize network and warmup configuration
-server_init_network_defaults
-warmup_init_defaults "${ROOT_DIR}" "${SCRIPT_DIR}/.."
+init_network_defaults
+init_warmup_defaults "${ROOT_DIR}" "${SCRIPT_DIR}/.."
 
 log_info "[server] Starting server on ${SERVER_BIND_ADDR} in background"
 cd "${ROOT_DIR}"
@@ -40,30 +40,30 @@ activate_venv "" 0 || true
 VENV_DIR="$(get_venv_dir)"
 
 # Check for existing server process
-server_guard_check_pid "${ROOT_DIR}"
+guard_check_pid "${ROOT_DIR}"
 
 # Log current configuration
-server_log_config
+log_server_config
 log_blank
 
 # Write config snapshot for restart detection
-runtime_guard_write_snapshot "${ROOT_DIR}"
+write_snapshot "${ROOT_DIR}"
 
 # Resolve uvicorn command
-if ! server_resolve_uvicorn "${VENV_DIR}"; then
+if ! resolve_uvicorn "${VENV_DIR}"; then
   exit 127
 fi
 
 # Start server in background
-server_start_background "${ROOT_DIR}"
+start_background "${ROOT_DIR}"
 
 log_info "[server] Waiting for server to become healthy (timeout ${WARMUP_TIMEOUT_SECS}s)..."
 
 # Wait for health and handle failure
-if ! server_wait_for_health; then
-  server_handle_startup_failure "${ROOT_DIR}"
+if ! await_server_health; then
+  handle_startup_failure "${ROOT_DIR}"
 fi
 
 # Log success and run warmup
-server_log_started "${ROOT_DIR}"
-server_run_warmup "${ROOT_DIR}"
+log_started "${ROOT_DIR}"
+run_warmup "${ROOT_DIR}"

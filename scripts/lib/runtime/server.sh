@@ -11,8 +11,8 @@
 
 # Check for existing server process and handle stale PID files.
 # Returns 0 if safe to start, exits with 1 if server already running.
-# Usage: server_guard_check_pid <root_dir>
-server_guard_check_pid() {
+# Usage: guard_check_pid <root_dir>
+guard_check_pid() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local pid_file="${root_dir}/server.pid"
   
@@ -34,16 +34,16 @@ server_guard_check_pid() {
 }
 
 # Write server PID to file after starting.
-# Usage: server_write_pid <root_dir> <pid>
-server_write_pid() {
+# Usage: write_pid <root_dir> <pid>
+write_pid() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local pid="$2"
   echo "${pid}" > "${root_dir}/server.pid"
 }
 
 # Kill server process and clean up PID file.
-# Usage: server_kill_and_cleanup <root_dir>
-server_kill_and_cleanup() {
+# Usage: kill_and_cleanup <root_dir>
+kill_and_cleanup() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local pid_file="${root_dir}/server.pid"
   
@@ -78,8 +78,8 @@ with open('${metadata_file}') as f:
 }
 
 # Log current deployment configuration.
-# Usage: server_log_config
-server_log_config() {
+# Usage: log_server_config
+log_server_config() {
   local deploy_mode="${DEPLOY_MODE:-both}"
   
   case "${deploy_mode}" in
@@ -126,9 +126,9 @@ server_log_config() {
 # Resolve the uvicorn command to use.
 # Tries: venv python -m uvicorn, venv uvicorn, system uvicorn, system python -m uvicorn
 # Sets SERVER_CMD array with the command to run.
-# Usage: server_resolve_uvicorn <venv_dir>
+# Usage: resolve_uvicorn <venv_dir>
 # Returns: 0 on success, 127 if uvicorn not found
-server_resolve_uvicorn() {
+resolve_uvicorn() {
   local venv_dir="${1:-${VENV_DIR:-}}"
   
   SERVER_CMD_ARGS=(
@@ -179,9 +179,9 @@ server_resolve_uvicorn() {
 
 # Wait for server to become healthy with timeout.
 # Uses SERVER_LOCAL_HEALTH_URLS (localhost) for internal health checks.
-# Usage: server_wait_for_health
+# Usage: await_server_health
 # Returns: 0 if healthy, 1 if timeout
-server_wait_for_health() {
+await_server_health() {
   local deadline=$((SECONDS + WARMUP_TIMEOUT_SECS))
   local urls=("${SERVER_LOCAL_HEALTH_URLS[@]}")
   
@@ -200,20 +200,20 @@ server_wait_for_health() {
 # =============================================================================
 
 # Start the server in the background as a new session.
-# Usage: server_start_background <root_dir>
+# Usage: start_background <root_dir>
 # Sets: SERVER_PID with the started process ID
-server_start_background() {
+start_background() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   
   # Start as a new session so Ctrl+C in the calling shell won't touch it
   setsid "${SERVER_CMD[@]}" >> "${root_dir}/server.log" 2>&1 &
   SERVER_PID=$!
-  server_write_pid "${root_dir}" "${SERVER_PID}"
+  write_pid "${root_dir}" "${SERVER_PID}"
 }
 
 # Log server startup success information.
-# Usage: server_log_started <root_dir>
-server_log_started() {
+# Usage: log_started <root_dir>
+log_started() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local health_hint="${SERVER_HEALTH_URLS[0]:-http://${SERVER_ADDR}/healthz}"
   
@@ -225,13 +225,13 @@ server_log_started() {
 }
 
 # Handle server startup failure (health check timeout).
-# Usage: server_handle_startup_failure <root_dir>
-server_handle_startup_failure() {
+# Usage: handle_startup_failure <root_dir>
+handle_startup_failure() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   
   log_err "[server] ✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
   log_err "[server] Check logs: tail -f ${root_dir}/server.log"
-  server_kill_and_cleanup "${root_dir}"
+  kill_and_cleanup "${root_dir}"
   exit 1
 }
 
@@ -240,8 +240,8 @@ server_handle_startup_failure() {
 # =============================================================================
 
 # Run the warmup script if available.
-# Usage: server_run_warmup <root_dir>
-server_run_warmup() {
+# Usage: run_warmup <root_dir>
+run_warmup() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local warmup_script="${root_dir}/scripts/warmup.sh"
   

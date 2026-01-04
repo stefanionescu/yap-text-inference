@@ -7,7 +7,7 @@
 
 RESTART_RUNTIME_SNAPSHOT_DIRTY=${RESTART_RUNTIME_SNAPSHOT_DIRTY:-0}
 
-restart_capture_user_env() {
+capture_user_env() {
   local var_name="$1"
   local has_flag="RESTART_USER_OVERRIDE_HAS_${var_name}"
   local value_key="RESTART_USER_OVERRIDE_VALUE_${var_name}"
@@ -21,7 +21,7 @@ restart_capture_user_env() {
   fi
 }
 
-restart_restore_user_env() {
+restore_user_env() {
   local var_name="$1"
   local has_flag="RESTART_USER_OVERRIDE_HAS_${var_name}"
   local value_key="RESTART_USER_OVERRIDE_VALUE_${var_name}"
@@ -38,13 +38,13 @@ restart_restore_user_env() {
   export "${var_name?}"
 }
 
-restart_set_snapshot_value() {
+set_snapshot_value() {
   local var_name="$1"
   local value="$2"
   printf -v "RESTART_SNAPSHOT_VALUE_${var_name}" "%s" "${value}"
 }
 
-restart_snapshot_value_from_env_file() {
+snapshot_value_from_env_file() {
   local var_name="$1"
   local env_file="$2"
   local extracted=""
@@ -53,10 +53,10 @@ restart_snapshot_value_from_env_file() {
     extracted="$(grep -E "^${var_name}=" "${env_file}" | tail -n1 | cut -d'=' -f2- || true)"
   fi
 
-  restart_set_snapshot_value "${var_name}" "${extracted}"
+  set_snapshot_value "${var_name}" "${extracted}"
 }
 
-restart_mark_override_if_changed() {
+mark_override_if_changed() {
   local var_name="$1"
   local human_label="${2:-$1}"
   local has_flag="RESTART_USER_OVERRIDE_HAS_${var_name}"

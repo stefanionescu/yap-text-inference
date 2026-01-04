@@ -9,7 +9,7 @@
 # Initialize common argument state variables.
 # Call this before parsing to set up defaults.
 # NOTE: Default engine is TRT. This is the single source of truth for the default.
-args_init_common_state() {
+init_common_state() {
   SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
   SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
   SHOW_VLLM_LOGS="${SHOW_VLLM_LOGS:-0}"
@@ -25,7 +25,7 @@ args_init_common_state() {
 
 # Validate that mutually exclusive flags are not both set.
 # Returns 0 if valid, 1 if invalid (with error message).
-args_validate_common_state() {
+validate_common_state() {
   # --push-quant and --push-engine are mutually exclusive
   if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ] && [ "${HF_ENGINE_PUSH_REQUESTED:-0}" = "1" ]; then
     log_err "[args] ✗ --push-quant and --push-engine are mutually exclusive."
@@ -40,7 +40,7 @@ args_validate_common_state() {
 }
 
 # Export all common argument state variables.
-args_export_common_state() {
+export_common_state() {
   export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS SHOW_TOOL_LOGS
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
@@ -49,8 +49,8 @@ args_export_common_state() {
 
 # Try to parse a common flag. Returns 0 and sets ARGS_SHIFT_COUNT if handled.
 # Returns 1 if the flag is not a common flag.
-# Usage: if args_parse_common_flag "$1" "$2"; then shift $ARGS_SHIFT_COUNT; fi
-args_parse_common_flag() {
+# Usage: if parse_common_flag "$1" "$2"; then shift $ARGS_SHIFT_COUNT; fi
+parse_common_flag() {
   local flag="$1"
   local next_arg="${2:-}"
   ARGS_SHIFT_COUNT=1  # default; may be updated below
@@ -111,7 +111,7 @@ args_parse_common_flag() {
 
 # Build an array of common flags for forwarding to another script.
 # Populates the ARGS_FORWARD_FLAGS array.
-args_build_forward_flags() {
+build_forward_flags() {
   ARGS_FORWARD_FLAGS=()
 
   if [ "${SHOW_HF_LOGS:-0}" = "1" ]; then

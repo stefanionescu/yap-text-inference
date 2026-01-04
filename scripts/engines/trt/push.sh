@@ -13,8 +13,8 @@
 # Uses unified params: HF_PUSH_REPO_ID, HF_PUSH_PRIVATE
 
 # Push quantized model to HuggingFace
-# Usage: trt_push_to_hf <checkpoint_dir> [engine_dir] [base_model] [quant_method]
-trt_push_to_hf() {
+# Usage: push_to_hf <checkpoint_dir> [engine_dir] [base_model] [quant_method]
+push_to_hf() {
   local checkpoint_dir="${1:-${TRT_CHECKPOINT_DIR:-}}"
   local engine_dir="${2:-${TRT_ENGINE_DIR:-}}"
   local base_model="${3:-${CHAT_MODEL:-}}"
@@ -99,13 +99,13 @@ trt_push_to_hf() {
 }
 
 # Push only the TRT engine to an existing HuggingFace repo (for prequantized models)
-# Usage: trt_push_engine_to_hf <engine_dir> <source_repo_id>
+# Usage: push_engine_to_hf <engine_dir> <source_repo_id>
 # 
 # This is used when:
 # - Using a pre-quantized TRT model from HuggingFace
 # - Building an engine locally for the current GPU
 # - Wanting to add that engine to the original repo for future reuse
-trt_push_engine_to_hf() {
+push_engine_to_hf() {
   local engine_dir="${1:-${TRT_ENGINE_DIR:-}}"
   local source_repo="${2:-${CHAT_MODEL:-}}"
   

@@ -5,7 +5,7 @@
 # Initializes server host, port, and health check URL defaults. Configures
 # both client-facing and internal bind addresses.
 
-server_init_network_defaults() {
+init_network_defaults() {
   local default_client_host
   local default_bind_host
   local health_urls_override

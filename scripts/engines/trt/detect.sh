@@ -38,7 +38,7 @@ export _TRT_CUDA_ROOT
 #   2. Python runtime detection (imports tensorrt_llm)
 #   3. TRT_VERSION env var (fallback to target version from trt.sh)
 # Returns version string (e.g., "1.2.0rc5") or "unknown"
-trt_detect_trtllm_version() {
+detect_trtllm_version() {
   # 1. Return cached value if already detected
   if [ -n "${TRTLLM_INSTALLED_VERSION:-}" ]; then
     echo "${TRTLLM_INSTALLED_VERSION}"
@@ -71,12 +71,12 @@ trt_detect_trtllm_version() {
 # Generate current system's engine label
 # Format: sm{arch}_trt-llm-{version}_cuda{version}
 # Example: sm90_trt-llm-1.2.0rc5_cuda13.0
-trt_get_current_engine_label() {
-  local sm_arch="${GPU_SM_ARCH:-$(gpu_detect_sm_arch)}"
+get_current_engine_label() {
+  local sm_arch="${GPU_SM_ARCH:-$(detect_sm_arch)}"
   local trtllm_ver
-  trtllm_ver=$(trt_detect_trtllm_version)
+  trtllm_ver=$(detect_trtllm_version)
   local cuda_ver
-  cuda_ver=$(trt_detect_cuda_version)
+  cuda_ver=$(detect_cuda_version)
   
   if [ -z "${sm_arch}" ] || [ "${trtllm_ver}" = "unknown" ] || [ -z "${cuda_ver}" ]; then
     echo ""
@@ -92,8 +92,8 @@ trt_get_current_engine_label() {
 
 # Detect TRT qformat from model name (for prequantized models).
 # Returns: int4_awq, fp8, int8_sq, or empty string if not detected.
-# Usage: trt_detect_qformat_from_name <model_name>
-trt_detect_qformat_from_name() {
+# Usage: detect_qformat_from_name <model_name>
+detect_qformat_from_name() {
   local name="${1:-}"
   if [ -z "${name}" ]; then
     return 1
@@ -121,8 +121,8 @@ trt_detect_qformat_from_name() {
 
 # Detect TRT qformat from checkpoint config.json via Python.
 # Returns: qformat string or empty on failure.
-# Usage: trt_detect_qformat_from_checkpoint <checkpoint_dir>
-trt_detect_qformat_from_checkpoint() {
+# Usage: detect_qformat_from_checkpoint <checkpoint_dir>
+detect_qformat_from_checkpoint() {
   local ckpt_dir="${1:-}"
   if [ -z "${ckpt_dir}" ] || [ ! -f "${ckpt_dir}/config.json" ]; then
     return 1
@@ -145,7 +145,7 @@ trt_detect_qformat_from_checkpoint() {
 
 # Get the quantization script for a model
 # Uses the standard quantize.py for all models (including MoE)
-trt_get_quantize_script() {
+get_quantize_script() {
   local trtllm_repo="${1:-${TRT_REPO_DIR}}"
 
   echo "${trtllm_repo}/examples/quantization/quantize.py"

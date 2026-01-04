@@ -14,10 +14,10 @@ _TRT_ENGINE_HF_ROOT="${ROOT_DIR:-$(cd "${_TRT_ENGINE_HF_DIR}/../../.." && pwd)}"
 # =============================================================================
 
 # Parse engine label into components
-# Usage: trt_parse_engine_label <label>
+# Usage: parse_engine_label <label>
 # Returns: sm_arch trtllm_version cuda_version (space-separated)
 # Example: "sm90_trt-llm-1.2.0rc5_cuda13.0" -> "sm90 1.2.0rc5 13.0"
-trt_parse_engine_label() {
+parse_engine_label() {
   local label="${1:-}"
   if [ -z "${label}" ]; then
     return 1
@@ -49,8 +49,8 @@ trt_parse_engine_label() {
 
 # List available engine directories from a HuggingFace TRT repo
 # Returns newline-separated list of engine labels (e.g., "sm90_trt-llm-1.2.0rc5_cuda13.0")
-# Usage: trt_list_remote_engines <repo_id>
-trt_list_remote_engines() {
+# Usage: list_remote_engines <repo_id>
+list_remote_engines() {
   local repo_id="${1:-}"
   if [ -z "${repo_id}" ]; then
     return 1
@@ -66,23 +66,23 @@ trt_list_remote_engines() {
 # =============================================================================
 
 # Check if a remote engine label matches current system
-# Usage: trt_engine_matches_system <label>
+# Usage: engine_matches_system <label>
 # Returns: 0 if compatible, 1 if not
-trt_engine_matches_system() {
+engine_matches_system() {
   local label="${1:-}"
   if [ -z "${label}" ]; then
     return 1
   fi
   
-  local current_sm="${GPU_SM_ARCH:-$(gpu_detect_sm_arch)}"
+  local current_sm="${GPU_SM_ARCH:-$(detect_sm_arch)}"
   local current_trtllm
-  current_trtllm=$(trt_detect_trtllm_version)
+  current_trtllm=$(detect_trtllm_version)
   local current_cuda
-  current_cuda=$(trt_detect_cuda_version)
+  current_cuda=$(detect_cuda_version)
   
   # Parse the remote engine label
   local parsed
-  parsed=$(trt_parse_engine_label "${label}") || return 1
+  parsed=$(parse_engine_label "${label}") || return 1
   read -r remote_sm remote_trtllm remote_cuda <<< "${parsed}"
   
   # Check SM arch match (must be exact - engines are GPU-specific)
@@ -116,24 +116,24 @@ trt_engine_matches_system() {
 }
 
 # Find a compatible pre-built engine from a HuggingFace repo
-# Usage: trt_find_compatible_engine <repo_id>
+# Usage: find_compatible_engine <repo_id>
 # Returns: engine label if found, empty string if none compatible
-trt_find_compatible_engine() {
+find_compatible_engine() {
   local repo_id="${1:-}"
   if [ -z "${repo_id}" ]; then
     return 1
   fi
   
-  local current_sm="${GPU_SM_ARCH:-$(gpu_detect_sm_arch)}"
+  local current_sm="${GPU_SM_ARCH:-$(detect_sm_arch)}"
   local current_trtllm
-  current_trtllm=$(trt_detect_trtllm_version)
+  current_trtllm=$(detect_trtllm_version)
   local current_cuda
-  current_cuda=$(trt_detect_cuda_version)
+  current_cuda=$(detect_cuda_version)
   
   log_info "[engine] Checking for pre-built engines for this GPU..."
 
   local engines
-  engines=$(trt_list_remote_engines "${repo_id}")
+  engines=$(list_remote_engines "${repo_id}")
   
   if [ -z "${engines}" ]; then
     log_info "[engine]   No pre-built engines found in repository"
@@ -145,7 +145,7 @@ trt_find_compatible_engine() {
     if [ -z "${engine}" ]; then
       continue
     fi
-    if trt_engine_matches_system "${engine}"; then
+    if engine_matches_system "${engine}"; then
       log_info "[engine] ✓ Found compatible engine for GPU"
       echo "${engine}"
       return 0
@@ -161,9 +161,9 @@ trt_find_compatible_engine() {
 # =============================================================================
 
 # Download a pre-built engine from HuggingFace
-# Usage: trt_download_prebuilt_engine <repo_id> <engine_label> [target_dir]
+# Usage: download_prebuilt_engine <repo_id> <engine_label> [target_dir]
 # Returns: path to downloaded engine directory
-trt_download_prebuilt_engine() {
+download_prebuilt_engine() {
   local repo_id="${1:-}"
   local engine_label="${2:-}"
   local target_dir="${3:-}"

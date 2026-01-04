@@ -24,8 +24,8 @@ source "${SCRIPT_DIR}/lib/env/warmup.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/runtime/warmup_runner.sh" 2>/dev/null || true
 
 runtime_init_repo_paths "${ROOT_DIR}"
-server_init_network_defaults
-warmup_init_defaults "${ROOT_DIR}" "${SCRIPT_DIR}"
+init_network_defaults
+init_warmup_defaults "${ROOT_DIR}" "${SCRIPT_DIR}"
 
 declare -a WARMUP_PERSONA_VARIANTS=()
 

@@ -10,9 +10,9 @@ Expectations tailored to this repository’s layout and inference workflows. Use
 ## Directories and code reuse
 - Keep code DRY; prefer reusing existing helpers over duplicating logic.
 - Reserve `helpers/` for utilities that make sense across execution engines and other subdirectories.
-- Keep execution- or engine-specific logic inside `execution/` and `engines/` respectively; never let handler or CLI modules reach into these internals directly.
+- Keep execution- or engine-specific logic inside `execution/` and `engines/` respectively. Handler and CLI modules must not import internal submodules from these directories—use the public APIs exposed via `__init__.py` or factory abstractions.
 - Route all inbound and outbound transport concerns through `handlers/`; everything else must call `handlers` via typed methods rather than touching sockets or HTTP objects directly.
-- Keep conversational transforms inside `messages/` and reuse its validators whenever shaping chat or tool payloads.
+- Keep conversational transforms (parsing user messages, formatting responses, structuring tool calls) inside `messages/` and reuse its validators whenever shaping chat or tool payloads.
 - Place all token-related utilities and tokenizer interactions under `tokens/`—do not replicate token math elsewhere.
 - Avoid subdirectories that contain a single file unless further splits are imminent. Otherwise, move logic into a better-suited location and remove the extra folder.
 - When refactoring large files into related modules, group them under a shared subdirectory to keep organization clear.

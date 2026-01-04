@@ -12,8 +12,8 @@
 
 # Detect GPU SM architecture
 # Returns: sm80 (A100), sm89 (L40S), sm90 (H100), etc.
-# Usage: gpu_detect_sm_arch
-gpu_detect_sm_arch() {
+# Usage: detect_sm_arch
+detect_sm_arch() {
   # Return cached value if already set
   if [ -n "${GPU_SM_ARCH:-}" ]; then
     echo "${GPU_SM_ARCH}"
@@ -68,8 +68,8 @@ gpu_detect_sm_arch() {
 }
 
 # Get human-readable GPU name
-# Usage: gpu_detect_name
-gpu_detect_name() {
+# Usage: get_gpu_name
+get_gpu_name() {
   if ! command -v nvidia-smi >/dev/null 2>&1; then
     echo "Unknown"
     return
@@ -78,8 +78,8 @@ gpu_detect_name() {
 }
 
 # Get GPU VRAM in GB
-# Usage: gpu_detect_vram_gb
-gpu_detect_vram_gb() {
+# Usage: detect_vram_gb
+detect_vram_gb() {
   if ! command -v nvidia-smi >/dev/null 2>&1; then
     echo "0"
     return
@@ -94,10 +94,10 @@ gpu_detect_vram_gb() {
 }
 
 # Get TORCH_CUDA_ARCH_LIST value based on GPU
-# Usage: gpu_detect_torch_arch_list
-gpu_detect_torch_arch_list() {
+# Usage: detect_torch_arch_list
+detect_torch_arch_list() {
   local gpu_name
-  gpu_name=$(gpu_detect_name)
+  gpu_name=$(get_gpu_name)
   
   case "${gpu_name}" in
     *H100*|*H200*)
@@ -116,10 +116,10 @@ gpu_detect_torch_arch_list() {
 }
 
 # Map SM arch to CUDAARCHS numeric string (e.g., sm90 -> 90)
-gpu_detect_cudaarchs() {
+detect_cudaarchs() {
   local sm="${1:-${GPU_SM_ARCH:-}}"
   if [ -z "${sm}" ]; then
-    sm=$(gpu_detect_sm_arch)
+    sm=$(detect_sm_arch)
   fi
   case "${sm}" in
     sm90) echo "90" ;;
@@ -149,7 +149,7 @@ gpu_sm_to_torch_arch_list() {
 gpu_supports_fp8() {
   local sm_arch="${1:-}"
   if [ -z "${sm_arch}" ]; then
-    sm_arch=$(gpu_detect_sm_arch)
+    sm_arch=$(detect_sm_arch)
   fi
   
   case "${sm_arch}" in
@@ -166,12 +166,12 @@ gpu_supports_fp8() {
 # Usage: gpu_init_detection [log_prefix]
 gpu_init_detection() {
   if [ -z "${GPU_SM_ARCH:-}" ]; then
-    GPU_SM_ARCH=$(gpu_detect_sm_arch)
+    GPU_SM_ARCH=$(detect_sm_arch)
     export GPU_SM_ARCH
   fi
   
   if [ -z "${DETECTED_GPU_NAME:-}" ]; then
-    DETECTED_GPU_NAME=$(gpu_detect_name)
+    DETECTED_GPU_NAME=$(get_gpu_name)
     export DETECTED_GPU_NAME
   fi
   
@@ -180,12 +180,12 @@ gpu_init_detection() {
 # Set GPU-specific environment defaults
 # Usage: gpu_apply_env_defaults
 gpu_apply_env_defaults() {
-  local gpu_name="${DETECTED_GPU_NAME:-$(gpu_detect_name)}"
+  local gpu_name="${DETECTED_GPU_NAME:-$(get_gpu_name)}"
   local sm_arch="${GPU_SM_ARCH:-}"
   
   # Reuse detected SM arch if available; fall back to detection
   if [ -z "${sm_arch}" ]; then
-    sm_arch=$(gpu_detect_sm_arch)
+    sm_arch=$(detect_sm_arch)
     if [ -n "${sm_arch}" ]; then
       GPU_SM_ARCH="${sm_arch}"
       export GPU_SM_ARCH
@@ -198,7 +198,7 @@ gpu_apply_env_defaults() {
     # Prefer exact SM-based mapping to avoid name mismatches
     torch_arch_list=$(gpu_sm_to_torch_arch_list "${sm_arch}")
     if [ -z "${torch_arch_list}" ]; then
-      torch_arch_list="$(gpu_detect_torch_arch_list)"
+      torch_arch_list="$(detect_torch_arch_list)"
     fi
     export TORCH_CUDA_ARCH_LIST="${torch_arch_list}"
   fi
@@ -206,7 +206,7 @@ gpu_apply_env_defaults() {
   # Set CUDAARCHS to match SM arch (needed for building extensions, e.g., modelopt)
   if [ -z "${CUDAARCHS:-}" ]; then
     local cudaarchs
-    cudaarchs="$(gpu_detect_cudaarchs "${sm_arch}")"
+    cudaarchs="$(detect_cudaarchs "${sm_arch}")"
     export CUDAARCHS="${cudaarchs}"
   fi
   

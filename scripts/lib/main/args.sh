@@ -9,8 +9,8 @@ _MAIN_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/args.sh
 source "${_MAIN_ARGS_DIR}/../common/args.sh"
 
-main_parse_cli() {
-  args_init_common_state
+parse_cli() {
+  init_common_state
 
   local quant_type="auto"
   local deploy_mode="${DEPLOY_MODE:-both}"
@@ -19,14 +19,14 @@ main_parse_cli() {
 
   while [ $# -gt 0 ]; do
     # Try common flags first
-    if args_parse_common_flag "$1" "${2:-}"; then
+    if parse_common_flag "$1" "${2:-}"; then
       shift "${ARGS_SHIFT_COUNT}"
       continue
     fi
 
     case "$1" in
       -h|--help)
-        main_usage
+        show_usage
         return 1
         ;;
       --tensorrt)
@@ -156,11 +156,11 @@ main_parse_cli() {
   TOOL_MODEL_NAME="${tool_model}"
 
   # Validate mutually exclusive flags
-  if ! args_validate_common_state; then
+  if ! validate_common_state; then
     return 1
   fi
 
-  args_export_common_state
+  export_common_state
   export QUANT_TYPE DEPLOY_MODE
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
 
@@ -168,7 +168,7 @@ main_parse_cli() {
 }
 
 # Export models to environment variables
-main_export_models() {
+export_models() {
   if [ "${DEPLOY_MODE:-}" = "both" ] || [ "${DEPLOY_MODE:-}" = "chat" ]; then
     export CHAT_MODEL="${CHAT_MODEL_NAME:-}"
   fi
