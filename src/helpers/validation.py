@@ -7,7 +7,7 @@ import logging
 from src.config.deploy import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_MODEL, TOOL_MODEL
 
 logger = logging.getLogger(__name__)
-from src.config.engine import INFERENCE_ENGINE, QUANTIZATION, CHAT_QUANTIZATION
+from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.quantization import SUPPORTED_ENGINES
 from src.config.limits import (
@@ -22,7 +22,8 @@ from .quantization import classify_prequantized_model
 
 
 def _effective_chat_quantization() -> str:
-    return (CHAT_QUANTIZATION or QUANTIZATION or "").lower()
+    """Return the effective chat quantization mode."""
+    return (CHAT_QUANTIZATION or "").lower()
 
 
 def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
@@ -47,6 +48,10 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
         model,
     )
     return True
+
+
+# Valid quantization formats (internal use - users just need pre-quantized models)
+_VALID_QUANT_FORMATS = {"awq", "gptq", "gptq_marlin", "fp8", "int8", "int8_sq", "int4_awq"}
 
 
 def validate_env() -> None:
@@ -85,20 +90,18 @@ def validate_env() -> None:
         if not TRT_ENGINE_DIR:
             # TRT_ENGINE_DIR can be empty if we're building from scratch
             pass  # Will be set during quantization/build step
-    # Quantization is only required when deploying LLMs (not classifiers)
-    needs_quantization = DEPLOY_CHAT or (DEPLOY_TOOL and not is_classifier_model(TOOL_MODEL))
-    if needs_quantization:
-        if not QUANTIZATION:
-            errors.append("QUANTIZATION environment variable is required for LLM models")
-        elif INFERENCE_ENGINE == "vllm" and QUANTIZATION not in {"fp8", "gptq", "gptq_marlin", "awq", "8bit", "4bit"}:
+    
+    # Quantization is required for chat models (auto-detected from CHAT_MODEL name)
+    if DEPLOY_CHAT:
+        if not CHAT_QUANTIZATION:
             errors.append(
-                "QUANTIZATION must be one of 'fp8', 'gptq', 'gptq_marlin', 'awq', '8bit', or '4bit' for VLLM"
+                f"Could not detect quantization from CHAT_MODEL='{CHAT_MODEL}'. "
+                "Model name must contain 'awq', 'gptq', or 'fp8', or set CHAT_QUANTIZATION manually."
             )
-        elif INFERENCE_ENGINE == "trt" and QUANTIZATION not in {
-            "fp8", "int8_sq", "int8", "int4_awq", "awq", "8bit", "4bit"
-        }:
+        elif CHAT_QUANTIZATION.lower() not in _VALID_QUANT_FORMATS:
             errors.append(
-                "QUANTIZATION must be one of 'fp8', 'int8_sq', 'int8', 'int4_awq', 'awq', '8bit', or '4bit' for TRT"
+                f"Invalid CHAT_QUANTIZATION='{CHAT_QUANTIZATION}'. "
+                f"Valid formats: {', '.join(sorted(_VALID_QUANT_FORMATS))}"
             )
 
     # Validate tokenizers exist locally for configured models

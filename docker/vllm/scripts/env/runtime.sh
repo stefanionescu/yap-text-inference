@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # vLLM runtime detection.
 #
-# Detects runtime capabilities like FlashInfer and sets quantization defaults.
-
-# Ensure QUANTIZATION is set (Docker vLLM AWQ stack defaults to 'awq')
-export QUANTIZATION=${QUANTIZATION:-awq}
+# Detects runtime capabilities like FlashInfer. Quantization is auto-detected
+# from CHAT_MODEL name by Python (src/config/engine.py).
 
 _RUNTIME_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
