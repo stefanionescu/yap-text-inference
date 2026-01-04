@@ -27,6 +27,7 @@ ENGINE=trt \
 ```bash
 docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
+  -e MAX_CONCURRENT_CONNECTIONS=50 \
   -p 8000:8000 \
   myuser/yap-text-api:trt-qwen30b-sm90
 ```
@@ -46,8 +47,9 @@ docker run -d --gpus all --name yap-server \
 
 ## Runtime Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TEXT_API_KEY` | Required | API key |
-| `TRT_KV_FREE_GPU_FRAC` | 0.90 | GPU fraction for KV cache |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `TEXT_API_KEY` | Yes | - | API key |
+| `MAX_CONCURRENT_CONNECTIONS` | Yes | - | Maximum concurrent WebSocket connections |
+| `TRT_KV_FREE_GPU_FRAC` | No | 0.90 | GPU fraction for KV cache |
 

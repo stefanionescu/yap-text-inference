@@ -26,6 +26,7 @@ ENGINE=vllm \
 ```bash
 docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
+  -e MAX_CONCURRENT_CONNECTIONS=50 \
   -p 8000:8000 \
   myuser/yap-text-api:vllm-qwen30b-awq
 ```
@@ -43,11 +44,12 @@ docker run -d --gpus all --name yap-server \
 
 ## Runtime Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TEXT_API_KEY` | Required | API key |
-| `CHAT_GPU_FRAC` | 0.90 | GPU fraction for chat model |
-| `TOOL_GPU_FRAC` | 0.20 | GPU fraction for tool classifier |
-| `KV_DTYPE` | auto | KV cache dtype (fp8, int8, auto) |
-| `VLLM_USE_V1` | 1 | Use vLLM V1 engine |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `TEXT_API_KEY` | Yes | - | API key |
+| `MAX_CONCURRENT_CONNECTIONS` | Yes | - | Maximum concurrent WebSocket connections |
+| `CHAT_GPU_FRAC` | No | 0.90 | GPU fraction for chat model |
+| `TOOL_GPU_FRAC` | No | 0.20 | GPU fraction for tool classifier |
+| `KV_DTYPE` | No | auto | KV cache dtype (fp8, int8, auto) |
+| `VLLM_USE_V1` | No | 1 | Use vLLM V1 engine |
 

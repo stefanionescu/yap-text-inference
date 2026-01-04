@@ -67,6 +67,7 @@ ENGINE=trt \
 # Just run - model is already in the image!
 docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
+  -e MAX_CONCURRENT_CONNECTIONS=50 \
   -p 8000:8000 \
   myuser/yap-text-api:vllm-qwen30b-awq
 ```
@@ -214,6 +215,7 @@ ENGINE=trt \
 ```bash
 docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
+  -e MAX_CONCURRENT_CONNECTIONS=50 \
   -p 8000:8000 \
   myuser/yap-text-api:vllm-qwen30b-awq
 ```
@@ -226,6 +228,7 @@ docker run -d --gpus all --name yap-server \
   --shm-size=2g \
   --ulimit memlock=-1:-1 \
   -e TEXT_API_KEY=your_secret_key \
+  -e MAX_CONCURRENT_CONNECTIONS=50 \
   -p 8000:8000 \
   myuser/yap-text-api:vllm-qwen30b-awq
 ```
@@ -237,6 +240,7 @@ docker run -d --gpus all --name yap-server \
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TEXT_API_KEY` | Yes | API key for authentication |
+| `MAX_CONCURRENT_CONNECTIONS` | Yes | Maximum concurrent WebSocket connections |
 
 ### GPU Memory Allocation (Both Engines)
 
@@ -313,6 +317,7 @@ docker stats yap-server
 ```bash
 docker run -it --gpus all --rm \
   -e TEXT_API_KEY=test \
+  -e MAX_CONCURRENT_CONNECTIONS=10 \
   myuser/yap-text-api:vllm-qwen30b-awq \
   /bin/bash
 ```
