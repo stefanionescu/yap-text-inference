@@ -9,7 +9,7 @@ _MODEL_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=string.sh
 source "${_MODEL_DETECT_DIR}/string.sh"
 
-model_detect_is_gptq_name() {
+is_gptq_name() {
   local value="${1:-}"
   local lowered
   lowered="$(str_to_lower "${value}")"
@@ -19,7 +19,7 @@ model_detect_is_gptq_name() {
   str_contains "${lowered}" "gptq"
 }
 
-model_detect_has_w4a16_hint() {
+has_w4a16_hint() {
   local value="${1:-}"
   local lowered
   lowered="$(str_to_lower "${value}")"
@@ -32,7 +32,7 @@ model_detect_has_w4a16_hint() {
     "autoround"
 }
 
-model_detect_is_awq_name() {
+is_awq_name() {
   local value="${1:-}"
   local lowered
   lowered="$(str_to_lower "${value}")"
@@ -42,25 +42,25 @@ model_detect_is_awq_name() {
   if str_contains "${lowered}" "awq"; then
     return 0
   fi
-  model_detect_has_w4a16_hint "${lowered}"
+  has_w4a16_hint "${lowered}"
 }
 
-model_detect_classify_prequant() {
+classify_prequant() {
   local value="${1:-}"
-  if model_detect_is_awq_name "${value}"; then
+  if is_awq_name "${value}"; then
     echo "awq"
     return
   fi
-  if model_detect_is_gptq_name "${value}"; then
+  if is_gptq_name "${value}"; then
     echo "gptq"
     return
   fi
   echo ""
 }
 
-model_detect_quantization_hint() {
+get_quantization_hint() {
   local classification
-  classification="$(model_detect_classify_prequant "$1")"
+  classification="$(classify_prequant "$1")"
   case "${classification}" in
     awq) echo "awq" ;;
     gptq) echo "gptq_marlin" ;;
@@ -68,12 +68,12 @@ model_detect_quantization_hint() {
   esac
 }
 
-model_detect_is_prequant_awq() {
+is_prequant_awq() {
   local value="${1:-}"
   if [ -z "${value}" ]; then
     return 1
   fi
-  if model_detect_is_awq_name "${value}"; then
+  if is_awq_name "${value}"; then
     return 0
   fi
   if [ -d "${value}" ] && { [ -f "${value}/awq_metadata.json" ] || [ -f "${value}/awq_config.json" ]; }; then
@@ -88,7 +88,7 @@ model_detect_is_prequant_awq() {
 
 # Check if model is a TRT pre-quantized model (AWQ or 8-bit)
 # Returns: trt_awq, trt_fp8, trt_int8, trt_8bit, or fails
-_model_detect_trt_prequant_kind() {
+_trt_prequant_kind() {
   local lowered="$1"
   if [ -z "${lowered}" ]; then
     return 1
@@ -115,21 +115,21 @@ _model_detect_trt_prequant_kind() {
   return 1
 }
 
-model_detect_is_trt_prequant() {
+is_trt_prequant() {
   local value="${1:-}"
   if [ -z "${value}" ]; then
     return 1
   fi
   local lowered
   lowered="$(str_to_lower "${value}")"
-  if _model_detect_trt_prequant_kind "${lowered}" >/dev/null; then
+  if _trt_prequant_kind "${lowered}" >/dev/null; then
     return 0
   fi
   return 1
 }
 
 # Check if model is a MoE (Mixture of Experts) model
-model_detect_is_moe() {
+is_moe() {
   local value="${1:-}"
   if [ -z "${value}" ]; then
     return 1
@@ -151,16 +151,16 @@ model_detect_is_moe() {
 }
 
 # Classify model for TRT (returns: trt_awq, trt_fp8, trt_int8, trt_8bit, moe, or empty)
-model_detect_classify_trt() {
+classify_trt() {
   local value="${1:-}"
   local lowered
   lowered="$(str_to_lower "${value}")"
   local kind=""
-  if kind="$(_model_detect_trt_prequant_kind "${lowered}")"; then
+  if kind="$(_trt_prequant_kind "${lowered}")"; then
     echo "${kind}"
     return
   fi
-  if model_detect_is_moe "${value}"; then
+  if is_moe "${value}"; then
     echo "moe"
     return
   fi
@@ -172,18 +172,18 @@ model_detect_classify_trt() {
 # =============================================================================
 
 # Check if any of the provided models are prequantized
-model_detect_any_prequant() {
+has_prequant_model() {
   local chat_model="${1:-}"
   local tool_model="${2:-}"
   
   if [ -n "${chat_model}" ]; then
-    if model_detect_is_awq_name "${chat_model}" || model_detect_is_gptq_name "${chat_model}" || model_detect_is_trt_prequant "${chat_model}"; then
+    if is_awq_name "${chat_model}" || is_gptq_name "${chat_model}" || is_trt_prequant "${chat_model}"; then
       echo "${chat_model}"
       return 0
     fi
   fi
   if [ -n "${tool_model}" ]; then
-    if model_detect_is_awq_name "${tool_model}" || model_detect_is_gptq_name "${tool_model}" || model_detect_is_trt_prequant "${tool_model}"; then
+    if is_awq_name "${tool_model}" || is_gptq_name "${tool_model}" || is_trt_prequant "${tool_model}"; then
       echo "${tool_model}"
       return 0
     fi
@@ -194,7 +194,7 @@ model_detect_any_prequant() {
 
 # Check if local TRT checkpoint exists for a model
 # Returns 0 if exists, 1 if not
-_model_detect_has_local_trt_checkpoint() {
+_has_local_trt_checkpoint() {
   local model_id="${1:-}"
   local trt_cache="${TRT_CACHE_DIR:-${ROOT_DIR:-.}/.trt_cache}"
   
@@ -202,7 +202,7 @@ _model_detect_has_local_trt_checkpoint() {
     return 1
   fi
   
-  # Derive checkpoint name from model ID (same logic as trt_get_checkpoint_dir)
+  # Derive checkpoint name from model ID (same logic as get_checkpoint_dir)
   local model_name
   model_name=$(basename "${model_id}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
   
@@ -219,7 +219,7 @@ _model_detect_has_local_trt_checkpoint() {
 # Validate that --push-quant is not used with a prequantized model
 # Exception: allow if local TRT checkpoint exists (locally quantized artifacts)
 # Returns 0 if valid, 1 if invalid (with error messages)
-model_detect_validate_push_quant_prequant() {
+validate_push_quant_prequant() {
   local chat_model="${1:-}"
   local tool_model="${2:-}"
   local push_requested="${3:-${HF_AWQ_PUSH_REQUESTED:-0}}"
@@ -230,11 +230,11 @@ model_detect_validate_push_quant_prequant() {
   fi
   
   local prequant_model
-  prequant_model="$(model_detect_any_prequant "${chat_model}" "${tool_model}")"
+  prequant_model="$(has_prequant_model "${chat_model}" "${tool_model}")"
   
   if [ -n "${prequant_model}" ]; then
     # Allow push if local TRT checkpoint exists (model was quantized locally)
-    if _model_detect_has_local_trt_checkpoint "${prequant_model}"; then
+    if _has_local_trt_checkpoint "${prequant_model}"; then
       return 0
     fi
     

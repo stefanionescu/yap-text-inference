@@ -31,7 +31,7 @@ _trt_version_to_int() {
 
 # Detect CUDA toolkit version
 # Priority: 1) CUDA_VERSION env var, 2) nvcc, 3) nvidia-smi
-trt_detect_cuda_version() {
+detect_cuda_version() {
   # 1. Check CUDA_VERSION env var (common in containers)
   if [ -n "${CUDA_VERSION:-}" ]; then
     echo "${CUDA_VERSION}" | grep -oE '^[0-9]+\.[0-9]+' 2>/dev/null || echo "${CUDA_VERSION}"
@@ -56,9 +56,9 @@ trt_detect_cuda_version() {
 # =============================================================================
 
 # Check if CUDA version is compatible with TRT-LLM 1.2.0rc5 (requires CUDA 13.0)
-trt_check_cuda_compatibility() {
+check_cuda_compatibility() {
   local cuda_ver
-  cuda_ver=$(trt_detect_cuda_version)
+  cuda_ver=$(detect_cuda_version)
   
   if [ -z "${cuda_ver}" ]; then
     log_warn "[cuda] ⚠ Could not detect CUDA version"
@@ -87,7 +87,7 @@ trt_assert_cuda13_driver() {
   # -------------------------------------------------------------------------
   # 1. TOOLKIT CHECK: What CUDA toolkit is installed?
   # -------------------------------------------------------------------------
-  toolkit_ver=$(trt_detect_cuda_version)
+  toolkit_ver=$(detect_cuda_version)
   toolkit_int=$(_trt_version_to_int "$toolkit_ver") || toolkit_int=0
 
   if [ "$toolkit_int" -eq 0 ]; then

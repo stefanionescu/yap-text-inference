@@ -19,7 +19,7 @@ vllm_awq_should_use_prequant() {
   local need_chat="${AWQ_TARGET_CHAT:-0}"
   local use=0 chat_use=0
 
-  if [ "${need_chat}" = "1" ] && model_detect_is_prequant_awq "${CHAT_MODEL:-}"; then
+  if [ "${need_chat}" = "1" ] && is_prequant_awq "${CHAT_MODEL:-}"; then
     chat_use=1
     use=1
   fi

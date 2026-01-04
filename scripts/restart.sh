@@ -118,7 +118,7 @@ USAGE
 }
 
 # Parse args using helper
-if ! restart_parse_args "$@"; then
+if ! parse_args "$@"; then
   usage
 fi
 case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "[restart] ⚠ Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
@@ -139,7 +139,7 @@ fi
 # Check for engine switching - this requires FULL environment wipe
 # Uses unified handler to avoid duplicate logic with main.sh
 ENGINE_SWITCH_RESULT=0
-runtime_guard_handle_engine_switch "${SCRIPT_DIR}" "${ROOT_DIR}" "${INFERENCE_ENGINE}" "${DEPLOY_MODE}" || ENGINE_SWITCH_RESULT=$?
+handle_engine_switch "${SCRIPT_DIR}" "${ROOT_DIR}" "${INFERENCE_ENGINE}" "${DEPLOY_MODE}" || ENGINE_SWITCH_RESULT=$?
 
 if [ "${ENGINE_SWITCH_RESULT}" = "2" ]; then
   log_err "[restart] ✗ Engine switch failed"
@@ -149,7 +149,7 @@ fi
 # If engine was switched, need full deployment (restart can't handle fresh engine)
 if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   # Build main.sh args using shared flag builder
-  args_build_forward_flags
+  build_forward_flags
   declare -a main_args=("--${INFERENCE_ENGINE}" "--deploy-mode" "${DEPLOY_MODE}")
   main_args+=("${ARGS_FORWARD_FLAGS[@]}")
 
@@ -184,16 +184,16 @@ if [ "${DEPLOY_MODE}" != "tool" ]; then
 fi
 
 if [ "${RESTART_MODEL_MODE}" = "reconfigure" ]; then
-  restart_reconfigure_models
+  reconfigure_models
   exit 0
 fi
 
 # Generic path may start and tail the server; if not applicable, it returns
-restart_basic
-restart_detect_awq_models "${DEPLOY_MODE}"
+run_basic_restart
+detect_awq_models "${DEPLOY_MODE}"
 
 # Validate --push-quant is not used with prequantized models (non-reconfigure path)
-# This check only applies to vLLM/AWQ - TRT has different push logic via trt_push_to_hf
+# This check only applies to vLLM/AWQ - TRT has different push logic via push_to_hf
 if [ "${HF_AWQ_PUSH_REQUESTED:-0}" = "1" ] && [ "${CHAT_AWQ_SOURCE_KIND:-}" = "prequant" ]; then
   # Skip for TRT - AWQ source detection doesn't apply, TRT push handles its own artifacts
   if [ "${INFERENCE_ENGINE:-}" != "trt" ]; then
@@ -230,21 +230,21 @@ if [ "${INSTALL_DEPS:-0}" != "1" ] && [ ! -d "${venv_dir}" ]; then
   exit 1
 fi
 
-restart_setup_env_for_awq "${DEPLOY_MODE}"
+setup_env_for_awq "${DEPLOY_MODE}"
 # Enable/disable push now that quantization is set (only allow 4-bit exports)
 push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"
 validate_push_quant_prereqs "${DEPLOY_MODE}"
 # Enable/disable engine push based on engine type (only TRT)
 push_engine_apply_policy "${INFERENCE_ENGINE:-trt}" "restart"
 validate_push_engine_prereqs
-restart_validate_awq_push_prereqs "${DEPLOY_MODE}"
+validate_awq_push_prereqs "${DEPLOY_MODE}"
 # Validate model selections early for AWQ path before heavy work
 if ! validate_models_early; then
   exit 1
 fi
-# NOTE: restart_apply_defaults_and_deps handles --install-deps for AWQ path
-restart_apply_defaults_and_deps
-restart_push_cached_awq_models "${DEPLOY_MODE}"
+# NOTE: apply_defaults_and_deps handles --install-deps for AWQ path
+apply_defaults_and_deps
+push_cached_awq_models "${DEPLOY_MODE}"
 
 # TRT engine: validate engine directory exists before starting server
 if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
@@ -262,8 +262,8 @@ if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; th
   # Push TRT engine if requested (for cached/prebuilt engines)
   # Skip if engine was downloaded from HuggingFace (no point pushing back what we downloaded)
   if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${USING_PREBUILT_ENGINE:-0}" != "1" ]; then
-    trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${CHAT_MODEL:-}"
+    push_engine_to_hf "${TRT_ENGINE_DIR}" "${CHAT_MODEL:-}"
   fi
 fi
 
-restart_server_background
+launch_server_background

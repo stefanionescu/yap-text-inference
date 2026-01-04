@@ -20,7 +20,7 @@ _awq_read_source_model() {
     python3 -m src.scripts.awq source-model "${meta}" 2>/dev/null || true
 }
 
-restart_detect_awq_models() {
+detect_awq_models() {
   local DEPLOY_MODE="$1"
   AWQ_CACHE_DIR="${ROOT_DIR}/.awq"
   CHAT_AWQ_DIR="${AWQ_CACHE_DIR}/chat_awq"
@@ -43,9 +43,9 @@ restart_detect_awq_models() {
   fi
 
   local last_chat_model last_quant last_chat_quant
-  last_chat_model="$(runtime_guard_read_last_config_value "CHAT_MODEL" "${ROOT_DIR}")"
-  last_quant="$(runtime_guard_read_last_config_value "QUANTIZATION" "${ROOT_DIR}")"
-  last_chat_quant="$(runtime_guard_read_last_config_value "CHAT_QUANTIZATION" "${ROOT_DIR}")"
+  last_chat_model="$(read_last_config_value "CHAT_MODEL" "${ROOT_DIR}")"
+  last_quant="$(read_last_config_value "QUANTIZATION" "${ROOT_DIR}")"
+  last_chat_quant="$(read_last_config_value "CHAT_QUANTIZATION" "${ROOT_DIR}")"
 
   local effective_chat_quant
   effective_chat_quant="${last_chat_quant:-${last_quant:-}}"
@@ -71,7 +71,7 @@ restart_detect_awq_models() {
   export CHAT_AWQ_SOURCE CHAT_AWQ_SOURCE_KIND
 }
 
-restart_setup_env_for_awq() {
+setup_env_for_awq() {
   local DEPLOY_MODE="$1"
   export QUANTIZATION=awq
   export DEPLOY_MODE="${DEPLOY_MODE}"
@@ -91,7 +91,7 @@ restart_setup_env_for_awq() {
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
     local resolved_tool="${TOOL_MODEL:-}"
     if [ -z "${resolved_tool}" ]; then
-      resolved_tool="$(runtime_guard_read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")"
+      resolved_tool="$(read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")"
     fi
     if [ -n "${resolved_tool}" ]; then
       TOOL_MODEL="${resolved_tool}"
@@ -104,12 +104,12 @@ restart_setup_env_for_awq() {
   export TOOL_MODEL_NAME
 }
 
-restart_validate_awq_push_prereqs() {
+validate_awq_push_prereqs() {
   local DEPLOY_MODE="$1"
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return
   fi
-  # Skip AWQ artifact check for TRT - TRT has its own push logic in restart_push_cached_awq_models
+  # Skip AWQ artifact check for TRT - TRT has its own push logic in push_cached_awq_models
   if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
     return
   fi
@@ -122,7 +122,7 @@ restart_validate_awq_push_prereqs() {
   # via validate_push_quant_prereqs(). This function just checks for local models.
 }
 
-restart_push_cached_awq_models() {
+push_cached_awq_models() {
   local DEPLOY_MODE="$1"
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return
@@ -142,7 +142,7 @@ restart_push_cached_awq_models() {
       local ckpt_dir="${TRT_CACHE_DIR:-${ROOT_DIR}/.trt_cache}/${base}-${qformat}-ckpt"
       if [ -d "${ckpt_dir}" ]; then
         log_info "[restart] Uploading TRT artifacts to Hugging Face"
-        trt_push_to_hf "${ckpt_dir}" "${engine_dir}" "${CHAT_MODEL:-}" "${qformat}"
+        push_to_hf "${ckpt_dir}" "${engine_dir}" "${CHAT_MODEL:-}" "${qformat}"
         return
       else
         log_warn "[restart] ⚠ TRT checkpoint directory not found for push: ${ckpt_dir}"

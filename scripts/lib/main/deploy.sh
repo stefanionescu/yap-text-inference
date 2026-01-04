@@ -5,7 +5,7 @@
 # Functions to log configuration and execute the deployment step sequence.
 
 # Log current configuration
-main_log_config() {
+log_deploy_config() {
   log_blank
   case "${DEPLOY_MODE:-both}" in
     tool)
@@ -25,9 +25,9 @@ main_log_config() {
 }
 
 # Build the deployment command based on engine type and deploy mode
-# Usage: main_build_deploy_cmd <script_dir>
+# Usage: build_deploy_cmd <script_dir>
 # Returns: deployment command string
-main_build_deploy_cmd() {
+build_deploy_cmd() {
   local script_dir="$1"
   local quantizer="quantization/vllm_quantizer.sh"
   local engine_label="vLLM"
@@ -64,24 +64,24 @@ CMD
 }
 
 # Export all required environment variables for background process
-main_export_all() {
+export_runtime_env() {
   export QUANTIZATION QUANT_MODE DEPLOY_MODE CHAT_MODEL TOOL_MODEL
   export CHAT_QUANTIZATION INFERENCE_ENGINE
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
 }
 
 # Run the deployment pipeline
-# Usage: main_run_deploy <root_dir> <script_dir>
-main_run_deploy() {
+# Usage: run_deploy <root_dir> <script_dir>
+run_deploy() {
   local root_dir="$1"
   local script_dir="$2"
   local deploy_cmd
   
-  deploy_cmd="$(main_build_deploy_cmd "${script_dir}")"
+  deploy_cmd="$(build_deploy_cmd "${script_dir}")"
   
-  main_export_all
+  export_runtime_env
   
-  runtime_pipeline_run_background \
+  run_background \
     "${root_dir}" \
     "${deploy_cmd}" \
     "1" \

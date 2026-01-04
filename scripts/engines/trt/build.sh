@@ -7,16 +7,16 @@
 _TRT_BUILD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source common GPU detection (if not already sourced)
-if ! type gpu_detect_name >/dev/null 2>&1; then
+if ! type get_gpu_name >/dev/null 2>&1; then
   source "${_TRT_BUILD_DIR}/../../lib/common/gpu_detect.sh"
 fi
 
 # Source TRT detection utilities (for pre-built engine discovery)
-if ! type trt_find_compatible_engine >/dev/null 2>&1; then
+if ! type find_compatible_engine >/dev/null 2>&1; then
   source "${_TRT_BUILD_DIR}/detect.sh"
 fi
 
-if ! type model_detect_is_trt_prequant >/dev/null 2>&1; then
+if ! type is_trt_prequant >/dev/null 2>&1; then
   source "${_TRT_BUILD_DIR}/../../lib/common/model_detect.sh"
 fi
 
@@ -25,8 +25,8 @@ fi
 # =============================================================================
 
 # Build TensorRT-LLM engine from checkpoint
-# Usage: trt_build_engine <checkpoint_dir> <engine_dir> [options...]
-trt_build_engine() {
+# Usage: build_engine <checkpoint_dir> <engine_dir> [options...]
+build_engine() {
   local checkpoint_dir="${1:-}"
   local engine_dir="${2:-}"
   
@@ -91,7 +91,7 @@ trt_build_engine() {
   fi
   
   # Record build metadata
-  trt_record_build_metadata "${engine_dir}" "${checkpoint_dir}"
+  record_build_metadata "${engine_dir}" "${checkpoint_dir}"
   
   log_info "[build] ✓ Engine build complete"
   return 0
@@ -102,7 +102,7 @@ trt_build_engine() {
 # =============================================================================
 
 # Record build command and metadata
-trt_record_build_metadata() {
+record_build_metadata() {
   local engine_dir="${1:-}"
   local checkpoint_dir="${2:-}"
   
@@ -130,7 +130,7 @@ EOF
   
   # Get TensorRT-LLM version (uses cached TRTLLM_INSTALLED_VERSION if available)
   local trtllm_ver
-  trtllm_ver=$(trt_detect_trtllm_version 2>/dev/null)
+  trtllm_ver=$(detect_trtllm_version 2>/dev/null)
   if [ -z "${trtllm_ver}" ] || [ "${trtllm_ver}" = "unknown" ]; then
     log_err "[build] ✗ Cannot determine TensorRT-LLM version. Is tensorrt_llm installed?"
     return 1
@@ -138,7 +138,7 @@ EOF
   
   # Get CUDA version (uses CUDA_VERSION env var if set)
   local cuda_ver
-  cuda_ver=$(trt_detect_cuda_version 2>/dev/null)
+  cuda_ver=$(detect_cuda_version 2>/dev/null)
   if [ -z "${cuda_ver}" ]; then
     log_err "[build] ✗ Cannot determine CUDA version. Is CUDA installed?"
     return 1
@@ -146,14 +146,14 @@ EOF
   
   # Get GPU info (uses DETECTED_GPU_NAME if already set)
   local gpu_name
-  gpu_name="${DETECTED_GPU_NAME:-$(gpu_detect_name 2>/dev/null)}"
+  gpu_name="${DETECTED_GPU_NAME:-$(get_gpu_name 2>/dev/null)}"
   if [ -z "${gpu_name}" ] || [ "${gpu_name}" = "Unknown" ]; then
     log_err "[build] ✗ Cannot detect GPU. Is nvidia-smi available?"
     return 1
   fi
   
   local gpu_vram
-  gpu_vram=$(gpu_detect_vram_gb 2>/dev/null || echo "0")
+  gpu_vram=$(detect_vram_gb 2>/dev/null || echo "0")
   
   # Get NVIDIA driver version
   local nvidia_driver
@@ -211,7 +211,7 @@ EOF
 # =============================================================================
 
 # Validate TensorRT-LLM engine directory
-trt_validate_engine() {
+validate_engine() {
   local engine_dir="${1:-${TRT_ENGINE_DIR:-}}"
   
   if [ -z "${engine_dir}" ]; then
@@ -239,8 +239,8 @@ trt_validate_engine() {
 # =============================================================================
 
 # Complete quantization and build pipeline
-# Usage: trt_quantize_and_build <model_id> [qformat]
-trt_quantize_and_build() {
+# Usage: quantize_and_build <model_id> [qformat]
+quantize_and_build() {
   local model_id="${1:-}"
   local qformat="${2:-}"
   
@@ -251,18 +251,18 @@ trt_quantize_and_build() {
   
   # Resolve qformat (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
-    qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
+    qformat=$(resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
   
   log_info "[build] Starting TRT quantize and build pipeline..."
   log_info "[build]   Model: ${model_id}"
   log_info "[build]   Format: ${qformat}"
-  log_info "[build]   GPU: ${GPU_SM_ARCH} (${DETECTED_GPU_NAME:-$(gpu_detect_name)})"
+  log_info "[build]   GPU: ${GPU_SM_ARCH} (${DETECTED_GPU_NAME:-$(get_gpu_name)})"
   
   # Check if this is a pre-quantized model
-  if model_detect_is_trt_prequant "${model_id}"; then
+  if is_trt_prequant "${model_id}"; then
     local prequant_kind
-    prequant_kind="$(model_detect_classify_trt "${model_id}")"
+    prequant_kind="$(classify_trt "${model_id}")"
     if [ -n "${prequant_kind}" ]; then
       log_info "[build] Detected pre-quantized TRT model (${prequant_kind})"
     else
@@ -271,13 +271,13 @@ trt_quantize_and_build() {
     
     # Check for pre-built engine in the HF repo FIRST
     local prebuilt_engine_label
-    prebuilt_engine_label=$(trt_find_compatible_engine "${model_id}") || true
+    prebuilt_engine_label=$(find_compatible_engine "${model_id}") || true
     
     if [ -n "${prebuilt_engine_label}" ]; then
       # Download the pre-built engine - skip quantization entirely
       log_info "[build] Using pre-built engine: ${prebuilt_engine_label}"
       local engine_dir
-      engine_dir=$(trt_download_prebuilt_engine "${model_id}" "${prebuilt_engine_label}") || {
+      engine_dir=$(download_prebuilt_engine "${model_id}" "${prebuilt_engine_label}") || {
         log_warn "[build] ⚠ Failed to download pre-built engine, falling back to build from checkpoint"
         prebuilt_engine_label=""
       }
@@ -285,7 +285,7 @@ trt_quantize_and_build() {
       if [ -n "${prebuilt_engine_label}" ] && [ -n "${engine_dir}" ]; then
         # Also download checkpoint for tokenizer and config
         local ckpt_dir
-        ckpt_dir=$(trt_download_prequantized "${model_id}") || return 1
+        ckpt_dir=$(download_prequantized "${model_id}") || return 1
         TRT_CHECKPOINT_DIR="${ckpt_dir}"
         TRT_ENGINE_DIR="${engine_dir}"
         export TRT_ENGINE_DIR TRT_CHECKPOINT_DIR
@@ -301,23 +301,23 @@ trt_quantize_and_build() {
     
     # No compatible pre-built engine found - download checkpoint and build
     local ckpt_dir
-    ckpt_dir=$(trt_download_prequantized "${model_id}") || return 1
+    ckpt_dir=$(download_prequantized "${model_id}") || return 1
     TRT_CHECKPOINT_DIR="${ckpt_dir}"
   else
     # Quantize the model
     local ckpt_dir
-    ckpt_dir=$(trt_get_checkpoint_dir "${model_id}" "${qformat}")
-    trt_quantize_model "${model_id}" "${ckpt_dir}" "${qformat}" || return 1
+    ckpt_dir=$(get_checkpoint_dir "${model_id}" "${qformat}")
+    quantize_model "${model_id}" "${ckpt_dir}" "${qformat}" || return 1
     TRT_CHECKPOINT_DIR="${ckpt_dir}"
   fi
   
   # Validate checkpoint before building
-  trt_validate_checkpoint "${TRT_CHECKPOINT_DIR}" || return 1
+  validate_checkpoint "${TRT_CHECKPOINT_DIR}" || return 1
   
   # Build engine
   local engine_dir
-  engine_dir=$(trt_get_engine_dir "${model_id}" "${qformat}")
-  trt_build_engine "${TRT_CHECKPOINT_DIR}" "${engine_dir}" || return 1
+  engine_dir=$(get_engine_dir "${model_id}" "${qformat}")
+  build_engine "${TRT_CHECKPOINT_DIR}" "${engine_dir}" || return 1
   
   # Export engine directory for server
   TRT_ENGINE_DIR="${engine_dir}"

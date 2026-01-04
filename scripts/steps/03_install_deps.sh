@@ -84,7 +84,7 @@ if [ "${ENGINE_LOWER}" = "trt" ]; then
   source "${SCRIPT_DIR}/../engines/trt/detect.sh"
   source "${SCRIPT_DIR}/../engines/trt/install.sh"
   
-  trt_export_env
+  export_env
   
   if ! trt_assert_cuda13_driver "deps"; then
     log_err "[cuda] ✗ CUDA 13.x required for TensorRT-LLM"

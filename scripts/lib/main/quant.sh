@@ -6,9 +6,9 @@
 # model type, user flags, and pre-quantized model detection.
 
 # Resolve the 4-bit backend based on model classification
-# Usage: main_resolve_4bit_backend <chat_model>
+# Usage: resolve_4bit_backend <chat_model>
 # Returns: "awq" or "gptq_marlin"
-main_resolve_4bit_backend() {
+resolve_4bit_backend() {
   local chat_model="$1"
   if [ -z "${chat_model}" ]; then
     echo "awq"
@@ -16,7 +16,7 @@ main_resolve_4bit_backend() {
   fi
 
   local classification
-  classification="$(model_detect_classify_prequant "${chat_model}")"
+  classification="$(classify_prequant "${chat_model}")"
   case "${classification}" in
     gptq) echo "gptq_marlin" ;;
     awq) echo "awq" ;;
@@ -55,7 +55,7 @@ quant_resolve_settings() {
     case "${forced_mode}" in
       4bit)
         resolved_mode="4bit"
-        resolved_backend="$(main_resolve_4bit_backend "${chat_model}")"
+        resolved_backend="$(resolve_4bit_backend "${chat_model}")"
         ;;
       8bit)
         resolved_mode="8bit"
@@ -78,7 +78,7 @@ quant_resolve_settings() {
 
   if [ -n "${chat_model}" ]; then
     local prequant_kind
-    prequant_kind="$(model_detect_classify_prequant "${chat_model}")"
+    prequant_kind="$(classify_prequant "${chat_model}")"
     case "${prequant_kind}" in
       awq)
         if [ "${resolved_backend}" != "awq" ]; then
@@ -125,8 +125,8 @@ quant_resolve_settings() {
 }
 
 # Apply quantization selection based on user flags and model hints
-# Usage: main_apply_quantization <forced_mode> <chat_hint>
-main_apply_quantization() {
+# Usage: apply_quantization <forced_mode> <chat_hint>
+apply_quantization() {
   quant_resolve_settings \
     "${DEPLOY_MODE:-}" \
     "${CHAT_MODEL_NAME:-}" \
@@ -137,10 +137,10 @@ main_apply_quantization() {
 }
 
 # Get quantization hint from chat model name
-# Usage: main_get_quant_hint
+# Usage: get_quant_hint
 # Returns: quantization hint or empty string
-main_get_quant_hint() {
+get_quant_hint() {
   if [ "${DEPLOY_MODE:-}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
-    model_detect_quantization_hint "${CHAT_MODEL_NAME:-}"
+    get_quantization_hint "${CHAT_MODEL_NAME:-}"
   fi
 }

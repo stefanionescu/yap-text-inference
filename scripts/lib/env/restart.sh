@@ -5,9 +5,9 @@
 # Environment defaults and dependency installation for scripts/restart.sh.
 # Applies cached configuration and triggers deps install when requested.
 
-restart_apply_defaults_and_deps() {
+apply_defaults_and_deps() {
   # Handle --install-deps (uses shared helper from basic.sh)
-  restart_run_install_deps_if_needed
+  run_install_deps_if_needed
 
   # Load environment defaults (after deps are installed)
   log_section "[restart] Loading environment defaults..."

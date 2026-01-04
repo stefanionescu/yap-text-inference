@@ -9,13 +9,13 @@ _WARMUP_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/constants.sh
 source "${_WARMUP_ENV_DIR}/../common/constants.sh"
 
-warmup_normalize_positive_int() {
+normalize_positive_int() {
   local var_name="${1:-}"
   local default_val="${2:-1}"
   local current_val
 
   if [ -z "${var_name}" ]; then
-    echo "warmup_normalize_positive_int: var_name is required" >&2
+    echo "normalize_positive_int: var_name is required" >&2
     return 1
   fi
 
@@ -32,14 +32,14 @@ warmup_normalize_positive_int() {
   export "${var_name?}"
 }
 
-warmup_init_defaults() {
+init_warmup_defaults() {
   local root_dir="${1:-}"
   local script_dir="${2:-}"
   local log_dir
   local run_dir
 
   if [ -z "${root_dir}" ] || [ -z "${script_dir}" ]; then
-    echo "warmup_init_defaults: root_dir and script_dir are required" >&2
+    echo "init_warmup_defaults: root_dir and script_dir are required" >&2
     return 1
   fi
 
@@ -54,6 +54,6 @@ warmup_init_defaults() {
   export WARMUP_LOCK_FILE="${WARMUP_LOCK_FILE:-${run_dir}/warmup.lock}"
   export WARMUP_HEALTH_CHECK_SCRIPT="${WARMUP_HEALTH_CHECK_SCRIPT:-${script_dir}/lib/common/health.sh}"
 
-  warmup_normalize_positive_int WARMUP_TIMEOUT_SECS "${SCRIPTS_WARMUP_TIMEOUT_SECS_DEFAULT}"
-  warmup_normalize_positive_int WARMUP_RETRIES "${SCRIPTS_WARMUP_RETRIES_DEFAULT}"
+  normalize_positive_int WARMUP_TIMEOUT_SECS "${SCRIPTS_WARMUP_TIMEOUT_SECS_DEFAULT}"
+  normalize_positive_int WARMUP_RETRIES "${SCRIPTS_WARMUP_RETRIES_DEFAULT}"
 }

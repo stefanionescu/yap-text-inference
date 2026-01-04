@@ -25,11 +25,11 @@ _restart_resolve_deploy_mode() {
 }
 
 _restart_is_gptq_model() {
-  model_detect_is_gptq_name "$1"
+  is_gptq_name "$1"
 }
 
 _restart_is_awq_model() {
-  model_detect_is_awq_name "$1"
+  is_awq_name "$1"
 }
 
 _restart_autodetect_quantization() {
@@ -38,7 +38,7 @@ _restart_autodetect_quantization() {
 
   if [ "${chat_enabled}" = "1" ]; then
     local chat_hint
-    chat_hint="$(model_detect_quantization_hint "${chat_model}")"
+    chat_hint="$(get_quantization_hint "${chat_model}")"
     if [ "${chat_hint}" = "awq" ]; then
       echo "awq"
       return
@@ -231,7 +231,7 @@ _restart_can_preserve_cache() {
   return 0
 }
 
-restart_clear_model_artifacts() {
+clear_model_artifacts() {
   # Clear stale TRT engine path reference
   rm -f "${ROOT_DIR}/.run/trt_engine_dir.env" 2>/dev/null || true
   
@@ -277,7 +277,7 @@ restart_clear_model_artifacts() {
   done
 }
 
-restart_reconfigure_models() {
+reconfigure_models() {
   _restart_load_previous_config
 
   local target_deploy
@@ -306,7 +306,7 @@ restart_reconfigure_models() {
   fi
 
   # Validate --push-quant is not used with prequantized models
-  if ! model_detect_validate_push_quant_prequant "${chat_model}" "${tool_model}" "${HF_AWQ_PUSH_REQUESTED:-0}" "[restart]"; then
+  if ! validate_push_quant_prequant "${chat_model}" "${tool_model}" "${HF_AWQ_PUSH_REQUESTED:-0}" "[restart]"; then
     exit 1
   fi
 
@@ -338,7 +338,7 @@ restart_reconfigure_models() {
 
   local chat_hint=""
   if [ "${deploy_chat}" = "1" ]; then
-    chat_hint="$(model_detect_quantization_hint "${chat_model}")"
+    chat_hint="$(get_quantization_hint "${chat_model}")"
   fi
 
   quant_resolve_settings \
@@ -373,10 +373,10 @@ restart_reconfigure_models() {
   FULL_CLEANUP=0 "${SCRIPT_DIR}/stop.sh"
 
   if [ "${preserve_cache}" != "1" ]; then
-    restart_clear_model_artifacts
+    clear_model_artifacts
   fi
 
-  restart_apply_defaults_and_deps
+  apply_defaults_and_deps
 
   if [ ! -d "${resolved_venv}" ]; then
     log_err "[restart] ✗ Virtual environment missing at ${resolved_venv}"
@@ -400,7 +400,7 @@ restart_reconfigure_models() {
   # Push to HuggingFace if requested (even when preserving cache)
   # The quantizer scripts above handle push for fresh builds; this handles cached artifacts
   if [ "${HF_AWQ_PUSH:-0}" = "1" ] && [ "${preserve_cache}" = "1" ]; then
-    restart_push_cached_awq_models "${DEPLOY_MODE}"
+    push_cached_awq_models "${DEPLOY_MODE}"
   fi
 
   # Push TRT engine if requested and we didn't go through the quantizer
@@ -417,11 +417,11 @@ restart_reconfigure_models() {
       fi
     fi
     if [ -n "${TRT_ENGINE_DIR:-}" ] && [ -d "${TRT_ENGINE_DIR}" ]; then
-      trt_push_engine_to_hf "${TRT_ENGINE_DIR}" "${CHAT_MODEL:-}"
+      push_engine_to_hf "${TRT_ENGINE_DIR}" "${CHAT_MODEL:-}"
     else
       log_warn "[restart] ⚠ --push-engine specified but no TRT engine found to push"
     fi
   fi
 
-  restart_server_background
+  launch_server_background
 }

@@ -9,8 +9,8 @@ _RESTART_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/args.sh
 source "${_RESTART_ARGS_DIR}/../common/args.sh"
 
-restart_parse_args() {
-  args_init_common_state
+parse_args() {
+  init_common_state
 
   DEPLOY_MODE=""
   INSTALL_DEPS="${INSTALL_DEPS:-0}"
@@ -22,7 +22,7 @@ restart_parse_args() {
 
   while [ $# -gt 0 ]; do
     # Try common flags first
-    if args_parse_common_flag "$1" "${2:-}"; then
+    if parse_common_flag "$1" "${2:-}"; then
       shift "${ARGS_SHIFT_COUNT}"
       continue
     fi
@@ -130,11 +130,11 @@ restart_parse_args() {
   fi
 
   # Validate mutually exclusive flags
-  if ! args_validate_common_state; then
+  if ! validate_common_state; then
     return 1
   fi
 
-  args_export_common_state
+  export_common_state
   export INSTALL_DEPS DEPLOY_MODE
   export RESTART_MODEL_MODE RECONFIG_DEPLOY_MODE
   export RECONFIG_CHAT_MODEL RECONFIG_TOOL_MODEL

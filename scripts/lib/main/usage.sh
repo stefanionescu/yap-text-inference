@@ -4,7 +4,7 @@
 # =============================================================================
 # Prints command-line usage and examples for scripts/main.sh.
 
-main_usage() {
+show_usage() {
   echo "Usage:"
   echo "  $0 [--vllm|--trt] [4bit|8bit] <chat_model> <tool_model> [deploy_mode]"
   echo "  $0 [--vllm|--trt] [4bit|8bit] chat <chat_model>"

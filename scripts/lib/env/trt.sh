@@ -87,7 +87,7 @@ TRT_CALIB_SIZE="${TRT_CALIB_SIZE:-64}"
 # Calibration batch size: dynamically set based on model profile.
 # Gemma/heavy models: smaller batch (8), standard models: 16.
 # NOTE: Python default in src/config/trt.py is 16; shell leaves empty and relies
-# on trt_resolve_calib_batch_size() to pick model-appropriate values at runtime.
+# on resolve_calib_batch_size() to pick model-appropriate values at runtime.
 TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-}"
 
 # Calibration sequence length: derived from CHAT_MAX_LEN + CHAT_MAX_OUT
@@ -122,7 +122,7 @@ TRT_MODELS_DIR="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}"
 
 # Resolve calibration batch size based on model characteristics
 # Heavy models (Gemma, large MoE) need smaller batch sizes to avoid OOM
-trt_resolve_calib_batch_size() {
+resolve_calib_batch_size() {
   local model_id="${1:-}"
   local default_batch="${2:-16}"
   
@@ -147,7 +147,7 @@ trt_resolve_calib_batch_size() {
 }
 
 # Check if GPU SM arch supports native FP8
-trt_gpu_supports_fp8() {
+gpu_supports_fp8() {
   local sm_arch="${1:-${GPU_SM_ARCH:-}}"
   if [ -z "${sm_arch}" ]; then
     return 1
@@ -164,7 +164,7 @@ trt_gpu_supports_fp8() {
 # Map 4bit/8bit to TRT qformat based on GPU architecture
 # 4bit -> int4_awq for all models
 # 8bit -> fp8 (L40S/H100) or int8_sq (A100)
-trt_resolve_qformat() {
+resolve_qformat() {
   local quant_mode="${1:-4bit}"
   local sm_arch="${2:-${GPU_SM_ARCH:-}}"
 
@@ -173,7 +173,7 @@ trt_resolve_qformat() {
       echo "int4_awq"
       ;;
     8bit)
-      if trt_gpu_supports_fp8 "${sm_arch}"; then
+      if gpu_supports_fp8 "${sm_arch}"; then
         echo "fp8"
       else
         echo "int8_sq"
@@ -192,7 +192,7 @@ trt_resolve_qformat() {
 }
 
 # Get KV cache dtype based on qformat
-trt_resolve_kv_cache_dtype() {
+resolve_kv_cache_dtype() {
   local qformat="${1:-int4_awq}"
   
   case "${qformat}" in
@@ -207,7 +207,7 @@ trt_resolve_kv_cache_dtype() {
 }
 
 # Validate TRT_MAX_BATCH_SIZE is set (called before engine build)
-trt_validate_batch_size() {
+validate_batch_size() {
   if [ -z "${TRT_MAX_BATCH_SIZE:-}" ]; then
     log_err "[trt] ✗ TRT_MAX_BATCH_SIZE must be set when building a TRT engine."
     log_err "[trt]   This value is baked into the compiled engine and determines the maximum"
@@ -232,7 +232,7 @@ trt_validate_batch_size() {
 }
 
 # Export all TRT environment variables
-trt_export_env() {
+export_env() {
   export TRT_VERSION TRT_PIP_SPEC TRT_EXTRA_INDEX_URL
   export TRT_PYTORCH_VERSION TRT_TORCHVISION_VERSION TRT_PYTORCH_INDEX_URL
   export MPI_VERSION_PIN NEED_MPI

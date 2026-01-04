@@ -16,7 +16,7 @@ _TRT_QUANT_ROOT="${ROOT_DIR:-$(cd "${_TRT_QUANT_DIR}/../../.." && pwd)}"
 # =============================================================================
 
 # Download model from HuggingFace to local directory
-trt_download_model() {
+download_model() {
   local model_id="${1:-}"
   local target_dir="${2:-}"
   
@@ -89,9 +89,9 @@ trt_download_model() {
 # =============================================================================
 
 # Quantize a model to TRT-LLM checkpoint format
-# Usage: trt_quantize_model <model_id> <output_dir> [qformat]
+# Usage: quantize_model <model_id> <output_dir> [qformat]
 # Follows the pattern from trtllm-example/custom/build/steps/step_quantize.sh
-trt_quantize_model() {
+quantize_model() {
   local model_id="${1:-}"
   local output_dir="${2:-}"
   local qformat="${3:-}"
@@ -108,7 +108,7 @@ trt_quantize_model() {
   
   # Resolve qformat if not specified (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
-    qformat=$(trt_resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
+    qformat=$(resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
   
   # Check if already quantized
@@ -126,11 +126,11 @@ trt_quantize_model() {
   
   # Download model if needed
   local local_model_dir
-  local_model_dir=$(trt_download_model "${model_id}") || return 1
+  local_model_dir=$(download_model "${model_id}") || return 1
   
   # Get the appropriate quantization script
   local quant_script
-  quant_script=$(trt_get_quantize_script "${TRT_REPO_DIR}")
+  quant_script=$(get_quantize_script "${TRT_REPO_DIR}")
   
   if [ ! -f "${quant_script}" ]; then
     log_err "[quant] ✗ Quantization script not found: ${quant_script}"
@@ -213,7 +213,7 @@ trt_quantize_model() {
 # =============================================================================
 
 # Download pre-quantized TRT checkpoint from HuggingFace
-trt_download_prequantized() {
+download_prequantized() {
   local model_id="${1:-}"
   local target_dir="${2:-}"
   
@@ -283,7 +283,7 @@ trt_download_prequantized() {
 # =============================================================================
 
 # Validate TRT-LLM checkpoint directory
-trt_validate_checkpoint() {
+validate_checkpoint() {
   local ckpt_dir="${1:-}"
   
   if [ -z "${ckpt_dir}" ]; then
@@ -323,7 +323,7 @@ trt_validate_checkpoint() {
 # =============================================================================
 
 # Get default checkpoint directory for a model
-trt_get_checkpoint_dir() {
+get_checkpoint_dir() {
   local model_id="${1:-}"
   local qformat="${2:-int4_awq}"
   
@@ -334,7 +334,7 @@ trt_get_checkpoint_dir() {
 }
 
 # Get default engine directory for a model
-trt_get_engine_dir() {
+get_engine_dir() {
   local model_id="${1:-}"
   local qformat="${2:-int4_awq}"
   
