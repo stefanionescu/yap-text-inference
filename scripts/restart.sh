@@ -90,8 +90,9 @@ HuggingFace uploads (mutually exclusive):
                         `4bit` uses NVFP4 for MoE models (TRT) or AWQ for dense models.
                         `8bit` uses FP8 (L40S/H100) or INT8-SQ (A100).
                         Pre-quantized repos are detected automatically.
-  --show-hf-logs        Show Hugging Face download/upload progress bars
-  --show-trt-logs       Show TensorRT-LLM build/quantization logs
+  --show-hf-logs              Show Hugging Face download/upload progress bars
+  --show-trt-logs             Show TensorRT-LLM build/quantization logs
+  --show-vllm-logs            Show vLLM engine initialization logs
   --show-llmcompressor-logs   Show LLMCompressor/AutoAWQ calibration progress
 
 This script always:

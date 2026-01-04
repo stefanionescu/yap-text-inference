@@ -76,7 +76,7 @@ vLLM-specific environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VLLM_USE_V1` | `1` | Enable vLLM V1 engine |
-| `VLLM_ATTENTION_BACKEND` | auto | Force attention backend (e.g., `FLASH_ATTN`, `FLASHINFER`) |
+| `VLLM_ATTENTION_BACKEND` | auto | Force attention backend (e.g., `FLASHINFER`, `XFORMERS`) |
 | `ENFORCE_EAGER` | `0` | Disable CUDA graphs for debugging |
 | `KV_DTYPE` | auto | KV cache dtype (`auto`, `fp8`, `int8`) |
 | `AWQ_CACHE_DIR` | `.awq` | Local cache for AWQ exports |
@@ -137,6 +137,7 @@ The server validates that `TRT_BATCH_SIZE` ≤ engine's max at startup.
 | `TRT_AWQ_BLOCK_SIZE` | `128` | AWQ quantization group size |
 | `TRT_CALIB_SIZE` | `64` | Number of calibration samples |
 | `TRT_CALIB_SEQLEN` | `CHAT_MAX_LEN + CHAT_MAX_OUT` | Calibration sequence length |
+| `TRT_CALIB_BATCH_SIZE` | `16` | Batch size for AWQ calibration |
 
 **8-bit Format Selection:**
 
@@ -414,6 +415,10 @@ bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
 Pass `--push-quant` to `scripts/main.sh` or `scripts/restart.sh` to upload quantized models to HuggingFace. Without the flag, nothing is uploaded.
 
 Uploads: vLLM AWQ/W4A16 exports or TRT-LLM checkpoints/engines (4-bit or 8-bit).
+
+**Engine-only push (TRT):** Use `--push-engine` to push a locally-built TRT engine to an existing prequantized HuggingFace repo. This adds the compiled engine for your GPU architecture without re-uploading the checkpoint.
+
+> **Note:** `--push-quant` and `--push-engine` are mutually exclusive.
 
 **Required whenever `--push-quant` is present:**
 - `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
