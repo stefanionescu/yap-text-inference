@@ -20,8 +20,3 @@ source "${_DEPLOY_COMMON_SCRIPTS}/deploy_mode.sh"
 
 # Initialize deploy mode for vLLM
 init_deploy_mode "[vllm]" "vllm"
-
-# Set quantization for chat model (vLLM defaults to awq for pre-quantized models)
-if [ "${DEPLOY_CHAT}" = "1" ]; then
-  export CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-awq}"
-fi

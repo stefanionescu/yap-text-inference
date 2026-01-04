@@ -3,30 +3,26 @@
 This module configures which inference backend to use and how models
 are quantized. The two supported engines are:
 
-vLLM (default for development):
+vLLM:
     - Dynamic batching with PagedAttention
     - Supports AWQ, GPTQ, FP8 quantization
     - Prefix caching for repeated prompts
-    - Requires periodic cache reset
 
-TensorRT-LLM (recommended for production):
+TensorRT-LLM:
     - Pre-compiled optimized engines
     - Lower latency, higher throughput
     - Built-in KV cache block reuse
-    - No runtime compilation
 
-Quantization Options:
-    - awq: 4-bit AWQ (best quality/size tradeoff)
-    - gptq: 4-bit GPTQ 
-    - gptq_marlin: GPTQ with Marlin kernels (faster)
-    - fp8: 8-bit FP8 (requires Ada/Hopper GPUs)
-    - 8bit: Generic 8-bit (maps to fp8 or int8_sq based on GPU)
-    - 4bit: Generic 4-bit (maps to awq)
+Quantization is auto-detected from CHAT_MODEL name:
+    - Model name contains 'awq' → 4-bit AWQ
+    - Model name contains 'gptq' → 4-bit GPTQ
+    - Model name contains 'fp8' → 8-bit FP8
+
+If auto-detection fails, set CHAT_QUANTIZATION manually.
 
 Environment Variables:
     INFERENCE_ENGINE: 'vllm' or 'trt' (default: 'trt')
-    QUANTIZATION: Quantization mode (required for LLMs)
-    CHAT_QUANTIZATION: Override quantization for chat model only
+    CHAT_QUANTIZATION: Override auto-detected quantization (optional)
 """
 
 from __future__ import annotations
@@ -34,25 +30,53 @@ from __future__ import annotations
 import os
 
 from ..helpers.env import env_flag
-from ..helpers.quantization import normalize_engine
+from ..helpers.quantization import (
+    normalize_engine,
+    classify_prequantized_model,
+    classify_trt_prequantized_model,
+)
 from .gpu import KV_DTYPE
 
 
 # ============================================================================
 # Engine Selection
 # ============================================================================
-# Both engines support the same model formats but have different tradeoffs.
 
 INFERENCE_ENGINE = normalize_engine(os.getenv("INFERENCE_ENGINE", "trt"))
+
 
 # ============================================================================
 # Quantization Configuration
 # ============================================================================
-# Quantization reduces model size and increases throughput at the cost of
-# some quality. AWQ 4-bit is recommended for most use cases.
+# Auto-detected from CHAT_MODEL name. Manual override via CHAT_QUANTIZATION.
 
-QUANTIZATION = os.getenv("QUANTIZATION")  # Global default
-CHAT_QUANTIZATION = os.getenv("CHAT_QUANTIZATION")  # Optional chat-specific override
+def _detect_quantization_from_model() -> str | None:
+    """Auto-detect quantization from CHAT_MODEL name."""
+    chat_model = os.getenv("CHAT_MODEL")
+    if not chat_model:
+        return None
+    
+    # Try TRT-specific detection first (handles trt-awq, trt-fp8, etc.)
+    if INFERENCE_ENGINE == "trt":
+        trt_quant = classify_trt_prequantized_model(chat_model)
+        if trt_quant:
+            if trt_quant == "trt_awq":
+                return "awq"
+            if trt_quant == "trt_fp8":
+                return "fp8"
+            if trt_quant in ("trt_int8", "trt_8bit"):
+                return "int8"
+    
+    # Fall back to generic pre-quantized detection (awq, gptq)
+    return classify_prequantized_model(chat_model)
+
+
+# Manual override takes precedence, then auto-detection
+_manual_quant = os.getenv("CHAT_QUANTIZATION")
+CHAT_QUANTIZATION = _manual_quant or _detect_quantization_from_model()
+
+# Legacy alias for backwards compatibility (will be removed)
+QUANTIZATION = CHAT_QUANTIZATION
 
 # ============================================================================
 # vLLM V1 FP8 KV Cache Setup
@@ -91,8 +115,8 @@ UNSUPPORTED_QUANT_DTYPE_FIELDS = ("scale_dtype", "zp_dtype")
 
 __all__ = [
     "INFERENCE_ENGINE",
-    "QUANTIZATION",
     "CHAT_QUANTIZATION",
+    "QUANTIZATION",  # Legacy alias
     "DEFAULT_MAX_BATCHED_TOKENS",
     "QUANT_CONFIG_FILENAMES",
     "AWQ_METADATA_FILENAME",

@@ -45,7 +45,6 @@ from src.config import (
     CHAT_QUANTIZATION,
     DEFAULT_MAX_BATCHED_TOKENS,
     KV_DTYPE,
-    QUANTIZATION,
 )
 from src.config.limits import MEMORY_OPT_GPU_FRAC_CAP
 from src.config.quantization import FLOAT16_QUANT_METHODS
@@ -216,9 +215,8 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     # Normalize KV cache dtype
     kv_dtype_value = (KV_DTYPE or "").strip()
 
-    # Resolve quantization backend
-    raw_quant = CHAT_QUANTIZATION or QUANTIZATION
-    inference_quant, _ = _resolve_quantization(model, raw_quant)
+    # Resolve quantization backend (auto-detected from CHAT_MODEL name)
+    inference_quant, _ = _resolve_quantization(model, CHAT_QUANTIZATION)
 
     # Get model requirements from profile
     requirements = _ModelRequirements(model)
@@ -242,7 +240,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     _apply_memory_tuning(kwargs, requirements)
 
     # Special handling for local AWQ models
-    is_local_awq = raw_quant == "awq" and is_local_model_path(model)
+    is_local_awq = CHAT_QUANTIZATION == "awq" and is_local_model_path(model)
     if is_local_awq:
         kwargs["model"] = os.path.abspath(model)
 

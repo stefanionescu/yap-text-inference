@@ -15,8 +15,7 @@ def validate_models(
     deploy_mode: str,
     chat_model: str | None,
     tool_model: str | None,
-    quantization: str | None,
-    chat_quant: str | None,
+    chat_quantization: str | None,
     engine: str,
 ) -> list[str]:
     """Validate model configuration against allowlists.
@@ -25,8 +24,7 @@ def validate_models(
         deploy_mode: Deployment mode (both, chat, tool).
         chat_model: Chat model identifier or path.
         tool_model: Tool model identifier or path.
-        quantization: Base quantization setting.
-        chat_quant: Chat-specific quantization override.
+        chat_quantization: Chat quantization (auto-detected from model name).
         engine: Inference engine (trt, vllm).
 
     Returns:
@@ -77,12 +75,12 @@ def validate_models(
                 f"{ALLOWED_TOOL_MODELS}, got: {tool_model}"
             )
 
-    # AWQ + GPTQ check
-    if quantization == "awq" and deploy_chat and chat_model:
+    # AWQ + GPTQ conflict check
+    if chat_quantization == "awq" and deploy_chat and chat_model:
         if "GPTQ" in chat_model and not is_awq_model_name(chat_model):
             errors.append(
-                f"For QUANTIZATION=awq, CHAT_MODEL must be a non-GPTQ (float) model. "
-                f"Got: {chat_model}. Use a pre-quantized AWQ model or a float model instead."
+                f"CHAT_QUANTIZATION=awq but CHAT_MODEL appears to be GPTQ. "
+                f"Got: {chat_model}. Use a pre-quantized AWQ model instead."
             )
 
     return errors
@@ -94,16 +92,14 @@ if __name__ == "__main__":
     deploy_mode = os.environ.get("DEPLOY_MODE", "both")
     chat_model = os.environ.get("CHAT_MODEL") or None
     tool_model = os.environ.get("TOOL_MODEL") or None
-    quantization = os.environ.get("QUANTIZATION") or None
-    chat_quant = os.environ.get("CHAT_QUANTIZATION") or None
+    chat_quantization = os.environ.get("CHAT_QUANTIZATION") or None
     engine = os.environ.get("INFERENCE_ENGINE") or os.environ.get("ENGINE_TYPE", "trt")
 
     errors = validate_models(
         deploy_mode=deploy_mode,
         chat_model=chat_model,
         tool_model=tool_model,
-        quantization=quantization,
-        chat_quant=chat_quant,
+        chat_quantization=chat_quantization,
         engine=engine,
     )
 
