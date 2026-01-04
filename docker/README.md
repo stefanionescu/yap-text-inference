@@ -52,7 +52,6 @@ ENGINE=trt \
   DOCKER_USERNAME=myuser \
   DEPLOY_MODE=chat \
   CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
-  TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \
   TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
   TAG=trt-qwen30b-sm90 \
   bash docker/build.sh
@@ -67,8 +66,6 @@ docker run -d --gpus all --name yap-server \
   -p 8000:8000 \
   myuser/yap-text-api:vllm-qwen30b-awq
 ```
-
----
 
 ## vLLM Engine
 
@@ -131,8 +128,6 @@ ENGINE=vllm \
 | `TAG` | Yes | Image tag (MUST start with `vllm-`) |
 | `HF_TOKEN` | If private | HuggingFace token for private repos |
 
----
-
 ## TensorRT-LLM Engine
 
 TensorRT-LLM provides better inference performance with pre-compiled engines.
@@ -146,7 +141,7 @@ The tool classifier always runs as PyTorch (not TRT). Tool-only deployments don'
 
 ### Requirements
 
-For **chat** or **both**: specify `CHAT_MODEL`, `TRT_ENGINE_REPO`, and `TRT_ENGINE_LABEL`.
+For **chat** or **both**: specify `CHAT_MODEL` and `TRT_ENGINE_LABEL`.
 
 For **tool-only**: just specify `TOOL_MODEL`.
 
@@ -165,7 +160,6 @@ ENGINE=trt \
   DOCKER_USERNAME=myuser \
   DEPLOY_MODE=chat \
   CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
-  TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \
   TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
   TAG=trt-qwen30b-sm90 \
   bash docker/build.sh
@@ -189,7 +183,6 @@ ENGINE=trt \
   DOCKER_USERNAME=myuser \
   DEPLOY_MODE=both \
   CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
-  TRT_ENGINE_REPO=yapwithai/qwen3-30b-trt-awq \
   TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
   TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
   TAG=trt-qwen3-full-sm90 \
@@ -204,13 +197,11 @@ ENGINE=trt \
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
 | `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
 | `CHAT_MODEL` | If chat/both | HF repo for tokenizer/checkpoint |
-| `TRT_ENGINE_REPO` | If chat/both | HF repo with pre-built engines |
+| `TRT_ENGINE_REPO` | No | HF repo with pre-built engines (defaults to `CHAT_MODEL`) |
 | `TRT_ENGINE_LABEL` | If chat/both | Engine directory name (e.g., `sm90_trt-llm-0.17.0_cuda12.8`) |
 | `TOOL_MODEL` | If tool/both | Tool classifier from allowlist |
 | `TAG` | Yes | Image tag (MUST start with `trt-`) |
 | `HF_TOKEN` | If private | HuggingFace token for private repos |
-
----
 
 ## Running Containers
 
@@ -234,8 +225,6 @@ docker run -d --gpus all --name yap-server \
   -p 8000:8000 \
   myuser/yap-text-api:vllm-qwen30b-awq
 ```
-
----
 
 ## Environment Variables
 
@@ -271,8 +260,6 @@ Memory allocation:
 | `TRT_KV_FREE_GPU_FRAC` | 0.90 (single) / 0.70 (both) | GPU fraction for TRT KV cache |
 | `TOOL_GPU_FRAC` | 0.90 (single) / 0.20 (both) | GPU memory for tool classifier |
 
----
-
 ## Health & Monitoring
 
 ### Health Check
@@ -293,8 +280,6 @@ docker logs -f yap-server
 docker stats yap-server
 ```
 
----
-
 ## Troubleshooting
 
 ### vLLM Issues
@@ -308,7 +293,7 @@ docker stats yap-server
 1. **"GPU ARCHITECTURE MISMATCH"** - Engine built for different GPU. TRT engines are not portable across architectures. Check: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
 2. **"MISSING ENGINE METADATA"** - Engine missing `build_metadata.json`. Rebuild.
 3. **"CANNOT DETECT RUNTIME GPU"** - Run with `--gpus all`
-4. **"TRT_ENGINE_REPO is REQUIRED"** - Specify both `TRT_ENGINE_REPO` and `TRT_ENGINE_LABEL` for chat/both
+4. **"TRT_ENGINE_REPO is not set"** - Set `CHAT_MODEL` (used as default) or `TRT_ENGINE_REPO` explicitly
 5. **"TRT_ENGINE_LABEL has invalid format"** - Must match `sm{digits}_trt-llm-{version}_cuda{version}`
 6. **"No .engine files found"** - Verify engine exists in repo
 7. **"TAG must start with 'trt-'"** - Use correct tag prefix

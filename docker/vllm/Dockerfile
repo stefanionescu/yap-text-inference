@@ -76,9 +76,6 @@ ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
 
-# HuggingFace token for private repos
-ARG HF_TOKEN=""
-
 # Set environment variables for production
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -144,7 +141,7 @@ RUN --mount=type=secret,id=hf_token,required=false \
 # Download tool model at build time if specified
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/download_tool.py
+    python /app/common/download/download_tool.py
 
 # Expose port
 EXPOSE 8000
