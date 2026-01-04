@@ -18,7 +18,6 @@ validate_models_early() {
        DEPLOY_MODE="${DEPLOY_MODE:-both}" \
        CHAT_MODEL="${CHAT_MODEL:-}" \
        TOOL_MODEL="${TOOL_MODEL:-}" \
-       QUANTIZATION="${QUANTIZATION:-}" \
        CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}" \
        INFERENCE_ENGINE="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}" \
        "${python_cmd}" -m src.scripts.model_validate; then

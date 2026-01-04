@@ -59,8 +59,7 @@ run_install_deps_if_needed() {
 }
 
 run_basic_restart() {
-  local LAST_QUANT LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_CHAT_QUANT
-  LAST_QUANT="${QUANTIZATION:-$(read_last_config_value "QUANTIZATION" "${ROOT_DIR}")}"
+  local LAST_DEPLOY LAST_CHAT LAST_TOOL LAST_CHAT_QUANT
   LAST_DEPLOY="${DEPLOY_MODE:-$(read_last_config_value "DEPLOY_MODE" "${ROOT_DIR}")}"
   LAST_CHAT="${CHAT_MODEL:-$(read_last_config_value "CHAT_MODEL" "${ROOT_DIR}")}"
   LAST_TOOL="${TOOL_MODEL:-$(read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")}"
@@ -71,25 +70,10 @@ run_basic_restart() {
     exit 1
   fi
 
-  # Resolve quantization precedence: explicit values (fp8, awq) are preserved;
-  # fallback to CHAT_QUANTIZATION only when LAST_QUANT is empty or a placeholder.
-  if [ -z "${LAST_QUANT}" ]; then
-    if [ -n "${LAST_CHAT_QUANT}" ]; then
-      LAST_QUANT="${LAST_CHAT_QUANT}"
-    fi
-  elif [ "${LAST_QUANT}" = "8bit" ]; then
-    # 8bit is a placeholder - prefer specific quantization when available
-    case "${LAST_CHAT_QUANT}" in
-      awq|gptq|gptq_marlin)
-        LAST_QUANT="${LAST_CHAT_QUANT}"
-        ;;
-    esac
-  fi
-
   local SHOULD_USE_GENERIC=0
-  if [ -n "${QUANTIZATION:-}" ] && [ "${QUANTIZATION}" != "awq" ]; then
+  if [ -n "${CHAT_QUANTIZATION:-}" ] && [ "${CHAT_QUANTIZATION}" != "awq" ]; then
     SHOULD_USE_GENERIC=1
-  elif [ -n "${LAST_QUANT}" ] && [ "${LAST_QUANT}" != "awq" ]; then
+  elif [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "awq" ]; then
     SHOULD_USE_GENERIC=1
   fi
 
@@ -105,10 +89,10 @@ run_basic_restart() {
   fi
 
   if [ "${DEPLOY_MODE:-}" = "tool" ]; then
-    unset QUANTIZATION CHAT_QUANTIZATION
+    unset CHAT_QUANTIZATION
   else
     # Default to "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
-    export QUANTIZATION="${QUANTIZATION:-${LAST_QUANT:-8bit}}"
+    export CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-${LAST_CHAT_QUANT:-8bit}}"
   fi
   export DEPLOY_MODE="${SELECTED_DEPLOY}"
 
@@ -172,7 +156,7 @@ run_basic_restart() {
   if [ "${DEPLOY_MODE}" = "tool" ]; then
     log_info "[restart] Starting server directly with existing models (tool-only classifier deployment)..."
   else
-    log_info "[restart] Starting server directly with existing models (quant=${QUANTIZATION})..."
+    log_info "[restart] Starting server directly with existing models (quant=${CHAT_QUANTIZATION:-auto})..."
   fi
   log_info "[restart] All logs: tail -f server.log"
   log_info "[restart] To stop: bash scripts/stop.sh"

@@ -39,8 +39,8 @@ setup_deploy_mode_and_validate() {
     return 1
   fi
 
-  if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${QUANTIZATION:-}" ]; then
-    log_warn "[env] ⚠ QUANTIZATION environment variable must be set by main.sh"
+  if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
+    log_warn "[env] ⚠ CHAT_QUANTIZATION environment variable must be set by main.sh"
     return 1
   fi
 }

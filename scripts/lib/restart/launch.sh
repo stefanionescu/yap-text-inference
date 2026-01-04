@@ -13,7 +13,7 @@ launch_server_background() {
   fi
 
   local command_string="bash '${ROOT_DIR}/scripts/steps/05_start_server.sh'"
-  local quant_label="${QUANTIZATION:-8bit}"
+  local quant_label="${CHAT_QUANTIZATION:-auto}"
   local engine_label="${INFERENCE_ENGINE:-trt}"
   run_background \
     "${ROOT_DIR}" \

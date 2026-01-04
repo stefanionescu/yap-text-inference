@@ -91,7 +91,7 @@ fi
 DID_QUANTIZE=0
 
 # Resolve quantization format (pass model ID for MoE detection)
-QFORMAT=$(resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
+QFORMAT=$(resolve_qformat "${CHAT_QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${MODEL_ID}")
 _trt_export_quant_env "${QFORMAT}"
 
 # Check if model is already TRT pre-quantized
@@ -141,7 +141,7 @@ if is_trt_prequant "${MODEL_ID}"; then
   # If we have a pre-built engine, use it and skip the engine build section later
   if [ -n "${PREBUILT_ENGINE_LABEL}" ] && [ -n "${PREBUILT_ENGINE_DIR:-}" ]; then
     TRT_ENGINE_DIR="${PREBUILT_ENGINE_DIR}"
-    export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${TRT_ENGINE_DIR}"
+    export TRT_ENGINE_DIR
     USING_PREBUILT_ENGINE=1
     export USING_PREBUILT_ENGINE
   fi
@@ -196,7 +196,7 @@ else
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
       log_info "[build] Reusing existing local engine..."
       TRT_ENGINE_DIR="${ENGINE_DIR}"
-      export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${ENGINE_DIR}"
+      export TRT_ENGINE_DIR
     else
       log_info "[build] FORCE_REBUILD=true, will rebuild engine"
     fi
@@ -209,7 +209,7 @@ else
       exit 1
     fi
     TRT_ENGINE_DIR="${ENGINE_DIR}"
-    export TRT_ENGINE_DIR TRTLLM_ENGINE_DIR="${ENGINE_DIR}"
+    export TRT_ENGINE_DIR
   fi
 fi
 
@@ -221,7 +221,7 @@ fi
 
 # Save engine dir for server startup
 mkdir -p "${ROOT_DIR}/.run"
-echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR}/.run/trt_engine_dir.env"
+echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR}/.run/trt_engine_dir.env"
 
 # Optional: Push to HuggingFace (only when --push-quant flag is passed)
 if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then

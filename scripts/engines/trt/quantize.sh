@@ -108,7 +108,7 @@ quantize_model() {
   
   # Resolve qformat if not specified (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
-    qformat=$(resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
+    qformat=$(resolve_qformat "${CHAT_QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
   
   # Check if already quantized

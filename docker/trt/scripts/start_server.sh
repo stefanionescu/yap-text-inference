@@ -75,9 +75,9 @@ build_engine_from_checkpoint() {
   local checkpoint_dir="$1"
   
   : "${TRT_ENGINE_DIR:=/opt/engines/trt-chat}"
-  local max_in="${TRT_MAX_INPUT_LEN:-${TRTLLM_MAX_INPUT_LEN:-60}}"
-  local max_out="${TRT_MAX_OUTPUT_LEN:-${TRTLLM_MAX_OUTPUT_LEN:-4096}}"
-  local max_batch="${TRT_MAX_BATCH_SIZE:-${TRTLLM_MAX_BATCH_SIZE:-16}}"
+  local max_in="${TRT_MAX_INPUT_LEN:-4096}"
+  local max_out="${TRT_MAX_OUTPUT_LEN:-512}"
+  local max_batch="${TRT_MAX_BATCH_SIZE:-16}"
   
   log_info "[trt] Building engine from checkpoint: ${checkpoint_dir}"
   

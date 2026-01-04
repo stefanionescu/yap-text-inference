@@ -78,7 +78,7 @@ _validate_chat_model_shell() {
         return 1
     fi
     
-    echo "[validate] ✓ CHAT_MODEL: $model"
+    echo "[validate] CHAT_MODEL: $model"
     return 0
 }
 
@@ -98,7 +98,7 @@ _validate_trt_engine_repo_shell() {
         return 1
     fi
     
-    echo "[validate] ✓ TRT_ENGINE_REPO: $repo"
+    echo "[validate] TRT_ENGINE_REPO: $repo"
     return 0
 }
 
@@ -120,7 +120,7 @@ _validate_trt_engine_label_shell() {
         return 1
     fi
     
-    echo "[validate] ✓ TRT_ENGINE_LABEL: $label"
+    echo "[validate] TRT_ENGINE_LABEL: $label"
     return 0
 }
 
@@ -140,7 +140,7 @@ _validate_tool_model_shell() {
     
     for allowed in "${allowed_models[@]}"; do
         if [[ "$model" == "$allowed" ]]; then
-            echo "[validate] ✓ TOOL_MODEL: $model"
+            echo "[validate] TOOL_MODEL: $model"
             return 0
         fi
     done

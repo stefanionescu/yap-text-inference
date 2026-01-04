@@ -42,19 +42,15 @@ detect_awq_models() {
     CHAT_AWQ_DIR="${local_chat_dir}"
   fi
 
-  local last_chat_model last_quant last_chat_quant
+  local last_chat_model last_chat_quant
   last_chat_model="$(read_last_config_value "CHAT_MODEL" "${ROOT_DIR}")"
-  last_quant="$(read_last_config_value "QUANTIZATION" "${ROOT_DIR}")"
   last_chat_quant="$(read_last_config_value "CHAT_QUANTIZATION" "${ROOT_DIR}")"
-
-  local effective_chat_quant
-  effective_chat_quant="${last_chat_quant:-${last_quant:-}}"
 
   if [ "${REQUIRE_CHAT}" = "1" ]; then
     if [ "${LOCAL_CHAT_OK}" = "1" ]; then
       CHAT_AWQ_SOURCE="${CHAT_AWQ_DIR}"
       CHAT_AWQ_SOURCE_KIND="local"
-    elif [ "${effective_chat_quant}" = "awq" ] && [ -n "${last_chat_model}" ]; then
+    elif [ "${last_chat_quant}" = "awq" ] && [ -n "${last_chat_model}" ]; then
       CHAT_AWQ_SOURCE="${last_chat_model}"
       CHAT_AWQ_SOURCE_KIND="prequant"
     else
@@ -73,7 +69,6 @@ detect_awq_models() {
 
 setup_env_for_awq() {
   local DEPLOY_MODE="$1"
-  export QUANTIZATION=awq
   export DEPLOY_MODE="${DEPLOY_MODE}"
   if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
     local chat_source="${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"

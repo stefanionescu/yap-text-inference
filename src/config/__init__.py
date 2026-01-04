@@ -28,7 +28,6 @@ from .gpu import (
 )
 from .engine import (
     INFERENCE_ENGINE,
-    QUANTIZATION,
     CHAT_QUANTIZATION,
     DEFAULT_MAX_BATCHED_TOKENS,
     QUANT_CONFIG_FILENAMES,
@@ -137,7 +136,6 @@ __all__ = [
     "GPU_SM_ARCH",
     # engine
     "INFERENCE_ENGINE",
-    "QUANTIZATION",
     "CHAT_QUANTIZATION",
     "SUPPORTED_ENGINES",
     "DEFAULT_MAX_BATCHED_TOKENS",
