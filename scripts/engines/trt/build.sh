@@ -251,7 +251,7 @@ quantize_and_build() {
   
   # Resolve qformat (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
-    qformat=$(resolve_qformat "${QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
+    qformat=$(resolve_qformat "${CHAT_QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
   
   log_info "[build] Starting TRT quantize and build pipeline..."
@@ -292,7 +292,7 @@ quantize_and_build() {
         
         # Save engine dir for later use
         mkdir -p "${ROOT_DIR:-.}/.run"
-        echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
+        echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
         
         log_info "[build] ✓ Using pre-built engine: ${TRT_ENGINE_DIR}"
         return 0
@@ -325,7 +325,7 @@ quantize_and_build() {
   
   # Save engine dir for later use
   mkdir -p "${ROOT_DIR:-.}/.run"
-  echo "export TRTLLM_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
+  echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
   
   log_info "[build] ✓ Pipeline complete: ${TRT_ENGINE_DIR}"
   

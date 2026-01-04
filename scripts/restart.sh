@@ -232,7 +232,7 @@ fi
 
 setup_env_for_awq "${DEPLOY_MODE}"
 # Enable/disable push now that quantization is set (only allow 4-bit exports)
-push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"
+push_quant_apply_policy "${CHAT_QUANTIZATION:-}" "restart"
 validate_push_quant_prereqs "${DEPLOY_MODE}"
 # Enable/disable engine push based on engine type (only TRT)
 push_engine_apply_policy "${INFERENCE_ENGINE:-trt}" "restart"

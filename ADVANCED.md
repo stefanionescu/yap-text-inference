@@ -91,9 +91,9 @@ TRT-LLM-specific environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TRTLLM_ENGINE_DIR` | — | Path to compiled TRT engine directory |
+| `TRT_ENGINE_DIR` | — | Path to compiled TRT engine directory |
 | `TRT_CHECKPOINT_DIR` | — | Path to quantized checkpoint |
-| `TRTLLM_REPO_DIR` | `.trtllm-repo` | TRT-LLM repo clone for quantization scripts |
+| `TRT_REPO_DIR` | `.trtllm-repo` | TRT-LLM repo clone for quantization scripts |
 | `TRT_MAX_BATCH_SIZE` | **Required** | Max batch size baked into engine (see below) |
 | `TRT_BATCH_SIZE` | Engine max | Runtime batch size override (optional) |
 | `TRT_MAX_INPUT_LEN` | `CHAT_MAX_LEN` (5525) | Maximum input token length |
@@ -114,7 +114,7 @@ TRT-LLM engines have `max_batch_size` baked in at build time. This is not the sa
 
 - ✅ Fresh quantization (on-the-fly): Yes
 - ✅ Pre-quantized TRT checkpoint models: Yes (engine must still be built from checkpoint)
-- ❌ Pre-built engine via `TRTLLM_ENGINE_DIR`: No (already baked in)
+- ❌ Pre-built engine via `TRT_ENGINE_DIR`: No (already baked in)
 
 **Example:**
 

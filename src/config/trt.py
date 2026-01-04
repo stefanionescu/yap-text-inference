@@ -12,9 +12,10 @@ from .gpu import CHAT_GPU_FRAC
 
 
 # Directory paths
-TRT_ENGINE_DIR = os.getenv("TRTLLM_ENGINE_DIR", "")
+# NOTE: scripts/ may set TRTLLM_ENGINE_DIR which gets translated to TRT_ENGINE_DIR
+TRT_ENGINE_DIR = os.getenv("TRT_ENGINE_DIR", "")
 TRT_CHECKPOINT_DIR = os.getenv("TRT_CHECKPOINT_DIR", "")
-TRT_REPO_DIR = os.getenv("TRTLLM_REPO_DIR", "")  # Path to TensorRT-LLM repo for quantization
+TRT_REPO_DIR = os.getenv("TRT_REPO_DIR", "")  # Path to TensorRT-LLM repo for quantization
 
 # Engine build parameters
 # These use sensible defaults that match our limits.py values:

@@ -99,7 +99,7 @@ log_server_config() {
     log_info "[server]   QUANT_MODE=tool-only (classifier-only)"
   else
     log_info "[server]   QUANT_MODE=${QUANT_MODE:-auto}"
-    log_info "[server]   BACKEND=${QUANTIZATION:-}"
+    log_info "[server]   CHAT_QUANTIZATION=${CHAT_QUANTIZATION:-auto}"
     
     # For TRT: show the actual KV dtype baked into the engine
     # For vLLM: show the KV_DTYPE env var (which vLLM uses at runtime)

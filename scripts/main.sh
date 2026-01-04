@@ -85,7 +85,7 @@ CHAT_QUANT_HINT="$(get_quant_hint)"
 apply_quantization "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
 
 # Enable/disable push based on quantization (only allow 4-bit exports)
-push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "main"
+push_quant_apply_policy "${CHAT_QUANTIZATION:-}" "main"
 validate_push_quant_prereqs "${DEPLOY_MODE:-both}"
 
 # Enable/disable engine push based on engine type (only TRT)
@@ -96,7 +96,6 @@ validate_push_engine_prereqs
 DESIRED_DEPLOY_MODE="${DEPLOY_MODE:-both}"
 DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
 DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
-DESIRED_QUANTIZATION="${QUANTIZATION:-}"
 DESIRED_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
 DESIRED_ENGINE="${INFERENCE_ENGINE:-trt}"
 
@@ -108,7 +107,6 @@ stop_server_if_needed \
   "${DESIRED_DEPLOY_MODE}" \
   "${DESIRED_CHAT_MODEL}" \
   "${DESIRED_TOOL_MODEL}" \
-  "${DESIRED_QUANTIZATION}" \
   "${DESIRED_CHAT_QUANT}" \
   "${DESIRED_ENGINE}"
 

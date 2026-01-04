@@ -25,19 +25,18 @@ resolve_4bit_backend() {
 }
 
 # Apply quantization selection based on user flags and model hints
-# Usage: quant_resolve_settings <deploy_mode> <chat_model> <forced_mode> <chat_hint> [current_quant] [current_chat_quant]
-# Sets: QUANT_MODE, QUANTIZATION, CHAT_QUANTIZATION
+# Usage: quant_resolve_settings <deploy_mode> <chat_model> <forced_mode> <chat_hint> [current_chat_quant]
+# Sets: QUANT_MODE, CHAT_QUANTIZATION
 quant_resolve_settings() {
   local deploy_mode="$1"
   local chat_model="$2"
   local forced_mode="${3:-auto}"
   local chat_hint="${4:-}"
-  local current_quant="${5:-}"
-  local current_chat_quant="${6:-}"
+  local current_chat_quant="${5:-}"
 
   if [ "${deploy_mode}" = "tool" ]; then
     QUANT_MODE="tool-only"
-    unset QUANTIZATION CHAT_QUANTIZATION
+    unset CHAT_QUANTIZATION
     export QUANT_MODE
     return
   fi
@@ -47,8 +46,6 @@ quant_resolve_settings() {
 
   if [ -n "${current_chat_quant}" ]; then
     resolved_backend="${current_chat_quant}"
-  elif [ -n "${current_quant}" ]; then
-    resolved_backend="${current_quant}"
   fi
 
   if [ -z "${resolved_backend}" ]; then
@@ -113,15 +110,8 @@ quant_resolve_settings() {
   fi
 
   QUANT_MODE="${resolved_mode}"
-  QUANTIZATION="${resolved_backend}"
-  export QUANT_MODE QUANTIZATION
-
-  if [ "${deploy_mode}" != "tool" ]; then
-    CHAT_QUANTIZATION="${resolved_backend}"
-    export CHAT_QUANTIZATION
-  else
-    unset CHAT_QUANTIZATION
-  fi
+  CHAT_QUANTIZATION="${resolved_backend}"
+  export QUANT_MODE CHAT_QUANTIZATION
 }
 
 # Apply quantization selection based on user flags and model hints
@@ -132,7 +122,6 @@ apply_quantization() {
     "${CHAT_MODEL_NAME:-}" \
     "${1:-auto}" \
     "${2:-}" \
-    "${QUANTIZATION:-}" \
     "${CHAT_QUANTIZATION:-}"
 }
 

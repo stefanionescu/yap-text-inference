@@ -165,29 +165,11 @@ _resolve_8bit_backend() {
   echo "fp8"
 }
 
-# Resolve effective quantization from QUANTIZATION and CHAT_QUANTIZATION
+# Resolve effective quantization from CHAT_QUANTIZATION
 _resolve_effective_quantization() {
-  local effective_quant="${QUANTIZATION:-}"
+  local effective_quant="${CHAT_QUANTIZATION:-}"
   
-  # Prefer CHAT_QUANTIZATION when it's more specific
-  if [ -z "${effective_quant}" ] || [ "${effective_quant}" = "8bit" ] || [ "${effective_quant}" = "fp8" ] || [ "${effective_quant}" = "int8" ]; then
-    if [ -n "${CHAT_QUANTIZATION:-}" ]; then
-      case "${CHAT_QUANTIZATION}" in
-        awq|gptq|gptq_marlin)
-          # 4-bit methods always take precedence
-          effective_quant="${CHAT_QUANTIZATION}"
-          ;;
-        8bit|fp8|int8)
-          # 8-bit variants: use CHAT_QUANTIZATION if QUANTIZATION was a placeholder
-          if [ -z "${effective_quant}" ] || [ "${effective_quant}" = "8bit" ]; then
-            effective_quant="${CHAT_QUANTIZATION}"
-          fi
-          ;;
-      esac
-    fi
-  fi
-  
-  # Default to 8bit placeholder if still unset
+  # Default to 8bit placeholder if unset
   if [ -z "${effective_quant}" ]; then
     effective_quant="8bit"
   fi
@@ -214,7 +196,6 @@ apply_quantization_defaults() {
   # Resolve "8bit" placeholder to actual backend
   if [ "${effective_quant}" = "8bit" ]; then
     effective_quant="$(_resolve_8bit_backend)"
-    export QUANTIZATION="${effective_quant}"
     export CHAT_QUANTIZATION="${effective_quant}"
     log_info "[env] Resolved 8-bit quantization to '${effective_quant}'"
   fi

@@ -29,10 +29,10 @@ Environment Variables:
     Required:
         - MAX_CONCURRENT_CONNECTIONS: Maximum WebSocket connections
         - TEXT_API_KEY: API key for authentication
-        - CHAT_MODEL: HuggingFace model ID for chat
-        - QUANTIZATION: Quantization mode (awq, fp8, gptq, etc.)
+        - CHAT_MODEL: HuggingFace model ID for chat (must include quantization type in name, e.g. '-awq', '-gptq', '-fp8')
     
     Optional:
+        - CHAT_QUANTIZATION: Override auto-detected quantization (awq, gptq, fp8)
         - DEPLOY_MODE: 'both', 'chat', or 'tool' (default: 'both')
         - INFERENCE_ENGINE: 'vllm' or 'trt' (default: 'trt')
         - TOOL_MODEL: Classifier model for tool routing

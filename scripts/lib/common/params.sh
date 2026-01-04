@@ -46,10 +46,8 @@ ensure_required_env_vars() {
 # Accepts explicit quant values (awq, gptq_marlin, fp8, int8_sq, etc.)
 # and falls back to QUANT_MODE when specific quant strings are unset.
 push_quant_is_supported_quant() {
-  local quant="${1:-${QUANTIZATION:-}}"
-  local chat_quant="${2:-${CHAT_QUANTIZATION:-}}"
+  local chat_quant="${1:-${CHAT_QUANTIZATION:-}}"
 
-  _push_quant_value_is_supported "${quant}" && return 0
   _push_quant_value_is_supported "${chat_quant}" && return 0
 
   case "${QUANT_MODE:-}" in
@@ -81,9 +79,8 @@ _push_quant_value_is_supported() {
 # Sets HF_AWQ_PUSH to 1 only when requested AND quantization is supported.
 # Otherwise HF_AWQ_PUSH is forced to 0 and a skip message is logged.
 push_quant_apply_policy() {
-  local quant="${1:-${QUANTIZATION:-}}"
-  local chat_quant="${2:-${CHAT_QUANTIZATION:-}}"
-  local context="${3:-push}"
+  local chat_quant="${1:-${CHAT_QUANTIZATION:-}}"
+  local context="${2:-push}"
   local requested="${HF_AWQ_PUSH_REQUESTED:-${HF_AWQ_PUSH:-0}}"
 
   if [ "${requested}" != "1" ]; then
@@ -92,7 +89,7 @@ push_quant_apply_policy() {
     return 0
   fi
 
-  if ! push_quant_is_supported_quant "${quant}" "${chat_quant}"; then
+  if ! push_quant_is_supported_quant "${chat_quant}"; then
     HF_AWQ_PUSH=0
     export HF_AWQ_PUSH
     log_info "[${context}] --push-quant requested but quantization is not a 4bit/8bit export; skipping Hugging Face push."

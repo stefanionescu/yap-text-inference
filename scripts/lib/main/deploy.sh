@@ -65,7 +65,7 @@ CMD
 
 # Export all required environment variables for background process
 export_runtime_env() {
-  export QUANTIZATION QUANT_MODE DEPLOY_MODE CHAT_MODEL TOOL_MODEL
+  export QUANT_MODE DEPLOY_MODE CHAT_MODEL TOOL_MODEL
   export CHAT_QUANTIZATION INFERENCE_ENGINE
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
 }

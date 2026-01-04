@@ -75,9 +75,6 @@ def _detect_quantization_from_model() -> str | None:
 _manual_quant = os.getenv("CHAT_QUANTIZATION")
 CHAT_QUANTIZATION = _manual_quant or _detect_quantization_from_model()
 
-# Legacy alias for backwards compatibility (will be removed)
-QUANTIZATION = CHAT_QUANTIZATION
-
 # ============================================================================
 # vLLM V1 FP8 KV Cache Setup
 # ============================================================================
@@ -116,7 +113,6 @@ UNSUPPORTED_QUANT_DTYPE_FIELDS = ("scale_dtype", "zp_dtype")
 __all__ = [
     "INFERENCE_ENGINE",
     "CHAT_QUANTIZATION",
-    "QUANTIZATION",  # Legacy alias
     "DEFAULT_MAX_BATCHED_TOKENS",
     "QUANT_CONFIG_FILENAMES",
     "AWQ_METADATA_FILENAME",

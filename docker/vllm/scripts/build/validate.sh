@@ -88,7 +88,7 @@ _validate_chat_model_shell() {
         return 1
     fi
     
-    echo "[validate] ✓ CHAT_MODEL: $model"
+    echo "[validate] CHAT_MODEL: $model"
     return 0
 }
 
@@ -108,7 +108,7 @@ _validate_tool_model_shell() {
     
     for allowed in "${allowed_models[@]}"; do
         if [[ "$model" == "$allowed" ]]; then
-            echo "[validate] ✓ TOOL_MODEL: $model"
+            echo "[validate] TOOL_MODEL: $model"
             return 0
         fi
     done

@@ -23,9 +23,7 @@ apply_engine_defaults() {
     if [ -f "${trt_env_file}" ]; then
       # shellcheck disable=SC1090
       source "${trt_env_file}"
-      if [ -n "${TRTLLM_ENGINE_DIR:-}" ]; then
-        export TRT_ENGINE_DIR="${TRTLLM_ENGINE_DIR}"
-      fi
+      # TRT_ENGINE_DIR is exported directly by the env file
     fi
   fi
 }

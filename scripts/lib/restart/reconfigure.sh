@@ -89,9 +89,6 @@ _restart_validate_quantization() {
 }
 
 _restart_needs_awq_pipeline() {
-  if [ "${QUANTIZATION:-}" = "awq" ]; then
-    return 0
-  fi
   if [ "${CHAT_QUANTIZATION:-}" = "awq" ]; then
     return 0
   fi
@@ -106,7 +103,7 @@ _restart_needs_trt_engine_build() {
     if [ -f "${trt_env_file}" ]; then
       # shellcheck disable=SC1090
       source "${trt_env_file}"
-      if [ -n "${TRTLLM_ENGINE_DIR:-}" ] && [ -d "${TRTLLM_ENGINE_DIR}" ]; then
+      if [ -n "${TRT_ENGINE_DIR:-}" ] && [ -d "${TRT_ENGINE_DIR}" ]; then
         # Engine exists - no need to rebuild
         return 1
       fi
@@ -115,16 +112,6 @@ _restart_needs_trt_engine_build() {
     return 0
   fi
   return 1
-}
-
-_restart_effective_quant() {
-  local override="$1"
-  local base="$2"
-  if [ -n "${override:-}" ]; then
-    echo "${override}"
-  else
-    echo "${base:-}"
-  fi
 }
 
 _restart_resolve_model_identity() {
@@ -148,7 +135,6 @@ _restart_load_previous_config() {
   PREV_CONFIG_FOUND=0
   PREV_CHAT_MODEL=""
   PREV_TOOL_MODEL=""
-  PREV_QUANTIZATION=""
   PREV_CHAT_QUANTIZATION=""
   PREV_DEPLOY_MODE=""
   PREV_DEPLOY_CHAT=0
@@ -163,7 +149,6 @@ _restart_load_previous_config() {
 
   local cur_chat="${CHAT_MODEL:-}"
   local cur_tool="${TOOL_MODEL:-}"
-  local cur_quant="${QUANTIZATION:-}"
   local cur_chat_quant="${CHAT_QUANTIZATION:-}"
   local cur_deploy="${DEPLOY_MODE:-}"
   # shellcheck disable=SC1090
@@ -171,7 +156,6 @@ _restart_load_previous_config() {
 
   PREV_CHAT_MODEL="${CHAT_MODEL:-}"
   PREV_TOOL_MODEL="${TOOL_MODEL:-}"
-  PREV_QUANTIZATION="${QUANTIZATION:-}"
   PREV_CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
   PREV_DEPLOY_MODE="${DEPLOY_MODE:-}"
   case "${PREV_DEPLOY_MODE}" in
@@ -183,7 +167,6 @@ _restart_load_previous_config() {
 
   CHAT_MODEL="${cur_chat}"
   TOOL_MODEL="${cur_tool}"
-  QUANTIZATION="${cur_quant}"
   CHAT_QUANTIZATION="${cur_chat_quant}"
   DEPLOY_MODE="${cur_deploy}"
 
@@ -211,10 +194,7 @@ _restart_can_preserve_cache() {
     if [ -z "${prev_chat_id}" ] || [ "${new_chat_id}" != "${prev_chat_id}" ]; then
       return 1
     fi
-    local prev_chat_quant new_chat_quant
-    prev_chat_quant="$(_restart_effective_quant "${PREV_CHAT_QUANTIZATION}" "${PREV_QUANTIZATION}")"
-    new_chat_quant="$(_restart_effective_quant "${CHAT_QUANTIZATION:-}" "${QUANTIZATION}")"
-    if [ "${new_chat_quant}" != "${prev_chat_quant}" ]; then
+    if [ "${CHAT_QUANTIZATION:-}" != "${PREV_CHAT_QUANTIZATION:-}" ]; then
       return 1
     fi
   fi
@@ -330,12 +310,6 @@ reconfigure_models() {
     _restart_validate_quantization "${chat_quant}" || exit 1
   fi
 
-  local quantization="${QUANTIZATION:-}"
-  if [ -n "${quantization}" ]; then
-    quantization="$(_restart_normalize_quantization_flag "${quantization}" "${chat_model}")"
-    _restart_validate_quantization "${quantization}" || exit 1
-  fi
-
   local chat_hint=""
   if [ "${deploy_chat}" = "1" ]; then
     chat_hint="$(get_quantization_hint "${chat_model}")"
@@ -346,11 +320,10 @@ reconfigure_models() {
     "${chat_model}" \
     "${RECONFIG_CHAT_QUANTIZATION:-}" \
     "${chat_hint}" \
-    "${quantization}" \
     "${chat_quant}"
 
   # Honor --push-quant only when using a 4-bit quantization
-  push_quant_apply_policy "${QUANTIZATION:-}" "${CHAT_QUANTIZATION:-}" "restart"
+  push_quant_apply_policy "${CHAT_QUANTIZATION:-}" "restart"
   validate_push_quant_prereqs "${DEPLOY_MODE}"
 
   # Honor --push-engine for TRT engine uploads
@@ -413,7 +386,7 @@ reconfigure_models() {
       if [ -f "${trt_env_file}" ]; then
         # shellcheck disable=SC1090
         source "${trt_env_file}"
-        TRT_ENGINE_DIR="${TRTLLM_ENGINE_DIR:-}"
+        # TRT_ENGINE_DIR is exported directly by the env file
       fi
     fi
     if [ -n "${TRT_ENGINE_DIR:-}" ] && [ -d "${TRT_ENGINE_DIR}" ]; then

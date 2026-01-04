@@ -31,8 +31,9 @@ NEED_MPI="${NEED_MPI:-1}"
 # IMPORTANT: We always clone a specific tag matching TRT_VERSION, not main branch.
 # The tag contains the correct quantization/requirements.txt for that version.
 TRT_REPO_URL="${TRTLLM_REPO_URL:-https://github.com/Yap-With-AI/TensorRT-LLM.git}"
-TRT_REPO_TAG="${TRTLLM_REPO_TAG:-v${TRT_VERSION}}"
-TRT_REPO_DIR="${TRTLLM_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
+TRT_REPO_TAG="${TRT_REPO_TAG:-${TRTLLM_REPO_TAG:-v${TRT_VERSION}}}"
+# TRT_REPO_DIR: prefer explicit setting, fall back to legacy TRTLLM_REPO_DIR for compat
+TRT_REPO_DIR="${TRT_REPO_DIR:-${TRTLLM_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}}"
 
 # =============================================================================
 # GPU ARCHITECTURE
@@ -103,7 +104,8 @@ fi
 # =============================================================================
 
 TRT_CHECKPOINT_DIR="${TRT_CHECKPOINT_DIR:-}"
-TRT_ENGINE_DIR="${TRTLLM_ENGINE_DIR:-}"
+# TRT_ENGINE_DIR: prefer explicit setting, fall back to legacy TRTLLM_ENGINE_DIR for compat
+TRT_ENGINE_DIR="${TRT_ENGINE_DIR:-${TRTLLM_ENGINE_DIR:-}}"
 TRT_CACHE_DIR="${TRT_CACHE_DIR:-${ROOT_DIR:-.}/.trt_cache}"
 TRT_MODELS_DIR="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}"
 
