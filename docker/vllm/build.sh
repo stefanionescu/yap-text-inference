@@ -165,5 +165,5 @@ if ! docker push "${FULL_IMAGE_NAME}"; then
     fi
 fi
 
-log_success "[build] ✓ Pushed: docker pull ${FULL_IMAGE_NAME}"
+log_success "[build] ✓ Pushed
 

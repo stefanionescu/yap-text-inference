@@ -112,11 +112,11 @@ validate_engine() {
   
   if [ ! -f "${TRT_ENGINE_DIR:-/opt/engines/trt-chat}/rank0.engine" ]; then
     log_err "[trt] ✗ TRT engine not found at ${TRT_ENGINE_DIR}/rank0.engine"
-    log_err "[trt] ✗ Either set TRT_ENGINE_REPO or mount an engine directory"
+    log_err "[trt]   Either set TRT_ENGINE_REPO or mount an engine directory"
     return 1
   fi
   
-  log_success "[trt] ✓ TRT engine validated at ${TRT_ENGINE_DIR}"
+  log_success "[trt] ✓ TRT engine validated"
 }
 
 # ============================================================================
