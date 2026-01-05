@@ -118,8 +118,9 @@ async def preload_engines() -> None:
     # Start background cache management for vLLM
     # TRT-LLM uses built-in block reuse and doesn't need this
     if engine_supports_cache_reset():
-        from .engines.vllm.cache_daemon import ensure_cache_reset_daemon
-        ensure_cache_reset_daemon()
+        from .engines.vllm.cache import ensure_cache_reset_daemon
+        from .engines.vllm.factory import reset_engine_caches
+        ensure_cache_reset_daemon(reset_engine_caches)
     else:
         logger.info("cache reset daemon: disabled (TRT-LLM uses block reuse)")
 

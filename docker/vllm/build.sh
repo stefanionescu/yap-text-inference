@@ -23,6 +23,7 @@ esac
 # Model configuration (required based on DEPLOY_MODE)
 CHAT_MODEL="${CHAT_MODEL:-}"
 TOOL_MODEL="${TOOL_MODEL:-}"
+CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
 
 # HuggingFace token for private repos
 HF_TOKEN="${HF_TOKEN:-}"
@@ -147,6 +148,7 @@ init_build_args
 BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 [[ -n "${CHAT_MODEL}" ]] && BUILD_ARGS+=(--build-arg "CHAT_MODEL=${CHAT_MODEL}")
 [[ -n "${TOOL_MODEL}" ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
+[[ -n "${CHAT_QUANTIZATION}" ]] && BUILD_ARGS+=(--build-arg "CHAT_QUANTIZATION=${CHAT_QUANTIZATION}")
 # Pass HF_TOKEN as a secret (not a build arg) so it's not baked into the image
 [[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")
 

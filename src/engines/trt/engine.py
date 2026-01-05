@@ -1,34 +1,19 @@
-"""TensorRT-LLM engine management for the chat engine.
+"""TensorRT-LLM engine wrapper implementing BaseEngine interface.
 
-This module provides the TRT-LLM engine wrapper implementing the BaseEngine interface.
-Unlike vLLM, TRT-LLM uses pre-built engines and does not need periodic cache resets
-due to its built-in KV cache block reuse mechanism.
-
-Architecture:
-    - TRTEngine: BaseEngine implementation wrapping TensorRT-LLM
-    - Uses AsyncSingleton pattern for thread-safe initialization
-    - Pre-compiled engines loaded from TRT_ENGINE_DIR
+This module provides the TRTEngine class that wraps TensorRT-LLM for inference.
+Unlike vLLM, TRT-LLM uses pre-built engines and does not need periodic cache
+resets due to its built-in KV cache block reuse mechanism.
 
 Key Differences from vLLM:
     1. No JIT compilation - engines must be pre-built
     2. No cache reset support - block reuse handles memory
     3. No request priority support
     4. Abort is best-effort (iterator abandonment)
-
-Required Configuration:
-    TRT_ENGINE_DIR: Directory containing compiled TensorRT engine
-    CHAT_MODEL: HuggingFace model ID (for tokenizer)
-
-Optional Configuration:
-    TRT_KV_FREE_GPU_FRAC: GPU fraction for KV cache
-    TRT_BATCH_SIZE: Runtime batch size (must be <= engine's baked-in max)
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import os
 from typing import Any, TYPE_CHECKING
 from collections.abc import AsyncGenerator
 
@@ -37,18 +22,7 @@ if TYPE_CHECKING:
 else:
     GenerationResult = Any  # Actual import happens lazily inside SuppressedFDContext
 
-from src.config import (
-    CHAT_MODEL,
-    DEPLOY_CHAT,
-    TRT_ENGINE_DIR,
-)
 from ..base import BaseEngine, EngineOutput, EngineNotReadyError
-from ..singleton import AsyncSingleton
-from .setup import (
-    build_kv_cache_config,
-    read_checkpoint_model_type,
-    validate_runtime_batch_size,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -164,91 +138,4 @@ class TRTEngine(BaseEngine):
         return False
 
 
-# ============================================================================
-# Global engine management (using AsyncSingleton pattern)
-# ============================================================================
-class _TRTEngineSingleton(AsyncSingleton[TRTEngine]):
-    """Singleton manager for the TRT-LLM engine."""
-    
-    async def _create_instance(self) -> TRTEngine:
-        """Create the TRT-LLM engine instance."""
-        if not DEPLOY_CHAT:
-            raise RuntimeError("Chat engine requested but DEPLOY_CHAT=0")
-        if not CHAT_MODEL:
-            raise RuntimeError("CHAT_MODEL is not configured; cannot start chat engine")
-        
-        engine_dir = TRT_ENGINE_DIR
-        if not engine_dir or not os.path.isdir(engine_dir):
-            raise RuntimeError(
-                f"TRT_ENGINE_DIR must point to a valid TensorRT-LLM engine directory. "
-                f"Got: {engine_dir!r}"
-            )
-        
-        # Validate runtime batch size against engine's baked-in max (fail early)
-        validate_runtime_batch_size(engine_dir)
-        
-        # Read model_type from checkpoint config (TRT-LLM 1.2+ needs this for custom model names)
-        model_type = read_checkpoint_model_type(engine_dir)
-        if model_type:
-            logger.info("TRT-LLM: detected model_type=%s from checkpoint config", model_type)
-        
-        logger.info("TRT-LLM: building chat engine (engine_dir=%s, tokenizer=%s)", engine_dir, CHAT_MODEL)
-        
-        kwargs: dict[str, Any] = {
-            "model": engine_dir,
-            "tokenizer": CHAT_MODEL,
-        }
-        
-        # Pass model_type explicitly if available (required for custom model names in TRT-LLM 1.2+)
-        if model_type:
-            kwargs["model_type"] = model_type
-        
-        kv_cfg = build_kv_cache_config()
-        if kv_cfg:
-            kwargs["kv_cache_config"] = kv_cfg
-        
-        # Check if user wants to see TRT logs
-        from src.helpers.env import env_flag
-        show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
-        
-        # Import, configure, and create LLM - suppress C++ stdout/stderr unless user wants logs
-        # TRT-LLM's C++ code writes directly to file descriptors, bypassing Python
-        # The suppression must wrap ALL tensorrt_llm imports (including logger config)
-        from src.scripts.filters.trt import configure_trt_logger, SuppressedFDContext
-        
-        try:
-            if show_trt_logs:
-                configure_trt_logger()
-                from tensorrt_llm._tensorrt_engine import LLM
-                llm = await asyncio.to_thread(LLM, **kwargs)
-            else:
-                with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
-                    configure_trt_logger()
-                    from tensorrt_llm._tensorrt_engine import LLM
-                    llm = await asyncio.to_thread(LLM, **kwargs)
-        except Exception as e:
-            raise RuntimeError(f"TRT-LLM engine loading failed: {e}") from e
-        
-        engine = TRTEngine(llm, CHAT_MODEL)
-        logger.info("TRT-LLM: chat engine ready")
-        return engine
-
-
-_engine_singleton = _TRTEngineSingleton()
-
-
-async def get_engine() -> TRTEngine:
-    """Return the singleton TRT chat engine instance."""
-    return await _engine_singleton.get()
-
-
-async def shutdown_engine() -> None:
-    """Shut down the TRT chat engine if it has been initialized."""
-    await _engine_singleton.shutdown()
-
-
-__all__ = [
-    "TRTEngine",
-    "get_engine",
-    "shutdown_engine",
-]
+__all__ = ["TRTEngine"]

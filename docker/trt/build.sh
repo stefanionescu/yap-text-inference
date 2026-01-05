@@ -23,6 +23,7 @@ esac
 # Model configuration (required based on DEPLOY_MODE)
 CHAT_MODEL="${CHAT_MODEL:-}"
 TOOL_MODEL="${TOOL_MODEL:-}"
+CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
 
 # TRT Engine configuration (REQUIRED for chat/both modes)
 # TRT_ENGINE_REPO: HuggingFace repo containing pre-built TRT engines (defaults to CHAT_MODEL)
@@ -159,6 +160,7 @@ BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
 [[ -n "${TOOL_MODEL}" ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
 [[ -n "${TRT_ENGINE_REPO}" ]] && BUILD_ARGS+=(--build-arg "TRT_ENGINE_REPO=${TRT_ENGINE_REPO}")
 [[ -n "${TRT_ENGINE_LABEL}" ]] && BUILD_ARGS+=(--build-arg "TRT_ENGINE_LABEL=${TRT_ENGINE_LABEL}")
+[[ -n "${CHAT_QUANTIZATION}" ]] && BUILD_ARGS+=(--build-arg "CHAT_QUANTIZATION=${CHAT_QUANTIZATION}")
 
 # Pass HF_TOKEN as a secret (not a build arg) so it's not baked into the image
 [[ -n "${HF_TOKEN}" ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")

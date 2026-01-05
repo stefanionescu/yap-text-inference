@@ -1,27 +1,12 @@
-"""vLLM engine management for the chat engine.
+"""vLLM engine wrapper implementing BaseEngine interface.
 
-This module wraps the vLLM AsyncLLMEngine with the BaseEngine interface
-while preserving all existing functionality including cache management.
-
-Architecture:
-    - VLLMEngine: BaseEngine implementation wrapping AsyncLLMEngine
-    - Uses AsyncSingleton pattern for thread-safe initialization
-    - Cache reset with rate limiting via _CACHE_RESET_LOCK and interval check
+This module provides the VLLMEngine class that wraps vLLM's AsyncLLMEngine
+with the BaseEngine interface while preserving cache management functionality.
 
 Key Features:
     1. Streaming generation with EngineOutput conversion
     2. Request abortion for cancellation support
     3. Prefix/multimodal cache reset for memory management
-    4. AWQ offline mode handling for local quantized models
-
-Environment Variables (set as defaults):
-    VLLM_USE_V1=1: Use vLLM V1 engine architecture
-    VLLM_WORKER_MULTIPROC_METHOD=spawn: Use spawn instead of fork
-
-Cache Reset Strategy:
-    - Rate-limited by CACHE_RESET_INTERVAL_SECONDS
-    - Force reset available for critical situations
-    - Event signaling for cache reset daemon coordination
 """
 
 from __future__ import annotations
@@ -29,34 +14,14 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import time
 from typing import Any
 from collections.abc import AsyncGenerator
 
-# Configure runtime environment before importing vLLM
-from .setup import configure_runtime_env
-configure_runtime_env()
-
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
-from src.config import (
-    CACHE_RESET_INTERVAL_SECONDS,
-    CHAT_GPU_FRAC,
-    CHAT_MAX_LEN,
-    CHAT_MODEL,
-    DEPLOY_CHAT,
-)
 from ..base import BaseEngine, EngineOutput
-from ..singleton import AsyncSingleton
-from .args import make_engine_args
-from .fallback import create_engine_with_fallback
 
 logger = logging.getLogger(__name__)
-
-# Cache reset state (separate from engine singleton)
-_CACHE_RESET_LOCK = asyncio.Lock()  # Guards cache reset operations
-_CACHE_RESET_EVENT = asyncio.Event()  # Signals cache reset to daemon
-_LAST_CACHE_RESET = time.monotonic()  # For rate limiting resets
 
 
 class VLLMEngine(BaseEngine):
@@ -136,6 +101,9 @@ class VLLMEngine(BaseEngine):
             return False
 
 
+# ============================================================================
+# Cache reset helpers
+# ============================================================================
 _CACHE_RESET_METHOD_NAMES = ("reset_mm_cache", "reset_prefix_cache")
 
 
@@ -153,100 +121,4 @@ async def _reset_vllm_caches(engine: AsyncLLMEngine) -> None:
             pass  # Best effort only
 
 
-# ============================================================================
-# Global engine management (using AsyncSingleton pattern)
-# ============================================================================
-class _VLLMEngineSingleton(AsyncSingleton[VLLMEngine]):
-    """Singleton manager for the vLLM engine."""
-    
-    async def _create_instance(self) -> VLLMEngine:
-        """Create the vLLM engine instance."""
-        if not DEPLOY_CHAT:
-            raise RuntimeError("Chat engine requested but DEPLOY_CHAT=0")
-        if not CHAT_MODEL:
-            raise RuntimeError("CHAT_MODEL is not configured; cannot start chat engine")
-        
-        logger.info("vLLM: building chat engine (model=%s)", CHAT_MODEL)
-        engine_args = make_engine_args(CHAT_MODEL, CHAT_GPU_FRAC, CHAT_MAX_LEN)
-        
-        # Check if user wants to see vLLM logs
-        from src.helpers.env import env_flag
-        show_vllm_logs = env_flag("SHOW_VLLM_LOGS", False)
-        
-        # Suppress C++ and worker stdout/stderr during engine creation
-        # Worker processes inherit redirected fds, so their output is also suppressed
-        if show_vllm_logs:
-            raw_engine = create_engine_with_fallback(engine_args)
-        else:
-            from src.scripts.filters.vllm import SuppressedFDContext
-            with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
-                raw_engine = create_engine_with_fallback(engine_args)
-        
-        engine = VLLMEngine(raw_engine)
-        logger.info("vLLM: chat engine ready")
-        return engine
-
-
-_engine_singleton = _VLLMEngineSingleton()
-
-
-async def get_engine() -> VLLMEngine:
-    """Return the singleton chat engine instance."""
-    return await _engine_singleton.get()
-
-
-async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
-    """Reset prefix/MM caches if interval elapsed (or force)."""
-    global _LAST_CACHE_RESET
-
-    if not _engine_singleton.is_initialized:
-        return False
-    
-    engine = await _engine_singleton.get()
-
-    interval = CACHE_RESET_INTERVAL_SECONDS
-    now = time.monotonic()
-    if not force and interval > 0 and (now - _LAST_CACHE_RESET) < interval:
-        return False
-
-    async with _CACHE_RESET_LOCK:
-        now = time.monotonic()
-        if not force and interval > 0 and (now - _LAST_CACHE_RESET) < interval:
-            return False
-
-        success = await engine.reset_caches(reason)
-        if success:
-            _LAST_CACHE_RESET = time.monotonic()
-            _CACHE_RESET_EVENT.set()
-        return success
-
-
-def seconds_since_last_cache_reset() -> float:
-    """Return seconds since the last cache reset."""
-    return max(0.0, time.monotonic() - _LAST_CACHE_RESET)
-
-
-def cache_reset_reschedule_event() -> asyncio.Event:
-    """Return the event used to signal cache reset rescheduling."""
-    return _CACHE_RESET_EVENT
-
-
-async def shutdown_engine() -> None:
-    """Shut down the chat engine if it has been initialized."""
-    await _engine_singleton.shutdown()
-
-
-async def clear_caches_on_disconnect() -> None:
-    """Force cache reset when all clients disconnect."""
-    await reset_engine_caches("all_clients_disconnected", force=True)
-
-
-__all__ = [
-    "VLLMEngine",
-    "get_engine",
-    "shutdown_engine",
-    "reset_engine_caches",
-    "cache_reset_reschedule_event",
-    "seconds_since_last_cache_reset",
-    "clear_caches_on_disconnect",
-]
+__all__ = ["VLLMEngine"]

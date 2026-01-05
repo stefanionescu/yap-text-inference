@@ -1,6 +1,5 @@
 # Multi-stage build for efficient Docker image
 # CUDA 13.0 with Ubuntu 24.04 for VLLM 0.13.0 compatibility
-
 FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04 AS builder
 
 # Allow overriding FlashInfer version at build time
@@ -75,6 +74,7 @@ FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu24.04
 ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
+ARG CHAT_QUANTIZATION=""
 
 # Set environment variables for production
 ENV DEBIAN_FRONTEND=noninteractive
@@ -86,6 +86,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV DEPLOY_MODE=${DEPLOY_MODE}
 ENV CHAT_MODEL=${CHAT_MODEL}
 ENV TOOL_MODEL=${TOOL_MODEL}
+ENV CHAT_QUANTIZATION=${CHAT_QUANTIZATION}
 
 # Engine type for vLLM
 ENV INFERENCE_ENGINE=vllm
@@ -110,18 +111,8 @@ COPY --from=builder /opt/venv /opt/venv
 # Create app directory
 WORKDIR /app
 
-# Copy application code from build context
-COPY src/ /app/src/
-COPY scripts/ /app/scripts/
-COPY download/ /app/download/
-COPY common/ /app/common/
-COPY tests/ /app/tests/
-
 # Create necessary directories
 RUN mkdir -p /app/logs /app/.run /app/.hf /app/.vllm_cache /opt/models/chat /opt/models/tool
-
-# Set proper permissions
-RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/download/*.py /app/common/scripts/*.sh 2>/dev/null || true
 
 # Cache directories
 ENV HF_HOME=/app/.hf
@@ -132,7 +123,16 @@ ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     GIT_SSL_CAINFO=/etc/ssl/certs/ca-certificates.crt
 
 # ----------------------------------------------------------------------------
+# Copy only download scripts first (these rarely change)
+# This layer is cached unless download scripts themselves change
+# ----------------------------------------------------------------------------
+COPY download/ /app/download/
+COPY common/download/ /app/common/download/
+RUN chmod +x /app/download/*.py /app/common/download/*.py 2>/dev/null || true
+
+# ----------------------------------------------------------------------------
 # Download pre-quantized chat model at build time (baked into image)
+# This layer is cached unless: download scripts change OR model config changes
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
     python /app/download/download_chat.py
@@ -142,6 +142,31 @@ RUN --mount=type=secret,id=hf_token,required=false \
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
     python /app/common/download/download_tool.py
+
+# ----------------------------------------------------------------------------
+# Override model env vars to point to local paths (not HF repo names)
+# This is simpler than runtime path resolution - just use local paths directly
+# ----------------------------------------------------------------------------
+ENV CHAT_MODEL=/opt/models/chat
+ENV TOOL_MODEL=/opt/models/tool
+
+# Enable all logs in Docker - no filtering, no FD suppression
+ENV SHOW_HF_LOGS=1 \
+    SHOW_TRT_LOGS=1 \
+    SHOW_VLLM_LOGS=1 \
+    SHOW_LLMCOMPRESSOR_LOGS=1 \
+    SHOW_TOOL_LOGS=1
+
+# ----------------------------------------------------------------------------
+# Copy application code last (changes frequently, won't invalidate download cache)
+# ----------------------------------------------------------------------------
+COPY src/ /app/src/
+COPY scripts/ /app/scripts/
+COPY common/ /app/common/
+COPY tests/ /app/tests/
+
+# Set proper permissions
+RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
 
 # Expose port
 EXPOSE 8000
