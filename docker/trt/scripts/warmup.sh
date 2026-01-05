@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# TRT-specific warmup wrapper.
-#
-# Delegates to the shared warmup script with the TRT engine prefix.
+# TRT warmup wrapper - delegates to the shared warmup script.
 
 set -euo pipefail
 
@@ -17,4 +15,4 @@ else
   exit 1
 fi
 
-exec "${COMMON_DIR}/warmup.sh" "trt"
+exec "${COMMON_DIR}/warmup.sh"

@@ -17,7 +17,6 @@ resolve_trt_artifacts() {
   
   # Check if engine is already baked in
   if [ -f "${TRT_ENGINE_DIR:-/opt/engines/trt-chat}/rank0.engine" ]; then
-    log_info "[trt] Using baked-in engine: ${TRT_ENGINE_DIR}"
     return 0
   fi
   

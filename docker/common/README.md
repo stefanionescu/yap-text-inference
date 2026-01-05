@@ -19,9 +19,7 @@ Logging functions aligned with `scripts/lib/common/log.sh`:
 
 ### Warmup (`scripts/warmup.sh`)
 
-Waits for server health and runs warmup tests. 
-
-Usage: `./warmup.sh [engine_prefix]`
+Waits for server health and runs warmup tests.
 
 Features:
 - Health check polling with configurable timeout

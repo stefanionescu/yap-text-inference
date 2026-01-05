@@ -17,6 +17,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Export each public symbol from a single place and avoid unused exports.
 - When you need explicit exports via `__all__`, define it only at the very bottom of the module after every class, function, and constant.
 - Avoid creating singletons or global instances in the defining module; instantiate them in entry-point scripts, factory functions, or dependency-injection setups instead.
+- Do not add module-level free functions that merely wrap a module-level singleton instance (e.g., `get_engine()` calling `_singleton.get()`). If a class manages state, the public API is the class itself—do not hide it behind free functions in the same file. This pattern creates hidden global state, complicates testing, and makes debugging harder because callers don't realize they're touching shared mutable state.
 - Do not trigger work at import time; expose callable entry points instead.
 - Keep files at or under 350 lines; split when approaching the limit. Data-heavy fixtures may exceed this when splitting would hurt clarity.
 - Use section dividers in this exact format when needed:
@@ -85,6 +86,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Model shared runtime state with frozen dataclasses or TypedDicts and keep their definitions in an obvious, centralized module so structure stays discoverable.
 - Treat state objects as immutable snapshots; when an update is required, construct a new instance instead of mutating one that other callers might hold.
 - Pass state explicitly through function parameters instead of stashing it in globals or module-level caches.
+- Keep singleton instances in a dedicated registry or container module (`registry.py`, `container.py`) rather than scattering them across factory modules. Entry-point code (servers, CLI scripts) should be the only code that instantiates or retrieves singletons; everything else receives dependencies as parameters.
 - When multiple async tasks or threads might touch the same resource, guard access with `asyncio.Lock`, `contextlib.AsyncExitStack`, or threading locks rather than relying on timing.
 
 ## Shell and CLI scripts
