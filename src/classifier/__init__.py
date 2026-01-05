@@ -41,7 +41,7 @@ Usage:
 from __future__ import annotations
 
 from .adapter import ClassifierToolAdapter
-from .factory import get_classifier_adapter, reset_classifier_adapter
+from .registry import get_classifier_adapter, reset_classifier_adapter
 
 __all__ = [
     "ClassifierToolAdapter",

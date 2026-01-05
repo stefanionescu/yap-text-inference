@@ -25,7 +25,7 @@ All functions are logged at DEBUG level with input/output metrics.
 from __future__ import annotations
 
 import logging
-from .tokenizer import get_chat_tokenizer, get_tool_tokenizer
+from .registry import get_chat_tokenizer, get_tool_tokenizer
 
 logger = logging.getLogger(__name__)
 

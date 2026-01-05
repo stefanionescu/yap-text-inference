@@ -24,7 +24,7 @@ Token counting is critical for staying within model context limits and
 managing GPU memory usage (KV cache sizing).
 """
 
-from .token_utils import (
+from .utils import (
     # Chat-specific
     count_tokens_chat,
     trim_text_to_token_limit_chat,

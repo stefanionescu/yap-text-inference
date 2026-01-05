@@ -27,7 +27,7 @@ from ..config import (
     DEPLOY_CHAT,
     USER_UTT_MAX_TOKENS,
 )
-from .token_utils import count_tokens_chat
+from .utils import count_tokens_chat
 
 if TYPE_CHECKING:
     from ..handlers.session.state import SessionState
