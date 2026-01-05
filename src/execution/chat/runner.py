@@ -23,6 +23,7 @@ async generator of text chunks regardless of vLLM vs TRT-LLM backend.
 
 from __future__ import annotations
 
+import functools
 import uuid
 from collections.abc import AsyncGenerator
 
@@ -42,15 +43,12 @@ from ...config.sampling import (
     CHAT_LOGIT_BIAS,
 )
 from ...config.timeouts import GEN_TIMEOUT_S
-from ...tokens.tokenizer import get_chat_tokenizer
+from ...tokens.registry import get_chat_tokenizer
 from ...messages.chat.builder import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
 
 
-# Cache for tokenized logit bias mapping
-_logit_bias_cache: dict[int, float] | None = None
-
-
+@functools.cache
 def _get_logit_bias_map() -> dict[int, float]:
     """Build logit bias map from text tokens to token IDs.
     
@@ -58,19 +56,14 @@ def _get_logit_bias_map() -> dict[int, float]:
     This function converts those to token ID -> bias mappings
     that the engine can use.
     
-    The result is cached after first successful build.
+    Uses @functools.cache for memoization - computed once on first call.
     
     Returns:
         Dict mapping token IDs to logit bias values.
         Empty dict if no bias configured or tokenizer unavailable.
     """
-    global _logit_bias_cache
-    if _logit_bias_cache is not None:
-        return _logit_bias_cache
-
     if not CHAT_LOGIT_BIAS:
-        _logit_bias_cache = {}
-        return _logit_bias_cache
+        return {}
 
     try:
         tokenizer = get_chat_tokenizer()
@@ -88,7 +81,6 @@ def _get_logit_bias_map() -> dict[int, float]:
             if current is None or value < current:
                 id_bias[token_id] = value
 
-    _logit_bias_cache = id_bias
     return id_bias
 
 

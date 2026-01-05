@@ -1,74 +1,45 @@
-"""Factory for creating classifier adapter instances.
+"""Factory function for creating classifier adapter instances.
 
-This module provides a thread-safe singleton factory for the classifier adapter.
-The adapter is lazily initialized on first access using configuration from
-environment variables.
+This module provides a function to create a ClassifierToolAdapter instance.
+The singleton management is handled by the registry module.
 """
 
 from __future__ import annotations
 
-import threading
-
 from .adapter import ClassifierToolAdapter
 
-# Thread-safe singleton
-_lock = threading.Lock()
-_instance: ClassifierToolAdapter | None = None
 
-
-def get_classifier_adapter() -> ClassifierToolAdapter:
-    """Get the global classifier adapter instance (thread-safe singleton).
+def create_classifier_adapter() -> ClassifierToolAdapter:
+    """Create a new ClassifierToolAdapter instance using config values.
     
-    Lazily initializes the classifier using config values from environment
-    on first access. Subsequent calls return the same instance.
+    This function reads configuration from environment variables and
+    creates a fresh adapter instance. It does NOT manage singleton state -
+    that's the responsibility of the registry module.
     
-    Thread Safety:
-        Uses double-checked locking pattern to ensure thread-safe initialization.
+    Returns:
+        A new ClassifierToolAdapter instance configured from environment.
     """
-    global _instance
+    from src.config import (
+        TOOL_MODEL,
+        TOOL_GPU_FRAC,
+        TOOL_DECISION_THRESHOLD,
+        TOOL_COMPILE,
+        TOOL_MAX_LENGTH,
+        TOOL_MICROBATCH_MAX_SIZE,
+        TOOL_MICROBATCH_MAX_DELAY_MS,
+    )
+    from src.config.timeouts import TOOL_TIMEOUT_S
     
-    if _instance is None:
-        with _lock:
-            # Double-check pattern: another thread may have initialized while we waited
-            if _instance is None:
-                from src.config import (
-                    TOOL_MODEL,
-                    TOOL_GPU_FRAC,
-                    TOOL_DECISION_THRESHOLD,
-                    TOOL_COMPILE,
-                    TOOL_MAX_LENGTH,
-                    TOOL_MICROBATCH_MAX_SIZE,
-                    TOOL_MICROBATCH_MAX_DELAY_MS,
-                )
-                from src.config.timeouts import TOOL_TIMEOUT_S
-                
-                _instance = ClassifierToolAdapter(
-                    model_path=TOOL_MODEL,
-                    threshold=TOOL_DECISION_THRESHOLD,
-                    compile_model=TOOL_COMPILE,
-                    max_length=TOOL_MAX_LENGTH,
-                    batch_max_size=TOOL_MICROBATCH_MAX_SIZE,
-                    batch_max_delay_ms=TOOL_MICROBATCH_MAX_DELAY_MS,
-                    request_timeout_s=TOOL_TIMEOUT_S,
-                    gpu_memory_frac=TOOL_GPU_FRAC,
-                )
-    
-    return _instance
+    return ClassifierToolAdapter(
+        model_path=TOOL_MODEL,
+        threshold=TOOL_DECISION_THRESHOLD,
+        compile_model=TOOL_COMPILE,
+        max_length=TOOL_MAX_LENGTH,
+        batch_max_size=TOOL_MICROBATCH_MAX_SIZE,
+        batch_max_delay_ms=TOOL_MICROBATCH_MAX_DELAY_MS,
+        request_timeout_s=TOOL_TIMEOUT_S,
+        gpu_memory_frac=TOOL_GPU_FRAC,
+    )
 
 
-def reset_classifier_adapter() -> None:
-    """Reset the global classifier adapter instance (for testing).
-    
-    This clears the singleton, allowing a fresh instance to be created
-    on the next call to get_classifier_adapter().
-    """
-    global _instance
-    with _lock:
-        _instance = None
-
-
-__all__ = [
-    "get_classifier_adapter",
-    "reset_classifier_adapter",
-]
-
+__all__ = ["create_classifier_adapter"]

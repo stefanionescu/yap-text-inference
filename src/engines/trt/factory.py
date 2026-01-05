@@ -1,11 +1,10 @@
-"""TRT-LLM engine singleton and factory functions.
+"""TRT-LLM engine singleton class definition.
 
-This module manages the lifecycle of the TRT-LLM engine instance using
-the AsyncSingleton pattern for thread-safe initialization.
+This module defines the TRTEngineSingleton class that manages the lifecycle
+of the TRT-LLM engine instance using the AsyncSingleton pattern.
 
-Factory Functions:
-    get_engine(): Return the singleton TRT engine instance
-    shutdown_engine(): Clean shutdown of the engine
+The singleton instance is NOT created here - it lives in the central
+registry (src/engines/registry.py). This module only defines the class.
 
 Required Configuration:
     TRT_ENGINE_DIR: Directory containing compiled TensorRT engine
@@ -37,8 +36,17 @@ from .setup import (
 logger = logging.getLogger(__name__)
 
 
-class _TRTEngineSingleton(AsyncSingleton[TRTEngine]):
-    """Singleton manager for the TRT-LLM engine."""
+class TRTEngineSingleton(AsyncSingleton[TRTEngine]):
+    """Singleton manager for the TRT-LLM engine.
+    
+    This class handles thread-safe, async-safe initialization of the
+    TRT-LLM engine. It validates configuration and creates the engine
+    instance on first access.
+    
+    Usage (via registry):
+        from src.engines.registry import get_engine
+        engine = await get_engine()
+    """
     
     async def _create_instance(self) -> TRTEngine:
         """Create the TRT-LLM engine instance."""
@@ -105,21 +113,4 @@ async def _create_llm_instance(kwargs: dict[str, Any]) -> Any:
         return await asyncio.to_thread(LLM, **kwargs)
 
 
-_engine_singleton = _TRTEngineSingleton()
-
-
-async def get_engine() -> TRTEngine:
-    """Return the singleton TRT chat engine instance."""
-    return await _engine_singleton.get()
-
-
-async def shutdown_engine() -> None:
-    """Shut down the TRT chat engine if it has been initialized."""
-    await _engine_singleton.shutdown()
-
-
-__all__ = [
-    "get_engine",
-    "shutdown_engine",
-]
-
+__all__ = ["TRTEngineSingleton"]

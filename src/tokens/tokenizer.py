@@ -1,12 +1,12 @@
-"""Tokenizer access for chat and tool models.
+"""Fast tokenizer wrapper for token counting and trimming.
 
-This module provides FastTokenizer instances that wrap either:
+This module provides the FastTokenizer class that wraps either:
 1. A local tokenizer.json file (fastest, using the tokenizers library)
 2. A HuggingFace transformers tokenizer (AutoTokenizer, slower but more compatible)
 
 FastTokenizer provides a unified interface for token counting, trimming, and
-encoding. Singleton accessors get_chat_tokenizer() and get_tool_tokenizer()
-return cached tokenizers for the respective deployed models.
+encoding. Singleton accessors for chat and tool tokenizers are in the
+registry module (src/tokens/registry.py).
 
 Environment Variables:
     TOKENIZERS_PARALLELISM=false: Set automatically to avoid fork warnings
@@ -24,7 +24,6 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from tokenizers import Tokenizer
 
-from ..config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 from .source import inspect_source, resolve_transformers_target
 from .loaders import load_local_tokenizer, load_transformers_with_fallback
 
@@ -44,6 +43,7 @@ class FastTokenizer:
         tok: The tokenizers.Tokenizer instance (if loaded).
         _hf_tok: The transformers tokenizer instance (if loaded).
     """
+    
     def __init__(self, path_or_repo: str, *, load_transformers_tok: bool = True):
         """Create a tokenizer optimized for counting/trimming.
 
@@ -77,6 +77,14 @@ class FastTokenizer:
         )
 
     def count(self, text: str) -> int:
+        """Count the number of tokens in the text.
+        
+        Args:
+            text: Text to tokenize and count.
+            
+        Returns:
+            Number of tokens in the text.
+        """
         if not text:
             return 0
         with self._lock:
@@ -102,6 +110,16 @@ class FastTokenizer:
             return len(ids)
 
     def trim(self, text: str, max_tokens: int, keep: str = "end") -> str:
+        """Trim text to fit within max_tokens.
+        
+        Args:
+            text: Text to trim.
+            max_tokens: Maximum number of tokens to keep.
+            keep: Which part to keep - "start" or "end".
+            
+        Returns:
+            Trimmed text fitting within max_tokens.
+        """
         if max_tokens <= 0 or not text:
             return ""
         with self._lock:
@@ -136,7 +154,14 @@ class FastTokenizer:
             )
 
     def encode_ids(self, text: str) -> list[int]:
-        """Return token ids for the provided text without special tokens."""
+        """Return token ids for the provided text without special tokens.
+        
+        Args:
+            text: Text to encode.
+            
+        Returns:
+            List of token IDs.
+        """
         if not text:
             return []
         with self._lock:
@@ -154,7 +179,7 @@ class FastTokenizer:
                 ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
             return list(ids)
 
-    def get_transformers_tokenizer(self):
+    def get_transformers_tokenizer(self) -> Any:
         """Return the underlying transformers tokenizer if available, None otherwise."""
         with self._lock:
             return self._hf_tok
@@ -171,6 +196,7 @@ class FastTokenizer:
             messages: List of message dicts with 'role' and 'content' keys.
                       Roles are typically 'system', 'user', 'assistant'.
             add_generation_prompt: If True, appends the assistant turn start token.
+            **template_kwargs: Additional kwargs passed to apply_chat_template.
 
         Returns:
             Formatted prompt string ready for generation.
@@ -196,38 +222,4 @@ class FastTokenizer:
             )
 
 
-_chat_tok: FastTokenizer | None = None
-_tool_tok: FastTokenizer | None = None
-_chat_tok_lock = Lock()
-_tool_tok_lock = Lock()
-
-
-def get_chat_tokenizer() -> FastTokenizer:
-    if not DEPLOY_CHAT:
-        raise RuntimeError("get_chat_tokenizer() called but DEPLOY_CHAT is False")
-    global _chat_tok
-    if _chat_tok is not None:
-        return _chat_tok
-    with _chat_tok_lock:
-        if _chat_tok is None:
-            if not CHAT_MODEL:
-                raise ValueError("CHAT_MODEL is required when DEPLOY_CHAT is True")
-            _chat_tok = FastTokenizer(CHAT_MODEL)
-    return _chat_tok
-
-
-def get_tool_tokenizer() -> FastTokenizer:
-    if not DEPLOY_TOOL:
-        raise RuntimeError("get_tool_tokenizer() called but DEPLOY_TOOL is False")
-    global _tool_tok
-    if _tool_tok is not None:
-        return _tool_tok
-    with _tool_tok_lock:
-        if _tool_tok is None:
-            if not TOOL_MODEL:
-                raise ValueError("TOOL_MODEL is required when DEPLOY_TOOL is True")
-            _tool_tok = FastTokenizer(TOOL_MODEL)
-    return _tool_tok
-
-
-__all__ = ["FastTokenizer", "get_chat_tokenizer", "get_tool_tokenizer"]
+__all__ = ["FastTokenizer"]

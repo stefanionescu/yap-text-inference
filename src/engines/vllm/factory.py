@@ -1,13 +1,10 @@
-"""vLLM engine singleton and factory functions.
+"""vLLM engine singleton class definition.
 
-This module manages the lifecycle of the vLLM engine instance using
-the AsyncSingleton pattern for thread-safe initialization.
+This module defines the VLLMEngineSingleton class that manages the lifecycle
+of the vLLM engine instance using the AsyncSingleton pattern.
 
-Factory Functions:
-    get_engine(): Return the singleton vLLM engine instance
-    shutdown_engine(): Clean shutdown of the engine
-    reset_engine_caches(): Reset prefix/MM caches with rate limiting
-    clear_caches_on_disconnect(): Force cache reset on client disconnect
+The singleton instance is NOT created here - it lives in the central
+registry (src/engines/registry.py). This module only defines the class.
 
 Environment Variables:
     VLLM_USE_V1=1: Use vLLM V1 engine architecture
@@ -23,7 +20,6 @@ from src.helpers.env import env_flag
 
 from ..singleton import AsyncSingleton
 from .args import make_engine_args
-from .cache import try_reset_caches
 from .engine import VLLMEngine
 from .fallback import create_engine_with_fallback
 from .setup import configure_runtime_env
@@ -31,8 +27,17 @@ from .setup import configure_runtime_env
 logger = logging.getLogger(__name__)
 
 
-class _VLLMEngineSingleton(AsyncSingleton[VLLMEngine]):
-    """Singleton manager for the vLLM engine."""
+class VLLMEngineSingleton(AsyncSingleton[VLLMEngine]):
+    """Singleton manager for the vLLM engine.
+    
+    This class handles thread-safe, async-safe initialization of the
+    vLLM engine. It validates configuration and creates the engine
+    instance on first access.
+    
+    Usage (via registry):
+        from src.engines.registry import get_engine
+        engine = await get_engine()
+    """
     
     async def _create_instance(self) -> VLLMEngine:
         """Create the vLLM engine instance."""
@@ -70,45 +75,4 @@ def _create_raw_engine(engine_args: object) -> object:
         return create_engine_with_fallback(engine_args)
 
 
-_engine_singleton = _VLLMEngineSingleton()
-
-
-async def get_engine() -> VLLMEngine:
-    """Return the singleton chat engine instance."""
-    return await _engine_singleton.get()
-
-
-async def shutdown_engine() -> None:
-    """Shut down the chat engine if it has been initialized."""
-    await _engine_singleton.shutdown()
-
-
-async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
-    """Reset prefix/MM caches if interval elapsed (or force).
-    
-    Args:
-        reason: Human-readable reason for the reset.
-        force: Force reset even if interval hasn't elapsed.
-        
-    Returns:
-        True if caches were reset, False otherwise.
-    """
-    if not _engine_singleton.is_initialized:
-        return False
-    
-    engine = await _engine_singleton.get()
-    return await try_reset_caches(engine, reason, force=force)
-
-
-async def clear_caches_on_disconnect() -> None:
-    """Force cache reset when all clients disconnect."""
-    await reset_engine_caches("all_clients_disconnected", force=True)
-
-
-__all__ = [
-    "clear_caches_on_disconnect",
-    "get_engine",
-    "reset_engine_caches",
-    "shutdown_engine",
-]
-
+__all__ = ["VLLMEngineSingleton"]

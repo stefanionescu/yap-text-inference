@@ -7,9 +7,9 @@ TRTEngine:
     The main engine class implementing BaseEngine. Uses compiled TensorRT
     engine files for inference.
 
-Factory Functions:
-    get_engine(): Return singleton engine instance
-    shutdown_engine(): Clean shutdown of the engine
+TRTEngineSingleton:
+    Singleton manager class for the engine. Instantiated by the central
+    registry (src/engines/registry.py), not here.
 
 Key Differences from vLLM:
     - Engines are pre-compiled (not JIT compiled)
@@ -23,10 +23,9 @@ Configuration:
 """
 
 from .engine import TRTEngine
-from .factory import get_engine, shutdown_engine
+from .factory import TRTEngineSingleton
 
 __all__ = [
     "TRTEngine",
-    "get_engine",
-    "shutdown_engine",
+    "TRTEngineSingleton",
 ]
