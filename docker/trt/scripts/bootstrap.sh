@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/logs.sh"
 
-log_info "[trt] Setting environment defaults (TRT-LLM image)..."
+log_info "[trt] Setting environment defaults..."
 
 # Source modular env configuration
 source "${SCRIPT_DIR}/env/deploy.sh"
@@ -21,6 +21,6 @@ if [ "${DEPLOY_CHAT}" = "1" ]; then
   log_info "[trt] Chat model: ${TRT_ENGINE_REPO:-none}"
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "[trt] Tool model: ${TOOL_MODEL:-none} (classifier)"
+  log_info "[trt] Tool model: ${TOOL_MODEL:-none}"
 fi
 

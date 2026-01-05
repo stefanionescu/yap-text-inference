@@ -21,14 +21,3 @@ source "${_DEPLOY_COMMON_SCRIPTS}/deploy_mode.sh"
 # Initialize deploy mode for TRT
 init_deploy_mode "[trt]" "trt"
 
-# Log configured models for TRT
-if [ "${DEPLOY_CHAT}" = "1" ] || [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "[trt] Configured models:"
-  if [ "${DEPLOY_CHAT}" = "1" ]; then
-    log_info "[trt]   Chat (tokenizer): ${CHAT_MODEL}"
-    log_info "[trt]   TRT engine repo: ${TRT_ENGINE_REPO:-<mount required>}"
-  fi
-  if [ "${DEPLOY_TOOL}" = "1" ]; then
-    log_info "[trt]   Tool classifier: ${TOOL_MODEL}"
-  fi
-fi
