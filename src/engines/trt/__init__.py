@@ -22,15 +22,11 @@ Configuration:
     TRT_KV_FREE_GPU_FRAC: GPU memory fraction for KV cache
 """
 
-from .engine import (
-    TRTEngine,
-    get_engine,
-    shutdown_engine,
-)
+from .engine import TRTEngine
+from .factory import get_engine, shutdown_engine
 
 __all__ = [
     "TRTEngine",
     "get_engine",
     "shutdown_engine",
 ]
-

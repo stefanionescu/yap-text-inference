@@ -2,7 +2,6 @@
 # CUDA 13.0 with Ubuntu 24.04 (TRT-LLM 1.2.0rc5 requires torch 2.9.x cu130)
 #
 # IMPORTANT: Pre-built TRT engine is BAKED INTO the image at build time.
-#            When you run the container, the engine is already there - just start!
 FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04
 
 # Use bash for RUN lines
@@ -15,6 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
+ARG CHAT_QUANTIZATION=""
 
 # TRT engine configuration - HuggingFace repo with pre-built engines
 # TRT_ENGINE_REPO: HuggingFace repo containing the pre-built engine
@@ -99,22 +99,13 @@ RUN printf "torch==2.9.0+cu130\ntorchvision==0.24.0+cu130\n" > /tmp/trt-constrai
     rm -f /tmp/trt-constraints.txt
 
 # ----------------------------------------------------------------------------
-# Copy application code and runtime scripts
-# ----------------------------------------------------------------------------
-COPY src/ /app/src/
-COPY scripts/ /app/scripts/
-COPY download/ /app/download/
-COPY common/ /app/common/
-COPY tests/ /app/tests/
-RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/download/*.py /app/common/scripts/*.sh 2>/dev/null || true
-
-# ----------------------------------------------------------------------------
 # Production environment setup
 # ----------------------------------------------------------------------------
 # Configure models - these are set at build time and used at runtime
 ENV DEPLOY_MODE=${DEPLOY_MODE}
 ENV CHAT_MODEL=${CHAT_MODEL}
 ENV TOOL_MODEL=${TOOL_MODEL}
+ENV CHAT_QUANTIZATION=${CHAT_QUANTIZATION}
 
 # TRT engine configuration
 ENV TRT_ENGINE_REPO=${TRT_ENGINE_REPO}
@@ -131,8 +122,22 @@ ENV CHAT_MODEL_PATH=/opt/models/chat
 ENV TOOL_MODEL_PATH=/opt/models/tool
 RUN mkdir -p "${MODELS_DIR}" "${ENGINES_DIR}" "${TRT_ENGINE_DIR}" "${CHAT_MODEL_PATH}" "${TOOL_MODEL_PATH}"
 
+# Cache directories
+ENV HF_HOME=/app/.hf
+ENV HUGGINGFACE_HUB_CACHE=/app/.hf/hub
+RUN mkdir -p /app/logs /app/.run /app/.hf
+
+# ----------------------------------------------------------------------------
+# Copy only download scripts first (these rarely change)
+# This layer is cached unless download scripts themselves change
+# ----------------------------------------------------------------------------
+COPY download/ /app/download/
+COPY common/download/ /app/common/download/
+RUN chmod +x /app/download/*.py /app/common/download/*.py 2>/dev/null || true
+
 # ----------------------------------------------------------------------------
 # Download pre-built TRT engine at build time (baked into image)
+# This layer is cached unless: download scripts change OR model config changes
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
     python /app/download/download_engine.py
@@ -150,10 +155,21 @@ RUN --mount=type=secret,id=hf_token,required=false \
 RUN --mount=type=secret,id=hf_token,required=false \
     python /app/common/download/download_tool.py
 
-# Cache directories
-ENV HF_HOME=/app/.hf
-ENV HUGGINGFACE_HUB_CACHE=/app/.hf/hub
-RUN mkdir -p /app/logs /app/.run /app/.hf
+# ----------------------------------------------------------------------------
+# Override model env vars to point to local paths (not HF repo names)
+# This is simpler than runtime path resolution - just use local paths directly
+# ----------------------------------------------------------------------------
+ENV CHAT_MODEL=/opt/models/chat
+ENV TOOL_MODEL=/opt/models/tool
+
+# ----------------------------------------------------------------------------
+# Copy application code last (changes frequently, won't invalidate download cache)
+# ----------------------------------------------------------------------------
+COPY src/ /app/src/
+COPY scripts/ /app/scripts/
+COPY common/ /app/common/
+COPY tests/ /app/tests/
+RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
 
 # Default environment knobs for production
 ENV HF_TRANSFER=1 \
@@ -162,6 +178,13 @@ ENV HF_TRANSFER=1 \
     MKL_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
     NUMEXPR_NUM_THREADS=1
+
+# Enable all logs in Docker - no filtering, no FD suppression
+ENV SHOW_HF_LOGS=1 \
+    SHOW_TRT_LOGS=1 \
+    SHOW_VLLM_LOGS=1 \
+    SHOW_LLMCOMPRESSOR_LOGS=1 \
+    SHOW_TOOL_LOGS=1
 
 # SSL certificates
 ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \

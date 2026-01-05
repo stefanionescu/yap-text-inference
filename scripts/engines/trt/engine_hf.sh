@@ -189,7 +189,7 @@ download_prebuilt_engine() {
   local engine_dir
   engine_dir=$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
     python -m src.scripts.trt.detection download-engine \
-    "${repo_id}" "${engine_label}" "${target_dir}" 2>&1) || {
+    "${repo_id}" "${engine_label}" "${target_dir}") || {
     log_err "[engine] ✗ Failed to download pre-built engine"
     return 1
   }
