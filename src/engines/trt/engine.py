@@ -216,15 +216,18 @@ class _TRTEngineSingleton(AsyncSingleton[TRTEngine]):
         # The suppression must wrap ALL tensorrt_llm imports (including logger config)
         from src.scripts.filters.trt import configure_trt_logger, SuppressedFDContext
         
-        if show_trt_logs:
-            configure_trt_logger()
-            from tensorrt_llm._tensorrt_engine import LLM
-            llm = await asyncio.to_thread(LLM, **kwargs)
-        else:
-            with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
+        try:
+            if show_trt_logs:
                 configure_trt_logger()
                 from tensorrt_llm._tensorrt_engine import LLM
                 llm = await asyncio.to_thread(LLM, **kwargs)
+            else:
+                with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
+                    configure_trt_logger()
+                    from tensorrt_llm._tensorrt_engine import LLM
+                    llm = await asyncio.to_thread(LLM, **kwargs)
+        except Exception as e:
+            raise RuntimeError(f"TRT-LLM engine loading failed: {e}") from e
         
         engine = TRTEngine(llm, CHAT_MODEL)
         logger.info("TRT-LLM: chat engine ready")

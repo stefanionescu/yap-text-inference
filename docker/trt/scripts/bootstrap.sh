@@ -17,12 +17,10 @@ source "${SCRIPT_DIR}/validate_engine.sh"
 
 source "${SCRIPT_DIR}/env/defaults.sh"
 
-log_info "[trt] Docker TRT-LLM Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 if [ "${DEPLOY_CHAT}" = "1" ]; then
-  log_info "[trt] Chat model (tokenizer): ${CHAT_MODEL:-none}"
-  log_info "[trt] TRT engine repo: ${TRT_ENGINE_REPO:-none}"
+  log_info "[trt] Chat model: ${TRT_ENGINE_REPO:-none}"
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
-  log_info "[trt] Tool model: ${TOOL_MODEL:-none} (classifier, not TRT)"
+  log_info "[trt] Tool model: ${TOOL_MODEL:-none} (classifier)"
 fi
 
