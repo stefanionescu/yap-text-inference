@@ -200,7 +200,7 @@ The server supports two inference backends:
 | **Pre-built Engines** | No (JIT) | Yes (compiled .engine) |
 | **CUDA Requirement** | 13.x | 13.0+ |
 | **PyTorch** | 2.9.x | 2.9.x |
-| **MoE Support** | Via FLA | INT4-AWQ quantization |
+| **MoE Support** | Via FLA | FP8 only (other quants error) |
 
 Select the engine with CLI flags or environment variable:
 

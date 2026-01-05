@@ -37,7 +37,7 @@ import logging
 import multiprocessing
 
 # ============================================================================
-# CRITICAL: Set multiprocessing start method to 'spawn' BEFORE any imports
+# Set multiprocessing start method to 'spawn' BEFORE any imports
 # This MUST happen before any CUDA/torch imports to avoid fork() issues
 # with CUDA contexts in child processes.
 # ============================================================================
