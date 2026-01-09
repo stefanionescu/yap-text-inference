@@ -26,6 +26,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
   # CLI
   # ============================================================================
   ```
+- Follow section dividers with exactly one blank line before the next code block.
 
 ## Imports, data structures, and constants
 - Define local dataclasses, typed dictionaries, and custom errors directly under imports.
