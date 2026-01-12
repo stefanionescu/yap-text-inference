@@ -52,6 +52,10 @@ IDLE_NORMAL_WAIT_DEFAULT = 3.0
 IDLE_EXPECT_DEFAULT = 150.0
 IDLE_GRACE_DEFAULT = 15.0
 
+# Cancel test defaults
+CANCEL_POST_WAIT_DEFAULT = 2.0  # Seconds to wait after cancel before recovery
+CANCEL_RECV_TIMEOUT_DEFAULT = 30.0  # Timeout for each receive phase
+
 # WebSocket defaults
 DEFAULT_WS_PATH = "/ws"
 
@@ -87,6 +91,8 @@ __all__ = [
     "IDLE_NORMAL_WAIT_DEFAULT",
     "IDLE_EXPECT_DEFAULT",
     "IDLE_GRACE_DEFAULT",
+    "CANCEL_POST_WAIT_DEFAULT",
+    "CANCEL_RECV_TIMEOUT_DEFAULT",
     "DEFAULT_WS_PATH",
     "PROGRESS_BAR_WIDTH",
     "WS_MAX_QUEUE",
