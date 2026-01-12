@@ -98,7 +98,6 @@ _validate_trt_engine_repo_shell() {
         return 1
     fi
     
-    echo "[validate] TRT_ENGINE_REPO: $repo"
     return 0
 }
 
