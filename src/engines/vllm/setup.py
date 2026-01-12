@@ -21,7 +21,7 @@ from __future__ import annotations
 import os
 from typing import Final
 
-from src.helpers.env import env_flag
+from src.helpers.env import configure_vllm_fp8_kv_cache, env_flag
 
 
 _AUTO_CONFIG_FLAG: Final[str] = "YAP_AUTO_CONFIGURE_ENV"
@@ -90,6 +90,8 @@ def configure_runtime_env(*, force: bool = False) -> None:
 
     _apply_env_defaults()
     _select_attention_backend()
+    # Configure FP8 KV cache for V1 engine if needed
+    configure_vllm_fp8_kv_cache(os.getenv("KV_DTYPE"))
     _ENV_CONFIGURED = True
 
 

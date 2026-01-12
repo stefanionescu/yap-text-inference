@@ -96,7 +96,7 @@ TRT-LLM-specific environment variables:
 | `TRT_REPO_DIR` | `.trtllm-repo` | TRT-LLM repo clone for quantization scripts |
 | `TRT_MAX_BATCH_SIZE` | **Required** | Max batch size baked into engine (see below) |
 | `TRT_BATCH_SIZE` | Engine max | Runtime batch size override (optional) |
-| `TRT_MAX_INPUT_LEN` | `CHAT_MAX_LEN` (5525) | Maximum input token length |
+| `TRT_MAX_INPUT_LEN` | `CHAT_MAX_LEN` (5025) | Maximum input token length |
 | `TRT_MAX_OUTPUT_LEN` | `CHAT_MAX_OUT` (150) | Maximum output token length |
 | `TRT_DTYPE` | `float16` | Compute precision |
 | `TRT_KV_FREE_GPU_FRAC` | `CHAT_GPU_FRAC` | GPU memory fraction for KV cache |

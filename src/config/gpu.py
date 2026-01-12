@@ -26,6 +26,7 @@ from __future__ import annotations
 import os
 
 from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
+from ..helpers.env import resolve_gpu_fracs
 
 
 # ============================================================================
@@ -35,14 +36,7 @@ from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
 # The chat engine (vLLM/TRT) needs most of the memory for model weights
 # and KV cache. The classifier is much smaller but still needs some space.
 
-if DEPLOY_CHAT and DEPLOY_TOOL:
-    # Shared GPU: conservative allocation to leave headroom
-    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.20"))
-else:
-    # Single component: maximize memory utilization
-    CHAT_GPU_FRAC = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
-    TOOL_GPU_FRAC = float(os.getenv("TOOL_GPU_FRAC", "0.90"))
+CHAT_GPU_FRAC, TOOL_GPU_FRAC = resolve_gpu_fracs(DEPLOY_CHAT, DEPLOY_TOOL)
 
 # ============================================================================
 # KV Cache Configuration

@@ -16,13 +16,26 @@ def normalize_model_id(model_id: str | None) -> str:
     return (model_id or "").strip().lower()
 
 
+def profile_matches(profile: ModelProfile, identifier: str) -> bool:
+    """Check if a profile matches the given model identifier.
+
+    Args:
+        profile: ModelProfile to check.
+        identifier: Model path or HuggingFace ID (should be lowercased).
+
+    Returns:
+        True if any marker is found in the identifier.
+    """
+    return any(marker in identifier for marker in profile.markers)
+
+
 def get_model_profile(model_identifier: str | None) -> ModelProfile | None:
     """Return the first matching profile for the provided identifier."""
     normalized = normalize_model_id(model_identifier)
     if not normalized:
         return None
     for profile in MODEL_PROFILES:
-        if profile.matches(normalized):
+        if profile_matches(profile, normalized):
             return profile
     return None
 
@@ -70,6 +83,7 @@ def get_max_batched_tokens(model_identifier: str | None) -> int | None:
 
 __all__ = [
     "normalize_model_id",
+    "profile_matches",
     "get_model_profile",
     "model_requires_bfloat16",
     "model_requires_fla_runtime",

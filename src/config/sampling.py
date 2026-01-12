@@ -6,24 +6,24 @@ generation. These control the randomness and diversity of outputs.
 Sampling Parameters:
     temperature: Controls randomness (0=deterministic, 1=more random)
         Higher values produce more creative but less coherent outputs.
-    
+
     top_p (nucleus sampling): Cumulative probability threshold
         Only considers tokens whose cumulative probability <= top_p.
         Lower values (0.8-0.95) reduce unlikely token selection.
-    
+
     top_k: Maximum number of tokens to consider
         0 = disabled, 30-50 is common for chat applications.
-    
+
     min_p: Minimum probability threshold
         Filters out tokens below this probability. Good for avoiding
         very unlikely tokens without being as restrictive as top_k.
-    
+
     repetition_penalty: Penalty for repeating tokens (1.0 = no penalty)
         Values > 1.0 reduce repetition, 1.05-1.15 is typical.
-    
+
     presence_penalty: Penalty for tokens already in context
         Encourages talking about new topics.
-    
+
     frequency_penalty: Penalty based on token frequency in context
         Reduces repetition of the same words/phrases.
 
@@ -34,41 +34,9 @@ Stop Sequences:
 All values can be overridden via environment variables or per-request.
 """
 
-import json
 import os
 
-
-def _build_logit_bias_map(default_map: dict[str, float]) -> dict[str, float]:
-    """Build logit bias map from file or return default.
-    
-    If CHAT_LOGIT_BIAS_FILE env var is set, loads the JSON file and returns
-    its contents. Falls back to default_map on any error.
-    
-    Args:
-        default_map: Default logit bias mapping to use if file not specified or invalid.
-        
-    Returns:
-        Logit bias map (token string -> bias value).
-    """
-    env_path = os.getenv("CHAT_LOGIT_BIAS_FILE")
-    if not env_path:
-        return default_map
-    try:
-        with open(env_path, encoding="utf-8") as infile:
-            loaded = json.load(infile)
-        if not isinstance(loaded, dict):
-            raise ValueError("CHAT_LOGIT_BIAS_FILE must contain a JSON object")
-        cleaned: dict[str, float] = {}
-        for key, value in loaded.items():
-            if not isinstance(key, str):
-                continue
-            try:
-                cleaned[key] = float(value)
-            except (TypeError, ValueError):
-                continue
-        return cleaned or default_map
-    except Exception:
-        return default_map
+from ..helpers.env import load_logit_bias_from_file
 
 
 # ============================================================================
@@ -151,7 +119,10 @@ INFERENCE_STOP = [
     "[/SYSTEM_PROMPT]",
 ]
 
-CHAT_LOGIT_BIAS = _build_logit_bias_map(_DEFAULT_LOGIT_BIAS)
+CHAT_LOGIT_BIAS = load_logit_bias_from_file(
+    os.getenv("CHAT_LOGIT_BIAS_FILE"),
+    _DEFAULT_LOGIT_BIAS,
+)
 
 
 __all__ = [
