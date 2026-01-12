@@ -1,9 +1,9 @@
-"""Connection lifecycle regression helpers.
+"""Idle timeout and connection lifecycle regression helpers.
 
 Provides async helpers for exercising the `/ws` endpoint with several
 connection scenarios (normal close, rapid churn, ping/pong, and idle
-watchdog). The CLI wrapper in `tests/connections.py` parses arguments
-and invokes `run_connection_suite`.
+watchdog). The CLI wrapper in `tests/idle.py` parses arguments
+and invokes `run_idle_suite`.
 """
 
 from __future__ import annotations
@@ -90,14 +90,14 @@ async def _test_idle_watchdog(
             print(connection_status("idle", f"server closed (code={exc.code} reason={exc.reason})"))
 
 
-async def run_connection_suite(
+async def run_idle_suite(
     ws_url: str,
     *,
     normal_wait_s: float,
     idle_expect_s: float,
     idle_grace_s: float,
 ) -> bool:
-    """Run the connection lifecycle scenarios sequentially."""
+    """Run the idle timeout and connection lifecycle scenarios sequentially."""
 
     tests: list[tuple[str, Callable[[], Awaitable[None]]]] = [
         ("normal", lambda: _test_normal_connection(ws_url, normal_wait_s)),
@@ -113,7 +113,7 @@ async def run_connection_suite(
         ),
     ]
 
-    print(f"\n{section_header('CONNECTION TESTS')}\n")
+    print(f"\n{section_header('IDLE TESTS')}\n")
     
     success = True
     passed = 0
@@ -140,4 +140,4 @@ async def run_connection_suite(
     return success
 
 
-__all__ = ["run_connection_suite"]
+__all__ = ["run_idle_suite"]

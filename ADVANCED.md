@@ -574,20 +574,20 @@ TEXT_API_KEY=your_api_key python3 tests/history.py --bench -n 32 -c 16 --timeout
 
 Each connection starts with the full warm history and cycles through all recall messages. Output matches the benchmark client format with p50/p95 latencies.
 
-### Connection Lifecycle Test
+### Idle Timeout Test
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/connections.py
-TEXT_API_KEY=your_api_key python3 tests/connections.py --normal-wait 5 --idle-expect-seconds 150
+TEXT_API_KEY=your_api_key python3 tests/idle.py
+TEXT_API_KEY=your_api_key python3 tests/idle.py --normal-wait 5 --idle-expect-seconds 150
 ```
 
-Tests WebSocket connection lifecycle:
+Tests WebSocket idle timeout and connection lifecycle:
 - **Normal close**: Opens a connection, waits, sends `end` frame, verifies clean shutdown
 - **Idle timeout**: Opens a connection, stays idle, verifies server closes with code `4000`
 
 Flags:
-- `--normal-wait`: Seconds to keep connection open before sending end (default: 2)
+- `--normal-wait`: Seconds to keep connection open before sending end (default: 3)
 - `--idle-expect-seconds`: Expected idle timeout from server (default: 150)
 - `--idle-grace-seconds`: Buffer before failing the idle test (default: 15)
 

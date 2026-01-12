@@ -6,7 +6,7 @@ import json
 import os
 from typing import Any
 
-from src.helpers.profiles import get_model_profile
+from src.helpers.model_profiles import get_model_profile
 
 
 def apply_post_quantization_fixes(
