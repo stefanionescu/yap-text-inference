@@ -21,12 +21,12 @@ Quantization is auto-detected from CHAT_MODEL name:
 If auto-detection fails, set CHAT_QUANTIZATION manually.
 
 Environment Variables:
-    INFERENCE_ENGINE: 'vllm' or 'trt' (default: 'trt')
+    INFERENCE_ENGINE: 'vllm' or 'trt'
     CHAT_QUANTIZATION: Override auto-detected quantization (optional)
 
 Note:
-    FP8 KV cache setup for vLLM V1 is handled by configure_vllm_fp8_kv_cache()
-    in src/helpers/env.py, called during engine initialization.
+    FP8 KV cache setup for vLLM V1 is handled by the env helpers module
+    during engine initialization.
 """
 
 from __future__ import annotations

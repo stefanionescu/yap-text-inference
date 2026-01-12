@@ -9,14 +9,14 @@ from typing import Any
 
 def render_trt_readme(metadata: dict[str, Any]) -> str:
     """Render the TRT README template with metadata.
-    
+
     Args:
         metadata: Dictionary of template variables.
-        
+
     Returns:
         Rendered README content.
     """
-    # Template is in src/quantization/trt/readme/
+    # Load template from the quantization TRT readme module
     src_root = Path(__file__).parent.parent.parent
     template_path = src_root / "quantization" / "trt" / "readme" / "trt_chat_template.md"
     template = template_path.read_text(encoding="utf-8")

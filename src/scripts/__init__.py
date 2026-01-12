@@ -11,5 +11,5 @@ Submodules:
     trt/: TensorRT-LLM specific utilities (detection, validation)
 
 Note: Filter constants (HF_DOWNLOAD_GROUPS, TRTLLM_NOISE_PATTERNS, etc.) are
-now in src/config/filters.py, not in this package.
+in the filters config module, not in this package.
 """

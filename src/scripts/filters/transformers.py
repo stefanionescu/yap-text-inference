@@ -1,7 +1,7 @@
 """Transformers library log suppression.
 
 Configures transformers logging verbosity and progress bars.
-This is separate from the monkey-patches in src/scripts/patches.py.
+This is separate from the monkey-patches in the patches module.
 """
 
 from __future__ import annotations
