@@ -1,10 +1,10 @@
 """Session state re-exports for backwards compatibility.
 
-The canonical state definitions now live in src/state/session.py.
+The canonical state definitions live in the state module.
 This module re-exports them for existing imports.
 
 Configuration:
-    SESSION_IDLE_TTL_SECONDS: Imported from src/config/timeouts.py
+    SESSION_IDLE_TTL_SECONDS: Imported from the timeouts config
 """
 
 from __future__ import annotations

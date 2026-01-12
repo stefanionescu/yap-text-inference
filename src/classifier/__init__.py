@@ -24,7 +24,7 @@ Architecture:
 
 Configuration (via environment):
     TOOL_MODEL: HuggingFace model path/ID
-    TOOL_DECISION_THRESHOLD: Probability threshold (default 0.66)
+    TOOL_DECISION_THRESHOLD: Probability threshold for screenshot detection
     TOOL_COMPILE: Whether to use torch.compile()
     TOOL_MAX_LENGTH: Maximum input tokens
     TOOL_MICROBATCH_MAX_SIZE: Max requests per batch

@@ -5,9 +5,9 @@ performance, including attention backend selection and CUDA settings.
 It runs at most once per process unless force=True is passed.
 
 Environment Variables Set:
-    VLLM_USE_V1: Enable vLLM V1 engine (default: 1)
+    VLLM_USE_V1: Enable vLLM V1 engine
     VLLM_ATTENTION_BACKEND: FLASHINFER if available, else XFORMERS
-    CUDA_DEVICE_MAX_CONNECTIONS: Set to 1 for stability
+    CUDA_DEVICE_MAX_CONNECTIONS: Set for stability
     PYTORCH_ALLOC_CONF: Enable expandable segments
     KV_DTYPE: Forced to auto if FP8 requested without flashinfer
 

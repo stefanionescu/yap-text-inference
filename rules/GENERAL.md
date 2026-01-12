@@ -45,11 +45,12 @@ Shared engineering expectations for all work in this codebase. Use these rules a
   - ADVANCED (or similarly named deep-dives): engine/quantization details, operational playbooks (restart, health, logs), tuning flags, and troubleshooting.
   - Feature/area-specific docs: only when scope is too deep for README; link from README or ADVANCED to avoid orphaned content.
 - Required structure for Markdown docs: short purpose statement, concise contents list near the top, prerequisites/env vars, step-by-step flows (setup, run, stop/restart), testing/validation notes, and links to canonical knobs/flags instead of duplicating tables.
-- Script and flag coverage: every host script must list all supported flags/env vars with descriptions, defaults, required/optional status, and interactions. When new flags or behaviors ship, update the canonical table (README for core flows, ADVANCED for deep tuning) and link rather than re-state.
+- Script and flag coverage: every host script must list all supported flags/env vars with descriptions and required/optional status. Avoid embedding default values in docs—they drift when code changes. Exception: server host/port defaults (e.g., `127.0.0.1:8000`) are stable enough to document.
 - Deduplication and layout: pick one canonical location for each table or process; other docs link back. Keep section ordering consistent with current README/ADVANCED patterns (features → quickstart → deployment → quantization → operations/restart/health/logs → tests/tools) unless there is a strong reason to diverge.
 - Style: professional tone, no emojis. Prefer prose descriptions of architecture over ASCII directory trees—use trees sparingly and only for small, specific subsets. Keep commands copy/pasteable, validated, and tied to current scripts/flags; note expected outputs or health checks when relevant.
 - Currency and ownership: update docs with every behavior change; when altering flags or defaults, the same PR must update the canonical doc. Avoid silent drift—flag gaps as follow-ups if unknown.
 - Validation: runnable examples must reflect current scripts and flags; if an example is unverified, mark it and add a follow-up task with owner. State any assumptions or prerequisites explicitly.
+- No hardcoded paths: do not reference specific file paths in documentation (e.g., "see `src/config/limits.py`"). Describe by module or concept name so docs remain valid when files move.
 
 ## Readability and style
 - Use clear, descriptive names for functions, variables, classes, files, and modules. Avoid vague identifiers like `data`, `info`, `temp`, `result`, `handle`, or `process`—prefer names that convey purpose, such as `user_session`, `parse_token_stream`, or `ConnectionState`.
@@ -67,8 +68,10 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 
 ## Comments
 - Keep comments concise and focused on current behavior, NOT on past actions we took or refactors.
-- Prefer intent (“why”) over line-by-line narration, especially for non-obvious control flow.
+- Prefer intent ("why") over line-by-line narration, especially for non-obvious control flow.
 - Do not remove useful comments just to reduce length; reorganize instead when needed.
+- Never embed default values in comments or docstrings—values change and comments drift. Instead, reference the variable name or env var without stating its value.
+- Never reference specific file paths in comments (e.g., "see src/config/limits.py"). Code moves; comments stay. Describe the concept or module name instead (e.g., "see the limits config" or "defined in the quantization helpers").
 
 ## Function contracts and typing
 - Annotate every function and method with explicit type hints (no implicit `Any`); introduce Protocols or TypedDicts when structural typing is needed.

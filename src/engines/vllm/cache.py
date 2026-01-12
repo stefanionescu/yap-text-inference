@@ -133,10 +133,10 @@ class CacheResetManager:
     async def _daemon_loop(self, reset_caches_fn: ResetCachesFn) -> None:
         """Background task to periodically reset vLLM caches.
 
-        Runs on a configurable interval (default 600s) to reset prefix cache
-        and multimodal cache. Uses event-based scheduling that can be interrupted
-        when a long session ends.
-        
+        Runs on a configurable interval (CACHE_RESET_INTERVAL_SECONDS) to reset
+        prefix cache and multimodal cache. Uses event-based scheduling that can
+        be interrupted when a long session ends.
+
         Args:
             reset_caches_fn: Async function(reason, force) -> bool for cache reset.
         """

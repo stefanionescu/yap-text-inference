@@ -132,10 +132,8 @@ MOE_CALIBRATION_SAMPLES_LIMIT = int(os.getenv("MOE_CALIBRATION_SAMPLES_LIMIT", "
 DOWNLOAD_MAX_RETRIES = int(os.getenv("DOWNLOAD_MAX_RETRIES", "3"))
 DOWNLOAD_BACKOFF_MAX_SECONDS = int(os.getenv("DOWNLOAD_BACKOFF_MAX_SECONDS", "5"))
 
-# GPU fraction cap for batching: matches CHAT_GPU_FRAC based on deployment mode
-# When both chat and tool are deployed: default 0.70
-# When only chat is deployed: default 0.90
-# This prevents pushing memory allocation beyond the configured GPU fraction
+# GPU fraction cap for batching: matches CHAT_GPU_FRAC based on deployment mode.
+# Prevents pushing memory allocation beyond the configured GPU fraction.
 _deploy_models = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
 _deploy_chat = _deploy_models in ("both", "chat")
 _deploy_tool = _deploy_models in ("both", "tool")

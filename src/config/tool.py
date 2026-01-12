@@ -17,13 +17,13 @@ Decision Flow:
     5. If probability >= threshold, return take_screenshot tool call
 
 Environment Variables:
-    TOOL_LANGUAGE_FILTER: Skip classifier for non-English (default: True)
-    TOOL_DECISION_THRESHOLD: Probability threshold for screenshot (default: 0.66)
-    TOOL_COMPILE: Enable torch.compile optimization (default: False)
-    TOOL_HISTORY_TOKENS: Max tokens of history context (default: 1536)
-    TOOL_MAX_LENGTH: Max total input length (default: 1536)
-    TOOL_MICROBATCH_MAX_SIZE: Max requests per batch (default: 3)
-    TOOL_MICROBATCH_MAX_DELAY_MS: Max wait time for batch (default: 10ms)
+    TOOL_LANGUAGE_FILTER: Skip classifier for non-English messages
+    TOOL_DECISION_THRESHOLD: Probability threshold for screenshot detection
+    TOOL_COMPILE: Enable torch.compile optimization
+    TOOL_HISTORY_TOKENS: Max tokens of history context
+    TOOL_MAX_LENGTH: Max total input length
+    TOOL_MICROBATCH_MAX_SIZE: Max requests per batch
+    TOOL_MICROBATCH_MAX_DELAY_MS: Max wait time for batch fill
 """
 
 from __future__ import annotations

@@ -12,15 +12,13 @@ from .gpu import CHAT_GPU_FRAC
 
 
 # Directory paths
-# NOTE: scripts/ may set TRTLLM_ENGINE_DIR which gets translated to TRT_ENGINE_DIR
+# NOTE: TRTLLM_ENGINE_DIR is translated to TRT_ENGINE_DIR by shell scripts
 TRT_ENGINE_DIR = os.getenv("TRT_ENGINE_DIR", "")
 TRT_CHECKPOINT_DIR = os.getenv("TRT_CHECKPOINT_DIR", "")
 TRT_REPO_DIR = os.getenv("TRT_REPO_DIR", "")  # Path to TensorRT-LLM repo for quantization
 
 # Engine build parameters
-# These use sensible defaults that match our limits.py values:
-# - CHAT_MAX_LEN = 5025 (context window)
-# - CHAT_MAX_OUT = 150 (generation limit)
+# These use sensible defaults derived from the limits config (CHAT_MAX_LEN, CHAT_MAX_OUT).
 _trt_batch_env = os.getenv("TRT_MAX_BATCH_SIZE")
 _trt_input_env = os.getenv("TRT_MAX_INPUT_LEN")
 _trt_output_env = os.getenv("TRT_MAX_OUTPUT_LEN")
