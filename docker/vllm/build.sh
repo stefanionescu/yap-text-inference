@@ -125,6 +125,7 @@ if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MOD
     log_error "[build] ✗ Model validation failed. Build aborted."
     exit 1
 fi
+echo  # blank line after validation
 
 require_docker
 

@@ -137,21 +137,17 @@ if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MOD
     log_error "[build] ✗ Configuration validation failed. Build aborted."
     exit 1
 fi
+echo  # blank line after validation
 
 require_docker
 
 ensure_docker_login
 
-log_info "[build] Building Docker image: ${FULL_IMAGE_NAME}..."
+log_info "[build] Building Docker image..."
 log_info "[build] Pre-built engine will be baked into the image"
-if [[ -n "${TRT_ENGINE_REPO}" ]] && [[ -n "${TRT_ENGINE_LABEL}" ]]; then
-    log_info "[build]   Engine repo: ${TRT_ENGINE_REPO}"
-    log_info "[build]   Engine label: ${TRT_ENGINE_LABEL}"
-fi
 
 # Build the image
 prepare_build_context
-
 init_build_args
 
 # Add model build args - these become ENV vars in the image
