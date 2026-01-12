@@ -86,7 +86,7 @@ def is_moe_model(model_config: Any | None, model_identifier: str) -> bool:
     
     # Fallback: detect MoE from model identifier patterns
     # Common patterns: "-A3B", "MoE", "Mixtral", etc.
-    from src.helpers.model_profiles import normalize_model_id  # lazy import to avoid cycles
+    from src.helpers.profiles import normalize_model_id  # lazy import to avoid cycles
     normalized = normalize_model_id(model_identifier)
     
     # Qwen3 MoE naming convention: "qwen3-30b-a3b" (30B total, 3B active)

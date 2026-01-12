@@ -56,7 +56,7 @@ class ModelProfile:
             Used to fix tokenizer issues (e.g., fix_mistral_regex).
 
     Note:
-        Profile matching logic is in src/helpers/model_profiles.profile_matches().
+        Profile matching logic is in src/helpers/profiles.profile_matches().
     """
 
     name: str
