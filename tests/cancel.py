@@ -2,19 +2,20 @@
 """Cancel request test: verifies cancel aborts in-flight requests and
 subsequent requests complete successfully.
 
-This test validates the cancel message handling by:
-1. Sending a start message to begin generation
-2. Sending a cancel message immediately after ACK
-3. Verifying the done response has cancelled=True
-4. Waiting a short period, then sending another request
-5. Verifying the recovery request completes successfully
+This test validates the cancel message handling using multiple concurrent clients:
+1. Multiple clients (default 3) connect simultaneously
+2. One client sends a start message, waits ~1s collecting tokens, then cancels
+3. That client verifies done with cancelled=True, then verifies no spurious messages
+4. That client sends a recovery request and completes it
+5. The other clients complete their inference normally
+6. All clients wait for the canceling client's recovery before finishing
 
 The test works with all deployment modes (tool only, chat only, or both).
 
 Usage:
   python3 tests/cancel.py
   python3 tests/cancel.py --server ws://localhost:8000/ws
-  python3 tests/cancel.py --post-cancel-wait 3.0 --timeout 60
+  python3 tests/cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
@@ -42,6 +43,9 @@ from tests.config import (
     DEFAULT_PERSONALITY,
     CANCEL_POST_WAIT_DEFAULT,
     CANCEL_RECV_TIMEOUT_DEFAULT,
+    CANCEL_NUM_CLIENTS_DEFAULT,
+    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
+    CANCEL_DRAIN_TIMEOUT_DEFAULT,
 )
 from tests.logic.cancel import run_cancel_suite
 
@@ -55,11 +59,38 @@ def _parse_args() -> argparse.Namespace:
         server_help="Base WebSocket URL (defaults to SERVER_WS_URL env)",
     )
     parser.add_argument(
+        "--clients",
+        type=int,
+        default=CANCEL_NUM_CLIENTS_DEFAULT,
+        help=(
+            "Number of concurrent clients (1 cancels, rest complete normally) "
+            f"(default: {CANCEL_NUM_CLIENTS_DEFAULT})"
+        ),
+    )
+    parser.add_argument(
+        "--cancel-delay",
+        type=float,
+        default=CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
+        help=(
+            "Seconds to wait after start before sending cancel "
+            f"(default: {CANCEL_DELAY_BEFORE_CANCEL_DEFAULT})"
+        ),
+    )
+    parser.add_argument(
+        "--drain-timeout",
+        type=float,
+        default=CANCEL_DRAIN_TIMEOUT_DEFAULT,
+        help=(
+            "Seconds to verify no spurious messages after cancel "
+            f"(default: {CANCEL_DRAIN_TIMEOUT_DEFAULT})"
+        ),
+    )
+    parser.add_argument(
         "--post-cancel-wait",
         type=float,
         default=CANCEL_POST_WAIT_DEFAULT,
         help=(
-            "Seconds to wait after cancel before sending recovery request "
+            "Seconds to wait after drain before sending recovery request "
             f"(default: {CANCEL_POST_WAIT_DEFAULT})"
         ),
     )
@@ -108,6 +139,9 @@ def main() -> None:
             ws_url,
             gender=args.gender,
             personality=args.personality,
+            num_clients=args.clients,
+            cancel_delay_s=args.cancel_delay,
+            drain_timeout_s=args.drain_timeout,
             post_cancel_wait_s=args.post_cancel_wait,
             recv_timeout_s=args.timeout,
         )
