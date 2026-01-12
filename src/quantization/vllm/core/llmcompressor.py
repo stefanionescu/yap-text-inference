@@ -105,7 +105,8 @@ def quantize(
     )
 
     apply_post_quantization_fixes(output_dir, model_path)
-    print(f"[awq] Done: {output_dir}")
+    print("[awq] ✓ llmcompressor quantization done")
+    print()
     return True
 
 

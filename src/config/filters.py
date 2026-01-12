@@ -133,7 +133,7 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # === Application vLLM startup logs ===
     # Python logging format: INFO YYYY-MM-DD HH:MM:SS,mmm [module:line] message
     # Suppress verbose startup logs from src.engines.vllm.* modules
-    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args|tokenizer|memory_tuning):\d+\]"),
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args|tokenizer|memory_tuning|factory):\d+\]"),
     # Suppress verbose startup logs from src.quantization.vllm.* modules
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.quantization\.vllm\.[\w.]+:\d+\]"),
     # Warmup logs specifically for vLLM
@@ -180,12 +180,16 @@ LLMCOMPRESSOR_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"Generating \w+ split:\s*\d+%", re.IGNORECASE),
     re.compile(r"Preprocessing:\s*\d+%", re.IGNORECASE),
     re.compile(r"Tokenizing:\s*\d+%", re.IGNORECASE),
-    # Calibration/quantization progress bars (with layer counter prefix)
+    # Calibration/quantization progress bars (with layer counter prefix or standalone)
     re.compile(r"\(\d+/\d+\):\s*Calibrating:\s*\d+%", re.IGNORECASE),
     re.compile(r"\(\d+/\d+\):\s*Propagating:\s*\d+%", re.IGNORECASE),
-    re.compile(r"Smoothing:\s*\d+%", re.IGNORECASE),
+    # tqdm iteration format: "Smoothing: 0it", "Calibrating weights: 280it"
+    re.compile(r"Smoothing:\s*\d+", re.IGNORECASE),
+    re.compile(r"Calibrating weights:\s*\d+", re.IGNORECASE),
     # Tokenizer regex warning from Mistral models
     re.compile(r"tokenizer.*incorrect regex pattern.*fix_mistral_regex", re.IGNORECASE),
+    # llmcompressor timestamp logs: 2026-01-12T16:08:24.565859+0000 | module | INFO -
+    re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[+-]\d{4}\s*\|.*\|\s*(?:INFO|WARNING)\s*-"),
 )
 
 
