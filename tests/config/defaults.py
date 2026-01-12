@@ -55,6 +55,9 @@ IDLE_GRACE_DEFAULT = 15.0
 # Cancel test defaults
 CANCEL_POST_WAIT_DEFAULT = 2.0  # Seconds to wait after cancel before recovery
 CANCEL_RECV_TIMEOUT_DEFAULT = 30.0  # Timeout for each receive phase
+CANCEL_NUM_CLIENTS_DEFAULT = 3  # Number of concurrent clients
+CANCEL_DELAY_BEFORE_CANCEL_DEFAULT = 1.0  # Seconds to collect tokens before cancel
+CANCEL_DRAIN_TIMEOUT_DEFAULT = 2.0  # Seconds to verify no spurious messages after cancel
 
 # WebSocket defaults
 DEFAULT_WS_PATH = "/ws"
@@ -93,6 +96,9 @@ __all__ = [
     "IDLE_GRACE_DEFAULT",
     "CANCEL_POST_WAIT_DEFAULT",
     "CANCEL_RECV_TIMEOUT_DEFAULT",
+    "CANCEL_NUM_CLIENTS_DEFAULT",
+    "CANCEL_DELAY_BEFORE_CANCEL_DEFAULT",
+    "CANCEL_DRAIN_TIMEOUT_DEFAULT",
     "DEFAULT_WS_PATH",
     "PROGRESS_BAR_WIDTH",
     "WS_MAX_QUEUE",
