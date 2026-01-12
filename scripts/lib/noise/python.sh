@@ -28,5 +28,11 @@ python_warning_suppress_modelopt_lm_head_warning() {
   python_warning_add_filter "${filter}"
 }
 
+python_warning_suppress_mistral_tokenizer_regex() {
+  local filter="ignore:.*incorrect regex pattern.*fix_mistral_regex:UserWarning"
+  python_warning_add_filter "${filter}"
+}
+
 python_warning_suppress_pynvml_future
 python_warning_suppress_modelopt_lm_head_warning
+python_warning_suppress_mistral_tokenizer_regex
