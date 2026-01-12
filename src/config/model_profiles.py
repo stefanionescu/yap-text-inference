@@ -34,7 +34,7 @@ from collections.abc import Mapping
 @dataclass(frozen=True)
 class ModelProfile:
     """Describes special-case requirements for known model families.
-    
+
     Attributes:
         name: Human-readable profile name (e.g., "gemma3").
         markers: Tuple of strings to match against model identifiers.
@@ -54,6 +54,9 @@ class ModelProfile:
             Used to fix configuration issues in exported models.
         tokenizer_kwargs: Dict of kwargs passed to AutoTokenizer.from_pretrained.
             Used to fix tokenizer issues (e.g., fix_mistral_regex).
+
+    Note:
+        Profile matching logic is in src/helpers/model_profiles.profile_matches().
     """
 
     name: str
@@ -65,17 +68,6 @@ class ModelProfile:
     max_num_batched_tokens: int | None = None
     config_overrides: Mapping[str, Any] | None = None
     tokenizer_kwargs: Mapping[str, Any] | None = None
-
-    def matches(self, identifier: str) -> bool:
-        """Check if this profile matches the given model identifier.
-        
-        Args:
-            identifier: Model path or HuggingFace ID (lowercased).
-            
-        Returns:
-            True if any marker is found in the identifier.
-        """
-        return any(marker in identifier for marker in self.markers)
 
 
 MODEL_PROFILES: tuple[ModelProfile, ...] = (

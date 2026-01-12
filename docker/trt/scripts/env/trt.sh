@@ -8,7 +8,7 @@
 export TRT_ENGINE_DIR=${TRT_ENGINE_DIR:-/opt/engines/trt-chat}
 
 # Context and output limits
-export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5525}
+export CHAT_MAX_LEN=${CHAT_MAX_LEN:-5025}
 export CHAT_MAX_OUT=${CHAT_MAX_OUT:-150}
 
 # TRT-specific settings (aligned with Python src/config/trt.py)

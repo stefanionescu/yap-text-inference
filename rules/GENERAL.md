@@ -33,6 +33,12 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Keep module-level constants and lookup tables near the top so they precede executable code.
 - Avoid magic values inline; surface configuration knobs explicitly instead of hiding them in logic.
 
+## Configuration modules
+- Config modules should only export variables and constants—no functions, conditional logic, or side effects.
+- Keep resolution logic (e.g., deriving values from deployment mode or environment) in helper modules; config modules call these helpers to get final values.
+- Never modify `os.environ` or trigger I/O at config import time; move such side effects to explicit initialization functions called by entry points.
+- Dataclasses in config may define fields and defaults but should not contain methods with logic; keep matching or validation logic in corresponding helper modules.
+
 ## Documentation
 - Documentation tiers:
   - README: core concepts, required env vars, primary workflows (deploy, run, stop), and minimum examples that are validated.
@@ -79,9 +85,48 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 ## Testing
 - Ship every behavioral change with a matching automated test (unit, integration, or system) that would fail without the change.
 - Keep tests deterministic by stubbing clocks, network calls, randomness, and filesystem writes; centralize shared fixtures so they can be reused.
-- Add a regression test for each bug fix that previously failed to prevent repeats; reference the failure scenario in the test’s docstring or comments.
+- Add a regression test for each bug fix that previously failed to prevent repeats; reference the failure scenario in the test's docstring or comments.
 - Name test modules `test_*.py`, fixtures `fixture_*`, and doubles `fake_*`/`stub_*` so intent stays obvious.
 - Limit test modules to the smallest practical scope; extract reusable builders into helper modules or fixtures instead of duplicating factories inline.
+
+## Test CLI output
+- Use `print()` for test script user-facing output; reserve `logging` for diagnostic/debug messages that should be suppressible.
+- Route all console formatting through `tests/helpers/fmt.py`—use `dim()`, `bold()`, `green()`, `red()`, `cyan()`, `yellow()`, `magenta()` for colors and `section_header()`, `exchange_header()`, `exchange_footer()` for visual structure.
+- Format test results with `format_pass()`, `format_fail()`, and `format_info()` for consistent pass/fail presentation.
+- Format user and assistant messages with `format_user()` and `format_assistant()` for conversation displays.
+- Use `format_metrics_inline()` for compact latency/throughput summaries and `format_ttfb_summary()` for detailed TTFB tables.
+- For functions that emit multiple lines, accept a `sink: Callable[[str], None]` parameter (defaulting to `print`) so callers can redirect or capture output.
+- Disable ANSI colors automatically when stdout is not a tty; the `_USE_COLOR` flag in `fmt.py` handles this—do not add manual tty checks elsewhere.
+
+Example test output patterns:
+```python
+from tests.helpers.fmt import (
+    dim, bold, green, red, cyan,
+    section_header, exchange_header, exchange_footer,
+    format_user, format_assistant, format_pass, format_fail,
+    format_metrics_inline,
+)
+
+# Section headers for visual separation
+print(section_header("WARMUP TEST"))
+
+# Exchange blocks for conversation display
+print(exchange_header(idx=1, persona="flirty", gender="female"))
+print(format_user("hello there"))
+print(format_assistant("Hey! How's it going?"))
+print(dim(format_metrics_inline({"ttfb_ms": 142, "total_ms": 890, "chunks": 12})))
+print(exchange_footer())
+
+# Test results
+print(format_pass("connection established"))
+print(format_fail("timeout", reason="no response after 30s"))
+
+# Multi-line emitters use sink pattern
+def emit_summary(results: list[dict], sink: Callable[[str], None] = print) -> None:
+    sink(section_header("SUMMARY"))
+    for r in results:
+        sink(f"  {r['name']}: {r['status']}")
+```
 
 ## State and concurrency
 - Model shared runtime state with frozen dataclasses or TypedDicts and keep their definitions in an obvious, centralized module so structure stays discoverable.

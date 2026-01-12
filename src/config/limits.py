@@ -29,16 +29,16 @@ All values can be overridden via environment variables.
 
 import os
 
-from ..helpers.env import env_flag
+from ..helpers.env import env_flag, resolve_batch_scale_gpu_frac_cap
 
 
 # ============================================================================
 # Context Window Limits
 # ============================================================================
 # These define the maximum token budget for different components.
-# Total budget breakdown: 2000 persona + 3000 history + 500 user + 25 buffer
+# Total budget breakdown: 1500 persona + 3000 history + 500 user + 25 buffer
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5525"))  # Total context window
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # Total context window
 CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))   # Max generation tokens
 PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
 
@@ -59,7 +59,7 @@ CHAT_FREQUENCY_PENALTY_MIN = float(os.getenv("CHAT_FREQUENCY_PENALTY_MIN", "0.0"
 CHAT_FREQUENCY_PENALTY_MAX = float(os.getenv("CHAT_FREQUENCY_PENALTY_MAX", "0.5"))
 
 # Max tokens allowed for incoming prompts (provided by clients)
-CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "2000"))
+CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1500"))
 
 # Personality validation
 PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
@@ -136,18 +136,10 @@ DOWNLOAD_BACKOFF_MAX_SECONDS = int(os.getenv("DOWNLOAD_BACKOFF_MAX_SECONDS", "5"
 # When both chat and tool are deployed: default 0.70
 # When only chat is deployed: default 0.90
 # This prevents pushing memory allocation beyond the configured GPU fraction
-_env_cap = os.getenv("BATCH_SCALE_GPU_FRAC_CAP")
-if _env_cap is not None:
-    BATCH_SCALE_GPU_FRAC_CAP = float(_env_cap)
-else:
-    # Replicate CHAT_GPU_FRAC logic to avoid circular import with env.py
-    _deploy_models = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
-    _deploy_chat = _deploy_models in ("both", "chat")
-    _deploy_tool = _deploy_models in ("both", "tool")
-    if _deploy_chat and _deploy_tool:
-        BATCH_SCALE_GPU_FRAC_CAP = float(os.getenv("CHAT_GPU_FRAC", "0.70"))
-    else:
-        BATCH_SCALE_GPU_FRAC_CAP = float(os.getenv("CHAT_GPU_FRAC", "0.90"))
+_deploy_models = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
+_deploy_chat = _deploy_models in ("both", "chat")
+_deploy_tool = _deploy_models in ("both", "tool")
+BATCH_SCALE_GPU_FRAC_CAP = resolve_batch_scale_gpu_frac_cap(_deploy_chat, _deploy_tool)
 
 __all__ = [
     "CHAT_MAX_LEN",

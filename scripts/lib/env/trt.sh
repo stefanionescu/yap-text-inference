@@ -60,10 +60,10 @@ TRT_FP8_SM_ARCHS="sm89 sm90"
 # At this point we just read the value; it may be empty if not building an engine.
 TRT_MAX_BATCH_SIZE="${TRT_MAX_BATCH_SIZE:-}"
 
-# Input length = CHAT_MAX_LEN (default 5525 from limits.py)
+# Input length = CHAT_MAX_LEN (default 5025 from limits.py)
 # This is the total context window: persona + history + user input
 if [ -z "${TRT_MAX_INPUT_LEN:-}" ]; then
-  TRT_MAX_INPUT_LEN="${CHAT_MAX_LEN:-5525}"
+  TRT_MAX_INPUT_LEN="${CHAT_MAX_LEN:-5025}"
 fi
 
 # Output length = CHAT_MAX_OUT (default 150 from limits.py)
@@ -94,7 +94,7 @@ TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-}"
 # Calibration sequence length: derived from CHAT_MAX_LEN + CHAT_MAX_OUT
 # vLLM default is 2048, but we use our actual context window
 if [ -z "${TRT_CALIB_SEQLEN:-}" ]; then
-  _chat_max_len="${CHAT_MAX_LEN:-5525}"
+  _chat_max_len="${CHAT_MAX_LEN:-5025}"
   _chat_max_out="${CHAT_MAX_OUT:-150}"
   TRT_CALIB_SEQLEN=$(( _chat_max_len + _chat_max_out ))
 fi

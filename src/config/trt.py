@@ -19,7 +19,7 @@ TRT_REPO_DIR = os.getenv("TRT_REPO_DIR", "")  # Path to TensorRT-LLM repo for qu
 
 # Engine build parameters
 # These use sensible defaults that match our limits.py values:
-# - CHAT_MAX_LEN = 5525 (context window)
+# - CHAT_MAX_LEN = 5025 (context window)
 # - CHAT_MAX_OUT = 150 (generation limit)
 _trt_batch_env = os.getenv("TRT_MAX_BATCH_SIZE")
 _trt_input_env = os.getenv("TRT_MAX_INPUT_LEN")
@@ -40,8 +40,8 @@ TRT_MAX_BATCH_SIZE: int | None = int(_trt_batch_env) if _trt_batch_env else None
 _trt_runtime_batch = os.getenv("TRT_BATCH_SIZE")
 TRT_RUNTIME_BATCH_SIZE: int | None = int(_trt_runtime_batch) if _trt_runtime_batch else None
 
-# Input length: use CHAT_MAX_LEN default (5525)
-TRT_MAX_INPUT_LEN = int(_trt_input_env) if _trt_input_env else int(os.getenv("CHAT_MAX_LEN", "5525"))
+# Input length: use CHAT_MAX_LEN default (5025)
+TRT_MAX_INPUT_LEN = int(_trt_input_env) if _trt_input_env else int(os.getenv("CHAT_MAX_LEN", "5025"))
 
 # Output length: use CHAT_MAX_OUT default (150)
 TRT_MAX_OUTPUT_LEN = int(_trt_output_env) if _trt_output_env else int(os.getenv("CHAT_MAX_OUT", "150"))
@@ -64,7 +64,7 @@ if _trt_calib_seqlen_env:
     TRT_CALIB_SEQLEN = int(_trt_calib_seqlen_env)
 else:
     # Use CHAT_MAX_LEN + CHAT_MAX_OUT as calibration seqlen
-    _ctx_len = int(os.getenv("CHAT_MAX_LEN", "5525"))
+    _ctx_len = int(os.getenv("CHAT_MAX_LEN", "5025"))
     _ctx_out = int(os.getenv("CHAT_MAX_OUT", "150"))
     TRT_CALIB_SEQLEN = _ctx_len + _ctx_out
 

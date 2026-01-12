@@ -1,10 +1,14 @@
-"""Quantization detection and classification helpers."""
+"""Quantization detection and classification helpers.
 
-from src.config.quantization import (
-    SUPPORTED_ENGINES,
-    VLLM_QUANTIZATIONS,
-    TRT_FP8_SM_ARCHS,
-)
+This module provides functions for detecting and classifying quantization
+methods from model names, engine normalization, and GPU compatibility checks.
+"""
+
+# Constants duplicated from config to avoid circular import
+# (config/engine.py imports from this module, config/__init__ imports engine)
+SUPPORTED_ENGINES: tuple[str, ...] = ("vllm", "trt")
+VLLM_QUANTIZATIONS: set[str] = {"awq", "gptq", "gptq_marlin"}
+TRT_FP8_SM_ARCHS: tuple[str, ...] = ("sm89", "sm90")
 
 _W4A16_HINTS = ("w4a16", "compressed-tensors", "autoround")
 
@@ -171,6 +175,36 @@ def map_quant_mode_to_trt(
     return "int4_awq"
 
 
+def detect_chat_quantization(model: str | None, engine: str) -> str | None:
+    """Auto-detect quantization method from model name.
+
+    Examines the model path/ID for quantization markers and returns the
+    appropriate quantization method string.
+
+    Args:
+        model: Model path or HuggingFace ID.
+        engine: Inference engine ('vllm' or 'trt').
+
+    Returns:
+        Quantization method string ('awq', 'gptq', 'fp8', 'int8') or None.
+    """
+    if not model:
+        return None
+
+    # TRT-specific detection (handles trt-awq, trt-fp8, etc.)
+    if engine == "trt":
+        trt_quant = classify_trt_prequantized_model(model)
+        if trt_quant == "trt_awq":
+            return "awq"
+        if trt_quant == "trt_fp8":
+            return "fp8"
+        if trt_quant in ("trt_int8", "trt_8bit"):
+            return "int8"
+
+    # Fall back to generic pre-quantized detection
+    return classify_prequantized_model(model)
+
+
 __all__ = [
     "SUPPORTED_ENGINES",
     "VLLM_QUANTIZATIONS", 
@@ -189,4 +223,5 @@ __all__ = [
     "normalize_engine",
     "gpu_supports_fp8",
     "map_quant_mode_to_trt",
+    "detect_chat_quantization",
 ]
