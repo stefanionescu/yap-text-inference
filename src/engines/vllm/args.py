@@ -33,7 +33,7 @@ import os
 from vllm.config import AttentionConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.helpers.profiles import (
+from src.helpers.model_profiles import (
     get_max_batched_tokens,
     get_tokenizer_kwargs,
     model_needs_memory_optimization,

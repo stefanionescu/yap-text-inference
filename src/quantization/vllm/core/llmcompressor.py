@@ -18,7 +18,7 @@ from src.helpers.calibration import (
     dataset_fallback,
     dataset_key,
 )
-from src.helpers.profiles import get_model_profile
+from src.helpers.model_profiles import get_model_profile
 
 from .calibration import CalibrationConfig
 from .config_fixes import apply_post_quantization_fixes
