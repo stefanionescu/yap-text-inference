@@ -13,9 +13,9 @@ Prompt sources:
 
 from __future__ import annotations
 
-from tests.helpers.errors import PromptSelectionError
-from tests.prompts.base import FEMALE_PROMPT, MALE_PROMPT
 from tests.prompts.detailed import PERSONALITIES
+from tests.helpers.errors import PromptSelectionError
+from tests.prompts.base import MALE_PROMPT, FEMALE_PROMPT
 
 
 def normalize_gender(value: str | None) -> str:

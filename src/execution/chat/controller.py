@@ -34,15 +34,16 @@ Works with both vLLM and TensorRT-LLM engines through the BaseEngine interface.
 
 from __future__ import annotations
 
+import time
 import asyncio
 import logging
-import time
-from dataclasses import dataclass
 from typing import Any
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from dataclasses import dataclass
+from collections.abc import Callable, Awaitable, AsyncGenerator
 
-from src.config.logging import CHAT_STREAM_LABEL
 from src.errors import StreamCancelledError
+from src.config.logging import CHAT_STREAM_LABEL
+
 from ...engines.base import BaseEngine
 from ..async_compat import timeout as async_timeout
 

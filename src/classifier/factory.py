@@ -19,16 +19,16 @@ def create_classifier_adapter() -> ClassifierToolAdapter:
     Returns:
         A new ClassifierToolAdapter instance configured from environment.
     """
+    from src.config.timeouts import TOOL_TIMEOUT_S
     from src.config import (
         TOOL_MODEL,
-        TOOL_GPU_FRAC,
-        TOOL_DECISION_THRESHOLD,
         TOOL_COMPILE,
+        TOOL_GPU_FRAC,
         TOOL_MAX_LENGTH,
+        TOOL_DECISION_THRESHOLD,
         TOOL_MICROBATCH_MAX_SIZE,
         TOOL_MICROBATCH_MAX_DELAY_MS,
     )
-    from src.config.timeouts import TOOL_TIMEOUT_S
     
     return ClassifierToolAdapter(
         model_path=TOOL_MODEL,

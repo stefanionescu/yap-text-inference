@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import math
 from typing import Any
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Callable, Sequence
 
-from tests.helpers.fmt import section_header, bold, dim
+from tests.helpers.fmt import dim, bold, section_header
+
 from .types import TTFBSamples
-
 
 # ============================================================================
 # Internal Helpers

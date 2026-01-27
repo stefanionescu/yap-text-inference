@@ -6,7 +6,6 @@ Values are sourced from environment variables with sensible defaults.
 
 import os
 
-
 # Chat/text generation hard timeout in seconds
 GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "60"))
 

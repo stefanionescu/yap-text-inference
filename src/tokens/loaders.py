@@ -11,13 +11,12 @@ that may need to fetch the tokenizer from the source model.
 
 from __future__ import annotations
 
-import logging
 import os
+import logging
 
 from tokenizers import Tokenizer
 
 from .source import TokenizerSource, TransformersTarget
-
 
 logger = logging.getLogger(__name__)
 

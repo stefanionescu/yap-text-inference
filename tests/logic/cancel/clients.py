@@ -8,34 +8,28 @@ of each client type:
 
 from __future__ import annotations
 
-import asyncio
 import json
+import asyncio
 from typing import Any
 
 import websockets
 
-from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
 from tests.helpers.fmt import dim
 from tests.helpers.metrics import SessionContext
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.websocket import (
+    iter_messages,
+    create_tracker,
+    send_client_end,
+    dispatch_message,
+    finalize_metrics,
     build_start_payload,
     connect_with_retries,
-    create_tracker,
-    finalize_metrics,
-    send_client_end,
-    iter_messages,
-    dispatch_message,
 )
 
 from .handlers import build_recovery_handlers
-from .phases import run_cancel_phase, run_drain_phase, run_recovery_phase
-from .types import (
-    CancelPhaseResult,
-    DrainPhaseResult,
-    RecoveryPhaseResult,
-    CancelClientResult,
-    NormalClientResult,
-)
+from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
+from .types import DrainPhaseResult, CancelPhaseResult, CancelClientResult, NormalClientResult, RecoveryPhaseResult
 
 
 async def run_normal_client(

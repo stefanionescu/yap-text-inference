@@ -30,8 +30,8 @@ Example:
 
 from __future__ import annotations
 
-import collections
 import time
+import collections
 from collections.abc import Callable
 
 from src.errors import RateLimitError

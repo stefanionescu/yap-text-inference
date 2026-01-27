@@ -25,13 +25,13 @@ Message Protocol:
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import json
+import asyncio
 import logging
-from collections.abc import AsyncIterator
-from dataclasses import dataclass
+import contextlib
 from typing import Any
+from dataclasses import dataclass
+from collections.abc import AsyncIterator
 
 from fastapi import WebSocket, WebSocketDisconnect
 

@@ -14,24 +14,19 @@ The InteractiveRunner orchestrates the interactive session lifecycle:
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
-import logging
 import os
 import signal
+import asyncio
+import logging
+import contextlib
 from dataclasses import dataclass
 
-from tests.helpers.errors import (
-    ConnectionClosedError,
-    IdleTimeoutError,
-    InputClosedError,
-    TestClientError,
-)
-from tests.helpers.fmt import cyan, yellow, bold, dim
+from tests.helpers.fmt import dim, bold, cyan, yellow
+from tests.helpers.errors import TestClientError, IdleTimeoutError, InputClosedError, ConnectionClosedError
 
 from .client import LiveClient
-from .commands import dispatch_command
 from .personas import PersonaRegistry
+from .commands import dispatch_command
 
 logger = logging.getLogger("live")
 

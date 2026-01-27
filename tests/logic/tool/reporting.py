@@ -185,9 +185,9 @@ def save_logs(
     Save test logs to a file with a unique name in tests/results/.
     Returns the path to the saved log file.
     """
-    from datetime import datetime
     from pathlib import Path
-    
+    from datetime import datetime
+
     # Create results directory if it doesn't exist
     test_dir = Path(__file__).resolve().parent.parent.parent
     results_dir = test_dir / "results"

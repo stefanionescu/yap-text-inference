@@ -14,7 +14,7 @@ Key Differences from vLLM:
 from __future__ import annotations
 
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from collections.abc import AsyncGenerator
 
 if TYPE_CHECKING:

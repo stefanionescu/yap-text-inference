@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+
 from fastapi import WebSocket
 
-from ..handlers.session import session_handler
-from ..execution.chat.runner import run_chat_generation
 from ..config import DEPLOY_CHAT
+from ..handlers.session import session_handler
 from ..tokens import trim_text_to_token_limit_chat
+from ..execution.chat.runner import run_chat_generation
 from ..handlers.websocket.helpers import safe_send_json, stream_chat_response
-
 
 logger = logging.getLogger(__name__)
 

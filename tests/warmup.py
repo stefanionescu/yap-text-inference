@@ -28,10 +28,10 @@ append the API key as a query parameter to the WebSocket URL.
 
 from __future__ import annotations
 
-import argparse
+import sys
 import asyncio
 import logging
-import sys
+import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -40,13 +40,9 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.helpers.cli import (
-    add_connection_args,
-    add_sampling_args,
-    build_sampling_payload,
-)
 from tests.helpers.errors import ServerError
 from tests.logic.warmup.runner import run_once
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
 
 
 def _parse_args() -> argparse.Namespace:

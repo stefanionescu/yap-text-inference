@@ -6,10 +6,10 @@ and configured before engine building or inference.
 
 from __future__ import annotations
 
-import ctypes
-import ctypes.util
 import io
 import sys
+import ctypes
+import ctypes.util
 
 
 def validate_python_libraries() -> bool:

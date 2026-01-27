@@ -11,8 +11,8 @@ alternatives (e.g., /quit -> /stop, /? -> /help).
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
+from collections.abc import Callable, Awaitable
 
 if TYPE_CHECKING:
     from .client import LiveClient

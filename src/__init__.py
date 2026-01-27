@@ -29,7 +29,8 @@ Environment Variables:
     Required:
         - MAX_CONCURRENT_CONNECTIONS: Maximum WebSocket connections
         - TEXT_API_KEY: API key for authentication
-        - CHAT_MODEL: HuggingFace model ID for chat (must include quantization type in name, e.g. '-awq', '-gptq', '-fp8')
+        - CHAT_MODEL: HuggingFace model ID for chat
+          (must include quantization type in name, e.g. '-awq', '-gptq', '-fp8')
     
     Optional:
         - CHAT_QUANTIZATION: Override auto-detected quantization (awq, gptq, fp8)

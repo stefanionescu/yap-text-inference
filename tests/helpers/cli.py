@@ -8,18 +8,18 @@ override args (temperature, top_p, etc.).
 from __future__ import annotations
 
 import os
-from argparse import ArgumentParser, Namespace
-from collections.abc import Mapping
 from typing import Any
+from collections.abc import Mapping
+from argparse import Namespace, ArgumentParser
 
 from tests.config import (
-    DEFAULT_SERVER_WS_URL,
-    CHAT_REPETITION_PENALTY_DEFAULT,
-    CHAT_PRESENCE_PENALTY_DEFAULT,
-    CHAT_FREQUENCY_PENALTY_DEFAULT,
-    CHAT_TEMPERATURE_DEFAULT,
     CHAT_TOP_K_DEFAULT,
     CHAT_TOP_P_DEFAULT,
+    DEFAULT_SERVER_WS_URL,
+    CHAT_TEMPERATURE_DEFAULT,
+    CHAT_PRESENCE_PENALTY_DEFAULT,
+    CHAT_FREQUENCY_PENALTY_DEFAULT,
+    CHAT_REPETITION_PENALTY_DEFAULT,
 )
 
 

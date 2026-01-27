@@ -7,9 +7,9 @@ progress, classifier warmup logs, and deprecation warnings.
 from __future__ import annotations
 
 import io
-import logging
 import re
 import sys
+import logging
 from collections.abc import Iterable
 
 from src.config.filters import TOOL_NOISE_PATTERNS

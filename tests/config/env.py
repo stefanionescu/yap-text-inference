@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 
-
 DEFAULT_SERVER_WS_URL = os.getenv("SERVER_WS_URL", "ws://127.0.0.1:8000/ws")
 DEFAULT_GENDER = os.getenv("GENDER", "female")
 DEFAULT_PERSONALITY = os.getenv("PERSONALITY", "flirty")

@@ -17,25 +17,18 @@ Env:
 
 from __future__ import annotations
 
-import argparse
-import asyncio
 import sys
+import asyncio
+import argparse
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.helpers.setup import setup_repo_path
-from tests.helpers.cli import (
-    add_connection_args,
-    add_sampling_args,
-    build_sampling_payload,
-)
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_SERVER_WS_URL,
-)
 from tests.helpers.prompt import select_chat_prompt
+from tests.config import DEFAULT_GENDER, DEFAULT_SERVER_WS_URL
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
 
 
 def _parse_args() -> argparse.Namespace:

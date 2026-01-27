@@ -17,6 +17,7 @@ def _get_detector():
     if _detector is None:
         try:
             from lingua import LanguageDetectorBuilder
+
             # Build detector once - only load English vs all others
             # This is faster and sufficient for our use case (is it English or not?)
             _detector = (

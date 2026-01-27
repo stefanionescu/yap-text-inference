@@ -12,12 +12,11 @@ assistant personalities mid-session.
 from __future__ import annotations
 
 import importlib
-from dataclasses import dataclass
 from typing import Any
+from dataclasses import dataclass
 
-from tests.config import DEFAULT_PERSONA_NAME, PERSONA_MODULE
+from tests.config import PERSONA_MODULE
 from tests.helpers.prompt import normalize_gender
-
 
 # ============================================================================
 # Data Structures

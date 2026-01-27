@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import contextlib
+import os
 import json
 import logging
-import os
+import contextlib
 from pathlib import Path
 from typing import Any, TypeVar
-
 
 logger = logging.getLogger(__name__)
 

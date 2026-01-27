@@ -24,18 +24,18 @@ invoking the model. This improves latency for known patterns.
 
 from __future__ import annotations
 
-import asyncio
-import logging
 import time
 import uuid
-from collections.abc import Awaitable
+import asyncio
+import logging
 from typing import Any
+from collections.abc import Awaitable
 
-from ...classifier import get_classifier_adapter
-from ...config import TOOL_LANGUAGE_FILTER
-from ...handlers.session import session_handler
 from .filter import filter_tool_phrase
 from .language import is_mostly_english
+from ...config import TOOL_LANGUAGE_FILTER
+from ...handlers.session import session_handler
+from ...classifier import get_classifier_adapter
 
 logger = logging.getLogger(__name__)
 

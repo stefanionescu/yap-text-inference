@@ -14,16 +14,15 @@ If no pattern matches, the caller should fall back to the classifier model.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from typing import Literal
+from dataclasses import dataclass
 
 from ...config.patterns import (
-    SCREENSHOT_REJECT_PATTERNS,
     SCREENSHOT_TAKE_X_PATTERN,
-    SCREENSHOT_TRIGGER_QUANTITIES,
+    SCREENSHOT_REJECT_PATTERNS,
     SCREENSHOT_TRIGGER_PATTERNS,
+    SCREENSHOT_TRIGGER_QUANTITIES,
 )
-
 
 _ScreenAction = Literal["no_screenshot", "take_screenshot", "pass"]
 

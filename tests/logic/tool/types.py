@@ -7,8 +7,8 @@ failure records, and overall case results.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
+from dataclasses import dataclass
 from collections.abc import Sequence
 
 

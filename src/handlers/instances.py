@@ -12,7 +12,6 @@ Instances:
 from .connections import ConnectionHandler
 from .session.manager import SessionHandler
 
-
 # ============================================================================
 # Connection Handler
 # ============================================================================

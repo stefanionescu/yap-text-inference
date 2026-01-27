@@ -12,10 +12,10 @@ decide which loading strategy to use.
 
 from __future__ import annotations
 
-import json
 import os
-from dataclasses import dataclass
+import json
 from pathlib import Path
+from dataclasses import dataclass
 
 
 @dataclass(slots=True)

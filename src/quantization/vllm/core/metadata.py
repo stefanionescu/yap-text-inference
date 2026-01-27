@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import os
+import json
 from typing import Any
 
 from ..utils.template_utils import generate_readme

@@ -7,11 +7,11 @@ collects frames until a turn completes.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import time
-from dataclasses import dataclass, field
+import asyncio
 from typing import Any
+from dataclasses import field, dataclass
 
 from tests.helpers.websocket import iter_messages
 

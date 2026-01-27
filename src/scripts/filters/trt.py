@@ -7,10 +7,10 @@ Uses stream filtering to catch C++ output that bypasses Python logging.
 from __future__ import annotations
 
 import io
-import logging
 import os
 import re
 import sys
+import logging
 import warnings
 from collections.abc import Iterable
 
@@ -177,6 +177,7 @@ def configure_trt_logger() -> None:
     """
     try:
         from tensorrt_llm import logger as trt_logger
+
         # Set to error-only (suppress INFO, WARNING)
         if hasattr(trt_logger, "set_level"):
             trt_logger.set_level("error")
@@ -200,7 +201,7 @@ class SuppressedFDContext:
         self._saved_stderr_fd: int | None = None
         self._devnull: int | None = None
     
-    def __enter__(self) -> "SuppressedFDContext":
+    def __enter__(self) -> SuppressedFDContext:
         # Flush all Python and C stdio buffers before redirecting
         sys.stdout.flush()
         sys.stderr.flush()

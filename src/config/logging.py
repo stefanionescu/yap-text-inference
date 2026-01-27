@@ -1,9 +1,8 @@
 """Application logging configuration values and helpers."""
 
-import contextlib
-import logging
 import os
-
+import logging
+import contextlib
 
 APP_LOG_LEVEL = (os.getenv("APP_LOG_LEVEL", "INFO") or "INFO").upper()
 APP_LOG_FORMAT = os.getenv(

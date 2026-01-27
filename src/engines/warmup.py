@@ -12,11 +12,11 @@ The utilities work with any configured engine (vLLM or TRT-LLM).
 
 from __future__ import annotations
 
+import time
 import asyncio
 import logging
-import time
-from collections.abc import Awaitable, Callable
 from typing import TypeVar
+from collections.abc import Callable, Awaitable
 
 from src.config import INFERENCE_ENGINE
 

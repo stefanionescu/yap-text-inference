@@ -7,10 +7,10 @@ Uses stream filtering to catch worker process output and progress bars.
 from __future__ import annotations
 
 import io
-import logging
 import os
 import re
 import sys
+import logging
 from collections.abc import Iterable
 
 from src.config.filters import VLLM_NOISE_PATTERNS
@@ -145,7 +145,7 @@ class SuppressedFDContext:
         self._saved_stderr_fd: int | None = None
         self._devnull: int | None = None
     
-    def __enter__(self) -> "SuppressedFDContext":
+    def __enter__(self) -> SuppressedFDContext:
         # Flush all Python and C stdio buffers before redirecting
         sys.stdout.flush()
         sys.stderr.flush()

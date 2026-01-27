@@ -19,15 +19,16 @@ import logging
 import torch  # type: ignore[import]
 
 from src.config.tool import (
-    TOOL_MIN_TIMEOUT_S,
-    TOOL_MIN_GPU_FRAC,
     TOOL_MAX_GPU_FRAC,
-    TOOL_POSITIVE_RESULT,
+    TOOL_MIN_GPU_FRAC,
+    TOOL_MIN_TIMEOUT_S,
     TOOL_NEGATIVE_RESULT,
+    TOOL_POSITIVE_RESULT,
     TOOL_POSITIVE_LABEL_INDEX,
 )
-from .backend import TorchClassifierBackend
+
 from .batch import BatchExecutor
+from .backend import TorchClassifierBackend
 from .model_info import ClassifierModelInfo, build_model_info
 
 logger = logging.getLogger(__name__)

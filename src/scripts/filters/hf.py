@@ -5,11 +5,11 @@ Controls visibility of HuggingFace download/upload progress bars.
 
 from __future__ import annotations
 
-import importlib
 import logging
+import importlib
 from collections.abc import Iterable
 
-from src.config.filters import HF_DOWNLOAD_GROUPS, HF_UPLOAD_GROUPS, HF_ALL_GROUPS
+from src.config.filters import HF_ALL_GROUPS, HF_UPLOAD_GROUPS, HF_DOWNLOAD_GROUPS
 
 logger = logging.getLogger("log_filter")
 

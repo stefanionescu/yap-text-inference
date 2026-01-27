@@ -6,8 +6,8 @@ This is separate from the monkey-patches in the patches module.
 
 from __future__ import annotations
 
-import logging
 import os
+import logging
 
 logger = logging.getLogger("log_filter")
 

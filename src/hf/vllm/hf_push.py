@@ -13,6 +13,7 @@ if not env_flag("SHOW_HF_LOGS", False):
     configure()
 
 from src.hf import get_hf_api
+
 from .push_job import AWQPushJob, resolve_token
 
 

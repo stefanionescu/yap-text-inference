@@ -15,7 +15,7 @@ e.g., "Good morning" vs "Good evening" in system prompts.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone, tzinfo
+from datetime import tzinfo, datetime, timezone
 
 
 @dataclass(frozen=True, slots=True)

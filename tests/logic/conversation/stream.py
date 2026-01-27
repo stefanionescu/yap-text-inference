@@ -4,17 +4,11 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable, Awaitable
 
 from tests.helpers.errors import ServerError
 from tests.helpers.metrics import StreamState
-from tests.helpers.websocket import (
-    dispatch_message,
-    finalize_metrics,
-    iter_messages,
-    record_token,
-    record_toolcall,
-)
+from tests.helpers.websocket import record_token, iter_messages, record_toolcall, dispatch_message, finalize_metrics
 
 logger = logging.getLogger(__name__)
 

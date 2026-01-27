@@ -12,9 +12,9 @@ from typing import Any
 
 from tests.helpers.errors import StreamError
 from tests.helpers.metrics import StreamState, round_ms
-from tests.helpers.regex import contains_complete_sentence, word_count_at_least
-from .message import iter_messages
+from tests.helpers.regex import word_count_at_least, contains_complete_sentence
 
+from .message import iter_messages
 
 # ============================================================================
 # Internal Helpers

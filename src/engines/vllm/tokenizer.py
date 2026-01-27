@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import inspect
 import logging
-import os
 from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.helpers.model_profiles import get_model_profile
-from src.helpers.model_profiles import normalize_model_id
 from src.helpers.log_once import warn_once
+from src.helpers.model_profiles import get_model_profile, normalize_model_id
 
 logger = logging.getLogger(__name__)
 

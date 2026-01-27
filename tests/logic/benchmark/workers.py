@@ -6,14 +6,14 @@ concurrent workers and managing the async task lifecycle.
 
 from __future__ import annotations
 
-import asyncio
 import time
+import asyncio
 from typing import Any
 
 from tests.helpers.concurrency import distribute_requests
 
-from .connection import execute_connection
 from .types import BenchmarkConfig
+from .connection import execute_connection
 
 
 async def run_worker(count: int, cfg: BenchmarkConfig) -> list[dict[str, Any]]:

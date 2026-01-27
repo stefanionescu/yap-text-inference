@@ -11,11 +11,11 @@ from .quantization import is_prequantized_model
 def _get_model_lists():
     """Lazy import model lists to avoid circular imports."""
     from src.config.models import (
+        ALLOWED_TOOL_MODELS,
         ALLOWED_BASE_CHAT_MODELS,
         ALLOWED_BASE_MOE_CHAT_MODELS,
-        ALLOWED_TOOL_MODELS,
-        ALLOWED_VLLM_QUANT_CHAT_MODELS,
         ALLOWED_TRT_QUANT_CHAT_MODELS,
+        ALLOWED_VLLM_QUANT_CHAT_MODELS,
     )
     return {
         'ALLOWED_BASE_CHAT_MODELS': ALLOWED_BASE_CHAT_MODELS,

@@ -35,7 +35,6 @@ import os
 
 from ..helpers.quantization import normalize_engine, detect_chat_quantization
 
-
 # ============================================================================
 # Engine Selection
 # ============================================================================

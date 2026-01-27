@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from fastapi import HTTPException, Security
+
+from fastapi import Security, WebSocket, HTTPException
 from fastapi.security.api_key import APIKeyQuery, APIKeyHeader
-from fastapi import WebSocket
 
 from ...config import TEXT_API_KEY
 

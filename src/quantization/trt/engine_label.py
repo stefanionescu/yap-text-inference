@@ -10,18 +10,14 @@ Example: sm90_trt-llm-0.17.0_cuda12.8
 
 from __future__ import annotations
 
-import json
 import os
-from dataclasses import dataclass, field
+import json
 from pathlib import Path
+from dataclasses import field, dataclass
 
 from src.errors import EngineLabelError
-from .detection import (
-    detect_cuda_version,
-    detect_gpu_name,
-    detect_tensorrt_llm_version,
-)
 
+from .detection import detect_gpu_name, detect_cuda_version, detect_tensorrt_llm_version
 
 # ============================================================================
 # Environment Helpers

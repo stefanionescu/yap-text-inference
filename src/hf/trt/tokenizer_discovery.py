@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.config.quantization import TOKENIZER_FILES
-from src.config.trt import TRT_TOKENIZER_CONFIG_FILE, TRT_CHECKPOINT_SUFFIXES
+from src.config.trt import TRT_CHECKPOINT_SUFFIXES, TRT_TOKENIZER_CONFIG_FILE
 
 
 def _has_tokenizer(directory: Path) -> bool:
@@ -29,6 +29,7 @@ def _find_hf_dir_in_path(parent: Path, model_stem: str) -> Path | None:
 def _download_tokenizer_from_hub(base_model: str) -> Path | None:
     try:
         import tempfile
+
         from huggingface_hub import snapshot_download
 
         temp_dir = Path(tempfile.mkdtemp(prefix="tokenizer_"))

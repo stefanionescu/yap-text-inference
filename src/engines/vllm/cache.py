@@ -15,10 +15,11 @@ Note:
 
 from __future__ import annotations
 
+import time
 import asyncio
 import logging
-import time
-from typing import Callable, Awaitable, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from collections.abc import Callable, Awaitable
 
 from src.config import CACHE_RESET_INTERVAL_SECONDS
 

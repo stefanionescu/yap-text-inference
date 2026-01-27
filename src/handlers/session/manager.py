@@ -10,9 +10,9 @@ For abort functionality, see the `abort` module.
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import time
+import asyncio
 from typing import Any
 
 from src.config import (
@@ -23,19 +23,18 @@ from src.config import (
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
-from .time import format_session_timestamp
 
-from .config import update_session_config as _update_config, resolve_screen_prefix
 from .history import HistoryController
+from .requests import CANCELLED_SENTINEL
+from .config import resolve_screen_prefix
+from .time import format_session_timestamp
+from .requests import has_running_task as _has_running
+from .state import SESSION_IDLE_TTL_SECONDS, SessionState
+from .config import update_session_config as _update_config
+from .requests import is_request_cancelled as _is_cancelled
+from .requests import cancel_session_requests as _cancel_requests
+from .requests import cleanup_session_requests as _cleanup_requests
 from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
-from .requests import (
-    CANCELLED_SENTINEL,
-    is_request_cancelled as _is_cancelled,
-    cancel_session_requests as _cancel_requests,
-    cleanup_session_requests as _cleanup_requests,
-    has_running_task as _has_running,
-)
-from .state import SessionState, SESSION_IDLE_TTL_SECONDS
 
 
 class SessionHandler:

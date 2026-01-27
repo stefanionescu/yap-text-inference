@@ -7,10 +7,10 @@ Parses command-line arguments and defers execution to tool.runner.
 
 from __future__ import annotations
 
-import argparse
+import sys
 import asyncio
 import logging
-import sys
+import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -19,14 +19,11 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.helpers.cli import add_connection_args
-from tests.helpers.websocket import with_api_key
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-    TOOL_WS_MAX_MESSAGES_PER_WINDOW,
-)
 from tests.logic.tool.runner import run_suite
+from tests.helpers.websocket import with_api_key
+from tests.helpers.cli import add_connection_args
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")

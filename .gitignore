@@ -24,6 +24,7 @@ tests/results/
 
 # IDE files
 .idea/
+.claude/
 .vscode/
 *.swp
 *.swo

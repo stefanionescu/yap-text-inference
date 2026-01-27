@@ -8,14 +8,7 @@ for all test scripts.
 
 from __future__ import annotations
 
-from tests.prompts.detailed import (
-    ANNA_FLIRTY,
-    ANNA_RELIGIOUS,
-    ANNA_SPIRITUAL,
-    MARK_FLIRTY,
-    MARK_SAVAGE,
-    MARK_DELULU,
-)
+from tests.prompts.detailed import ANNA_FLIRTY, MARK_FLIRTY
 
 WARMUP_FALLBACK_MESSAGE = "hey there! how are you today?"
 BENCHMARK_FALLBACK_MESSAGE = "who was Columbus?"

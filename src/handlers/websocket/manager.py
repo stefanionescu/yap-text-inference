@@ -15,39 +15,39 @@ Message Types:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
+import contextlib
 from typing import Any
 from collections.abc import Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from ..instances import connections
+from .helpers import safe_send_json
 from .auth import authenticate_websocket
+from .parser import parse_client_message
+from .lifecycle import WebSocketLifecycle
+from ..rate_limit import SlidingWindowRateLimiter
+from .errors import send_error, reject_connection
+from ...messages.start import handle_start_message
+from ...messages.cancel import handle_cancel_message
+from ...messages.followup import handle_followup_message
+from ..session import session_handler, abort_session_requests
+from .rate_limits import consume_limiter, select_rate_limiter
+from ...engines import reset_engine_caches, clear_caches_on_disconnect
+from ...config.websocket import (
+    WS_CLOSE_BUSY_CODE,
+    WS_WATCHDOG_TICK_S,
+    WS_CLOSE_UNAUTHORIZED_CODE,
+    WS_CLOSE_CLIENT_REQUEST_CODE,
+)
 from ...config import (
     WS_CANCEL_WINDOW_SECONDS,
     WS_MAX_CANCELS_PER_WINDOW,
-    WS_MAX_MESSAGES_PER_WINDOW,
     WS_MESSAGE_WINDOW_SECONDS,
+    WS_MAX_MESSAGES_PER_WINDOW,
     CACHE_RESET_MIN_SESSION_SECONDS,
 )
-from ...config.websocket import (
-    WS_CLOSE_BUSY_CODE,
-    WS_CLOSE_CLIENT_REQUEST_CODE,
-    WS_CLOSE_UNAUTHORIZED_CODE,
-    WS_WATCHDOG_TICK_S,
-)
-from ...engines import clear_caches_on_disconnect, reset_engine_caches
-from ...messages.cancel import handle_cancel_message
-from ...messages.followup import handle_followup_message
-from ...messages.start import handle_start_message
-from ..rate_limit import SlidingWindowRateLimiter
-from ..instances import connections
-from ..session import abort_session_requests, session_handler
-from .lifecycle import WebSocketLifecycle
-from .errors import reject_connection, send_error
-from .parser import parse_client_message
-from .helpers import safe_send_json
-from .rate_limits import select_rate_limiter, consume_limiter
 
 logger = logging.getLogger(__name__)
 

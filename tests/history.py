@@ -23,10 +23,10 @@ Usage:
 
 from __future__ import annotations
 
-import argparse
-import asyncio
 import os
 import sys
+import asyncio
+import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -35,16 +35,12 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.helpers.cli import (
-    add_connection_args,
-    add_sampling_args,
-    build_sampling_payload,
-)
 from tests.helpers.errors import ServerError
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
 from tests.config import (
-    DEFAULT_SERVER_WS_URL,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
+    DEFAULT_SERVER_WS_URL,
     HISTORY_BENCH_DEFAULT_REQUESTS,
     HISTORY_BENCH_DEFAULT_CONCURRENCY,
     HISTORY_BENCH_DEFAULT_TIMEOUT_SEC,

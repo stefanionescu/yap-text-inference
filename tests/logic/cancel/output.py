@@ -7,13 +7,13 @@ to the console using the standard test output formatting helpers.
 from __future__ import annotations
 
 from tests.helpers.fmt import (
-    exchange_header,
-    exchange_footer,
+    red,
+    green,
     format_user,
+    exchange_footer,
+    exchange_header,
     format_assistant,
     format_metrics_inline,
-    green,
-    red,
 )
 
 from .types import CancelClientResult, NormalClientResult
