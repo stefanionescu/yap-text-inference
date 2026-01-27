@@ -28,12 +28,12 @@ wait_for_health() {
   
   log_info "[warmup] Waiting for server to become healthy..."
   
-  while [ $elapsed -lt $MAX_WAIT ]; do
+  while [ $elapsed -lt "$MAX_WAIT" ]; do
     if curl -sf http://localhost:8000/healthz >/dev/null 2>&1; then
       log_success "[warmup] ✓ Server is healthy after ${elapsed}s"
       return 0
     fi
-    sleep $WAIT_INTERVAL
+    sleep "$WAIT_INTERVAL"
     elapsed=$((elapsed + WAIT_INTERVAL))
   done
   
@@ -79,7 +79,7 @@ run_warmup_tests() {
   local attempt=1
   local warmup_log="${LOG_DIR}/warmup.log"
   
-  while [ $attempt -le $WARMUP_RETRIES ]; do
+  while [ $attempt -le "$WARMUP_RETRIES" ]; do
     log_info "[warmup] Warmup attempt ${attempt}/${WARMUP_RETRIES}"
     
     if "${py_bin}" "${warmup_test}" > "${warmup_log}" 2>&1; then

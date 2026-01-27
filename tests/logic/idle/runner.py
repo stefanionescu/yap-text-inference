@@ -8,22 +8,22 @@ and invokes `run_idle_suite`.
 
 from __future__ import annotations
 
-import asyncio
 import json
-from collections.abc import Awaitable, Callable
+import asyncio
+from collections.abc import Callable, Awaitable
 
 import websockets
 
-from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
+from tests.helpers.websocket import send_client_end, connect_with_retries
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
-    section_header,
-    connection_test_header,
-    connection_status,
-    connection_pass,
-    connection_fail,
     dim,
+    section_header,
+    connection_fail,
+    connection_pass,
+    connection_status,
+    connection_test_header,
 )
-from tests.helpers.websocket import connect_with_retries, send_client_end
 
 
 def _open_connection(ws_url: str):
@@ -59,7 +59,7 @@ async def _test_ping_pong(ws_url: str) -> None:
         try:
             payload = await asyncio.wait_for(ws.recv(), timeout=5.0)
         except asyncio.TimeoutError:
-            raise RuntimeError("no pong response within 5s")
+            raise RuntimeError("no pong response within 5s") from None
         msg = json.loads(payload)
         if msg.get("type") != "pong":
             raise RuntimeError(f"expected pong, got {msg.get('type')}")
@@ -85,7 +85,7 @@ async def _test_idle_watchdog(
             raise RuntimeError(
                 f"server did not close within {total_wait:.0f}s "
                 f"(expected idle timeout: {expect_seconds:.0f}s)"
-            )
+            ) from None
         except websockets.ConnectionClosed as exc:
             print(connection_status("idle", f"server closed (code={exc.code} reason={exc.reason})"))
 

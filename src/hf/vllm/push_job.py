@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import os
-from dataclasses import dataclass
+import json
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
-from src.config.quantization import AWQ_MODEL_MARKERS
 from src.hf import create_repo_if_needed
+from src.config.quantization import AWQ_MODEL_MARKERS
 from src.quantization.vllm.utils.template_utils import generate_readme
 
 if TYPE_CHECKING:  # pragma: no cover - optional dependency

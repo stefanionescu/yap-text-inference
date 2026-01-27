@@ -21,17 +21,11 @@ from __future__ import annotations
 
 import uuid
 
-from src.config import (
-    DEPLOY_CHAT,
-    DEPLOY_TOOL,
-    HISTORY_MAX_TOKENS,
-    TRIMMED_HISTORY_LENGTH,
-    TOOL_HISTORY_TOKENS,
-)
-from src.tokens import build_user_history_for_tool, count_tokens_chat
+from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool
+from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
 
-from .parsing import parse_history_as_tuples, parse_history_messages, parse_history_text
 from .state import HistoryTurn, SessionState
+from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
@@ -85,8 +79,9 @@ def trim_history(
     if not state.history_turns:
         return
     
-    # Skip if chat model is not deployed (classifier handles its own trimming)
     if not DEPLOY_CHAT:
+        if DEPLOY_TOOL:
+            _trim_history_tool(state)
         return
     
     effective_trigger = trigger_tokens or HISTORY_MAX_TOKENS
@@ -121,6 +116,38 @@ def trim_history(
         state.history_turns.pop(0)
         rendered = render_history(state.history_turns)
         tokens = count_tokens_chat(rendered) if rendered else 0
+
+
+def _trim_history_tool(state: SessionState) -> None:
+    """Trim history turns so user-only tokens stay within TOOL_HISTORY_TOKENS.
+
+    In tool-only deployments, the chat trimming path is skipped.
+    This keeps the in-memory turn list bounded to what the classifier
+    can actually consume.
+    """
+    if not state.history_turns:
+        return
+    user_texts = get_user_texts(state.history_turns)
+    if not user_texts:
+        state.history_turns = []
+        return
+    tokens = _count_user_tokens_tool(user_texts)
+    if tokens <= TOOL_HISTORY_TOKENS:
+        return
+    # Drop oldest turns until user-only tokens fit
+    while len(state.history_turns) > 1:
+        state.history_turns.pop(0)
+        user_texts = get_user_texts(state.history_turns)
+        tokens = _count_user_tokens_tool(user_texts)
+        if tokens <= TOOL_HISTORY_TOKENS:
+            break
+
+
+def _count_user_tokens_tool(user_texts: list[str]) -> int:
+    """Count tool-model tokens for a list of user texts (newline-joined)."""
+    if not user_texts:
+        return 0
+    return count_tokens_tool("\n".join(user_texts))
 
 
 def render_tool_history_text(turns: list[HistoryTurn]) -> str:

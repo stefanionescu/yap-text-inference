@@ -14,10 +14,10 @@ Environment Variables:
 
 from __future__ import annotations
 
-import logging
 import os
-from threading import Lock
+import logging
 from typing import Any
+from threading import Lock
 
 # Disable tokenizers parallelism before importing tokenizers (prevents fork warnings)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"

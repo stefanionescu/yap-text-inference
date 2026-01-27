@@ -7,29 +7,22 @@ loop, and manages connection lifecycle and errors.
 
 from __future__ import annotations
 
+import uuid
 import asyncio
 import logging
-import uuid
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.config import (
-    DEFAULT_WS_PING_INTERVAL,
-    DEFAULT_WS_PING_TIMEOUT,
-)
-from tests.helpers.errors import (
-    ConnectionClosedError,
-    IdleTimeoutError,
-    ServerError,
-)
-from tests.helpers.fmt import section_header, dim
-from tests.helpers.websocket import connect_with_retries, with_api_key
+from tests.helpers.fmt import dim, section_header
+from tests.helpers.websocket import with_api_key, connect_with_retries
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.helpers.errors import ServerError, IdleTimeoutError, ConnectionClosedError
 
-from .cli import interactive_loop, print_help
 from .client import LiveClient
-from .personas import PersonaRegistry
 from .session import LiveSession
+from .personas import PersonaRegistry
+from .cli import print_help, interactive_loop
 
 logger = logging.getLogger("live")
 

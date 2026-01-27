@@ -7,39 +7,23 @@ and result collection with configurable concurrency.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
+import asyncio
 from typing import Any
 from collections.abc import Callable, Sequence
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.config import (
-    POST_TOOL_IDLE_MIN_S,
-    TOOL_WS_MESSAGE_WINDOW_SECONDS,
-    TOOL_WS_MAX_MESSAGES_PER_WINDOW,
-)
-from tests.helpers.metrics import SessionContext, secs_to_ms
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.websocket import (
-    build_start_payload,
-    connect_with_retries,
-    send_client_end,
-)
+from tests.helpers.metrics import SessionContext, secs_to_ms
+from tests.helpers.websocket import send_client_end, build_start_payload, connect_with_retries
+from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
 
 from .cases import render_history
 from .drain import DrainConfig, drain_response
-from .types import (
-    CaseResult,
-    CaseStep,
-    FailureRecord,
-    RunnerConfig,
-    StepTiming,
-    ToolTestCase,
-    TurnResult,
-)
-from .validation import derive_tool_called_from_raw, format_bool, is_valid_response_shape
+from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
+from .types import CaseStep, CaseResult, StepTiming, TurnResult, RunnerConfig, ToolTestCase, FailureRecord
 
 STEP_WINDOW_SECONDS = max(0.0, float(TOOL_WS_MESSAGE_WINDOW_SECONDS))
 STEP_MAX_PER_WINDOW = max(0, int(TOOL_WS_MAX_MESSAGES_PER_WINDOW))

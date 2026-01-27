@@ -20,25 +20,24 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...config import (
-    CHAT_TEMPERATURE_MIN,
-    CHAT_TEMPERATURE_MAX,
-    CHAT_TOP_P_MIN,
-    CHAT_TOP_P_MAX,
-    CHAT_TOP_K_MIN,
-    CHAT_TOP_K_MAX,
-    CHAT_MIN_P_MIN,
-    CHAT_MIN_P_MAX,
-    CHAT_REPETITION_PENALTY_MIN,
-    CHAT_REPETITION_PENALTY_MAX,
-    CHAT_PRESENCE_PENALTY_MIN,
-    CHAT_PRESENCE_PENALTY_MAX,
-    CHAT_FREQUENCY_PENALTY_MIN,
-    CHAT_FREQUENCY_PENALTY_MAX,
-    DEPLOY_CHAT,
-)
 from ..validators import ValidationError
-
+from ...config import (
+    DEPLOY_CHAT,
+    CHAT_MIN_P_MAX,
+    CHAT_MIN_P_MIN,
+    CHAT_TOP_K_MAX,
+    CHAT_TOP_K_MIN,
+    CHAT_TOP_P_MAX,
+    CHAT_TOP_P_MIN,
+    CHAT_TEMPERATURE_MAX,
+    CHAT_TEMPERATURE_MIN,
+    CHAT_PRESENCE_PENALTY_MAX,
+    CHAT_PRESENCE_PENALTY_MIN,
+    CHAT_FREQUENCY_PENALTY_MAX,
+    CHAT_FREQUENCY_PENALTY_MIN,
+    CHAT_REPETITION_PENALTY_MAX,
+    CHAT_REPETITION_PENALTY_MIN,
+)
 
 # Sampling field configuration: (name, type, min, max, invalid_code, range_code)
 _SAMPLING_FIELDS: tuple[tuple[str, type, float | int, float | int, str, str], ...] = (

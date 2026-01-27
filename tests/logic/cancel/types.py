@@ -6,8 +6,8 @@ This module defines dataclasses that capture the outcome of each test phase
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
+from dataclasses import dataclass
 
 
 @dataclass

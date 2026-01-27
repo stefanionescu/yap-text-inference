@@ -1,4 +1,5 @@
 # Linting / formatting dependencies
 ruff==0.6.9
+isort==5.13.2
 shellcheck-py==0.11.0.1
 

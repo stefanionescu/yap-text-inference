@@ -11,10 +11,9 @@
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import logging
-import sys
+import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -23,16 +22,9 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.config import (
-    DEFAULT_RECV_TIMEOUT_SEC,
-    DEFAULT_SERVER_WS_URL,
-)
-from tests.helpers.cli import (
-    add_connection_args,
-    add_sampling_args,
-    build_sampling_payload,
-)
 from tests.logic.live import DEFAULT_PERSONA_NAME
+from tests.config import DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
 
 
 def _parse_args() -> argparse.Namespace:

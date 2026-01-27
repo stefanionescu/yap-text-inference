@@ -6,12 +6,11 @@ Works with both TensorRT-LLM and vLLM quantization workflows.
 
 from __future__ import annotations
 
-import argparse
 import os
-import runpy
 import sys
+import runpy
+import argparse
 from collections.abc import Sequence
-
 
 # ============================================================================
 # Internal Helpers
@@ -53,14 +52,11 @@ def _enable_hf_progress() -> None:
 
 def download_model(model_id: str, target_dir: str) -> None:
     """Download a Hugging Face model snapshot into target_dir."""
-    import time
-
     from huggingface_hub import snapshot_download
 
     from src.helpers.env import env_flag
 
     print("[model] Fetching repository metadata...", file=sys.stderr)
-    start_time = time.time()
 
     # Enable progress bars BEFORE applying filters if user requested them
     if env_flag("SHOW_HF_LOGS", False):

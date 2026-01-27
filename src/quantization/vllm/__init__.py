@@ -1,7 +1,7 @@
 """vLLM AWQ Quantization Package."""
 
-from .core import AWQQuantizer, CalibrationConfig
 from .utils.model_utils import is_awq_dir
+from .core import AWQQuantizer, CalibrationConfig
 
 __all__ = [
     "AWQQuantizer",

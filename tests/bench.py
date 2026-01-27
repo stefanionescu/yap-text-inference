@@ -27,10 +27,10 @@ see how many sessions were rejected by the guardrail.
 
 from __future__ import annotations
 
-import argparse
-import asyncio
 import os
 import sys
+import asyncio
+import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -39,22 +39,19 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.helpers.cli import (
-    add_connection_args,
-    add_sampling_args,
-    build_sampling_payload,
-)
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
 from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
-    BENCHMARK_DEFAULT_CONCURRENCY,
     BENCHMARK_DEFAULT_REQUESTS,
-    BENCHMARK_DEFAULT_TIMEOUT_SEC,
     BENCHMARK_BURST_MODE_DEFAULT,
     BENCHMARK_BURST_SIZE_DEFAULT,
+    BENCHMARK_DEFAULT_CONCURRENCY,
+    BENCHMARK_DEFAULT_TIMEOUT_SEC,
     BENCHMARK_WINDOW_DURATION_DEFAULT,
 )
+
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Benchmark Yap Text Inference WS server")

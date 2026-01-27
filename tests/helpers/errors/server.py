@@ -10,7 +10,7 @@ from .base import TestClientError
 class ServerError(TestClientError):
     """Raised when the server returns an error message."""
 
-    _SUBCLASS_MAP: dict[str, type["ServerError"]] = {}
+    _SUBCLASS_MAP: dict[str, type[ServerError]] = {}
 
     def __init__(
         self,
@@ -25,7 +25,7 @@ class ServerError(TestClientError):
         super().__init__(f"{error_code}: {message}")
 
     @classmethod
-    def from_message(cls, msg: dict[str, Any]) -> "ServerError":
+    def from_message(cls, msg: dict[str, Any]) -> ServerError:
         """Create an appropriate ServerError subclass from a server error message."""
         error_code = msg.get("error_code", "unknown")
         message = msg.get("message", str(msg))

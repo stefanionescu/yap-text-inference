@@ -5,17 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from src.errors import ValidationError
-from ..config import (
-    PERSONALITY_MAX_LEN,
-    SCREEN_PREFIX_MAX_CHARS,
-)
+
 from .sanitize.prompt_sanitizer import sanitize_prompt
-from .input import (
-    is_gender_empty_or_null,
-    is_personality_empty_or_null,
-    normalize_gender,
-    normalize_personality,
-)
+from ..config import PERSONALITY_MAX_LEN, SCREEN_PREFIX_MAX_CHARS
+from .input import normalize_gender, normalize_personality, is_gender_empty_or_null, is_personality_empty_or_null
 
 
 def validate_required_gender(raw_gender: str | None) -> str:

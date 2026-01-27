@@ -8,40 +8,30 @@ that history retention works correctly under bounded-history constraints.
 from __future__ import annotations
 
 import json
-import logging
 import uuid
+import logging
 from collections.abc import Sequence
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.config import (
-    DEFAULT_WS_PING_INTERVAL,
-    DEFAULT_WS_PING_TIMEOUT,
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-)
-from tests.helpers.env import get_float_env, get_int_env
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.env import get_int_env, get_float_env
+from tests.helpers.websocket import with_api_key, create_tracker, send_client_end
+from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
-    section_header,
-    exchange_header,
-    exchange_footer,
+    dim,
     format_user,
+    section_header,
+    exchange_footer,
+    exchange_header,
     format_assistant,
     format_metrics_inline,
-    dim,
 )
-from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.metrics import (
-    create_ttfb_aggregator,
-    emit_ttfb_summary,
-    has_ttfb_samples,
-    record_ttfb,
-)
-from tests.helpers.websocket import create_tracker, send_client_end, with_api_key
 
-from .session import ConversationSession, build_start_payload
 from .stream import stream_exchange
+from .session import ConversationSession, build_start_payload
 
 logger = logging.getLogger(__name__)
 

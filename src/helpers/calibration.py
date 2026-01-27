@@ -10,8 +10,8 @@ import os
 from dataclasses import dataclass
 from collections.abc import Mapping
 
-from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 from src.config.calibration import CALIB_DEFAULT_DATASET
+from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 
 
 def _read_int_env(name: str) -> int | None:

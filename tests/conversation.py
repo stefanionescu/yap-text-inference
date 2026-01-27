@@ -17,30 +17,21 @@ Usage:
 
 from __future__ import annotations
 
-import argparse
+import sys
 import asyncio
 import logging
-import sys
+import argparse
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tests.helpers.setup import setup_repo_path
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-    DEFAULT_RECV_TIMEOUT_SEC,
-    DEFAULT_SERVER_WS_URL,
-)
-from tests.helpers.cli import (
-    add_connection_args,
-    add_sampling_args,
-    build_sampling_payload,
-)
 from tests.helpers.errors import ServerError
+from tests.helpers.setup import setup_repo_path
 from tests.logic.conversation import run_conversation
 from tests.messages.conversation import CONVERSATION_HISTORY_MESSAGES
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC
 
 
 def _parse_args() -> argparse.Namespace:

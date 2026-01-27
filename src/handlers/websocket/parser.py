@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ...config.websocket import WS_CANCEL_SENTINEL, WS_END_SENTINEL
+from ...config.websocket import WS_END_SENTINEL, WS_CANCEL_SENTINEL
 
 
 def parse_client_message(raw: str) -> dict[str, Any]:

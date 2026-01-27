@@ -41,22 +41,21 @@ Usage:
 
 from __future__ import annotations
 
-from .base import BaseEngine, EngineOutput, EngineNotReadyError, EngineShutdownError
 from .sampling import create_sampling_params
-from .warmup import warm_chat_engine, warm_classifier
+from .warmup import warm_classifier, warm_chat_engine
+from .base import BaseEngine, EngineOutput, EngineNotReadyError, EngineShutdownError
 
 # Re-export registry functions as the public API
 from .registry import (
     get_engine,
     shutdown_engine,
     reset_engine_caches,
-    cache_reset_reschedule_event,
-    seconds_since_last_cache_reset,
+    ensure_cache_reset_daemon,
     clear_caches_on_disconnect,
     engine_supports_cache_reset,
-    ensure_cache_reset_daemon,
+    cache_reset_reschedule_event,
+    seconds_since_last_cache_reset,
 )
-
 
 __all__ = [
     # Base classes

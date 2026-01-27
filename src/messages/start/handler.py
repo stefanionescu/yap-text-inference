@@ -16,26 +16,21 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
-from ...tokens import (
-    count_tokens_chat,
-    count_tokens_tool,
-    trim_text_to_token_limit_chat,
-    trim_text_to_token_limit_tool,
-)
 from ...handlers.session import session_handler
-from ...handlers.websocket.helpers import safe_send_json
-from .dispatch import StartPlan, dispatch_execution
 from .sampling import extract_sampling_overrides
+from .dispatch import StartPlan, dispatch_execution
+from ...handlers.websocket.helpers import safe_send_json
+from ..input import normalize_gender, normalize_personality
+from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
+from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
 from ..validators import (
     ValidationError,
     require_prompt,
-    sanitize_prompt_with_limit,
-    validate_required_gender,
-    validate_required_personality,
     validate_optional_prefix,
+    validate_required_gender,
+    sanitize_prompt_with_limit,
+    validate_required_personality,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +127,11 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     session_handler.track_task(session_id, task)
 
 
-def _validate_persona(msg: dict[str, Any]) -> tuple[str, str]:
+def _validate_persona(msg: dict[str, Any]) -> tuple[str | None, str | None]:
+    if not DEPLOY_CHAT:
+        gender = normalize_gender(msg.get("gender"))
+        personality = normalize_personality(msg.get("personality"))
+        return gender, personality
     gender = validate_required_gender(msg.get("gender"))
     personality = validate_required_personality(msg.get("personality"))
     return gender, personality

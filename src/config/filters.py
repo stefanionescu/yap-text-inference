@@ -102,7 +102,10 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # Suppress verbose startup logs from src.engines.trt.* modules
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.trt\.(setup|engine):\d+\]"),
     # Warmup logs specifically for TRT-LLM
-    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*TRT-LLM", re.IGNORECASE),
+    re.compile(
+        r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*TRT-LLM",
+        re.IGNORECASE,
+    ),
     # Cache daemon message about TRT block reuse
     re.compile(r"cache reset daemon:.*TRT-LLM", re.IGNORECASE),
 )
@@ -137,7 +140,10 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # Suppress verbose startup logs from src.quantization.vllm.* modules
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.quantization\.vllm\.[\w.]+:\d+\]"),
     # Warmup logs specifically for vLLM
-    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*vLLM", re.IGNORECASE),
+    re.compile(
+        r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*vLLM",
+        re.IGNORECASE,
+    ),
     # Cache daemon started message
     re.compile(r"cache reset daemon started", re.IGNORECASE),
 )
@@ -153,11 +159,18 @@ TOOL_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # torch_dtype deprecation warning from transformers
     re.compile(r"`?torch_dtype`?\s*(is\s+)?deprecated", re.IGNORECASE),
     # Classifier warmup logs from src.engines.warmup
-    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*tool classifier", re.IGNORECASE),
+    re.compile(
+        r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.warmup:\d+\].*tool classifier",
+        re.IGNORECASE,
+    ),
     # Classifier ready logs from src.classifier.adapter
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.classifier\.adapter:\d+\]"),
     # pip install output lines
-    re.compile(r"^(?:Requirement already satisfied|Collecting|Downloading|Installing collected packages|Successfully installed)", re.IGNORECASE),
+    re.compile(
+        r"^(?:Requirement already satisfied|Collecting|Downloading"
+        r"|Installing collected packages|Successfully installed)",
+        re.IGNORECASE,
+    ),
     re.compile(r"^\s+(?:Downloading|Using cached)\s+\S+\.whl", re.IGNORECASE),
     re.compile(r"^\s+Attempting uninstall:", re.IGNORECASE),
     re.compile(r"^\s+Found existing installation:", re.IGNORECASE),

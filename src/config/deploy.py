@@ -27,7 +27,6 @@ from __future__ import annotations
 import os
 import re
 
-
 # Pattern for HuggingFace repo IDs: org/model-name or user/model-name
 # Used to distinguish remote repos from local paths
 HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$")

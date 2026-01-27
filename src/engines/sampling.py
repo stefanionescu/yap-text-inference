@@ -70,7 +70,7 @@ def _create_trt_params(
 ) -> Any:
     """Create TensorRT-LLM SamplingParams."""
     from tensorrt_llm import SamplingParams
-    
+
     # TRT-LLM uses slightly different parameter names/defaults
     kwargs: dict[str, Any] = {
         "temperature": temperature,

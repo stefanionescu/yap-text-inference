@@ -10,15 +10,7 @@ import os
 from typing import Any
 from collections.abc import Iterable
 
-from tests.helpers.fmt import (
-    section_header,
-    bold,
-    dim,
-    green,
-    red,
-    yellow,
-)
-
+from tests.helpers.fmt import dim, red, bold, green, section_header
 
 # ============================================================================
 # Internal Helpers

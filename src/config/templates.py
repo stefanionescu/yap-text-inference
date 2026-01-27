@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 CHAT_TEMPLATE_NAME = "awq_chat_template.md"
 
 

@@ -9,41 +9,34 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any
 
 import websockets
 
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-    DEFAULT_WS_PING_INTERVAL,
-    DEFAULT_WS_PING_TIMEOUT,
-)
+from tests.helpers.metrics import StreamState, SessionContext
+from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
     dim,
+    red,
+    green,
+    yellow,
+    format_user,
+    section_header,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
-    format_user,
-    green,
-    red,
-    section_header,
-    yellow,
 )
-from tests.helpers.metrics import SessionContext, StreamState
 from tests.helpers.websocket import (
-    build_start_payload,
-    create_tracker,
-    finalize_metrics,
-    iter_messages,
     record_token,
+    with_api_key,
+    iter_messages,
+    create_tracker,
     record_toolcall,
     send_client_end,
-    with_api_key,
+    finalize_metrics,
+    build_start_payload,
 )
-from tests.messages.screen_analysis import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
-
 
 # ============================================================================
 # Internal Helpers

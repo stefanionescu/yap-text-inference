@@ -12,11 +12,11 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from .helpers import safe_send_json
 from ...config.chat import MESSAGE_RATE_LIMIT_MESSAGES
 from ..rate_limit import RateLimitError, SlidingWindowRateLimiter
-from .helpers import safe_send_json
 
 if TYPE_CHECKING:
     from fastapi import WebSocket

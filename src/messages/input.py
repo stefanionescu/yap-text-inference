@@ -4,8 +4,8 @@ Provides utilities for normalizing and validating user input fields
 like gender and personality. Used by message validators.
 """
 
-from src.config.filters import LETTERS_ONLY_PATTERN
 from src.config.limits import PERSONALITY_MAX_LEN
+from src.config.filters import LETTERS_ONLY_PATTERN
 
 
 def normalize_gender(val: str | None) -> str | None:

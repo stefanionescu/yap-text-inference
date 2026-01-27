@@ -1,11 +1,11 @@
 """Template utilities for generating AWQ model documentation."""
 
-import json
 import os
-from textwrap import dedent
+import json
 from typing import Any
+from textwrap import dedent
 
-from src.hf.license import resolve_template_name, compute_license_info
+from src.hf.license import compute_license_info, resolve_template_name
 
 
 def _parse_quant_summary(quant_summary: str) -> dict[str, Any]:

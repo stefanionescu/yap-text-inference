@@ -10,7 +10,6 @@ import os
 
 from .gpu import CHAT_GPU_FRAC
 
-
 # Directory paths
 # NOTE: TRTLLM_ENGINE_DIR is translated to TRT_ENGINE_DIR by shell scripts
 TRT_ENGINE_DIR = os.getenv("TRT_ENGINE_DIR", "")

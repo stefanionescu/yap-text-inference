@@ -2,9 +2,9 @@
 # =============================================================================
 # Linting Script
 # =============================================================================
-# Runs Ruff (Python) and ShellCheck (Bash) on the codebase.
+# Runs isort (import sorting), Ruff (Python), and ShellCheck (Bash) on the codebase.
 #
-# Usage: bash scripts/lint.sh [ruff-args...]
+# Usage: bash scripts/lint.sh [--fix]
 
 set -euo pipefail
 
@@ -13,6 +13,11 @@ cd "${REPO_ROOT}"
 
 command -v ruff >/dev/null 2>&1 || {
     echo "ruff is not installed. Install dev deps with 'pip install -r requirements-dev.txt'." >&2
+    exit 1
+}
+
+command -v isort >/dev/null 2>&1 || {
+    echo "isort is not installed. Install dev deps with 'pip install -r requirements-dev.txt'." >&2
     exit 1
 }
 
@@ -28,9 +33,23 @@ for path in src tests docker; do
     fi
 done
 
-RUFF_ARGS=("$@")
+FIX_MODE=false
+RUFF_ARGS=()
+for arg in "$@"; do
+    if [[ "${arg}" == "--fix" ]]; then
+        FIX_MODE=true
+    fi
+    RUFF_ARGS+=("${arg}")
+done
 
 if (( ${#PYTHON_TARGETS[@]} )); then
+    echo "➤ Running isort on: ${PYTHON_TARGETS[*]}"
+    if ${FIX_MODE}; then
+        isort "${PYTHON_TARGETS[@]}"
+    else
+        isort --check-only --diff "${PYTHON_TARGETS[@]}"
+    fi
+
     echo "➤ Running Ruff on: ${PYTHON_TARGETS[*]}"
     if (( ${#RUFF_ARGS[@]} )); then
         ruff check "${PYTHON_TARGETS[@]}" "${RUFF_ARGS[@]}"

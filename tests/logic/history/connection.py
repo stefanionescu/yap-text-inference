@@ -6,9 +6,9 @@ Each connection starts with warm history and cycles through recall messages.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
+import asyncio
 from typing import Any
 
 import websockets
@@ -16,18 +16,18 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.errors import StreamError
-from tests.helpers.metrics import SessionContext, StreamState, error_result
+from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
+from tests.helpers.metrics import StreamState, SessionContext, error_result
 from tests.helpers.websocket import (
-    build_start_payload,
-    connect_with_retries,
+    with_api_key,
+    iter_messages,
     consume_stream,
     create_tracker,
-    finalize_metrics,
-    iter_messages,
     send_client_end,
-    with_api_key,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
 )
-from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 
 from .types import HistoryBenchConfig
 

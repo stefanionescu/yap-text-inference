@@ -17,21 +17,17 @@ Optional Configuration:
 
 from __future__ import annotations
 
+import os
 import asyncio
 import logging
-import os
 from typing import Any
 
-from src.config import CHAT_MODEL, DEPLOY_CHAT, TRT_ENGINE_DIR
 from src.helpers.env import env_flag
+from src.config import CHAT_MODEL, DEPLOY_CHAT, TRT_ENGINE_DIR
 
-from ..singleton import AsyncSingleton
 from .engine import TRTEngine
-from .setup import (
-    build_kv_cache_config,
-    read_checkpoint_model_type,
-    validate_runtime_batch_size,
-)
+from ..singleton import AsyncSingleton
+from .setup import build_kv_cache_config, read_checkpoint_model_type, validate_runtime_batch_size
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +96,7 @@ async def _create_llm_instance(kwargs: dict[str, Any]) -> Any:
     """
     show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
     
-    from src.scripts.filters.trt import configure_trt_logger, SuppressedFDContext
+    from src.scripts.filters.trt import SuppressedFDContext, configure_trt_logger
     
     if show_trt_logs:
         configure_trt_logger()

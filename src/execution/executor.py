@@ -25,22 +25,18 @@ The executor coordinates between:
 - WebSocket helpers (response streaming)
 """
 
+import uuid
 import asyncio
 import logging
-import uuid
+
 from fastapi import WebSocket
 
-from .tool.parser import parse_tool_result
-from .tool.runner import launch_tool_request
 from .chat import run_chat_generation
-from ..handlers.session import session_handler
+from .tool.parser import parse_tool_result
 from ..config.timeouts import TOOL_TIMEOUT_S
-from ..handlers.websocket.helpers import (
-    cancel_task,
-    safe_send_json,
-    send_toolcall,
-    stream_chat_response,
-)
+from .tool.runner import launch_tool_request
+from ..handlers.session import session_handler
+from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
 

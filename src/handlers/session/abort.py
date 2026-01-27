@@ -17,6 +17,7 @@ This is separated from the main SessionHandler to:
 from __future__ import annotations
 
 from src.config import DEPLOY_CHAT
+
 from ..instances import session_handler
 
 

@@ -12,33 +12,23 @@ Test flow:
 
 from __future__ import annotations
 
-import asyncio
 import uuid
+import asyncio
 
-from tests.config import (
-    CANCEL_POST_WAIT_DEFAULT,
-    CANCEL_RECV_TIMEOUT_DEFAULT,
-    CANCEL_NUM_CLIENTS_DEFAULT,
-    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
-    CANCEL_DRAIN_TIMEOUT_DEFAULT,
-)
-from tests.helpers.fmt import (
-    section_header,
-    dim,
-    bold,
-    green,
-    red,
-)
 from tests.helpers.metrics import SessionContext
 from tests.helpers.prompt import select_chat_prompt
-
-from .clients import run_canceling_client, run_normal_client
-from .output import (
-    CANCEL_TEST_MESSAGE,
-    print_cancel_client_result,
-    print_normal_client_results,
+from tests.helpers.fmt import dim, red, bold, green, section_header
+from tests.config import (
+    CANCEL_POST_WAIT_DEFAULT,
+    CANCEL_NUM_CLIENTS_DEFAULT,
+    CANCEL_RECV_TIMEOUT_DEFAULT,
+    CANCEL_DRAIN_TIMEOUT_DEFAULT,
+    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
 )
+
 from .types import CancelClientResult, NormalClientResult
+from .clients import run_normal_client, run_canceling_client
+from .output import CANCEL_TEST_MESSAGE, print_cancel_client_result, print_normal_client_results
 
 
 async def run_cancel_suite(

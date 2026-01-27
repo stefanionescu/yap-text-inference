@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from .base import TestClientError
 from .server import ServerError
+from .base import TestClientError
 
 
 class ConnectionError(TestClientError):
@@ -34,7 +34,7 @@ class ConnectionClosedError(ConnectionError):
         cls,
         close_code: int | None,
         close_reason: str | None,
-    ) -> "ConnectionClosedError":
+    ) -> ConnectionClosedError:
         if IdleTimeoutError.matches(close_code, close_reason):
             return IdleTimeoutError(close_code=close_code, close_reason=close_reason)
         return cls(close_code=close_code, close_reason=close_reason)
