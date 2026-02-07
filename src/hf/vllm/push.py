@@ -94,8 +94,7 @@ def main() -> int:
     return 0 if success else 1
 
 
-__all__ = ["push_awq_to_hf"]
-
-
 if __name__ == "__main__":
     raise SystemExit(main())
+
+__all__ = ["push_awq_to_hf"]
