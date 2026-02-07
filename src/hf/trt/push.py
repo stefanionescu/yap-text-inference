@@ -168,8 +168,7 @@ def main() -> int:
     return 1
 
 
-__all__ = ["push_checkpoint_to_hf", "push_engine_to_hf"]
-
-
 if __name__ == "__main__":
     sys.exit(main())
+
+__all__ = ["push_checkpoint_to_hf", "push_engine_to_hf"]
