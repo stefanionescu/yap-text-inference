@@ -13,7 +13,7 @@ from tests.config import BENCHMARK_FALLBACK_MESSAGE
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.concurrency import sanitize_concurrency
 
-from .types import BenchmarkConfig
+from tests.state import BenchmarkConfig
 from .reporting import print_report
 from .workers import run_instant_benchmark, run_windowed_benchmark
 

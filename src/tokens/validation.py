@@ -15,8 +15,8 @@ HuggingFace repo IDs are validated at tokenizer load time instead.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 
+from src.state import TokenizerValidationResult
 from ..config.deploy import HF_REPO_PATTERN
 
 
@@ -33,26 +33,6 @@ def _is_huggingface_repo_id(path: str) -> bool:
         return False
     # Check if it matches the HF repo ID pattern
     return bool(HF_REPO_PATTERN.match(path))
-
-
-@dataclass(slots=True)
-class TokenizerValidationResult:
-    """Result of tokenizer validation.
-    
-    Attributes:
-        valid: True if a tokenizer was found locally or path is a HF repo.
-        error_message: Human-readable error if validation failed.
-        model_path: The path that was validated.
-        has_tokenizer_json: Whether tokenizer.json exists.
-        has_tokenizer_config: Whether tokenizer_config.json exists.
-        is_remote: True if this is a HuggingFace repo ID (not validated locally).
-    """
-    valid: bool
-    error_message: str | None
-    model_path: str
-    has_tokenizer_json: bool
-    has_tokenizer_config: bool
-    is_remote: bool = False
 
 
 def validate_tokenizer_exists(model_path: str) -> TokenizerValidationResult:
@@ -167,8 +147,6 @@ def validate_model_tokenizer(
 
 
 __all__ = [
-    "TokenizerValidationResult",
     "validate_tokenizer_exists",
     "validate_model_tokenizer",
 ]
-

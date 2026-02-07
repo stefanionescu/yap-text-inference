@@ -16,7 +16,8 @@ import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from tests.config import WS_MAX_QUEUE
-from tests.helpers.metrics import StreamState, SessionContext, error_result
+from tests.helpers.metrics import error_result
+from tests.state import SessionContext, StreamState
 from tests.helpers.websocket import (
     record_token,
     with_api_key,
@@ -29,18 +30,19 @@ from tests.helpers.websocket import (
     connect_with_retries,
 )
 
-from .types import BenchmarkConfig
+from tests.state import BenchmarkConfig
 
 
 async def _execute_phase(
     ws,
     cfg: BenchmarkConfig,
     phase: int,
+    session_id: str,
 ) -> dict[str, Any]:
     """Execute a single transaction phase with timeout handling."""
     try:
         return await asyncio.wait_for(
-            _send_and_stream(ws, cfg, phase),
+            _send_and_stream(ws, cfg, phase, session_id),
             timeout=cfg.timeout_s,
         )
     except asyncio.TimeoutError:
@@ -53,9 +55,9 @@ async def _send_and_stream(
     ws,
     cfg: BenchmarkConfig,
     phase: int,
+    session_id: str,
 ) -> dict[str, Any]:
     """Send a start message and stream the response."""
-    session_id = str(uuid.uuid4())
     if cfg.chat_prompt is None:
         raise ValueError(
             "chat_prompt is required for benchmark. "
@@ -103,8 +105,11 @@ async def _consume_stream(
                 continue
 
             if msg_type == "done":
-                cancelled = bool(msg.get("cancelled"))
-                metrics = finalize_metrics(state, cancelled)
+                metrics = finalize_metrics(state, cancelled=False)
+                return _build_success_result(metrics, phase)
+
+            if msg_type == "cancelled":
+                metrics = finalize_metrics(state, cancelled=True)
                 return _build_success_result(metrics, phase)
 
             if msg_type == "error":
@@ -149,18 +154,19 @@ async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
 
+    session_id = f"bench-{uuid.uuid4()}"
     try:
         async with connect_with_retries(
             lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)
         ) as ws:
             try:
                 for phase in range(1, phases + 1):
-                    result = await _execute_phase(ws, cfg, phase)
+                    result = await _execute_phase(ws, cfg, phase, session_id)
                     results.append(result)
                     if not result.get("ok"):
                         break
             finally:
-                await send_client_end(ws)
+                await send_client_end(ws, session_id)
     except (ConnectionClosedOK, ConnectionClosedError) as exc:
         if not results:
             return [error_result(f"connection_closed: {exc}", phase=1)]

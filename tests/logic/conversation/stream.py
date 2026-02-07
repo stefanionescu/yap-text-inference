@@ -7,7 +7,7 @@ from typing import Any
 from collections.abc import Callable, Awaitable
 
 from tests.helpers.errors import ServerError
-from tests.helpers.metrics import StreamState
+from tests.state import StreamState
 from tests.helpers.websocket import record_token, iter_messages, record_toolcall, dispatch_message, finalize_metrics
 
 logger = logging.getLogger(__name__)
@@ -48,8 +48,12 @@ def _handle_final(msg: dict[str, Any], state: StreamState) -> None:
 
 
 def _handle_done(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> bool:
-    cancelled = bool(msg.get("cancelled"))
-    metrics = finalize_metrics(state, cancelled)
+    metrics = finalize_metrics(state, cancelled=False)
+    return {"_done": True, "metrics": metrics}
+
+
+def _handle_cancelled(_: dict[str, Any], state: StreamState) -> dict[str, Any]:
+    metrics = finalize_metrics(state, cancelled=True)
     return {"_done": True, "metrics": metrics}
 
 
@@ -64,6 +68,7 @@ def _build_exchange_handlers(state: StreamState, exchange_idx: int) -> dict[str,
         "token": lambda msg: (_handle_token(msg, state, exchange_idx) or True),
         "final": lambda msg: (_handle_final(msg, state) or True),
         "done": lambda msg: _handle_done(msg, state, exchange_idx),
+        "cancelled": lambda msg: _handle_cancelled(msg, state),
         "error": _handle_error,
     }
 

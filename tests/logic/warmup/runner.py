@@ -20,7 +20,7 @@ from tests.helpers.selection import choose_message
 from tests.helpers.prompt import select_chat_prompt
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
 from tests.logic.conversation.stream import stream_exchange
-from tests.helpers.metrics import StreamState, SessionContext
+from tests.state import SessionContext, StreamState
 from tests.helpers.websocket import (
     with_api_key,
     create_tracker,
@@ -170,6 +170,7 @@ async def run_once(args) -> None:
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
         num_transactions = 2 if double_ttfb else 1
         
+        session_id: str | None = None
         try:
             for idx in range(num_transactions):
                 phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
@@ -194,7 +195,8 @@ async def run_once(args) -> None:
                 )
                 _print_transaction_result(phase_label, user_msg, assistant_text, metrics, state)
         finally:
-            await send_client_end(ws)
+            if session_id:
+                await send_client_end(ws, session_id)
 
 
 __all__ = ["run_once"]

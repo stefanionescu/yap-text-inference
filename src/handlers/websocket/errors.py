@@ -1,60 +1,79 @@
 """Shared response helpers for WebSocket error handling.
 
 This module provides standardized error response formatting for WebSocket
-connections. All error responses follow a consistent JSON structure:
+connections. All error responses follow the standard envelope:
 
     {
         "type": "error",
-        "error_code": "authentication_failed",  # Machine-readable code
-        "message": "Human-readable description",
-        ...extra fields
+        "session_id": "...",
+        "request_id": "...",
+        "payload": {"code": "...", "message": "...", "details": {...}}
     }
 
 Common error codes used in the application:
     - authentication_failed: Invalid or missing API key
-    - server_at_capacity: Connection limit reached  
-    - missing_session_id: Start message lacks session_id
-    - message_rate_limited: Too many messages per window
-    - cancel_rate_limited: Too many cancel requests
+    - server_at_capacity: Connection limit reached
     - invalid_message: Malformed JSON or missing type
-    - unknown_message_type: Unrecognized message type
-    - validation_error: Invalid field values
+    - invalid_payload: Missing or invalid fields
+    - invalid_settings: Unsupported configuration for this request
+    - rate_limited: Rate limit exceeded
     - internal_error: Unexpected server error
 """
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from fastapi import WebSocket
 
-from .helpers import safe_send_text
+from .helpers import safe_send_envelope
+from ...config.websocket import WS_UNKNOWN_REQUEST_ID, WS_UNKNOWN_SESSION_ID
+
+
+def build_error_payload(
+    code: str,
+    message: str,
+    *,
+    details: dict[str, Any] | None = None,
+    reason_code: str | None = None,
+) -> dict[str, Any]:
+    """Build a standardized error payload with optional details."""
+    payload_details = dict(details or {})
+    if reason_code:
+        payload_details.setdefault("reason_code", reason_code)
+    return {
+        "code": code,
+        "message": message,
+        "details": payload_details,
+    }
 
 
 async def send_error(
     ws: WebSocket,
     *,
+    session_id: str | None = None,
+    request_id: str | None = None,
     error_code: str,
     message: str,
-    extra: dict[str, Any] | None = None,
+    details: dict[str, Any] | None = None,
+    reason_code: str | None = None,
 ) -> None:
-    """Send a structured error message to the client.
-    
-    Args:
-        ws: The WebSocket connection.
-        error_code: Machine-readable error identifier.
-        message: Human-readable error description.
-        extra: Additional fields to include in the response.
-    """
-    payload: dict[str, Any] = {
-        "type": "error",
-        "error_code": error_code,
-        "message": message,
-    }
-    if extra:
-        payload.update(extra)
-    await safe_send_text(ws, json.dumps(payload))
+    """Send a structured error message to the client."""
+    sid = session_id or WS_UNKNOWN_SESSION_ID
+    rid = request_id or WS_UNKNOWN_REQUEST_ID
+    payload = build_error_payload(
+        error_code,
+        message,
+        details=details,
+        reason_code=reason_code,
+    )
+    await safe_send_envelope(
+        ws,
+        msg_type="error",
+        session_id=sid,
+        request_id=rid,
+        payload=payload,
+    )
 
 
 async def reject_connection(
@@ -63,7 +82,8 @@ async def reject_connection(
     error_code: str,
     message: str,
     close_code: int,
-    extra: dict[str, Any] | None = None,
+    details: dict[str, Any] | None = None,
+    reason_code: str | None = None,
 ) -> None:
     """Accept connection briefly to send an error, then close immediately.
     
@@ -79,6 +99,13 @@ async def reject_connection(
         extra: Additional fields for the error response.
     """
     await ws.accept()
-    await send_error(ws, error_code=error_code, message=message, extra=extra)
+    await send_error(
+        ws,
+        session_id=WS_UNKNOWN_SESSION_ID,
+        request_id=WS_UNKNOWN_REQUEST_ID,
+        error_code=error_code,
+        message=message,
+        details=details,
+        reason_code=reason_code,
+    )
     await ws.close(code=close_code)
-

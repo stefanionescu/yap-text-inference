@@ -135,13 +135,13 @@ RUN chmod +x /app/download/*.py /app/common/download/*.py 2>/dev/null || true
 # This layer is cached unless: download scripts change OR model config changes
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/download_chat.py
+    python /app/download/chat.py
 
 # ----------------------------------------------------------------------------
 # Download tool model at build time if specified
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/common/download/download_tool.py
+    python /app/common/download/tool.py
 
 # ----------------------------------------------------------------------------
 # Override model env vars to point to local paths (not HF repo names)

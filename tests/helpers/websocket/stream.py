@@ -11,7 +11,8 @@ import time
 from typing import Any
 
 from tests.helpers.errors import StreamError
-from tests.helpers.metrics import StreamState, round_ms
+from tests.helpers.metrics import round_ms
+from tests.state import StreamState
 from tests.helpers.regex import word_count_at_least, contains_complete_sentence
 
 from .message import iter_messages
@@ -121,6 +122,9 @@ async def consume_stream(ws, state: StreamState) -> str:
         if msg_type == "done":
             return state.final_text
 
+        if msg_type == "cancelled":
+            return state.final_text
+
         if msg_type == "error":
             raise StreamError(msg)
 
@@ -134,4 +138,3 @@ __all__ = [
     "finalize_metrics",
     "consume_stream",
 ]
-

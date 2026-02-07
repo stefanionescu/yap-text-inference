@@ -140,20 +140,20 @@ RUN chmod +x /app/download/*.py /app/common/download/*.py 2>/dev/null || true
 # This layer is cached unless: download scripts change OR model config changes
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/download_engine.py
+    python /app/download/engine.py
 
 # ----------------------------------------------------------------------------
 # Download model files (tokenizer, config, etc.) from engine repo
 # These are needed for tokenization during inference
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/download_model.py
+    python /app/download/model.py
 
 # ----------------------------------------------------------------------------
 # Download tool model if specified
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/common/download/download_tool.py
+    python /app/common/download/tool.py
 
 # ----------------------------------------------------------------------------
 # Override model env vars to point to local paths (not HF repo names)

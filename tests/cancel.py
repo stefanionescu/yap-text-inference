@@ -5,7 +5,7 @@ subsequent requests complete successfully.
 This test validates the cancel message handling using multiple concurrent clients:
 1. Multiple clients (default 3) connect simultaneously
 2. One client sends a start message, waits ~1s collecting tokens, then cancels
-3. That client verifies done with cancelled=True, then verifies no spurious messages
+3. That client verifies a cancelled acknowledgement, then verifies no spurious messages
 4. That client sends a recovery request and completes it
 5. The other clients complete their inference normally
 6. All clients wait for the canceling client's recovery before finishing

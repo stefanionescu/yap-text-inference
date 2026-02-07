@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import traceback
 from typing import Any
-from dataclasses import dataclass
 
 import torch
 
@@ -13,19 +12,12 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 from src.config.calibration import CALIB_DEFAULT_DATASET
-from src.helpers.model_profiles import get_model_profile
+from src.helpers.profiles import get_model_profile
 from src.helpers.calibration import dataset_key, dataset_fallback, canonicalize_dataset_name
 
-from .calibration import CalibrationConfig
+from src.state import CalibrationConfig, _DatasetInfo
 from .metadata import save_quantization_metadata
-from .config_fixes import apply_post_quantization_fixes
-
-
-@dataclass
-class _DatasetInfo:
-    requested: str
-    effective: str
-    fallback_from: str | None = None
+from .fixes import apply_post_quantization_fixes
 
 
 def quantize(

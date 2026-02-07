@@ -52,7 +52,7 @@ vllm_awq_push_to_hf() {
 
   local python_cmd=(
     "${python_exec}"
-    "${ROOT_DIR}/src/hf/vllm/hf_push.py"
+    "${ROOT_DIR}/src/hf/vllm/push.py"
     --src "${src_dir}"
     --repo-id "${HF_PUSH_REPO_ID}"
     --branch main
@@ -67,4 +67,3 @@ vllm_awq_push_to_hf() {
   log_info "[hf] Uploading AWQ weights to Hugging Face. Repo: ${HF_PUSH_REPO_ID}"
   HF_TOKEN="${HF_TOKEN}" "${python_cmd[@]}"
 }
-

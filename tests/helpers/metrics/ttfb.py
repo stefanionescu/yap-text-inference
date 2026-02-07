@@ -1,7 +1,7 @@
 """Time-to-first-byte aggregation utilities.
 
 This module provides functions for accumulating TTFB samples and computing
-summary statistics (p50, p90, p95). Uses TTFBSamples from types.py for data.
+summary statistics (p50, p90, p95). Uses TTFBSamples from tests.state for data.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from collections.abc import Mapping, Callable, Sequence
 
 from tests.helpers.fmt import dim, bold, section_header
 
-from .types import TTFBSamples
+from tests.state import TTFBSamples
 
 # ============================================================================
 # Internal Helpers
@@ -191,4 +191,3 @@ __all__ = [
     "has_ttfb_samples",
     "emit_ttfb_summary",
 ]
-

@@ -1,4 +1,4 @@
-"""Conversation history fixtures used by regression tests."""
+"""Conversation history samples used by regression tests."""
 
 CONVERSATION_HISTORY_MESSAGES = [
     "Math pop quiz: what's 27 + 36? I'm double checking the mental math I bragged about to my brother.",

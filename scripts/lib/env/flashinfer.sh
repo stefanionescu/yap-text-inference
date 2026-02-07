@@ -25,10 +25,9 @@ flashinfer_present_py() {
 
   local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   if PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
-     "${py_exe}" -m src.scripts.env_check flashinfer-check >/dev/null 2>&1; then
+     "${py_exe}" -m src.scripts.env flashinfer-check >/dev/null 2>&1; then
     return 0
   fi
 
   return 1
 }
-

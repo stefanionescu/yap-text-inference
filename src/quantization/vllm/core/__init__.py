@@ -1,8 +1,7 @@
 """Core AWQ quantization functionality."""
 
 from .quantizer import AWQQuantizer
-from .calibration import CalibrationConfig
-from .config_fixes import apply_post_quantization_fixes
+from .fixes import apply_post_quantization_fixes
 from .detection import (
     log_quant_detection,
     detect_quant_backend,
@@ -13,7 +12,6 @@ from .detection import (
 
 __all__ = [
     "AWQQuantizer",
-    "CalibrationConfig",
     "apply_post_quantization_fixes",
     # Detection
     "detect_quant_backend",
@@ -22,4 +20,3 @@ __all__ = [
     "sanitize_quant_metadata",
     "strip_unsupported_fields",
 ]
-

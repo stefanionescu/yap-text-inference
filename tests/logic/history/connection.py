@@ -17,7 +17,8 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.errors import StreamError
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
-from tests.helpers.metrics import StreamState, SessionContext, error_result
+from tests.helpers.metrics import error_result
+from tests.state import SessionContext, StreamState
 from tests.helpers.websocket import (
     with_api_key,
     iter_messages,
@@ -29,7 +30,7 @@ from tests.helpers.websocket import (
     connect_with_retries,
 )
 
-from .types import HistoryBenchConfig
+from tests.state import HistoryBenchConfig
 
 
 async def _wait_for_ack(ws) -> None:
@@ -129,7 +130,7 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
                     history.append({"role": "user", "content": user_text})
                     history.append({"role": "assistant", "content": reply})
             finally:
-                await send_client_end(ws)
+                await send_client_end(ws, session_id)
     except (ConnectionClosedOK, ConnectionClosedError) as exc:
         if not results:
             return [error_result(f"connection_closed: {exc}", phase=1)]

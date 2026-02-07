@@ -12,16 +12,16 @@ import asyncio
 import logging
 import contextlib
 from typing import Any
-from dataclasses import field, dataclass
 
 import websockets  # type: ignore[import-not-found]
 
 from tests.helpers.websocket import iter_messages, send_client_end
-from tests.helpers.fmt import dim, cyan, magenta, format_metrics_inline
-from tests.helpers.errors import ServerError, RateLimitError, TestClientError, IdleTimeoutError, ConnectionClosedError
+from tests.helpers.fmt import dim, cyan, format_metrics_inline
+from tests.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError
+from tests.helpers.metrics import round_ms
+from tests.helpers.websocket import create_tracker, finalize_metrics, record_toolcall
 
-from .session import LiveSession
-from .stream import StreamState, round_ms, record_token, create_tracker, record_toolcall, finalize_metrics
+from tests.state import LiveSession, StreamResult, StreamState, _StreamContext
 
 logger = logging.getLogger("live")
 
@@ -41,71 +41,9 @@ def _log_server_error(msg: dict[str, Any]) -> None:
     )
 
 
-@dataclass
-class _StreamPrinter:
-    """Helper for printing streaming tokens to stdout."""
-
-    printed_header: bool = False
-
-    def write_chunk(self, chunk: str) -> None:
-        if not chunk:
-            return
-        if not self.printed_header:
-            print(f"\n{magenta('ASST')} ", end="", flush=True)
-            self.printed_header = True
-        print(chunk, end="", flush=True)
-
-    def finish(self) -> None:
-        if self.printed_header:
-            print()
-            print()
-
-
-@dataclass
-class _StreamContext:
-    """Track state during response streaming."""
-
-    state: StreamState
-    printer: _StreamPrinter = field(default_factory=_StreamPrinter)
-    pending_chat_ttfb: float | None = None
-
-    def handle_token(self, chunk: str) -> None:
-        metrics = record_token(self.state, chunk)
-        self.printer.write_chunk(chunk)
-        chat_ttfb = metrics.get("chat_ttfb_ms")
-        if chat_ttfb is not None and self.pending_chat_ttfb is None:
-            self.pending_chat_ttfb = chat_ttfb
-
-
 # ============================================================================
 # Public API
 # ============================================================================
-
-
-@dataclass
-class StreamResult:
-    """Result of a streaming message exchange."""
-
-    text: str
-    ok: bool = True
-    error: ServerError | None = None
-    cancelled: bool = False
-
-    @property
-    def is_rate_limited(self) -> bool:
-        return isinstance(self.error, RateLimitError)
-
-    @property
-    def is_recoverable(self) -> bool:
-        if self.error is None:
-            return True
-        return self.error.is_recoverable()
-
-    def format_error(self) -> str:
-        if self.error is None:
-            return ""
-        return self.error.format_for_user()
-
 
 class LiveClient:
     """High-level WebSocket client for interactive sessions."""
@@ -159,7 +97,7 @@ class LiveClient:
             return
         self._closed = True
         try:
-            await send_client_end(self.ws)
+            await send_client_end(self.ws, self.session.session_id)
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -193,10 +131,12 @@ class LiveClient:
                     if normalized := msg.get("normalized_text"):
                         state.final_text = normalized
                     continue
-                if msg_type == "connection_closed":
+                if msg_type == "session_end":
                     return self._handle_connection_closed(msg, state)
                 if msg_type == "done":
                     return self._handle_done_frame(msg, ctx, print_user_prompt=print_user_prompt)
+                if msg_type == "cancelled":
+                    return self._handle_cancelled_frame(msg, ctx, print_user_prompt=print_user_prompt)
                 if msg_type == "error":
                     return self._handle_error_frame(msg, ctx)
                 logger.debug("Ignoring message type=%s payload=%s", msg_type, msg)
@@ -219,18 +159,33 @@ class LiveClient:
 
     def _handle_done_frame(self, msg: dict[str, Any], ctx: _StreamContext, *, print_user_prompt: bool) -> StreamResult:
         ctx.printer.finish()
-        cancelled = bool(msg.get("cancelled"))
         if self._stats_enabled:
-            metrics = finalize_metrics(ctx.state, cancelled)
+            metrics = finalize_metrics(ctx.state, cancelled=False)
             print(dim(f"     {format_metrics_inline(metrics)}"))
             print()
         if print_user_prompt:
             print(f"{cyan('USER')} ", end="", flush=True)
-        return StreamResult(text=ctx.state.final_text, ok=True, cancelled=cancelled)
+        return StreamResult(text=ctx.state.final_text, ok=True, cancelled=False)
+
+    def _handle_cancelled_frame(
+        self,
+        msg: dict[str, Any],
+        ctx: _StreamContext,
+        *,
+        print_user_prompt: bool,
+    ) -> StreamResult:
+        ctx.printer.finish()
+        if self._stats_enabled:
+            metrics = finalize_metrics(ctx.state, cancelled=True)
+            print(dim(f"     {format_metrics_inline(metrics)}"))
+            print()
+        if print_user_prompt:
+            print(f"{cyan('USER')} ", end="", flush=True)
+        return StreamResult(text=ctx.state.final_text, ok=True, cancelled=True)
 
     def _handle_connection_closed(self, msg: dict[str, Any], state: StreamState) -> StreamResult:
         reason = msg.get("reason") or "server_request"
-        logger.info("Server signaled connection_closed reason=%s", reason)
+        logger.info("Server signaled session_end reason=%s", reason)
         return StreamResult(text=state.final_text, ok=True)
 
     def _handle_error_frame(self, msg: dict[str, Any], ctx: _StreamContext) -> StreamResult:
@@ -243,4 +198,4 @@ class LiveClient:
         raise error
 
 
-__all__ = ["LiveClient", "StreamResult"]
+__all__ = ["LiveClient"]

@@ -1,4 +1,4 @@
-"""Long conversation history fixture for warm history testing.
+"""Long conversation history sample for warm history testing.
 
 This module provides a realistic conversation history for testing warm history
 loading and prefix caching. Assistant messages are single paragraphs without

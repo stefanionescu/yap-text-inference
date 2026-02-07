@@ -12,7 +12,7 @@ from tests.config import PROGRESS_BAR_WIDTH, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS
 
 from .cases import build_cases
 from .executor import run_all_cases
-from .types import CaseResult, RunnerConfig, ToolTestCase
+from tests.state import CaseResult, RunnerConfig, ToolTestCase
 from .reporting import save_logs, print_summary, print_case_results
 
 # ============================================================================

@@ -23,9 +23,8 @@ fi
 venv_dir="$(get_venv_dir)"
 if [ -d "${venv_dir}" ]; then
   CU_VER=$(PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
-    "${venv_dir}/bin/python" -m src.scripts.env_check torch-cuda-version 2>/dev/null || true)
+    "${venv_dir}/bin/python" -m src.scripts.env torch-cuda-version 2>/dev/null || true)
   if [ -n "${CU_VER:-}" ]; then
     log_info "[gpu] Torch CUDA version detected: ${CU_VER}"
   fi
 fi
-

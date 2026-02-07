@@ -11,39 +11,10 @@ import json
 import time
 import asyncio
 from typing import Any
-from dataclasses import field, dataclass
 
 from tests.helpers.websocket import iter_messages
 
-from .types import TurnResult
-
-
-@dataclass
-class DrainState:
-    """Mutable state tracked during response draining."""
-
-    tool_status: str | None = None
-    tool_raw: Any = None
-    chat_seen: bool = False
-    done: bool = False
-    cancelled: bool = False
-    error: dict[str, Any] | None = None
-    first_tool_frame_s: float | None = None
-    last_tool_frame_s: float | None = None
-    tool_decision_received: bool = False
-
-
-@dataclass
-class DrainConfig:
-    """Configuration for response draining."""
-
-    timeout_s: float
-    chat_idle_timeout_s: float | None
-    start_ts: float = field(default_factory=time.perf_counter)
-
-    @property
-    def tool_deadline(self) -> float:
-        return self.start_ts + self.timeout_s
+from tests.state import DrainConfig, DrainState, TurnResult
 
 
 # ============================================================================
@@ -115,7 +86,12 @@ def _process_message(msg: dict[str, Any], state: DrainState, cfg: DrainConfig) -
 
     if msg_type == "done":
         state.done = True
-        state.cancelled = bool(msg.get("cancelled"))
+        state.cancelled = False
+        return True
+
+    if msg_type == "cancelled":
+        state.done = True
+        state.cancelled = True
         return True
 
     if msg_type == "error":

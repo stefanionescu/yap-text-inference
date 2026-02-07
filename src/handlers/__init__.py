@@ -10,7 +10,7 @@ instances.py:
     Singleton instances for ConnectionHandler and SessionHandler.
     Serves as the assembly point for global handler objects.
 
-rate_limit.py:
+limits.py:
     Sliding window rate limiter for per-connection message throttling.
     Protects against spam and abuse.
 

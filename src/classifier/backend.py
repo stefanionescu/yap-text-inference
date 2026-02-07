@@ -31,7 +31,7 @@ import logging
 import torch  # type: ignore[import]
 from transformers import AutoTokenizer, AutoModelForSequenceClassification  # type: ignore[import]
 
-from .model_info import ClassifierModelInfo
+from src.state import ClassifierModelInfo
 
 logger = logging.getLogger(__name__)
 

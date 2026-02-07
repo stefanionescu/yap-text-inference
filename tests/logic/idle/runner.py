@@ -9,6 +9,7 @@ and invokes `run_idle_suite`.
 from __future__ import annotations
 
 import json
+import uuid
 import asyncio
 from collections.abc import Callable, Awaitable
 
@@ -39,23 +40,32 @@ def _open_connection(ws_url: str):
 
 async def _test_normal_connection(ws_url: str, wait_seconds: float) -> None:
     async with _open_connection(ws_url) as ws:
+        session_id = f"idle-{uuid.uuid4()}"
         print(connection_status("normal", f"connected, sleeping {wait_seconds:.1f}s..."))
         await asyncio.sleep(max(0.0, wait_seconds))
-        await send_client_end(ws)
+        await send_client_end(ws, session_id)
         print(connection_status("normal", "graceful close sent"))
 
 
 async def _test_quick_connect_close(ws_url: str) -> None:
     async with _open_connection(ws_url) as ws:
+        session_id = f"idle-{uuid.uuid4()}"
         print(connection_status("quick", "connected, closing immediately..."))
-        await send_client_end(ws)
+        await send_client_end(ws, session_id)
         print(connection_status("quick", "close frame flushed"))
 
 
 async def _test_ping_pong(ws_url: str) -> None:
     async with _open_connection(ws_url) as ws:
         print(connection_status("ping", "sending ping frame..."))
-        await ws.send(json.dumps({"type": "ping"}))
+        session_id = f"idle-{uuid.uuid4()}"
+        ping_payload = {
+            "type": "ping",
+            "session_id": session_id,
+            "request_id": f"ping-{uuid.uuid4()}",
+            "payload": {},
+        }
+        await ws.send(json.dumps(ping_payload))
         try:
             payload = await asyncio.wait_for(ws.recv(), timeout=5.0)
         except asyncio.TimeoutError:
@@ -64,7 +74,7 @@ async def _test_ping_pong(ws_url: str) -> None:
         if msg.get("type") != "pong":
             raise RuntimeError(f"expected pong, got {msg.get('type')}")
         print(connection_status("ping", "received pong response"))
-        await send_client_end(ws)
+        await send_client_end(ws, session_id)
 
 
 async def _test_idle_watchdog(

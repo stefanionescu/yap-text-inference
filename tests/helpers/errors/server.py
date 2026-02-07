@@ -27,9 +27,17 @@ class ServerError(TestClientError):
     @classmethod
     def from_message(cls, msg: dict[str, Any]) -> ServerError:
         """Create an appropriate ServerError subclass from a server error message."""
-        error_code = msg.get("error_code", "unknown")
-        message = msg.get("message", str(msg))
-        extra = {k: v for k, v in msg.items() if k not in ("type", "error_code", "message")}
+        payload = msg.get("payload") if isinstance(msg.get("payload"), dict) else {}
+        error_code = msg.get("code") or payload.get("code") or msg.get("error_code", "unknown")
+        message = msg.get("message") or payload.get("message") or str(msg)
+        extra = {
+            k: v
+            for k, v in msg.items()
+            if k not in ("type", "error_code", "code", "message", "payload", "details")
+        }
+        details = payload.get("details") or msg.get("details")
+        if isinstance(details, dict):
+            extra.update(details)
         error_class = cls._SUBCLASS_MAP.get(error_code, ServerError)
         return error_class(error_code, message, extra=extra)
 
@@ -83,7 +91,7 @@ class ServerAtCapacityError(ServerError):
         return "Server is busy. Please try again later."
 
 
-@_register_error_code("message_rate_limited", "cancel_rate_limited")
+@_register_error_code("rate_limited", "message_rate_limited", "cancel_rate_limited")
 class RateLimitError(ServerError):
     """Raised when rate limits are exceeded."""
 
@@ -99,7 +107,7 @@ class RateLimitError(ServerError):
         return "Rate limited. Please slow down."
 
 
-@_register_error_code("validation_error", "missing_session_id")
+@_register_error_code("invalid_payload", "invalid_settings", "validation_error", "missing_session_id")
 class ValidationError(ServerError):
     """Raised when the server rejects input due to validation failures."""
 
@@ -126,5 +134,3 @@ __all__ = [
     "InvalidMessageError",
     "InternalServerError",
 ]
-
-

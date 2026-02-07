@@ -15,7 +15,7 @@ from typing import Any
 import websockets
 
 from tests.helpers.fmt import dim
-from tests.helpers.metrics import SessionContext
+from tests.state import SessionContext
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.websocket import (
     iter_messages,
@@ -29,7 +29,13 @@ from tests.helpers.websocket import (
 
 from .handlers import build_recovery_handlers
 from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
-from .types import DrainPhaseResult, CancelPhaseResult, CancelClientResult, NormalClientResult, RecoveryPhaseResult
+from tests.state import (
+    CancelClientResult,
+    CancelPhaseResult,
+    DrainPhaseResult,
+    NormalClientResult,
+    RecoveryPhaseResult,
+)
 
 
 async def run_normal_client(
@@ -108,7 +114,7 @@ async def run_normal_client(
             # Wait for the canceling client to complete recovery
             await wait_for_recovery.wait()
 
-            await send_client_end(ws)
+            await send_client_end(ws, ctx.session_id)
 
             return NormalClientResult(
                 client_id=client_id,
@@ -197,7 +203,7 @@ async def run_canceling_client(
             # Signal completion so normal clients can disconnect
             recovery_done.set()
 
-            await send_client_end(ws)
+            await send_client_end(ws, ctx.session_id)
 
     except Exception as exc:  # noqa: BLE001
         cancel_result = CancelPhaseResult(

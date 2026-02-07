@@ -64,7 +64,7 @@ Common download functionality:
 - `verify_files_exist()` - Validate downloaded files
 - `log_success()`, `log_skip()` - Logging helpers
 
-### Tool Model (`download/download_tool.py`)
+### Tool Model (`download/tool.py`)
 
 Downloads the tool classifier from HuggingFace. Used by both engines.
 

@@ -11,7 +11,7 @@ from collections.abc import Sequence
 
 from tests.messages.tool import TOOL_DEFAULT_MESSAGES
 
-from .types import CaseStep, ToolTestCase
+from tests.state import CaseStep, ToolTestCase
 
 
 def _shorten(text: str, limit: int = 80) -> str:

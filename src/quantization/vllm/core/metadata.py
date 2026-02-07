@@ -6,7 +6,7 @@ import os
 import json
 from typing import Any
 
-from ..utils.template_utils import generate_readme
+from ..utils.template import generate_readme
 
 
 def _env_flag(name: str, default: bool) -> bool:

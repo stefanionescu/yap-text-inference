@@ -25,7 +25,6 @@ The executor coordinates between:
 - WebSocket helpers (response streaming)
 """
 
-import uuid
 import asyncio
 import logging
 
@@ -44,6 +43,7 @@ logger = logging.getLogger(__name__)
 async def run_execution(
     ws: WebSocket,
     session_id: str,
+    request_id: str,
     static_prefix: str,
     runtime_text: str,
     history_text: str,
@@ -95,16 +95,15 @@ async def run_execution(
 
     if is_tool:
         # Tool detected: send toolcall response
-        await send_toolcall(ws, "yes", raw_field)
+        await send_toolcall(ws, session_id, request_id, "yes", raw_field)
         logger.info("sequential_exec: sent toolcall yes")
     else:
         # Tool says NO (or timed out): notify client
-        await send_toolcall(ws, "no", raw_field)
+        await send_toolcall(ws, session_id, request_id, "no", raw_field)
         logger.info("sequential_exec: sent toolcall no")
 
     # Start chat stream (for take_screenshot or no tool call)
-    chat_req_id = f"chat-{uuid.uuid4()}"
-    session_handler.set_active_request(session_id, chat_req_id)
+    session_handler.set_active_request(session_id, request_id)
     # If tool said yes (take_screenshot), prefix the user utterance with CHECK SCREEN hint
     if is_tool:
         prefix = session_handler.get_check_screen_prefix(session_id)
@@ -120,10 +119,11 @@ async def run_execution(
             runtime_text,
             history_text,
             user_utt_for_chat,
-            request_id=chat_req_id,
+            request_id=request_id,
             sampling_overrides=sampling_overrides,
         ),
         session_id,
+        request_id,
         user_utt_for_chat,
         history_turn_id=history_turn_id,
         history_user_utt=user_utt,

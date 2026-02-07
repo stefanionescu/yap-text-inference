@@ -26,48 +26,7 @@ Adding New Profiles:
 
 from __future__ import annotations
 
-from typing import Any
-from dataclasses import dataclass
-from collections.abc import Mapping
-
-
-@dataclass(frozen=True)
-class ModelProfile:
-    """Describes special-case requirements for known model families.
-
-    Attributes:
-        name: Human-readable profile name (e.g., "gemma3").
-        markers: Tuple of strings to match against model identifiers.
-            A model matches if any marker is found in its identifier.
-        requires_bfloat16: If True, force bfloat16 dtype for this model.
-            Required for some models that have numerical instability in fp16.
-        requires_fla_runtime: If True, requires fla-core package installed.
-            Used by Kimi models with Flash Linear Attention.
-        uses_mla: If True, uses Multi-Head Latent Attention.
-            Incompatible with FlashInfer backend (DeepSeek V2/V3, Moonlight).
-        needs_memory_optimization: If True, reduce GPU memory allocation.
-            Helps with models prone to OOM (Gemma family).
-        max_num_batched_tokens: Override for chunked prefill batch size.
-            Higher values can reduce TTFB for some models (e.g., Mistral 3.2).
-            If None, uses the default from MAX_NUM_BATCHED_TOKENS_CHAT env var.
-        config_overrides: Dict of config.json overrides applied after quantization.
-            Used to fix configuration issues in exported models.
-        tokenizer_kwargs: Dict of kwargs passed to AutoTokenizer.from_pretrained.
-            Used to fix tokenizer issues (e.g., fix_mistral_regex).
-
-    Note:
-        Profile matching logic is in src/helpers/profiles.profile_matches().
-    """
-
-    name: str
-    markers: tuple[str, ...]
-    requires_bfloat16: bool = False
-    requires_fla_runtime: bool = False
-    uses_mla: bool = False
-    needs_memory_optimization: bool = False
-    max_num_batched_tokens: int | None = None
-    config_overrides: Mapping[str, Any] | None = None
-    tokenizer_kwargs: Mapping[str, Any] | None = None
+from src.state import ModelProfile
 
 
 MODEL_PROFILES: tuple[ModelProfile, ...] = (

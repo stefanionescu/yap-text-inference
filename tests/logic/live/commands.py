@@ -68,7 +68,7 @@ async def _handle_help_command(
 ) -> bool:
     """Display the help message with available commands."""
     _ = raw_command  # unused; keeps signature uniform
-    from .cli import print_help
+    from tests.state import print_help
     print_help(client.session.persona.name, verbose=True)
     return False
 
@@ -209,4 +209,3 @@ async def dispatch_command(
 
 
 __all__ = ["dispatch_command"]
-

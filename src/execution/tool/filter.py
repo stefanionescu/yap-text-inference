@@ -14,8 +14,6 @@ If no pattern matches, the caller should fall back to the classifier model.
 from __future__ import annotations
 
 import re
-from typing import Literal
-from dataclasses import dataclass
 
 from ...config.patterns import (
     SCREENSHOT_TAKE_X_PATTERN,
@@ -23,16 +21,7 @@ from ...config.patterns import (
     SCREENSHOT_TRIGGER_PATTERNS,
     SCREENSHOT_TRIGGER_QUANTITIES,
 )
-
-_ScreenAction = Literal["no_screenshot", "take_screenshot", "pass"]
-
-
-@dataclass(slots=True, frozen=True)
-class FilterResult:
-    """Result of the phrase filter."""
-
-    action: _ScreenAction
-
+from src.state import FilterResult, _ScreenAction
 
 _SCREENSHOT_REJECT_COMPILED = [re.compile(p, re.IGNORECASE) for p in SCREENSHOT_REJECT_PATTERNS]
 _SCREENSHOT_TAKE_X_COMPILED = re.compile(SCREENSHOT_TAKE_X_PATTERN, re.IGNORECASE)

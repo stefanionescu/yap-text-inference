@@ -13,10 +13,6 @@ from .concurrency import distribute_requests, sanitize_concurrency
 from .regex import word_count_at_least, contains_complete_sentence
 from .cli import add_sampling_args, add_connection_args, build_sampling_payload
 from .metrics import (
-    StreamState,
-    TTFBSamples,
-    SessionContext,
-    BenchmarkResultData,
     round_ms,
     secs_to_ms,
     record_ttfb,
@@ -126,10 +122,6 @@ __all__ = [
     "test_header",
     "yellow",
     # metrics
-    "BenchmarkResultData",
-    "SessionContext",
-    "StreamState",
-    "TTFBSamples",
     "create_ttfb_aggregator",
     "emit_ttfb_summary",
     "error_result",

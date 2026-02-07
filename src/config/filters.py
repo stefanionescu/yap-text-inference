@@ -136,7 +136,7 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # === Application vLLM startup logs ===
     # Python logging format: INFO YYYY-MM-DD HH:MM:SS,mmm [module:line] message
     # Suppress verbose startup logs from src.engines.vllm.* modules
-    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args|tokenizer|memory_tuning|factory):\d+\]"),
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args|tokenizer|memory|factory):\d+\]"),
     # Suppress verbose startup logs from src.quantization.vllm.* modules
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.quantization\.vllm\.[\w.]+:\d+\]"),
     # Warmup logs specifically for vLLM
@@ -353,4 +353,3 @@ __all__ = [
     "PERCENT_PATTERN",
     "EMAIL_PATTERN",
 ]
-

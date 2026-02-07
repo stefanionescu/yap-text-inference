@@ -38,45 +38,16 @@ import time
 import asyncio
 import logging
 from typing import Any
-from dataclasses import dataclass
-from collections.abc import Callable, Awaitable, AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from src.errors import StreamCancelledError
 from src.config.logging import CHAT_STREAM_LABEL
 
 from ...engines.base import BaseEngine
-from ..async_compat import timeout as async_timeout
+from src.state import ChatStreamConfig, CancelCheck
+from ..compat import timeout as async_timeout
 
 logger = logging.getLogger(__name__)
-
-# Type for cancellation check callbacks
-CancelCheck = Callable[[], bool | Awaitable[bool]] | None
-
-
-@dataclass(slots=True)
-class ChatStreamConfig:
-    """Configuration for chat streaming.
-    
-    Attributes:
-        session_id: Session identifier for logging.
-        request_id: Unique request ID for tracking and abortion.
-        prompt: The formatted prompt to generate from.
-        sampling_params: Engine-specific sampling parameters.
-        engine_getter: Async function returning the engine instance.
-        timeout_s: Maximum seconds for generation.
-        flush_ms: Minimum milliseconds between buffer flushes.
-        cancel_check: Optional callback to check for cancellation.
-    """
-
-    session_id: str
-    request_id: str
-    prompt: str
-    sampling_params: Any
-    engine_getter: Callable[[], Awaitable[BaseEngine]]
-    timeout_s: float
-    flush_ms: float = 0.0
-    cancel_check: CancelCheck = None
-
 
 class ChatStreamController:
     """Handles buffering, cancellation, and logging for chat generations.

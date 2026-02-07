@@ -11,7 +11,8 @@ import sys
 import argparse
 
 from src.helpers.models import is_classifier_model
-from src.quantization.vllm.core import AWQQuantizer, CalibrationConfig
+from src.quantization.vllm.core import AWQQuantizer
+from src.state import CalibrationConfig
 
 
 def main() -> int:

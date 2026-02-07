@@ -34,7 +34,7 @@ torch_cuda_mismatch_guard() {
 
   set +e
   PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
-    "${py_bin}" -m src.scripts.torch_guard >"${tmp_output}" 2>&1
+    "${py_bin}" -m src.scripts.guard >"${tmp_output}" 2>&1
   detect_rc=$?
   if [[ "${previous_opts}" == *e* ]]; then
     set -e

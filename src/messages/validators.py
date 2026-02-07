@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from src.errors import ValidationError
 
-from .sanitize.prompt_sanitizer import sanitize_prompt
+from .sanitize.prompt import sanitize_prompt
 from ..config import PERSONALITY_MAX_LEN, SCREEN_PREFIX_MAX_CHARS
 from .input import normalize_gender, normalize_personality, is_gender_empty_or_null, is_personality_empty_or_null
 
@@ -102,4 +102,3 @@ __all__ = [
     "sanitize_prompt_with_limit",
     "validate_optional_prefix",
 ]
-
