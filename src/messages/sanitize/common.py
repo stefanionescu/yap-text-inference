@@ -13,4 +13,3 @@ def _strip_escaped_quotes(text: str) -> str:
 
 
 __all__ = ["_strip_escaped_quotes"]
-

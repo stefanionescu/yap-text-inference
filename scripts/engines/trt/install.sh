@@ -59,25 +59,25 @@ trt_ensure_cuda_home() {
       return 1
     fi
   fi
-  
+
   if [ ! -d "${CUDA_HOME}/lib64" ]; then
     log_err "[trt] ✗ CUDA_HOME/lib64 not found: ${CUDA_HOME}/lib64"
     return 1
   fi
-  
+
   # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc5)
   if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
     if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
       log_warn "[trt] ⚠ libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
     fi
   fi
-  
+
   # Ensure CUDA libs are in LD_LIBRARY_PATH
   case ":${LD_LIBRARY_PATH:-}:" in
     *":${CUDA_HOME}/lib64:"*) ;;
     *) export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}" ;;
   esac
-  
+
   return 0
 }
 
@@ -91,9 +91,9 @@ trt_install_pytorch() {
   local torch_version="${TRT_PYTORCH_VERSION:-2.9.0+cu130}"
   local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
   local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
-  
+
   log_section "[trt] Installing PyTorch..."
-  
+
   # Install torch and torchvision together from the SAME index to ensure CUDA version match
   local pip_cmd=(
     install --no-cache-dir
@@ -101,12 +101,12 @@ trt_install_pytorch() {
     "torch==${torch_version}"
     "torchvision==${torchvision_version}"
   )
-  
+
   _trt_pip_install_with_retry "${pip_cmd[@]}" || {
     log_err "[trt] ✗ Failed to install PyTorch"
     return 1
   }
-  
+
   return 0
 }
 
@@ -163,9 +163,9 @@ trt_install_tensorrt_llm() {
     log_err "[trt] ✗ Unable to materialize torch constraints"
     return 1
   }
-  
+
   log_info "[trt] Installing the TRT wheel..."
-  
+
   # NOTE: Do NOT use --upgrade here - it can replace torch with a different CUDA version
   # from NVIDIA's index, causing CUDA version mismatch between torch and torchvision
   # Use NVIDIA index as PRIMARY to get real wheels directly (avoid PyPI stub issues)
@@ -182,12 +182,12 @@ trt_install_tensorrt_llm() {
     pip_cmd+=(--constraint "${constraints_file}")
   fi
   pip_cmd+=("${target}")
-  
+
   _trt_pip_install_with_retry "${pip_cmd[@]}" || {
     log_err "[trt] ✗ Failed to install the TRT wheel"
     return 1
   }
-  
+
   return 0
 }
 
@@ -200,7 +200,7 @@ trt_validate_python_libraries() {
   log_info "[trt] Checking Python shared library..."
   local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
-      python -W ignore::RuntimeWarning -m src.scripts.trt.validation python-libs; then
+    python -W ignore::RuntimeWarning -m src.scripts.trt.validation python-libs; then
     return 1
   fi
 }
@@ -210,7 +210,7 @@ trt_validate_cuda_runtime() {
   log_info "[trt] Checking CUDA Python bindings..."
   local python_root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
   if ! PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
-      python -W ignore::RuntimeWarning -m src.scripts.trt.validation cuda-runtime 2>&1; then
+    python -W ignore::RuntimeWarning -m src.scripts.trt.validation cuda-runtime 2>&1; then
     log_err "[trt] ✗ CUDA Python bindings not working"
     log_err "[trt] ✗ Hint: Ensure cuda-python>=13.0 and that CUDA_HOME/lib64 contains CUDA 13 runtime libraries"
     return 1
@@ -247,26 +247,26 @@ trt_validate_installation() {
     echo "${trt_output}" >&2
     return 1
   }
-  if [[ "${trt_output}" == *"MODELOPT_MISSING"* ]]; then
+  if [[ ${trt_output} == *"MODELOPT_MISSING"* ]]; then
     log_warn "[trt] ⚠ TensorRT-LLM import reported: ${trt_output} (ignored for modelopt)"
   else
     log_info "${trt_output}"
   fi
-  
+
   # Validate Python libraries
   trt_validate_python_libraries || return 1
-  
+
   # Validate CUDA runtime
   trt_validate_cuda_runtime || return 1
-  
+
   # Validate MPI if needed
   trt_validate_mpi_runtime || return 1
-  
+
   # Check trtllm-build command
   if ! command -v trtllm-build >/dev/null 2>&1; then
     log_warn "[trt] ⚠ trtllm-build command not found in PATH"
   fi
-  
+
   log_blank
   return 0
 }
@@ -290,14 +290,14 @@ trt_prepare_repo() {
   local clone_filter="${TRT_CLONE_FILTER}"
   local clone_attempts="${TRT_CLONE_ATTEMPTS}"
   local clone_delay="${TRT_CLONE_BACKOFF_SECONDS}"
-  
+
   # Clone if not present, reuse if exists
   # Note: FORCE_REBUILD only affects engine/checkpoint builds, not the repo clone
   if [ -d "${repo_dir}" ]; then
     log_info "[trt] Reusing existing TensorRT-LLM repository..."
   else
     log_info "[trt] Cloning TRTLLM repo..."
-    
+
     # Build clone options (--quiet suppresses progress, -c advice.detachedHead=false suppresses detached HEAD warning)
     local clone_opts=("--quiet" "--single-branch" "--no-tags" "--branch" "${tag_name}")
     if [ "${clone_depth}" != "full" ]; then
@@ -306,7 +306,7 @@ trt_prepare_repo() {
         clone_opts+=("--filter=${clone_filter}")
       fi
     fi
-    
+
     # Clone with retry (quiet mode, redirect git noise to /dev/null)
     local attempt=1
     local clone_done=false
@@ -322,13 +322,13 @@ trt_prepare_repo() {
         clone_delay=$((clone_delay * 2))
       fi
     done
-    
+
     if [ "${clone_done}" != "true" ]; then
       log_err "[trt] ✗ Failed to clone TensorRT-LLM repository after ${clone_attempts} attempts"
       return 1
     fi
   fi
-  
+
   # Ensure we're on the correct tag (all git ops quiet)
   if git -C "${repo_dir}" show-ref --verify --quiet "${tag_ref}" >/dev/null 2>&1; then
     : # Tag already present
@@ -352,14 +352,14 @@ trt_prepare_repo() {
     log_err "[trt] ✗ Hint: ensure ${tag_name} exists in ${repo_url}"
     return 1
   fi
-  
+
   # Verify quantization examples directory exists
   if [ ! -d "${repo_dir}/examples/quantization" ]; then
     log_err "[trt] ✗ Quantization examples not found in ${repo_dir}/examples/quantization"
     ls -la "${repo_dir}/examples/" >&2
     return 1
   fi
-  
+
   export TRT_REPO_DIR="${repo_dir}"
   return 0
 }
@@ -374,7 +374,7 @@ trt_install_quant_requirements() {
   local constraints_file="${repo_dir}/examples/constraints.txt"
   local marker_file="${ROOT_DIR:-.}/.run/trt_quant_deps_installed"
   local filtered_reqs="${ROOT_DIR:-.}/.run/quant_reqs.filtered.txt"
-  
+
   # Skip if already installed (marker present and requirements.txt unchanged)
   if [ -f "${marker_file}" ]; then
     local marker_hash stored_hash
@@ -387,7 +387,7 @@ trt_install_quant_requirements() {
       fi
     fi
   fi
-  
+
   if [ -f "${quant_reqs}" ]; then
     log_info "[trt] Installing TRT-LLM quantization requirements..."
 
@@ -401,7 +401,7 @@ trt_install_quant_requirements() {
       /^(torch==|torchvision==|nvidia-cuda-runtime|nvidia-cudnn|nvidia-cublas|nvidia-cusparse|nvidia-cusolver|nvidia-cufft|nvidia-curand|nvidia-nvjitlink|nvidia-nvtx|cuda-toolkit)/ { next }
       /^[[:space:]]*-c[[:space:]]+\.\.\/constraints\.txt/ { next }
       { print }
-    ' "${quant_reqs}" > "${filtered_reqs}" || cp "${quant_reqs}" "${filtered_reqs}"
+    ' "${quant_reqs}" >"${filtered_reqs}" || cp "${quant_reqs}" "${filtered_reqs}"
 
     local pip_args=(install -r "${filtered_reqs}")
     if [ -f "${constraints_file}" ]; then
@@ -415,10 +415,10 @@ trt_install_quant_requirements() {
     fi
     # Upgrade urllib3 to fix GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
     pip_quiet install 'urllib3>=2.6.0' || true
-    
+
     # Mark as installed (store hash of requirements.txt)
     mkdir -p "$(dirname "${marker_file}")"
-    md5sum "${quant_reqs}" 2>/dev/null | awk '{print $1}' > "${marker_file}"
+    md5sum "${quant_reqs}" 2>/dev/null | awk '{print $1}' >"${marker_file}"
     log_info "[trt] ✓ Quantization dependencies installed"
     log_blank
   else

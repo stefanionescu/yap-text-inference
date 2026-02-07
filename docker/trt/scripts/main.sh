@@ -24,23 +24,27 @@ usage() {
   echo "      You don't need to specify them when running the container."
   echo ""
   echo "Example:"
-  echo "  docker run --gpus all -d \\"
-  echo "    -e TEXT_API_KEY=your_secret_key \\"
-  echo "    -p 8000:8000 IMAGE"
+  cat <<'EOF'
+  docker run --gpus all -d \
+    -e TEXT_API_KEY=your_secret_key \
+    -p 8000:8000 IMAGE
+EOF
   echo ""
   echo "With persistent cache (faster subsequent starts):"
-  echo "  docker run --gpus all -d \\"
-  echo "    -v yap-cache:/app/.hf \\"
-  echo "    -v yap-engines:/opt/engines \\"
-  echo "    -e TEXT_API_KEY=your_secret_key \\"
-  echo "    -p 8000:8000 IMAGE"
+  cat <<'EOF'
+  docker run --gpus all -d \
+    -v yap-cache:/app/.hf \
+    -v yap-engines:/opt/engines \
+    -e TEXT_API_KEY=your_secret_key \
+    -p 8000:8000 IMAGE
+EOF
   echo ""
   echo "Health check: curl http://localhost:8000/healthz"
   exit 0
 }
 
 # Check if help is requested
-if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+if [[ ${1:-} == "--help" ]] || [[ ${1:-} == "-h" ]]; then
   usage
 fi
 
@@ -62,4 +66,3 @@ if [ ! -x "${START_SCRIPT}" ]; then
   exit 1
 fi
 exec "${START_SCRIPT}"
-

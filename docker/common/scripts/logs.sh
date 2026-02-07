@@ -6,7 +6,7 @@
 
 log_info() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
 log_warn() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
-log_err()  { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+log_err() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
 log_success() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
 
 # Aliases for backwards compatibility during transition

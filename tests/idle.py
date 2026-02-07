@@ -3,20 +3,20 @@
 
 from __future__ import annotations
 
-import sys
+import argparse
 import asyncio
 import logging
-import argparse
+import sys
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tests.logic.idle import run_idle_suite
+from tests.config import IDLE_EXPECT_SECONDS, IDLE_GRACE_SECONDS, IDLE_NORMAL_WAIT_SECONDS
+from tests.helpers.cli import add_connection_args
 from tests.helpers.setup import setup_repo_path
 from tests.helpers.websocket import with_api_key
-from tests.helpers.cli import add_connection_args
-from tests.config import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
+from tests.logic.idle import run_idle_suite
 
 
 def _parse_args() -> argparse.Namespace:
@@ -47,10 +47,7 @@ def _parse_args() -> argparse.Namespace:
         "--idle-grace-seconds",
         type=float,
         default=IDLE_GRACE_SECONDS,
-        help=(
-            "Additional buffer added to the idle wait window before failing. "
-            f"Default: {IDLE_GRACE_SECONDS}"
-        ),
+        help=(f"Additional buffer added to the idle wait window before failing. Default: {IDLE_GRACE_SECONDS}"),
     )
     parser.add_argument(
         "--log-level",

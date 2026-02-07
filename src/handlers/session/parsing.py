@@ -4,7 +4,7 @@ This module handles parsing conversation history from various input formats
 into structured HistoryTurn objects. It supports:
 
 1. Text parsing: "User: X\nAssistant: Y" format
-2. JSON parsing: [{role: "user", content: "..."}, ...] format  
+2. JSON parsing: [{role: "user", content: "..."}, ...] format
 3. Tuple conversion: For prompt builders that need (user, assistant) tuples
 """
 
@@ -17,13 +17,13 @@ from .state import HistoryTurn
 
 def parse_history_text(history_text: str) -> list[HistoryTurn]:
     """Parse text transcript back into structured HistoryTurn objects.
-    
+
     Handles multi-line messages by accumulating lines until the next
     role marker (User: or Assistant:) is encountered.
-    
+
     Args:
         history_text: Raw history in "User: X\\nAssistant: Y" format.
-        
+
     Returns:
         List of HistoryTurn objects with generated UUIDs.
     """
@@ -40,11 +40,13 @@ def parse_history_text(history_text: str) -> list[HistoryTurn]:
         nonlocal current_user, current_assistant, mode
         if not current_user and not current_assistant:
             return
-        turns.append(HistoryTurn(
-            turn_id=uuid.uuid4().hex,
-            user="\n".join(current_user).strip(),
-            assistant="\n".join(current_assistant).strip(),
-        ))
+        turns.append(
+            HistoryTurn(
+                turn_id=uuid.uuid4().hex,
+                user="\n".join(current_user).strip(),
+                assistant="\n".join(current_assistant).strip(),
+            )
+        )
         current_user, current_assistant, mode = [], [], None
 
     for line in text.splitlines():
@@ -68,13 +70,13 @@ def parse_history_text(history_text: str) -> list[HistoryTurn]:
 
 def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
     """Parse JSON message array into structured HistoryTurn objects.
-    
+
     Accepts the standard chat format: [{role: "user", content: "..."}, ...]
     Groups consecutive user/assistant messages into turns.
-    
+
     Args:
         messages: List of {role, content} dicts. Role must be "user" or "assistant".
-        
+
     Returns:
         List of HistoryTurn objects with generated UUIDs.
     """
@@ -89,11 +91,13 @@ def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
         nonlocal current_user, current_assistant
         if not current_user and not current_assistant:
             return
-        turns.append(HistoryTurn(
-            turn_id=uuid.uuid4().hex,
-            user="\n\n".join(current_user).strip(),
-            assistant="\n\n".join(current_assistant).strip(),
-        ))
+        turns.append(
+            HistoryTurn(
+                turn_id=uuid.uuid4().hex,
+                user="\n\n".join(current_user).strip(),
+                assistant="\n\n".join(current_assistant).strip(),
+            )
+        )
         current_user, current_assistant = [], []
 
     for msg in messages:
@@ -116,13 +120,13 @@ def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
 
 def parse_history_as_tuples(history_text: str) -> list[tuple[str, str]]:
     """Parse history text into (user, assistant) tuples.
-    
+
     This is a convenience wrapper around parse_history_text for callers
     that need the simpler tuple format (e.g., prompt builders).
-    
+
     Args:
         history_text: Raw history in "User: X\nAssistant: Y" format
-        
+
     Returns:
         List of (user_text, assistant_text) tuples
     """
@@ -135,4 +139,3 @@ __all__ = [
     "parse_history_messages",
     "parse_history_as_tuples",
 ]
-

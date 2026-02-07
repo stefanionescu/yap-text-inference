@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import os
+import contextlib
 import json
+import os
 from typing import Any
 
 from ..utils.template import generate_readme
@@ -17,15 +18,10 @@ def _env_flag(name: str, default: bool) -> bool:
 
 
 def _gather_runtime_metadata() -> dict[str, Any]:
-    kv_dtype = (
-        os.getenv("KV_DTYPE")
-        or os.getenv("VLLM_KV_CACHE_DTYPE")
-        or os.getenv("KV_CACHE_DTYPE")
-        or "auto"
-    )
+    kv_dtype = os.getenv("KV_DTYPE") or os.getenv("VLLM_KV_CACHE_DTYPE") or os.getenv("KV_CACHE_DTYPE") or "auto"
     use_v1 = _env_flag("VLLM_USE_V1", True)
     paged_attention = _env_flag("VLLM_PAGED_ATTENTION", True)
-    kv_reuse = _env_flag("VLLM_KV_CACHE_REUSE", True if use_v1 else False)
+    kv_reuse = _env_flag("VLLM_KV_CACHE_REUSE", bool(use_v1))
     return {
         "kv_cache_dtype": kv_dtype,
         "vllm_use_v1": use_v1,
@@ -58,12 +54,8 @@ def save_quantization_metadata(
         "runtime_config": runtime_metadata,
         "runtime_engine": runtime_metadata["engine_name"],
         "runtime_kv_cache_dtype": runtime_metadata["kv_cache_dtype"],
-        "runtime_kv_cache_reuse": "enabled"
-        if runtime_metadata["kv_cache_reuse"]
-        else "disabled",
-        "runtime_paged_attention": "enabled"
-        if runtime_metadata["paged_attention"]
-        else "disabled",
+        "runtime_kv_cache_reuse": "enabled" if runtime_metadata["kv_cache_reuse"] else "disabled",
+        "runtime_paged_attention": "enabled" if runtime_metadata["paged_attention"] else "disabled",
     }
 
     if dataset_info:
@@ -96,8 +88,5 @@ def save_quantization_metadata(
         print(f"[awq] Warning: failed to write README ({exc})")
 
     marker = os.path.join(output_dir, ".awq_ok")
-    try:
-        with open(marker, "w", encoding="utf-8") as file:
-            file.write("ok")
-    except Exception:
-        pass
+    with contextlib.suppress(Exception), open(marker, "w", encoding="utf-8") as file:
+        file.write("ok")

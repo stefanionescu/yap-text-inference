@@ -13,21 +13,24 @@ The functions are organized in logical sections:
 
 from __future__ import annotations
 
-import os
+import contextlib
 import logging
-from typing import Any
+import os
+import stat
 from collections.abc import Callable
+from typing import Any
 
-logger = logging.getLogger(__name__)
-
-from src.helpers.models import is_local_model_path
+from src.config import AWQ_METADATA_FILENAME, QUANT_CONFIG_FILENAMES, UNSUPPORTED_QUANT_DTYPE_FIELDS
 from src.config.quantization import QUANT_NAME_MAPPING
 from src.helpers.io import read_json_file, write_json_file
-from src.config import AWQ_METADATA_FILENAME, QUANT_CONFIG_FILENAMES, UNSUPPORTED_QUANT_DTYPE_FIELDS
+from src.helpers.models import is_local_model_path
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Sanitization - Remove unsupported fields from quant configs
 # ============================================================================
+
 
 def sanitize_quant_metadata(model_path: str) -> None:
     """Remove unsupported dtype keys from local or cached remote config files."""
@@ -83,33 +86,27 @@ def _sanitize_remote_configs(model_path: str) -> None:
 
 def _sanitize_config_file(path: str) -> None:
     """Sanitize a single JSON config file by removing unsupported fields."""
-    import stat
-    
     payload = read_json_file(path)
     if payload is None:
         return
     if not strip_unsupported_fields(payload):
         return
-    
+
     # HF cache blobs are often read-only; try to make writable before writing
     original_mode = None
-    try:
+    with contextlib.suppress(OSError):
         file_stat = os.stat(path)
         if not (file_stat.st_mode & stat.S_IWUSR):
             original_mode = file_stat.st_mode
             os.chmod(path, file_stat.st_mode | stat.S_IWUSR)
-    except OSError:
-        pass  # If we can't check/change permissions, try writing anyway
-    
+
     success = write_json_file(path, payload)
-    
+
     # Restore original permissions if we changed them
     if original_mode is not None:
-        try:
+        with contextlib.suppress(OSError):
             os.chmod(path, original_mode)
-        except OSError:
-            pass
-    
+
     if success:
         logger.info(
             "[config] Sanitized quantization metadata for %s: removed %s",
@@ -123,7 +120,7 @@ def _sanitize_config_file(path: str) -> None:
 def _get_hf_download_fn() -> Callable[[str, str], str | None] | None:
     """Return a function to download files from HuggingFace, or None if unavailable."""
     try:
-        from huggingface_hub import hf_hub_download
+        from huggingface_hub import hf_hub_download  # noqa: PLC0415
     except Exception as exc:
         logger.warning("[config] huggingface_hub not available: %s", exc)
         return None
@@ -150,9 +147,10 @@ def _get_hf_download_fn() -> Callable[[str, str], str | None] | None:
 # Detection - Find and parse quantization metadata
 # ============================================================================
 
+
 def detect_quant_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Detect quantization backend from local or remote model configs.
-    
+
     Attempts local detection first, then remote HuggingFace if needed.
     Also sanitizes any unsupported dtype fields found.
     """
@@ -193,6 +191,7 @@ def log_quant_detection(model_path: str, method: str, payload: dict[str, Any]) -
 # Resolution - Resolve model origins and normalize quant names
 # ============================================================================
 
+
 def _detect_from_configs(
     file_resolver: Callable[[str], str | None],
 ) -> tuple[str | None, dict[str, Any]]:
@@ -226,7 +225,7 @@ def _detect_remote(model_path: str) -> tuple[str | None, dict[str, Any]]:
     """Inspect remote Hugging Face repos for quantization metadata."""
     if not model_path or "/" not in model_path or is_local_model_path(model_path):
         return None, {}
-    
+
     download_fn = _get_hf_download_fn()
     if download_fn is None:
         return None, {}
@@ -309,4 +308,3 @@ __all__ = [
     # Re-exports
     "UNSUPPORTED_QUANT_DTYPE_FIELDS",
 ]
-

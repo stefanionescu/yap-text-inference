@@ -37,4 +37,3 @@ vllm_get_version() {
   local python_exec="${1:-python}"
   "${python_exec}" -m src.scripts.vllm.detection version 2>/dev/null || echo "unknown"
 }
-

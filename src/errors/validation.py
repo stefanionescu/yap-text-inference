@@ -7,11 +7,11 @@ message and a machine-parseable error code for API responses.
 
 class ValidationError(Exception):
     """Structured validation failure with error code metadata.
-    
+
     This exception is raised when input validation fails. It carries
     both an error_code (for programmatic handling) and a message
     (for human-readable error responses).
-    
+
     Attributes:
         error_code: Machine-parseable error identifier.
         message: Human-readable error description.
@@ -24,4 +24,3 @@ class ValidationError(Exception):
 
 
 __all__ = ["ValidationError"]
-

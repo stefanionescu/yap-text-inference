@@ -6,11 +6,12 @@ Uses stream filtering to catch C++ output that bypasses Python logging.
 
 from __future__ import annotations
 
+import contextlib
 import io
+import logging
 import os
 import re
 import sys
-import logging
 import warnings
 from collections.abc import Iterable
 
@@ -19,7 +20,7 @@ from src.config.filters import TRTLLM_NOISE_PATTERNS
 logger = logging.getLogger("log_filter")
 
 # Track whether streams have been patched to avoid double-patching
-_STREAMS_PATCHED = False
+_STATE = {"streams_patched": False}
 
 
 class NoiseFilterStream:
@@ -90,8 +91,7 @@ def is_trt_noise(
 
 def _install_stream_filters() -> None:
     """Install stdout/stderr wrappers that drop common TRT-LLM noise."""
-    global _STREAMS_PATCHED
-    if _STREAMS_PATCHED:
+    if _STATE["streams_patched"]:
         return
 
     try:
@@ -102,7 +102,7 @@ def _install_stream_filters() -> None:
             sys.__stdout__ = NoiseFilterStream(sys.__stdout__, TRTLLM_NOISE_PATTERNS)
         if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
             sys.__stderr__ = NoiseFilterStream(sys.__stderr__, TRTLLM_NOISE_PATTERNS)
-        _STREAMS_PATCHED = True
+        _STATE["streams_patched"] = True
     except Exception as exc:  # pragma: no cover
         logger.debug("failed to wrap stdio for TRT log filtering: %s", exc)
 
@@ -133,11 +133,10 @@ def _suppress_warnings() -> None:
 
 def _suppress_datasets_progress() -> None:
     """Suppress datasets library progress bars."""
-    try:
-        from datasets import disable_progress_bars as datasets_disable_progress
+    with contextlib.suppress(Exception):
+        from datasets import disable_progress_bars as datasets_disable_progress  # noqa: PLC0415
+
         datasets_disable_progress()
-    except Exception:
-        pass
 
 
 def configure_trt_logging() -> None:
@@ -171,79 +170,75 @@ def configure_trt_logging() -> None:
 
 def configure_trt_logger() -> None:
     """Configure TRT-LLM logger after the library is imported.
-    
+
     This must be called AFTER tensorrt_llm is imported but BEFORE
     creating any LLM instances. It sets the C++ logger level directly.
     """
     try:
-        from tensorrt_llm import logger as trt_logger
+        from tensorrt_llm import logger as trt_logger  # noqa: PLC0415
+    except ImportError:
+        return
 
-        # Set to error-only (suppress INFO, WARNING)
+    with contextlib.suppress(Exception):
         if hasattr(trt_logger, "set_level"):
             trt_logger.set_level("error")
-    except ImportError:
-        pass  # tensorrt_llm not installed
-    except Exception:
-        pass  # Best effort - don't crash if API changed
 
 
 class SuppressedFDContext:
     """Context manager that suppresses C++ stdout/stderr by redirecting file descriptors.
-    
+
     This is necessary because TensorRT-LLM's C++ code writes directly to file
     descriptors, bypassing Python's sys.stdout/stderr wrappers.
     """
-    
+
     def __init__(self, suppress_stdout: bool = True, suppress_stderr: bool = True):
         self._suppress_stdout = suppress_stdout
         self._suppress_stderr = suppress_stderr
         self._saved_stdout_fd: int | None = None
         self._saved_stderr_fd: int | None = None
         self._devnull: int | None = None
-    
+
     def __enter__(self) -> SuppressedFDContext:
         # Flush all Python and C stdio buffers before redirecting
         sys.stdout.flush()
         sys.stderr.flush()
-        try:
-            import ctypes
+        with contextlib.suppress(Exception):
+            import ctypes  # noqa: PLC0415
+
             libc = ctypes.CDLL(None)
             libc.fflush(None)  # Flush all C stdio streams
-        except Exception:
-            pass
-        
+
         self._devnull = os.open(os.devnull, os.O_WRONLY)
-        
+
         if self._suppress_stdout:
             self._saved_stdout_fd = os.dup(1)
             os.dup2(self._devnull, 1)
-        
+
         if self._suppress_stderr:
             self._saved_stderr_fd = os.dup(2)
             os.dup2(self._devnull, 2)
-        
+
         return self
-    
+
     def __exit__(self, *args) -> None:
         # Flush any remaining output before restoring
-        try:
-            import ctypes
+        with contextlib.suppress(Exception):
+            import ctypes  # noqa: PLC0415
+
             libc = ctypes.CDLL(None)
             libc.fflush(None)
-        except Exception:
-            pass
-        
+
         sys.stdout.flush()
         sys.stderr.flush()
-        
+
         if self._saved_stdout_fd is not None:
             os.dup2(self._saved_stdout_fd, 1)
             os.close(self._saved_stdout_fd)
-        
+
         if self._saved_stderr_fd is not None:
             os.dup2(self._saved_stderr_fd, 2)
             os.close(self._saved_stderr_fd)
-        
+
         if self._devnull is not None:
             os.close(self._devnull)
 
@@ -255,4 +250,3 @@ __all__ = [
     "NoiseFilterStream",
     "is_trt_noise",
 ]
-

@@ -11,14 +11,12 @@ import os
 
 from tests.helpers.env import get_float_env
 
-from .defaults import IDLE_GRACE_DEFAULT, IDLE_EXPECT_DEFAULT, IDLE_NORMAL_WAIT_DEFAULT
+from .defaults import IDLE_EXPECT_DEFAULT, IDLE_GRACE_DEFAULT, IDLE_NORMAL_WAIT_DEFAULT
 
 # Resolve idle expect fallback: prefer WS_IDLE_TIMEOUT_S if set, else use default
 _ws_idle_raw = os.getenv("WS_IDLE_TIMEOUT_S")
 _idle_expect_fallback = (
-    float(_ws_idle_raw)
-    if _ws_idle_raw is not None and _ws_idle_raw.strip()
-    else IDLE_EXPECT_DEFAULT
+    float(_ws_idle_raw) if _ws_idle_raw is not None and _ws_idle_raw.strip() else IDLE_EXPECT_DEFAULT
 )
 
 IDLE_NORMAL_WAIT_SECONDS = get_float_env(

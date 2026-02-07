@@ -56,16 +56,16 @@ def clear_tool_request_id(state: SessionState) -> None:
 
 def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
     """Check if a request has been cancelled or superseded.
-    
+
     A request is considered cancelled if:
     - The session doesn't exist
     - The session's active_request_id is CANCELLED_SENTINEL
     - The session's active_request_id differs from the given request_id
-    
+
     Args:
         state: The session state, or None if session doesn't exist.
         request_id: The request ID to check.
-        
+
     Returns:
         True if the request should be considered cancelled.
     """
@@ -85,10 +85,10 @@ def track_task(
     get_state_callback: callable,
 ) -> None:
     """Register an asyncio.Task for the session with auto-cleanup.
-    
+
     When the task completes (success, error, or cancel), the callback
     clears the task reference if it's still the current task.
-    
+
     Args:
         state: The session state to track the task on.
         task: The asyncio.Task to track.
@@ -114,7 +114,7 @@ def has_running_task(state: SessionState | None) -> bool:
 
 def cancel_session_requests(state: SessionState) -> None:
     """Mark the session as cancelled and cancel any running task.
-    
+
     Sets active_request_id to CANCELLED_SENTINEL so that any in-flight
     generation knows to stop yielding tokens.
     """
@@ -125,21 +125,17 @@ def cancel_session_requests(state: SessionState) -> None:
 
 def cleanup_session_requests(state: SessionState | None) -> dict[str, str]:
     """Extract and clear request IDs from the session.
-    
+
     Used during cleanup to capture what requests were active before
     clearing them.
-    
+
     Returns:
         Dict with 'active' and 'tool' keys containing the request IDs
         (empty strings if none were set).
     """
     if not state:
         return {"active": "", "tool": ""}
-    active_req = (
-        state.active_request_id
-        if state.active_request_id not in (None, CANCELLED_SENTINEL)
-        else ""
-    )
+    active_req = state.active_request_id if state.active_request_id not in (None, CANCELLED_SENTINEL) else ""
     tool_req = state.tool_request_id or ""
     state.active_request_id = None
     state.tool_request_id = None
@@ -158,4 +154,3 @@ __all__ = [
     "cancel_session_requests",
     "cleanup_session_requests",
 ]
-

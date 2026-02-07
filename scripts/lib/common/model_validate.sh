@@ -15,12 +15,12 @@ validate_models_early() {
   # Run lightweight validation via Python module
   # Environment variables are read directly by the Python script
   if ! PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
-       DEPLOY_MODE="${DEPLOY_MODE:-both}" \
-       CHAT_MODEL="${CHAT_MODEL:-}" \
-       TOOL_MODEL="${TOOL_MODEL:-}" \
-       CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}" \
-       INFERENCE_ENGINE="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}" \
-       "${python_cmd}" -m src.scripts.validate; then
+    DEPLOY_MODE="${DEPLOY_MODE:-both}" \
+    CHAT_MODEL="${CHAT_MODEL:-}" \
+    TOOL_MODEL="${TOOL_MODEL:-}" \
+    CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}" \
+    INFERENCE_ENGINE="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}" \
+    "${python_cmd}" -m src.scripts.validate; then
     log_err "[validate] ✗ Model validation failed - check model names and allowlists"
     return 1
   fi

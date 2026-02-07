@@ -14,9 +14,9 @@ source "${_RESTART_BASIC_DIR}/../noise/logging.sh"
 # This is ONLY called when --install-deps is passed (explicit user request)
 wipe_dependencies_for_reinstall() {
   local root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-  
+
   log_info "[deps] Wiping all dependencies for clean reinstall..."
-  
+
   cleanup_venvs "${root}"
   cleanup_repo_pip_cache "${root}"
   cleanup_repo_runtime_caches "${root}"
@@ -25,14 +25,14 @@ wipe_dependencies_for_reinstall() {
   cleanup_system_compiler_caches
   cleanup_system_nvidia_caches
   cleanup_pip_caches
-  
+
   # Remove dep hash markers (forces full reinstall)
   rm -f "${root}/.venv/.req_hash" 2>/dev/null || true
   rm -f "${root}/.run/trt_quant_deps_installed" 2>/dev/null || true
-  
+
   # Clean temp directories
   cleanup_tmp_dirs
-  
+
   log_info "[deps] ✓ All dependency caches wiped. Models, HF cache, TRT repo preserved."
 }
 
@@ -41,19 +41,19 @@ run_install_deps_if_needed() {
   if [ "${INSTALL_DEPS:-0}" != "1" ]; then
     return 0
   fi
-  
+
   log_section "[restart] Reinstalling all dependencies from scratch..."
-  
+
   # Wipe all existing pip dependencies and caches for clean install
   # Preserves models, HF cache, TRT repo (if same engine)
   wipe_dependencies_for_reinstall
-  
+
   # Ensure correct Python version is available (TRT needs 3.10, vLLM uses system python)
   INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
     log_err "[restart] ✗ Failed to set up Python environment"
     exit 1
   }
-  
+
   # Reinstall all dependencies from scratch (force mode)
   FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
 }
@@ -84,7 +84,7 @@ run_basic_restart() {
   # Non-AWQ path
   # shellcheck disable=SC2153  # DEPLOY_MODE is set by the caller via env
   local SELECTED_DEPLOY="${DEPLOY_MODE:-}"
-  if [ -z "${SELECTED_DEPLOY}" ] || ! [[ "${SELECTED_DEPLOY}" =~ ^(both|chat|tool)$ ]]; then
+  if [ -z "${SELECTED_DEPLOY}" ] || ! [[ ${SELECTED_DEPLOY} =~ ^(both|chat|tool)$ ]]; then
     SELECTED_DEPLOY="${DEPLOY_MODE:-${LAST_DEPLOY:-both}}"
   fi
 
@@ -163,9 +163,9 @@ run_basic_restart() {
   log_blank
 
   mkdir -p "${ROOT_DIR}/.run"
-  setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >> "${SERVER_LOG_PATH}" 2>&1 &
+  setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >>"${SERVER_LOG_PATH}" 2>&1 &
   local BG_PID=$!
-  echo "${BG_PID}" > "${ROOT_DIR}/.run/deployment.pid"
+  echo "${BG_PID}" >"${ROOT_DIR}/.run/deployment.pid"
 
   log_info "[restart] ✓ Server started. Logs: tail -f server.log"
   local warmup_lock="${ROOT_DIR}/.run/warmup.lock"

@@ -7,10 +7,13 @@ error breakdown, and phase-separated metrics for double-ttfb mode.
 from __future__ import annotations
 
 import os
-from typing import Any
 from collections.abc import Iterable
+from typing import Any
 
-from tests.helpers.fmt import dim, red, bold, green, section_header
+from tests.helpers.fmt import bold, dim, green, red, section_header
+
+PHASE_FIRST = 1
+PHASE_SECOND = 2
 
 # ============================================================================
 # Internal Helpers
@@ -91,7 +94,7 @@ def _print_latency_section(ok_results: Iterable[dict[str, Any]], prefix: str = "
         ("3-words", first_3_words),
         ("sentence", first_sentence),
     ]
-    
+
     for label, samples in metrics:
         line = _format_latency_line(label, samples)
         if line:
@@ -125,11 +128,11 @@ def print_report(
     total_transactions = len(results)
 
     print(f"\n{section_header('BENCHMARK RESULTS')}")
-    
+
     # Summary line
     ok_str = green(str(len(ok))) if ok else str(len(ok))
     err_str = red(str(len(errs))) if errs else str(len(errs))
-    
+
     if not double_ttfb:
         print(dim(f"  url: {url}"))
         print(dim(f"  requests: {requests}  concurrency: {concurrency}"))
@@ -139,8 +142,8 @@ def print_report(
         print(dim(f"  url: {url}"))
         print(dim(f"  connections: {requests}  transactions: {total_transactions}  concurrency: {concurrency}"))
         print(f"  results: {ok_str} ok, {err_str} errors")
-        _print_tagged_section("first", [r for r in results if r.get("phase") == 1])
-        _print_tagged_section("second", [r for r in results if r.get("phase") == 2])
+        _print_tagged_section("first", [r for r in results if r.get("phase") == PHASE_FIRST])
+        _print_tagged_section("second", [r for r in results if r.get("phase") == PHASE_SECOND])
 
     if errs:
         print()

@@ -24,7 +24,7 @@ normalize_positive_int() {
     current_val="${default_val}"
   fi
 
-  if ! [[ "${current_val}" =~ ^[0-9]+$ ]] || (( current_val < 1 )); then
+  if ! [[ ${current_val} =~ ^[0-9]+$ ]] || ((current_val < 1)); then
     current_val="${default_val}"
   fi
 

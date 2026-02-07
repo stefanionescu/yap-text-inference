@@ -8,34 +8,34 @@ of each client type:
 
 from __future__ import annotations
 
-import json
 import asyncio
+import json
 from typing import Any
 
 import websockets
 
+from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
 from tests.helpers.fmt import dim
-from tests.state import SessionContext
-from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.websocket import (
-    iter_messages,
-    create_tracker,
-    send_client_end,
-    dispatch_message,
-    finalize_metrics,
     build_start_payload,
     connect_with_retries,
+    create_tracker,
+    dispatch_message,
+    finalize_metrics,
+    iter_messages,
+    send_client_end,
 )
-
-from .handlers import build_recovery_handlers
-from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
 from tests.state import (
     CancelClientResult,
     CancelPhaseResult,
     DrainPhaseResult,
     NormalClientResult,
     RecoveryPhaseResult,
+    SessionContext,
 )
+
+from .handlers import build_recovery_handlers
+from .phases import run_cancel_phase, run_drain_phase, run_recovery_phase
 
 
 async def run_normal_client(
@@ -160,13 +160,10 @@ async def run_canceling_client(
         Combined result of cancel, drain, and recovery phases.
     """
     cancel_result = CancelPhaseResult(
-        passed=False, cancelled=False, tokens_received=0,
-        chars_received=0, ack_seen=False, error="connection failed"
+        passed=False, cancelled=False, tokens_received=0, chars_received=0, ack_seen=False, error="connection failed"
     )
     drain_result = DrainPhaseResult(passed=False, spurious_messages=0, error="skipped")
-    recovery_result = RecoveryPhaseResult(
-        passed=False, response_text="", metrics={}, error="skipped"
-    )
+    recovery_result = RecoveryPhaseResult(passed=False, response_text="", metrics={}, error="skipped")
 
     try:
         async with connect_with_retries(
@@ -178,9 +175,7 @@ async def run_canceling_client(
             )
         ) as ws:
             # Phase 1: Cancel
-            cancel_result = await run_cancel_phase(
-                ws, ctx, user_msg, recv_timeout, cancel_delay
-            )
+            cancel_result = await run_cancel_phase(ws, ctx, user_msg, recv_timeout, cancel_delay)
 
             # Phase 2: Drain (only if cancel succeeded)
             if cancel_result.passed:
@@ -192,9 +187,7 @@ async def run_canceling_client(
 
             # Phase 3: Recovery (only if drain succeeded)
             if drain_result.passed:
-                recovery_result = await run_recovery_phase(
-                    ws, ctx, user_msg, recv_timeout, post_cancel_wait
-                )
+                recovery_result = await run_recovery_phase(ws, ctx, user_msg, recv_timeout, post_cancel_wait)
             else:
                 recovery_result = RecoveryPhaseResult(
                     passed=False, response_text="", metrics={}, error="skipped due to drain failure"
@@ -207,8 +200,12 @@ async def run_canceling_client(
 
     except Exception as exc:  # noqa: BLE001
         cancel_result = CancelPhaseResult(
-            passed=False, cancelled=False, tokens_received=0,
-            chars_received=0, ack_seen=False, error=f"connection failed: {exc}"
+            passed=False,
+            cancelled=False,
+            tokens_received=0,
+            chars_received=0,
+            ack_seen=False,
+            error=f"connection failed: {exc}",
         )
         recovery_done.set()
 

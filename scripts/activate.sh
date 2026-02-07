@@ -43,7 +43,7 @@ runtime_init_repo_paths "${ROOT_DIR}"
 
 launch_bash_shell() {
   local rc_file="${RUN_DIR}/activate.bashrc"
-  cat > "${rc_file}" <<EOF
+  cat >"${rc_file}" <<EOF
 if [ -f "\${HOME}/.bashrc" ]; then
   source "\${HOME}/.bashrc"
 fi
@@ -60,7 +60,7 @@ case "${shell_name}" in
   zsh)
     zdotdir="${RUN_DIR}/activate-zdotdir"
     mkdir -p "${zdotdir}"
-    cat > "${zdotdir}/.zshrc" <<EOF
+    cat >"${zdotdir}/.zshrc" <<EOF
 if [ -f "\${HOME}/.zshrc" ]; then
   source "\${HOME}/.zshrc"
 fi

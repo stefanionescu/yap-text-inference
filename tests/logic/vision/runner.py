@@ -12,32 +12,32 @@ import uuid
 
 import websockets
 
-from tests.state import SessionContext, StreamState
-from tests.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
-from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
 from tests.helpers.fmt import (
     dim,
-    red,
-    green,
-    yellow,
-    format_user,
-    section_header,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
+    format_user,
+    green,
+    red,
+    section_header,
+    yellow,
 )
 from tests.helpers.websocket import (
-    record_token,
-    with_api_key,
-    iter_messages,
     build_envelope,
+    build_start_payload,
     create_tracker,
+    finalize_metrics,
+    iter_messages,
+    record_token,
     record_toolcall,
     send_client_end,
-    finalize_metrics,
-    build_start_payload,
+    with_api_key,
 )
+from tests.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
+from tests.state import SessionContext, StreamState
 
 # ============================================================================
 # Internal Helpers

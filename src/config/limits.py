@@ -38,7 +38,7 @@ from ..helpers.env import env_flag, resolve_batch_scale_gpu_frac_cap
 # Total budget breakdown: 1500 persona + 3000 history + 500 user + 25 buffer
 
 CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # Total context window
-CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))   # Max generation tokens
+CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))  # Max generation tokens
 PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
 
 # Chat sampling override limits (optional client-provided values)
@@ -76,10 +76,12 @@ USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "500"))
 # WebSocket message/cancel rate limits (rolling window)
 WS_MESSAGE_WINDOW_SECONDS = float(os.getenv("WS_MESSAGE_WINDOW_SECONDS", "60"))
 WS_MAX_MESSAGES_PER_WINDOW = int(os.getenv("WS_MAX_MESSAGES_PER_WINDOW", "25"))
-WS_CANCEL_WINDOW_SECONDS = float(os.getenv(
-    "WS_CANCEL_WINDOW_SECONDS",
-    str(WS_MESSAGE_WINDOW_SECONDS),
-))
+WS_CANCEL_WINDOW_SECONDS = float(
+    os.getenv(
+        "WS_CANCEL_WINDOW_SECONDS",
+        str(WS_MESSAGE_WINDOW_SECONDS),
+    )
+)
 WS_MAX_CANCELS_PER_WINDOW = int(os.getenv("WS_MAX_CANCELS_PER_WINDOW", str(WS_MAX_MESSAGES_PER_WINDOW)))
 
 # Exact tokenization for trimming (uses Hugging Face tokenizer); fast on CPU

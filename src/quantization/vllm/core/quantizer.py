@@ -5,13 +5,13 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from src.helpers.calibration import TotalLengthPolicy, resolve_total_len
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT, MOE_CALIBRATION_SAMPLES_LIMIT
-
-from .llmcompressor import quantize
+from src.helpers.calibration import TotalLengthPolicy, resolve_total_len
 from src.state import CalibrationConfig
+
 from ..utils import is_awq_dir, resolve_calibration_seqlen
-from ..utils.model import is_moe_model, prefetch_model, load_model_config
+from ..utils.model import is_moe_model, load_model_config, prefetch_model
+from .llmcompressor import quantize
 
 CHAT_TOTAL_POLICY = TotalLengthPolicy(
     kind="chat",
@@ -24,7 +24,8 @@ CHAT_TOTAL_POLICY = TotalLengthPolicy(
 def _is_classifier_model_path(model_path: str) -> bool:
     """Check if model path refers to a classifier model."""
     # Import here to avoid circular imports
-    from src.helpers.models import is_classifier_model
+    from src.helpers.models import is_classifier_model  # noqa: PLC0415
+
     return is_classifier_model(model_path)
 
 
@@ -33,14 +34,12 @@ def compute_chat_calibration_seqlen(requested: int) -> int:
     return resolve_total_len(requested, CHAT_TOTAL_POLICY)
 
 
-
-
 class AWQQuantizer:
     """AWQ quantization manager backed by llmcompressor."""
-    
+
     def __init__(self, config: CalibrationConfig):
         self.config = config
-        
+
     def quantize_model(
         self,
         model_path: str,
@@ -48,7 +47,7 @@ class AWQQuantizer:
         force: bool = False,
     ) -> bool:
         """Quantize a model to 4-bit AWQ using llmcompressor.
-        
+
         Raises ValueError if model is a classifier (not supported).
         """
         # Block classifier models from quantization
@@ -100,7 +99,6 @@ class AWQQuantizer:
             print(f"[awq] {calibration_kind} model calibration seqlen adjusted to {target_seqlen}")
         else:
             print(f"[awq] {calibration_kind} model calibration seqlen: {target_seqlen}")
-
 
         return quantize(
             calibration_config=self.config,

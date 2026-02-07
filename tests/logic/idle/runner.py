@@ -8,23 +8,23 @@ and invokes `run_idle_suite`.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-import asyncio
-from collections.abc import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
 import websockets
 
-from tests.helpers.websocket import send_client_end, connect_with_retries
-from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
 from tests.helpers.fmt import (
-    dim,
-    section_header,
     connection_fail,
     connection_pass,
     connection_status,
     connection_test_header,
+    dim,
+    section_header,
 )
+from tests.helpers.websocket import connect_with_retries, send_client_end
 
 
 def _open_connection(ws_url: str):
@@ -93,8 +93,7 @@ async def _test_idle_watchdog(
             raise RuntimeError("server sent data before idle close")
         except asyncio.TimeoutError:
             raise RuntimeError(
-                f"server did not close within {total_wait:.0f}s "
-                f"(expected idle timeout: {expect_seconds:.0f}s)"
+                f"server did not close within {total_wait:.0f}s (expected idle timeout: {expect_seconds:.0f}s)"
             ) from None
         except websockets.ConnectionClosed as exc:
             print(connection_status("idle", f"server closed (code={exc.code} reason={exc.reason})"))
@@ -124,11 +123,11 @@ async def run_idle_suite(
     ]
 
     print(f"\n{section_header('IDLE TESTS')}\n")
-    
+
     success = True
     passed = 0
     failed = 0
-    
+
     for label, factory in tests:
         print(connection_test_header(label))
         try:
@@ -139,14 +138,14 @@ async def run_idle_suite(
             success = False
             failed += 1
             print(connection_fail(label, str(exc)))
-    
+
     # Summary
     print(f"\n{dim('─' * 40)}")
     if success:
         print(f"  All {passed} tests passed")
     else:
         print(f"  {passed} passed, {failed} failed")
-    
+
     return success
 
 

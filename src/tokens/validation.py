@@ -17,12 +17,13 @@ from __future__ import annotations
 import os
 
 from src.state import TokenizerValidationResult
+
 from ..config.deploy import HF_REPO_PATTERN
 
 
 def _is_huggingface_repo_id(path: str) -> bool:
     """Check if a path looks like a HuggingFace repo ID.
-    
+
     HuggingFace repo IDs have the format: org/model-name or user/model-name
     This is distinct from local paths which typically start with / or ./
     """
@@ -37,13 +38,13 @@ def _is_huggingface_repo_id(path: str) -> bool:
 
 def validate_tokenizer_exists(model_path: str) -> TokenizerValidationResult:
     """Validate that a tokenizer exists locally for the given model.
-    
+
     For local directories: Checks for tokenizer.json or tokenizer_config.json.
     For HuggingFace repo IDs: Skips validation (tokenizer fetched at load time).
-    
+
     Args:
         model_path: Local directory path or HuggingFace repo ID.
-        
+
     Returns:
         TokenizerValidationResult with validation status and details.
     """
@@ -120,15 +121,15 @@ def validate_model_tokenizer(
     deploy_enabled: bool,
 ) -> str | None:
     """Validate tokenizer for a model if deployment is enabled.
-    
+
     This is a convenience wrapper for startup validation. Returns an
     error message if validation fails, None if successful or skipped.
-    
+
     Args:
         model_path: Path to the model directory (may be None if not configured).
         model_name: Human-readable name for error messages (e.g., "CHAT_MODEL").
         deploy_enabled: Whether this model is configured for deployment.
-        
+
     Returns:
         Error message string if validation failed, None otherwise.
     """

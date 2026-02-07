@@ -7,7 +7,7 @@ to signal cooperative cancellation.
 
 class StreamCancelledError(Exception):
     """Raised when a cooperative cancel check requests termination.
-    
+
     This exception is used for clean stream termination when the
     cancel_check callback returns True. It allows callers to
     distinguish cancellation from other errors.
@@ -15,4 +15,3 @@ class StreamCancelledError(Exception):
 
 
 __all__ = ["StreamCancelledError"]
-

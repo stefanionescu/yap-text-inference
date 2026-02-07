@@ -26,6 +26,7 @@ from tests.state import PersonaDefinition
 # Registry
 # ============================================================================
 
+
 class PersonaRegistry:
     """Reloadable registry backed by `tests/prompts/detailed.py`."""
 
@@ -35,10 +36,7 @@ class PersonaRegistry:
 
     def _reload(self):
         """Import or reload the persona module."""
-        if self._module is None:
-            module = importlib.import_module(self._module_name)
-        else:
-            module = importlib.reload(self._module)
+        module = importlib.import_module(self._module_name) if self._module is None else importlib.reload(self._module)
         self._module = module
         return module
 
@@ -47,10 +45,7 @@ class PersonaRegistry:
         module = self._reload()
         personalities = getattr(module, "PERSONALITIES", None)
         if not isinstance(personalities, dict):
-            raise RuntimeError(
-                f"{self._module_name}.PERSONALITIES must be a dict, "
-                f"got {type(personalities)!r}"
-            )
+            raise RuntimeError(f"{self._module_name}.PERSONALITIES must be a dict, got {type(personalities)!r}")
         return personalities
 
     def load_all(self) -> dict[str, PersonaDefinition]:
@@ -59,17 +54,13 @@ class PersonaRegistry:
         resolved: dict[str, PersonaDefinition] = {}
         for name, payload in raw.items():
             if not isinstance(payload, dict):
-                raise RuntimeError(
-                    f"Persona '{name}' must map to a dict, got {type(payload)!r}"
-                )
+                raise RuntimeError(f"Persona '{name}' must map to a dict, got {type(payload)!r}")
             try:
                 raw_gender = str(payload["gender"]).strip()
                 raw_personality = str(payload["personality"]).strip()
                 prompt = str(payload["prompt"])
             except KeyError as err:
-                raise RuntimeError(
-                    f"Persona '{name}' missing required field: {err.args[0]}"
-                ) from err
+                raise RuntimeError(f"Persona '{name}' missing required field: {err.args[0]}") from err
             gender = normalize_gender(raw_gender) or raw_gender
             resolved[name.lower()] = PersonaDefinition(
                 name=name,
@@ -89,9 +80,7 @@ class PersonaRegistry:
             return resolved[lookup]
         except KeyError as err:
             available = ", ".join(sorted(resolved))
-            raise ValueError(
-                f"unknown persona '{name}'. Available: {available}"
-            ) from err
+            raise ValueError(f"unknown persona '{name}'. Available: {available}") from err
 
     def available_names(self) -> list[str]:
         """Return a sorted list of all available persona names."""

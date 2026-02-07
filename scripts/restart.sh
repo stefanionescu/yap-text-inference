@@ -121,7 +121,11 @@ USAGE
 if ! parse_args "$@"; then
   usage
 fi
-case "${DEPLOY_MODE}" in both|chat|tool) : ;; *) log_warn "[restart] ⚠ Invalid deploy mode '${DEPLOY_MODE}'"; usage ;; esac
+case "${DEPLOY_MODE}" in both | chat | tool) : ;; *)
+  log_warn "[restart] ⚠ Invalid deploy mode '${DEPLOY_MODE}'"
+  usage
+  ;;
+esac
 export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 
 # If running TRT, ensure CUDA 13.x toolkit AND driver before heavy work
@@ -156,8 +160,8 @@ if [ "${ENGINE_SWITCH_RESULT}" = "0" ]; then
   # Pass quantization if specified
   if [ -n "${RECONFIG_CHAT_QUANTIZATION:-}" ]; then
     case "${RECONFIG_CHAT_QUANTIZATION}" in
-      4bit|4BIT) main_args+=("4bit") ;;
-      8bit|8BIT) main_args+=("8bit") ;;
+      4bit | 4BIT) main_args+=("4bit") ;;
+      8bit | 8BIT) main_args+=("8bit") ;;
     esac
   fi
 

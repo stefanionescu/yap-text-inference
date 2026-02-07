@@ -208,7 +208,7 @@ cleanup_pip_caches() {
   # Use the detected venv python if available
   local venv_python
   venv_python="$(get_venv_python)"
-  
+
   # Try venv python first, then fall back to system python
   local py_cmd=""
   if [ -x "${venv_python}" ]; then
@@ -218,14 +218,14 @@ cleanup_pip_caches() {
   elif command -v python >/dev/null 2>&1; then
     py_cmd="python"
   fi
-  
+
   if [ -n "${py_cmd}" ]; then
     "${py_cmd}" -m pip cache purge >/dev/null 2>&1 || true
     local sys_cache
     sys_cache=$("${py_cmd}" -m pip cache dir 2>/dev/null || true)
     [ -n "${sys_cache}" ] && [ -d "${sys_cache}" ] && rm -rf "${sys_cache}" || true
   fi
-  
+
   _cleanup_remove_dirs \
     "$HOME/.cache/pip" "/root/.cache/pip" "/workspace/.cache/pip" "${PIP_CACHE_DIR:-}"
 }

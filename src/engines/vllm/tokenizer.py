@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import inspect
 import logging
+import os
 from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -14,8 +14,7 @@ from src.helpers.profiles import get_model_profile, normalize_model_id
 
 logger = logging.getLogger(__name__)
 
-_FIX_MISTRAL_REGEX_PATCH_INSTALLED = False
-_FIX_MISTRAL_REGEX_MARKERS: set[str] = set()
+_STATE = {"installed": False, "markers": set()}
 
 
 def _resolve_tokenizer_kwarg_key() -> str | None:
@@ -83,10 +82,8 @@ def _patch_tokenizer(model_identifier: str | None, tok_kwargs: dict[str, Any]) -
 
 def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
     """Monkeypatch AutoTokenizer to force fix_mistral_regex for specific models."""
-    global _FIX_MISTRAL_REGEX_PATCH_INSTALLED, _FIX_MISTRAL_REGEX_MARKERS
-
     try:
-        from transformers import AutoTokenizer
+        from transformers import AutoTokenizer  # noqa: PLC0415
     except Exception as exc:
         warn_once(
             "transformers_import",
@@ -98,25 +95,25 @@ def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
     if not markers:
         return False
 
-    _FIX_MISTRAL_REGEX_MARKERS.update(markers)
+    _STATE["markers"].update(markers)
 
-    if _FIX_MISTRAL_REGEX_PATCH_INSTALLED:
+    if _STATE["installed"]:
         return True
 
     original = AutoTokenizer.from_pretrained.__func__
 
     def _patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
         normalized = _normalize_tokenizer_identifier(pretrained_model_name_or_path)
-        if normalized and any(marker in normalized for marker in _FIX_MISTRAL_REGEX_MARKERS):
+        if normalized and any(marker in normalized for marker in _STATE["markers"]):
             kwargs.setdefault("fix_mistral_regex", True)
         return original(cls, pretrained_model_name_or_path, *args, **kwargs)
 
     AutoTokenizer._yap_original_from_pretrained = original
     AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)
-    _FIX_MISTRAL_REGEX_PATCH_INSTALLED = True
+    _STATE["installed"] = True
     logger.info(
         "[config] Applied AutoTokenizer monkeypatch for fix_mistral_regex (markers: %s)",
-        ", ".join(sorted(_FIX_MISTRAL_REGEX_MARKERS)),
+        ", ".join(sorted(_STATE["markers"])),
     )
     return True
 

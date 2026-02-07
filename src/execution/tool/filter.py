@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import re
 
+from src.state import FilterResult, _ScreenAction
+
 from ...config.patterns import (
-    SCREENSHOT_TAKE_X_PATTERN,
     SCREENSHOT_REJECT_PATTERNS,
+    SCREENSHOT_TAKE_X_PATTERN,
     SCREENSHOT_TRIGGER_PATTERNS,
     SCREENSHOT_TRIGGER_QUANTITIES,
 )
-from src.state import FilterResult, _ScreenAction
 
 _SCREENSHOT_REJECT_COMPILED = [re.compile(p, re.IGNORECASE) for p in SCREENSHOT_REJECT_PATTERNS]
 _SCREENSHOT_TAKE_X_COMPILED = re.compile(SCREENSHOT_TAKE_X_PATTERN, re.IGNORECASE)

@@ -40,10 +40,10 @@ def update_session_config(
     screen_checked_prefix: str | None = None,
 ) -> dict[str, Any]:
     """Update mutable persona configuration for a session.
-    
+
     Only fields that are explicitly provided (not None) are updated.
     Other fields retain their current values.
-    
+
     Args:
         state: The session state to update.
         chat_gender: New gender value, if provided.
@@ -52,7 +52,7 @@ def update_session_config(
         chat_sampling: New sampling parameters dict, if provided.
         check_screen_prefix: New check_screen prefix, if provided.
         screen_checked_prefix: New screen_checked prefix, if provided.
-        
+
     Returns:
         Dict of field names to their new values (only changed fields).
     """
@@ -75,14 +75,9 @@ def update_session_config(
 
     if chat_sampling is not None:
         sampling = chat_sampling or None
-        if isinstance(sampling, dict):
-            sampling_copy = sampling.copy()
-        else:
-            sampling_copy = None
+        sampling_copy = sampling.copy() if isinstance(sampling, dict) else None
         meta["chat_sampling"] = sampling_copy
-        changed["chat_sampling"] = (
-            sampling_copy.copy() if isinstance(sampling_copy, dict) else None
-        )
+        changed["chat_sampling"] = sampling_copy.copy() if isinstance(sampling_copy, dict) else None
 
     if check_screen_prefix is not None:
         normalized = (check_screen_prefix or "").strip() or None
@@ -110,24 +105,23 @@ def resolve_screen_prefix(
     is_checked: bool = False,
 ) -> str:
     """Resolve the appropriate screen prefix for a session.
-    
+
     Args:
         state: The session state, or None for defaults.
         default: The default prefix value to use.
         is_checked: If True, look for screen_checked_prefix.
             If False, look for check_screen_prefix.
-            
+
     Returns:
         The resolved prefix string.
     """
     resolved_default = (default or "").strip()
     if not state:
         return resolved_default
-    
+
     key = "screen_checked_prefix" if is_checked else "check_screen_prefix"
     prefix = (state.meta.get(key) or "").strip()
     return prefix or resolved_default
 
 
 __all__ = ["update_session_config", "resolve_screen_prefix"]
-

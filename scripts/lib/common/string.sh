@@ -14,7 +14,7 @@ str_to_lower() {
     echo ""
     return
   fi
-  if [[ -n "${BASH_VERSION:-}" && "${BASH_VERSION%%.*}" -ge 4 ]]; then
+  if [[ -n ${BASH_VERSION:-} && ${BASH_VERSION%%.*} -ge 4 ]]; then
     echo "${value,,}"
   else
     echo "${value}" | tr '[:upper:]' '[:lower:]'
@@ -30,7 +30,7 @@ str_to_upper() {
     echo ""
     return
   fi
-  if [[ -n "${BASH_VERSION:-}" && "${BASH_VERSION%%.*}" -ge 4 ]]; then
+  if [[ -n ${BASH_VERSION:-} && ${BASH_VERSION%%.*} -ge 4 ]]; then
     echo "${value^^}"
   else
     echo "${value}" | tr '[:lower:]' '[:upper:]'
@@ -53,7 +53,7 @@ str_trim() {
 str_contains() {
   local haystack="${1:-}"
   local needle="${2:-}"
-  [[ "${haystack}" == *"${needle}"* ]]
+  [[ ${haystack} == *"${needle}"* ]]
 }
 
 # Check if a string contains any of the provided substrings.
@@ -69,4 +69,3 @@ str_contains_any() {
   done
   return 1
 }
-

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import time
 import asyncio
 import collections
+import time
 from collections import deque
 
 
@@ -49,4 +49,3 @@ class SlidingWindowPacer:
 
 
 __all__ = ["SlidingWindowPacer"]
-

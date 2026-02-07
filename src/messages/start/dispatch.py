@@ -23,14 +23,15 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
-from ...config.timeouts import TOOL_TIMEOUT_S
-from ...config import DEPLOY_CHAT, DEPLOY_TOOL
-from ...execution.executor import run_execution
-from ...execution.tool.runner import run_toolcall
-from ...execution.tool.parser import parse_tool_result
-from ...execution.chat.runner import run_chat_generation
-from ...handlers.websocket.helpers import send_toolcall, safe_send_envelope, stream_chat_response
 from src.state import StartPlan
+
+from ...config import DEPLOY_CHAT, DEPLOY_TOOL
+from ...config.timeouts import TOOL_TIMEOUT_S
+from ...execution.chat.runner import run_chat_generation
+from ...execution.executor import run_execution
+from ...execution.tool.parser import parse_tool_result
+from ...execution.tool.runner import run_toolcall
+from ...handlers.websocket.helpers import safe_send_envelope, send_toolcall, stream_chat_response
 
 if TYPE_CHECKING:
     from fastapi import WebSocket
@@ -41,12 +42,12 @@ logger = logging.getLogger(__name__)
 
 async def dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
     """Dispatch execution based on deployment configuration.
-    
+
     Routes to the appropriate execution path:
     - Sequential tool+chat if both deployed
     - Chat-only streaming if only chat deployed
     - Tool-only classification if only tool deployed
-    
+
     Args:
         ws: WebSocket connection for responses.
         plan: Validated execution plan with all parameters.
@@ -95,10 +96,7 @@ async def _run_chat_only(ws: WebSocket, plan: StartPlan) -> None:
         history_turn_id=plan.history_turn_id,
         history_user_utt=plan.user_utt,
     )
-    logger.info(
-        "handle_start: chat-only done session_id=%s chars=%s",
-        plan.session_id, len(final_text)
-    )
+    logger.info("handle_start: chat-only done session_id=%s chars=%s", plan.session_id, len(final_text))
 
 
 async def _run_tool_only(ws: WebSocket, plan: StartPlan) -> None:
@@ -116,7 +114,7 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan) -> None:
             TOOL_TIMEOUT_S,
         )
         tool_res = {"cancelled": True, "text": "[]", "timeout": True}
-    
+
     raw_field, is_tool = parse_tool_result(tool_res)
     await send_toolcall(
         ws,
@@ -139,10 +137,7 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan) -> None:
         request_id=plan.request_id,
         payload={"usage": {}},
     )
-    logger.info(
-        "handle_start: tool-only done session_id=%s is_tool=%s",
-        plan.session_id, is_tool
-    )
+    logger.info("handle_start: tool-only done session_id=%s is_tool=%s", plan.session_id, is_tool)
 
 
 __all__ = ["dispatch_execution"]

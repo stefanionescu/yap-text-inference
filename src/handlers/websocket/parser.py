@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
+from ...config.websocket import WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID, WS_KEY_TYPE
 
 
 def parse_client_message(raw: str) -> dict[str, Any]:
@@ -64,4 +64,3 @@ def parse_client_message(raw: str) -> dict[str, Any]:
         WS_KEY_REQUEST_ID: str(request_id),
         WS_KEY_PAYLOAD: payload,
     }
-

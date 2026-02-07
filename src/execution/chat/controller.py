@@ -34,34 +34,35 @@ Works with both vLLM and TensorRT-LLM engines through the BaseEngine interface.
 
 from __future__ import annotations
 
-import time
 import asyncio
 import logging
+import time
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Any
-from collections.abc import AsyncGenerator
 
-from src.errors import StreamCancelledError
 from src.config.logging import CHAT_STREAM_LABEL
+from src.errors import StreamCancelledError
+from src.state import CancelCheck, ChatStreamConfig
 
 from ...engines.base import BaseEngine
-from src.state import ChatStreamConfig, CancelCheck
 from ..compat import timeout as async_timeout
 
 logger = logging.getLogger(__name__)
 
+
 class ChatStreamController:
     """Handles buffering, cancellation, and logging for chat generations.
-    
+
     This controller provides a clean async iterator interface over engine
     generation streams, adding:
     - Micro-buffering for reduced message overhead
     - Timeout enforcement with automatic abortion
     - Cancellation support via callback
     - TTFB and completion telemetry
-    
+
     Works with any engine implementing the BaseEngine interface,
     including both vLLM and TensorRT-LLM.
-    
+
     Usage:
         config = ChatStreamConfig(...)
         controller = ChatStreamController(config)
@@ -71,7 +72,7 @@ class ChatStreamController:
 
     def __init__(self, config: ChatStreamConfig):
         """Initialize the stream controller.
-        
+
         Args:
             config: ChatStreamConfig with all stream parameters.
         """
@@ -89,10 +90,10 @@ class ChatStreamController:
 
     async def iter_text(self) -> AsyncGenerator[str, None]:
         """Main streaming loop with buffering, timeout, and cancellation.
-        
+
         Yields:
             Text chunks (possibly buffered based on flush_ms).
-            
+
         Raises:
             asyncio.TimeoutError: If generation exceeds timeout_s.
             StreamCancelledError: If cancel_check returns True.
@@ -168,17 +169,14 @@ class ChatStreamController:
 
     def _extract_delta(self, output: Any) -> str:
         """Extract new text delta from engine output.
-        
+
         Works with both EngineOutput (unified format) and raw vLLM output.
         """
         if not hasattr(output, "text") or not isinstance(output.text, str):
             return ""
         text = output.text
-        
-        if not text.startswith(self._full_text):
-            delta = text
-        else:
-            delta = text[len(self._full_text):]
+
+        delta = text if not text.startswith(self._full_text) else text[len(self._full_text) :]
         if not delta:
             return ""
         self._full_text = text

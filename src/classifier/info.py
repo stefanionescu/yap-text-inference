@@ -23,15 +23,15 @@ from src.state import ClassifierModelInfo
 
 def build_model_info(model_path: str, max_length: int) -> ClassifierModelInfo:
     """Inspect the Hugging Face config and produce classifier metadata.
-    
+
     Reads config.json from the model path/repo to determine:
     - Model type (BERT vs Longformer)
     - Number of classification labels
-    
+
     Args:
         model_path: HuggingFace model ID or local directory path.
         max_length: User-configured maximum sequence length.
-        
+
     Returns:
         ClassifierModelInfo with extracted/configured metadata.
     """

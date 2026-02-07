@@ -6,9 +6,12 @@ source model information from cached quantization artifacts.
 
 from __future__ import annotations
 
-import sys
 import json
+import sys
 from pathlib import Path
+
+MIN_ARGS = 2
+MIN_SOURCE_MODEL_ARGS = 3
 
 
 def read_source_model(metadata_path: str) -> str | None:
@@ -34,13 +37,13 @@ def read_source_model(metadata_path: str) -> str | None:
 
 if __name__ == "__main__":
     # CLI interface for shell scripts
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         print("Usage: python -m src.scripts.awq <command> [args]", file=sys.stderr)
         sys.exit(1)
 
     cmd = sys.argv[1]
 
-    if cmd == "source-model" and len(sys.argv) >= 3:
+    if cmd == "source-model" and len(sys.argv) >= MIN_SOURCE_MODEL_ARGS:
         result = read_source_model(sys.argv[2])
         if result:
             print(result)
@@ -49,4 +52,3 @@ if __name__ == "__main__":
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
         sys.exit(1)
-

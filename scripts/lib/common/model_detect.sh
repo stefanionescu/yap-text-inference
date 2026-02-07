@@ -175,7 +175,7 @@ classify_trt() {
 has_prequant_model() {
   local chat_model="${1:-}"
   local tool_model="${2:-}"
-  
+
   if [ -n "${chat_model}" ]; then
     if is_awq_name "${chat_model}" || is_gptq_name "${chat_model}" || is_trt_prequant "${chat_model}"; then
       echo "${chat_model}"
@@ -197,22 +197,22 @@ has_prequant_model() {
 _has_local_trt_checkpoint() {
   local model_id="${1:-}"
   local trt_cache="${TRT_CACHE_DIR:-${ROOT_DIR:-.}/.trt_cache}"
-  
+
   if [ -z "${model_id}" ] || [ ! -d "${trt_cache}" ]; then
     return 1
   fi
-  
+
   # Derive checkpoint name from model ID (same logic as get_checkpoint_dir)
   local model_name
   model_name=$(basename "${model_id}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
-  
+
   # Check for any checkpoint directory matching this model
   for ckpt_dir in "${trt_cache}/${model_name}"-*-ckpt; do
     if [ -d "${ckpt_dir}" ] && [ -f "${ckpt_dir}/config.json" ]; then
       return 0
     fi
   done
-  
+
   return 1
 }
 
@@ -224,20 +224,20 @@ validate_push_quant_prequant() {
   local tool_model="${2:-}"
   local push_requested="${3:-${HF_AWQ_PUSH_REQUESTED:-0}}"
   local prefix="${4:-[main]}"
-  
+
   if [ "${push_requested}" != "1" ]; then
     return 0
   fi
-  
+
   local prequant_model
   prequant_model="$(has_prequant_model "${chat_model}" "${tool_model}")"
-  
+
   if [ -n "${prequant_model}" ]; then
     # Allow push if local TRT checkpoint exists (model was quantized locally)
     if _has_local_trt_checkpoint "${prequant_model}"; then
       return 0
     fi
-    
+
     log_err "${prefix} ✗ Cannot use --push-quant with a prequantized model."
     log_err "${prefix}   Model '${prequant_model}' is already quantized."
     log_err "${prefix}   There are no local quantization artifacts to upload."
@@ -247,6 +247,6 @@ validate_push_quant_prequant() {
     log_err "${prefix}     2. Use a base (non-quantized) model if you want to quantize and push"
     return 1
   fi
-  
+
   return 0
 }

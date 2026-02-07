@@ -20,4 +20,3 @@ source "${_DEPLOY_COMMON_SCRIPTS}/deploy_mode.sh"
 
 # Initialize deploy mode for TRT
 init_deploy_mode "[trt]" "trt"
-

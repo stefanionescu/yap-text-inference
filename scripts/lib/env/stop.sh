@@ -11,4 +11,3 @@ stop_init_flags() {
   # 0 = light stop (preserve), 1 = full cleanup (wipe everything)
   export FULL_CLEANUP="${FULL_CLEANUP:-${NUKE_ALL:-1}}"
 }
-

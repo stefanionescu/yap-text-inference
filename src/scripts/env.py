@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import sys
 
+MIN_ARGS = 2
+
 
 def get_torch_cuda_version() -> str | None:
     """Get the CUDA version that PyTorch was compiled with.
@@ -16,7 +18,7 @@ def get_torch_cuda_version() -> str | None:
         CUDA version string (e.g., "13.0") or None if torch not available.
     """
     try:
-        import torch
+        import torch  # noqa: PLC0415
 
         cuda_ver = getattr(torch.version, "cuda", "") or ""
         return cuda_ver.strip() if cuda_ver.strip() else None
@@ -31,7 +33,7 @@ def is_flashinfer_available() -> bool:
         True if flashinfer can be imported, False otherwise.
     """
     try:
-        import flashinfer  # noqa: F401
+        import flashinfer  # noqa: F401, PLC0415
 
         return True
     except Exception:
@@ -40,7 +42,7 @@ def is_flashinfer_available() -> bool:
 
 if __name__ == "__main__":
     # CLI interface for shell scripts
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         print("Usage: python -m src.scripts.env <command>", file=sys.stderr)
         print("Commands: torch-cuda-version, flashinfer-check", file=sys.stderr)
         sys.exit(1)

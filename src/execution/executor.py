@@ -30,12 +30,12 @@ import logging
 
 from fastapi import WebSocket
 
-from .chat import run_chat_generation
-from .tool.parser import parse_tool_result
 from ..config.timeouts import TOOL_TIMEOUT_S
-from .tool.runner import launch_tool_request
 from ..handlers.session import session_handler
 from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
+from .chat import run_chat_generation
+from .tool.parser import parse_tool_result
+from .tool.runner import launch_tool_request
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +53,13 @@ async def run_execution(
     sampling_overrides: dict[str, float | int] | None = None,
 ) -> None:
     """Execute sequential tool-then-chat workflow.
-    
+
     This is the main entry point for processing a user message. It:
     1. Launches tool classifier to detect intent
     2. Waits for tool result (with timeout)
     3. Sends toolcall status to client
     4. Either returns hard-coded response or streams chat generation
-    
+
     Args:
         ws: WebSocket connection for sending responses.
         session_id: Session identifier for history/config lookup.

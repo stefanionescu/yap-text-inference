@@ -7,20 +7,18 @@ It handles message parsing, error reporting, and stats logging.
 
 from __future__ import annotations
 
-import json
 import asyncio
-import logging
 import contextlib
+import json
+import logging
 from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.helpers.websocket import iter_messages, send_client_end
-from tests.helpers.fmt import dim, cyan, format_metrics_inline
-from tests.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError
+from tests.helpers.errors import ConnectionClosedError, IdleTimeoutError, ServerError, TestClientError
+from tests.helpers.fmt import cyan, dim, format_metrics_inline
 from tests.helpers.metrics import round_ms
-from tests.helpers.websocket import create_tracker, finalize_metrics, record_toolcall
-
+from tests.helpers.websocket import create_tracker, finalize_metrics, iter_messages, record_toolcall, send_client_end
 from tests.state import LiveSession, StreamResult, StreamState, _StreamContext
 
 logger = logging.getLogger("live")
@@ -44,6 +42,7 @@ def _log_server_error(msg: dict[str, Any]) -> None:
 # ============================================================================
 # Public API
 # ============================================================================
+
 
 class LiveClient:
     """High-level WebSocket client for interactive sessions."""

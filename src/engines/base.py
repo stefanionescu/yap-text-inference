@@ -24,9 +24,9 @@ backend without engine-specific code paths.
 
 from __future__ import annotations
 
-from typing import Any
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from src.errors import EngineNotReadyError, EngineShutdownError
 from src.state import EngineOutput
@@ -34,18 +34,18 @@ from src.state import EngineOutput
 
 class BaseEngine(ABC):
     """Abstract base class for inference engines.
-    
+
     This ABC defines the contract that all engine implementations must follow.
     Both VLLMEngine and TRTEngine implement this interface, allowing the
     application to use either backend interchangeably.
-    
+
     Implementations handle:
     - Engine initialization and model loading
     - Streaming text generation with sampling
     - Request cancellation/abortion
     - Clean shutdown and resource release
     """
-    
+
     @abstractmethod
     async def generate_stream(
         self,
@@ -54,46 +54,46 @@ class BaseEngine(ABC):
         request_id: str,
     ) -> AsyncGenerator[EngineOutput, None]:
         """Stream generation outputs.
-        
+
         Args:
             prompt: The input prompt text.
             sampling_params: Engine-specific sampling parameters.
             request_id: Unique identifier for this request.
-            
+
         Yields:
             EngineOutput instances with cumulative text and optional token IDs.
         """
         yield  # type: ignore[misc]  # Abstract generator
-    
+
     @abstractmethod
     async def abort(self, request_id: str) -> None:
         """Abort an in-flight generation request.
-        
+
         Args:
             request_id: The request ID to abort.
         """
         pass
-    
+
     @abstractmethod
     async def shutdown(self) -> None:
         """Shutdown the engine and release resources."""
         pass
-    
+
     @property
     def supports_cache_reset(self) -> bool:
         """Whether this engine supports cache reset operations.
-        
+
         vLLM: True (prefix/mm cache reset)
         TRT-LLM: False (uses block reuse instead)
         """
         return False
-    
+
     async def reset_caches(self, reason: str) -> bool:
         """Reset engine caches if supported.
-        
+
         Args:
             reason: Human-readable reason for the reset.
-            
+
         Returns:
             True if caches were reset, False if not supported or failed.
         """

@@ -9,8 +9,8 @@ Configuration:
 
 from __future__ import annotations
 
-from src.state import HistoryTurn, SessionState
 from src.config.timeouts import SESSION_IDLE_TTL_SECONDS
+from src.state import HistoryTurn, SessionState
 
 __all__ = [
     "HistoryTurn",

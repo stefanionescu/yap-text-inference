@@ -14,26 +14,26 @@ resolve_trt_artifacts() {
   if [ "${DEPLOY_CHAT}" != "1" ]; then
     return 0
   fi
-  
+
   # Check if engine is already baked in
   if [ -f "${TRT_ENGINE_DIR:-/opt/engines/trt-chat}/rank0.engine" ]; then
     return 0
   fi
-  
+
   if [ -z "${TRT_ENGINE_REPO:-}" ]; then
     log_warn "[trt] ⚠ TRT_ENGINE_REPO not set - expecting engine to be mounted at ${TRT_ENGINE_DIR}"
     return 0
   fi
-  
+
   log_info "[trt] Resolving artifacts from ${TRT_ENGINE_REPO}..."
-  
+
   local py_out
   py_out=$(PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
     python /app/download/artifacts.py 2>&1) || true
-  
+
   local mode
   mode=$(echo "$py_out" | awk -F= '/^MODE=/{print $2; exit}')
-  
+
   case "${mode}" in
     engines)
       TRT_ENGINE_DIR=$(echo "$py_out" | awk -F= '/^ENGINE_DIR=/{print $2; exit}')
@@ -63,7 +63,7 @@ resolve_trt_artifacts() {
       return 1
       ;;
   esac
-  
+
   return 0
 }
 
@@ -72,14 +72,14 @@ resolve_trt_artifacts() {
 # ============================================================================
 build_engine_from_checkpoint() {
   local checkpoint_dir="$1"
-  
+
   : "${TRT_ENGINE_DIR:=/opt/engines/trt-chat}"
   local max_in="${TRT_MAX_INPUT_LEN:-4096}"
   local max_out="${TRT_MAX_OUTPUT_LEN:-512}"
   local max_batch="${TRT_MAX_BATCH_SIZE:-16}"
-  
+
   log_info "[trt] Building engine from checkpoint: ${checkpoint_dir}"
-  
+
   trtllm-build \
     --checkpoint_dir "${checkpoint_dir}" \
     --output_dir "${TRT_ENGINE_DIR}" \
@@ -94,10 +94,10 @@ build_engine_from_checkpoint() {
     --max_batch_size "${max_batch}" \
     --log_level info \
     --workers "$(nproc --all)" || {
-      log_err "[trt] ✗ trtllm-build failed from checkpoint"
-      return 1
-    }
-  
+    log_err "[trt] ✗ trtllm-build failed from checkpoint"
+    return 1
+  }
+
   export TRT_ENGINE_DIR
 }
 
@@ -108,13 +108,13 @@ validate_engine() {
   if [ "${DEPLOY_CHAT}" != "1" ]; then
     return 0
   fi
-  
+
   if [ ! -f "${TRT_ENGINE_DIR:-/opt/engines/trt-chat}/rank0.engine" ]; then
     log_err "[trt] ✗ TRT engine not found at ${TRT_ENGINE_DIR}/rank0.engine"
     log_err "[trt]   Either set TRT_ENGINE_REPO or mount an engine directory"
     return 1
   fi
-  
+
   log_success "[trt] ✓ TRT engine validated"
 }
 

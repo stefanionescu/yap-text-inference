@@ -28,7 +28,7 @@ parse_args() {
     fi
 
     case "$1" in
-      both|chat|tool)
+      both | chat | tool)
         if [ -z "${DEPLOY_MODE}" ]; then DEPLOY_MODE="$1"; fi
         if [ -z "${RECONFIG_DEPLOY_MODE}" ]; then RECONFIG_DEPLOY_MODE="$1"; fi
         shift
@@ -37,7 +37,7 @@ parse_args() {
         INSTALL_DEPS=1
         shift
         ;;
-      --reset-models|--reconfigure)
+      --reset-models | --reconfigure)
         RESTART_MODEL_MODE="reconfigure"
         shift
         ;;
@@ -91,7 +91,7 @@ parse_args() {
         RECONFIG_TOOL_MODEL="${1#*=}"
         shift
         ;;
-      --help|-h)
+      --help | -h)
         return 2
         ;;
       -*)

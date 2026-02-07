@@ -4,8 +4,8 @@ Provides utilities for normalizing and validating user input fields
 like gender and personality. Used by message validators.
 """
 
-from src.config.limits import PERSONALITY_MAX_LEN
 from src.config.filters import LETTERS_ONLY_PATTERN
+from src.config.limits import PERSONALITY_MAX_LEN
 
 
 def normalize_gender(val: str | None) -> str | None:
@@ -22,11 +22,7 @@ def normalize_gender(val: str | None) -> str | None:
 
 def is_gender_empty_or_null(val: str | None) -> bool:
     """Check if gender is empty or null (before normalization)."""
-    if val is None:
-        return True
-    if not val.strip():
-        return True
-    return False
+    return val is None or not val.strip()
 
 
 def normalize_personality(val: str | None) -> str | None:
@@ -48,11 +44,7 @@ def normalize_personality(val: str | None) -> str | None:
 
 def is_personality_empty_or_null(val: str | None) -> bool:
     """Check if personality is empty or null (before normalization)."""
-    if val is None:
-        return True
-    if not val.strip():
-        return True
-    return False
+    return val is None or not val.strip()
 
 
 __all__ = [
@@ -61,4 +53,3 @@ __all__ = [
     "normalize_personality",
     "is_personality_empty_or_null",
 ]
-

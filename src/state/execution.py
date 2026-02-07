@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
-from collections.abc import Callable, Awaitable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.engines.base import BaseEngine
@@ -20,7 +20,7 @@ class ChatStreamConfig:
     request_id: str
     prompt: str
     sampling_params: Any
-    engine_getter: Callable[[], Awaitable["BaseEngine"]]
+    engine_getter: Callable[[], Awaitable[BaseEngine]]
     timeout_s: float
     flush_ms: float = 0.0
     cancel_check: CancelCheck = None

@@ -16,7 +16,7 @@ prepare_build_context() {
   # Copy TRT scripts and common scripts (maintaining relative paths)
   mkdir -p "${TMP_BUILD_DIR}/scripts"
   cp -a "${SCRIPT_DIR}/scripts"/* "${TMP_BUILD_DIR}/scripts/"
-  
+
   # Copy common scripts for runtime use
   mkdir -p "${TMP_BUILD_DIR}/common/scripts"
   cp -a "${SCRIPT_DIR}/../common/scripts"/* "${TMP_BUILD_DIR}/common/scripts/"
@@ -24,11 +24,11 @@ prepare_build_context() {
   # Copy download scripts - TRT-specific and common
   mkdir -p "${TMP_BUILD_DIR}/download"
   cp -a "${SCRIPT_DIR}/download"/* "${TMP_BUILD_DIR}/download/"
-  
+
   # Copy common download utilities
   mkdir -p "${TMP_BUILD_DIR}/common/download"
   cp -a "${SCRIPT_DIR}/../common/download"/* "${TMP_BUILD_DIR}/common/download/"
-  
+
   # Copy tests for warmup
   if [ -d "${ROOT_DIR}/tests" ]; then
     cp -a "${ROOT_DIR}/tests" "${TMP_BUILD_DIR}/tests"

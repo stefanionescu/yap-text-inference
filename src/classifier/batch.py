@@ -25,21 +25,22 @@ handling many small classification requests concurrently.
 
 from __future__ import annotations
 
-import time
 import threading
-from queue import Empty, Queue
+import time
 from collections.abc import Callable
+from queue import Empty, Queue
 
 import torch  # type: ignore[import]
 
 from src.state import RequestItem
 
+
 class BatchFuture:
     """Lightweight, thread-safe future for batch executor results.
-    
+
     Simpler than asyncio.Future or concurrent.futures.Future,
     optimized for the specific use case of cross-thread result delivery.
-    
+
     Thread Safety:
         Uses threading.Event for synchronization.
         Safe to call set_result/set_exception from one thread
@@ -63,13 +64,13 @@ class BatchFuture:
 
     def result(self, timeout: float | None = None) -> list[float]:
         """Wait for and return the result, or raise the stored exception.
-        
+
         Args:
             timeout: Max seconds to wait (None = forever).
-            
+
         Returns:
             List of class probabilities.
-            
+
         Raises:
             TimeoutError: If timeout expires before result is set.
             Exception: The stored exception if set_exception was called.
@@ -78,19 +79,20 @@ class BatchFuture:
             raise TimeoutError("Classifier batch timed out")
         if self._exc is not None:
             raise self._exc
-        assert self._result is not None
+        if self._result is None:
+            raise RuntimeError("Classifier batch completed without result")
         return self._result
 
 
 class BatchExecutor:
     """Batch incoming requests and execute them with a shared infer_fn.
-    
+
     This executor implements adaptive micro-batching:
     - Waits up to max_delay_ms for more requests to arrive
     - Batches up to max_batch_size requests together
     - Runs inference on the batch
     - Distributes results to individual callers
-    
+
     The background worker thread runs continuously, processing
     batches as they become ready.
     """
@@ -102,7 +104,7 @@ class BatchExecutor:
         max_delay_ms: float,
     ) -> None:
         """Initialize the batch executor.
-        
+
         Args:
             infer_fn: Function that takes list of texts and returns logits tensor.
             max_batch_size: Maximum requests to batch together.
@@ -117,14 +119,14 @@ class BatchExecutor:
 
     def classify(self, text: str, timeout_s: float) -> list[float]:
         """Submit a text for classification and wait for result.
-        
+
         Args:
             text: Text to classify.
             timeout_s: Maximum seconds to wait for result.
-            
+
         Returns:
             List of class probabilities (softmax of logits).
-            
+
         Raises:
             TimeoutError: If result not ready within timeout.
         """

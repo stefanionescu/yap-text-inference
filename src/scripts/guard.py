@@ -7,8 +7,8 @@ to proactively uninstall mismatched packages before reinstalling.
 
 from __future__ import annotations
 
-import sys
 import importlib.util
+import sys
 
 # Exit code indicating CUDA mismatch was detected
 EXIT_CODE_MISMATCH = 42
@@ -27,7 +27,7 @@ def detect_cuda_mismatch() -> tuple[bool, str]:
     if torch_spec is None:
         return False, ""
 
-    import torch
+    import torch  # noqa: PLC0415
 
     # Check if torchvision is installed
     vision_spec = importlib.util.find_spec("torchvision")
@@ -35,7 +35,7 @@ def detect_cuda_mismatch() -> tuple[bool, str]:
         return False, ""
 
     try:
-        import torchvision  # noqa: F401
+        import torchvision  # noqa: F401, PLC0415
     except Exception as exc:
         message = str(exc).strip()
         needle = "PyTorch and torchvision were compiled with different CUDA major versions"
@@ -65,4 +65,3 @@ if __name__ == "__main__":
         sys.exit(EXIT_CODE_MISMATCH)
 
     sys.exit(0)
-

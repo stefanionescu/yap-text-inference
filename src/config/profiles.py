@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from src.state import ModelProfile
 
-
 MODEL_PROFILES: tuple[ModelProfile, ...] = (
     ModelProfile(
         name="gemma3",

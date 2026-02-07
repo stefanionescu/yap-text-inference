@@ -7,10 +7,10 @@ Parses command-line arguments and defers execution to tool.runner.
 
 from __future__ import annotations
 
-import sys
+import argparse
 import asyncio
 import logging
-import argparse
+import sys
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -19,10 +19,10 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.logic.tool.runner import run_suite
-from tests.helpers.websocket import with_api_key
-from tests.helpers.cli import add_connection_args
-from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW  # noqa: E402
+from tests.helpers.cli import add_connection_args  # noqa: E402
+from tests.helpers.websocket import with_api_key  # noqa: E402
+from tests.logic.tool.runner import run_suite  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:

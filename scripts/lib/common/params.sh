@@ -28,7 +28,7 @@ ensure_required_env_vars() {
     log_err "[env] ✗ MAX_CONCURRENT_CONNECTIONS environment variable must be explicitly set."
     log_err "[env] ✗ Choose a capacity that matches your deployment and run: export MAX_CONCURRENT_CONNECTIONS=<number>"
     has_errors=1
-  elif ! [[ "${MAX_CONCURRENT_CONNECTIONS}" =~ ^[0-9]+$ ]]; then
+  elif ! [[ ${MAX_CONCURRENT_CONNECTIONS} =~ ^[0-9]+$ ]]; then
     log_err "[env] ✗ MAX_CONCURRENT_CONNECTIONS must be an integer but was '${MAX_CONCURRENT_CONNECTIONS}'."
     has_errors=1
   fi
@@ -51,7 +51,7 @@ push_quant_is_supported_quant() {
   _push_quant_value_is_supported "${chat_quant}" && return 0
 
   case "${QUANT_MODE:-}" in
-    4bit|8bit)
+    4bit | 8bit)
       return 0
       ;;
   esac
@@ -65,10 +65,10 @@ _push_quant_value_is_supported() {
   fi
   value="$(printf '%s' "${value}" | tr '[:upper:]' '[:lower:]')"
   case "${value}" in
-    awq|gptq|gptq_marlin|4bit|int4_*|fp4)
+    awq | gptq | gptq_marlin | 4bit | int4_* | fp4)
       return 0
       ;;
-    8bit|fp8|fp8_*|int8_sq|int8|int8_*)
+    8bit | fp8 | fp8_* | int8_sq | int8 | int8_*)
       return 0
       ;;
   esac
@@ -108,39 +108,39 @@ validate_push_quant_prereqs() {
   if [ "${HF_AWQ_PUSH:-0}" != "1" ]; then
     return 0
   fi
-  
+
   local has_errors=0
-  
+
   # HF_TOKEN is required for any push
   if [ -z "${HF_TOKEN:-}" ]; then
     log_err "[env] ✗ --push-quant requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set."
     log_err "[env] ✗ Set it with: export HF_TOKEN='hf_xxx'"
     has_errors=1
   fi
-  
+
   # HF_PUSH_REPO_ID is required (unified for both engines)
   if [ -z "${HF_PUSH_REPO_ID:-}" ]; then
     log_err "[env] ✗ --push-quant requires HF_PUSH_REPO_ID to be set."
     log_err "[env] ✗ Set it with: export HF_PUSH_REPO_ID='your-org/model-awq'"
     has_errors=1
   fi
-  
+
   # Validate HF_PUSH_PRIVATE if set (must be 0 or 1)
-  if [ -n "${HF_PUSH_PRIVATE:-}" ] && [[ ! "${HF_PUSH_PRIVATE}" =~ ^[01]$ ]]; then
+  if [ -n "${HF_PUSH_PRIVATE:-}" ] && [[ ! ${HF_PUSH_PRIVATE} =~ ^[01]$ ]]; then
     log_err "[env] ✗ HF_PUSH_PRIVATE must be 0 (public) or 1 (private), got: ${HF_PUSH_PRIVATE}"
     has_errors=1
   fi
-  
+
   if [ "${has_errors}" -ne 0 ]; then
     log_blank
     log_err "[env] ✗ Either provide the required environment variables or remove --push-quant flag."
     exit 1
   fi
-  
+
   # Export push params with defaults
   export HF_PUSH_REPO_ID
   export HF_PUSH_PRIVATE="${HF_PUSH_PRIVATE:-1}"
-  
+
   local visibility="private"
   if [ "${HF_PUSH_PRIVATE}" = "0" ]; then
     visibility="public"
@@ -183,22 +183,22 @@ validate_push_engine_prereqs() {
   if [ "${HF_ENGINE_PUSH:-0}" != "1" ]; then
     return 0
   fi
-  
+
   local has_errors=0
-  
+
   # HF_TOKEN is required for any push
   if [ -z "${HF_TOKEN:-}" ]; then
     log_err "[env] ✗ --push-engine requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set."
     log_err "[env] ✗ Set it with: export HF_TOKEN='hf_xxx'"
     has_errors=1
   fi
-  
+
   if [ "${has_errors}" -ne 0 ]; then
     log_blank
     log_err "[env] ✗ Either provide HF_TOKEN or remove --push-engine flag."
     exit 1
   fi
-  
+
   log_info "[env] Engine will be pushed to source HuggingFace repo after build"
   return 0
 }

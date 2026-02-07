@@ -31,5 +31,3 @@ export_ca_bundle_env_vars() {
     export GIT_SSL_CAINFO=${GIT_SSL_CAINFO:-/etc/ssl/certs/ca-certificates.crt}
   fi
 }
-
-

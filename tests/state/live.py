@@ -19,8 +19,7 @@ from tests.helpers.errors import (
     TestClientError,
 )
 from tests.helpers.fmt import bold, cyan, dim, magenta, yellow
-from tests.helpers.websocket import build_start_payload as build_ws_start_payload
-from tests.helpers.websocket import record_token
+from tests.helpers.websocket import build_start_payload as build_ws_start_payload, record_token
 from tests.logic.live.commands import dispatch_command
 
 from .metrics import SessionContext, StreamState
@@ -323,10 +322,7 @@ def print_help(current: str, verbose: bool = False) -> None:
             "Use /list to see available personas.\n"
         )
     else:
-        print(
-            f"\n{bold('Interactive mode ready.')} Type /help for commands.\n"
-            f"Current persona: {current}\n"
-        )
+        print(f"\n{bold('Interactive mode ready.')} Type /help for commands.\nCurrent persona: {current}\n")
 
 
 __all__ = [

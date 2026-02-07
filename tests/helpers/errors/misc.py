@@ -33,5 +33,3 @@ __all__ = [
     "StreamError",
     "PromptSelectionError",
 ]
-
-

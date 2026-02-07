@@ -8,18 +8,18 @@ override args (temperature, top_p, etc.).
 from __future__ import annotations
 
 import os
-from typing import Any
+from argparse import ArgumentParser, Namespace
 from collections.abc import Mapping
-from argparse import Namespace, ArgumentParser
+from typing import Any
 
 from tests.config import (
+    CHAT_FREQUENCY_PENALTY_DEFAULT,
+    CHAT_PRESENCE_PENALTY_DEFAULT,
+    CHAT_REPETITION_PENALTY_DEFAULT,
+    CHAT_TEMPERATURE_DEFAULT,
     CHAT_TOP_K_DEFAULT,
     CHAT_TOP_P_DEFAULT,
     DEFAULT_SERVER_WS_URL,
-    CHAT_TEMPERATURE_DEFAULT,
-    CHAT_PRESENCE_PENALTY_DEFAULT,
-    CHAT_FREQUENCY_PENALTY_DEFAULT,
-    CHAT_REPETITION_PENALTY_DEFAULT,
 )
 
 
@@ -40,8 +40,7 @@ def add_connection_args(
     parser.add_argument(
         "--server",
         default=default_server,
-        help=server_help
-        or f"WebSocket server URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
+        help=server_help or f"WebSocket server URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     if include_api_key:
         parser.add_argument(

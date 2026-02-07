@@ -23,41 +23,41 @@ async generator of text chunks regardless of vLLM vs TRT-LLM backend.
 
 from __future__ import annotations
 
-import uuid
 import functools
+import uuid
 from collections.abc import AsyncGenerator
 
-from ...config.timeouts import GEN_TIMEOUT_S
-from ...handlers.session import session_handler
-from ...tokens.registry import get_chat_tokenizer
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
-from ...messages.sanitize import StreamingSanitizer
-from ...engines import get_engine, create_sampling_params
-from .controller import ChatStreamConfig, ChatStreamController
-from ...messages.chat.builder import build_chat_prompt_with_prefix
 from ...config.sampling import (
+    CHAT_FREQUENCY_PENALTY,
+    CHAT_LOGIT_BIAS,
     CHAT_MIN_P,
+    CHAT_PRESENCE_PENALTY,
+    CHAT_REPETITION_PENALTY,
+    CHAT_TEMPERATURE,
     CHAT_TOP_K,
     CHAT_TOP_P,
     INFERENCE_STOP,
-    CHAT_LOGIT_BIAS,
-    CHAT_TEMPERATURE,
-    CHAT_PRESENCE_PENALTY,
-    CHAT_FREQUENCY_PENALTY,
-    CHAT_REPETITION_PENALTY,
 )
+from ...config.timeouts import GEN_TIMEOUT_S
+from ...engines import create_sampling_params, get_engine
+from ...handlers.session import session_handler
+from ...messages.chat.builder import build_chat_prompt_with_prefix
+from ...messages.sanitize import StreamingSanitizer
+from ...tokens.registry import get_chat_tokenizer
+from .controller import ChatStreamConfig, ChatStreamController
 
 
 @functools.cache
 def _get_logit_bias_map() -> dict[int, float]:
     """Build logit bias map from text tokens to token IDs.
-    
+
     The CHAT_LOGIT_BIAS config maps text strings to bias values.
     This function converts those to token ID -> bias mappings
     that the engine can use.
-    
+
     Uses @functools.cache for memoization - computed once on first call.
-    
+
     Returns:
         Dict mapping token IDs to logit bias values.
         Empty dict if no bias configured or tokenizer unavailable.
@@ -95,13 +95,13 @@ async def run_chat_generation(
     sampling_overrides: dict[str, float | int | bool] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream chat generation with optional micro-coalescing.
-    
+
     This is the primary interface for generating chat responses. It:
     1. Resolves sampling parameters (defaults + overrides)
     2. Builds the full prompt with persona and history
     3. Streams generation through ChatStreamController
     4. Applies streaming sanitization (optional)
-    
+
     Args:
         session_id: Session for request tracking and cancellation.
         static_prefix: Static persona system prompt.
@@ -113,7 +113,7 @@ async def run_chat_generation(
             Supported: temperature, top_p, top_k, min_p,
             repetition_penalty, presence_penalty, frequency_penalty,
             sanitize_output (bool).
-            
+
     Yields:
         Text chunks as they're generated, sanitized and buffered.
     """
@@ -145,20 +145,20 @@ async def run_chat_generation(
         stop=INFERENCE_STOP,
         logit_bias=logit_bias if logit_bias else None,
     )
-    
+
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
     stream = ChatStreamController(
-            ChatStreamConfig(
-                session_id=session_id,
-                request_id=req_id,
-                prompt=prompt,
-                sampling_params=params,
-                engine_getter=get_engine,
-                timeout_s=float(GEN_TIMEOUT_S),
-                flush_ms=float(STREAM_FLUSH_MS),
-                cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
-            )
+        ChatStreamConfig(
+            session_id=session_id,
+            request_id=req_id,
+            prompt=prompt,
+            sampling_params=params,
+            engine_getter=get_engine,
+            timeout_s=float(GEN_TIMEOUT_S),
+            flush_ms=float(STREAM_FLUSH_MS),
+            cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
         )
+    )
 
     sanitizer = StreamingSanitizer() if sanitize_output else None
     normal_completion = False

@@ -37,12 +37,12 @@ detect_cuda_version() {
     echo "${CUDA_VERSION}" | grep -oE '^[0-9]+\.[0-9]+' 2>/dev/null || echo "${CUDA_VERSION}"
     return
   fi
-  
+
   # 2. Check nvcc (actual toolkit version)
   if command -v nvcc >/dev/null 2>&1; then
     nvcc --version 2>/dev/null | grep -oE 'release [0-9]+\.[0-9]+' | awk '{print $2}' 2>/dev/null && return
   fi
-  
+
   # 3. Fallback to nvidia-smi
   if command -v nvidia-smi >/dev/null 2>&1; then
     timeout 10s nvidia-smi 2>/dev/null | grep -o "CUDA Version: [0-9][0-9]*\.[0-9]*" | awk '{print $3}' 2>/dev/null || echo ""
@@ -59,20 +59,20 @@ detect_cuda_version() {
 check_cuda_compatibility() {
   local cuda_ver
   cuda_ver=$(detect_cuda_version)
-  
+
   if [ -z "${cuda_ver}" ]; then
     log_warn "[cuda] ⚠ Could not detect CUDA version"
     return 1
   fi
-  
+
   local major
   major=$(echo "${cuda_ver}" | cut -d. -f1)
-  
+
   if [ "${major}" -lt 13 ]; then
     log_warn "[cuda] ⚠ TRT-LLM 1.2.0rc5 requires CUDA 13.0+, found ${cuda_ver}"
     return 1
   fi
-  
+
   return 0
 }
 
@@ -149,4 +149,3 @@ trt_assert_cuda13_driver() {
 
   return 0
 }
-

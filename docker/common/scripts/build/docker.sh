@@ -23,4 +23,3 @@ ensure_docker_login() {
     echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USERNAME}" --password-stdin && return
   fi
 }
-

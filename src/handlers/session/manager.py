@@ -10,44 +10,45 @@ For abort functionality, see the `abort` module.
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import time
-import asyncio
 from typing import Any
 
 from src.config import (
     CHAT_MODEL,
-    TOOL_MODEL,
-    DEPLOY_CHAT,
-    DEPLOY_TOOL,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
+    DEPLOY_CHAT,
+    DEPLOY_TOOL,
+    TOOL_MODEL,
 )
 
+from ...tokens.prefix import count_prefix_tokens, get_effective_user_utt_max_tokens, strip_screen_prefix
+from .config import resolve_screen_prefix, update_session_config as _update_config
 from .history import HistoryController
-from .requests import CANCELLED_SENTINEL
-from .config import resolve_screen_prefix
-from .time import format_session_timestamp
-from .requests import has_running_task as _has_running
+from .requests import (
+    CANCELLED_SENTINEL,
+    cancel_session_requests as _cancel_requests,
+    cleanup_session_requests as _cleanup_requests,
+    has_running_task as _has_running,
+    is_request_cancelled as _is_cancelled,
+)
 from .state import SESSION_IDLE_TTL_SECONDS, SessionState
-from .config import update_session_config as _update_config
-from .requests import is_request_cancelled as _is_cancelled
-from .requests import cancel_session_requests as _cancel_requests
-from .requests import cleanup_session_requests as _cleanup_requests
-from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
+from .time import format_session_timestamp
 
 
 class SessionHandler:
     """Handles session metadata, request tracking, and lifecycle.
-    
+
     This is the central coordinator for per-connection session state.
     It maintains an in-memory dictionary of SessionState objects keyed
     by session_id (typically a WebSocket connection identifier).
-    
+
     Thread Safety:
         All operations are designed for single-threaded async code.
         The handler is not thread-safe for concurrent access.
-    
+
     Attributes:
         CANCELLED_SENTINEL: Special value indicating a cancelled session.
     """
@@ -56,7 +57,7 @@ class SessionHandler:
 
     def __init__(self, idle_ttl_seconds: int = SESSION_IDLE_TTL_SECONDS):
         """Initialize the session handler.
-        
+
         Args:
             idle_ttl_seconds: Time in seconds before idle sessions are evicted.
                 Defaults to SESSION_IDLE_TTL_SECONDS from environment.
@@ -154,7 +155,6 @@ class SessionHandler:
         state = self._get_state(session_id) if session_id else None
         return resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
 
-
     def clear_session_state(self, session_id: str) -> None:
         """Drop all in-memory data for a session."""
         state = self._sessions.pop(session_id, None)
@@ -201,7 +201,7 @@ class SessionHandler:
 
     def set_history_messages(self, session_id: str, messages: list[dict]) -> str:
         """Set history from JSON message array [{role, content}, ...].
-        
+
         Parses messages into turns, trims to fit token budget.
         """
         state = self._ensure_state(session_id)

@@ -59,7 +59,7 @@ def verbalize_phone_number(raw_number: str) -> str:
 
 def verbalize_phone_numbers(text: str) -> str:
     """Find and verbalize phone numbers with international format (+XX...).
-    
+
     Uses libphonenumber to detect phone numbers. Only matches international
     format with explicit + country code (region=None).
     """
@@ -90,4 +90,3 @@ __all__ = [
     "verbalize_phone_number",
     "verbalize_phone_numbers",
 ]
-

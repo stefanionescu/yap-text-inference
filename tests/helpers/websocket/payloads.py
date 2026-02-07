@@ -49,24 +49,21 @@ def build_start_payload(
     request_id: str | None = None,
 ) -> dict[str, Any]:
     """Build the start message payload for a conversation turn.
-    
+
     Args:
         ctx: Session context with gender, personality, and chat_prompt.
         user_text: The user's message text.
         history: Conversation history as [{role, content}, ...] (default empty).
-    
+
     Returns:
         A dict ready to be JSON-serialized and sent over WebSocket.
-        
+
     Raises:
         ValueError: If chat_prompt is empty.
     """
     if not ctx.chat_prompt:
-        raise ValueError(
-            "chat_prompt is required. "
-            "Use select_chat_prompt(gender) to get a valid prompt."
-        )
-    
+        raise ValueError("chat_prompt is required. Use select_chat_prompt(gender) to get a valid prompt.")
+
     inner_payload: dict[str, Any] = {
         "gender": ctx.gender,
         "personality": ctx.personality,

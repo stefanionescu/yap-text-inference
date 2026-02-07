@@ -21,5 +21,3 @@ __all__ = [
     "TOOL_TIMEOUT_S",
     "SESSION_IDLE_TTL_SECONDS",
 ]
-
-

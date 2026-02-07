@@ -22,7 +22,7 @@ from ...config.filters import EMAIL_PATTERN, TRAILING_STREAM_UNSTABLE_CHARS
 
 def unstable_suffix_len(text: str) -> int:
     """Compute length of trailing unstable characters.
-    
+
     Includes trailing whitespace, partial ellipsis (dots), and other
     characters that may change when more text arrives.
     """
@@ -37,7 +37,7 @@ def unstable_suffix_len(text: str) -> int:
 
 def html_entity_suffix_len(text: str) -> int:
     """Compute length of partial HTML entity at end.
-    
+
     Matches patterns like "&amp" (incomplete entity).
     """
     match = re.search(r"&[A-Za-z]{0,10}$", text)
@@ -48,7 +48,7 @@ def html_entity_suffix_len(text: str) -> int:
 
 def html_tag_suffix_len(raw_text: str) -> int:
     """Compute length to retain if last '<' is not closed.
-    
+
     Returns 0 if:
     - The last '<' has a matching '>' after it
     - The '<' is followed by a digit (e.g., '<3' heart emoticon, not a tag)
@@ -69,7 +69,7 @@ def html_tag_suffix_len(raw_text: str) -> int:
 
 def email_suffix_len(raw_text: str) -> int:
     """Compute length to retain for partial email detection.
-    
+
     Keeps trailing characters that could form a valid email
     across chunk boundaries.
     """
@@ -89,7 +89,7 @@ def email_suffix_len(raw_text: str) -> int:
 
 def phone_suffix_len(raw_text: str) -> int:
     """Compute length to retain for partial phone number detection.
-    
+
     Keeps trailing digits/+/-/spaces that could form a phone number.
     """
     if not raw_text:
@@ -102,7 +102,7 @@ def phone_suffix_len(raw_text: str) -> int:
 
 def emoticon_suffix_len(text: str) -> int:
     """Compute length to retain for partial emoticon detection.
-    
+
     Keeps trailing characters that could form a complete emoticon
     across chunk boundaries. This prevents emitting partial emoticons
     like ':' or ':-' that should be stripped when completed as ':-)'
@@ -117,11 +117,11 @@ def emoticon_suffix_len(text: str) -> int:
     # - Potential XD: X or x at end
     partial = re.search(
         r"(?:"
-        r"[:=;8][-^]?|"        # Eyes with optional nose (no mouth yet)
-        r"<|"                   # Potential heart <3
-        r"[xX](?![a-zA-Z])|"    # Potential XD
-        r"\^_?|"                # Potential ^_^
-        r"[tT]_?"               # Potential T_T
+        r"[:=;8][-^]?|"  # Eyes with optional nose (no mouth yet)
+        r"<|"  # Potential heart <3
+        r"[xX](?![a-zA-Z])|"  # Potential XD
+        r"\^_?|"  # Potential ^_^
+        r"[tT]_?"  # Potential T_T
         r")$",
         text,
     )
@@ -136,7 +136,7 @@ def compute_stable_and_tail_lengths(
     max_tail: int,
 ) -> tuple[int, int]:
     """Compute how much of the sanitized text is stable vs tail to buffer.
-    
+
     Returns (stable_len, tail_len) where:
     - stable_len: Characters safe to emit
     - tail_len: Characters to buffer for next chunk
@@ -174,4 +174,3 @@ __all__ = [
     "emoticon_suffix_len",
     "compute_stable_and_tail_lengths",
 ]
-

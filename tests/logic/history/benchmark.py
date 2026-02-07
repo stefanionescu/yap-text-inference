@@ -10,12 +10,12 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from tests.helpers.concurrency import distribute_requests, sanitize_concurrency
 from tests.helpers.prompt import select_chat_prompt
 from tests.logic.benchmark.reporting import print_report
 from tests.messages.history import HISTORY_RECALL_MESSAGES
-from tests.helpers.concurrency import distribute_requests, sanitize_concurrency
-
 from tests.state import HistoryBenchConfig
+
 from .connection import execute_history_connection
 
 
@@ -59,11 +59,7 @@ async def _run_concurrent_benchmark(
     total transactions = total_connections * len(HISTORY_RECALL_MESSAGES).
     """
     counts = distribute_requests(total_connections, concurrency)
-    tasks = [
-        asyncio.create_task(_run_worker(count, cfg))
-        for count in counts
-        if count > 0
-    ]
+    tasks = [asyncio.create_task(_run_worker(count, cfg)) for count in counts if count > 0]
     nested = await asyncio.gather(*tasks)
     return [item for sublist in nested for item in sublist]
 

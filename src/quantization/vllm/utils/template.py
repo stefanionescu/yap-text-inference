@@ -1,39 +1,39 @@
 """Template utilities for generating AWQ model documentation."""
 
-import os
 import json
-from typing import Any
+import os
 from textwrap import dedent
+from typing import Any
 
 from src.hf.license import compute_license_info, resolve_template_name
 
 
 def _parse_quant_summary(quant_summary: str) -> dict[str, Any]:
     try:
-        return json.loads(quant_summary) if quant_summary.strip().startswith('{') else {}
+        return json.loads(quant_summary) if quant_summary.strip().startswith("{") else {}
     except json.JSONDecodeError:
         return {}
 
 
 def _render_fallback(template_vars: dict[str, Any]) -> str:
-    samples_line = template_vars.get('calibration_samples_line', '')
+    samples_line = template_vars.get("calibration_samples_line", "")
     return (
         dedent(
             f"""
-        # {template_vars['model_name']} — AWQ {template_vars['w_bit']}-bit
+        # {template_vars["model_name"]} — AWQ {template_vars["w_bit"]}-bit
 
-        This model was quantized with [{template_vars['quantizer_name']}]({template_vars['quantizer_link']})
-        from {template_vars['source_model_link']}.
+        This model was quantized with [{template_vars["quantizer_name"]}]({template_vars["quantizer_link"]})
+        from {template_vars["source_model_link"]}.
 
-        - Quantizer version: `{template_vars['quantizer_version']}`
-        - Scheme: {template_vars['quant_scheme']} | Targets: {template_vars['quant_targets']}
-        - Precision: group size {template_vars['q_group_size']} | zero-point {template_vars['quant_zero_point']}
-        - Dataset: {template_vars['calibration_dataset_effective']}
-        {samples_line}- Max seq len: {template_vars['calibration_seq_len']}
+        - Quantizer version: `{template_vars["quantizer_version"]}`
+        - Scheme: {template_vars["quant_scheme"]} | Targets: {template_vars["quant_targets"]}
+        - Precision: group size {template_vars["q_group_size"]} | zero-point {template_vars["quant_zero_point"]}
+        - Dataset: {template_vars["calibration_dataset_effective"]}
+        {samples_line}- Max seq len: {template_vars["calibration_seq_len"]}
 
-        ## {template_vars['quantizer_recipe_heading']}
+        ## {template_vars["quantizer_recipe_heading"]}
         ```json
-        {template_vars['quant_summary']}
+        {template_vars["quant_summary"]}
         ```
         """
         ).strip()
@@ -95,8 +95,8 @@ def generate_readme(
     template_path = os.path.join(os.path.dirname(__file__), "..", "readme", template_name)
 
     # Extract model name and details
-    model_name = model_path.split('/')[-1] if '/' in model_path else model_path
-    is_hf_model = '/' in model_path and not os.path.exists(model_path)
+    model_name = model_path.split("/")[-1] if "/" in model_path else model_path
+    is_hf_model = "/" in model_path and not os.path.exists(model_path)
     source_model_link = f"[{model_path}](https://huggingface.co/{model_path})" if is_hf_model else f"`{model_path}`"
     base_model = model_path if is_hf_model else model_name
 
@@ -141,35 +141,31 @@ def generate_readme(
     )
     runtime_kv_dtype = runtime_config.get("kv_cache_dtype", "auto")
     runtime_kv_reuse = "enabled" if runtime_config.get("kv_cache_reuse", True) else "disabled"
-    runtime_paged_attention = (
-        "enabled" if runtime_config.get("paged_attention", True) else "disabled"
-    )
+    runtime_paged_attention = "enabled" if runtime_config.get("paged_attention", True) else "disabled"
 
     template_vars = {
-        'model_name': model_name,
-        'base_model': base_model,
-        'source_model_link': source_model_link,
-        'w_bit': w_bit,
-        'q_group_size': q_group_size,
-        'quant_scheme': quant_scheme,
-        'quant_targets': quant_targets,
-        'quant_ignore': quant_ignore,
-        'quant_zero_point': quant_zero_point,
-        'quant_summary': (quant_summary or "").strip() or "{}",
-        'awq_version': awq_version,
-        'calibration_dataset_effective': dataset_effective,
-        'calibration_samples': calibration_samples,
-        'calibration_samples_line': calibration_samples_line,
-        'calibration_seq_len': calibration_seq_len,
-        'hf_size_note': hf_size_note,
+        "model_name": model_name,
+        "base_model": base_model,
+        "source_model_link": source_model_link,
+        "w_bit": w_bit,
+        "q_group_size": q_group_size,
+        "quant_scheme": quant_scheme,
+        "quant_targets": quant_targets,
+        "quant_ignore": quant_ignore,
+        "quant_zero_point": quant_zero_point,
+        "quant_summary": (quant_summary or "").strip() or "{}",
+        "awq_version": awq_version,
+        "calibration_dataset_effective": dataset_effective,
+        "calibration_samples": calibration_samples,
+        "calibration_samples_line": calibration_samples_line,
+        "calibration_seq_len": calibration_seq_len,
+        "hf_size_note": hf_size_note,
         **quantizer_fields,
         **license_info,
-        'runtime_engine': metadata.get("runtime_engine", runtime_engine),
-        'runtime_kv_cache_dtype': metadata.get("runtime_kv_cache_dtype", runtime_kv_dtype),
-        'runtime_kv_cache_reuse': metadata.get("runtime_kv_cache_reuse", runtime_kv_reuse),
-        'runtime_paged_attention': metadata.get(
-            "runtime_paged_attention", runtime_paged_attention
-        ),
+        "runtime_engine": metadata.get("runtime_engine", runtime_engine),
+        "runtime_kv_cache_dtype": metadata.get("runtime_kv_cache_dtype", runtime_kv_dtype),
+        "runtime_kv_cache_reuse": metadata.get("runtime_kv_cache_reuse", runtime_kv_reuse),
+        "runtime_paged_attention": metadata.get("runtime_paged_attention", runtime_paged_attention),
     }
 
     # Try to use template, fallback to basic if not found

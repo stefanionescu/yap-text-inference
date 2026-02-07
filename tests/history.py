@@ -23,10 +23,10 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
+import asyncio
 import os
 import sys
-import asyncio
-import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -35,16 +35,16 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.helpers.errors import ServerError
-from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
-from tests.config import (
+from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
-    HISTORY_BENCH_DEFAULT_REQUESTS,
     HISTORY_BENCH_DEFAULT_CONCURRENCY,
+    HISTORY_BENCH_DEFAULT_REQUESTS,
     HISTORY_BENCH_DEFAULT_TIMEOUT_SEC,
 )
+from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload  # noqa: E402
+from tests.helpers.errors import ServerError  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:
@@ -99,7 +99,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _run_interactive(args: argparse.Namespace) -> None:
     """Run the interactive history recall test."""
-    from tests.logic.history.runner import run_test
+    from tests.logic.history.runner import run_test  # noqa: PLC0415
 
     try:
         asyncio.run(
@@ -119,7 +119,7 @@ def _run_interactive(args: argparse.Namespace) -> None:
 
 def _run_benchmark(args: argparse.Namespace) -> None:
     """Run the benchmark mode with concurrent connections."""
-    from tests.logic.history.benchmark import run_history_benchmark
+    from tests.logic.history.benchmark import run_history_benchmark  # noqa: PLC0415
 
     success = asyncio.run(
         run_history_benchmark(

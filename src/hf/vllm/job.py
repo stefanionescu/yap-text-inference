@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 from src.config.quantization import AWQ_MODEL_MARKERS
 from src.quantization.vllm.utils.template import generate_readme
-
 
 _IGNORE_PATTERNS = [
     "*.tmp",

@@ -7,10 +7,10 @@ VllmConfig.__init__ to filter these out.
 
 from __future__ import annotations
 
-import os
 import contextlib
-from typing import Any
+import os
 from functools import wraps
+from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -41,16 +41,16 @@ def _local_model_offline_context():
 @contextlib.contextmanager
 def _patched_vllm_config():
     """Temporarily patch VllmConfig to accept scale_dtype/zp_dtype."""
-    from vllm.config import VllmConfig
-    
+    from vllm.config import VllmConfig  # noqa: PLC0415
+
     original_init = VllmConfig.__init__
-    
+
     @wraps(original_init)
     def filtered_init(self: Any, *args: Any, **kwargs: Any) -> None:
         for field in UNSUPPORTED_QUANT_DTYPE_FIELDS:
             kwargs.pop(field, None)
         return original_init(self, *args, **kwargs)
-    
+
     VllmConfig.__init__ = filtered_init
     try:
         yield
@@ -62,7 +62,7 @@ def create_engine_with_fallback(engine_args: AsyncEngineArgs) -> AsyncLLMEngine:
     """Create an engine with vLLM V1 compatibility fixes."""
     is_local_awq = getattr(engine_args, "_is_local_awq", False)
     offline_ctx = _local_model_offline_context() if is_local_awq else contextlib.nullcontext()
-    
+
     with offline_ctx, _patched_vllm_config():
         return AsyncLLMEngine.from_engine_args(engine_args)
 

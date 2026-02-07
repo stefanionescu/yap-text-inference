@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import traceback
 from typing import Any
@@ -12,12 +13,12 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 from src.config.calibration import CALIB_DEFAULT_DATASET
+from src.helpers.calibration import canonicalize_dataset_name, dataset_fallback, dataset_key
 from src.helpers.profiles import get_model_profile
-from src.helpers.calibration import dataset_key, dataset_fallback, canonicalize_dataset_name
-
 from src.state import CalibrationConfig, _DatasetInfo
-from .metadata import save_quantization_metadata
+
 from .fixes import apply_post_quantization_fixes
+from .metadata import save_quantization_metadata
 
 
 def quantize(
@@ -34,8 +35,8 @@ def quantize(
     """Quantize a model with the llmcompressor backend."""
 
     try:
-        import llmcompressor
-        from llmcompressor import oneshot
+        import llmcompressor  # noqa: PLC0415
+        from llmcompressor import oneshot  # noqa: PLC0415
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to import llmcompressor: {exc}")
         return False
@@ -46,7 +47,7 @@ def quantize(
     recipe = _build_recipe(quant_config)
 
     try:
-        from transformers import AutoModelForCausalLM  # type: ignore
+        from transformers import AutoModelForCausalLM  # type: ignore[import]  # noqa: PLC0415
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to import transformers: {exc}")
         return False
@@ -117,7 +118,7 @@ def _build_recipe(quant_config: dict[str, Any]) -> list[Any]:
 
 
 def _awq_modifier():
-    from llmcompressor.modifiers.awq import AWQModifier
+    from llmcompressor.modifiers.awq import AWQModifier  # noqa: PLC0415
 
     return AWQModifier
 
@@ -150,10 +151,7 @@ def _run_quantization(
             if fallback and fallback != dataset_info.effective:
                 dataset_info.fallback_from = dataset_info.effective
                 dataset_info.effective = fallback
-                print(
-                    "[awq] Dataset "
-                    f"'{dataset_info.fallback_from}' unavailable; retrying with '{fallback}'"
-                )
+                print(f"[awq] Dataset '{dataset_info.fallback_from}' unavailable; retrying with '{fallback}'")
                 _run(fallback)
                 return
         raise
@@ -162,12 +160,10 @@ def _run_quantization(
 def _cleanup_model(model: Any) -> None:
     if model is None:
         return
-    try:
+    with contextlib.suppress(Exception):
         del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    except Exception:
-        pass
 
 
 def _persist_metadata(
@@ -210,11 +206,7 @@ def _persist_metadata(
         dataset_info={
             "requested": dataset_info.requested,
             "effective": dataset_info.effective,
-            **(
-                {"fallback_from": dataset_info.fallback_from}
-                if dataset_info.fallback_from
-                else {}
-            ),
+            **({"fallback_from": dataset_info.fallback_from} if dataset_info.fallback_from else {}),
         },
         advanced_kwargs=advanced_kwargs,
     )

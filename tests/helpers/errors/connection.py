@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from .server import ServerError
 from .base import TestClientError
+from .server import ServerError
+
+IDLE_TIMEOUT_CLOSE_CODE = 4000
 
 
 class ConnectionError(TestClientError):
@@ -47,18 +49,14 @@ class IdleTimeoutError(ConnectionClosedError):
         self,
         message: str = "Connection closed due to inactivity",
         *,
-        close_code: int | None = 4000,
+        close_code: int | None = IDLE_TIMEOUT_CLOSE_CODE,
         close_reason: str | None = "idle_timeout",
     ):
         super().__init__(message, close_code=close_code, close_reason=close_reason)
 
     @staticmethod
     def matches(close_code: int | None, close_reason: str | None) -> bool:
-        if close_code == 4000:
-            return True
-        if close_reason and "idle" in close_reason.lower():
-            return True
-        return False
+        return close_code == IDLE_TIMEOUT_CLOSE_CODE or (close_reason and "idle" in close_reason.lower())
 
 
 class ConnectionRejectedError(ConnectionError):
@@ -75,5 +73,3 @@ __all__ = [
     "IdleTimeoutError",
     "ConnectionRejectedError",
 ]
-
-

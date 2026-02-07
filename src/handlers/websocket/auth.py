@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import Security, WebSocket, HTTPException
-from fastapi.security.api_key import APIKeyQuery, APIKeyHeader
+from fastapi import HTTPException, Security, WebSocket
+from fastapi.security.api_key import APIKeyHeader, APIKeyQuery
 
 from ...config import TEXT_API_KEY
 
@@ -18,10 +18,10 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def validate_api_key(provided_key: str) -> bool:
     """Validate provided API key against configured key.
-    
+
     Args:
         provided_key: The API key to validate
-        
+
     Returns:
         True if valid, False otherwise
     """
@@ -60,18 +60,17 @@ async def get_api_key(
 
     if error == "missing":
         raise HTTPException(
-            status_code=401,
-            detail="API key required. Provide via 'X-API-Key' header or 'api_key' query parameter."
+            status_code=401, detail="API key required. Provide via 'X-API-Key' header or 'api_key' query parameter."
         )
     raise HTTPException(status_code=401, detail="Invalid API key.")
 
 
 async def authenticate_websocket(websocket: WebSocket) -> bool:
     """Authenticate WebSocket connection using API key.
-    
+
     Args:
         websocket: WebSocket connection to authenticate
-        
+
     Returns:
         True if authenticated, False otherwise
     """

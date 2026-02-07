@@ -7,16 +7,16 @@ progress, classifier warmup logs, and deprecation warnings.
 from __future__ import annotations
 
 import io
+import logging
 import re
 import sys
-import logging
 from collections.abc import Iterable
 
 from src.config.filters import TOOL_NOISE_PATTERNS
 
 logger = logging.getLogger("log_filter")
 
-_STREAMS_PATCHED = False
+_STATE = {"streams_patched": False}
 
 
 class ToolNoiseFilterStream:
@@ -87,8 +87,7 @@ def is_tool_noise(
 
 def _install_stream_filters() -> None:
     """Install stdout/stderr wrappers that drop tool noise."""
-    global _STREAMS_PATCHED
-    if _STREAMS_PATCHED:
+    if _STATE["streams_patched"]:
         return
 
     try:
@@ -98,7 +97,7 @@ def _install_stream_filters() -> None:
             sys.__stdout__ = ToolNoiseFilterStream(sys.__stdout__, TOOL_NOISE_PATTERNS)
         if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
             sys.__stderr__ = ToolNoiseFilterStream(sys.__stderr__, TOOL_NOISE_PATTERNS)
-        _STREAMS_PATCHED = True
+        _STATE["streams_patched"] = True
     except Exception as exc:  # pragma: no cover
         logger.debug("failed to wrap stdio for tool log filtering: %s", exc)
 
@@ -126,4 +125,3 @@ def configure_tool_logging() -> None:
 
 
 __all__ = ["configure_tool_logging", "ToolNoiseFilterStream", "is_tool_noise"]
-

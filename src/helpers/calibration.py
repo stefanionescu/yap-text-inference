@@ -13,10 +13,7 @@ from src.config.calibration import CALIB_DEFAULT_DATASET
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT
 from src.state import TotalLengthPolicy
 
-
-_CHAT_DEFAULT_TOTAL = int(
-    os.getenv("CALIB_CHAT_TOTAL_LEN", str(CHAT_MAX_LEN + CHAT_MAX_OUT))
-)
+_CHAT_DEFAULT_TOTAL = int(os.getenv("CALIB_CHAT_TOTAL_LEN", str(CHAT_MAX_LEN + CHAT_MAX_OUT)))
 CHAT_TOTAL_POLICY = TotalLengthPolicy(
     kind="chat",
     default_total=_CHAT_DEFAULT_TOTAL,

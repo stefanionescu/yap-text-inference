@@ -27,10 +27,10 @@ see how many sessions were rejected by the guardrail.
 
 from __future__ import annotations
 
+import argparse
+import asyncio
 import os
 import sys
-import asyncio
-import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -39,18 +39,18 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-    DEFAULT_SERVER_WS_URL,
-    BENCHMARK_DEFAULT_REQUESTS,
+from tests.config import (  # noqa: E402
     BENCHMARK_BURST_MODE_DEFAULT,
     BENCHMARK_BURST_SIZE_DEFAULT,
     BENCHMARK_DEFAULT_CONCURRENCY,
+    BENCHMARK_DEFAULT_REQUESTS,
     BENCHMARK_DEFAULT_TIMEOUT_SEC,
     BENCHMARK_WINDOW_DURATION_DEFAULT,
+    DEFAULT_GENDER,
+    DEFAULT_PERSONALITY,
+    DEFAULT_SERVER_WS_URL,
 )
+from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:
@@ -103,10 +103,7 @@ def _parse_args() -> argparse.Namespace:
         "--burst-mode",
         choices=["instant", "windowed"],
         default=BENCHMARK_BURST_MODE_DEFAULT,
-        help=(
-            "transaction distribution mode: 'instant' sends all at once (default), "
-            "'windowed' sends in timed bursts"
-        ),
+        help=("transaction distribution mode: 'instant' sends all at once (default), 'windowed' sends in timed bursts"),
     )
     p.add_argument(
         "--burst-size",
@@ -127,7 +124,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Thin orchestrator: parse CLI args and run the benchmark."""
-    from tests.logic.benchmark.runner import run_benchmark
+    from tests.logic.benchmark.runner import run_benchmark  # noqa: PLC0415
 
     args = _parse_args()
     success = asyncio.run(run_benchmark(args))

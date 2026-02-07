@@ -6,12 +6,12 @@ and streaming chat responses. It handles:
 1. Safe Sending:
    - Catching WebSocketDisconnect during send operations
    - Returning boolean success indicators for flow control
-   
+
 2. Streaming Infrastructure:
    - Forwarding async chat streams to WebSocket clients
    - Sending token/final/done message frames
    - Recording conversation history on completion
-   
+
 3. Task Management:
    - Launching and tracking tool/classifier requests
    - Clean task cancellation with proper await
@@ -23,32 +23,33 @@ Message Protocol:
 
 from __future__ import annotations
 
-import json
 import asyncio
-import logging
 import contextlib
-from typing import Any
+import json
+import logging
 from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..session import session_handler
-from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
 from src.state import _ChatStreamState
+
+from ...config.websocket import WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID, WS_KEY_TYPE
+from ..session import session_handler
 
 logger = logging.getLogger(__name__)
 
 
 async def safe_send_text(ws: WebSocket, text: str) -> bool:
     """Send text to the client, returning False if the socket is gone.
-    
+
     Catches WebSocketDisconnect to allow graceful handling of
     client disconnections during send operations.
-    
+
     Args:
         ws: The WebSocket connection.
         text: Raw text to send.
-        
+
     Returns:
         True if sent successfully, False if client disconnected.
     """
@@ -62,11 +63,11 @@ async def safe_send_text(ws: WebSocket, text: str) -> bool:
 
 async def safe_send_json(ws: WebSocket, payload: dict[str, Any]) -> bool:
     """Send a JSON payload, swallowing client disconnects.
-    
+
     Args:
         ws: The WebSocket connection.
         payload: Dictionary to serialize and send.
-        
+
     Returns:
         True if sent successfully, False if client disconnected.
     """
@@ -108,7 +109,7 @@ async def send_toolcall(
     raw: object,
 ) -> None:
     """Send a toolcall message with status and raw result data.
-    
+
     Args:
         ws: The WebSocket connection.
         status: Tool call status (e.g., "completed", "error").
@@ -128,10 +129,10 @@ async def send_toolcall(
 
 async def cancel_task(task: asyncio.Task | None) -> None:
     """Cancel an asyncio task and await its completion.
-    
+
     Safely handles None tasks and already-completed tasks.
     Suppresses all exceptions during cancellation.
-    
+
     Args:
         task: The task to cancel, or None.
     """
@@ -234,7 +235,7 @@ async def stream_chat_response(
     history_turn_id: str | None = None,
 ) -> str:
     """Stream chat chunks, emit final/done messages, and record history.
-    
+
     This is the main function for sending streaming chat responses to clients.
     It handles:
     - Optional initial text (e.g., screenshot analysis prefix)
@@ -242,7 +243,7 @@ async def stream_chat_response(
     - Sending final and done completion frames
     - Recording the conversation turn in session history
     - Proper cleanup on cancellation or disconnection
-    
+
     Args:
         ws: The WebSocket connection.
         stream: Async iterator yielding text chunks from the chat model.
@@ -253,7 +254,7 @@ async def stream_chat_response(
         initial_text_already_sent: Whether initial_text was already sent to client.
         history_user_utt: Override user text for history (if different from user_utt).
         history_turn_id: Existing turn ID to update (for streaming updates).
-        
+
     Returns:
         The complete response text (initial_text + all stream chunks).
     """

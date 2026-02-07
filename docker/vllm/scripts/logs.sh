@@ -15,7 +15,7 @@ else
   # Fallback logging if common not found
   log_info() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
   log_warn() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
-  log_err()  { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+  log_err() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
   log_success() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
   log_error() { log_err "$@"; }
 fi

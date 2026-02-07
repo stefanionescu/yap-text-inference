@@ -15,5 +15,3 @@ set_repo_cache_paths() {
   export FLASHINFER_CACHE_DIR="${ROOT_DIR}/.flashinfer"
   export XFORMERS_CACHE_DIR="${ROOT_DIR}/.xformers"
 }
-
-

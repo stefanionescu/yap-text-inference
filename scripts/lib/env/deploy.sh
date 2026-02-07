@@ -9,8 +9,7 @@ setup_deploy_mode_and_validate() {
   # Deploy mode: both | chat | tool (default: both)
   export DEPLOY_MODE=${DEPLOY_MODE:-both}
   case "${DEPLOY_MODE}" in
-    both|chat|tool)
-      ;;
+    both | chat | tool) ;;
     *)
       log_warn "[env] ⚠ Invalid DEPLOY_MODE='${DEPLOY_MODE}', defaulting to 'both'"
       export DEPLOY_MODE=both
@@ -44,5 +43,3 @@ setup_deploy_mode_and_validate() {
     return 1
   fi
 }
-
-

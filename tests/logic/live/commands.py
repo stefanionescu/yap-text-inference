@@ -11,8 +11,8 @@ alternatives (e.g., /quit -> /stop, /? -> /help).
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
-from collections.abc import Callable, Awaitable
 
 if TYPE_CHECKING:
     from .client import LiveClient
@@ -24,6 +24,7 @@ logger = logging.getLogger("live")
 # ============================================================================
 # Toggle Helpers
 # ============================================================================
+
 
 def _resolve_toggle(arg: str, current: bool) -> bool:
     """Parse a toggle argument into a boolean value."""
@@ -59,6 +60,7 @@ def _handle_toggle_command(
 # Command Handlers
 # ============================================================================
 
+
 async def _handle_help_command(
     _: str,
     client: LiveClient,
@@ -68,7 +70,8 @@ async def _handle_help_command(
 ) -> bool:
     """Display the help message with available commands."""
     _ = raw_command  # unused; keeps signature uniform
-    from tests.state import print_help
+    from tests.state import print_help  # noqa: PLC0415
+
     print_help(client.session.persona.name, verbose=True)
     return False
 

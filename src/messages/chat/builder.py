@@ -12,12 +12,12 @@ Key Functions:
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
 from collections.abc import Sequence
+from functools import lru_cache
 
-from ...tokens.registry import get_chat_tokenizer
 from ...config.chat import CHAT_TEMPLATE_ENABLE_THINKING
 from ...handlers.session.history import parse_history_as_tuples
+from ...tokens.registry import get_chat_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKIN
 # ============================================================================
 # Public API
 # ============================================================================
+
 
 def build_chat_prompt_with_prefix(
     static_prefix: str,
@@ -59,13 +60,14 @@ def build_chat_warm_prompt(
 # Internal Helpers
 # ============================================================================
 
+
 def _build_messages(
     system_prompt: str,
     history_turns: Sequence[tuple[str, str]],
     user_utt: str | None,
 ) -> list[dict[str, str]]:
     """Build a list of message dicts for the chat template.
-    
+
     Ensures proper role alternation (user/assistant/user/assistant) as required
     by some tokenizer templates (e.g., Gemma 3). Consecutive messages of the
     same role are merged together.
@@ -149,4 +151,3 @@ __all__ = [
     "build_chat_prompt_with_prefix",
     "build_chat_warm_prompt",
 ]
-

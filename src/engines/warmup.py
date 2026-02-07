@@ -12,11 +12,11 @@ The utilities work with any configured engine (vLLM or TRT-LLM).
 
 from __future__ import annotations
 
-import time
 import asyncio
 import logging
+import time
+from collections.abc import Awaitable, Callable
 from typing import TypeVar
-from collections.abc import Callable, Awaitable
 
 from src.config import INFERENCE_ENGINE
 
@@ -28,6 +28,7 @@ T = TypeVar("T")
 # ============================================================================
 # Engine Warmup
 # ============================================================================
+
 
 async def warm_chat_engine(getter: Callable[[], Awaitable[T]]) -> T:
     """Ensure the chat engine is constructed before serving traffic.
@@ -66,7 +67,7 @@ async def warm_classifier() -> None:
     This runs in a thread pool to avoid blocking the event loop during
     model loading.
     """
-    from src.classifier import get_classifier_adapter
+    from src.classifier import get_classifier_adapter  # noqa: PLC0415
 
     start = time.perf_counter()
     logger.info("preload_engines: warming tool classifier adapter...")
@@ -77,4 +78,3 @@ async def warm_classifier() -> None:
 
 
 __all__ = ["warm_chat_engine", "warm_classifier"]
-

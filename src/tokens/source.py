@@ -12,8 +12,9 @@ decide which loading strategy to use.
 
 from __future__ import annotations
 
-import os
+import contextlib
 import json
+import os
 from pathlib import Path
 
 from src.state import TokenizerSource, TransformersTarget
@@ -21,13 +22,13 @@ from src.state import TokenizerSource, TransformersTarget
 
 def inspect_source(path_or_repo: str) -> TokenizerSource:
     """Inspect a path to determine tokenizer source metadata.
-    
+
     Checks if path is local, looks for tokenizer.json, and
     checks for AWQ metadata with a source model reference.
-    
+
     Args:
         path_or_repo: Local directory or HuggingFace repo ID.
-        
+
     Returns:
         TokenizerSource with inspection results.
     """
@@ -42,13 +43,11 @@ def inspect_source(path_or_repo: str) -> TokenizerSource:
     if is_local:
         meta_path = Path(path_or_repo) / "awq_metadata.json"
         if meta_path.is_file():
-            try:
+            with contextlib.suppress(Exception):
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
                 candidate = (meta.get("source_model") or "").strip()
                 if candidate:
                     awq_metadata_model = candidate
-            except Exception:
-                pass
 
     return TokenizerSource(
         original_path=path_or_repo,
@@ -63,20 +62,20 @@ def resolve_transformers_target(
     source: TokenizerSource,
 ) -> TransformersTarget:
     """Determine the best target for loading a transformers tokenizer.
-    
+
     Priority:
     1. If remote repo, use it directly (HF will cache locally)
     2. If local directory, always use local_only=True
-    
+
     For local directories (including AWQ quantized models), we enforce
     local_only=True to ensure tokenizers are loaded from the model
     directory itself. This prevents silently fetching from HuggingFace
     when local tokenizer files are missing.
-    
+
     Args:
         path_or_repo: Original path or repo.
         source: Inspected source metadata.
-        
+
     Returns:
         TransformersTarget with identifier and local_only flag.
     """

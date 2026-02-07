@@ -16,7 +16,7 @@ def get_persona_variants() -> list[tuple[str, str]]:
         List of (gender, personality) tuples.
     """
     try:
-        from tests.config.defaults import PERSONA_VARIANTS
+        from tests.config.defaults import PERSONA_VARIANTS  # noqa: PLC0415
 
         result = []
         for gender, personality, _ in PERSONA_VARIANTS:
@@ -41,4 +41,3 @@ if __name__ == "__main__":
     else:
         # Default behavior: print variants
         print_persona_variants()
-

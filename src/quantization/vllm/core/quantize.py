@@ -6,9 +6,9 @@ Usage:
     python -m quant.quantize --model MODEL_PATH --out OUTPUT_DIR [options]
 """
 
+import argparse
 import os
 import sys
-import argparse
 
 from src.helpers.models import is_classifier_model
 from src.quantization.vllm.core import AWQQuantizer
@@ -30,20 +30,28 @@ def main() -> int:
         default=os.environ.get("AWQ_CALIB_DATASET", "open_platypus"),
         help="Calibration dataset handled by llmcompressor (e.g., open_platypus, wikitext)",
     )
-    parser.add_argument("--nsamples", type=int, default=int(os.environ.get("AWQ_NSAMPLES", "64")),
-                       help="Number of calibration samples (default: 64)")
-    parser.add_argument("--seqlen", type=int, default=int(os.environ.get("AWQ_SEQLEN", "2048")),
-                       help="Calibration sequence length (default: 2048)")
-    
+    parser.add_argument(
+        "--nsamples",
+        type=int,
+        default=int(os.environ.get("AWQ_NSAMPLES", "64")),
+        help="Number of calibration samples (default: 64)",
+    )
+    parser.add_argument(
+        "--seqlen",
+        type=int,
+        default=int(os.environ.get("AWQ_SEQLEN", "2048")),
+        help="Calibration sequence length (default: 2048)",
+    )
+
     args = parser.parse_args()
-    
+
     # Block classifier models from quantization
     if is_classifier_model(args.model):
         print(f"[awq] ERROR: Cannot quantize classifier model '{args.model}'")
         print("[awq] Classifier models use transformers AutoModelForSequenceClassification,")
         print("[awq] not autoregressive LLMs. They don't support AWQ quantization.")
         return 1
-    
+
     # Create calibration config
     config = CalibrationConfig(
         dataset=args.calib_dataset,
@@ -54,16 +62,12 @@ def main() -> int:
         zero_point=bool(args.zero_point),
         version=args.version,
     )
-    
+
     # Create quantizer and run
     quantizer = AWQQuantizer(config)
-    
+
     try:
-        success = quantizer.quantize_model(
-            model_path=args.model,
-            output_dir=args.out,
-            force=args.force
-        )
+        success = quantizer.quantize_model(model_path=args.model, output_dir=args.out, force=args.force)
         return 0 if success else 1
     except KeyboardInterrupt:
         print("\n[awq] Quantization interrupted by user")

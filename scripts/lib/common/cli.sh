@@ -8,10 +8,10 @@
 cli_normalize_engine() {
   local engine="${1:-trt}"
   case "${engine}" in
-    vllm|VLLM)
+    vllm | VLLM)
       echo "vllm"
       ;;
-    trt|TRT|tensorrt|TENSORRT|trtllm|TRTLLM)
+    trt | TRT | tensorrt | TENSORRT | trtllm | TRTLLM)
       echo "trt"
       ;;
     *)
@@ -23,7 +23,7 @@ cli_normalize_engine() {
 cli_validate_deploy_mode() {
   local mode="${1:-both}"
   case "${mode}" in
-    both|chat|tool)
+    both | chat | tool)
       echo "${mode}"
       ;;
     *)

@@ -11,7 +11,7 @@ if TYPE_CHECKING:  # pragma: no cover - optional dependency
 def get_hf_api(token: str) -> HfApi | None:
     """Return an authenticated HfApi client, or None if unavailable."""
     try:
-        from huggingface_hub import HfApi
+        from huggingface_hub import HfApi  # noqa: PLC0415
     except ImportError:
         print("[hf] Error: huggingface_hub not installed")
         return None
@@ -26,7 +26,7 @@ def create_repo_if_needed(
 ) -> None:
     """Ensure a model repo exists (no-op on success)."""
     try:
-        from huggingface_hub import create_repo
+        from huggingface_hub import create_repo  # noqa: PLC0415
 
         create_repo(repo_id, token=token, exist_ok=True, repo_type="model", private=private)
     except Exception as exc:  # noqa: BLE001

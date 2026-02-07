@@ -22,7 +22,7 @@ tool/:
 
 Workflow Overview:
     User Message -> Tool Filter -> Tool Classifier -> Chat Model -> Response
-    
+
     If tool detects screenshot request:
         Prefix user message with "CHECK SCREEN" and run chat
 

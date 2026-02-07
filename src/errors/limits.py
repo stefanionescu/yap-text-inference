@@ -7,10 +7,10 @@ about when a client can retry after being rate limited.
 
 class RateLimitError(Exception):
     """Raised when a rate limiter rejects an action.
-    
+
     This exception provides information about when the client can retry
     and the limit that was exceeded.
-    
+
     Attributes:
         retry_in: Seconds until a new slot becomes available.
         limit: The maximum allowed events per window.
@@ -32,4 +32,3 @@ class RateLimitError(Exception):
 
 
 __all__ = ["RateLimitError"]
-

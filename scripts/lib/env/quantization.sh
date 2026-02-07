@@ -35,7 +35,7 @@ _apply_hopper_ada_defaults() {
   export MAX_NUM_BATCHED_TOKENS_TOOL=${MAX_NUM_BATCHED_TOKENS_TOOL:-224}
   export PYTORCH_ALLOC_CONF=expandable_segments:True
   # Set architecture: H100 = 9.0, L40S/Ada = 8.9
-  if [[ "${gpu_name}" == *H100* ]]; then
+  if [[ ${gpu_name} == *H100* ]]; then
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
   else
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
@@ -80,7 +80,7 @@ _apply_unknown_gpu_defaults() {
 _apply_fp8_defaults() {
   local gpu_name="${1:-}"
   case "${gpu_name}" in
-    *H100*|*L40S*|*L40*)
+    *H100* | *L40S* | *L40*)
       _apply_hopper_ada_defaults "${gpu_name}"
       export TOOL_TIMEOUT_S=${TOOL_TIMEOUT_S:-10}
       export PREBUFFER_MAX_CHARS=${PREBUFFER_MAX_CHARS:-256}
@@ -103,7 +103,7 @@ _apply_fp8_defaults() {
 _apply_awq_defaults() {
   local gpu_name="${1:-}"
   case "${gpu_name}" in
-    *H100*|*L40S*|*L40*)
+    *H100* | *L40S* | *L40*)
       export VLLM_USE_V1=1
       _apply_hopper_ada_defaults "${gpu_name}"
       if [ "${HAS_FLASHINFER}" = "1" ]; then
@@ -135,10 +135,10 @@ _apply_gptq_defaults() {
       _apply_a100_defaults
       _apply_attention_backend 1
       ;;
-    *H100*|*L40S*|*L40*)
+    *H100* | *L40S* | *L40*)
       export VLLM_USE_V1=1
       export KV_DTYPE=${KV_DTYPE:-fp8}
-      if [[ "${gpu_name}" == *H100* ]]; then
+      if [[ ${gpu_name} == *H100* ]]; then
         export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
       else
         export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
@@ -168,12 +168,12 @@ _resolve_8bit_backend() {
 # Resolve effective quantization from CHAT_QUANTIZATION
 _resolve_effective_quantization() {
   local effective_quant="${CHAT_QUANTIZATION:-}"
-  
+
   # Default to 8bit placeholder if unset
   if [ -z "${effective_quant}" ]; then
     effective_quant="8bit"
   fi
-  
+
   echo "${effective_quant}"
 }
 
@@ -183,23 +183,23 @@ _resolve_effective_quantization() {
 
 apply_quantization_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-}"
-  
+
   # Skip silently for tool-only mode (no chat engine to configure)
   if [ "${DEPLOY_CHAT:-0}" != "1" ]; then
     return
   fi
-  
+
   # Resolve effective quantization method
   local effective_quant
   effective_quant="$(_resolve_effective_quantization)"
-  
+
   # Resolve "8bit" placeholder to actual backend
   if [ "${effective_quant}" = "8bit" ]; then
     effective_quant="$(_resolve_8bit_backend)"
     export CHAT_QUANTIZATION="${effective_quant}"
     log_info "[env] Resolved 8-bit quantization to '${effective_quant}'"
   fi
-  
+
   # Apply quantization-specific GPU defaults
   case "${effective_quant}" in
     fp8)
@@ -212,7 +212,7 @@ apply_quantization_defaults() {
       _apply_gptq_defaults "${gpu_name}"
       ;;
   esac
-  
+
   # Final fallback defaults if still unset
   export KV_DTYPE=${KV_DTYPE:-auto}
   export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.0}

@@ -44,7 +44,7 @@ detect_trtllm_version() {
     echo "${TRTLLM_INSTALLED_VERSION}"
     return 0
   fi
-  
+
   # 2. Detect via Python import
   if command -v python >/dev/null 2>&1; then
     local version
@@ -56,14 +56,14 @@ detect_trtllm_version() {
       return 0
     fi
   fi
-  
+
   # 3. Fall back to target version from trt.sh config
   # This is the version we're installing, should match after successful install
   if [ -n "${TRT_VERSION:-}" ]; then
     echo "${TRT_VERSION}"
     return 0
   fi
-  
+
   echo "unknown"
   return 1
 }
@@ -77,12 +77,12 @@ get_current_engine_label() {
   trtllm_ver=$(detect_trtllm_version)
   local cuda_ver
   cuda_ver=$(detect_cuda_version)
-  
+
   if [ -z "${sm_arch}" ] || [ "${trtllm_ver}" = "unknown" ] || [ -z "${cuda_ver}" ]; then
     echo ""
     return 1
   fi
-  
+
   echo "${sm_arch}_trt-llm-${trtllm_ver}_cuda${cuda_ver}"
 }
 
@@ -100,19 +100,19 @@ detect_qformat_from_name() {
   fi
   local lowered="${name,,}"
 
-  if [[ "${lowered}" == *awq* ]]; then
+  if [[ ${lowered} == *awq* ]]; then
     echo "int4_awq"
     return 0
   fi
-  if [[ "${lowered}" == *fp8* ]]; then
+  if [[ ${lowered} == *fp8* ]]; then
     echo "fp8"
     return 0
   fi
-  if [[ "${lowered}" == *int8* ]] || [[ "${lowered}" == *int-8* ]]; then
+  if [[ ${lowered} == *int8* ]] || [[ ${lowered} == *int-8* ]]; then
     echo "int8_sq"
     return 0
   fi
-  if [[ "${lowered}" == *8bit* ]] || [[ "${lowered}" == *8-bit* ]]; then
+  if [[ ${lowered} == *8bit* ]] || [[ ${lowered} == *8-bit* ]]; then
     echo "fp8"
     return 0
   fi

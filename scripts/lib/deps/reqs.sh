@@ -9,7 +9,7 @@
 get_requirements_file() {
   local engine="${INFERENCE_ENGINE:-vllm}"
   case "${engine}" in
-    trt|TRT)
+    trt | TRT)
       echo "${ROOT_DIR}/requirements-trt.txt"
       ;;
     *)
@@ -21,7 +21,7 @@ get_requirements_file() {
 get_quant_requirements_file() {
   local engine="${INFERENCE_ENGINE:-vllm}"
   case "${engine}" in
-    vllm|VLLM)
+    vllm | VLLM)
       echo "${ROOT_DIR}/requirements-llmcompressor.txt"
       ;;
     *)
@@ -37,7 +37,7 @@ filter_requirements_without_flashinfer() {
   venv_dir="$(get_venv_dir)"
   local tmp_req_file="${venv_dir}/.requirements.no_flashinfer.txt"
   if [ -f "${req_file}" ]; then
-    grep -v -E '^\s*(flashinfer-python)(\s|$|==|>=|<=|~=|!=)' "${req_file}" > "${tmp_req_file}" || cp "${req_file}" "${tmp_req_file}" || true
+    grep -v -E '^\s*(flashinfer-python)(\s|$|==|>=|<=|~=|!=)' "${req_file}" >"${tmp_req_file}" || cp "${req_file}" "${tmp_req_file}" || true
   fi
 }
 
@@ -77,7 +77,7 @@ record_requirements_hash() {
   venv_dir="$(get_venv_dir)"
   local stamp_file="${venv_dir}/.req_hash"
   if [ -f "${req_file}" ]; then
-    sha256sum "${req_file}" | awk '{print $1}' > "${stamp_file}" || true
+    sha256sum "${req_file}" | awk '{print $1}' >"${stamp_file}" || true
   fi
 }
 
@@ -117,6 +117,6 @@ install_quant_requirements() {
     return 1
   fi
   if [ -n "${cur_hash}" ]; then
-    echo "${cur_hash}" > "${stamp_file}" || true
+    echo "${cur_hash}" >"${stamp_file}" || true
   fi
 }

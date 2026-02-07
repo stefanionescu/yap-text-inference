@@ -12,40 +12,40 @@ This sanitizer is stateful and operates on streamed model text. It:
 
 from __future__ import annotations
 
-import re
 import html
+import re
 
+from ...config.filters import (
+    ACTION_EMOTE_PATTERN,
+    COLLAPSE_SPACES_PATTERN,
+    DEGREE_SYMBOL_PATTERN,
+    DOT_RUN_PATTERN,
+    DOUBLE_DOT_SPACE_PATTERN,
+    ELLIPSIS_PATTERN,
+    ELLIPSIS_TRAILING_DOT_PATTERN,
+    ELLIPSIS_TRAILING_SPACE_PATTERN,
+    EMDASH_PATTERN,
+    EMOJI_PATTERN,
+    EMOTICON_PATTERN,
+    EXAGGERATED_OH_PATTERN,
+    FREESTYLE_PREFIX_PATTERN,
+    HTML_TAG_PATTERN,
+    LEADING_NEWLINE_TOKENS_PATTERN,
+    NEGATIVE_NUMBER_PATTERN,
+    NEWLINE_TOKEN_PATTERN,
+    PERCENT_PATTERN,
+    SINGLE_LETTER_SUFFIX_PATTERN,
+    SPACE_BEFORE_PUNCT_PATTERN,
+    SPACED_DOT_RUN_PATTERN,
+    SUBTRACTION_PATTERN,
+    TEMP_CELSIUS_PATTERN,
+    TEMP_FAHRENHEIT_PATTERN,
+    TEMP_KELVIN_PATTERN,
+    WORD_HYPHEN_PATTERN,
+)
 from .common import _strip_escaped_quotes
 from .suffix import compute_stable_and_tail_lengths
 from .verbalize import verbalize_emails, verbalize_phone_numbers
-from ...config.filters import (
-    EMOJI_PATTERN,
-    EMDASH_PATTERN,
-    DOT_RUN_PATTERN,
-    PERCENT_PATTERN,
-    ELLIPSIS_PATTERN,
-    EMOTICON_PATTERN,
-    HTML_TAG_PATTERN,
-    SUBTRACTION_PATTERN,
-    TEMP_KELVIN_PATTERN,
-    WORD_HYPHEN_PATTERN,
-    ACTION_EMOTE_PATTERN,
-    TEMP_CELSIUS_PATTERN,
-    DEGREE_SYMBOL_PATTERN,
-    NEWLINE_TOKEN_PATTERN,
-    EXAGGERATED_OH_PATTERN,
-    SPACED_DOT_RUN_PATTERN,
-    COLLAPSE_SPACES_PATTERN,
-    NEGATIVE_NUMBER_PATTERN,
-    TEMP_FAHRENHEIT_PATTERN,
-    DOUBLE_DOT_SPACE_PATTERN,
-    FREESTYLE_PREFIX_PATTERN,
-    SPACE_BEFORE_PUNCT_PATTERN,
-    SINGLE_LETTER_SUFFIX_PATTERN,
-    ELLIPSIS_TRAILING_DOT_PATTERN,
-    LEADING_NEWLINE_TOKENS_PATTERN,
-    ELLIPSIS_TRAILING_SPACE_PATTERN,
-)
 
 
 class StreamingSanitizer:
@@ -106,7 +106,7 @@ class StreamingSanitizer:
             if delta:
                 self._emitted_parts.append(delta)
 
-        self._sanitized_tail = sanitized[stable_len:stable_len + tail_len]
+        self._sanitized_tail = sanitized[stable_len : stable_len + tail_len]
 
         return delta
 
@@ -156,7 +156,7 @@ def _ensure_leading_capital_stream(text: str, capital_pending: bool) -> tuple[st
     for idx, char in enumerate(text):
         if char.isalpha():
             if char.islower():
-                return f"{text[:idx]}{char.upper()}{text[idx + 1:]}", False
+                return f"{text[:idx]}{char.upper()}{text[idx + 1 :]}", False
             return text, False
     return text, True
 
@@ -240,11 +240,15 @@ def _common_prefix_len(a: str, b: str) -> int:
     return idx
 
 
+OH_MAX_O_COUNT = 2
+OH_MAX_H_COUNT = 1
+
+
 def _normalize_exaggerated_oh(match: re.Match[str]) -> str:
     text = match.group(0)
     o_count = sum(1 for char in text if char.lower() == "o")
     h_count = sum(1 for char in text if char.lower() == "h")
-    if o_count <= 2 and h_count <= 1:
+    if o_count <= OH_MAX_O_COUNT and h_count <= OH_MAX_H_COUNT:
         return text
     replacement = "Ooh" if text[0].isupper() else "ooh"
     return replacement

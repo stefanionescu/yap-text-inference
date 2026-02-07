@@ -7,47 +7,47 @@ metrics. Used for quick server health checks and warmup validation.
 
 from __future__ import annotations
 
-import os
-import json
-import uuid
 import asyncio
+import json
+import os
+import uuid
 from typing import Any
 
 import websockets
 
-from tests.helpers.errors import ServerError
-from tests.helpers.selection import choose_message
-from tests.helpers.prompt import select_chat_prompt
-from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
-from tests.logic.conversation.stream import stream_exchange
-from tests.state import SessionContext, StreamState
-from tests.helpers.websocket import (
-    with_api_key,
-    create_tracker,
-    send_client_end,
-    finalize_metrics,
-    build_start_payload,
-    connect_with_retries,
+from tests.config import (
+    DEFAULT_GENDER,
+    DEFAULT_PERSONALITY,
+    DEFAULT_RECV_TIMEOUT_SEC,
+    DEFAULT_SERVER_WS_URL,
+    DEFAULT_WS_PING_INTERVAL,
+    DEFAULT_WS_PING_TIMEOUT,
+    WARMUP_FALLBACK_MESSAGE,
 )
+from tests.helpers.errors import ServerError
 from tests.helpers.fmt import (
     dim,
-    red,
-    format_user,
-    section_header,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
+    format_user,
+    red,
+    section_header,
 )
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-    DEFAULT_SERVER_WS_URL,
-    DEFAULT_WS_PING_TIMEOUT,
-    WARMUP_FALLBACK_MESSAGE,
-    DEFAULT_RECV_TIMEOUT_SEC,
-    DEFAULT_WS_PING_INTERVAL,
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.selection import choose_message
+from tests.helpers.websocket import (
+    build_start_payload,
+    connect_with_retries,
+    create_tracker,
+    finalize_metrics,
+    send_client_end,
+    with_api_key,
 )
+from tests.logic.conversation.stream import stream_exchange
+from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
+from tests.state import SessionContext, StreamState
 
 
 def _print_server_error_hint(error: ServerError, api_key: str) -> None:
@@ -115,15 +115,15 @@ def _print_transaction_result(
         print(exchange_header(persona=phase.upper()))
     else:
         print(exchange_header())
-    
+
     print(f"  {format_user(user_msg)}")
-    
+
     # Show tool result when no chat response (tool-only mode)
     if not assistant_text and state and state.toolcall_status:
         print(f"  {format_assistant(_format_tool_result(state))}")
     else:
         print(f"  {format_assistant(assistant_text)}")
-    
+
     print(f"  {format_metrics_inline(metrics)}")
     print(exchange_footer())
 
@@ -153,7 +153,7 @@ async def run_once(args) -> None:
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
     chat_prompt = select_chat_prompt(gender)
-    
+
     test_name = "WARMUP (double-ttfb)" if double_ttfb else "WARMUP"
     print(f"\n{section_header(test_name)}")
     print(dim(f"  server: {server_ws_url}"))
@@ -169,7 +169,7 @@ async def run_once(args) -> None:
     ) as ws:
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
         num_transactions = 2 if double_ttfb else 1
-        
+
         session_id: str | None = None
         try:
             for idx in range(num_transactions):
@@ -184,7 +184,7 @@ async def run_once(args) -> None:
                     sampling=sampling_overrides,
                 )
                 start_payload = build_start_payload(ctx, user_msg)
-                
+
                 await ws.send(json.dumps(start_payload))
                 assistant_text, metrics = await _stream_exchange(
                     ws,
