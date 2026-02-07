@@ -25,7 +25,7 @@ def _ensure_test_env() -> None:
 
 _ensure_test_env()
 
-from src.messages.sanitize.stream_sanitizer import StreamingSanitizer, _sanitize_stream_chunk
+from src.messages.sanitize.stream import StreamingSanitizer, _sanitize_stream_chunk
 
 
 def _stream_chunks(text: str, splits: Sequence[int]) -> str:

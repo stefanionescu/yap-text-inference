@@ -12,7 +12,7 @@ from typing import Any
 
 from tests.helpers.concurrency import distribute_requests
 
-from .types import BenchmarkConfig
+from tests.state import BenchmarkConfig
 from .connection import execute_connection
 
 
@@ -110,4 +110,3 @@ __all__ = [
     "run_instant_benchmark",
     "run_windowed_benchmark",
 ]
-

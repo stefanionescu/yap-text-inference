@@ -5,7 +5,6 @@ This package provides:
 - TRT-LLM quantization metadata (trt/)
 """
 
-from .vllm.core import AWQQuantizer, CalibrationConfig
+from .vllm.core import AWQQuantizer
 
-__all__ = ["AWQQuantizer", "CalibrationConfig"]
-
+__all__ = ["AWQQuantizer"]

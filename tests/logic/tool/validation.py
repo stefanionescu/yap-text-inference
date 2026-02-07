@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .types import TurnResult
+from tests.state import TurnResult
 
 
 def _parse_tool_raw(raw: Any) -> list | None:
@@ -104,4 +104,3 @@ __all__ = [
     "format_bool",
     "is_valid_response_shape",
 ]
-

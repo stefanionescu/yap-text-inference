@@ -10,12 +10,10 @@ new conversation turns. It includes:
 
 from .handler import handle_start_message
 from .sampling import extract_sampling_overrides
-from .dispatch import StartPlan, dispatch_execution
+from .dispatch import dispatch_execution
 
 __all__ = [
     "handle_start_message",
-    "StartPlan",
     "dispatch_execution",
     "extract_sampling_overrides",
 ]
-

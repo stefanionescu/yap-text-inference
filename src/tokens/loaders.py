@@ -16,7 +16,7 @@ import logging
 
 from tokenizers import Tokenizer
 
-from .source import TokenizerSource, TransformersTarget
+from src.state import TokenizerSource, TransformersTarget
 
 logger = logging.getLogger(__name__)
 
@@ -136,4 +136,3 @@ __all__ = [
     "load_transformers_tokenizer",
     "load_transformers_with_fallback",
 ]
-

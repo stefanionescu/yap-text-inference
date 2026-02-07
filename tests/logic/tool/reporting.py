@@ -12,7 +12,7 @@ import math
 from collections import Counter
 from collections.abc import Iterator, Sequence
 
-from .types import CaseResult
+from tests.state import CaseResult
 
 
 def _format_case_summary(result: CaseResult) -> str:

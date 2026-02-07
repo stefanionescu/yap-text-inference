@@ -14,28 +14,9 @@ e.g., "Good morning" vs "Good evening" in system prompts.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import tzinfo, datetime, timezone
 
-
-@dataclass(frozen=True, slots=True)
-class SessionTimestamp:
-    """Structured representation of a session timestamp.
-    
-    Immutable dataclass holding all time-related metadata for a session.
-    
-    Attributes:
-        iso: ISO 8601 formatted timestamp (e.g., "2024-01-15T14:30:00+00:00").
-        classification: Human-readable time of day (e.g., "Afternoon").
-        display: Combined format for logging (e.g., "2024-01-15T14:30:00+00:00 (Afternoon)").
-        tz: Timezone name (e.g., "UTC", "EST").
-    """
-
-    iso: str
-    classification: str
-    display: str
-    tz: str
-
+from src.state import SessionTimestamp
 
 def get_time_classification(hour: int) -> str:
     """Classify time of day based on hour.
@@ -98,4 +79,3 @@ def format_session_timestamp(
 
 
 __all__ = ["SessionTimestamp", "get_time_classification", "format_session_timestamp"]
-

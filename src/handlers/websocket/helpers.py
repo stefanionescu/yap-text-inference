@@ -17,10 +17,8 @@ and streaming chat responses. It handles:
    - Clean task cancellation with proper await
 
 Message Protocol:
-    Token frame:   {"type": "token", "text": "chunk"}
-    Final frame:   {"type": "final", "normalized_text": "full response"}
-    Done frame:    {"type": "done", "usage": {...}}
-    Toolcall:      {"type": "toolcall", "status": "...", "raw": {...}}
+    All messages use a standard envelope:
+        {"type": "...", "session_id": "...", "request_id": "...", "payload": {...}}
 """
 
 from __future__ import annotations
@@ -30,12 +28,13 @@ import asyncio
 import logging
 import contextlib
 from typing import Any
-from dataclasses import dataclass
 from collections.abc import AsyncIterator
 
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..session import session_handler
+from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
+from src.state import _ChatStreamState
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +73,40 @@ async def safe_send_json(ws: WebSocket, payload: dict[str, Any]) -> bool:
     return await safe_send_text(ws, json.dumps(payload))
 
 
-async def send_toolcall(ws: WebSocket, status: str, raw: object) -> None:
+def build_envelope(
+    msg_type: str,
+    session_id: str,
+    request_id: str,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a standardized WebSocket message envelope."""
+    return {
+        WS_KEY_TYPE: msg_type,
+        WS_KEY_SESSION_ID: session_id,
+        WS_KEY_REQUEST_ID: request_id,
+        WS_KEY_PAYLOAD: payload or {},
+    }
+
+
+async def safe_send_envelope(
+    ws: WebSocket,
+    *,
+    msg_type: str,
+    session_id: str,
+    request_id: str,
+    payload: dict[str, Any] | None = None,
+) -> bool:
+    """Send an envelope-wrapped JSON payload."""
+    return await safe_send_json(ws, build_envelope(msg_type, session_id, request_id, payload))
+
+
+async def send_toolcall(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+    status: str,
+    raw: object,
+) -> None:
     """Send a toolcall message with status and raw result data.
     
     Args:
@@ -82,11 +114,16 @@ async def send_toolcall(ws: WebSocket, status: str, raw: object) -> None:
         status: Tool call status (e.g., "completed", "error").
         raw: Raw tool result data to include.
     """
-    await safe_send_json(ws, {
-        "type": "toolcall",
-        "status": status,
-        "raw": raw,
-    })
+    await safe_send_envelope(
+        ws,
+        msg_type="toolcall",
+        session_id=session_id,
+        request_id=request_id,
+        payload={
+            "status": status,
+            "raw": raw,
+        },
+    )
 
 
 async def cancel_task(task: asyncio.Task | None) -> None:
@@ -107,14 +144,6 @@ async def cancel_task(task: asyncio.Task | None) -> None:
     logger.info("executor: cancelled task %s", repr(task))
 
 
-@dataclass
-class _ChatStreamState:
-    """Internal state for stream_chat_response."""
-    final_text: str      # Accumulated response text
-    text_visible: bool   # Whether any text has been sent to client
-    interrupted: bool = False  # Whether streaming was interrupted
-
-
 async def _send_initial_text(
     ws: WebSocket,
     initial_text: str,
@@ -123,7 +152,13 @@ async def _send_initial_text(
 ) -> None:
     if not initial_text or initial_text_already_sent:
         return
-    sent = await safe_send_json(ws, {"type": "token", "text": initial_text})
+    sent = await safe_send_envelope(
+        ws,
+        msg_type="token",
+        session_id=state.session_id,
+        request_id=state.request_id,
+        payload={"text": initial_text},
+    )
     if sent:
         state.text_visible = True
     else:
@@ -136,7 +171,13 @@ async def _forward_stream_chunks(
     state: _ChatStreamState,
 ) -> None:
     async for chunk in stream:
-        sent = await safe_send_json(ws, {"type": "token", "text": chunk})
+        sent = await safe_send_envelope(
+            ws,
+            msg_type="token",
+            session_id=state.session_id,
+            request_id=state.request_id,
+            payload={"text": chunk},
+        )
         if not sent:
             state.interrupted = True
             break
@@ -145,17 +186,23 @@ async def _forward_stream_chunks(
 
 
 async def _send_completion_frames(ws: WebSocket, state: _ChatStreamState) -> None:
-    sent_final = await safe_send_json(
+    sent_final = await safe_send_envelope(
         ws,
-        {
-            "type": "final",
-            "normalized_text": state.final_text,
-        },
+        msg_type="final",
+        session_id=state.session_id,
+        request_id=state.request_id,
+        payload={"normalized_text": state.final_text},
     )
     if not sent_final:
         state.interrupted = True
         return
-    sent_done = await safe_send_json(ws, {"type": "done", "usage": {}})
+    sent_done = await safe_send_envelope(
+        ws,
+        msg_type="done",
+        session_id=state.session_id,
+        request_id=state.request_id,
+        payload={"usage": {}},
+    )
     if not sent_done:
         state.interrupted = True
 
@@ -178,6 +225,7 @@ async def stream_chat_response(
     ws: WebSocket,
     stream: AsyncIterator[str],
     session_id: str,
+    request_id: str,
     user_utt: str,
     *,
     initial_text: str = "",
@@ -199,6 +247,7 @@ async def stream_chat_response(
         ws: The WebSocket connection.
         stream: Async iterator yielding text chunks from the chat model.
         session_id: Session for history recording.
+        request_id: Request identifier for outbound messages.
         user_utt: User utterance (for logging/tracking).
         initial_text: Optional prefix text to include in response.
         initial_text_already_sent: Whether initial_text was already sent to client.
@@ -212,6 +261,8 @@ async def stream_chat_response(
     state = _ChatStreamState(
         final_text=initial_text,
         text_visible=bool(initial_text) and initial_text_already_sent,
+        session_id=session_id,
+        request_id=request_id,
     )
 
     try:
@@ -233,6 +284,8 @@ async def stream_chat_response(
 __all__ = [
     "safe_send_text",
     "safe_send_json",
+    "build_envelope",
+    "safe_send_envelope",
     "send_toolcall",
     "cancel_task",
     "stream_chat_response",

@@ -13,24 +13,14 @@ from __future__ import annotations
 
 import importlib
 from typing import Any
-from dataclasses import dataclass
 
 from tests.config import PERSONA_MODULE
 from tests.helpers.prompt import normalize_gender
+from tests.state import PersonaDefinition
 
 # ============================================================================
 # Data Structures
 # ============================================================================
-
-@dataclass(frozen=True)
-class PersonaDefinition:
-    """Immutable representation of a persona configuration."""
-
-    name: str
-    gender: str
-    personality: str
-    prompt: str
-
 
 # ============================================================================
 # Registry
@@ -109,4 +99,4 @@ class PersonaRegistry:
         return sorted({persona.name for persona in personas})
 
 
-__all__ = ["PersonaDefinition", "PersonaRegistry"]
+__all__ = ["PersonaRegistry"]

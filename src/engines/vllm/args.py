@@ -39,7 +39,7 @@ from src.config.limits import MEMORY_OPT_GPU_FRAC_CAP
 from src.config.quantization import FLOAT16_QUANT_METHODS
 from src.config import KV_DTYPE, CHAT_QUANTIZATION, DEFAULT_MAX_BATCHED_TOKENS
 from src.quantization.vllm.core.detection import log_quant_detection, detect_quant_backend, resolve_model_origin
-from src.helpers.model_profiles import (
+from src.helpers.profiles import (
     model_uses_mla,
     get_tokenizer_kwargs,
     get_max_batched_tokens,
@@ -49,7 +49,7 @@ from src.helpers.model_profiles import (
 )
 
 from .tokenizer import inject_tokenizer_kwargs
-from .memory_tuning import auto_max_num_seqs, configure_kv_cache, scale_batching_limits
+from .memory import auto_max_num_seqs, configure_kv_cache, scale_batching_limits
 
 
 def _ensure_fla_runtime_available(model_identifier: str) -> None:

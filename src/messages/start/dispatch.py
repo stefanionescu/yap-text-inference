@@ -22,7 +22,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import TYPE_CHECKING
-from dataclasses import dataclass
 
 from ...config.timeouts import TOOL_TIMEOUT_S
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL
@@ -30,29 +29,14 @@ from ...execution.executor import run_execution
 from ...execution.tool.runner import run_toolcall
 from ...execution.tool.parser import parse_tool_result
 from ...execution.chat.runner import run_chat_generation
-from ...handlers.websocket.helpers import safe_send_json, stream_chat_response
+from ...handlers.websocket.helpers import send_toolcall, safe_send_envelope, stream_chat_response
+from src.state import StartPlan
 
 if TYPE_CHECKING:
     from fastapi import WebSocket
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class StartPlan:
-    """Validated plan for executing a start message.
-    
-    Contains all the extracted and validated parameters needed
-    to dispatch the appropriate execution path.
-    """
-    session_id: str
-    static_prefix: str
-    runtime_text: str
-    history_text: str
-    user_utt: str
-    history_turn_id: str | None = None
-    sampling_overrides: dict[str, float | int] | None = None
 
 
 async def dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
@@ -81,6 +65,7 @@ async def _run_sequential(ws: WebSocket, plan: StartPlan) -> None:
     await run_execution(
         ws,
         plan.session_id,
+        plan.request_id,
         plan.static_prefix,
         plan.runtime_text,
         plan.history_text,
@@ -101,9 +86,11 @@ async def _run_chat_only(ws: WebSocket, plan: StartPlan) -> None:
             plan.runtime_text,
             plan.history_text,
             plan.user_utt,
+            request_id=plan.request_id,
             sampling_overrides=plan.sampling_overrides,
         ),
         plan.session_id,
+        plan.request_id,
         plan.user_utt,
         history_turn_id=plan.history_turn_id,
         history_user_utt=plan.user_utt,
@@ -131,18 +118,31 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan) -> None:
         tool_res = {"cancelled": True, "text": "[]", "timeout": True}
     
     raw_field, is_tool = parse_tool_result(tool_res)
-    await safe_send_json(ws, {
-        "type": "toolcall",
-        "status": "yes" if is_tool else "no",
-        "raw": raw_field,
-    })
-    await safe_send_json(ws, {"type": "final", "normalized_text": ""})
-    await safe_send_json(ws, {"type": "done", "usage": {}})
+    await send_toolcall(
+        ws,
+        plan.session_id,
+        plan.request_id,
+        "yes" if is_tool else "no",
+        raw_field,
+    )
+    await safe_send_envelope(
+        ws,
+        msg_type="final",
+        session_id=plan.session_id,
+        request_id=plan.request_id,
+        payload={"normalized_text": ""},
+    )
+    await safe_send_envelope(
+        ws,
+        msg_type="done",
+        session_id=plan.session_id,
+        request_id=plan.request_id,
+        payload={"usage": {}},
+    )
     logger.info(
         "handle_start: tool-only done session_id=%s is_tool=%s",
         plan.session_id, is_tool
     )
 
 
-__all__ = ["StartPlan", "dispatch_execution"]
-
+__all__ = ["dispatch_execution"]

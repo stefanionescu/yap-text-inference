@@ -20,7 +20,7 @@ validate_models_early() {
        TOOL_MODEL="${TOOL_MODEL:-}" \
        CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}" \
        INFERENCE_ENGINE="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}" \
-       "${python_cmd}" -m src.scripts.model_validate; then
+       "${python_cmd}" -m src.scripts.validate; then
     log_err "[validate] ✗ Model validation failed - check model names and allowlists"
     return 1
   fi

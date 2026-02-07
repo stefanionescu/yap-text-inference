@@ -9,8 +9,8 @@ from typing import Any
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.helpers.log_once import warn_once
-from src.helpers.model_profiles import get_model_profile, normalize_model_id
+from src.helpers.dedupe import warn_once
+from src.helpers.profiles import get_model_profile, normalize_model_id
 
 logger = logging.getLogger(__name__)
 

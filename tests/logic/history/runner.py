@@ -18,14 +18,12 @@ from tests.helpers.errors import ServerError, StreamError
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.metrics import (
-    StreamState,
-    TTFBSamples,
-    SessionContext,
     record_ttfb,
     has_ttfb_samples,
     emit_ttfb_summary,
     create_ttfb_aggregator,
 )
+from tests.state import SessionContext, StreamState, TTFBSamples
 from tests.helpers.websocket import (
     with_api_key,
     iter_messages,
@@ -217,7 +215,7 @@ async def run_test(
                 ttfb_samples,
             )
         finally:
-            await send_client_end(ws)
+            await send_client_end(ws, session_id)
 
     print()
     if has_ttfb_samples(ttfb_samples):

@@ -9,9 +9,9 @@ from src.helpers.calibration import TotalLengthPolicy, resolve_total_len
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT, MOE_CALIBRATION_SAMPLES_LIMIT
 
 from .llmcompressor import quantize
-from .calibration import CalibrationConfig
+from src.state import CalibrationConfig
 from ..utils import is_awq_dir, resolve_calibration_seqlen
-from ..utils.model_utils import is_moe_model, prefetch_model, load_model_config
+from ..utils.model import is_moe_model, prefetch_model, load_model_config
 
 CHAT_TOTAL_POLICY = TotalLengthPolicy(
     kind="chat",

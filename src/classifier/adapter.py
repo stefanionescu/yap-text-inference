@@ -29,7 +29,8 @@ from src.config.tool import (
 
 from .batch import BatchExecutor
 from .backend import TorchClassifierBackend
-from .model_info import ClassifierModelInfo, build_model_info
+from .info import build_model_info
+from src.state import ClassifierModelInfo
 
 logger = logging.getLogger(__name__)
 

@@ -66,7 +66,7 @@ push_to_hf() {
   local python_cmd=(
     "${python_exe}"
     "-W" "ignore::RuntimeWarning"
-    "-m" "src.hf.trt.hf_push"
+    "-m" "src.hf.trt.push"
     "push"
     "--checkpoint-dir" "${checkpoint_dir}"
     "--repo-id" "${HF_PUSH_REPO_ID}"
@@ -171,7 +171,7 @@ push_engine_to_hf() {
   local python_cmd=(
     "${python_exe}"
     "-W" "ignore::RuntimeWarning"
-    "-m" "src.hf.trt.hf_push"
+    "-m" "src.hf.trt.push"
     "push-engine"
     "--engine-dir" "${engine_dir}"
     "--repo-id" "${target_repo}"
@@ -186,4 +186,3 @@ push_engine_to_hf() {
     return 1
   fi
 }
-

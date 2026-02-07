@@ -15,12 +15,19 @@ from ..config import DEPLOY_CHAT
 from ..handlers.session import session_handler
 from ..tokens import trim_text_to_token_limit_chat
 from ..execution.chat.runner import run_chat_generation
-from ..handlers.websocket.helpers import safe_send_json, stream_chat_response
+from ..handlers.websocket.errors import send_error
+from ..handlers.websocket.helpers import stream_chat_response
+from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
+async def handle_followup_message(
+    ws: WebSocket,
+    payload: dict[str, Any],
+    session_id: str,
+    request_id: str,
+) -> None:
     """Handle 'followup' message to continue with chat-only using analysis.
 
     Required fields:
@@ -31,17 +38,38 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
         - user_utterance: str (ignored for synthesis; may be used by clients)
     """
     if not DEPLOY_CHAT:
-        await safe_send_json(ws, {"type": "error", "message": "followup requires chat model deployment"})
+        await send_error(
+            ws,
+            session_id=session_id,
+            request_id=request_id,
+            error_code=WS_ERROR_INVALID_SETTINGS,
+            message="followup requires chat model deployment",
+            reason_code="followup_unavailable",
+        )
         return
     
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
-        await safe_send_json(ws, {"type": "error", "message": "no active session; send 'start' first"})
+        await send_error(
+            ws,
+            session_id=session_id,
+            request_id=request_id,
+            error_code=WS_ERROR_INVALID_MESSAGE,
+            message="no active session; send 'start' first",
+            reason_code="no_active_session",
+        )
         return
 
-    analysis_text = (msg.get("analysis_text") or "").strip()
+    analysis_text = (payload.get("analysis_text") or "").strip()
     if not analysis_text:
-        await safe_send_json(ws, {"type": "error", "message": "analysis_text is required"})
+        await send_error(
+            ws,
+            session_id=session_id,
+            request_id=request_id,
+            error_code=WS_ERROR_INVALID_PAYLOAD,
+            message="analysis_text is required",
+            reason_code="missing_analysis_text",
+        )
         return
 
     history_text = session_handler.get_history_text(session_id)
@@ -50,7 +78,14 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
     static_prefix = cfg.get("chat_prompt") or ""
     runtime_text = ""
     if not static_prefix:
-        await safe_send_json(ws, {"type": "error", "message": "chat_prompt must be set in session (send in start)"})
+        await send_error(
+            ws,
+            session_id=session_id,
+            request_id=request_id,
+            error_code=WS_ERROR_INVALID_SETTINGS,
+            message="chat_prompt must be set in session (send in start)",
+            reason_code="missing_chat_prompt",
+        )
         return
 
     # Synthesize the follow-up prompt for the chat model
@@ -76,9 +111,11 @@ async def handle_followup_message(ws: WebSocket, msg: dict[str, Any], session_id
             runtime_text=runtime_text,
             history_text=history_text,
             user_utt=user_utt,
+            request_id=request_id,
             sampling_overrides=sampling_overrides,
         ),
         session_id,
+        request_id,
         user_utt,
         history_turn_id=history_turn_id,
         history_user_utt=trimmed_analysis,

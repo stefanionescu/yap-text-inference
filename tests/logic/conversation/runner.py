@@ -31,7 +31,8 @@ from tests.helpers.fmt import (
 )
 
 from .stream import stream_exchange
-from .session import ConversationSession, build_start_payload
+from .session import build_start_payload
+from tests.state import ConversationSession
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ async def run_conversation(
             print()
             if has_ttfb_samples(ttfb_samples):
                 emit_ttfb_summary(ttfb_samples, print)
-            await send_client_end(ws)
+            await send_client_end(ws, session.session_id)
 
 
 __all__ = ["run_conversation"]

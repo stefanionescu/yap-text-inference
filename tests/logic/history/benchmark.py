@@ -15,7 +15,7 @@ from tests.logic.benchmark.reporting import print_report
 from tests.messages.history import HISTORY_RECALL_MESSAGES
 from tests.helpers.concurrency import distribute_requests, sanitize_concurrency
 
-from .types import HistoryBenchConfig
+from tests.state import HistoryBenchConfig
 from .connection import execute_history_connection
 
 
@@ -112,4 +112,3 @@ async def run_history_benchmark(
 
 
 __all__ = ["run_history_benchmark"]
-

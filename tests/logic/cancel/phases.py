@@ -1,7 +1,7 @@
 """Phase execution functions for cancel test.
 
 This module provides async functions for each test phase:
-- Cancel phase: send start, wait, send cancel, verify cancelled=True
+- Cancel phase: send start, wait, send cancel, verify cancelled acknowledgement
 - Drain phase: verify no spurious messages after cancel
 - Recovery phase: send another request, verify full response
 """
@@ -17,17 +17,18 @@ from typing import Any
 import websockets
 
 from tests.helpers.fmt import dim
-from tests.helpers.metrics import SessionContext
+from tests.state import SessionContext
 from tests.helpers.websocket import (
     iter_messages,
     create_tracker,
     dispatch_message,
     finalize_metrics,
     build_start_payload,
+    build_cancel_payload,
 )
 
 from .handlers import build_cancel_handlers, build_recovery_handlers
-from .types import DrainPhaseResult, CancelPhaseResult, RecoveryPhaseResult
+from tests.state import CancelPhaseResult, DrainPhaseResult, RecoveryPhaseResult
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ async def run_cancel_phase(
     handlers = build_cancel_handlers(state)
 
     start_payload = build_start_payload(ctx, user_msg)
+    start_request_id = start_payload.get("request_id")
     await ws.send(json.dumps(start_payload))
     print(dim("  [cancel] sent start message..."))
 
@@ -79,7 +81,8 @@ async def run_cancel_phase(
             if ack_time is not None and not cancel_sent:
                 elapsed = time.perf_counter() - ack_time
                 if elapsed >= cancel_delay:
-                    await ws.send(json.dumps({"type": "cancel"}))
+                    cancel_payload = build_cancel_payload(ctx.session_id, start_request_id)
+                    await ws.send(json.dumps(cancel_payload))
                     cancel_sent = True
                     print(dim(f"  [cancel] sent cancel after {elapsed:.1f}s"))
 

@@ -29,7 +29,7 @@ resolve_trt_artifacts() {
   
   local py_out
   py_out=$(PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
-    python /app/download/resolve_artifacts.py 2>&1) || true
+    python /app/download/artifacts.py 2>&1) || true
   
   local mode
   mode=$(echo "$py_out" | awk -F= '/^MODE=/{print $2; exit}')

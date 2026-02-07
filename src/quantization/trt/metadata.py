@@ -4,7 +4,7 @@ This module provides utilities for:
 1. Base model detection from checkpoint configs
 2. Full metadata collection for README rendering
 
-For engine label generation, see the `engine_label` module.
+For engine label generation, see the `label` module.
 """
 
 from __future__ import annotations
@@ -19,7 +19,8 @@ from src.config import trt as trt_config
 from src.hf.license import compute_license_info
 
 from .detection import get_compute_capability_info
-from .engine_label import EnvironmentInfo, EngineLabelError, _env_int, _env_str, get_engine_label
+from src.state import EnvironmentInfo
+from .label import EngineLabelError, _env_int, _env_str, get_engine_label
 
 # ============================================================================
 # Base Model Detection

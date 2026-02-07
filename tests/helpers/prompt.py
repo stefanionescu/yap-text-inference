@@ -5,7 +5,7 @@ appropriate chat prompts based on the assistant's gender and personality.
 
 Prompt sources:
 - tests/prompts/base.py: Basic prompts (Anna/Mark flirty only)
-  Used by: warmup, bench, connections, screen_analysis, tool, history tests
+  Used by: warmup, bench, connections, vision, tool, history tests
   
 - tests/prompts/detailed.py: Full personality matrix
   Used by: live client persona registry and scripts that accept --persona

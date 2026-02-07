@@ -16,7 +16,7 @@ from tests.helpers.fmt import (
     format_metrics_inline,
 )
 
-from .types import CancelClientResult, NormalClientResult
+from tests.state import CancelClientResult, NormalClientResult
 
 CANCEL_TEST_MESSAGE = "hey there! tell me a story about a magical forest"
 

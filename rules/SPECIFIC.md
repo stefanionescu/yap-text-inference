@@ -52,5 +52,5 @@ Expectations tailored to this repository’s layout and inference workflows. Use
 ## Testing layout
 - Every behavioral change must land with a focused test under the mirrored path in `tests/` (e.g., `src/tokens/source.py` → `tests/logic/tokens/test_source.py`); integration tests live under the closest matching feature directory.
 - Mirror the structure of `src/` under `tests/logic/` by feature area (handlers → `tests/logic/handlers`, tokens → `tests/logic/tokens`, etc.) so ownership is obvious.
-- Shared fixtures, websocket tooling, and regression harnesses belong under `tests/helpers/`; avoid importing test helpers from production code or vice versa.
+- Shared test data, websocket tooling, and regression harnesses belong under `tests/helpers/`; avoid importing test helpers from production code or vice versa.
 - When adding a new top-level directory in `src/`, immediately create the matching tree in `tests/` (even if empty) so future contributors know where tests should live.

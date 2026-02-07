@@ -19,7 +19,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 - Avoid creating singletons or global instances in the defining module; instantiate them in entry-point scripts, factory functions, or dependency-injection setups instead.
 - Do not add module-level free functions that merely wrap a module-level singleton instance (e.g., `get_engine()` calling `_singleton.get()`). If a class manages state, the public API is the class itself—do not hide it behind free functions in the same file. This pattern creates hidden global state, complicates testing, and makes debugging harder because callers don't realize they're touching shared mutable state.
 - Do not trigger work at import time; expose callable entry points instead.
-- Keep files at or under 350 lines; split when approaching the limit. Data-heavy fixtures may exceed this when splitting would hurt clarity.
+- Keep files at or under 350 lines; split when approaching the limit. Data-heavy test data may exceed this when splitting would hurt clarity.
 - Use section dividers in this exact format when needed:
   ```
   # ============================================================================
@@ -87,10 +87,10 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 
 ## Testing
 - Ship every behavioral change with a matching automated test (unit, integration, or system) that would fail without the change.
-- Keep tests deterministic by stubbing clocks, network calls, randomness, and filesystem writes; centralize shared fixtures so they can be reused.
+- Keep tests deterministic by stubbing clocks, network calls, randomness, and filesystem writes; centralize shared test data so they can be reused.
 - Add a regression test for each bug fix that previously failed to prevent repeats; reference the failure scenario in the test's docstring or comments.
-- Name test modules `test_*.py`, fixtures `fixture_*`, and doubles `fake_*`/`stub_*` so intent stays obvious.
-- Limit test modules to the smallest practical scope; extract reusable builders into helper modules or fixtures instead of duplicating factories inline.
+- Name test modules `test_*.py`, sample data modules `sample_*`, and doubles `fake_*`/`stub_*` so intent stays obvious.
+- Limit test modules to the smallest practical scope; extract reusable builders into helper modules or shared data modules instead of duplicating factories inline.
 
 ## Test CLI output
 - Use `print()` for test script user-facing output; reserve `logging` for diagnostic/debug messages that should be suppressible.

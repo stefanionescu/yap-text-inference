@@ -29,8 +29,8 @@ validators.py:
 
 sanitize/:
     Text sanitization for prompts and streamed output:
-    - prompt_sanitizer.py: Clean incoming prompts
-    - stream_sanitizer.py: Normalize generated text in real-time
+    - prompt.py: Clean incoming prompts
+    - stream.py: Normalize generated text in real-time
     - common.py: Shared sanitization patterns
 
 Import from submodules directly to avoid circular imports:

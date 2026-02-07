@@ -29,7 +29,7 @@ This document covers advanced operations, configuration, and deep-dive details f
   - [Warmup Test Client](#warmup-test-client)
   - [Interactive Live Client](#interactive-live-client)
   - [Conversation History Test](#conversation-history-test)
-  - [Screen Analysis / Toolcall Test](#screen-analysis--toolcall-test)
+  - [Vision / Toolcall Test](#vision--toolcall-test)
   - [Tool Regression Test](#tool-regression-test)
   - [Benchmark Client](#benchmark-client)
   - [History Recall Test](#history-recall-test)
@@ -112,9 +112,9 @@ TRT-LLM engines have `max_batch_size` baked in at build time. This is not the sa
 
 **When is `TRT_MAX_BATCH_SIZE` required?**
 
-- ✅ Fresh quantization (on-the-fly): Yes
-- ✅ Pre-quantized TRT checkpoint models: Yes (engine must still be built from checkpoint)
-- ❌ Pre-built engine via `TRT_ENGINE_DIR`: No (already baked in)
+- Fresh quantization (on-the-fly): Yes
+- Pre-quantized TRT checkpoint models: Yes (engine must still be built from checkpoint)
+- Pre-built engine via `TRT_ENGINE_DIR`: No (already baked in)
 
 **Example:**
 
@@ -212,17 +212,29 @@ The server uses persistent WebSocket connections. Each client provides a `sessio
 
 ### WebSocket Protocol Highlights
 
-- **Start**: `{"type":"start", ...}` begins/queues a turn. Sending another `start` automatically cancels the previous turn for that session (barge-in).
+All client messages use a standard envelope:
+
+```json
+{
+  "type": "...",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<per-request uuid>",
+  "payload": { ... }
+}
+```
+
+Server responses use the same envelope and echo `session_id` / `request_id`.
+
+- **Start**: `type:"start"` begins/queues a turn. Sending another `start` automatically cancels the previous turn for that session (barge-in).
 - **Sampling overrides (optional)**: Include a `sampling` object inside the `start` payload to override chat decoding knobs per session, for example:
-  `{"type":"start", "...": "...", "sampling":{"temperature":0.8,"top_p":0.85}}`. Supported keys are `temperature`, `top_p`, `top_k`, `min_p`, `repetition_penalty`, `presence_penalty`, `frequency_penalty`, and `sanitize_output` (boolean, default `true`). Any omitted key falls back to the server defaults in `src/config/sampling.py`. Set `sanitize_output` to `false` to receive raw LLM output without cleanup.
-- **Cancel**: `{"type":"cancel"}` (or the literal sentinel `__CANCEL__`) immediately stops both chat and tool engines. The server replies with `{"type":"done","cancelled":true}` (echoing `request_id` when provided).
-- **Client end**: `{"type":"end"}` (or the sentinel `__END__`) requests a clean shutdown. The server responds with `{"type":"connection_closed","reason":"client_request"}` before closing with code `1000`.
-- **Heartbeat**: `{"type":"ping"}` keeps the socket active during long pauses. The server answers with `{"type":"pong"}`; receiving `{"type":"pong"}` from clients is treated as a no-op. Every ping/ack resets the idle timer.
+  `{"type":"start", "...": "...", "payload":{"sampling":{"temperature":0.8,"top_p":0.85}}}`. Supported keys are `temperature`, `top_p`, `top_k`, `min_p`, `repetition_penalty`, `presence_penalty`, `frequency_penalty`, and `sanitize_output` (boolean, default `true`). Any omitted key falls back to the server defaults in `src/config/sampling.py`. Set `sanitize_output` to `false` to receive raw LLM output without cleanup.
+- **Cancel**: `type:"cancel"` with an empty payload (or optional `{"reason":"client_request"}`) immediately stops both chat and tool engines. The server replies with `type:"cancelled"` and stops streaming.
+- **Client end**: `type:"end"` requests a clean shutdown. The server responds with `type:"session_end"` before closing with code `1000`.
+- **Heartbeat**: `type:"ping"` keeps the socket active during long pauses. The server answers with `type:"pong"`; receiving `type:"pong"` from clients is treated as a no-op. Every ping/ack resets the idle timer.
 - **Idle timeout**: Connections with no activity for 150 s (configurable via `WS_IDLE_TIMEOUT_S`) are closed with code `4000`. Send periodic pings or requests to stay connected longer.
-- **Sentinel shortcuts**: The default `WS_END_SENTINEL="__END__"` / `WS_CANCEL_SENTINEL="__CANCEL__"` are accepted as raw text frames for clients that can't emit JSON.
 - **Rate limits**: Rolling-window quotas for both general messages and cancel messages are enforced per connection. Tune the behavior via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS` (see `src/config/limits.py` for defaults).
 - **Connection limit**: New connections are limited by `MAX_CONCURRENT_CONNECTIONS`. When the server returns `server_at_capacity`, retry with backoff.
-- **Done frame**: Every turn ends with `{"type":"done","usage":{...}}` on success, or `{"type":"done","cancelled":true}` when interrupted.
+- **Done frame**: Every successful turn ends with `type:"done"` and `payload.usage`. Cancelled turns return `type:"cancelled"`.
 
 ### Connection Lifecycle
 1. Client connects to `ws://server:8000/ws?api_key=your_key`
@@ -254,41 +266,57 @@ Start a turn:
 {
   "type": "start",
   "session_id": "<stable-per-user uuid>",
-  "chat_prompt": "...full system prompt for the assistant...",
-  "personality": "savage|flirty|...",
-  "gender": "female|male",
-  "history": [
-    {"role": "user", "content": "previous message"},
-    {"role": "assistant", "content": "previous reply"}
-  ],
-  "user_utterance": "hey—open spotify and queue my mix"
+  "request_id": "<uuid per turn>",
+  "payload": {
+    "chat_prompt": "...full system prompt for the assistant...",
+    "personality": "savage|flirty|...",
+    "gender": "female|male",
+    "history": [
+      {"role": "user", "content": "previous message"},
+      {"role": "assistant", "content": "previous reply"}
+    ],
+    "user_utterance": "hey—open spotify and queue my mix"
+  }
 }
 ```
 
 Cancel a turn:
 
 ```json
-{ "type": "cancel" }
+{
+  "type": "cancel",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per turn>",
+  "payload": { "reason": "client_request" }
+}
 ```
-- Shortcut: send the literal `__CANCEL__` string (configurable via `WS_CANCEL_SENTINEL`) when clients cannot emit JSON.
-- Optional: include `"request_id"` to get it echoed back in the server's `{"type":"done","cancelled":true}` acknowledgement.
+- The `payload` may be empty (`{}`) if you don't want to include a reason.
 
 Gracefully end a session:
 
 ```json
-{ "type": "end" }
+{
+  "type": "end",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per turn>",
+  "payload": {}
+}
 ```
 
-- The literal `__END__` sentinel (configurable via `WS_END_SENTINEL`) is also accepted.
-- The server responds with `{"type":"connection_closed","reason":"client_request"}` and closes the socket with code `1000`.
+- The server responds with a `session_end` message and closes the socket with code `1000`.
 
 Keep the connection warm during long pauses
 
 ```json
-{ "type": "ping" }
+{
+  "type": "ping",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per ping>",
+  "payload": {}
+}
 ```
 
-- Server replies with `{"type":"pong"}` and resets the idle timer (default idle timeout: 150s, set via `WS_IDLE_TIMEOUT_S`).
+- Server replies with `{"type":"pong", ...}` (same envelope, empty payload) and resets the idle timer (default idle timeout: 150s, set via `WS_IDLE_TIMEOUT_S`).
 - Incoming `{"type":"pong"}` frames are treated as no-ops so clients can mirror the heartbeat without extra logic.
 
 ### What You Receive
@@ -298,8 +326,12 @@ Authentication errors
 ```json
 {
   "type": "error",
-  "error_code": "authentication_failed",
-  "message": "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header."
+  "session_id": "unknown",
+  "request_id": "unknown",
+  "payload": {
+    "code": "authentication_failed",
+    "message": "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header."
+  }
 }
 ```
 
@@ -308,16 +340,30 @@ Capacity errors
 ```json
 {
   "type": "error",
-  "error_code": "server_at_capacity",
-  "message": "Server cannot accept new connections. Please try again later."
+  "session_id": "unknown",
+  "request_id": "unknown",
+  "payload": {
+    "code": "server_at_capacity",
+    "message": "Server cannot accept new connections. Please try again later."
+  }
 }
 ```
 
 Tool-call decision
 
 ```json
-{ "type": "toolcall", "status": "yes", "raw": "..." }
-{ "type": "toolcall", "status": "no",  "raw": "..." }
+{
+  "type": "toolcall",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per turn>",
+  "payload": { "status": "yes", "raw": "..." }
+}
+{
+  "type": "toolcall",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per turn>",
+  "payload": { "status": "no", "raw": "..." }
+}
 ```
 
 In both-model deployments, chat tokens always stream after the toolcall decision (for both `"yes"` and `"no"`).
@@ -327,15 +373,24 @@ In both-model deployments, chat tokens always stream after the toolcall decision
 Explicit cancellation:
 
 ```json
-{"type": "cancel"}
+{
+  "type": "cancel",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per turn>",
+  "payload": {}
+}
 ```
-- `{"cancel": true}` or `__CANCEL__` produce the same result.
-- The server immediately aborts both chat and tool engines, stops streaming tokens, and sends `{"type":"done","cancelled":true}` (plus `request_id` when provided).
+- The server immediately aborts both chat and tool engines, stops streaming tokens, and sends `{"type":"cancelled", ...}`.
 
 Automatic barge-in (recommended for Pipecat):
 
 ```json
-{"type": "start", "session_id": "user123", "user_utterance": "new message"}
+{
+  "type": "start",
+  "session_id": "user123",
+  "request_id": "req-456",
+  "payload": { "user_utterance": "new message" }
+}
 ```
 
 - New `start` messages automatically cancel any ongoing generation for that session
@@ -344,7 +399,7 @@ Automatic barge-in (recommended for Pipecat):
 - Idle sockets are closed with code `4000` (`WS_CLOSE_IDLE_CODE`); periodic `ping` frames keep the session alive indefinitely.
 
 Response handling:
-- Cancelled requests return: `{ "type": "done", "cancelled": true }`
+- Cancelled requests return: `{ "type": "cancelled", ... }`
 - New requests stream normally with `token` messages
 
 ### Rate Limits
@@ -512,10 +567,10 @@ TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:
 
 Streams a 10-turn script to test history eviction and KV-cache reuse.
 
-### Screen Analysis / Toolcall Test
+### Vision / Toolcall Test
 
 ```bash
-TEXT_API_KEY=your_api_key python3 tests/screen_analysis.py
+TEXT_API_KEY=your_api_key python3 tests/vision.py
 ```
 
 Tests that toolcall decisions fire before chat streaming.

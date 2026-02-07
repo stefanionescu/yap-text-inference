@@ -9,9 +9,36 @@ Payload Type:
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
-from tests.helpers.metrics import SessionContext
+from tests.state import SessionContext
+
+
+def build_envelope(
+    msg_type: str,
+    session_id: str,
+    request_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a standard envelope for websocket messages."""
+    return {
+        "type": msg_type,
+        "session_id": session_id,
+        "request_id": request_id,
+        "payload": payload,
+    }
+
+
+def build_cancel_payload(session_id: str, request_id: str) -> dict[str, Any]:
+    """Build a cancel message for the given request."""
+    return build_envelope("cancel", session_id, request_id, {"reason": "client_request"})
+
+
+def build_end_payload(session_id: str, request_id: str | None = None) -> dict[str, Any]:
+    """Build an end message for the given session."""
+    rid = request_id or f"end-{uuid.uuid4()}"
+    return build_envelope("end", session_id, rid, {})
 
 
 def build_start_payload(
@@ -19,6 +46,7 @@ def build_start_payload(
     user_text: str,
     *,
     history: list[dict[str, str]] | None = None,
+    request_id: str | None = None,
 ) -> dict[str, Any]:
     """Build the start message payload for a conversation turn.
     
@@ -39,9 +67,7 @@ def build_start_payload(
             "Use select_chat_prompt(gender) to get a valid prompt."
         )
     
-    payload: dict[str, Any] = {
-        "type": "start",
-        "session_id": ctx.session_id,
+    inner_payload: dict[str, Any] = {
         "gender": ctx.gender,
         "personality": ctx.personality,
         "chat_prompt": ctx.chat_prompt,
@@ -49,11 +75,14 @@ def build_start_payload(
         "user_utterance": user_text,
     }
     if ctx.sampling:
-        payload["sampling"] = ctx.sampling
-    return payload
+        inner_payload["sampling"] = ctx.sampling
+    rid = request_id or f"req-{uuid.uuid4()}"
+    return build_envelope("start", ctx.session_id, rid, inner_payload)
 
 
 __all__ = [
+    "build_cancel_payload",
+    "build_end_payload",
+    "build_envelope",
     "build_start_payload",
 ]
-

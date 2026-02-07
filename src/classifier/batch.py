@@ -28,11 +28,11 @@ from __future__ import annotations
 import time
 import threading
 from queue import Empty, Queue
-from dataclasses import dataclass
 from collections.abc import Callable
 
 import torch  # type: ignore[import]
 
+from src.state import RequestItem
 
 class BatchFuture:
     """Lightweight, thread-safe future for batch executor results.
@@ -80,18 +80,6 @@ class BatchFuture:
             raise self._exc
         assert self._result is not None
         return self._result
-
-
-@dataclass(slots=True)
-class RequestItem:
-    """A single classification request pending execution.
-    
-    Attributes:
-        text: The text to classify.
-        future: Future to receive the classification result.
-    """
-    text: str
-    future: BatchFuture
 
 
 class BatchExecutor:

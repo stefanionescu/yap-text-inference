@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from tests.helpers.metrics import StreamState
+from tests.state import StreamState
 from tests.helpers.websocket import finalize_metrics
 
 
@@ -50,8 +50,10 @@ def build_cancel_handlers(state: StreamState) -> dict[str, Any]:
         return True
 
     def handle_done(msg: dict[str, Any]) -> dict[str, Any]:
-        cancelled = bool(msg.get("cancelled"))
-        return {"_done": True, "cancelled": cancelled}
+        return {"_done": True, "cancelled": False}
+
+    def handle_cancelled(_: dict[str, Any]) -> dict[str, Any]:
+        return {"_done": True, "cancelled": True}
 
     def handle_error(msg: dict[str, Any]) -> dict[str, Any]:
         return {"_done": True, "error": msg.get("message", "unknown error")}
@@ -62,6 +64,7 @@ def build_cancel_handlers(state: StreamState) -> dict[str, Any]:
         "token": handle_token,
         "final": handle_final,
         "done": handle_done,
+        "cancelled": handle_cancelled,
         "error": handle_error,
     }
 
@@ -104,9 +107,12 @@ def build_recovery_handlers(state: StreamState) -> dict[str, Any]:
         return True
 
     def handle_done(msg: dict[str, Any]) -> dict[str, Any]:
-        cancelled = bool(msg.get("cancelled"))
-        metrics = finalize_metrics(state, cancelled)
-        return {"_done": True, "cancelled": cancelled, "metrics": metrics}
+        metrics = finalize_metrics(state, cancelled=False)
+        return {"_done": True, "cancelled": False, "metrics": metrics}
+
+    def handle_cancelled(_: dict[str, Any]) -> dict[str, Any]:
+        metrics = finalize_metrics(state, cancelled=True)
+        return {"_done": True, "cancelled": True, "metrics": metrics}
 
     def handle_error(msg: dict[str, Any]) -> dict[str, Any]:
         return {"_done": True, "error": msg.get("message", "unknown error")}
@@ -117,6 +123,7 @@ def build_recovery_handlers(state: StreamState) -> dict[str, Any]:
         "token": handle_token,
         "final": handle_final,
         "done": handle_done,
+        "cancelled": handle_cancelled,
         "error": handle_error,
     }
 

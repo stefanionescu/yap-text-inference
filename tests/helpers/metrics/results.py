@@ -1,14 +1,14 @@
 """Shared result factories for test utilities.
 
 This module provides factory functions for creating consistent result
-dictionaries across all test scripts. Uses BenchmarkResultData from types.py.
+dictionaries across all test scripts. Uses BenchmarkResultData from tests.state.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from .types import BenchmarkResultData
+from tests.state import BenchmarkResultData
 
 
 def error_result(
@@ -75,4 +75,3 @@ __all__ = [
     "success_result",
     "result_to_dict",
 ]
-

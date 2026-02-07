@@ -4,9 +4,9 @@ This subpackage provides utilities for WebSocket communication including
 connection handling, message parsing, payload building, and stream consumption.
 """
 
-from .payloads import build_start_payload
 from .message import iter_messages, parse_message, dispatch_message
 from .ws import recv_raw, with_api_key, send_client_end, connect_with_retries
+from .payloads import build_envelope, build_end_payload, build_start_payload, build_cancel_payload
 from .stream import record_token, consume_stream, create_tracker, record_toolcall, finalize_metrics
 
 __all__ = [
@@ -15,6 +15,9 @@ __all__ = [
     "iter_messages",
     "parse_message",
     # payloads
+    "build_cancel_payload",
+    "build_end_payload",
+    "build_envelope",
     "build_start_payload",
     # stream
     "consume_stream",
@@ -28,4 +31,3 @@ __all__ = [
     "send_client_end",
     "with_api_key",
 ]
-

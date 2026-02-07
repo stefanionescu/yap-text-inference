@@ -20,9 +20,10 @@ from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.errors import ServerError, IdleTimeoutError, ConnectionClosedError
 
 from .client import LiveClient
-from .session import LiveSession
+from tests.state import LiveSession
 from .personas import PersonaRegistry
-from .cli import print_help, interactive_loop
+from tests.state import print_help
+from .cli import interactive_loop
 
 logger = logging.getLogger("live")
 
@@ -115,4 +116,3 @@ async def run(
 
 
 __all__ = ["run"]
-

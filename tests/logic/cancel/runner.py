@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 import asyncio
 
-from tests.helpers.metrics import SessionContext
+from tests.state import SessionContext
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.fmt import dim, red, bold, green, section_header
 from tests.config import (
@@ -26,7 +26,7 @@ from tests.config import (
     CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
 )
 
-from .types import CancelClientResult, NormalClientResult
+from tests.state import CancelClientResult, NormalClientResult
 from .clients import run_normal_client, run_canceling_client
 from .output import CANCEL_TEST_MESSAGE, print_cancel_client_result, print_normal_client_results
 

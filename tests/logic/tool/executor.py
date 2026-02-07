@@ -16,14 +16,23 @@ from collections.abc import Callable, Sequence
 import websockets  # type: ignore[import-not-found]
 
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.metrics import SessionContext, secs_to_ms
+from tests.helpers.metrics import secs_to_ms
 from tests.helpers.websocket import send_client_end, build_start_payload, connect_with_retries
 from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
 
 from .cases import render_history
 from .drain import DrainConfig, drain_response
 from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
-from .types import CaseStep, CaseResult, StepTiming, TurnResult, RunnerConfig, ToolTestCase, FailureRecord
+from tests.state import (
+    CaseResult,
+    CaseStep,
+    FailureRecord,
+    RunnerConfig,
+    SessionContext,
+    StepTiming,
+    ToolTestCase,
+    TurnResult,
+)
 
 STEP_WINDOW_SECONDS = max(0.0, float(TOOL_WS_MESSAGE_WINDOW_SECONDS))
 STEP_MAX_PER_WINDOW = max(0, int(TOOL_WS_MAX_MESSAGES_PER_WINDOW))
@@ -232,7 +241,7 @@ async def _run_case(case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
             try:
                 return await _execute_case(ws, session_id, case, cfg)
             finally:
-                await send_client_end(ws)
+                await send_client_end(ws, session_id)
     except Exception as exc:  # noqa: BLE001
         return CaseResult(
             case=case,

@@ -18,9 +18,12 @@ from fastapi import WebSocket
 
 from ...handlers.session import session_handler
 from .sampling import extract_sampling_overrides
-from .dispatch import StartPlan, dispatch_execution
-from ...handlers.websocket.helpers import safe_send_json
+from .dispatch import dispatch_execution
+from src.state import StartPlan
 from ..input import normalize_gender, normalize_personality
+from ...handlers.websocket.errors import send_error
+from ...handlers.websocket.helpers import safe_send_envelope
+from ...config.websocket import WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
 from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
 from ..validators import (
@@ -35,17 +38,38 @@ from ..validators import (
 logger = logging.getLogger(__name__)
 
 
-async def _close_with_validation_error(ws: WebSocket, err: ValidationError) -> None:
-    await safe_send_json(ws, {
-        "type": "error",
-        "error_code": err.error_code,
-        "message": err.message,
-    })
+async def _close_with_validation_error(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+    err: ValidationError,
+) -> None:
+    settings_errors = {
+        "missing_chat_prompt",
+        "invalid_chat_prompt",
+        "chat_prompt_too_long",
+        "invalid_check_screen_prefix",
+        "invalid_screen_checked_prefix",
+    }
+    error_code = WS_ERROR_INVALID_SETTINGS if err.error_code in settings_errors else WS_ERROR_INVALID_PAYLOAD
+    await send_error(
+        ws,
+        session_id=session_id,
+        request_id=request_id,
+        error_code=error_code,
+        message=err.message,
+        reason_code=err.error_code,
+    )
     await ws.close(code=1008)
     logger.info("handle_start: error → %s; connection closed", err.error_code)
 
 
-async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: str) -> None:
+async def handle_start_message(
+    ws: WebSocket,
+    payload: dict[str, Any],
+    session_id: str,
+    request_id: str,
+) -> None:
     """Handle 'start' message type by validating inputs and dispatching execution.
     
     This is the main entry point for processing new conversation turns.
@@ -69,20 +93,20 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     logger.info(
         "handle_start: session_id=%s gender_in=%s personality_in=%s hist_len=%s user_len=%s",
         session_id,
-        msg.get("gender"),
-        msg.get("personality"),
-        len(msg.get("history", [])),
-        len(msg.get("user_utterance", "")),
+        payload.get("gender"),
+        payload.get("personality"),
+        len(payload.get("history", [])),
+        len(payload.get("user_utterance", "")),
     )
     session_config = session_handler.initialize_session(session_id)
 
     try:
-        gender, personality = _validate_persona(msg)
-        chat_prompt = _extract_chat_prompt(msg)
-        sampling_overrides = extract_sampling_overrides(msg)
-        check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(msg)
+        gender, personality = _validate_persona(payload)
+        chat_prompt = _extract_chat_prompt(payload)
+        sampling_overrides = extract_sampling_overrides(payload)
+        check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(payload)
     except ValidationError as err:
-        await _close_with_validation_error(ws, err)
+        await _close_with_validation_error(ws, session_id, request_id, err)
         return
 
     sampling_payload = None
@@ -102,19 +126,26 @@ async def handle_start_message(ws: WebSocket, msg: dict[str, Any], session_id: s
     updated_config = session_handler.get_session_config(session_id)
     static_prefix = updated_config.get("chat_prompt") or ""
     runtime_text = ""
-    history_text, history_info = _resolve_history(session_id, msg)
-    user_utt = _trim_user_utterance(msg.get("user_utterance", ""), session_id)
+    history_text, history_info = _resolve_history(session_id, payload)
+    user_utt = _trim_user_utterance(payload.get("user_utterance", ""), session_id)
     # Track user utterance for pairing with assistant response later.
     # Don't re-fetch history_text - it already contains previous turns,
     # and user_utt is passed separately to the prompt builder.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
 
-    if not await safe_send_json(ws, _build_ack_payload(session_id, session_config, updated_config, history_info)):
+    if not await safe_send_envelope(
+        ws,
+        msg_type="ack",
+        session_id=session_id,
+        request_id=request_id,
+        payload=_build_ack_payload(session_id, session_config, updated_config, history_info),
+    ):
         return
     logger.info("handle_start: ack sent session_id=%s", session_id)
 
     plan = StartPlan(
         session_id=session_id,
+        request_id=request_id,
         static_prefix=static_prefix,
         runtime_text=runtime_text,
         history_text=history_text,
@@ -226,10 +257,8 @@ def _build_ack_payload(
     history_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
-        "type": "ack",
         "for": "start",
         "ok": True,
-        "session_id": session_id,
         "now": base_config.get("now_str"),
         "gender": updated_config.get("chat_gender"),
         "personality": updated_config.get("chat_personality"),

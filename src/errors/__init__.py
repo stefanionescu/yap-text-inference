@@ -5,13 +5,13 @@ modules, providing a single import point for error handling.
 
 Organization:
     - engine.py: Engine lifecycle errors (not ready, shutdown)
-    - rate_limit.py: Rate limiting errors with retry info
+    - limits.py: Rate limiting errors with retry info
     - stream.py: Streaming/cancellation errors
     - validation.py: Input validation errors with error codes
     - quantization.py: Quantization/engine label errors
 """
 
-from .rate_limit import RateLimitError
+from .limits import RateLimitError
 from .validation import ValidationError
 from .stream import StreamCancelledError
 from .quantization import EngineLabelError
@@ -30,4 +30,3 @@ __all__ = [
     # Quantization
     "EngineLabelError",
 ]
-

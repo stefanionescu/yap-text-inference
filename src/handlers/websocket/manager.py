@@ -23,23 +23,29 @@ from collections.abc import Callable
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ..instances import connections
-from .helpers import safe_send_json
+from .helpers import safe_send_envelope
 from .auth import authenticate_websocket
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
-from ..rate_limit import SlidingWindowRateLimiter
+from ..limits import SlidingWindowRateLimiter
 from .errors import send_error, reject_connection
 from ...messages.start import handle_start_message
 from ...messages.cancel import handle_cancel_message
 from ...messages.followup import handle_followup_message
 from ..session import session_handler, abort_session_requests
-from .rate_limits import consume_limiter, select_rate_limiter
+from .limits import consume_limiter, select_rate_limiter
 from ...engines import reset_engine_caches, clear_caches_on_disconnect
+from ...logging import log_context, reset_log_context, set_log_context
 from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_WATCHDOG_TICK_S,
     WS_CLOSE_UNAUTHORIZED_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
+    WS_ERROR_AUTH_FAILED,
+    WS_ERROR_INTERNAL,
+    WS_ERROR_INVALID_MESSAGE,
+    WS_ERROR_INVALID_PAYLOAD,
+    WS_ERROR_SERVER_BUSY,
 )
 from ...config import (
     WS_CANCEL_WINDOW_SECONDS,
@@ -52,9 +58,9 @@ from ...config import (
 logger = logging.getLogger(__name__)
 
 # Type alias for session-aware message handlers
-SessionHandlerFn = Callable[[WebSocket, dict[str, Any], str | None], Any]
+SessionHandlerFn = Callable[[WebSocket, dict[str, Any], str, str], Any]
 
-# Handlers that receive (ws, payload, session_id)
+# Handlers that receive (ws, payload, session_id, request_id)
 _SESSION_MESSAGE_HANDLERS: dict[str, SessionHandlerFn] = {
     "followup": handle_followup_message,
 }
@@ -77,7 +83,7 @@ async def _prepare_connection(ws: WebSocket) -> bool:
     if not await authenticate_websocket(ws):
         await reject_connection(
             ws,
-            error_code="authentication_failed",
+            error_code=WS_ERROR_AUTH_FAILED,
             message=(
                 "Authentication required. Provide valid API key via 'api_key' "
                 "query parameter or 'X-API-Key' header."
@@ -89,7 +95,7 @@ async def _prepare_connection(ws: WebSocket) -> bool:
     if not await connections.connect(ws):
         await reject_connection(
             ws,
-            error_code="server_at_capacity",
+            error_code=WS_ERROR_SERVER_BUSY,
             message="Server cannot accept new connections. Please try again later.",
             close_code=WS_CLOSE_BUSY_CODE,
         )
@@ -107,19 +113,29 @@ async def _prepare_connection(ws: WebSocket) -> bool:
 async def _handle_control_message(
     ws: WebSocket,
     msg_type: str,
-    session_id: str | None,
+    session_id: str,
+    request_id: str,
 ) -> bool:
     """Process ping/pong/end messages; return True if connection should close."""
     if msg_type == "ping":
-        await safe_send_json(ws, {"type": "pong"})
+        await safe_send_envelope(
+            ws,
+            msg_type="pong",
+            session_id=session_id,
+            request_id=request_id,
+            payload={},
+        )
         return False
     if msg_type == "pong":
         return False
     if msg_type == "end":
         logger.info("WS recv: end session_id=%s", session_id)
-        await safe_send_json(
+        await safe_send_envelope(
             ws,
-            {"type": "connection_closed", "reason": "client_request"},
+            msg_type="session_end",
+            session_id=session_id,
+            request_id=request_id,
+            payload={"reason": "client_request"},
         )
         with contextlib.suppress(Exception):
             await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
@@ -129,23 +145,16 @@ async def _handle_control_message(
 
 async def _handle_start_command(
     ws: WebSocket,
-    msg: dict[str, Any],
+    payload: dict[str, Any],
+    session_id: str,
+    request_id: str,
     current_session_id: str | None,
 ) -> str | None:
-    session_id = msg.get("session_id")
-    if not session_id:
-        await send_error(
-            ws,
-            error_code="missing_session_id",
-            message="start message must include 'session_id'.",
-        )
-        return current_session_id
-
     if current_session_id and session_handler.has_running_task(current_session_id):
         await abort_session_requests(current_session_id, clear_state=False)
 
-    await handle_start_message(ws, msg, session_id)
-    logger.info("WS start scheduled for session_id=%s", session_id)
+    await handle_start_message(ws, payload, session_id, request_id)
+    logger.info("WS start scheduled for session_id=%s request_id=%s", session_id, request_id)
     return session_id
 
 
@@ -197,48 +206,91 @@ async def _run_message_loop(
         except ValueError as exc:
             await send_error(
                 ws,
-                error_code="invalid_message",
+                error_code=WS_ERROR_INVALID_MESSAGE,
                 message=str(exc),
+                reason_code="invalid_message",
             )
             continue
 
         lifecycle.touch()
         msg_type = msg.get("type")
+        msg_session_id = msg.get("session_id")
+        msg_request_id = msg.get("request_id")
+        payload = msg.get("payload") or {}
 
-        limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
-        if limiter and not await consume_limiter(ws, limiter, label):
-            continue
+        with log_context(session_id=msg_session_id, request_id=msg_request_id):
+            limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
+            if limiter and not await consume_limiter(
+                ws,
+                limiter,
+                label,
+                session_id=msg_session_id,
+                request_id=msg_request_id,
+            ):
+                continue
 
-        if await _handle_control_message(ws, msg_type, session_id):
-            break
+            if msg_type in {"ping", "pong", "end"}:
+                if await _handle_control_message(ws, msg_type, msg_session_id, msg_request_id):
+                    break
+                continue
 
-        if msg_type == "start":
-            logger.info(
-                "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
-                msg.get("session_id"),
-                msg.get("gender"),
-                len(msg.get("history", [])),
-                len(msg.get("user_utterance", "")),
+            if msg_type == "start":
+                logger.info(
+                    "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
+                    msg_session_id,
+                    payload.get("gender"),
+                    len(payload.get("history", [])),
+                    len(payload.get("user_utterance", "")),
+                )
+                session_id = await _handle_start_command(
+                    ws,
+                    payload,
+                    msg_session_id,
+                    msg_request_id,
+                    session_id,
+                )
+                continue
+
+            if session_id and msg_session_id != session_id:
+                await send_error(
+                    ws,
+                    session_id=msg_session_id,
+                    request_id=msg_request_id,
+                    error_code=WS_ERROR_INVALID_PAYLOAD,
+                    message="session_id does not match active session.",
+                    reason_code="invalid_session_id",
+                )
+                continue
+            if not session_id:
+                await send_error(
+                    ws,
+                    session_id=msg_session_id,
+                    request_id=msg_request_id,
+                    error_code=WS_ERROR_INVALID_MESSAGE,
+                    message="no active session; send 'start' first.",
+                    reason_code="no_active_session",
+                )
+                continue
+
+            if msg_type == "cancel":
+                logger.info("WS recv: cancel session_id=%s request_id=%s", session_id, msg_request_id)
+                await handle_cancel_message(ws, session_id, msg_request_id)
+                continue
+
+            session_handler_fn = _SESSION_MESSAGE_HANDLERS.get(msg_type)
+            if session_handler_fn:
+                logger.info("WS recv: %s session_id=%s", msg_type, session_id)
+                await session_handler_fn(ws, payload, session_id, msg_request_id)
+                continue
+
+            await send_error(
+                ws,
+                session_id=msg_session_id,
+                request_id=msg_request_id,
+                error_code=WS_ERROR_INVALID_MESSAGE,
+                message=f"Message type '{msg_type}' is not supported.",
+                reason_code="unknown_message_type",
             )
-            session_id = await _handle_start_command(ws, msg, session_id)
-            continue
-
-        if msg_type == "cancel":
-            logger.info("WS recv: cancel session_id=%s", session_id)
-            await handle_cancel_message(ws, session_id, msg.get("request_id"))
-            continue
-
-        session_handler_fn = _SESSION_MESSAGE_HANDLERS.get(msg_type)
-        if session_handler_fn:
-            logger.info("WS recv: %s session_id=%s", msg_type, session_id)
-            await session_handler_fn(ws, msg, session_id)
-            continue
-
-        await send_error(
-            ws,
-            error_code="unknown_message_type",
-            message=f"Message type '{msg_type}' is not supported.",
-        )
 
     return session_id
 
@@ -298,30 +350,43 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         ws: The incoming WebSocket connection from FastAPI.
     """
 
-    lifecycle: WebSocketLifecycle | None = None
-    admitted = False
-
-    if not await _prepare_connection(ws):
-        return
-
-    admitted = True
-    session_id: str | None = None
-    message_limiter, cancel_limiter = _create_rate_limiters()
-    lifecycle = WebSocketLifecycle(ws)
-    lifecycle.start()
-
-    logger.info(
-        "WebSocket connection accepted. Active: %s",
-        connections.get_connection_count(),
-    )
-
+    client = ws.client
+    client_id = f"{client.host}:{client.port}" if client else "unknown"
+    tokens = set_log_context(client_id=client_id)
     try:
-        session_id = await _run_message_loop(ws, lifecycle, message_limiter, cancel_limiter)
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("WebSocket error")
-        with contextlib.suppress(Exception):
-            await send_error(ws, error_code="internal_error", message=str(exc))
+        lifecycle: WebSocketLifecycle | None = None
+        admitted = False
+
+        if not await _prepare_connection(ws):
+            return
+
+        admitted = True
+        session_id: str | None = None
+        message_limiter, cancel_limiter = _create_rate_limiters()
+        lifecycle = WebSocketLifecycle(ws)
+        lifecycle.start()
+
+        logger.info(
+            "WebSocket connection accepted. Active: %s",
+            connections.get_connection_count(),
+        )
+
+        try:
+            session_id = await _run_message_loop(ws, lifecycle, message_limiter, cancel_limiter)
+        except WebSocketDisconnect:
+            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("WebSocket error")
+            with contextlib.suppress(Exception):
+                await send_error(
+                    ws,
+                    session_id=session_id,
+                    request_id=None,
+                    error_code=WS_ERROR_INTERNAL,
+                    message=str(exc),
+                    reason_code="internal_exception",
+                )
+        finally:
+            await _finalize_connection(ws, lifecycle, session_id, admitted)
     finally:
-        await _finalize_connection(ws, lifecycle, session_id, admitted)
+        reset_log_context(tokens)
