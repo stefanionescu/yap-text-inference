@@ -12,8 +12,8 @@ from typing import Any
 
 from tests.helpers.errors import StreamError
 from tests.helpers.metrics import round_ms
+from tests.helpers.regex import contains_complete_sentence, word_count_at_least
 from tests.state import StreamState
-from tests.helpers.regex import word_count_at_least, contains_complete_sentence
 
 from .message import iter_messages
 
@@ -57,7 +57,7 @@ def record_token(state: StreamState, chunk: str) -> dict[str, float | None]:
         metrics["chat_ttfb_ms"] = _ms_since_sent(state, state.first_token_ts)
 
     state.final_text += chunk
-    
+
     if state.first_3_words_ts is None and word_count_at_least(state.final_text, 3):
         state.first_3_words_ts = time.perf_counter()
         metrics["time_to_first_3_words_ms"] = _ms_since_sent(state, state.first_3_words_ts)

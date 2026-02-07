@@ -6,8 +6,8 @@ This is separate from the monkey-patches in the patches module.
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 
 logger = logging.getLogger("log_filter")
 
@@ -15,7 +15,7 @@ logger = logging.getLogger("log_filter")
 def configure_transformers_logging() -> None:
     """Quiet transformers logging/progress bars if the library is installed."""
     try:
-        from transformers.utils import logging as transformers_logging
+        from transformers.utils import logging as transformers_logging  # noqa: PLC0415
     except ModuleNotFoundError:
         return
 
@@ -33,4 +33,3 @@ def configure_transformers_logging() -> None:
 
 
 __all__ = ["configure_transformers_logging"]
-

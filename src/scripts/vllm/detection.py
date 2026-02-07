@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import sys
 
+MIN_ARGS = 2
+
 
 def get_cuda_version() -> str | None:
     """Get CUDA version from torch for FlashInfer wheel selection.
@@ -16,7 +18,7 @@ def get_cuda_version() -> str | None:
         CUDA version without dots (e.g., "126" for 12.6) or None.
     """
     try:
-        import torch
+        import torch  # noqa: PLC0415
 
         cu = (torch.version.cuda or "").strip()
         if not cu:
@@ -33,7 +35,7 @@ def get_torch_version() -> str | None:
         Torch version (e.g., "2.9") or None.
     """
     try:
-        import torch
+        import torch  # noqa: PLC0415
 
         ver = torch.__version__.split("+", 1)[0]
         parts = ver.split(".")
@@ -49,7 +51,7 @@ def is_vllm_installed() -> bool:
         True if vLLM can be imported, False otherwise.
     """
     try:
-        import vllm  # noqa: F401
+        import vllm  # noqa: F401, PLC0415
 
         return True
     except ImportError:
@@ -63,7 +65,7 @@ def get_vllm_version() -> str:
         vLLM version string or "unknown".
     """
     try:
-        import vllm
+        import vllm  # noqa: PLC0415
 
         return vllm.__version__
     except Exception:
@@ -72,7 +74,7 @@ def get_vllm_version() -> str:
 
 if __name__ == "__main__":
     # CLI interface for shell scripts
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         print("Usage: python -m src.scripts.vllm.detection <command>")
         sys.exit(1)
 
@@ -102,4 +104,3 @@ if __name__ == "__main__":
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
         sys.exit(1)
-

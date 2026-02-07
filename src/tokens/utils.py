@@ -79,12 +79,12 @@ def _trim_history_preserve_messages_with(
         return ""
 
     boundary_patterns = [
-        '\nUser: ',
-        '\nAssistant: ',
-        '\n\nUser: ',
-        '\n\nAssistant: ',
-        '\n\n',
-        '\n',
+        "\nUser: ",
+        "\nAssistant: ",
+        "\n\nUser: ",
+        "\n\nAssistant: ",
+        "\n\n",
+        "\n",
     ]
 
     chosen_pattern = None
@@ -207,5 +207,3 @@ __all__ = [
     "trim_history_preserve_messages_tool",
     "build_user_history_for_tool",
 ]
-
-

@@ -1,8 +1,8 @@
 """Application logging configuration values and helpers."""
 
-import os
-import logging
 import contextlib
+import logging
+import os
 
 from src.logging import install_log_context
 
@@ -44,4 +44,3 @@ __all__ = [
     "CHAT_STREAM_LABEL",
     "configure_logging",
 ]
-

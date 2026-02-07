@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import os
 
-from ..helpers.quantization import normalize_engine, detect_chat_quantization
+from ..helpers.quantization import detect_chat_quantization, normalize_engine
 
 # ============================================================================
 # Engine Selection
@@ -85,4 +85,3 @@ __all__ = [
     "AWQ_METADATA_FILENAME",
     "UNSUPPORTED_QUANT_DTYPE_FIELDS",
 ]
-

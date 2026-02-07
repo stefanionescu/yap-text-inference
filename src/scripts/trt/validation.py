@@ -6,10 +6,13 @@ and configured before engine building or inference.
 
 from __future__ import annotations
 
-import io
-import sys
 import ctypes
 import ctypes.util
+import io
+import sys
+
+CUDA_BINDINGS_MIN_MAJOR = 13
+MIN_ARGS = 2
 
 
 def validate_python_libraries() -> bool:
@@ -46,7 +49,7 @@ def validate_cuda_runtime() -> bool:
         True if validation passes, False otherwise.
     """
     try:
-        from importlib.metadata import PackageNotFoundError, version
+        from importlib.metadata import PackageNotFoundError, version  # noqa: PLC0415
 
         try:
             ver = version("cuda-python")
@@ -56,10 +59,10 @@ def validate_cuda_runtime() -> bool:
 
         major = int(ver.split(".", 1)[0])
         try:
-            if major >= 13:
-                from cuda.bindings import runtime as cudart
+            if major >= CUDA_BINDINGS_MIN_MAJOR:
+                from cuda.bindings import runtime as cudart  # noqa: PLC0415
             else:
-                from cuda import cudart  # type: ignore[import-not-found,no-redef]
+                from cuda import cudart  # type: ignore[import-not-found,no-redef]  # noqa: PLC0415
         except Exception as exc:
             print(f"IMPORT_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
             return False
@@ -84,7 +87,7 @@ def validate_mpi_runtime() -> bool:
         True if validation passes, False otherwise.
     """
     try:
-        from mpi4py import MPI
+        from mpi4py import MPI  # noqa: PLC0415
 
         MPI.Get_version()
         print("[trt] ✓ MPI runtime OK")
@@ -103,8 +106,8 @@ def validate_trt_installation() -> tuple[bool, str]:
     Returns:
         Tuple of (success, version_or_error_message).
     """
-    import logging
-    import warnings
+    import logging  # noqa: PLC0415
+    import warnings  # noqa: PLC0415
 
     try:
         # Suppress library's noisy output during import:
@@ -116,7 +119,7 @@ def validate_trt_installation() -> tuple[bool, str]:
         logging.disable(logging.WARNING)
         warnings.filterwarnings("ignore", message=".*below the recommended.*")
         try:
-            import tensorrt_llm
+            import tensorrt_llm  # noqa: PLC0415
 
             version = tensorrt_llm.__version__
         finally:
@@ -137,7 +140,7 @@ def validate_trt_installation() -> tuple[bool, str]:
 
 if __name__ == "__main__":
     # CLI interface for shell scripts
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         print("Usage: python -m src.scripts.trt.validation <command>")
         sys.exit(1)
 
@@ -172,4 +175,3 @@ if __name__ == "__main__":
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
         sys.exit(1)
-

@@ -40,8 +40,8 @@ def _create_vllm_params(
     logit_bias: dict[int, float] | None,
 ) -> Any:
     """Create vLLM SamplingParams."""
-    from vllm.sampling_params import SamplingParams
-    
+    from vllm.sampling_params import SamplingParams  # noqa: PLC0415
+
     return SamplingParams(
         temperature=temperature,
         top_p=top_p,
@@ -69,7 +69,7 @@ def _create_trt_params(
     stop: list[str] | None,
 ) -> Any:
     """Create TensorRT-LLM SamplingParams."""
-    from tensorrt_llm import SamplingParams
+    from tensorrt_llm import SamplingParams  # noqa: PLC0415
 
     # TRT-LLM uses slightly different parameter names/defaults
     kwargs: dict[str, Any] = {
@@ -77,11 +77,11 @@ def _create_trt_params(
         "top_p": top_p,
         "max_tokens": max_tokens,
     }
-    
+
     # top_k: TRT uses None for disabled, vLLM uses -1
     if top_k > 0:
         kwargs["top_k"] = top_k
-    
+
     # These may not be supported by all TRT versions
     if repetition_penalty != 1.0:
         kwargs["repetition_penalty"] = repetition_penalty
@@ -91,7 +91,7 @@ def _create_trt_params(
         kwargs["frequency_penalty"] = frequency_penalty
     if stop:
         kwargs["stop"] = stop
-    
+
     return SamplingParams(**kwargs)
 
 
@@ -109,7 +109,7 @@ def create_sampling_params(
     logit_bias: dict[int, float] | None = None,
 ) -> Any:
     """Create engine-specific sampling parameters.
-    
+
     Args:
         temperature: Sampling temperature (higher = more random).
         top_p: Nucleus sampling probability threshold.
@@ -121,7 +121,7 @@ def create_sampling_params(
         max_tokens: Maximum tokens to generate.
         stop: Stop sequences.
         logit_bias: Token ID to logit bias mapping.
-        
+
     Returns:
         Engine-specific SamplingParams instance.
     """
@@ -153,4 +153,3 @@ def create_sampling_params(
 
 
 __all__ = ["create_sampling_params"]
-

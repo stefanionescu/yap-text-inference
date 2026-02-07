@@ -32,7 +32,7 @@ Configuration (via environment):
 
 Usage:
     from src.classifier import get_classifier_adapter
-    
+
     adapter = get_classifier_adapter()
     user_history = session_handler.get_user_history_text(session_id)
     result = adapter.run_tool_inference(user_utt, user_history)

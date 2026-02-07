@@ -9,7 +9,7 @@ not at import time.
 
 Usage:
     from src.engines.registry import get_engine, shutdown_engine
-    
+
     engine = await get_engine()
     await shutdown_engine()
 """
@@ -27,35 +27,41 @@ if TYPE_CHECKING:
     from .vllm.factory import VLLMEngineSingleton
 
 # Singleton instances - created lazily on first access
-_trt_singleton: TRTEngineSingleton | None = None
-_vllm_singleton: VLLMEngineSingleton | None = None
+_STATE: dict[str, TRTEngineSingleton | VLLMEngineSingleton | None] = {
+    "trt": None,
+    "vllm": None,
+}
 
 
 def _get_trt_singleton() -> TRTEngineSingleton:
     """Get or create the TRT engine singleton manager."""
-    global _trt_singleton
-    if _trt_singleton is None:
-        from .trt.factory import TRTEngineSingleton
-        _trt_singleton = TRTEngineSingleton()
-    return _trt_singleton
+    singleton = _STATE["trt"]
+    if singleton is None:
+        from .trt.factory import TRTEngineSingleton  # noqa: PLC0415
+
+        singleton = TRTEngineSingleton()
+        _STATE["trt"] = singleton
+    return singleton
 
 
 def _get_vllm_singleton() -> VLLMEngineSingleton:
     """Get or create the vLLM engine singleton manager."""
-    global _vllm_singleton
-    if _vllm_singleton is None:
-        from .vllm.factory import VLLMEngineSingleton
-        _vllm_singleton = VLLMEngineSingleton()
-    return _vllm_singleton
+    singleton = _STATE["vllm"]
+    if singleton is None:
+        from .vllm.factory import VLLMEngineSingleton  # noqa: PLC0415
+
+        singleton = VLLMEngineSingleton()
+        _STATE["vllm"] = singleton
+    return singleton
 
 
 async def get_engine() -> BaseEngine:
     """Get the configured inference engine instance.
-    
+
     Returns the appropriate engine based on INFERENCE_ENGINE config:
     - 'vllm': Returns VLLMEngine
     - 'trt': Returns TRTEngine
-    
+
     The engine is lazily initialized on first call.
     """
     if INFERENCE_ENGINE == "vllm":
@@ -77,47 +83,50 @@ async def shutdown_engine() -> None:
 
 async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
     """Reset engine caches if supported.
-    
+
     For vLLM: Resets prefix and multimodal caches.
     For TRT-LLM: No-op (block reuse handles memory management).
-    
+
     Args:
         reason: Human-readable reason for the reset.
         force: Force reset even if interval hasn't elapsed.
-        
+
     Returns:
         True if caches were reset, False otherwise.
     """
     if INFERENCE_ENGINE != "vllm":
         return False
-    
+
     singleton = _get_vllm_singleton()
     if not singleton.is_initialized:
         return False
-    
-    from .vllm.cache import CacheResetManager
+
+    from .vllm.cache import CacheResetManager  # noqa: PLC0415
+
     engine = await singleton.get()
     return await CacheResetManager.get_instance().try_reset(engine, reason, force=force)
 
 
 def cache_reset_reschedule_event() -> asyncio.Event:
     """Get the cache reset reschedule event (vLLM only).
-    
+
     For TRT-LLM, returns a dummy event that's never set.
     """
     if INFERENCE_ENGINE == "vllm":
-        from .vllm.cache import CacheResetManager
+        from .vllm.cache import CacheResetManager  # noqa: PLC0415
+
         return CacheResetManager.get_instance().reschedule_event
     return asyncio.Event()
 
 
 def seconds_since_last_cache_reset() -> float:
     """Get seconds since last cache reset (vLLM only).
-    
+
     For TRT-LLM, returns 0.0 (cache reset not applicable).
     """
     if INFERENCE_ENGINE == "vllm":
-        from .vllm.cache import CacheResetManager
+        from .vllm.cache import CacheResetManager  # noqa: PLC0415
+
         return CacheResetManager.get_instance().seconds_since_last_reset()
     return 0.0
 
@@ -135,14 +144,15 @@ def engine_supports_cache_reset() -> bool:
 
 def ensure_cache_reset_daemon() -> None:
     """Start the cache reset daemon if configuration enables it.
-    
+
     Safe to call multiple times - will not start duplicate daemons.
     Only applicable for vLLM engine.
     """
     if INFERENCE_ENGINE != "vllm":
         return
-    
-    from .vllm.cache import CacheResetManager
+
+    from .vllm.cache import CacheResetManager  # noqa: PLC0415
+
     CacheResetManager.get_instance().ensure_daemon_running(reset_engine_caches)
 
 
@@ -156,4 +166,3 @@ __all__ = [
     "engine_supports_cache_reset",
     "ensure_cache_reset_daemon",
 ]
-

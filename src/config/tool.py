@@ -109,4 +109,3 @@ __all__ = [
     "TOOL_NEGATIVE_RESULT",
     "TOOL_POSITIVE_LABEL_INDEX",
 ]
-

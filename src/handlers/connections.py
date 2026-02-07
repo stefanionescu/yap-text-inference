@@ -17,7 +17,7 @@ conditions during connection/disconnection.
 
 Example:
     handler = ConnectionHandler(max_connections=100)
-    
+
     async def handle_websocket(ws: WebSocket):
         if not await handler.connect(ws):
             await ws.close(code=1013)  # Try again later
@@ -41,12 +41,12 @@ logger = logging.getLogger(__name__)
 
 class ConnectionHandler:
     """Handles WebSocket connections and enforces concurrency limits.
-    
+
     This class manages the lifecycle of WebSocket connections with:
     - Maximum connection limit enforcement
     - Timeout-based connection admission
     - Atomic connect/disconnect operations
-    
+
     Attributes:
         max_connections: Maximum allowed concurrent connections.
         acquire_timeout: Max seconds to wait for a connection slot.
@@ -59,7 +59,7 @@ class ConnectionHandler:
         acquire_timeout: float = WS_HANDSHAKE_ACQUIRE_TIMEOUT_S,
     ):
         """Initialize the connection handler.
-        
+
         Args:
             max_connections: Maximum concurrent connections to allow.
                 Defaults to MAX_CONCURRENT_CONNECTIONS from config.

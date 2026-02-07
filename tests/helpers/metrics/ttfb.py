@@ -7,11 +7,10 @@ summary statistics (p50, p90, p95). Uses TTFBSamples from tests.state for data.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
-from collections.abc import Mapping, Callable, Sequence
 
-from tests.helpers.fmt import dim, bold, section_header
-
+from tests.helpers.fmt import bold, dim, section_header
 from tests.state import TTFBSamples
 
 # ============================================================================
@@ -71,25 +70,27 @@ def _format_stats_line(
 ) -> str:
     """Format a stats line for a metric."""
     parts = [f"  {bold(label):>10}"]
-    
+
     if show_first:
         parts.append(f"first={stats['first']:>6.0f}ms")
-    
-    parts.extend([
-        f"avg={stats['average']:>6.0f}ms",
-        f"p50={stats['p50']:>6.0f}ms",
-        f"p90={stats['p90']:>6.0f}ms",
-        f"p95={stats['p95']:>6.0f}ms",
-        dim(f"(n={stats['count']})"),
-    ])
-    
+
+    parts.extend(
+        [
+            f"avg={stats['average']:>6.0f}ms",
+            f"p50={stats['p50']:>6.0f}ms",
+            f"p90={stats['p90']:>6.0f}ms",
+            f"p95={stats['p95']:>6.0f}ms",
+            dim(f"(n={stats['count']})"),
+        ]
+    )
+
     return "  ".join(parts)
 
 
 def _emit_first_message(samples: TTFBSamples, sink: Callable[[str], None]) -> None:
     """Emit first message latency (includes prefill overhead)."""
     parts = [f"  {bold('FIRST')}  {dim('(includes prefill)')}"]
-    
+
     if samples.chat_samples:
         parts.append(f"ttfb={_format_ms(samples.chat_samples[0])}")
     if samples.first_3_words_samples:
@@ -98,7 +99,7 @@ def _emit_first_message(samples: TTFBSamples, sink: Callable[[str], None]) -> No
         parts.append(f"sent={_format_ms(samples.first_sentence_samples[0])}")
     if samples.tool_samples:
         parts.append(f"tool={_format_ms(samples.tool_samples[0])}")
-    
+
     sink("  ".join(parts))
 
 
@@ -110,7 +111,7 @@ def _emit_remaining_stats(samples: TTFBSamples, sink: Callable[[str], None]) -> 
         ("SENTENCE", samples.first_sentence_samples[1:] if len(samples.first_sentence_samples) > 1 else []),
         ("TOOL", samples.tool_samples[1:] if len(samples.tool_samples) > 1 else []),
     ]
-    
+
     for label, sample_list in metrics:
         if not sample_list:
             continue
@@ -126,7 +127,7 @@ def _emit_single_stats(samples: TTFBSamples, sink: Callable[[str], None]) -> Non
         ("SENTENCE", samples.first_sentence_samples),
         ("TOOL", samples.tool_samples),
     ]
-    
+
     for label, sample_list in metrics:
         if not sample_list:
             continue
@@ -150,7 +151,7 @@ def record_ttfb(samples: TTFBSamples, metrics: Mapping[str, Any]) -> None:
     chat = _coerce(metrics.get("ttfb_chat_ms"))
     first_3 = _coerce(metrics.get("time_to_first_3_words_ms"))
     first_sent = _coerce(metrics.get("time_to_first_complete_sentence_ms"))
-    
+
     if tool is not None:
         samples.tool_samples.append(tool)
     if chat is not None:
@@ -164,19 +165,16 @@ def record_ttfb(samples: TTFBSamples, metrics: Mapping[str, Any]) -> None:
 def has_ttfb_samples(samples: TTFBSamples) -> bool:
     """Return True if any samples have been recorded."""
     return bool(
-        samples.tool_samples or 
-        samples.chat_samples or 
-        samples.first_3_words_samples or 
-        samples.first_sentence_samples
+        samples.tool_samples or samples.chat_samples or samples.first_3_words_samples or samples.first_sentence_samples
     )
 
 
 def emit_ttfb_summary(samples: TTFBSamples, sink: Callable[[str], None]) -> None:
     """Emit summary statistics with first message separated."""
     sink(section_header("LATENCY SUMMARY"))
-    
+
     has_multi = len(samples.chat_samples) > 1
-    
+
     if has_multi:
         _emit_first_message(samples, sink)
         sink("")

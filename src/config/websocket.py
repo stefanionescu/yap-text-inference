@@ -5,10 +5,10 @@ This module defines constants for WebSocket connection lifecycle management:
 Timeouts:
     WS_IDLE_TIMEOUT_S: Close connections after this many seconds of inactivity.
         This prevents resource leaks from abandoned connections.
-    
+
     WS_WATCHDOG_TICK_S: How often the idle watchdog checks activity.
         Lower values = more responsive timeout, higher CPU usage.
-    
+
     WS_HANDSHAKE_ACQUIRE_TIMEOUT_S: Max time to wait for connection slot.
         If the server is at capacity, connections wait this long before
         being rejected.
@@ -71,7 +71,7 @@ WS_TYPE_PONG = "pong"
 WS_TYPE_END = "end"
 WS_TYPE_ACK = "ack"
 WS_TYPE_ERROR = "error"
-WS_TYPE_TOKEN = "token"
+WS_TYPE_TOKEN = "token"  # noqa: S105
 WS_TYPE_FINAL = "final"
 WS_TYPE_DONE = "done"
 WS_TYPE_STATUS = "status"

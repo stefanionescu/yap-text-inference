@@ -13,37 +13,32 @@ from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.helpers.prompt import select_chat_prompt
+from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
 from tests.helpers.errors import ServerError, StreamError
-from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
-from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
-from tests.helpers.metrics import (
-    record_ttfb,
-    has_ttfb_samples,
-    emit_ttfb_summary,
-    create_ttfb_aggregator,
-)
-from tests.state import SessionContext, StreamState, TTFBSamples
-from tests.helpers.websocket import (
-    with_api_key,
-    iter_messages,
-    consume_stream,
-    create_tracker,
-    send_client_end,
-    finalize_metrics,
-    build_start_payload,
-)
 from tests.helpers.fmt import (
     dim,
-    green,
-    yellow,
-    format_user,
-    section_header,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
+    format_user,
+    green,
+    section_header,
+    yellow,
 )
+from tests.helpers.metrics import create_ttfb_aggregator, emit_ttfb_summary, has_ttfb_samples, record_ttfb
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.websocket import (
+    build_start_payload,
+    consume_stream,
+    create_tracker,
+    finalize_metrics,
+    iter_messages,
+    send_client_end,
+    with_api_key,
+)
+from tests.messages.history import HISTORY_RECALL_MESSAGES, WARM_HISTORY
+from tests.state import SessionContext, StreamState, TTFBSamples
 
 # ============================================================================
 # Internal Helpers
@@ -109,7 +104,7 @@ def _format_history_kept(history_info: dict[str, Any]) -> str:
     retained = history_info.get("retained_turns", 0)
     tokens = history_info.get("history_tokens", 0)
     trimmed = history_info.get("trimmed", False)
-    
+
     status = yellow("trimmed") if trimmed else green("retained")
     return f"{retained} turns, {tokens} tokens ({status})"
 
@@ -150,21 +145,21 @@ async def _run_history_sequence(
         chat_prompt=chat_prompt,
         sampling=sampling,
     )
-    
+
     first_user_text = HISTORY_RECALL_MESSAGES[0]
     payload = build_start_payload(ctx, first_user_text, history=history)
-    
+
     state = create_tracker()
     await ws.send(json.dumps(payload))
     history_info = await _wait_for_ack(ws)
-    
+
     _print_header(personality, gender, history_info)
-    
+
     reply = await _collect_response(ws, state)
     metrics = finalize_metrics(state)
     _print_exchange(1, first_user_text, reply, metrics)
     record_ttfb(ttfb_samples, metrics)
-    
+
     history.append({"role": "user", "content": first_user_text})
     history.append({"role": "assistant", "content": reply})
 

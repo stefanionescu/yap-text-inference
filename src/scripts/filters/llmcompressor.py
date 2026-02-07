@@ -8,17 +8,17 @@ tqdm output that bypasses Python logging.
 from __future__ import annotations
 
 import io
+import logging
 import os
 import re
 import sys
-import logging
 from collections.abc import Iterable
 
 from src.config.filters import LLMCOMPRESSOR_NOISE_PATTERNS
 
 logger = logging.getLogger("log_filter")
 
-_STREAMS_PATCHED = False
+_STATE = {"streams_patched": False}
 
 
 class LLMCompressorNoiseFilterStream:
@@ -89,8 +89,7 @@ def is_llmcompressor_noise(
 
 def _install_stream_filters() -> None:
     """Install stdout/stderr wrappers that drop llmcompressor noise."""
-    global _STREAMS_PATCHED
-    if _STREAMS_PATCHED:
+    if _STATE["streams_patched"]:
         return
 
     try:
@@ -100,7 +99,7 @@ def _install_stream_filters() -> None:
             sys.__stdout__ = LLMCompressorNoiseFilterStream(sys.__stdout__, LLMCOMPRESSOR_NOISE_PATTERNS)
         if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
             sys.__stderr__ = LLMCompressorNoiseFilterStream(sys.__stderr__, LLMCOMPRESSOR_NOISE_PATTERNS)
-        _STREAMS_PATCHED = True
+        _STATE["streams_patched"] = True
     except Exception as exc:  # pragma: no cover
         logger.debug("failed to wrap stdio for llmcompressor log filtering: %s", exc)
 
@@ -140,4 +139,3 @@ __all__ = [
     "LLMCompressorNoiseFilterStream",
     "is_llmcompressor_noise",
 ]
-

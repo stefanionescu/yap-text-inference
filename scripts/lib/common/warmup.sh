@@ -16,7 +16,7 @@ stop_existing_warmup_processes() {
   local lock_file="${run_dir}/warmup.lock"
 
   if [ ! -f "${lock_file}" ]; then
-    return 0  # No lock file, nothing to stop
+    return 0 # No lock file, nothing to stop
   fi
 
   local existing_pid
@@ -57,4 +57,3 @@ stop_existing_warmup_processes() {
   rm -f "${lock_file}" || true
   return 0
 }
-

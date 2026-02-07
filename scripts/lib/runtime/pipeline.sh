@@ -25,10 +25,10 @@ prepare_log() {
     if [ "${size}" -gt "${max_keep_bytes}" ]; then
       local offset=$((size - max_keep_bytes))
       local tmp_file="${root_dir}/.server.log.trim"
-      if tail -c "${max_keep_bytes}" "${server_log}" > "${tmp_file}" 2>/dev/null; then
+      if tail -c "${max_keep_bytes}" "${server_log}" >"${tmp_file}" 2>/dev/null; then
         mv "${tmp_file}" "${server_log}" 2>/dev/null || true
         local size_mb=$((max_keep_bytes / 1024 / 1024))
-        echo "[server] Trimmed server.log to latest ${size_mb}MB (removed ${offset} bytes)" >> "${server_log}"
+        echo "[server] Trimmed server.log to latest ${size_mb}MB (removed ${offset} bytes)" >>"${server_log}"
       fi
     fi
   fi
@@ -55,9 +55,9 @@ run_background() {
   log_info "[main] ${start_message}"
   log_info "[main] Ctrl+C after launch stops log tail only; deployment keeps running."
 
-  setsid nohup bash -lc "${command_string}" </dev/null > "${server_log}" 2>&1 &
+  setsid nohup bash -lc "${command_string}" </dev/null >"${server_log}" 2>&1 &
   local bg_pid=$!
-  echo "${bg_pid}" > "${root_dir}/.run/deployment.pid"
+  echo "${bg_pid}" >"${root_dir}/.run/deployment.pid"
 
   log_info "[main] Deployment started (PID: ${bg_pid})"
   log_info "[main] To stop: bash scripts/stop.sh"

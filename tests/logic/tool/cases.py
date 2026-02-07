@@ -10,8 +10,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from tests.messages.tool import TOOL_DEFAULT_MESSAGES
-
 from tests.state import CaseStep, ToolTestCase
+
+PAIR_LEN = 2
 
 
 def _shorten(text: str, limit: int = 80) -> str:
@@ -34,7 +35,7 @@ def build_cases() -> list[ToolTestCase]:
     auto_counter = 0
 
     for idx, entry in enumerate(TOOL_DEFAULT_MESSAGES, start=1):
-        if len(entry) == 2 and isinstance(entry[0], str) and isinstance(entry[1], bool):
+        if len(entry) == PAIR_LEN and isinstance(entry[0], str) and isinstance(entry[1], bool):
             auto_counter += 1
             message, expect_tool = entry
             case = ToolTestCase(
@@ -46,11 +47,11 @@ def build_cases() -> list[ToolTestCase]:
             cases.append(case)
             continue
 
-        if len(entry) == 2 and isinstance(entry[0], str) and isinstance(entry[1], list):
+        if len(entry) == PAIR_LEN and isinstance(entry[0], str) and isinstance(entry[1], list):
             name, messages = entry
             normalized_steps: list[CaseStep] = []
             for pair in messages:
-                if not (isinstance(pair, tuple) and len(pair) == 2):
+                if not (isinstance(pair, tuple) and len(pair) == PAIR_LEN):
                     raise ValueError(f"Conversation '{name}' must contain (text, bool) tuples")
                 text, expect = pair
                 if not isinstance(text, str) or not isinstance(expect, bool):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Download model files (tokenizer, config, etc.) from HuggingFace at Docker build time.
 
-For TRT engines, the model files (tokenizer, config) are typically stored in the 
+For TRT engines, the model files (tokenizer, config) are typically stored in the
 same repo as the engine. This script downloads everything EXCEPT:
 - .gitattributes
 - README.md / README files
@@ -22,7 +22,7 @@ for path in common_paths:
         sys.path.insert(0, path)
         break
 
-from utils import log_skip, log_success, get_hf_token, download_snapshot
+from utils import download_snapshot, get_hf_token, log_skip, log_success  # noqa: E402
 
 # Files and directories to exclude when downloading model files
 IGNORE_PATTERNS = [
@@ -40,13 +40,13 @@ def main() -> None:
     # This includes tokenizer, config, etc.
     repo_id = os.environ.get("TRT_ENGINE_REPO", "")
     target_dir = os.environ.get("CHAT_MODEL_PATH", "/opt/models/chat")
-    
+
     if not repo_id:
         log_skip("No TRT_ENGINE_REPO set - skipping model files download")
         return
-    
+
     token = get_hf_token()
-    
+
     try:
         download_snapshot(
             repo_id,
@@ -54,17 +54,17 @@ def main() -> None:
             token=token,
             ignore_patterns=IGNORE_PATTERNS,
         )
-        
+
         # Verify we got some model files
         files = os.listdir(target_dir)
         config_files = [f for f in files if "config" in f.lower() or "tokenizer" in f.lower()]
-        
+
         print(f"[build] ✓ Downloaded {len(files)} file(s)")
         if config_files:
             print(f"[build]   Found config/tokenizer files: {config_files[:5]}")
-        
+
         log_success("Model files (tokenizer, config) baked into image")
-        
+
     except Exception as e:
         print(f"[build] ERROR: Failed to download model files: {e}", file=sys.stderr)
         sys.exit(1)

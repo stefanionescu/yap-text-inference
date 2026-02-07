@@ -12,15 +12,15 @@ Key Functions:
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 
 from src.config.templates import (
-    QWEN_LICENSE,
     CHAT_TEMPLATE_NAME,
-    QWEN_LICENSE_MODELS,
-    MISTRAL_RESEARCH_MODELS,
     MISTRAL_RESEARCH_LICENSE,
+    MISTRAL_RESEARCH_MODELS,
+    QWEN_LICENSE,
+    QWEN_LICENSE_MODELS,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,7 @@ except ValueError:
 # Public API
 # ============================================================================
 
+
 def resolve_template_name(is_tool: bool) -> str:
     """Return the chat template name for a model."""
     return CHAT_TEMPLATE_NAME
@@ -42,41 +43,41 @@ def resolve_template_name(is_tool: bool) -> str:
 
 def fetch_license_from_hf(model_id: str) -> dict[str, str] | None:
     """Fetch license information from a HuggingFace model repository.
-    
+
     Args:
         model_id: HuggingFace model ID (e.g., "meta-llama/Llama-3.1-8B-Instruct").
-        
+
     Returns:
         Dictionary with license, license_name, license_link keys, or None if fetch fails.
     """
     if not model_id or "/" not in model_id:
         return None
-    
+
     try:
-        from huggingface_hub import model_info
+        from huggingface_hub import model_info  # noqa: PLC0415
     except ImportError:
         logger.warning("license: huggingface_hub not installed; skipping license fetch")
         return None
-    
+
     try:
         info = model_info(model_id, timeout=_HF_LICENSE_FETCH_TIMEOUT_S)
         card_data = info.card_data
-        
+
         if not card_data:
             return None
-        
+
         license_val = getattr(card_data, "license", None)
         if not license_val:
             return None
-        
+
         # license_name and license_link may be specified in the model card
         license_name = getattr(card_data, "license_name", None) or license_val
         license_link = getattr(card_data, "license_link", None)
-        
+
         # If no explicit link, try to construct one for the base model
         if not license_link:
             license_link = f"https://huggingface.co/{model_id}"
-        
+
         return {
             "license": license_val,
             "license_name": license_name,
@@ -89,7 +90,7 @@ def fetch_license_from_hf(model_id: str) -> dict[str, str] | None:
 
 def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> dict[str, str]:
     """Return license info dict with keys: license, license_name, license_link.
-    
+
     Fetches the license from the original HuggingFace model to ensure quantized
     models inherit the correct license from their base model.
     """
@@ -128,14 +129,12 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
 # Internal Helpers
 # ============================================================================
 
+
 def _is_mistral_research_model(model_path: str) -> bool:
     normalized = (model_path or "").strip()
     if not normalized:
         return False
-    for target in MISTRAL_RESEARCH_MODELS:
-        if normalized == target or normalized.endswith(target):
-            return True
-    return False
+    return any(normalized == target or normalized.endswith(target) for target in MISTRAL_RESEARCH_MODELS)
 
 
 def _license_link_for(model_path: str, is_hf_model: bool) -> str:
@@ -148,10 +147,7 @@ def _is_qwen_license_model(model_path: str) -> bool:
     normalized = (model_path or "").strip()
     if not normalized:
         return False
-    for target in QWEN_LICENSE_MODELS:
-        if normalized == target or normalized.endswith(target):
-            return True
-    return False
+    return any(normalized == target or normalized.endswith(target) for target in QWEN_LICENSE_MODELS)
 
 
 __all__ = [
@@ -159,4 +155,3 @@ __all__ = [
     "compute_license_info",
     "fetch_license_from_hf",
 ]
-

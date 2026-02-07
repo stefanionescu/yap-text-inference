@@ -9,11 +9,11 @@ Pipeline:
        - Gender switches
        - Personality switches
        - Screenshot triggers
-       
+
     2. Language Filter: Skip non-English messages (optional)
        - Uses lingua library for language detection
        - Avoids false positives from non-English text
-       
+
     3. Classifier Model: Run lightweight classification model
        - BERT-style sequence classifier
        - Returns tool name or empty array
@@ -24,20 +24,21 @@ invoking the model. This improves latency for known patterns.
 
 from __future__ import annotations
 
-import time
-import uuid
 import asyncio
 import logging
-from typing import Any
+import time
+import uuid
 from collections.abc import Awaitable
+from typing import Any
 
-from .filter import filter_tool_phrase
-from .language import is_mostly_english
+from ...classifier import get_classifier_adapter
 from ...config import TOOL_LANGUAGE_FILTER
 from ...handlers.session import session_handler
-from ...classifier import get_classifier_adapter
+from .filter import filter_tool_phrase
+from .language import is_mostly_english
 
 logger = logging.getLogger(__name__)
+
 
 async def _run_classifier_toolcall(
     session_id: str,
@@ -45,18 +46,18 @@ async def _run_classifier_toolcall(
     req_id: str,
 ) -> dict[str, Any]:
     """Run tool call using classifier model.
-    
+
     This is much faster than the vLLM path since it uses a lightweight
     classification model instead of an autoregressive LLM.
-    
+
     The classifier adapter handles history formatting and trimming
     using its own tokenizer (centralized, DRY).
     """
     t0 = time.perf_counter()
-    
+
     # Get classifier adapter (lazily initialized, has its own tokenizer)
     adapter = get_classifier_adapter()
-    
+
     # Snapshot trimmed user-only history (most recent last, already token-limited)
     tool_history = session_handler.get_tool_history_text(session_id)
 
@@ -66,13 +67,12 @@ async def _run_classifier_toolcall(
 
     loop = asyncio.get_running_loop()
     text = await loop.run_in_executor(None, _classify_sync)
-    
+
     dt_ms = (time.perf_counter() - t0) * 1000.0
     logger.info(
-        "tool_runner[classifier]: done session_id=%s req_id=%s result=%s ms=%.1f",
-        session_id, req_id, text, dt_ms
+        "tool_runner[classifier]: done session_id=%s req_id=%s result=%s ms=%.1f", session_id, req_id, text, dt_ms
     )
-    
+
     return {"cancelled": False, "text": text}
 
 
@@ -83,18 +83,18 @@ async def run_toolcall(
     mark_active: bool = True,
 ) -> dict[str, Any]:
     """Execute tool classification pipeline.
-    
+
     Runs the full tool detection pipeline:
     1. Phrase filter for known patterns
     2. Language filter for non-English
     3. Classifier model for intent detection
-    
+
     Args:
         session_id: Session for history lookup and request tracking.
         user_utt: User message to classify.
         request_id: Optional request ID for tracking.
         mark_active: Whether to mark this as the active request.
-        
+
     Returns:
         Dict with keys:
         - cancelled: bool (False unless interrupted)
@@ -107,7 +107,7 @@ async def run_toolcall(
     # This must run before language filter to catch typos that might be misclassified as non-English
     phrase_result = filter_tool_phrase(user_utt)
     action = phrase_result.action
-    
+
     if action == "no_screenshot":
         logger.info("tool_runner: phrase filter no_screenshot session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": "[]"}

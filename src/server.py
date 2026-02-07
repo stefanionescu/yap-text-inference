@@ -23,7 +23,7 @@ Important:
 Example:
     Run directly with uvicorn:
         $ uvicorn src.server:app --host 0.0.0.0 --port 8000
-    
+
     Or programmatically:
         from src.server import app
         import uvicorn
@@ -33,6 +33,7 @@ Example:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import multiprocessing
 
@@ -41,35 +42,33 @@ import multiprocessing
 # This MUST happen before any CUDA/torch imports to avoid fork() issues
 # with CUDA contexts in child processes.
 # ============================================================================
-try:
+with contextlib.suppress(RuntimeError):
     multiprocessing.set_start_method("spawn", force=True)
-except RuntimeError:
-    pass  # Already set - happens when running under certain test frameworks
 
 # ============================================================================
 # Apply log noise filters BEFORE importing engine libraries
 # This suppresses verbose TRT-LLM/vLLM output unless SHOW_*_LOGS is set.
 # Must happen before any tensorrt_llm/vllm imports to set env vars early.
 # ============================================================================
-from src.scripts.filters import configure as configure_log_filters
+from src.scripts.filters import configure as configure_log_filters  # noqa: E402
 
 configure_log_filters()
 
-from fastapi import FastAPI, WebSocket
-from fastapi.responses import ORJSONResponse
+from fastapi import FastAPI, WebSocket  # noqa: E402
+from fastapi.responses import ORJSONResponse  # noqa: E402
 
-from .helpers.validation import validate_env
-from .config.logging import configure_logging
-from .handlers.websocket import handle_websocket_connection
-from .config import DEPLOY_CHAT, DEPLOY_TOOL, INFERENCE_ENGINE
-from .engines import (
+from .config import DEPLOY_CHAT, DEPLOY_TOOL, INFERENCE_ENGINE  # noqa: E402
+from .config.logging import configure_logging  # noqa: E402
+from .engines import (  # noqa: E402
+    engine_supports_cache_reset,
+    ensure_cache_reset_daemon,
     get_engine,
     shutdown_engine,
-    warm_classifier,
     warm_chat_engine,
-    ensure_cache_reset_daemon,
-    engine_supports_cache_reset,
+    warm_classifier,
 )
+from .handlers.websocket import handle_websocket_connection  # noqa: E402
+from .helpers.validation import validate_env  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +79,7 @@ configure_logging()
 # Engine-specific runtime setup - only load vLLM modules when using vLLM
 if INFERENCE_ENGINE == "vllm":
     from .engines.vllm.setup import configure_runtime_env
+
     configure_runtime_env()
 
 validate_env()
@@ -88,13 +88,13 @@ validate_env()
 @app.on_event("startup")
 async def preload_engines() -> None:
     """Load any configured engines before accepting traffic.
-    
+
     This startup hook ensures models are loaded and ready before the
     server starts accepting WebSocket connections. Benefits:
     - First request doesn't incur model loading latency
     - Configuration errors are caught at startup
     - Load balancers can check /healthz after warmup completes
-    
+
     The chat engine and classifier are warmed concurrently to minimize
     total startup time.
     """

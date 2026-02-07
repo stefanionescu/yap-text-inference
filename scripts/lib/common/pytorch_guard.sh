@@ -26,7 +26,7 @@ torch_cuda_mismatch_guard() {
   local previous_opts="$-"
   local tmp_output
 
-  tmp_output=$(mktemp -t torch-guard-XXXXXX 2>/dev/null) || \
+  tmp_output=$(mktemp -t torch-guard-XXXXXX 2>/dev/null) ||
     tmp_output=$(mktemp /tmp/torch-guard-XXXXXX 2>/dev/null) || true
   if [ -z "${tmp_output}" ]; then
     tmp_output="${ROOT_DIR:-/tmp}/torch-guard-${RANDOM:-$$}"
@@ -36,7 +36,7 @@ torch_cuda_mismatch_guard() {
   PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
     "${py_bin}" -m src.scripts.guard >"${tmp_output}" 2>&1
   detect_rc=$?
-  if [[ "${previous_opts}" == *e* ]]; then
+  if [[ ${previous_opts} == *e* ]]; then
     set -e
   fi
   detect_output=$(cat "${tmp_output}" 2>/dev/null || true)
@@ -70,7 +70,7 @@ torch_cuda_mismatch_guard() {
       while IFS= read -r line; do
         [ -z "${line}" ] && continue
         log_warn "${prefix}   ${line}"
-      done <<< "${detect_output}"
+      done <<<"${detect_output}"
     fi
   fi
 

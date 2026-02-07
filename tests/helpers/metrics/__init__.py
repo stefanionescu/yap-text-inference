@@ -6,7 +6,7 @@ benchmark metrics, TTFB samples, and result formatting.
 
 from .math import round_ms, secs_to_ms
 from .results import error_result, result_to_dict, success_result
-from .ttfb import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
+from .ttfb import create_ttfb_aggregator, emit_ttfb_summary, has_ttfb_samples, record_ttfb
 
 __all__ = [
     # math

@@ -22,5 +22,3 @@ ensure_torch_cuda_arch_list() {
     fi
   fi
 }
-
-

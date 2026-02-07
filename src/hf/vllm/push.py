@@ -10,12 +10,13 @@ from src.helpers.env import env_flag
 
 if not env_flag("SHOW_HF_LOGS", False):
     from src.scripts.filters import configure
+
     configure()
 
 from src.hf import get_hf_api
+from src.state import AWQPushJob
 
 from .job import resolve_token
-from src.state import AWQPushJob
 
 
 def push_awq_to_hf(

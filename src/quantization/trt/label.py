@@ -10,8 +10,9 @@ Example: sm90_trt-llm-0.17.0_cuda12.8
 
 from __future__ import annotations
 
-import os
+import contextlib
 import json
+import os
 from pathlib import Path
 
 from src.errors import EngineLabelError
@@ -20,6 +21,7 @@ from src.state import EnvironmentInfo
 # ============================================================================
 # Environment Helpers
 # ============================================================================
+
 
 def _env_int(name: str, default: int | None) -> int | None:
     """Get int from env var, handling empty strings."""
@@ -42,6 +44,7 @@ def _env_str(name: str, default: str) -> str:
 # Engine Label
 # ============================================================================
 
+
 def get_engine_label(engine_path: Path) -> str:
     """Generate engine label from build metadata or environment variables.
 
@@ -57,7 +60,7 @@ def get_engine_label(engine_path: Path) -> str:
     # Try build_metadata.json first - it has the exact values used at build time
     meta_path = engine_path / "build_metadata.json"
     if meta_path.is_file():
-        try:
+        with contextlib.suppress(Exception):
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             sm = meta.get("sm_arch")
             trt_ver = meta.get("tensorrt_llm_version")
@@ -65,8 +68,6 @@ def get_engine_label(engine_path: Path) -> str:
 
             if sm and trt_ver and cuda_ver:
                 return f"{sm}_trt-llm-{trt_ver}_cuda{cuda_ver}"
-        except Exception:
-            pass
 
     # Fall back to environment
     env_info = EnvironmentInfo.from_env()

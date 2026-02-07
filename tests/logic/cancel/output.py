@@ -7,26 +7,26 @@ to the console using the standard test output formatting helpers.
 from __future__ import annotations
 
 from tests.helpers.fmt import (
-    red,
-    green,
-    format_user,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
+    format_user,
+    green,
+    red,
 )
-
 from tests.state import CancelClientResult, NormalClientResult
 
 CANCEL_TEST_MESSAGE = "hey there! tell me a story about a magical forest"
+RECOVERY_PREVIEW_CHARS = 80
 
 
 def print_cancel_client_result(result: CancelClientResult) -> tuple[int, int]:
     """Print results for the canceling client.
-    
+
     Args:
         result: Combined result from the canceling client.
-        
+
     Returns:
         Tuple of (passed_count, failed_count).
     """
@@ -55,8 +55,8 @@ def print_cancel_client_result(result: CancelClientResult) -> tuple[int, int]:
     if result.recovery_phase.passed:
         print(exchange_header())
         print(f"  {format_user(CANCEL_TEST_MESSAGE)}")
-        response_preview = result.recovery_phase.response_text[:80]
-        if len(result.recovery_phase.response_text) > 80:
+        response_preview = result.recovery_phase.response_text[:RECOVERY_PREVIEW_CHARS]
+        if len(result.recovery_phase.response_text) > RECOVERY_PREVIEW_CHARS:
             response_preview += "..."
         print(f"  {format_assistant(response_preview)}")
         print(f"  {format_metrics_inline(result.recovery_phase.metrics)}")
@@ -73,10 +73,10 @@ def print_cancel_client_result(result: CancelClientResult) -> tuple[int, int]:
 
 def print_normal_client_results(results: list[NormalClientResult]) -> tuple[int, int]:
     """Print results for normal clients.
-    
+
     Args:
         results: List of results from normal clients.
-        
+
     Returns:
         Tuple of (passed_count, failed_count).
     """

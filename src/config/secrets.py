@@ -8,5 +8,3 @@ TEXT_API_KEY: str | None = os.getenv("TEXT_API_KEY")
 
 
 __all__ = ["TEXT_API_KEY"]
-
-

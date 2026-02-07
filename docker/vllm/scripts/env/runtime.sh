@@ -19,15 +19,13 @@ else
 fi
 
 if [ -n "${PY_BIN}" ]; then
-  if "${PY_BIN}" - <<'PY' >/dev/null 2>&1
+  if "${PY_BIN}" - <<'PY' >/dev/null 2>&1; then
 try:
     import flashinfer  # noqa: F401
 except Exception:
     raise SystemExit(1)
 PY
-  then
     HAS_FLASHINFER=1
   fi
 fi
 export HAS_FLASHINFER
-

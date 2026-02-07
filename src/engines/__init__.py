@@ -32,7 +32,7 @@ Engine Selection:
 
 Usage:
     from src.engines import get_engine, create_sampling_params
-    
+
     engine = await get_engine()
     params = create_sampling_params(temperature=0.7, max_tokens=256)
     async for output in engine.generate_stream(prompt, params, request_id):
@@ -41,21 +41,21 @@ Usage:
 
 from __future__ import annotations
 
-from .sampling import create_sampling_params
-from .warmup import warm_classifier, warm_chat_engine
-from .base import BaseEngine, EngineOutput, EngineNotReadyError, EngineShutdownError
+from .base import BaseEngine, EngineNotReadyError, EngineOutput, EngineShutdownError
 
 # Re-export registry functions as the public API
 from .registry import (
-    get_engine,
-    shutdown_engine,
-    reset_engine_caches,
-    ensure_cache_reset_daemon,
+    cache_reset_reschedule_event,
     clear_caches_on_disconnect,
     engine_supports_cache_reset,
-    cache_reset_reschedule_event,
+    ensure_cache_reset_daemon,
+    get_engine,
+    reset_engine_caches,
     seconds_since_last_cache_reset,
+    shutdown_engine,
 )
+from .sampling import create_sampling_params
+from .warmup import warm_chat_engine, warm_classifier
 
 __all__ = [
     # Base classes

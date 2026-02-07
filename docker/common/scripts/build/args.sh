@@ -13,4 +13,3 @@ init_build_args() {
     --platform "${PLATFORM}"
   )
 }
-

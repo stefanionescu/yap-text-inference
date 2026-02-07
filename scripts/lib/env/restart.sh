@@ -13,4 +13,3 @@ apply_defaults_and_deps() {
   log_section "[restart] Loading environment defaults..."
   source "${SCRIPT_DIR}/steps/04_env_defaults.sh"
 }
-

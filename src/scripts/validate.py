@@ -30,9 +30,13 @@ def validate_models(
     Returns:
         List of error messages. Empty list means validation passed.
     """
-    from src.config.models import ALLOWED_TOOL_MODELS
-    from src.helpers.models import get_allowed_chat_models
-    from src.helpers.quantization import is_awq_model_name, classify_prequantized_model, classify_trt_prequantized_model
+    from src.config.models import ALLOWED_TOOL_MODELS  # noqa: PLC0415
+    from src.helpers.models import get_allowed_chat_models  # noqa: PLC0415
+    from src.helpers.quantization import (  # noqa: PLC0415
+        classify_prequantized_model,
+        classify_trt_prequantized_model,
+        is_awq_model_name,
+    )
 
     errors: list[str] = []
 
@@ -49,35 +53,32 @@ def validate_models(
         if not chat_model:
             errors.append("CHAT_MODEL is required when DEPLOY_MODE='both' or 'chat'")
         else:
-            chat_allowlisted = (
-                os.path.exists(chat_model) or chat_model in allowed_chat_models
-            )
+            chat_allowlisted = os.path.exists(chat_model) or chat_model in allowed_chat_models
             if not chat_allowlisted:
-                detected = classify_trt_prequantized_model(
-                    chat_model
-                ) or classify_prequantized_model(chat_model)
+                detected = classify_trt_prequantized_model(chat_model) or classify_prequantized_model(chat_model)
                 suffix = f" (detected pre-quantized '{detected}')" if detected else ""
                 errors.append(
-                    f"CHAT_MODEL must be allowlisted for engine '{engine}' "
-                    f"or a local path{suffix}: {chat_model}"
+                    f"CHAT_MODEL must be allowlisted for engine '{engine}' or a local path{suffix}: {chat_model}"
                 )
 
     if deploy_tool:
         if not tool_model:
             errors.append("TOOL_MODEL is required when DEPLOY_MODE='both' or 'tool'")
         elif tool_model not in ALLOWED_TOOL_MODELS and not os.path.exists(tool_model):
-            errors.append(
-                f"TOOL_MODEL must be one of classifier models "
-                f"{ALLOWED_TOOL_MODELS}, got: {tool_model}"
-            )
+            errors.append(f"TOOL_MODEL must be one of classifier models {ALLOWED_TOOL_MODELS}, got: {tool_model}")
 
     # AWQ + GPTQ conflict check
-    if chat_quantization == "awq" and deploy_chat and chat_model:
-        if "GPTQ" in chat_model and not is_awq_model_name(chat_model):
-            errors.append(
-                f"CHAT_QUANTIZATION=awq but CHAT_MODEL appears to be GPTQ. "
-                f"Got: {chat_model}. Use a pre-quantized AWQ model instead."
-            )
+    if (
+        chat_quantization == "awq"
+        and deploy_chat
+        and chat_model
+        and "GPTQ" in chat_model
+        and not is_awq_model_name(chat_model)
+    ):
+        errors.append(
+            f"CHAT_QUANTIZATION=awq but CHAT_MODEL appears to be GPTQ. "
+            f"Got: {chat_model}. Use a pre-quantized AWQ model instead."
+        )
 
     return errors
 
@@ -107,11 +108,10 @@ if __name__ == "__main__":
     # Print separate success messages for each validated model type
     deploy_chat = deploy_mode in ("both", "chat")
     deploy_tool = deploy_mode in ("both", "tool")
-    
+
     if deploy_chat:
         print("[validate] ✓ Chat model validation passed")
     if deploy_tool:
         print("[validate] ✓ Tool model validation passed")
-    
-    sys.exit(0)
 
+    sys.exit(0)

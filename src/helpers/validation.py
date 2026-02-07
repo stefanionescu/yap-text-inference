@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import logging
 
-from src.config.deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
-
-logger = logging.getLogger(__name__)
-from src.config.trt import TRT_ENGINE_DIR
-from src.config.secrets import TEXT_API_KEY
+from src.config.deploy import CHAT_MODEL, DEPLOY_CHAT, DEPLOY_TOOL, TOOL_MODEL
+from src.config.engine import CHAT_QUANTIZATION, INFERENCE_ENGINE
+from src.config.limits import HISTORY_MAX_TOKENS, MAX_CONCURRENT_CONNECTIONS, TRIMMED_HISTORY_LENGTH
 from src.config.quantization import SUPPORTED_ENGINES
+from src.config.secrets import TEXT_API_KEY
+from src.config.trt import TRT_ENGINE_DIR
 from src.tokens.validation import validate_model_tokenizer
-from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
-from src.config.limits import HISTORY_MAX_TOKENS, TRIMMED_HISTORY_LENGTH, MAX_CONCURRENT_CONNECTIONS
 
 from .models import is_classifier_model
 from .quantization import classify_prequantized_model
+
+logger = logging.getLogger(__name__)
 
 
 def _effective_chat_quantization() -> str:
@@ -27,10 +27,8 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
     if model_type != "chat":
         return False
     quant = _effective_chat_quantization()
-    if not model or not quant:
-        return False
-    kind = classify_prequantized_model(model)
-    if not kind:
+    kind = classify_prequantized_model(model) if model else None
+    if not model or not quant or not kind:
         return False
     if quant == "awq" and kind != "awq":
         return False
@@ -54,22 +52,22 @@ _VALID_QUANT_FORMATS = {"awq", "gptq", "gptq_marlin", "fp8", "int8", "int8_sq", 
 def validate_env() -> None:
     """Validate required configuration once during startup."""
     errors: list[str] = []
-    
+
     # Required secrets
     if not TEXT_API_KEY:
         errors.append("TEXT_API_KEY environment variable is required")
-    
+
     # Required limits
     if MAX_CONCURRENT_CONNECTIONS is None:
         errors.append("MAX_CONCURRENT_CONNECTIONS environment variable is required")
-    
+
     # History trimming configuration
     if TRIMMED_HISTORY_LENGTH >= HISTORY_MAX_TOKENS:
         errors.append(
             f"TRIMMED_HISTORY_LENGTH ({TRIMMED_HISTORY_LENGTH}) must be less than "
             f"HISTORY_MAX_TOKENS ({HISTORY_MAX_TOKENS})"
         )
-    
+
     # Model configuration
     if DEPLOY_CHAT and not CHAT_MODEL:
         errors.append("CHAT_MODEL is required when DEPLOY_MODE is 'both' or 'chat'")
@@ -77,17 +75,16 @@ def validate_env() -> None:
         errors.append("TOOL_MODEL is required when DEPLOY_MODE is 'both' or 'tool'")
     if DEPLOY_TOOL and TOOL_MODEL and not is_classifier_model(TOOL_MODEL):
         errors.append("TOOL_MODEL must be one of the classifier models (vLLM tool engines are disabled)")
-    
+
     # Validate engine selection
     if INFERENCE_ENGINE not in SUPPORTED_ENGINES:
         errors.append(f"INFERENCE_ENGINE must be one of {SUPPORTED_ENGINES}, got: {INFERENCE_ENGINE}")
-    
+
     # TRT-specific validation
-    if INFERENCE_ENGINE == "trt" and DEPLOY_CHAT:
-        if not TRT_ENGINE_DIR:
-            # TRT_ENGINE_DIR can be empty if we're building from scratch
-            pass  # Will be set during quantization/build step
-    
+    if INFERENCE_ENGINE == "trt" and DEPLOY_CHAT and not TRT_ENGINE_DIR:
+        # TRT_ENGINE_DIR can be empty if we're building from scratch
+        pass  # Will be set during quantization/build step
+
     # Quantization is required for chat models (auto-detected from CHAT_MODEL name)
     if DEPLOY_CHAT:
         if not CHAT_QUANTIZATION:

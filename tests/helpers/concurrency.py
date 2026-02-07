@@ -9,11 +9,11 @@ from __future__ import annotations
 
 def sanitize_concurrency(requests: int, concurrency: int) -> tuple[int, int]:
     """Ensure request and concurrency values are valid.
-    
+
     Args:
         requests: Total number of requests.
         concurrency: Desired concurrency level.
-    
+
     Returns:
         Tuple of (safe_requests, safe_concurrency) where both are >= 1
         and concurrency <= requests.
@@ -25,11 +25,11 @@ def sanitize_concurrency(requests: int, concurrency: int) -> tuple[int, int]:
 
 def distribute_requests(total: int, concurrency: int) -> list[int]:
     """Distribute requests across workers as evenly as possible.
-    
+
     Args:
         total: Total number of requests to distribute.
         concurrency: Number of workers.
-    
+
     Returns:
         List of request counts per worker.
     """
@@ -38,4 +38,3 @@ def distribute_requests(total: int, concurrency: int) -> list[int]:
 
 
 __all__ = ["sanitize_concurrency", "distribute_requests"]
-

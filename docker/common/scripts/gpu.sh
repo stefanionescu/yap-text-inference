@@ -29,7 +29,7 @@ gpu_detect_sm_arch() {
   # Method 1: Use compute_cap directly (most reliable)
   local compute_cap
   compute_cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 | tr -d '.' || true)
-  if [ -n "${compute_cap}" ] && [[ "${compute_cap}" =~ ^[0-9]+$ ]]; then
+  if [ -n "${compute_cap}" ] && [[ ${compute_cap} =~ ^[0-9]+$ ]]; then
     sm_arch="sm${compute_cap}"
     echo "${sm_arch}"
     return 0
@@ -45,16 +45,16 @@ gpu_detect_sm_arch() {
   fi
 
   case "${gpu_name}" in
-    *"h100"*|*"h200"*)
+    *"h100"* | *"h200"*)
       sm_arch="sm90"
       ;;
-    *"l40s"*|*"l40"*|*"rtx 4090"*|*"rtx 4080"*|*"rtx 4070"*|*"ada"*)
+    *"l40s"* | *"l40"* | *"rtx 4090"* | *"rtx 4080"* | *"rtx 4070"* | *"ada"*)
       sm_arch="sm89"
       ;;
-    *"a100"*|*"a10"*|*"a30"*|*"rtx 3090"*|*"rtx 3080"*|*"ampere"*)
+    *"a100"* | *"a10"* | *"a30"* | *"rtx 3090"* | *"rtx 3080"* | *"ampere"*)
       sm_arch="sm80"
       ;;
-    *"v100"*|*"volta"*)
+    *"v100"* | *"volta"*)
       sm_arch="sm70"
       ;;
     *)
@@ -99,7 +99,7 @@ gpu_sm_to_torch_arch() {
     sm80) echo "8.0" ;;
     sm75) echo "7.5" ;;
     sm70) echo "7.0" ;;
-    *)    echo "8.0" ;;
+    *) echo "8.0" ;;
   esac
 }
 
@@ -109,9 +109,9 @@ gpu_supports_fp8() {
   if [ -z "${sm_arch}" ]; then
     sm_arch=$(gpu_detect_sm_arch)
   fi
-  
+
   case "${sm_arch}" in
-    sm89|sm90)
+    sm89 | sm90)
       return 0
       ;;
     *)
@@ -126,7 +126,7 @@ gpu_init_detection() {
     GPU_SM_ARCH=$(gpu_detect_sm_arch)
     export GPU_SM_ARCH
   fi
-  
+
   if [ -z "${DETECTED_GPU_NAME:-}" ]; then
     DETECTED_GPU_NAME=$(gpu_detect_name)
     export DETECTED_GPU_NAME
@@ -137,20 +137,20 @@ gpu_init_detection() {
 gpu_apply_env_defaults() {
   local gpu_name="${DETECTED_GPU_NAME:-$(gpu_detect_name)}"
   local sm_arch="${GPU_SM_ARCH:-$(gpu_detect_sm_arch)}"
-  
+
   # Set TORCH_CUDA_ARCH_LIST if not already set
   if [ -z "${TORCH_CUDA_ARCH_LIST:-}" ]; then
     TORCH_CUDA_ARCH_LIST=$(gpu_sm_to_torch_arch "${sm_arch}")
     export TORCH_CUDA_ARCH_LIST
   fi
-  
+
   # Set memory allocation config for modern GPUs
   case "${gpu_name}" in
-    *H100*|*H200*|*L40S*|*L40*|*A100*)
+    *H100* | *H200* | *L40S* | *L40* | *A100*)
       export PYTORCH_ALLOC_CONF="${PYTORCH_ALLOC_CONF:-expandable_segments:True}"
       ;;
   esac
-  
+
   # A100-specific optimizations
   case "${gpu_name}" in
     *A100*)
@@ -158,4 +158,3 @@ gpu_apply_env_defaults() {
       ;;
   esac
 }
-

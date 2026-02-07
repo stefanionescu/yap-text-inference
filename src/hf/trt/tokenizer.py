@@ -28,9 +28,9 @@ def _find_hf_dir_in_path(parent: Path, model_stem: str) -> Path | None:
 
 def _download_tokenizer_from_hub(base_model: str) -> Path | None:
     try:
-        import tempfile
+        import tempfile  # noqa: PLC0415
 
-        from huggingface_hub import snapshot_download
+        from huggingface_hub import snapshot_download  # noqa: PLC0415
 
         temp_dir = Path(tempfile.mkdtemp(prefix="tokenizer_"))
         snapshot_download(

@@ -81,7 +81,7 @@ pip_quiet_exec() {
     printf '\n'
     cat "${tmp_log}" || true
     echo "===== exit code: ${rc}"
-  } >> "${log_file}" 2>/dev/null || true
+  } >>"${log_file}" 2>/dev/null || true
 
   _pip_quiet_notice warn "[pip] ⚠ Command failed; see ${log_file} (last lines below)"
   tail -n 60 "${tmp_log}" >&2 || cat "${tmp_log}" >&2 || true
@@ -98,4 +98,3 @@ pip_quiet() {
   fi
   pip_quiet_exec "${pip_bin}" "$@"
 }
-

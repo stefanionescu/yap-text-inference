@@ -25,7 +25,7 @@ parse_cli() {
     fi
 
     case "$1" in
-      -h|--help)
+      -h | --help)
         show_usage
         return 1
         ;;
@@ -45,17 +45,17 @@ parse_cli() {
         fi
         deploy_explicit=1
         ;;
-      4bit|4BIT|4Bit)
+      4bit | 4BIT | 4Bit)
         quant_type="4bit"
         ;;
-      8bit|8BIT|8Bit)
+      8bit | 8BIT | 8Bit)
         quant_type="8bit"
         ;;
-      awq|AWQ|fp8|FP8)
+      awq | AWQ | fp8 | FP8)
         log_err "[main] ✗ '${1}' flag has been removed. Use '4bit' or '8bit' explicitly."
         return 1
         ;;
-      chat|tool|both)
+      chat | tool | both)
         if [ ${#positional_args[@]} -eq 0 ] && [ "${deploy_explicit}" -eq 0 ]; then
           deploy_mode="$1"
           deploy_explicit=1
@@ -75,10 +75,10 @@ parse_cli() {
   done
 
   if [ "${deploy_explicit}" -eq 0 ] && [ ${#positional_args[@]} -gt 0 ]; then
-    local last_index=$(( ${#positional_args[@]} - 1 ))
+    local last_index=$((${#positional_args[@]} - 1))
     local maybe_mode="${positional_args[$last_index]}"
     case "${maybe_mode}" in
-      chat|tool|both)
+      chat | tool | both)
         deploy_mode="${maybe_mode}"
         unset "positional_args[$last_index]"
         ;;
@@ -96,7 +96,7 @@ parse_cli() {
   fi
 
   case "${quant_type}" in
-    4bit|8bit|auto) ;;
+    4bit | 8bit | auto) ;;
     *)
       quant_type="auto"
       ;;

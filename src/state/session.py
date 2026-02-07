@@ -19,19 +19,19 @@ SessionState:
 
 from __future__ import annotations
 
-import time
 import asyncio
+import time
+from dataclasses import dataclass, field
 from typing import Any
-from dataclasses import field, dataclass
 
 
 @dataclass
 class HistoryTurn:
     """One user/assistant exchange in the running conversation.
-    
+
     During streaming generation, assistant may be empty until
     the response is complete.
-    
+
     Attributes:
         turn_id: Unique identifier for this turn (UUID hex string).
         user: The user's message for this turn.
@@ -91,11 +91,10 @@ class SessionState:
 
     def touch(self) -> None:
         """Mark the session as active.
-        
+
         Updates last_access timestamp to prevent idle eviction.
         """
         self.last_access = time.monotonic()
 
 
 __all__ = ["HistoryTurn", "SessionState"]
-

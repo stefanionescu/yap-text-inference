@@ -26,7 +26,7 @@ gpu_apply_env_defaults
 GPU_NAME="${DETECTED_GPU_NAME:-}"
 
 case "${GPU_NAME}" in
-  *H100*|*L40S*|*L40*)
+  *H100* | *L40S* | *L40*)
     export VLLM_USE_V1=1
     export KV_DTYPE=${KV_DTYPE:-fp8}
     if [ "${HAS_FLASHINFER:-0}" = "1" ]; then
@@ -37,7 +37,7 @@ case "${GPU_NAME}" in
         log_warn "[vllm] ⚠ FlashInfer not available; using XFORMERS backend for AWQ."
       fi
     fi
-    if [[ "${GPU_NAME}" == *H100* ]]; then
+    if [[ ${GPU_NAME} == *H100* ]]; then
       export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
     else
       export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}

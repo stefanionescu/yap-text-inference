@@ -34,7 +34,7 @@ declare -a WARMUP_PERSONA_VARIANTS=()
 # =============================================================================
 
 write_lock() {
-  echo "$$" > "${WARMUP_LOCK_FILE}"
+  echo "$$" >"${WARMUP_LOCK_FILE}"
 }
 
 # shellcheck disable=SC2329
@@ -66,11 +66,11 @@ trap cleanup_lock EXIT INT TERM
 # =============================================================================
 
 max_conn="$(warmup_detect_max_conn "${PY_BIN}" "${ROOT_DIR}" "${WARMUP_DEFAULT_CONN_FALLBACK}")" || true
-if [[ -z "${max_conn}" || "${max_conn}" =~ [^0-9] ]]; then
+if [[ -z ${max_conn} || ${max_conn} =~ [^0-9] ]]; then
   warmup_log_internal "MAX_CONCURRENT_CONNECTIONS not set or invalid, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
   max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
-if (( max_conn <= 0 )); then
+if ((max_conn <= 0)); then
   warmup_log_internal "MAX_CONCURRENT_CONNECTIONS is <= 0, defaulting to ${WARMUP_DEFAULT_CONN_FALLBACK}"
   max_conn="${WARMUP_DEFAULT_CONN_FALLBACK}"
 fi
@@ -93,9 +93,9 @@ cd "${ROOT_DIR}"
 
 # Small delay to let Uvicorn's buffered output flush before warmup messages
 sleep 0.1
-echo  # Blank line to stdout (log_blank goes to stderr, can get interleaved)
+echo # Blank line to stdout (log_blank goes to stderr, can get interleaved)
 log_info "[warmup] Starting GPU warmup..."
-echo "[warmup] Starting GPU warmup..." >> "${ROOT_DIR}/server.log"
+echo "[warmup] Starting GPU warmup..." >>"${ROOT_DIR}/server.log"
 
 for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
   IFS='|' read -r persona_gender persona_personality <<<"${persona}"
@@ -145,12 +145,12 @@ done
 # RESULT REPORTING
 # =============================================================================
 
-if [[ "${warmup_all_passed}" -eq 1 ]]; then
+if [[ ${warmup_all_passed} -eq 1 ]]; then
   log_info "[warmup] ✓ Warmup complete."
-  echo "[warmup] ✓ Warmup complete." >> "${ROOT_DIR}/server.log"
+  echo "[warmup] ✓ Warmup complete." >>"${ROOT_DIR}/server.log"
   exit 0
 fi
 
 log_info "[warmup] Warmup finished with failures."
-echo "[warmup] Warmup finished with failures." >> "${ROOT_DIR}/server.log"
+echo "[warmup] Warmup finished with failures." >>"${ROOT_DIR}/server.log"
 exit 1

@@ -20,7 +20,7 @@ source "${BASH_SOURCE[0]%/*}/../env/flashinfer.sh"
 get_pip_pkg_version() {
   local pkg="$1"
   local py_exe="${2:-python}"
-  
+
   $py_exe -c "
 import sys
 try:
@@ -45,7 +45,7 @@ REQUIREMENTS_WRONG=false
 check_venv_exists() {
   local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
 
-  if [[ ! -d "$venv_dir" ]]; then
+  if [[ ! -d $venv_dir ]]; then
     return 1
   fi
   if [[ ! -f "$venv_dir/bin/python" ]]; then
@@ -64,7 +64,7 @@ log_trt_dep_status() {
   local ok="✓" bad="✗"
   _status_line() {
     local label="$1" need="$2"
-    if [[ "${need}" == "0" ]]; then
+    if [[ ${need} == "0" ]]; then
       printf "[deps]   %-14s %s\n" "${label}:" "${ok}"
     else
       printf "[deps]   %-14s %s\n" "${label}:" "${bad}"
@@ -74,7 +74,7 @@ log_trt_dep_status() {
   _status_line "torchvision" "${NEEDS_TORCHVISION}"
   _status_line "tensorrt_llm" "${NEEDS_TRTLLM}"
   _status_line "requirements" "${NEEDS_REQUIREMENTS}"
-  if [[ -n "${NEEDS_FLASHINFER:-}" ]]; then
+  if [[ -n ${NEEDS_FLASHINFER:-} ]]; then
     _status_line "flashinfer" "${NEEDS_FLASHINFER}"
   fi
 }
@@ -84,19 +84,19 @@ log_trt_dep_status() {
 check_pytorch_installed() {
   local required_version="${1:-2.9.0}"
   local py_exe="${2:-python}"
-  
+
   local installed_ver
   installed_ver=$(get_pip_pkg_version "torch" "$py_exe")
-  
-  if [[ -z "$installed_ver" ]]; then
+
+  if [[ -z $installed_ver ]]; then
     return 1
   fi
-  
-  if [[ "$installed_ver" != "$required_version" ]]; then
+
+  if [[ $installed_ver != "$required_version" ]]; then
     log_info "[deps] PyTorch version mismatch: installed=$installed_ver, required=$required_version"
     return 2
   fi
-  
+
   return 0
 }
 
@@ -105,19 +105,19 @@ check_pytorch_installed() {
 check_torchvision_installed() {
   local required_version="${1:-0.24.0}"
   local py_exe="${2:-python}"
-  
+
   local installed_ver
   installed_ver=$(get_pip_pkg_version "torchvision" "$py_exe")
-  
-  if [[ -z "$installed_ver" ]]; then
+
+  if [[ -z $installed_ver ]]; then
     return 1
   fi
-  
-  if [[ "$installed_ver" != "$required_version" ]]; then
+
+  if [[ $installed_ver != "$required_version" ]]; then
     log_info "[deps] TorchVision version mismatch: installed=$installed_ver, required=$required_version"
     return 2
   fi
-  
+
   return 0
 }
 
@@ -126,19 +126,19 @@ check_torchvision_installed() {
 check_trtllm_installed() {
   local required_version="${1:-1.2.0rc5}"
   local py_exe="${2:-python}"
-  
+
   local installed_ver
   installed_ver=$(get_pip_pkg_version "tensorrt_llm" "$py_exe")
-  
-  if [[ -z "$installed_ver" ]]; then
+
+  if [[ -z $installed_ver ]]; then
     return 1
   fi
-  
-  if [[ "$installed_ver" != "$required_version" ]]; then
+
+  if [[ $installed_ver != "$required_version" ]]; then
     log_info "[deps] TensorRT-LLM version mismatch: installed=$installed_ver, required=$required_version"
     return 2
   fi
-  
+
   return 0
 }
 
@@ -148,7 +148,7 @@ check_flashinfer_installed() {
   if flashinfer_present_py "$py_exe"; then
     return 0
   fi
-  
+
   return 1
 }
 
@@ -158,74 +158,74 @@ check_flashinfer_installed() {
 check_requirements_installed() {
   local requirements_file="${1:-requirements.txt}"
   local py_exe="${2:-python}"
-  
+
   # Resolve path relative to ROOT_DIR if not absolute
-  if [[ ! "$requirements_file" = /* ]]; then
+  if [[ $requirements_file != /* ]]; then
     requirements_file="${ROOT_DIR}/${requirements_file}"
   fi
-  
-  if [[ ! -f "$requirements_file" ]]; then
+
+  if [[ ! -f $requirements_file ]]; then
     log_info "[deps] requirements.txt not found: $requirements_file"
     return 1
   fi
-  
+
   REQUIREMENTS_MISSING_PKGS=()
   REQUIREMENTS_WRONG_VERSION_PKGS=()
   REQUIREMENTS_MISSING=false
   REQUIREMENTS_WRONG=false
   local has_missing=false
   local has_wrong_version=false
-  
+
   # Parse requirements.txt and check each pinned package
-  while IFS= read -r line || [[ -n "$line" ]]; do
+  while IFS= read -r line || [[ -n $line ]]; do
     # Skip comments and empty lines
-    [[ "$line" =~ ^[[:space:]]*# ]] && continue
-    [[ -z "${line// }" ]] && continue
-    
+    [[ $line =~ ^[[:space:]]*# ]] && continue
+    [[ -z ${line// /} ]] && continue
+
     # Extract package name and version from lines like "package==1.2.3" or "package[extra]==1.2.3"
-    if [[ "$line" =~ ^([a-zA-Z0-9_-]+)(\[[^\]]+\])?==([0-9][^[:space:]]*) ]]; then
+    if [[ $line =~ ^([a-zA-Z0-9_-]+)(\[[^\]]+\])?==([0-9][^[:space:]]*) ]]; then
       local pkg_name="${BASH_REMATCH[1]}"
       local required_ver="${BASH_REMATCH[3]}"
-      
+
       # Normalize package name (replace - with _ for pip compatibility)
       local pkg_normalized="${pkg_name//-/_}"
-      
+
       # Get installed version
       local installed_ver
       installed_ver=$(get_pip_pkg_version "$pkg_normalized" "$py_exe")
-      
-      if [[ -z "$installed_ver" ]]; then
+
+      if [[ -z $installed_ver ]]; then
         # Try with original name (some packages use dashes)
         installed_ver=$(get_pip_pkg_version "$pkg_name" "$py_exe")
       fi
-      
-      if [[ -z "$installed_ver" ]]; then
+
+      if [[ -z $installed_ver ]]; then
         REQUIREMENTS_MISSING_PKGS+=("$pkg_name==$required_ver")
         has_missing=true
         export REQUIREMENTS_MISSING=true
-      elif [[ "$installed_ver" != "$required_ver" ]]; then
+      elif [[ $installed_ver != "$required_ver" ]]; then
         REQUIREMENTS_WRONG_VERSION_PKGS+=("$pkg_name")
         has_wrong_version=true
         export REQUIREMENTS_WRONG=true
       fi
     fi
-  done < "$requirements_file"
-  
+  done <"$requirements_file"
+
   if $has_missing; then
     return 1
   fi
-  
+
   if $has_wrong_version; then
     return 2
   fi
-  
+
   return 0
 }
 
 # Uninstall packages that have wrong versions before reinstalling
 uninstall_wrong_requirements_packages() {
   local py_exe="${1:-python}"
-  
+
   if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]} -gt 0 ]]; then
     log_info "[deps] Uninstalling wrong version packages..."
     for pkg in "${REQUIREMENTS_WRONG_VERSION_PKGS[@]}"; do
@@ -240,23 +240,23 @@ uninstall_pip_pkg_if_wrong_version() {
   local pkg="$1"
   local required_version="$2"
   local py_exe="${3:-python}"
-  
+
   local installed_ver
   installed_ver=$(get_pip_pkg_version "$pkg" "$py_exe")
-  
-  if [[ -z "$installed_ver" ]]; then
-    return 0  # Not installed, nothing to uninstall
+
+  if [[ -z $installed_ver ]]; then
+    return 0 # Not installed, nothing to uninstall
   fi
-  
+
   local installed_base="${installed_ver%%+*}"
   local required_base="${required_version%%+*}"
-  
-  if [[ "$installed_base" != "$required_base" ]]; then
+
+  if [[ $installed_base != "$required_base" ]]; then
     $py_exe -m pip uninstall -y "$pkg" 2>/dev/null || true
     return 0
   fi
-  
-  return 1  # Correct version, no uninstall needed
+
+  return 1 # Correct version, no uninstall needed
 }
 
 # =============================================================================
@@ -272,31 +272,31 @@ check_trt_deps_status() {
   local torchvision_ver="${3:-0.24.0}"
   local trtllm_ver="${4:-1.2.0rc5}"
   local req_file="${5:-requirements-trt.txt}"
-  
+
   NEEDS_PYTORCH=1
   NEEDS_TORCHVISION=1
   NEEDS_TRTLLM=1
   NEEDS_REQUIREMENTS=1
   NEEDS_FLASHINFER=1
-  
+
   if ! check_venv_exists "${venv_dir}" 2>/dev/null; then
     return 1
   fi
-  
+
   local venv_py="${venv_dir}/bin/python"
-  
+
   if check_pytorch_installed "${pytorch_ver}" "${venv_py}"; then
     NEEDS_PYTORCH=0
   fi
-  
+
   if check_torchvision_installed "${torchvision_ver}" "${venv_py}"; then
     NEEDS_TORCHVISION=0
   fi
-  
+
   if check_trtllm_installed "${trtllm_ver}" "${venv_py}"; then
     NEEDS_TRTLLM=0
   fi
-  
+
   if check_requirements_installed "${req_file}" "${venv_py}"; then
     NEEDS_REQUIREMENTS=0
   fi
@@ -304,11 +304,11 @@ check_trt_deps_status() {
   if check_flashinfer_installed "${venv_py}"; then
     NEEDS_FLASHINFER=0
   fi
-  
+
   # Return 0 if all satisfied
-  if [[ "$NEEDS_PYTORCH" == "0" && "$NEEDS_TORCHVISION" == "0" && "$NEEDS_TRTLLM" == "0" && "$NEEDS_REQUIREMENTS" == "0" && "$NEEDS_FLASHINFER" == "0" ]]; then
+  if [[ $NEEDS_PYTORCH == "0" && $NEEDS_TORCHVISION == "0" && $NEEDS_TRTLLM == "0" && $NEEDS_REQUIREMENTS == "0" && $NEEDS_FLASHINFER == "0" ]]; then
     return 0
   fi
-  
+
   return 1
 }

@@ -53,7 +53,7 @@ export_common_state() {
 parse_common_flag() {
   local flag="$1"
   local next_arg="${2:-}"
-  ARGS_SHIFT_COUNT=1  # default; may be updated below
+  ARGS_SHIFT_COUNT=1 # default; may be updated below
 
   case "${flag}" in
     --show-hf-logs)
@@ -136,4 +136,3 @@ build_forward_flags() {
     ARGS_FORWARD_FLAGS+=("--push-engine")
   fi
 }
-

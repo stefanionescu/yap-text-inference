@@ -35,12 +35,12 @@ _vllm_install_quant_env() {
 vllm_install_deps() {
   log_blank
   log_info "[vllm] Installing vLLM dependencies..."
-  
+
   filter_requirements_without_flashinfer || return 1
   install_requirements_without_flashinfer || return 1
   install_flashinfer_if_applicable "vllm"
   _vllm_install_quant_env || return 1
-  
+
   log_info "[vllm] ✓ vLLM dependencies installed"
   log_blank
   return 0

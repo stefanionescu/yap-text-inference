@@ -23,27 +23,27 @@ from src.config.tool import (
     TOOL_MIN_GPU_FRAC,
     TOOL_MIN_TIMEOUT_S,
     TOOL_NEGATIVE_RESULT,
-    TOOL_POSITIVE_RESULT,
     TOOL_POSITIVE_LABEL_INDEX,
+    TOOL_POSITIVE_RESULT,
 )
-
-from .batch import BatchExecutor
-from .backend import TorchClassifierBackend
-from .info import build_model_info
 from src.state import ClassifierModelInfo
+
+from .backend import TorchClassifierBackend
+from .batch import BatchExecutor
+from .info import build_model_info
 
 logger = logging.getLogger(__name__)
 
 
 class ClassifierToolAdapter:
     """Microbatched classifier adapter for screenshot intent detection.
-    
+
     This class coordinates between:
     - The PyTorch inference backend (TorchClassifierBackend)
     - The batching layer (BatchExecutor)
     - GPU memory management
     - Threshold-based decision making
-    
+
     Attributes:
         model_path: Path or HuggingFace ID of the classifier model.
         threshold: Probability threshold for "take screenshot" decision.
@@ -66,7 +66,7 @@ class ClassifierToolAdapter:
         gpu_memory_frac: float | None = None,
     ) -> None:
         """Initialize the classifier adapter.
-        
+
         Args:
             model_path: HuggingFace model path or local directory.
             threshold: Probability threshold for positive classification.
@@ -148,11 +148,11 @@ class ClassifierToolAdapter:
     # ============================================================================
     def classify(self, user_utt: str, user_history: str = "") -> tuple[bool, float]:
         """Classify whether a screenshot should be taken.
-        
+
         Args:
             user_utt: Current user utterance to classify.
             user_history: Previous user messages for context.
-            
+
         Returns:
             Tuple of (should_take_screenshot, probability):
             - should_take_screenshot: True if probability >= threshold
@@ -168,13 +168,13 @@ class ClassifierToolAdapter:
 
     def run_tool_inference(self, user_utt: str, user_history: str = "") -> str:
         """Run tool inference and return a JSON result string.
-        
+
         This is the main entry point for the tool execution pipeline.
-        
+
         Args:
             user_utt: Current user utterance.
             user_history: Previous user messages for context.
-            
+
         Returns:
             JSON string: '[{"name": "take_screenshot"}]' if positive,
             or '[]' if negative.

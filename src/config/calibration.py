@@ -14,4 +14,3 @@ __all__ = [
     "CHAT_MAX_LEN",
     "CHAT_MAX_OUT",
 ]
-

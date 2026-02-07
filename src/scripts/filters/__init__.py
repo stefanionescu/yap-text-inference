@@ -34,87 +34,86 @@ import logging
 
 from src.helpers.env import env_flag
 
-# Lazy imports to avoid triggering huggingface_hub on package import
-# These are imported when needed by configure()
-_hf_module = None
-_transformers_module = None
-_trt_module = None
-_vllm_module = None
-_llmcompressor_module = None
-_tool_module = None
-
 logger = logging.getLogger("log_filter")
 
-# Track if configuration has been applied
-_configured = False
+# Lazy imports to avoid triggering huggingface_hub on package import
+# These are imported when needed by configure()
+_STATE = {
+    "hf": None,
+    "transformers": None,
+    "trt": None,
+    "vllm": None,
+    "llmcompressor": None,
+    "tool": None,
+    "configured": False,
+}
 
 
 def configure_hf_logging(disable_downloads: bool = True, disable_uploads: bool = True) -> None:
     """Configure HuggingFace logging (lazy import)."""
-    global _hf_module
-    if _hf_module is None:
-        from . import hf as _hf_module_local
-        _hf_module = _hf_module_local
-    _hf_module.configure_hf_logging(disable_downloads, disable_uploads)
+    if _STATE["hf"] is None:
+        from . import hf as _hf_module_local  # noqa: PLC0415
+
+        _STATE["hf"] = _hf_module_local
+    _STATE["hf"].configure_hf_logging(disable_downloads, disable_uploads)
 
 
 def configure_transformers_logging() -> None:
     """Configure transformers logging (lazy import)."""
-    global _transformers_module
-    if _transformers_module is None:
-        from . import transformers as _transformers_module_local
-        _transformers_module = _transformers_module_local
-    _transformers_module.configure_transformers_logging()
+    if _STATE["transformers"] is None:
+        from . import transformers as _transformers_module_local  # noqa: PLC0415
+
+        _STATE["transformers"] = _transformers_module_local
+    _STATE["transformers"].configure_transformers_logging()
 
 
 def configure_trt_logging() -> None:
     """Configure TensorRT-LLM logging (lazy import)."""
-    global _trt_module
-    if _trt_module is None:
-        from . import trt as _trt_module_local
-        _trt_module = _trt_module_local
-    _trt_module.configure_trt_logging()
+    if _STATE["trt"] is None:
+        from . import trt as _trt_module_local  # noqa: PLC0415
+
+        _STATE["trt"] = _trt_module_local
+    _STATE["trt"].configure_trt_logging()
 
 
 def configure_vllm_logging() -> None:
     """Configure vLLM logging (lazy import)."""
-    global _vllm_module
-    if _vllm_module is None:
-        from . import vllm as _vllm_module_local
-        _vllm_module = _vllm_module_local
-    _vllm_module.configure_vllm_logging()
+    if _STATE["vllm"] is None:
+        from . import vllm as _vllm_module_local  # noqa: PLC0415
+
+        _STATE["vllm"] = _vllm_module_local
+    _STATE["vllm"].configure_vllm_logging()
 
 
 def configure_llmcompressor_logging() -> None:
     """Configure LLMCompressor/AutoAWQ logging (lazy import)."""
-    global _llmcompressor_module
-    if _llmcompressor_module is None:
-        from . import llmcompressor as _llmcompressor_module_local
-        _llmcompressor_module = _llmcompressor_module_local
-    _llmcompressor_module.configure_llmcompressor_logging()
+    if _STATE["llmcompressor"] is None:
+        from . import llmcompressor as _llmcompressor_module_local  # noqa: PLC0415
+
+        _STATE["llmcompressor"] = _llmcompressor_module_local
+    _STATE["llmcompressor"].configure_llmcompressor_logging()
 
 
 def configure_tool_logging() -> None:
     """Configure tool classifier logging (lazy import)."""
-    global _tool_module
-    if _tool_module is None:
-        from . import tool as _tool_module_local
-        _tool_module = _tool_module_local
-    _tool_module.configure_tool_logging()
+    if _STATE["tool"] is None:
+        from . import tool as _tool_module_local  # noqa: PLC0415
+
+        _STATE["tool"] = _tool_module_local
+    _STATE["tool"].configure_tool_logging()
 
 
 def configure() -> None:
     """Apply all log filters based on environment configuration.
-    
+
     This is the main entry point for log filtering. Call this early
     in the application lifecycle before other libraries are imported.
-    
+
     Safe to call multiple times - subsequent calls are no-ops.
     """
-    global _configured
-    if _configured:
+    if _STATE["configured"]:
         return
-    _configured = True
+    _STATE["configured"] = True
 
     show_hf_logs = env_flag("SHOW_HF_LOGS", False)
     show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
@@ -165,4 +164,3 @@ __all__ = [
     "configure_llmcompressor_logging",
     "configure_tool_logging",
 ]
-

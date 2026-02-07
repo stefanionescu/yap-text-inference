@@ -35,7 +35,7 @@ case "${GPU_NAME}" in
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-9.0}
     export PYTORCH_ALLOC_CONF=expandable_segments:True
     ;;
-  *L40S*|*L40*)
+  *L40S* | *L40*)
     export TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST:-8.9}
     export PYTORCH_ALLOC_CONF=expandable_segments:True
     ;;

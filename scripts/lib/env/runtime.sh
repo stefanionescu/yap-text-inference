@@ -25,4 +25,3 @@ runtime_init_repo_paths() {
 
   mkdir -p "${LOG_DIR}" "${RUN_DIR}"
 }
-

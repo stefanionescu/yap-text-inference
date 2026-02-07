@@ -31,9 +31,7 @@ class ServerError(TestClientError):
         error_code = msg.get("code") or payload.get("code") or msg.get("error_code", "unknown")
         message = msg.get("message") or payload.get("message") or str(msg)
         extra = {
-            k: v
-            for k, v in msg.items()
-            if k not in ("type", "error_code", "code", "message", "payload", "details")
+            k: v for k, v in msg.items() if k not in ("type", "error_code", "code", "message", "payload", "details")
         }
         details = payload.get("details") or msg.get("details")
         if isinstance(details, dict):
@@ -74,10 +72,7 @@ class AuthenticationError(ServerError):
     """Raised when authentication fails (invalid or missing API key)."""
 
     def format_for_user(self) -> str:
-        return (
-            "Authentication failed. Please check your API key "
-            "(--api-key or TEXT_API_KEY environment variable)."
-        )
+        return "Authentication failed. Please check your API key (--api-key or TEXT_API_KEY environment variable)."
 
 
 @_register_error_code("server_at_capacity")

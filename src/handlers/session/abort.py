@@ -16,6 +16,8 @@ This is separated from the main SessionHandler to:
 
 from __future__ import annotations
 
+import contextlib
+
 from src.config import DEPLOY_CHAT
 
 from ..instances import session_handler
@@ -27,17 +29,17 @@ async def abort_session_requests(
     clear_state: bool = False,
 ) -> dict[str, str]:
     """Cancel tracked session requests and best-effort abort engine work.
-    
+
     This function handles graceful cancellation of in-flight requests:
     1. Sets the session's active_request_id to CANCELLED_SENTINEL
     2. Cancels any tracked asyncio.Task
     3. Calls engine.abort() for the active request (if deployed)
     4. Optionally clears all session state
-    
+
     Args:
         session_id: The session to abort requests for. If None, returns empty.
         clear_state: If True, also clears all session data after aborting.
-        
+
     Returns:
         Dict with 'active' and 'tool' keys containing the aborted request IDs.
         Empty strings if no requests were active.
@@ -49,12 +51,10 @@ async def abort_session_requests(
     req_info = session_handler.cleanup_session_requests(session_id)
 
     if DEPLOY_CHAT and req_info.get("active"):
-        try:
-            from src.engines import get_engine
+        with contextlib.suppress(Exception):
+            from src.engines import get_engine  # noqa: PLC0415
 
             await (await get_engine()).abort(req_info["active"])
-        except Exception:  # noqa: BLE001 - best effort
-            pass
 
     if clear_state:
         session_handler.clear_session_state(session_id)
@@ -63,4 +63,3 @@ async def abort_session_requests(
 
 
 __all__ = ["abort_session_requests"]
-

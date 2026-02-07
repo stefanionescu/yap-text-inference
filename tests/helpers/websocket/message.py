@@ -7,10 +7,10 @@ async handler functions and gracefully handles malformed JSON.
 
 from __future__ import annotations
 
-import json
 import inspect
+import json
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
-from collections.abc import Mapping, Callable, Awaitable
 
 from tests.helpers.errors import MessageParseError
 

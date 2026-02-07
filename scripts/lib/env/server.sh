@@ -26,7 +26,7 @@ init_network_defaults() {
 
   health_urls_override="${SERVER_HEALTH_URLS_OVERRIDE:-}"
   if [ -n "${health_urls_override}" ]; then
-    IFS=',' read -r -a SERVER_HEALTH_URLS <<< "${health_urls_override}"
+    IFS=',' read -r -a SERVER_HEALTH_URLS <<<"${health_urls_override}"
   else
     SERVER_HEALTH_URLS=(
       "http://${SERVER_ADDR}/healthz"
@@ -44,4 +44,3 @@ init_network_defaults() {
   )
   export SERVER_LOCAL_HEALTH_URLS
 }
-

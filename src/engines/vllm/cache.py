@@ -15,11 +15,11 @@ Note:
 
 from __future__ import annotations
 
-import time
 import asyncio
 import logging
+import time
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
-from collections.abc import Callable, Awaitable
 
 from src.config import CACHE_RESET_INTERVAL_SECONDS
 
@@ -34,49 +34,49 @@ ResetCachesFn = Callable[[str, bool], Awaitable[bool]]
 
 class CacheResetManager:
     """Encapsulates cache reset state and daemon lifecycle.
-    
+
     This class manages:
     - Rate-limiting of cache resets
     - Event signaling for daemon coordination
     - Background daemon for periodic resets
-    
+
     Use get_instance() to access the singleton. The singleton is managed
     here rather than in registry.py because cache reset is vLLM-specific
     and tightly coupled to the cache module.
     """
-    
+
     _instance: CacheResetManager | None = None
-    
+
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self._event = asyncio.Event()
         self._last_reset = time.monotonic()
         self._daemon_task: asyncio.Task[None] | None = None
-    
+
     @classmethod
     def get_instance(cls) -> CacheResetManager:
         """Get the singleton CacheResetManager instance.
-        
+
         Creates the instance on first access.
         """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
-    
+
     @classmethod
     def reset_instance(cls) -> None:
         """Reset the singleton instance (for testing)."""
         cls._instance = None
-    
+
     @property
     def reschedule_event(self) -> asyncio.Event:
         """Return the event used to signal cache reset rescheduling."""
         return self._event
-    
+
     def seconds_since_last_reset(self) -> float:
         """Return seconds since the last cache reset."""
         return max(0.0, time.monotonic() - self._last_reset)
-    
+
     async def try_reset(
         self,
         engine: VLLMEngine,
@@ -85,14 +85,14 @@ class CacheResetManager:
         force: bool = False,
     ) -> bool:
         """Attempt to reset caches if interval has elapsed or force is True.
-        
+
         Handles rate-limiting and locking. Actual reset delegated to engine.
-        
+
         Args:
             engine: Engine instance with reset_caches method.
             reason: Human-readable reason for the reset.
             force: Force reset even if interval hasn't elapsed.
-            
+
         Returns:
             True if caches were reset, False otherwise.
         """
@@ -115,12 +115,12 @@ class CacheResetManager:
                 self._last_reset = time.monotonic()
                 self._event.set()
             return success
-    
+
     def ensure_daemon_running(self, reset_caches_fn: ResetCachesFn) -> None:
         """Start the cache reset daemon if configuration enables it.
-        
+
         Safe to call multiple times - will not start duplicate daemons.
-        
+
         Args:
             reset_caches_fn: Async function(reason, force) -> bool for cache reset.
                             Typically registry.reset_engine_caches.
@@ -130,7 +130,7 @@ class CacheResetManager:
         if CACHE_RESET_INTERVAL_SECONDS <= 0:
             return
         self._daemon_task = asyncio.create_task(self._daemon_loop(reset_caches_fn))
-    
+
     async def _daemon_loop(self, reset_caches_fn: ResetCachesFn) -> None:
         """Background task to periodically reset vLLM caches.
 

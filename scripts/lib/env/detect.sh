@@ -16,11 +16,9 @@ detect_flashinfer() {
   local has=0
   local py_exe
   py_exe="$(get_venv_python)"
-  
+
   if flashinfer_present_py "${py_exe}"; then
     has=1
   fi
   export HAS_FLASHINFER=${has}
 }
-
-

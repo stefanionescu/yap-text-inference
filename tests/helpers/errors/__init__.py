@@ -6,16 +6,16 @@ implementation modular.
 """
 
 from .base import TestClientError
-from .misc import StreamError, InputClosedError, MessageParseError, PromptSelectionError
-from .connection import ConnectionError, IdleTimeoutError, ConnectionClosedError, ConnectionRejectedError
+from .connection import ConnectionClosedError, ConnectionError, ConnectionRejectedError, IdleTimeoutError
+from .misc import InputClosedError, MessageParseError, PromptSelectionError, StreamError
 from .server import (
-    ServerError,
-    RateLimitError,
-    ValidationError,
     AuthenticationError,
     InternalServerError,
     InvalidMessageError,
+    RateLimitError,
     ServerAtCapacityError,
+    ServerError,
+    ValidationError,
 )
 
 __all__ = [
@@ -36,5 +36,3 @@ __all__ = [
     "StreamError",
     "PromptSelectionError",
 ]
-
-

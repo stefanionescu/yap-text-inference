@@ -14,34 +14,34 @@ Key Differences from vLLM:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
 from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from tensorrt_llm.executor import GenerationResult  # type: ignore
 else:
     GenerationResult = Any  # Actual import happens lazily inside SuppressedFDContext
 
-from ..base import BaseEngine, EngineOutput, EngineNotReadyError
+from ..base import BaseEngine, EngineNotReadyError, EngineOutput
 
 logger = logging.getLogger(__name__)
 
 
 class TRTEngine(BaseEngine):
     """TensorRT-LLM based inference engine.
-    
+
     TRT-LLM engines are pre-built and loaded from a directory containing
     the compiled TensorRT engine files (e.g., rank0.engine).
-    
+
     Key differences from vLLM:
     - No periodic cache reset needed (block reuse is built-in)
     - Engine is pre-compiled, not JIT compiled
     - Uses different SamplingParams class
     """
-    
+
     def __init__(self, llm: Any, tokenizer_id: str):
         """Initialize TRT engine wrapper.
-        
+
         Args:
             llm: The tensorrt_llm LLM instance.
             tokenizer_id: HuggingFace model ID for the tokenizer.
@@ -51,12 +51,12 @@ class TRTEngine(BaseEngine):
         self._shutdown = False
         self._executor = getattr(llm, "_executor", None)
         self._inflight: dict[str, GenerationResult] = {}
-    
+
     @property
     def raw_engine(self) -> Any:
         """Access the underlying TRT-LLM engine."""
         return self._llm
-    
+
     async def generate_stream(
         self,
         prompt: str,
@@ -64,12 +64,12 @@ class TRTEngine(BaseEngine):
         request_id: str,
     ) -> AsyncGenerator[EngineOutput, None]:
         """Stream generation using TRT-LLM's generate_async API.
-        
+
         Note: TRT-LLM doesn't support request prioritization like vLLM.
         """
         if self._shutdown:
             raise EngineNotReadyError("Engine has been shutdown")
-        
+
         prev_text = ""
         generation = self._llm.generate_async(
             prompt,
@@ -90,10 +90,10 @@ class TRTEngine(BaseEngine):
         finally:
             if isinstance(request_id, str):
                 self._inflight.pop(request_id, None)
-    
+
     async def abort(self, request_id: str) -> None:
         """Abort a TRT-LLM generation request.
-        
+
         Note: TRT-LLM's abort mechanism may differ from vLLM.
         This is a best-effort implementation.
         """
@@ -115,23 +115,23 @@ class TRTEngine(BaseEngine):
             logger.info("TRT-LLM: cancelled request_id=%s", request_id)
         except Exception:  # noqa: BLE001 - best effort abort
             logger.warning("TRT-LLM: failed to cancel request_id=%s", request_id, exc_info=True)
-    
+
     async def shutdown(self) -> None:
         """Shutdown the TRT-LLM engine."""
         self._shutdown = True
         # TRT-LLM cleanup is handled by Python garbage collection
         # No explicit shutdown method like vLLM's AsyncLLMEngine
         logger.info("TRT-LLM: engine shutdown complete")
-    
+
     @property
     def supports_cache_reset(self) -> bool:
         """TRT-LLM does not need periodic cache reset.
-        
+
         The KV cache uses block reuse which handles memory management
         automatically without fragmentation issues.
         """
         return False
-    
+
     async def reset_caches(self, reason: str) -> bool:
         """No-op for TRT-LLM - cache reset not needed."""
         logger.debug("TRT-LLM: cache reset requested (reason=%s) but not supported", reason)

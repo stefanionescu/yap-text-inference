@@ -58,7 +58,7 @@ quant_resolve_settings() {
         resolved_mode="8bit"
         resolved_backend="8bit"
         ;;
-      auto|"")
+      auto | "")
         if [ -n "${chat_hint}" ]; then
           resolved_mode="4bit"
           resolved_backend="${chat_hint}"
@@ -100,7 +100,7 @@ quant_resolve_settings() {
 
   if [ -z "${resolved_mode}" ]; then
     case "${resolved_backend}" in
-      awq|gptq|gptq_marlin|4bit)
+      awq | gptq | gptq_marlin | 4bit)
         resolved_mode="4bit"
         ;;
       *)

@@ -28,7 +28,7 @@ def patch_transformers_auto_docstring() -> bool:
     """Patch transformers auto_docstring to handle Python 3.10+ union types."""
     try:
         # First, trigger the import to populate sys.modules
-        from transformers.utils import auto_docstring  # noqa: F401
+        from transformers.utils import auto_docstring  # noqa: F401, PLC0415
 
         # Get the actual module from sys.modules (not the decorator function)
         ad = sys.modules.get("transformers.utils.auto_docstring")
@@ -68,24 +68,24 @@ def patch_transformers_auto_docstring() -> bool:
 def patch_attn_implementation_eager() -> bool:
     """
     Patch AutoModelForCausalLM.from_pretrained to default to eager attention.
-    
+
     This fixes flash attention loading issues in transformers 4.56+ where
     custom models (like Kimi) request flash attention but the new Hub-based
     kernel loading fails with implementation path of `None`.
-    
+
     By forcing eager attention, we avoid the flash attention code path entirely.
     """
     try:
-        from transformers import AutoModelForCausalLM
+        from transformers import AutoModelForCausalLM  # noqa: PLC0415
     except ImportError:
         return False
-    
+
     # Check if already patched
     if getattr(AutoModelForCausalLM, "_patched_eager_attn", False):
         return True
-    
+
     original_from_pretrained = AutoModelForCausalLM.from_pretrained
-    
+
     @classmethod
     def patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
         """Force eager attention to avoid flash attention loading issues."""
@@ -93,10 +93,10 @@ def patch_attn_implementation_eager() -> bool:
         if "attn_implementation" not in kwargs:
             kwargs["attn_implementation"] = "eager"
         return original_from_pretrained.__func__(cls, pretrained_model_name_or_path, *args, **kwargs)
-    
+
     AutoModelForCausalLM.from_pretrained = patched_from_pretrained
     AutoModelForCausalLM._patched_eager_attn = True
-    
+
     return True
 
 
@@ -104,14 +104,10 @@ def patch_attn_implementation_eager() -> bool:
 _patches_applied = []
 
 if patch_transformers_auto_docstring():
-    _patches_applied.append(
-        "[patch] Applied transformers auto_docstring fix for Python 3.10 union types"
-    )
+    _patches_applied.append("[patch] Applied transformers auto_docstring fix for Python 3.10 union types")
 
 if patch_attn_implementation_eager():
-    _patches_applied.append(
-        "[patch] Applied transformers eager attention fix for flash attention loading"
-    )
+    _patches_applied.append("[patch] Applied transformers eager attention fix for flash attention loading")
 
 if _patches_applied:
     print(file=sys.stderr)  # Blank line before patches

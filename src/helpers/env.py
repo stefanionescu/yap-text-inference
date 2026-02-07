@@ -6,8 +6,8 @@ configuration values that depend on deployment mode.
 
 from __future__ import annotations
 
-import os
 import json
+import os
 
 
 def env_flag(name: str, default: bool) -> bool:
@@ -120,4 +120,3 @@ __all__ = [
     "load_logit_bias_from_file",
     "configure_vllm_fp8_kv_cache",
 ]
-

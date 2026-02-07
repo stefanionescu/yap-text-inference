@@ -26,34 +26,32 @@ Env:
 
 from __future__ import annotations
 
-import sys
+import argparse
 import asyncio
 import logging
-import argparse
+import sys
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tests.helpers.setup import setup_repo_path
-from tests.logic.cancel import run_cancel_suite
-from tests.helpers.websocket import with_api_key
-from tests.helpers.cli import add_connection_args
 from tests.config import (
+    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
+    CANCEL_DRAIN_TIMEOUT_DEFAULT,
+    CANCEL_NUM_CLIENTS_DEFAULT,
+    CANCEL_POST_WAIT_DEFAULT,
+    CANCEL_RECV_TIMEOUT_DEFAULT,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
-    CANCEL_POST_WAIT_DEFAULT,
-    CANCEL_NUM_CLIENTS_DEFAULT,
-    CANCEL_RECV_TIMEOUT_DEFAULT,
-    CANCEL_DRAIN_TIMEOUT_DEFAULT,
-    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
 )
+from tests.helpers.cli import add_connection_args
+from tests.helpers.setup import setup_repo_path
+from tests.helpers.websocket import with_api_key
+from tests.logic.cancel import run_cancel_suite
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Cancel request test: verifies cancel and recovery behavior"
-    )
+    parser = argparse.ArgumentParser(description="Cancel request test: verifies cancel and recovery behavior")
     add_connection_args(
         parser,
         server_help="Base WebSocket URL (defaults to SERVER_WS_URL env)",
@@ -63,45 +61,32 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=CANCEL_NUM_CLIENTS_DEFAULT,
         help=(
-            "Number of concurrent clients (1 cancels, rest complete normally) "
-            f"(default: {CANCEL_NUM_CLIENTS_DEFAULT})"
+            f"Number of concurrent clients (1 cancels, rest complete normally) (default: {CANCEL_NUM_CLIENTS_DEFAULT})"
         ),
     )
     parser.add_argument(
         "--cancel-delay",
         type=float,
         default=CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
-        help=(
-            "Seconds to wait after start before sending cancel "
-            f"(default: {CANCEL_DELAY_BEFORE_CANCEL_DEFAULT})"
-        ),
+        help=(f"Seconds to wait after start before sending cancel (default: {CANCEL_DELAY_BEFORE_CANCEL_DEFAULT})"),
     )
     parser.add_argument(
         "--drain-timeout",
         type=float,
         default=CANCEL_DRAIN_TIMEOUT_DEFAULT,
-        help=(
-            "Seconds to verify no spurious messages after cancel "
-            f"(default: {CANCEL_DRAIN_TIMEOUT_DEFAULT})"
-        ),
+        help=(f"Seconds to verify no spurious messages after cancel (default: {CANCEL_DRAIN_TIMEOUT_DEFAULT})"),
     )
     parser.add_argument(
         "--post-cancel-wait",
         type=float,
         default=CANCEL_POST_WAIT_DEFAULT,
-        help=(
-            "Seconds to wait after drain before sending recovery request "
-            f"(default: {CANCEL_POST_WAIT_DEFAULT})"
-        ),
+        help=(f"Seconds to wait after drain before sending recovery request (default: {CANCEL_POST_WAIT_DEFAULT})"),
     )
     parser.add_argument(
         "--timeout",
         type=float,
         default=CANCEL_RECV_TIMEOUT_DEFAULT,
-        help=(
-            "Receive timeout for each phase in seconds "
-            f"(default: {CANCEL_RECV_TIMEOUT_DEFAULT})"
-        ),
+        help=(f"Receive timeout for each phase in seconds (default: {CANCEL_RECV_TIMEOUT_DEFAULT})"),
     )
     parser.add_argument(
         "--gender",

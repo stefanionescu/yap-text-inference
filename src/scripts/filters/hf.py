@@ -5,11 +5,13 @@ Controls visibility of HuggingFace download/upload progress bars.
 
 from __future__ import annotations
 
-import logging
+import contextlib
 import importlib
+import logging
+import os
 from collections.abc import Iterable
 
-from src.config.filters import HF_ALL_GROUPS, HF_UPLOAD_GROUPS, HF_DOWNLOAD_GROUPS
+from src.config.filters import HF_ALL_GROUPS, HF_DOWNLOAD_GROUPS, HF_UPLOAD_GROUPS
 
 logger = logging.getLogger("log_filter")
 
@@ -76,30 +78,24 @@ def enable_hf_progress(groups: Iterable[str] | None = None) -> None:
     Args:
         groups: Specific groups to enable, or None for all groups.
     """
-    import os
-
     # Clear env vars that disable progress
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
     os.environ.pop("TQDM_DISABLE", None)
 
     try:
-        from huggingface_hub.utils import enable_progress_bars
+        from huggingface_hub.utils import enable_progress_bars  # noqa: PLC0415
     except ImportError:
         return
 
     target_groups = groups if groups is not None else HF_ALL_GROUPS
 
     for group in target_groups:
-        try:
+        with contextlib.suppress(Exception):
             enable_progress_bars(group)
-        except Exception:
-            pass  # Group might not exist in this version
 
     # Also enable globally as fallback
-    try:
+    with contextlib.suppress(Exception):
         enable_progress_bars()
-    except Exception:
-        pass
 
 
 def configure_hf_logging(
@@ -129,4 +125,3 @@ __all__ = [
     "disable_hf_progress",
     "label_hf_snapshot_progress",
 ]
-

@@ -29,17 +29,17 @@ fi
 build_engine() {
   local checkpoint_dir="${1:-}"
   local engine_dir="${2:-}"
-  
+
   if [ -z "${checkpoint_dir}" ]; then
     log_err "[build] ✗ Checkpoint directory is required"
     return 1
   fi
-  
+
   if [ -z "${engine_dir}" ]; then
     log_err "[build] ✗ Engine output directory is required"
     return 1
   fi
-  
+
   # Check if engine already exists
   if [ -d "${engine_dir}" ] && ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
@@ -48,16 +48,16 @@ build_engine() {
     fi
     log_info "[build] FORCE_REBUILD=true, rebuilding engine..."
   fi
-  
+
   log_info "[build] Building TensorRT-LLM engine..."
-  
+
   # Calculate max sequence length
   local max_seq_len=$((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN))
-  
+
   # Suppress TRT-LLM log noise via environment
   export TRTLLM_LOG_LEVEL="${TRTLLM_LOG_LEVEL:-error}"
   export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore}"
-  
+
   # Build the engine
   local build_cmd=(
     trtllm-build
@@ -75,24 +75,24 @@ build_engine() {
     --log_level error
     --workers "$(nproc --all)"
   )
-  
+
   "${build_cmd[@]}" 2>&1 | grep -v -E '^\[.*\] \[TRT-LLM\] \[(I|W)\]|^\[TensorRT-LLM\]|WARNING.*Python version.*below the recommended' || true
   local build_status=${PIPESTATUS[0]}
-  
+
   if [ "${build_status}" -ne 0 ]; then
     log_err "[build] ✗ Engine build failed"
     return 1
   fi
-  
+
   # Validate engine was created
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
     log_err "[build] ✗ Engine build completed but no rank*.engine files found"
     return 1
   fi
-  
+
   # Record build metadata
   record_build_metadata "${engine_dir}" "${checkpoint_dir}"
-  
+
   log_info "[build] ✓ Engine build complete"
   return 0
 }
@@ -105,9 +105,9 @@ build_engine() {
 record_build_metadata() {
   local engine_dir="${1:-}"
   local checkpoint_dir="${2:-}"
-  
+
   mkdir -p "${engine_dir}"
-  
+
   # Record build command
   local cmd_file="${engine_dir}/build_command.sh"
   cat >"${cmd_file}" <<EOF
@@ -127,7 +127,7 @@ trtllm-build \\
   --log_level error
 EOF
   chmod +x "${cmd_file}"
-  
+
   # Get TensorRT-LLM version (uses cached TRTLLM_INSTALLED_VERSION if available)
   local trtllm_ver
   trtllm_ver=$(detect_trtllm_version 2>/dev/null)
@@ -135,7 +135,7 @@ EOF
     log_err "[build] ✗ Cannot determine TensorRT-LLM version. Is tensorrt_llm installed?"
     return 1
   fi
-  
+
   # Get CUDA version (uses CUDA_VERSION env var if set)
   local cuda_ver
   cuda_ver=$(detect_cuda_version 2>/dev/null)
@@ -143,7 +143,7 @@ EOF
     log_err "[build] ✗ Cannot determine CUDA version. Is CUDA installed?"
     return 1
   fi
-  
+
   # Get GPU info (uses DETECTED_GPU_NAME if already set)
   local gpu_name
   gpu_name="${DETECTED_GPU_NAME:-$(get_gpu_name 2>/dev/null)}"
@@ -151,14 +151,14 @@ EOF
     log_err "[build] ✗ Cannot detect GPU. Is nvidia-smi available?"
     return 1
   fi
-  
+
   local gpu_vram
   gpu_vram=$(detect_vram_gb 2>/dev/null || echo "0")
-  
+
   # Get NVIDIA driver version
   local nvidia_driver
   nvidia_driver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -n1 || echo "unknown")
-  
+
   # Determine quantization info from checkpoint config
   local quant_info="{}"
   if [ -f "${checkpoint_dir}/config.json" ]; then
@@ -166,20 +166,20 @@ EOF
     quant_info=$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
       python -m src.scripts.trt.detection quant-info "${checkpoint_dir}" 2>/dev/null || echo "{}")
   fi
-  
+
   # Determine KV cache dtype based on quantization format
   local kv_cache_dtype="int8"
   case "${TRT_QFORMAT:-int4_awq}" in
     fp8) kv_cache_dtype="fp8" ;;
     *) kv_cache_dtype="int8" ;;
   esac
-  
+
   # Validate GPU_SM_ARCH is set (should be exported by gpu_init_detection)
   if [ -z "${GPU_SM_ARCH:-}" ]; then
     log_err "[build] ✗ GPU_SM_ARCH not set. Run gpu_init_detection() first."
     return 1
   fi
-  
+
   # Write metadata
   local meta_file="${engine_dir}/build_metadata.json"
   cat >"${meta_file}" <<EOF
@@ -213,23 +213,23 @@ EOF
 # Validate TensorRT-LLM engine directory
 validate_engine() {
   local engine_dir="${1:-${TRT_ENGINE_DIR:-}}"
-  
+
   if [ -z "${engine_dir}" ]; then
     log_err "[build] ✗ Engine directory is required"
     return 1
   fi
-  
+
   if [ ! -d "${engine_dir}" ]; then
     log_err "[build] ✗ Engine directory not found: ${engine_dir}"
     return 1
   fi
-  
+
   # Check for engine files
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
     log_err "[build] ✗ No rank*.engine files found in ${engine_dir}"
     return 1
   fi
-  
+
   log_info "[build] ✓ Engine validated"
   return 0
 }
@@ -243,22 +243,22 @@ validate_engine() {
 quantize_and_build() {
   local model_id="${1:-}"
   local qformat="${2:-}"
-  
+
   if [ -z "${model_id}" ]; then
     log_err "[build] ✗ Model ID is required"
     return 1
   fi
-  
+
   # Resolve qformat (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
     qformat=$(resolve_qformat "${CHAT_QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
-  
+
   log_info "[build] Starting TRT quantize and build pipeline..."
   log_info "[build]   Model: ${model_id}"
   log_info "[build]   Format: ${qformat}"
   log_info "[build]   GPU: ${GPU_SM_ARCH} (${DETECTED_GPU_NAME:-$(get_gpu_name)})"
-  
+
   # Check if this is a pre-quantized model
   if is_trt_prequant "${model_id}"; then
     local prequant_kind
@@ -268,11 +268,11 @@ quantize_and_build() {
     else
       log_info "[build] Detected pre-quantized TRT model"
     fi
-    
+
     # Check for pre-built engine in the HF repo FIRST
     local prebuilt_engine_label
     prebuilt_engine_label=$(find_compatible_engine "${model_id}") || true
-    
+
     if [ -n "${prebuilt_engine_label}" ]; then
       # Download the pre-built engine - skip quantization entirely
       log_info "[build] Using pre-built engine: ${prebuilt_engine_label}"
@@ -281,7 +281,7 @@ quantize_and_build() {
         log_warn "[build] ⚠ Failed to download pre-built engine, falling back to build from checkpoint"
         prebuilt_engine_label=""
       }
-      
+
       if [ -n "${prebuilt_engine_label}" ] && [ -n "${engine_dir}" ]; then
         # Also download checkpoint for tokenizer and config
         local ckpt_dir
@@ -289,16 +289,16 @@ quantize_and_build() {
         TRT_CHECKPOINT_DIR="${ckpt_dir}"
         TRT_ENGINE_DIR="${engine_dir}"
         export TRT_ENGINE_DIR TRT_CHECKPOINT_DIR
-        
+
         # Save engine dir for later use
         mkdir -p "${ROOT_DIR:-.}/.run"
-        echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
-        
+        echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" >"${ROOT_DIR:-.}/.run/trt_engine_dir.env"
+
         log_info "[build] ✓ Using pre-built engine: ${TRT_ENGINE_DIR}"
         return 0
       fi
     fi
-    
+
     # No compatible pre-built engine found - download checkpoint and build
     local ckpt_dir
     ckpt_dir=$(download_prequantized "${model_id}") || return 1
@@ -310,24 +310,24 @@ quantize_and_build() {
     quantize_model "${model_id}" "${ckpt_dir}" "${qformat}" || return 1
     TRT_CHECKPOINT_DIR="${ckpt_dir}"
   fi
-  
+
   # Validate checkpoint before building
   validate_checkpoint "${TRT_CHECKPOINT_DIR}" || return 1
-  
+
   # Build engine
   local engine_dir
   engine_dir=$(get_engine_dir "${model_id}" "${qformat}")
   build_engine "${TRT_CHECKPOINT_DIR}" "${engine_dir}" || return 1
-  
+
   # Export engine directory for server
   TRT_ENGINE_DIR="${engine_dir}"
   export TRT_ENGINE_DIR TRT_CHECKPOINT_DIR
-  
+
   # Save engine dir for later use
   mkdir -p "${ROOT_DIR:-.}/.run"
-  echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR:-.}/.run/trt_engine_dir.env"
-  
+  echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" >"${ROOT_DIR:-.}/.run/trt_engine_dir.env"
+
   log_info "[build] ✓ Pipeline complete: ${TRT_ENGINE_DIR}"
-  
+
   return 0
 }

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import json
+import os
 from typing import Any
 
 from src.helpers.profiles import get_model_profile

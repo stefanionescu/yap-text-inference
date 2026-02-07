@@ -76,11 +76,11 @@ run_deploy() {
   local root_dir="$1"
   local script_dir="$2"
   local deploy_cmd
-  
+
   deploy_cmd="$(build_deploy_cmd "${script_dir}")"
-  
+
   export_runtime_env
-  
+
   run_background \
     "${root_dir}" \
     "${deploy_cmd}" \

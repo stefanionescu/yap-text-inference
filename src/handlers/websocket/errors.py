@@ -26,8 +26,8 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from .helpers import safe_send_envelope
 from ...config.websocket import WS_UNKNOWN_REQUEST_ID, WS_UNKNOWN_SESSION_ID
+from .helpers import safe_send_envelope
 
 
 def build_error_payload(
@@ -86,11 +86,11 @@ async def reject_connection(
     reason_code: str | None = None,
 ) -> None:
     """Accept connection briefly to send an error, then close immediately.
-    
+
     This pattern ensures the client receives a meaningful error message
     rather than just a raw close code. The connection is accepted, the
     error is sent, and then immediately closed.
-    
+
     Args:
         ws: The WebSocket connection to reject.
         error_code: Machine-readable error identifier.

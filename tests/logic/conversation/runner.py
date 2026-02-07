@@ -8,31 +8,31 @@ that history retention works correctly under bounded-history constraints.
 from __future__ import annotations
 
 import json
-import uuid
 import logging
+import uuid
 from collections.abc import Sequence
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.env import get_int_env, get_float_env
-from tests.helpers.websocket import with_api_key, create_tracker, send_client_end
-from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
-from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
+from tests.helpers.env import get_float_env, get_int_env
 from tests.helpers.fmt import (
     dim,
-    format_user,
-    section_header,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
+    format_user,
+    section_header,
 )
-
-from .stream import stream_exchange
-from .session import build_start_payload
+from tests.helpers.metrics import create_ttfb_aggregator, emit_ttfb_summary, has_ttfb_samples, record_ttfb
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.websocket import create_tracker, send_client_end, with_api_key
 from tests.state import ConversationSession
+
+from .session import build_start_payload
+from .stream import stream_exchange
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ async def run_conversation(
     print(f"\n{section_header('CONVERSATION TEST')}")
     print(dim(f"  session: {session.session_id}"))
     print(dim(f"  persona: {personality}/{gender}\n"))
-    
+
     message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
     ttfb_samples = create_ttfb_aggregator()
 
@@ -83,16 +83,16 @@ async def run_conversation(
             for idx, user_text in enumerate(prompts, start=1):
                 state = create_tracker()
                 payload = build_start_payload(session, user_text)
-                
+
                 print(exchange_header(idx=idx))
                 print(f"  {format_user(user_text)}")
-                
+
                 await message_pacer.wait_turn()
                 await ws.send(json.dumps(payload))
                 assistant_text, metrics = await stream_exchange(ws, state, recv_timeout, idx)
                 session.append_exchange(user_text, assistant_text)
                 record_ttfb(ttfb_samples, metrics)
-                
+
                 print(f"  {format_assistant(assistant_text)}")
                 print(f"  {format_metrics_inline(metrics)}")
                 print(exchange_footer())

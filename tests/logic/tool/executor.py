@@ -7,22 +7,18 @@ and result collection with configurable concurrency.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-import asyncio
-from typing import Any
 from collections.abc import Callable, Sequence
+from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.helpers.rate import SlidingWindowPacer
+from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MAX_MESSAGES_PER_WINDOW, TOOL_WS_MESSAGE_WINDOW_SECONDS
 from tests.helpers.metrics import secs_to_ms
-from tests.helpers.websocket import send_client_end, build_start_payload, connect_with_retries
-from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
-
-from .cases import render_history
-from .drain import DrainConfig, drain_response
-from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.websocket import build_start_payload, connect_with_retries, send_client_end
 from tests.state import (
     CaseResult,
     CaseStep,
@@ -33,6 +29,10 @@ from tests.state import (
     ToolTestCase,
     TurnResult,
 )
+
+from .cases import render_history
+from .drain import DrainConfig, drain_response
+from .validation import derive_tool_called_from_raw, format_bool, is_valid_response_shape
 
 STEP_WINDOW_SECONDS = max(0.0, float(TOOL_WS_MESSAGE_WINDOW_SECONDS))
 STEP_MAX_PER_WINDOW = max(0, int(TOOL_WS_MAX_MESSAGES_PER_WINDOW))
@@ -54,16 +54,12 @@ async def _run_user_turn(
 
 def _coerce_missing_tool_result(turn: TurnResult, expected: bool | None) -> TurnResult:
     """Coerce missing tool response to success when expecting no tool call.
-    
+
     Some setups avoid tool-calling altogether, so the server never emits a
     toolcall frame. For cases that explicitly expect no tool call, treat
     the absence of tool output as the desired outcome.
     """
-    if (
-        expected is False
-        and not turn.ok
-        and turn.reason in {"no_tool_response", "chat_only"}
-    ):
+    if expected is False and not turn.ok and turn.reason in {"no_tool_response", "chat_only"}:
         return TurnResult(
             ok=True,
             tool_called=False,
@@ -90,9 +86,7 @@ async def _execute_case(
     step_pacer = SlidingWindowPacer(STEP_MAX_PER_WINDOW, STEP_WINDOW_SECONDS)
 
     for step_idx, step in enumerate(case.steps, start=1):
-        result = await _execute_step(
-            ws, cfg, session_id, step, step_idx, history, step_pacer
-        )
+        result = await _execute_step(ws, cfg, session_id, step, step_idx, history, step_pacer)
         history.append(step)
         turn_raws.append(result.tool_raw)
         step_timings.append(
@@ -133,15 +127,14 @@ def _build_step_payload(
     history: list[CaseStep],
 ) -> dict[str, Any]:
     """Build the start message payload for a step.
-    
+
     Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
     """
     if not cfg.chat_prompt:
         raise ValueError(
-            "chat_prompt is required for tool tests. "
-            "Use select_chat_prompt(gender) to get a valid prompt."
+            "chat_prompt is required for tool tests. Use select_chat_prompt(gender) to get a valid prompt."
         )
-    
+
     ctx = SessionContext(
         session_id=session_id,
         gender=cfg.gender,
@@ -259,13 +252,13 @@ async def run_all_cases(
     progress_cb: Callable[[int, int], None] | None = None,
 ) -> list[CaseResult]:
     """Run all test cases with bounded concurrency.
-    
+
     Args:
         cases: Sequence of test cases to run.
         cfg: Runner configuration.
         concurrency: Maximum concurrent test cases.
         progress_cb: Optional callback for progress updates.
-    
+
     Returns:
         List of case results in original order.
     """
@@ -283,17 +276,12 @@ async def run_all_cases(
             result = await _run_case(case, cfg)
             return index, result
 
-    tasks = [
-        asyncio.create_task(_run_bounded(idx, case))
-        for idx, case in enumerate(case_list)
-    ]
+    tasks = [asyncio.create_task(_run_bounded(idx, case)) for idx, case in enumerate(case_list)]
 
     results: list[CaseResult | None] = [None] * total
-    completed = 0
-    for pending in asyncio.as_completed(tasks):
+    for completed, pending in enumerate(asyncio.as_completed(tasks), start=1):
         idx, result = await pending
         results[idx] = result
-        completed += 1
         if progress_cb:
             progress_cb(completed, total)
 

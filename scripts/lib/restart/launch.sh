@@ -21,5 +21,3 @@ launch_server_background() {
     "1" \
     "Starting server (${engine_label} engine, ${quant_label} quantization)..."
 }
-
-

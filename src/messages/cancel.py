@@ -20,7 +20,7 @@ from ..handlers.websocket.helpers import safe_send_envelope
 
 async def handle_cancel_message(ws: WebSocket, session_id: str, request_id: str) -> None:
     """Handle 'cancel' message type by aborting active requests.
-    
+
     Args:
         ws: WebSocket connection for response.
         session_id: Session to cancel requests for.

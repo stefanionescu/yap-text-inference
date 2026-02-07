@@ -24,9 +24,9 @@ get_running_server_pid() {
   local pid_file
   pid_file="$(_pid_file "${root_dir}")"
 
-# Treat server.pid as best-effort bookkeeping: only return the PID if the
-# process is still alive, otherwise drop the stale file so a fresh launch can
-# claim it.
+  # Treat server.pid as best-effort bookkeeping: only return the PID if the
+  # process is still alive, otherwise drop the stale file so a fresh launch can
+  # claim it.
   if [ -f "${pid_file}" ]; then
     local existing_pid
     existing_pid="$(cat "${pid_file}" 2>/dev/null || true)"
@@ -60,23 +60,23 @@ read_last_config_value() {
 engine_changed() {
   local desired_engine="${1:-trt}"
   local root_dir="${2:-${ROOT_DIR:-}}"
-  
+
   local last_engine
   last_engine="$(read_last_config_value "INFERENCE_ENGINE" "${root_dir}")"
-  
+
   # If no previous engine recorded, assume no change needed
   if [ -z "${last_engine:-}" ]; then
-    return 1  # No change detected (first run)
+    return 1 # No change detected (first run)
   fi
-  
+
   # Normalize both to lowercase for comparison
   desired_engine="$(echo "${desired_engine}" | tr '[:upper:]' '[:lower:]')"
   last_engine="$(echo "${last_engine}" | tr '[:upper:]' '[:lower:]')"
-  
+
   if [ "${desired_engine}" != "${last_engine}" ]; then
-    return 0  # Engine changed
+    return 0 # Engine changed
   fi
-  return 1  # Same engine
+  return 1 # Same engine
 }
 
 # Force full environment wipe when switching engines
@@ -87,20 +87,20 @@ _force_engine_wipe() {
   local from_engine="$3"
   local to_engine="$4"
   local suppress_message="${5:-0}"
-  
+
   if [ "${suppress_message}" != "1" ]; then
     log_section "[server] ⚠ Engine switch detected: ${from_engine} → ${to_engine}"
   fi
-  
+
   # Force full cleanup (engine switch requires fresh deps)
   if ! FULL_CLEANUP=1 bash "${script_dir}/stop.sh"; then
     log_err "[server] ✗ stop.sh failed during engine wipe"
     return 1
   fi
-  
+
   # Also remove engine-specific directories
   cleanup_engine_artifacts "${root_dir}"
-  
+
   if [ "${suppress_message}" != "1" ]; then
     log_info "[server] Engine wipe complete. Ready for fresh ${to_engine} deployment."
   else
@@ -125,38 +125,38 @@ handle_engine_switch() {
   local root_dir="$2"
   local desired_engine="${3:-trt}"
   local deploy_mode="${4:-${DEPLOY_MODE:-both}}"
-  
+
   # Skip if already handled in this session
   if [ "${ENGINE_SWITCH_HANDLED:-0}" = "1" ]; then
-    return 1  # Already handled
+    return 1 # Already handled
   fi
-  
+
   if ! engine_changed "${desired_engine}" "${root_dir}"; then
-    return 1  # No engine switch needed
+    return 1 # No engine switch needed
   fi
-  
+
   local last_engine
   last_engine="$(read_last_config_value "INFERENCE_ENGINE" "${root_dir}")"
-  
+
   # Normalize for display
   local norm_desired norm_last
   norm_desired="$(echo "${desired_engine}" | tr '[:upper:]' '[:lower:]')"
   norm_last="$(echo "${last_engine}" | tr '[:upper:]' '[:lower:]')"
-  
+
   # Perform the wipe (suppress engine switch message for tool-only mode since it doesn't use engines)
   local suppress_message=0
   if [ "${deploy_mode}" = "tool" ]; then
     suppress_message=1
   fi
-  
+
   if ! _force_engine_wipe "${script_dir}" "${root_dir}" "${norm_last}" "${norm_desired}" "${suppress_message}"; then
     log_err "[server] ✗ Engine switch wipe failed"
-    return 2  # Error
+    return 2 # Error
   fi
-  
+
   # Mark as handled so we don't double-wipe
   export ENGINE_SWITCH_HANDLED=1
-  return 0  # Switch handled
+  return 0 # Switch handled
 }
 
 # Compare the requested deployment parameters with the last snapshot.
@@ -185,10 +185,10 @@ configs_match() {
   last_engine="$(echo "${last_engine:-}" | tr '[:upper:]' '[:lower:]')"
 
   if [ "${desired_deploy:-}" = "${last_deploy:-}" ] &&
-     [ "${desired_chat:-}" = "${last_chat:-}" ] &&
-     [ "${desired_tool:-}" = "${last_tool:-}" ] &&
-     [ "${desired_chat_quant:-}" = "${last_chat_quant:-}" ] &&
-     [ "${desired_engine:-}" = "${last_engine:-}" ]; then
+    [ "${desired_chat:-}" = "${last_chat:-}" ] &&
+    [ "${desired_tool:-}" = "${last_tool:-}" ] &&
+    [ "${desired_chat_quant:-}" = "${last_chat_quant:-}" ] &&
+    [ "${desired_engine:-}" = "${last_engine:-}" ]; then
     return 0
   fi
   return 1
@@ -198,19 +198,25 @@ configs_match() {
 # Handles engine switches (which force a wipe) and compares config snapshots
 # to decide between a light stop (keep caches) and a full reset.
 stop_server_if_needed() {
-  local script_dir="$1"; shift
-  local root_dir="$1"; shift
-  local desired_deploy="$1"; shift
-  local desired_chat="$1"; shift
-  local desired_tool="$1"; shift
-  local desired_chat_quant="$1"; shift
+  local script_dir="$1"
+  shift
+  local root_dir="$1"
+  shift
+  local desired_deploy="$1"
+  shift
+  local desired_chat="$1"
+  shift
+  local desired_tool="$1"
+  shift
+  local desired_chat_quant="$1"
+  shift
   local desired_engine="${1:-trt}"
 
   # Handle engine switching via unified function (skips if already handled)
   # Pass deploy mode to suppress engine switch messaging for tool-only deployments
   local switch_result=0
   handle_engine_switch "${script_dir}" "${root_dir}" "${desired_engine}" "${desired_deploy}" || switch_result=$?
-  
+
   case "${switch_result}" in
     0)
       # Engine switch was handled (wipe done), continue with deployment
@@ -220,7 +226,7 @@ stop_server_if_needed() {
       # Error during engine switch
       return 1
       ;;
-    # 1 = no switch needed, continue below
+      # 1 = no switch needed, continue below
   esac
 
   local running_pid
@@ -231,13 +237,12 @@ stop_server_if_needed() {
   log_blank
   log_warn "[server] ⚠ Server already running (PID=${running_pid}). Evaluating restart strategy..."
   if configs_match \
-       "${desired_deploy}" \
-       "${desired_chat}" \
-       "${desired_tool}" \
-       "${desired_chat_quant}" \
-       "${desired_engine}" \
-       "${root_dir}"
-  then
+    "${desired_deploy}" \
+    "${desired_chat}" \
+    "${desired_tool}" \
+    "${desired_chat_quant}" \
+    "${desired_engine}" \
+    "${root_dir}"; then
     log_info "[server] Existing server matches requested config; stopping without clearing caches."
     if ! FULL_CLEANUP=0 bash "${script_dir}/stop.sh"; then
       log_err "[server] ✗ stop.sh failed during light stop"
@@ -267,5 +272,5 @@ write_snapshot() {
     echo "CHAT_QUANTIZATION=${CHAT_QUANTIZATION:-}"
     echo "KV_DTYPE=${KV_DTYPE:-}"
     echo "GPU_SM_ARCH=${GPU_SM_ARCH:-}"
-  } > "${env_file}" 2>/dev/null || true
+  } >"${env_file}" 2>/dev/null || true
 }

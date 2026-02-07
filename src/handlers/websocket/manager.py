@@ -15,45 +15,45 @@ Message Types:
 from __future__ import annotations
 
 import asyncio
-import logging
 import contextlib
-from typing import Any
+import logging
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..instances import connections
-from .helpers import safe_send_envelope
-from .auth import authenticate_websocket
-from .parser import parse_client_message
-from .lifecycle import WebSocketLifecycle
-from ..limits import SlidingWindowRateLimiter
-from .errors import send_error, reject_connection
-from ...messages.start import handle_start_message
-from ...messages.cancel import handle_cancel_message
-from ...messages.followup import handle_followup_message
-from ..session import session_handler, abort_session_requests
-from .limits import consume_limiter, select_rate_limiter
-from ...engines import reset_engine_caches, clear_caches_on_disconnect
-from ...logging import log_context, reset_log_context, set_log_context
+from ...config import (
+    CACHE_RESET_MIN_SESSION_SECONDS,
+    WS_CANCEL_WINDOW_SECONDS,
+    WS_MAX_CANCELS_PER_WINDOW,
+    WS_MAX_MESSAGES_PER_WINDOW,
+    WS_MESSAGE_WINDOW_SECONDS,
+)
 from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
-    WS_WATCHDOG_TICK_S,
-    WS_CLOSE_UNAUTHORIZED_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
+    WS_CLOSE_UNAUTHORIZED_CODE,
     WS_ERROR_AUTH_FAILED,
     WS_ERROR_INTERNAL,
     WS_ERROR_INVALID_MESSAGE,
     WS_ERROR_INVALID_PAYLOAD,
     WS_ERROR_SERVER_BUSY,
+    WS_WATCHDOG_TICK_S,
 )
-from ...config import (
-    WS_CANCEL_WINDOW_SECONDS,
-    WS_MAX_CANCELS_PER_WINDOW,
-    WS_MESSAGE_WINDOW_SECONDS,
-    WS_MAX_MESSAGES_PER_WINDOW,
-    CACHE_RESET_MIN_SESSION_SECONDS,
-)
+from ...engines import clear_caches_on_disconnect, reset_engine_caches
+from ...logging import log_context, reset_log_context, set_log_context
+from ...messages.cancel import handle_cancel_message
+from ...messages.followup import handle_followup_message
+from ...messages.start import handle_start_message
+from ..instances import connections
+from ..limits import SlidingWindowRateLimiter
+from ..session import abort_session_requests, session_handler
+from .auth import authenticate_websocket
+from .errors import reject_connection, send_error
+from .helpers import safe_send_envelope
+from .lifecycle import WebSocketLifecycle
+from .limits import consume_limiter, select_rate_limiter
+from .parser import parse_client_message
 
 logger = logging.getLogger(__name__)
 
@@ -66,17 +66,16 @@ _SESSION_MESSAGE_HANDLERS: dict[str, SessionHandlerFn] = {
 }
 
 
-
 async def _prepare_connection(ws: WebSocket) -> bool:
     """Authenticate and admit a WebSocket connection.
-    
+
     Performs two checks:
     1. API key authentication (rejects with 4001 if invalid)
     2. Capacity check (rejects with 4003 if at max connections)
-    
+
     Args:
         ws: The incoming WebSocket connection.
-        
+
     Returns:
         True if connection was accepted, False if rejected.
     """
@@ -85,8 +84,7 @@ async def _prepare_connection(ws: WebSocket) -> bool:
             ws,
             error_code=WS_ERROR_AUTH_FAILED,
             message=(
-                "Authentication required. Provide valid API key via 'api_key' "
-                "query parameter or 'X-API-Key' header."
+                "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header."
             ),
             close_code=WS_CLOSE_UNAUTHORIZED_CODE,
         )
@@ -319,10 +317,7 @@ async def _finalize_connection(
         await connections.disconnect(ws)
     remaining = connections.get_connection_count()
     logger.info("WebSocket connection closed. Active: %s", remaining)
-    should_reset = (
-        session_id is not None and
-        session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
-    )
+    should_reset = session_id is not None and session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
     if should_reset:
         with contextlib.suppress(Exception):
             triggered = await reset_engine_caches("long_session", force=True)
@@ -339,13 +334,13 @@ async def _finalize_connection(
 
 async def handle_websocket_connection(ws: WebSocket) -> None:
     """Handle WebSocket connection and route messages to appropriate handlers.
-    
+
     This is the main entry point for WebSocket connections. It:
     1. Authenticates and admits the connection
     2. Starts idle timeout watchdog
     3. Loops receiving messages and dispatching to handlers
     4. Cleans up on disconnect (session state, engine caches, connection slot)
-    
+
     Args:
         ws: The incoming WebSocket connection from FastAPI.
     """

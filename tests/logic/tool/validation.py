@@ -14,10 +14,10 @@ from tests.state import TurnResult
 
 def _parse_tool_raw(raw: Any) -> list | None:
     """Parse raw tool response into a list.
-    
+
     Args:
         raw: The raw response (None, list, or JSON string).
-    
+
     Returns:
         Parsed list, or None if parsing fails.
     """
@@ -38,31 +38,27 @@ def _parse_tool_raw(raw: Any) -> list | None:
 
 def _is_valid_tool_item(item: Any) -> bool:
     """Check if a single tool item has valid structure.
-    
+
     Args:
         item: A single item from the tool response array.
-    
+
     Returns:
         True if the item has valid structure.
     """
     if not isinstance(item, dict):
         return False
-    if "name" not in item:
-        return False
-    if "arguments" in item and not isinstance(item["arguments"], dict):
-        return False
-    return True
+    return "name" in item and ("arguments" not in item or isinstance(item["arguments"], dict))
 
 
 def is_valid_response_shape(turn: TurnResult) -> bool:
     """Validate tool response shape.
-    
+
     Expects a JSON array response where each item has a 'name' field
     and optionally an 'arguments' dict.
-    
+
     Args:
         turn: The turn result to validate.
-    
+
     Returns:
         True if the response has a valid shape, False otherwise.
     """
@@ -70,19 +66,15 @@ def is_valid_response_shape(turn: TurnResult) -> bool:
     if parsed_list is None:
         return False
 
-    for item in parsed_list:
-        if not _is_valid_tool_item(item):
-            return False
-
-    return True
+    return all(_is_valid_tool_item(item) for item in parsed_list)
 
 
 def derive_tool_called_from_raw(raw: Any) -> bool | None:
     """Derive tool_called boolean from raw response by parsing it.
-    
+
     Args:
         raw: The raw tool response from the server.
-    
+
     Returns:
         True if non-empty array, False if empty array, None if can't parse.
     """

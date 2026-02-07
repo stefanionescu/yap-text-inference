@@ -74,7 +74,7 @@ _venv_python_reports_version() {
 ensure_python_runtime_for_engine() {
   local engine="${1:-${INFERENCE_ENGINE:-vllm}}"
 
-  if [[ "${engine,,}" = "trt" ]]; then
+  if [[ ${engine,,} == "trt" ]]; then
     if _venv_python_reports_version "python${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}"; then
       return 0
     fi
@@ -211,7 +211,7 @@ get_quant_python_binary() {
 # Returns: Python binary name (e.g., python3.10, python3)
 get_python_binary_for_engine() {
   local engine="${INFERENCE_ENGINE:-vllm}"
-  
+
   if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
     # TRT requires Python 3.10 specifically
     if command -v "python${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}" >/dev/null 2>&1; then
@@ -243,27 +243,27 @@ validate_venv_python_version() {
   local venv_path="$1"
   local venv_python="${venv_path}/bin/python"
   local engine="${INFERENCE_ENGINE:-vllm}"
-  
+
   if [ ! -x "${venv_python}" ]; then
     return 1
   fi
-  
+
   local current_version
   current_version=$("${venv_python}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-  
+
   if [ "${engine}" = "trt" ] || [ "${engine}" = "TRT" ]; then
     if [ "${current_version}" != "${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION}" ]; then
       log_warn "[venv] ⚠ TRT requires Python ${SCRIPTS_TRT_REQUIRED_PYTHON_VERSION} but venv has ${current_version}"
       return 1
     fi
   fi
-  
+
   return 0
 }
 
 _venv_is_protected_path() {
   case "$1" in
-    /opt/venv|/opt/venv-quant) return 0 ;;
+    /opt/venv | /opt/venv-quant) return 0 ;;
   esac
   return 1
 }
@@ -387,7 +387,7 @@ ensure_virtualenv() {
   fi
 
   if [ ! -d "${venv_path}" ]; then
-    local py_bin="${py_bin_override}" 
+    local py_bin="${py_bin_override}"
     if [ -z "${py_bin}" ]; then
       py_bin="$(get_python_binary_for_engine)" || return 1
     fi
@@ -434,7 +434,7 @@ ensure_pip_in_venv() {
 activate_venv() {
   local venv_dir="${1:-$(get_venv_dir)}"
   local fail_on_error="${2:-1}"
-  
+
   if [ ! -d "${venv_dir}" ]; then
     log_err "[venv] ✗ Virtual environment not found at ${venv_dir}"
     if [ "${fail_on_error}" = "1" ]; then
@@ -442,7 +442,7 @@ activate_venv() {
     fi
     return 1
   fi
-  
+
   if [ ! -f "${venv_dir}/bin/activate" ]; then
     log_err "[venv] ✗ Virtual environment corrupted (no activate script) at ${venv_dir}"
     if [ "${fail_on_error}" = "1" ]; then
@@ -450,7 +450,7 @@ activate_venv() {
     fi
     return 1
   fi
-  
+
   # shellcheck disable=SC1091
   source "${venv_dir}/bin/activate" || {
     log_err "[venv] ✗ Failed to activate virtual environment at ${venv_dir}"
@@ -459,6 +459,6 @@ activate_venv() {
     fi
     return 1
   }
-  
+
   return 0
 }

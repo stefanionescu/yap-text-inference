@@ -9,22 +9,24 @@ For engine label generation, see the `label` module.
 
 from __future__ import annotations
 
-import os
+import contextlib
 import json
-from typing import Any
-from pathlib import Path
+import os
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 from src.config import trt as trt_config
 from src.hf.license import compute_license_info
+from src.state import EnvironmentInfo
 
 from .detection import get_compute_capability_info
-from src.state import EnvironmentInfo
 from .label import EngineLabelError, _env_int, _env_str, get_engine_label
 
 # ============================================================================
 # Base Model Detection
 # ============================================================================
+
 
 def detect_base_model(checkpoint_path: Path) -> str:
     """Detect base model from checkpoint config.
@@ -37,14 +39,12 @@ def detect_base_model(checkpoint_path: Path) -> str:
     """
     config_path = checkpoint_path / "config.json"
     if config_path.is_file():
-        try:
+        with contextlib.suppress(Exception):
             config = json.loads(config_path.read_text(encoding="utf-8"))
             # TRT-LLM config may have pretrained_config with model info
             pretrained = config.get("pretrained_config", {})
             if "model_name" in pretrained:
                 return pretrained["model_name"]
-        except Exception:
-            pass
     return "unknown"
 
 
@@ -52,9 +52,9 @@ def detect_base_model(checkpoint_path: Path) -> str:
 # Metadata Inference
 # ============================================================================
 
+
 def _infer_kv_cache_dtype(quant_method: str) -> str:
     """Infer KV cache dtype from quantization method."""
-    import os
     env_override = os.getenv("TRT_KV_CACHE_DTYPE")
     if env_override:
         return env_override
@@ -85,6 +85,7 @@ def _env_flag(name: str, default: bool) -> bool:
 # Metadata Collection Helpers
 # ============================================================================
 
+
 def _collect_base_metadata(
     base_model: str,
     repo_id: str,
@@ -112,14 +113,12 @@ def _collect_checkpoint_limits(checkpoint_path: Path) -> dict[str, Any]:
     config_path = checkpoint_path / "config.json"
 
     if config_path.is_file():
-        try:
+        with contextlib.suppress(Exception):
             config = json.loads(config_path.read_text(encoding="utf-8"))
             build_cfg = config.get("build_config", {})
             limits["max_batch_size"] = build_cfg.get("max_batch_size", "N/A")
             limits["max_input_len"] = build_cfg.get("max_input_len", "N/A")
             limits["max_output_len"] = build_cfg.get("max_seq_len", "N/A")
-        except Exception:
-            pass
 
     return limits
 
@@ -207,6 +206,7 @@ def _apply_build_metadata_overrides(
 # ============================================================================
 # Main Entry Point
 # ============================================================================
+
 
 def collect_metadata(
     checkpoint_path: Path,

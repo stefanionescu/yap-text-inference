@@ -11,19 +11,19 @@ import sys
 
 # Add parent to path for utils import
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils import log_skip, log_success, get_hf_token, download_snapshot
+from utils import download_snapshot, get_hf_token, log_skip, log_success
 
 
 def main() -> None:
     repo_id = os.environ.get("TOOL_MODEL", "")
     target_dir = os.environ.get("TOOL_MODEL_PATH", "/opt/models/tool")
-    
+
     if not repo_id:
         log_skip("No TOOL_MODEL specified - skipping tool model download")
         return
-    
+
     token = get_hf_token()
-    
+
     try:
         download_snapshot(repo_id, target_dir, token=token)
         log_success("Tool model downloaded and baked into image")

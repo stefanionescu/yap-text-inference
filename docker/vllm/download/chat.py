@@ -17,19 +17,19 @@ for path in common_paths:
         sys.path.insert(0, path)
         break
 
-from utils import log_skip, log_success, get_hf_token, download_snapshot
+from utils import download_snapshot, get_hf_token, log_skip, log_success  # noqa: E402
 
 
 def main() -> None:
     repo_id = os.environ.get("CHAT_MODEL", "")
     target_dir = os.environ.get("CHAT_MODEL_PATH", "/opt/models/chat")
-    
+
     if not repo_id:
         log_skip("No CHAT_MODEL specified - skipping chat model download")
         return
-    
+
     token = get_hf_token()
-    
+
     try:
         download_snapshot(repo_id, target_dir, token=token)
         log_success("Chat model downloaded and baked into image")

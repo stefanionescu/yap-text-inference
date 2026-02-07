@@ -96,7 +96,7 @@ TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-}"
 if [ -z "${TRT_CALIB_SEQLEN:-}" ]; then
   _chat_max_len="${CHAT_MAX_LEN:-5025}"
   _chat_max_out="${CHAT_MAX_OUT:-150}"
-  TRT_CALIB_SEQLEN=$(( _chat_max_len + _chat_max_out ))
+  TRT_CALIB_SEQLEN=$((_chat_max_len + _chat_max_out))
 fi
 
 # =============================================================================
@@ -127,19 +127,19 @@ TRT_MODELS_DIR="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}"
 resolve_calib_batch_size() {
   local model_id="${1:-}"
   local default_batch="${2:-16}"
-  
+
   # If explicitly set, use that
   if [ -n "${TRT_CALIB_BATCH_SIZE:-}" ]; then
     echo "${TRT_CALIB_BATCH_SIZE}"
     return
   fi
-  
+
   local model_lower
   model_lower="$(echo "${model_id}" | tr '[:upper:]' '[:lower:]')"
-  
+
   # Heavy models that need smaller calibration batch
   case "${model_lower}" in
-    *gemma*|*mixtral*|*qwen3-next*|*moonlight*|*deepseek*)
+    *gemma* | *mixtral* | *qwen3-next* | *moonlight* | *deepseek*)
       echo "8"
       ;;
     *)
@@ -171,7 +171,7 @@ resolve_qformat() {
   local sm_arch="${2:-${GPU_SM_ARCH:-}}"
 
   case "${quant_mode}" in
-    4bit|awq|int4_awq)
+    4bit | awq | int4_awq)
       echo "int4_awq"
       ;;
     8bit)
@@ -184,7 +184,7 @@ resolve_qformat() {
     fp8)
       echo "fp8"
       ;;
-    int8|int8_sq)
+    int8 | int8_sq)
       echo "int8_sq"
       ;;
     *)
@@ -196,7 +196,7 @@ resolve_qformat() {
 # Get KV cache dtype based on qformat
 resolve_kv_cache_dtype() {
   local qformat="${1:-int4_awq}"
-  
+
   case "${qformat}" in
     fp8)
       # FP8 KV cache for fp8 quantization
@@ -223,13 +223,13 @@ validate_batch_size() {
     log_err "[trt] Set it via: export TRT_MAX_BATCH_SIZE=<value>"
     return 1
   fi
-  
+
   # Validate it's a positive integer
-  if ! [[ "${TRT_MAX_BATCH_SIZE}" =~ ^[1-9][0-9]*$ ]]; then
+  if ! [[ ${TRT_MAX_BATCH_SIZE} =~ ^[1-9][0-9]*$ ]]; then
     log_err "[trt] ✗ TRT_MAX_BATCH_SIZE must be a positive integer, got: ${TRT_MAX_BATCH_SIZE}"
     return 1
   fi
-  
+
   return 0
 }
 

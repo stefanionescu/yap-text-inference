@@ -21,8 +21,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..config import DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX, DEPLOY_CHAT, USER_UTT_MAX_TOKENS
 from .utils import count_tokens_chat
-from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS, DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 
 if TYPE_CHECKING:
     from ..handlers.session.state import SessionState
@@ -30,13 +30,13 @@ if TYPE_CHECKING:
 
 def count_prefix_tokens(prefix: str | None) -> int:
     """Count tokens for a prefix string (including trailing space).
-    
+
     The trailing space is included because when we prefix a user message
     like "CHECK SCREEN: hello", we add a space after the prefix.
-    
+
     Args:
         prefix: The prefix text to count tokens for.
-        
+
     Returns:
         Token count including the trailing space, or 0 if prefix is empty
         or chat model is not deployed (prefixes only apply to chat).
@@ -55,18 +55,18 @@ def strip_screen_prefix(
     screen_checked_prefix: str | None,
 ) -> str:
     """Remove screen prefixes from text before storing in history.
-    
+
     This prevents the internal "CHECK SCREEN:" or "ON THE SCREEN NOW:"
     prefixes from appearing in the conversation history that's shown
     to the model on subsequent turns.
-    
+
     Handles both exact and case-insensitive matching to catch variations.
-    
+
     Args:
         text: The user message text to strip prefixes from.
         check_screen_prefix: The check_screen prefix to strip (may be custom).
         screen_checked_prefix: The screen_checked prefix to strip (may be custom).
-        
+
     Returns:
         The text with any matching prefix removed.
     """
@@ -110,16 +110,16 @@ def get_effective_user_utt_max_tokens(
     for_followup: bool = False,
 ) -> int:
     """Get the effective max tokens for user utterance after accounting for prefix.
-    
+
     The user message budget is reduced by the tokens needed for the screen
     prefix, ensuring the total (prefix + message) fits within limits.
-    
+
     Args:
         state: The session state containing cached prefix token counts.
             If None, uses default prefix token counts.
         for_followup: If True, account for screen_checked_prefix (followup messages).
             If False, account for check_screen_prefix (start messages).
-            
+
     Returns:
         The adjusted max token count for user message content.
         Always returns at least 1 to prevent zero-length limits.
@@ -132,10 +132,7 @@ def get_effective_user_utt_max_tokens(
             prefix_tokens = count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
         return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
 
-    if for_followup:
-        prefix_tokens = state.screen_checked_prefix_tokens
-    else:
-        prefix_tokens = state.check_screen_prefix_tokens
+    prefix_tokens = state.screen_checked_prefix_tokens if for_followup else state.check_screen_prefix_tokens
 
     return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
 
@@ -145,4 +142,3 @@ __all__ = [
     "strip_screen_prefix",
     "get_effective_user_utt_max_tokens",
 ]
-

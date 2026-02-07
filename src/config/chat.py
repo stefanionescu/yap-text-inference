@@ -41,7 +41,7 @@ MESSAGE_RATE_LIMIT_MESSAGES: tuple[str, ...] = (
     "Wow you yap a lot, slow down a bit.",
     "I'm a bit overwhelmed sorry, give me a moment to recover.",
     "Damn you really talk a lot, give me a second to recover.",
-    "My head's spinning, you're sending too many messages."
+    "My head's spinning, you're sending too many messages.",
 )
 
 # ============================================================================
@@ -72,4 +72,3 @@ __all__ = [
     "MESSAGE_RATE_LIMIT_MESSAGES",
     "DIGIT_WORDS",
 ]
-

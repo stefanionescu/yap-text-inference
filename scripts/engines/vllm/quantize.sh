@@ -31,8 +31,8 @@ vllm_awq_should_use_prequant() {
 # Quantize chat model to AWQ if needed
 vllm_awq_quantize_chat_if_needed() {
   local out_dir="${AWQ_CACHE_DIR}/chat_awq"
-  
-  if [[ "${CHAT_MODEL}" == *GPTQ* ]]; then
+
+  if [[ ${CHAT_MODEL} == *GPTQ* ]]; then
     log_warn "[quant] ⚠ AWQ selected but GPTQ chat model provided; refusing."
     exit 1
   fi

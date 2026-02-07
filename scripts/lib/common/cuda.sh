@@ -26,5 +26,3 @@ ensure_cuda_ready_for_engine() {
 
   return 0
 }
-
-

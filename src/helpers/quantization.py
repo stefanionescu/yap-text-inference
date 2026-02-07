@@ -122,11 +122,11 @@ def normalize_engine(engine: str | None) -> str:
 
 def gpu_supports_fp8(sm_arch: str | None) -> bool:
     """Check if GPU SM architecture supports native FP8.
-    
+
     FP8 is supported on:
     - Hopper (H100): sm90
     - Ada Lovelace (L40S, RTX 4090): sm89
-    
+
     NOT supported on:
     - Ampere (A100): sm80 - use int8_sq instead
     """
@@ -141,38 +141,34 @@ def map_quant_mode_to_trt(
     is_moe: bool = False,
 ) -> str:
     """Map generic quant mode (4bit/8bit/awq/fp8) to TRT-LLM qformat.
-    
+
     Args:
         quant_mode: Generic quantization mode (4bit, 8bit, awq, fp8, int8_sq)
         sm_arch: GPU SM architecture (sm80, sm89, sm90) - used to select fp8 vs int8_sq
         is_moe: Reserved for compatibility; MoE now uses int4_awq
-    
+
     Returns:
         TRT-LLM qformat string: int4_awq, fp8, or int8_sq
     """
-    if not quant_mode:
-        return "int4_awq"
-    lowered = quant_mode.lower()
-    
-    # 4-bit modes -> int4_awq for all models
-    if lowered in ("4bit", "awq", "int4_awq"):
-        return "int4_awq"
-    
-    # Explicit 8-bit format specified
-    if lowered == "fp8":
-        return "fp8"
-    if lowered in ("int8_sq", "int8"):
-        return "int8_sq"
-    
-    # Generic 8-bit mode -> select based on GPU architecture
-    # 8-bit uses fp8 on supported GPUs
-    if lowered == "8bit":
-        if gpu_supports_fp8(sm_arch):
-            return "fp8"
-        # A100 (sm80) and older -> use int8_sq (SmoothQuant)
-        return "int8_sq"
-    
-    return "int4_awq"
+    result = "int4_awq"
+    if quant_mode:
+        lowered = quant_mode.lower()
+
+        # 4-bit modes -> int4_awq for all models
+        if lowered in ("4bit", "awq", "int4_awq"):
+            result = "int4_awq"
+        # Explicit 8-bit format specified
+        elif lowered == "fp8":
+            result = "fp8"
+        elif lowered in ("int8_sq", "int8"):
+            result = "int8_sq"
+        # Generic 8-bit mode -> select based on GPU architecture
+        # 8-bit uses fp8 on supported GPUs
+        elif lowered == "8bit":
+            # A100 (sm80) and older -> use int8_sq (SmoothQuant)
+            result = "fp8" if gpu_supports_fp8(sm_arch) else "int8_sq"
+
+    return result
 
 
 def detect_chat_quantization(model: str | None, engine: str) -> str | None:
@@ -207,7 +203,7 @@ def detect_chat_quantization(model: str | None, engine: str) -> str | None:
 
 __all__ = [
     "SUPPORTED_ENGINES",
-    "VLLM_QUANTIZATIONS", 
+    "VLLM_QUANTIZATIONS",
     "TRT_FP8_SM_ARCHS",
     "is_lowbit_quantization",
     "is_awq_model_name",

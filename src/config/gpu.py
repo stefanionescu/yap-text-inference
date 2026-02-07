@@ -81,4 +81,3 @@ __all__ = [
     "SM_COMPUTE_CAPABILITY",
     "DEFAULT_COMPUTE_CAPABILITY",
 ]
-

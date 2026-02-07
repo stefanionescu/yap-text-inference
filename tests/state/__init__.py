@@ -1,13 +1,7 @@
 """Centralized dataclasses for test state and helpers."""
 
 from .benchmark import BenchmarkConfig, TransactionMetrics
-from .cancel import (
-    CancelClientResult,
-    CancelPhaseResult,
-    DrainPhaseResult,
-    NormalClientResult,
-    RecoveryPhaseResult,
-)
+from .cancel import CancelClientResult, CancelPhaseResult, DrainPhaseResult, NormalClientResult, RecoveryPhaseResult
 from .conversation import ConversationSession
 from .history import HistoryBenchConfig
 from .live import (

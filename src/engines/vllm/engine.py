@@ -12,10 +12,10 @@ Key Features:
 from __future__ import annotations
 
 import asyncio
-import logging
 import contextlib
-from typing import Any
+import logging
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
@@ -26,29 +26,29 @@ logger = logging.getLogger(__name__)
 
 class VLLMEngine(BaseEngine):
     """vLLM-based inference engine with cache management.
-    
+
     This class wraps AsyncLLMEngine to provide:
     - BaseEngine interface compliance
     - Unified EngineOutput format
     - Cache reset support for memory management
-    
+
     Attributes:
         _engine: The underlying vLLM AsyncLLMEngine instance.
     """
-    
+
     def __init__(self, llm_engine: AsyncLLMEngine):
         """Initialize with a vLLM AsyncLLMEngine.
-        
+
         Args:
             llm_engine: Pre-configured AsyncLLMEngine instance.
         """
         self._engine = llm_engine
-    
+
     @property
     def raw_engine(self) -> AsyncLLMEngine:
         """Access the underlying vLLM engine."""
         return self._engine
-    
+
     async def generate_stream(
         self,
         prompt: str,
@@ -56,12 +56,12 @@ class VLLMEngine(BaseEngine):
         request_id: str,
     ) -> AsyncGenerator[EngineOutput, None]:
         """Stream generation using vLLM's generate API.
-        
+
         Args:
             prompt: The formatted prompt to generate from.
             sampling_params: vLLM SamplingParams instance.
             request_id: Unique identifier for tracking/abortion.
-            
+
         Yields:
             EngineOutput with cumulative text and completion status.
         """
@@ -71,12 +71,12 @@ class VLLMEngine(BaseEngine):
             request_id=request_id,
         ):
             yield EngineOutput.from_vllm(output)
-    
+
     async def abort(self, request_id: str) -> None:
         """Abort a vLLM generation request."""
         with contextlib.suppress(Exception):
             await self._engine.abort(request_id)
-    
+
     async def shutdown(self) -> None:
         """Shutdown the vLLM engine."""
         try:
@@ -84,12 +84,12 @@ class VLLMEngine(BaseEngine):
             logger.info("vLLM: engine shutdown complete")
         except Exception:
             logger.warning("vLLM: engine shutdown failed", exc_info=True)
-    
+
     @property
     def supports_cache_reset(self) -> bool:
         """vLLM supports prefix/mm cache reset."""
         return True
-    
+
     async def reset_caches(self, reason: str) -> bool:
         """Reset vLLM prefix and multimodal caches."""
         logger.info("resetting vLLM cache (reason=%s)", reason)
@@ -113,12 +113,10 @@ async def _reset_vllm_caches(engine: AsyncLLMEngine) -> None:
         method = getattr(engine, method_name, None)
         if method is None:
             continue
-        try:
+        with contextlib.suppress(Exception):
             result = method()
             if asyncio.iscoroutine(result):
                 await result
-        except Exception:
-            pass  # Best effort only
 
 
 __all__ = ["VLLMEngine"]

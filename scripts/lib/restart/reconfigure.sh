@@ -14,7 +14,7 @@ _restart_resolve_deploy_mode() {
   local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-both}}"
   candidate="${candidate,,}"
   case "${candidate}" in
-    both|chat|tool)
+    both | chat | tool)
       echo "${candidate}"
       ;;
     *)
@@ -78,7 +78,7 @@ _restart_normalize_quantization_flag() {
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
-    8bit|fp8|awq|gptq|gptq_marlin)
+    8bit | fp8 | awq | gptq | gptq_marlin)
       return 0
       ;;
     *)
@@ -120,7 +120,7 @@ _restart_resolve_model_identity() {
     echo ""
     return
   fi
-  if [[ "${value}" == "${ROOT_DIR}/.awq/"* ]]; then
+  if [[ ${value} == "${ROOT_DIR}/.awq/"* ]]; then
     local source
     source="$(_awq_read_source_model "${value}")"
     if [ -n "${source}" ]; then
@@ -159,10 +159,22 @@ _restart_load_previous_config() {
   PREV_CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
   PREV_DEPLOY_MODE="${DEPLOY_MODE:-}"
   case "${PREV_DEPLOY_MODE}" in
-    both) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=1 ;;
-    chat) PREV_DEPLOY_CHAT=1; PREV_DEPLOY_TOOL=0 ;;
-    tool) PREV_DEPLOY_CHAT=0; PREV_DEPLOY_TOOL=1 ;;
-    *) PREV_DEPLOY_CHAT=0; PREV_DEPLOY_TOOL=0 ;;
+    both)
+      PREV_DEPLOY_CHAT=1
+      PREV_DEPLOY_TOOL=1
+      ;;
+    chat)
+      PREV_DEPLOY_CHAT=1
+      PREV_DEPLOY_TOOL=0
+      ;;
+    tool)
+      PREV_DEPLOY_CHAT=0
+      PREV_DEPLOY_TOOL=1
+      ;;
+    *)
+      PREV_DEPLOY_CHAT=0
+      PREV_DEPLOY_TOOL=0
+      ;;
   esac
 
   CHAT_MODEL="${cur_chat}"
@@ -214,14 +226,14 @@ _restart_can_preserve_cache() {
 clear_model_artifacts() {
   # Clear stale TRT engine path reference
   rm -f "${ROOT_DIR}/.run/trt_engine_dir.env" 2>/dev/null || true
-  
+
   # Model-specific artifacts (always clear on model switch)
   local model_paths=(
     "${ROOT_DIR}/.awq"
     "${ROOT_DIR}/.trt_cache"
     "${ROOT_DIR}/models"
   )
-  
+
   # vLLM engine caches (only clear if NOT using vLLM)
   if [ "${INFERENCE_ENGINE:-vllm}" != "vllm" ]; then
     model_paths+=(
@@ -230,13 +242,13 @@ clear_model_artifacts() {
       "${ROOT_DIR}/.xformers"
     )
   fi
-  
+
   # TRT engine infrastructure (only clear if NOT using TRT)
   # .trtllm-repo contains quantization scripts - preserve if staying on TRT
   if [ "${INFERENCE_ENGINE:-vllm}" != "trt" ]; then
     model_paths+=("${ROOT_DIR}/.trtllm-repo")
   fi
-  
+
   # HuggingFace caches (model downloads)
   local hf_paths=(
     "${ROOT_DIR}/.hf"
@@ -249,7 +261,7 @@ clear_model_artifacts() {
     "$HOME/.config/huggingface"
     "$HOME/.local/share/huggingface"
   )
-  
+
   for path in "${model_paths[@]}" "${hf_paths[@]}"; do
     if [ -n "${path}" ] && [ -e "${path}" ]; then
       rm -rf "${path}" || true
@@ -265,9 +277,13 @@ reconfigure_models() {
   export DEPLOY_MODE="${target_deploy}"
 
   local deploy_chat deploy_tool
-  deploy_chat=0; deploy_tool=0
+  deploy_chat=0
+  deploy_tool=0
   case "${DEPLOY_MODE}" in
-    both) deploy_chat=1; deploy_tool=1 ;;
+    both)
+      deploy_chat=1
+      deploy_tool=1
+      ;;
     chat) deploy_chat=1 ;;
     tool) deploy_tool=1 ;;
   esac

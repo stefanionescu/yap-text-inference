@@ -74,20 +74,20 @@ noise_follow_server_logs() {
         capture_announced=1
         warmup_last_line_ts=$(date +%s 2>/dev/null || printf '0')
         if [ "${capture_enabled}" -eq 1 ]; then
-          printf '===== Warmup run started at %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" >> "${capture_file}"
+          printf '===== Warmup run started at %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" >>"${capture_file}"
         fi
       fi
 
-      if [[ "${line}" == *'[warmup]'* ]]; then
+      if [[ ${line} == *'[warmup]'* ]]; then
         printf '%s\n' "${line}"
         warmup_last_line_ts=$(date +%s 2>/dev/null || printf '0')
-        if [[ "${line}" == *'[warmup] ✓ Warmup + bench complete.'* ]] || \
-           [[ "${line}" == *'[warmup] Warmup finished with failures.'* ]] || \
-           [[ "${line}" == *'[warmup] ✗'* ]]; then
+        if [[ ${line} == *'[warmup] ✓ Warmup + bench complete.'* ]] ||
+          [[ ${line} == *'[warmup] Warmup finished with failures.'* ]] ||
+          [[ ${line} == *'[warmup] ✗'* ]]; then
           warmup_filter_active=0
         fi
       elif [ "${capture_enabled}" -eq 1 ]; then
-        printf '%s\n' "${line}" >> "${capture_file}"
+        printf '%s\n' "${line}" >>"${capture_file}"
       fi
       continue
     fi
@@ -96,7 +96,7 @@ noise_follow_server_logs() {
       capture_active=0
       if [ "${capture_announced}" -eq 1 ]; then
         if [ "${capture_enabled}" -eq 1 ]; then
-          printf '===== Warmup run finished at %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" >> "${capture_file}"
+          printf '===== Warmup run finished at %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" >>"${capture_file}"
           printf '[warmup] Warmup server logs saved to %s\n' "${capture_file}"
         else
           printf '[warmup] Warmup server log capture complete.\n'

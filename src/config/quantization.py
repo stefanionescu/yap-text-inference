@@ -6,12 +6,14 @@ SUPPORTED_ENGINES: tuple[str, ...] = ("vllm", "trt")
 VLLM_QUANTIZATIONS: set[str] = {"awq", "gptq", "gptq_marlin"}
 
 # Quantization methods that require float16 dtype
-FLOAT16_QUANT_METHODS: frozenset[str] = frozenset({
-    "awq",
-    "awq_marlin",
-    "compressed-tensors",
-    "fp8",
-})
+FLOAT16_QUANT_METHODS: frozenset[str] = frozenset(
+    {
+        "awq",
+        "awq_marlin",
+        "compressed-tensors",
+        "fp8",
+    }
+)
 
 # Mapping from various quantization labels to vLLM's expected names
 QUANT_NAME_MAPPING: dict[str, str] = {
@@ -50,8 +52,8 @@ TOKENIZER_FILES: tuple[str, ...] = (
     "tokenizer_config.json",
     "special_tokens_map.json",
     "tokenizer.model",  # SentencePiece (LLaMA, Mistral)
-    "vocab.json",       # Some models
-    "merges.txt",       # BPE models
+    "vocab.json",  # Some models
+    "merges.txt",  # BPE models
     "added_tokens.json",
 )
 

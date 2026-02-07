@@ -14,9 +14,25 @@ e.g., "Good morning" vs "Good evening" in system prompts.
 
 from __future__ import annotations
 
-from datetime import tzinfo, datetime, timezone
+from datetime import datetime, timezone, tzinfo
 
 from src.state import SessionTimestamp
+
+HOUR_MIDNIGHT = 0
+NIGHT_START = 1
+NIGHT_END = 3
+EARLY_MORNING_START = 4
+EARLY_MORNING_END = 6
+MORNING_START = 7
+MORNING_END = 11
+HOUR_NOON = 12
+AFTERNOON_START = 13
+AFTERNOON_END = 16
+EARLY_EVENING_START = 17
+EARLY_EVENING_END = 20
+EVENING_START = 21
+EVENING_END = 23
+
 
 def get_time_classification(hour: int) -> str:
     """Classify time of day based on hour.
@@ -27,23 +43,24 @@ def get_time_classification(hour: int) -> str:
     Returns:
         Time classification string
     """
-    if hour == 0:
-        return "Midnight"
-    if 1 <= hour <= 3:
-        return "Night"
-    if 4 <= hour <= 6:
-        return "Early Morning"
-    if 7 <= hour <= 11:
-        return "Morning"
-    if hour == 12:
-        return "Noon"
-    if 13 <= hour <= 16:
-        return "Afternoon"
-    if 17 <= hour <= 20:
-        return "Early Evening"
-    if 21 <= hour <= 23:
-        return "Evening"
-    return "Unknown"
+    classification = "Unknown"
+    if hour == HOUR_MIDNIGHT:
+        classification = "Midnight"
+    elif NIGHT_START <= hour <= NIGHT_END:
+        classification = "Night"
+    elif EARLY_MORNING_START <= hour <= EARLY_MORNING_END:
+        classification = "Early Morning"
+    elif MORNING_START <= hour <= MORNING_END:
+        classification = "Morning"
+    elif hour == HOUR_NOON:
+        classification = "Noon"
+    elif AFTERNOON_START <= hour <= AFTERNOON_END:
+        classification = "Afternoon"
+    elif EARLY_EVENING_START <= hour <= EARLY_EVENING_END:
+        classification = "Early Evening"
+    elif EVENING_START <= hour <= EVENING_END:
+        classification = "Evening"
+    return classification
 
 
 def format_session_timestamp(

@@ -6,18 +6,18 @@ model-specific configurations applied. It handles:
 1. Quantization Detection:
    - AWQ, GPTQ, FP8, compressed-tensors
    - Automatic backend selection (awq_marlin, etc.)
-   
+
 2. Model Profile Handling:
    - bfloat16 requirements (Kimi, DeepSeek)
    - Memory optimization for OOM-prone models
    - FLA runtime requirements (Kimi)
    - MLA attention (DeepSeek)
-   
+
 3. Memory/Batching Tuning:
    - Dynamic max_num_seqs based on GPU memory fraction
    - KV cache dtype configuration
    - Batched tokens scaling
-   
+
 4. Tokenizer Configuration:
    - Model-specific tokenizer kwargs
    - Trust remote code for custom implementations
@@ -27,29 +27,29 @@ The built AsyncEngineArgs is passed to AsyncLLMEngine.from_engine_args().
 
 from __future__ import annotations
 
-import os
 import importlib.util
+import os
 
 from vllm.config import AttentionConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.helpers.env import env_flag
-from src.helpers.models import is_local_model_path
+from src.config import CHAT_QUANTIZATION, DEFAULT_MAX_BATCHED_TOKENS, KV_DTYPE
 from src.config.limits import MEMORY_OPT_GPU_FRAC_CAP
 from src.config.quantization import FLOAT16_QUANT_METHODS
-from src.config import KV_DTYPE, CHAT_QUANTIZATION, DEFAULT_MAX_BATCHED_TOKENS
-from src.quantization.vllm.core.detection import log_quant_detection, detect_quant_backend, resolve_model_origin
+from src.helpers.env import env_flag
+from src.helpers.models import is_local_model_path
 from src.helpers.profiles import (
-    model_uses_mla,
-    get_tokenizer_kwargs,
     get_max_batched_tokens,
+    get_tokenizer_kwargs,
+    model_needs_memory_optimization,
     model_requires_bfloat16,
     model_requires_fla_runtime,
-    model_needs_memory_optimization,
+    model_uses_mla,
 )
+from src.quantization.vllm.core.detection import detect_quant_backend, log_quant_detection, resolve_model_origin
 
-from .tokenizer import inject_tokenizer_kwargs
 from .memory import auto_max_num_seqs, configure_kv_cache, scale_batching_limits
+from .tokenizer import inject_tokenizer_kwargs
 
 
 def _ensure_fla_runtime_available(model_identifier: str) -> None:
@@ -65,24 +65,24 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
 
 def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None, dict]:
     """Resolve the quantization backend and detect from model config if needed.
-    
+
     Returns:
         Tuple of (inference_quant, quant_payload) where quant_payload contains
         detected quantization metadata.
     """
     if not raw_quant:
         return None, {}
-    
+
     inference_quant = raw_quant
     quant_payload = {}
-    
+
     if raw_quant == "awq":
         inference_quant = "awq_marlin"
         detected_quant, quant_payload = detect_quant_backend(model)
         if detected_quant:
             inference_quant = detected_quant
             log_quant_detection(model, detected_quant, quant_payload)
-    
+
     return inference_quant, quant_payload
 
 
@@ -91,11 +91,11 @@ def _resolve_max_batched_tokens(model_origin: str) -> int:
     env_batched = os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT")
     if env_batched:
         return int(env_batched)
-    
+
     profile_batched = get_max_batched_tokens(model_origin)
     if profile_batched is not None:
         return profile_batched
-    
+
     return DEFAULT_MAX_BATCHED_TOKENS
 
 
@@ -113,7 +113,7 @@ def _resolve_dtype(
 
 class _ModelRequirements:
     """Container for model-specific requirements from profile lookup."""
-    
+
     __slots__ = (
         "model_origin",
         "needs_bfloat16",
@@ -123,7 +123,7 @@ class _ModelRequirements:
         "max_batched_tokens",
         "tokenizer_kwargs",
     )
-    
+
     def __init__(self, model: str) -> None:
         self.model_origin = resolve_model_origin(model)
         self.needs_bfloat16 = model_requires_bfloat16(self.model_origin)
@@ -143,21 +143,21 @@ def _build_base_kwargs(
 ) -> dict:
     """Build the base engine kwargs dictionary."""
     dtype_value = _resolve_dtype(requirements.needs_bfloat16, inference_quant)
-    
-    return dict(
-        model=model,
-        trust_remote_code=True,
-        tensor_parallel_size=1,
-        max_model_len=max_len,
-        gpu_memory_utilization=gpu_frac,
-        enforce_eager=False,
-        enable_chunked_prefill=True,
-        max_num_batched_tokens=requirements.max_batched_tokens,
-        enable_prefix_caching=True,
-        quantization=inference_quant,
-        dtype=dtype_value,
-        limit_mm_per_prompt={"image": 0},
-    )
+
+    return {
+        "model": model,
+        "trust_remote_code": True,
+        "tensor_parallel_size": 1,
+        "max_model_len": max_len,
+        "gpu_memory_utilization": gpu_frac,
+        "enforce_eager": False,
+        "enable_chunked_prefill": True,
+        "max_num_batched_tokens": requirements.max_batched_tokens,
+        "enable_prefix_caching": True,
+        "quantization": inference_quant,
+        "dtype": dtype_value,
+        "limit_mm_per_prompt": {"image": 0},
+    }
 
 
 def _apply_memory_tuning(
@@ -166,11 +166,11 @@ def _apply_memory_tuning(
 ) -> None:
     """Apply memory optimization and batch size tuning."""
     gpu_frac = kwargs["gpu_memory_utilization"]
-    
+
     # Memory optimization for models prone to OOM
     if requirements.needs_memory_opt and gpu_frac > MEMORY_OPT_GPU_FRAC_CAP:
         kwargs["gpu_memory_utilization"] = min(gpu_frac, MEMORY_OPT_GPU_FRAC_CAP)
-    
+
     # Resolve max_num_seqs dynamically based on GPU memory
     kwargs["max_num_seqs"] = auto_max_num_seqs(
         gpu_frac=kwargs["gpu_memory_utilization"],
@@ -180,19 +180,19 @@ def _apply_memory_tuning(
 
 def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineArgs:
     """Build vLLM AsyncEngineArgs with all optimizations applied.
-    
+
     This function configures the engine with:
     - Chunked prefill for better TTFB
     - Prefix caching enabled
     - Dynamic quantization detection
     - Model-specific dtype/memory settings
     - Automatic max_num_seqs tuning
-    
+
     Args:
         model: Model identifier (HuggingFace ID or local path).
         gpu_frac: GPU memory utilization fraction (0.0-1.0).
         max_len: Maximum model context length.
-        
+
     Returns:
         Configured AsyncEngineArgs ready for engine creation.
     """
@@ -200,7 +200,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     attention_backend = os.environ.pop("VLLM_ATTENTION_BACKEND", None)
     if attention_backend:
         attention_backend = attention_backend.strip() or None
-    
+
     # Normalize KV cache dtype
     kv_dtype_value = (KV_DTYPE or "").strip()
 

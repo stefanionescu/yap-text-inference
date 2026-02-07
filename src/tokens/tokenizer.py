@@ -14,36 +14,36 @@ Environment Variables:
 
 from __future__ import annotations
 
-import os
 import logging
-from typing import Any
+import os
 from threading import Lock
+from typing import Any
 
 # Disable tokenizers parallelism before importing tokenizers (prevents fork warnings)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from tokenizers import Tokenizer
 
-from .source import inspect_source, resolve_transformers_target
 from .loaders import load_local_tokenizer, load_transformers_with_fallback
+from .source import inspect_source, resolve_transformers_target
 
 logger = logging.getLogger(__name__)
 
 
 class FastTokenizer:
     """High-performance tokenizer wrapper for counting and trimming.
-    
+
     This class provides a unified interface over different tokenizer
     backends (tokenizers library vs transformers). It prefers the
     faster tokenizers library when tokenizer.json is available.
-    
+
     Thread-safe via internal Lock for all public methods.
-    
+
     Attributes:
         tok: The tokenizers.Tokenizer instance (if loaded).
         _hf_tok: The transformers tokenizer instance (if loaded).
     """
-    
+
     def __init__(self, path_or_repo: str, *, load_transformers_tok: bool = True):
         """Create a tokenizer optimized for counting/trimming.
 
@@ -78,10 +78,10 @@ class FastTokenizer:
 
     def count(self, text: str) -> int:
         """Count the number of tokens in the text.
-        
+
         Args:
             text: Text to tokenize and count.
-            
+
         Returns:
             Number of tokens in the text.
         """
@@ -111,12 +111,12 @@ class FastTokenizer:
 
     def trim(self, text: str, max_tokens: int, keep: str = "end") -> str:
         """Trim text to fit within max_tokens.
-        
+
         Args:
             text: Text to trim.
             max_tokens: Maximum number of tokens to keep.
             keep: Which part to keep - "start" or "end".
-            
+
         Returns:
             Trimmed text fitting within max_tokens.
         """
@@ -155,10 +155,10 @@ class FastTokenizer:
 
     def encode_ids(self, text: str) -> list[int]:
         """Return token ids for the provided text without special tokens.
-        
+
         Args:
             text: Text to encode.
-            
+
         Returns:
             List of token IDs.
         """
@@ -207,13 +207,10 @@ class FastTokenizer:
         with self._lock:
             if self._hf_tok is None:
                 raise RuntimeError(
-                    "apply_chat_template requires a transformers tokenizer, "
-                    "but only tokenizer.json was loaded"
+                    "apply_chat_template requires a transformers tokenizer, but only tokenizer.json was loaded"
                 )
             if not hasattr(self._hf_tok, "apply_chat_template"):
-                raise RuntimeError(
-                    "Tokenizer does not have apply_chat_template method"
-                )
+                raise RuntimeError("Tokenizer does not have apply_chat_template method")
             return self._hf_tok.apply_chat_template(
                 messages,
                 tokenize=False,

@@ -23,4 +23,3 @@ fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
   log_info "[trt] Tool model: ${TOOL_MODEL:-none}"
 fi
-

@@ -138,9 +138,7 @@ def _format_latency_line(label: str, samples: list[float]) -> str:
     p50 = _percentile(values, 50)
     p90 = _percentile(values, 90)
     p95 = _percentile(values, 95)
-    return (
-        f"  {label}: p50={p50:.1f} ms  p90={p90:.1f} ms  p95={p95:.1f} ms  (n={len(values)})"
-    )
+    return f"  {label}: p50={p50:.1f} ms  p90={p90:.1f} ms  p95={p95:.1f} ms  (n={len(values)})"
 
 
 def _percentile(sorted_values: list[float], percentile: float) -> float:
@@ -185,51 +183,51 @@ def save_logs(
     Save test logs to a file with a unique name in tests/results/.
     Returns the path to the saved log file.
     """
-    from pathlib import Path
-    from datetime import datetime
+    from datetime import datetime  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
 
     # Create results directory if it doesn't exist
     test_dir = Path(__file__).resolve().parent.parent.parent
     results_dir = test_dir / "results"
     results_dir.mkdir(exist_ok=True)
-    
+
     # Generate unique filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = results_dir / f"tool_test_{timestamp}.log"
-    
+
     # Build log content
     log_lines = []
-    
+
     # Header
     log_lines.append("=" * 80)
     log_lines.append(f"Tool Test Run - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     log_lines.append("=" * 80)
     log_lines.append("")
-    
+
     # Skipped tests info
     if skipped_count > 0 and skipped_step_cap is not None:
         log_lines.append(f"Skipping {skipped_count} tool cases exceeding {skipped_step_cap} steps")
         log_lines.append("")
-    
+
     # Test execution info
     if total_cases > 0:
         log_lines.append(f"Running {total_cases} tool cases (concurrency={concurrency})...")
         log_lines.append("")
-    
+
     # Case results
     case_results_str = format_case_results(results, include_successes=include_successes)
     if case_results_str:
         log_lines.append(case_results_str)
         log_lines.append("")
-    
+
     # Summary
     summary_str = format_summary(results)
     log_lines.append(summary_str)
-    
+
     # Write to file
     log_content = "\n".join(log_lines)
     log_file.write_text(log_content, encoding="utf-8")
-    
+
     return str(log_file)
 
 

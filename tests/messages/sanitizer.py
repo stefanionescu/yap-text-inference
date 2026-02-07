@@ -4,15 +4,20 @@
 STREAMING_SANITIZER_CASES = [
     # Basics / duplicates / overlap
     ("Replay risk: Mark Mark Mark but no duplicates please.", [10, 20, 30, 40]),
-    ("Multiple short chunks a b c d e f g h i j should not re-emit when overlapping windows advance.", [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]),
+    (
+        "Multiple short chunks a b c d e f g h i j should not re-emit when overlapping windows advance.",
+        [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22],
+    ),
     ("Back to back sentences without space.This should gain a space once and stream correctly.", [15, 35, 55, 75]),
     ("Single character at a time streaming test here.", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
     ("Two char chunks ab cd ef gh ij kl mn op qr st uv wx yz end.", [2, 4, 6, 8, 10, 12, 14, 16]),
     ("Entire message in one chunk should still work correctly without any issues.", []),
     ("Empty splits list should emit everything at flush time correctly.", []),
-
     # HTML / tags / entities
-    ("HTML <i>italic</i> and <script>alert('x')</script> must be removed but surrounding words remain intact through streaming.", [10, 30, 60, 90]),
+    (
+        "HTML <i>italic</i> and <script>alert('x')</script> must be removed but surrounding words remain intact through streaming.",
+        [10, 30, 60, 90],
+    ),
     ("HTML <b>bold</b> tags vanish but spacing should survive", [10, 20, 40, 60]),
     ("Partial HTML open <tag with no close should not duplicate when closed later <tag>done", [10, 25, 45, 70]),
     ("HTML entity &nbsp at end of a chunk should not duplicate words after unescape in later chunks.", [8, 18, 35, 60]),
@@ -22,25 +27,38 @@ STREAMING_SANITIZER_CASES = [
     ("Multiple entities &amp; &lt; &gt; &quot; decoded correctly when chunked.", [8, 16, 24, 35, 50]),
     ("Entity at boundary &amp split here should still decode once.", [15, 20, 30, 45]),
     ("Unclosed <div and <span tags still get stripped without breaking.", [8, 15, 30, 45]),
-
     # Emails / phones
-    ("Contact me at foo.bar@example.com before launch; ensure verbalization and no duplication happens mid stream.", [12, 35, 70]),
+    (
+        "Contact me at foo.bar@example.com before launch; ensure verbalization and no duplication happens mid stream.",
+        [12, 35, 70],
+    ),
     ("Email split local@dom and ain.com should verbalize once and not lose characters.", [12, 25, 45, 70]),
     ("Partial email user@ split across chunks should not verbalize twice or lose local part", [10, 20, 35, 65]),
     ("Call me at +1 415-555-1234 tomorrow at 7:45; don't leak digits twice.", [10, 25, 45, 70]),
-    ("Phone split before plus sign + and after digits should still verbalize once when flushed at the end.", [5, 15, 35, 55, 80]),
-    ("Phone number chopped +1 650 555 0000 across chunks still verbalizes once and does not echo.", [8, 20, 35, 55, 80]),
+    (
+        "Phone split before plus sign + and after digits should still verbalize once when flushed at the end.",
+        [5, 15, 35, 55, 80],
+    ),
+    (
+        "Phone number chopped +1 650 555 0000 across chunks still verbalizes once and does not echo.",
+        [8, 20, 35, 55, 80],
+    ),
     ("Multiple emails first@test.com and second@example.org in one message.", [15, 30, 50, 70, 90]),
     ("Email with subdomain user@mail.subdomain.example.com should verbalize correctly.", [10, 25, 45, 70]),
     ("Phone with parentheses (415) 555-1234 should be verbalized properly.", [10, 20, 35, 55]),
     ("International phone +44 20 7946 0958 verbalizes when split at country code.", [8, 15, 25, 40, 55]),
     ("Email at very end of text contact@example.com", [10, 25, 40]),
     ("Phone at very end +1 555 123 4567", [5, 12, 22, 32]),
-
     # Emoji / emoticon
-    ("Emoji storm 😂😂 but narrative keeps going with more than twenty words after the faces so we check stability.", [10, 25, 55, 95]),
+    (
+        "Emoji storm 😂😂 but narrative keeps going with more than twenty words after the faces so we check stability.",
+        [10, 25, 55, 95],
+    ),
     ("Caret ^_^ emoticon removal should not drop surrounding words in chunked output.", [6, 15, 30, 50]),
-    ("Emoji prefix 😀😀😀 then long narrative that should still stream without repeats even though emojis vanish early in the text.", [6, 20, 50, 90]),
+    (
+        "Emoji prefix 😀😀😀 then long narrative that should still stream without repeats even though emojis vanish early in the text.",
+        [6, 20, 50, 90],
+    ),
     ("Mixed emojis 🎉🔥💯 scattered through the text 🚀 should all vanish cleanly.", [8, 16, 30, 45, 60]),
     ("Emoji at exact chunk boundary 😊here continues without duplication.", [4, 10, 20, 35]),
     ("Flag emojis 🇺🇸 🇬🇧 🇫🇷 are multi-codepoint and should vanish.", [5, 12, 20, 30]),
@@ -50,12 +68,23 @@ STREAMING_SANITIZER_CASES = [
     ("Classic emoticon :-) with nose also removed.", [8, 18, 30]),
     ("XD and xD emoticons stripped when standalone.", [3, 8, 15, 25]),
     ("Kaomoji (╯°□°)╯︵ ┻━┻ should be stripped.", [5, 15, 30, 45]),
-
     # Punctuation / ellipsis / dots
-    ("Trailing dots .... should be normalized to a single period without losing following sentence parts.", [6, 15, 35, 60]),
-    ("Wait... no really... are you sure? Streaming must not repeat trailing dots or drop final punctuation marks.", [15, 35, 65, 95]),
-    ("Ellipsis followed by letters...likeThis should insert a space to avoid smushing words when streamed in pieces.", [12, 30, 55, 80]),
-    ("Ending with question??? should collapse to single question and still emit trailing clause after buffering.", [10, 20, 35, 55]),
+    (
+        "Trailing dots .... should be normalized to a single period without losing following sentence parts.",
+        [6, 15, 35, 60],
+    ),
+    (
+        "Wait... no really... are you sure? Streaming must not repeat trailing dots or drop final punctuation marks.",
+        [15, 35, 65, 95],
+    ),
+    (
+        "Ellipsis followed by letters...likeThis should insert a space to avoid smushing words when streamed in pieces.",
+        [12, 30, 55, 80],
+    ),
+    (
+        "Ending with question??? should collapse to single question and still emit trailing clause after buffering.",
+        [10, 20, 35, 55],
+    ),
     ("Multiple exclamation!!! points also collapse to single.", [10, 22, 38, 55]),
     ("Mixed punctuation!?!? should normalize reasonably.", [8, 18, 32, 48]),
     ("Unicode ellipsis … should be handled same as three dots.", [10, 22, 38]),
@@ -63,14 +92,22 @@ STREAMING_SANITIZER_CASES = [
     ("Sentence end. New sentence start with proper spacing.", [8, 15, 28, 45]),
     ("Question? Then answer without extra space.", [5, 12, 25, 40]),
     ("Exclamation! Followed by more text naturally.", [6, 14, 28, 45]),
-
     # Dashes / spacing / collapsing
-    ("dash-separated-words should turn to spaces and still stream cleanly without losing any content at all.", [10, 30, 60, 90]),
-    ("Long dash --- gets replaced with space and content after should not replay even if chunks cut inside the dash.", [5, 12, 25, 45, 70]),
+    (
+        "dash-separated-words should turn to spaces and still stream cleanly without losing any content at all.",
+        [10, 30, 60, 90],
+    ),
+    (
+        "Long dash --- gets replaced with space and content after should not replay even if chunks cut inside the dash.",
+        [5, 12, 25, 45, 70],
+    ),
     ("Tabs\tand   multiple   spaces collapse to singles while emitted text stays monotonic.", [5, 15, 35, 55]),
     ("Leading spaces     then words should be stripped once and never reintroduced mid stream.", [5, 10, 20, 40]),
     ("Contractions shouldn't break: it's, don't, can't, they're all fine when chunked in odd places.", [7, 15, 30, 55]),
-    ("Double spaces before punctuation , should be collapsed without emitting duplicates when chunked.", [10, 20, 35, 55]),
+    (
+        "Double spaces before punctuation , should be collapsed without emitting duplicates when chunked.",
+        [10, 20, 35, 55],
+    ),
     ("Em dash — should be replaced with space cleanly.", [5, 12, 25, 40]),
     ("En dash – also replaced with space.", [5, 10, 20, 32]),
     ("Hyphenated-compound-words become spaced out.", [8, 18, 32, 48]),
@@ -78,12 +115,20 @@ STREAMING_SANITIZER_CASES = [
     ("Tab\ttab\ttab replaced with single spaces each.", [3, 8, 14, 25]),
     ("Mixed\t   whitespace   \t collapses uniformly.", [5, 12, 22, 35, 48]),
     ("Non-breaking\u00a0space also normalized.", [8, 18, 32]),
-
     # Newlines / prefix stripping / capital
     ("Freestyle mode. should be removed only at the very start even if chunks begin mid-prefix.", [5, 15, 30, 55]),
-    ("Leading newline tokens \\n \\n should be stripped once while everything else streams out correctly afterward.", [12, 35, 70]),
-    ("Mixed newline tokens /n and \\n and real newlines\nshould normalize to spaces but not replay once flushed.", [12, 30, 55, 80]),
-    ("Mixed casing in first chunk still gets capitalized once even if the leading letter arrives late in the stream.", [5, 15, 35, 65]),
+    (
+        "Leading newline tokens \\n \\n should be stripped once while everything else streams out correctly afterward.",
+        [12, 35, 70],
+    ),
+    (
+        "Mixed newline tokens /n and \\n and real newlines\nshould normalize to spaces but not replay once flushed.",
+        [12, 30, 55, 80],
+    ),
+    (
+        "Mixed casing in first chunk still gets capitalized once even if the leading letter arrives late in the stream.",
+        [5, 15, 35, 65],
+    ),
     ("All caps FIRST word should not get recapped again even if alpha arrives in later chunk.", [3, 8, 18, 30]),
     ("lowercase start becomes uppercase at first alpha.", [5, 12, 25, 40]),
     ("   spaces before lowercase still capitalizes correctly.", [3, 8, 15, 30]),
@@ -91,10 +136,12 @@ STREAMING_SANITIZER_CASES = [
     ("ALREADY CAPS stays caps without double capping.", [6, 14, 28, 42]),
     ("\n\n\nMultiple newlines at start stripped and capitalized.", [3, 8, 18, 35, 55]),
     ("Carriage return\r\nwindows style normalized.", [8, 18, 32, 48]),
-
     # Quotes / escapes / asterisks / emotes
-    ("Quotes and escaped \\\"marks\\\" stay safe while the sanitizer strips only unnecessary escapes and whitespace.", [10, 30, 60, 90]),
-    ("Quotes around \"fragment\" split across chunks should survive and not be stripped twice.", [7, 18, 30, 50]),
+    (
+        'Quotes and escaped \\"marks\\" stay safe while the sanitizer strips only unnecessary escapes and whitespace.',
+        [10, 30, 60, 90],
+    ),
+    ('Quotes around "fragment" split across chunks should survive and not be stripped twice.', [7, 18, 30, 50]),
     ("Action emote *smiles* should vanish while the story keeps flowing in subsequent chunks.", [10, 25, 55, 85]),
     ("Asterisk *emphasis* gets stripped to spaces without losing nearby words.", [5, 15, 35, 60]),
     ("Single quotes 'like this' preserved in output.", [8, 18, 32, 48]),
@@ -104,14 +151,25 @@ STREAMING_SANITIZER_CASES = [
     ("Asterisk at boundary *split here* still works.", [10, 22, 35, 50]),
     ("Backslash \\\\ escaped keeps one backslash.", [8, 18, 32]),
     ("Mixed escapes \\n \\t literal should normalize.", [6, 14, 25, 40]),
-
     # Colons / numbers / times / slashes
     ("Numbers in time 12:34 and again 12:34 should not duplicate when chunked weirdly.", [12, 25, 45, 70]),
     ("Ratio 2024:3 is not an emoticon so keep the colon content without stripping neighbors.", [10, 25, 50]),
-    ("Multiple colons A:1 B:2 C:3 should not trigger emoticon stripping and must stream each label once.", [8, 16, 30, 50]),
-    ("Slash heavy path /api/v1/resource?id=123 should keep content while unstable slash suffix buffering avoids repeats.", [10, 25, 45, 65]),
-    ("Mixed slashes / \\ / should be stable even when trailing slash is considered unstable in buffer.", [5, 12, 25, 45]),
-    ("Trailing slash guard keep content before / and after without replay even with unstable suffix chars.", [15, 35, 60]),
+    (
+        "Multiple colons A:1 B:2 C:3 should not trigger emoticon stripping and must stream each label once.",
+        [8, 16, 30, 50],
+    ),
+    (
+        "Slash heavy path /api/v1/resource?id=123 should keep content while unstable slash suffix buffering avoids repeats.",
+        [10, 25, 45, 65],
+    ),
+    (
+        "Mixed slashes / \\ / should be stable even when trailing slash is considered unstable in buffer.",
+        [5, 12, 25, 45],
+    ),
+    (
+        "Trailing slash guard keep content before / and after without replay even with unstable suffix chars.",
+        [15, 35, 60],
+    ),
     ("Time format 09:30 AM and 14:45 preserved correctly.", [8, 16, 28, 42]),
     ("Date format 2024/12/25 slashes kept in dates.", [8, 18, 32]),
     ("URL path /users/123/profile preserved.", [6, 14, 26, 40]),
@@ -119,14 +177,12 @@ STREAMING_SANITIZER_CASES = [
     ("Port number localhost:8080 colon preserved.", [8, 20, 35]),
     ("Bible verse John 3:16 colon stays.", [6, 14, 26]),
     ("Score 24:17 in sports context preserved.", [5, 12, 25, 38]),
-
     # URLs and paths
     ("Check out https://example.com/path for more info.", [10, 25, 42, 55]),
     ("URL with params https://api.test.com/v1?key=abc&id=123 handled.", [12, 28, 48, 68]),
     ("File path /home/user/documents/file.txt preserved.", [8, 20, 38, 55]),
     ("Windows path C:\\Users\\Name\\file.txt normalized.", [8, 20, 38, 52]),
     ("Relative path ../parent/child/file works.", [8, 20, 35, 48]),
-
     # Numbers and currency
     ("Price is $19.99 and €15.50 for the item.", [8, 18, 30, 42]),
     ("Percentage 85.5% completed successfully.", [8, 18, 32]),
@@ -135,7 +191,6 @@ STREAMING_SANITIZER_CASES = [
     ("Fraction 3/4 cup of flour needed.", [5, 12, 25, 38]),
     ("Exponent 1.5e10 scientific notation.", [6, 14, 28]),
     ("Temperature 98.6°F or 37°C either way.", [8, 18, 30, 42]),
-
     # Unicode and international
     ("Accented café résumé naïve preserved.", [8, 16, 28, 40]),
     ("German straße and müller handled.", [8, 18, 32]),
@@ -145,7 +200,6 @@ STREAMING_SANITIZER_CASES = [
     ("Greek letters α β γ δ preserved.", [6, 14, 24, 36]),
     ("Math symbols ∑ ∏ √ ∞ stay.", [6, 14, 24]),
     ("Arrows → ← ↑ ↓ preserved in text.", [6, 14, 24, 36]),
-
     # Parentheses and brackets
     ("Parentheses (like this) preserved.", [8, 20, 35]),
     ("Square brackets [index] work.", [8, 22, 32]),
@@ -153,36 +207,43 @@ STREAMING_SANITIZER_CASES = [
     ("Nested (outer (inner)) parens.", [8, 18, 30]),
     ("Mixed [({brackets})] handled.", [6, 16, 28]),
     ("Function call name(arg1, arg2) style.", [8, 20, 35]),
-
     # Edge cases at boundaries
     ("Word split exa ctly at chunk boundary.", [10, 14, 25, 40]),
     ("Punctuation. At boundary.", [12, 14, 28]),
     ("Space at exact split here.", [15, 16, 28]),
     ("Emoji 😊 at split boundary.", [6, 10, 22]),
     ("HTML <b>at</b> split.", [5, 8, 15, 22]),
-
     # Very long content
-    ("Very long reply over forty words to mimic chat output with meandering phrasing that tests buffer trimming logic and overlap detection simultaneously without losing or repeating any clause in the process.", [20, 50, 90, 130, 170]),
+    (
+        "Very long reply over forty words to mimic chat output with meandering phrasing that tests buffer trimming logic and overlap detection simultaneously without losing or repeating any clause in the process.",
+        [20, 50, 90, 130, 170],
+    ),
     ("Short.", [3]),
     ("A", []),
     ("AB", [1]),
     ("ABC", [1, 2]),
-
     # Exaggerated expressions
-    ("Exaggerated oooohhhhh should normalize while still respecting capitalization at the start of the stream.", [8, 20, 45, 80]),
+    (
+        "Exaggerated oooohhhhh should normalize while still respecting capitalization at the start of the stream.",
+        [8, 20, 45, 80],
+    ),
     ("Check oooooh lowercase exaggeration normalization when split before the run of o characters.", [5, 12, 25, 50]),
     ("Sooooo excited becomes normalized.", [6, 14, 28]),
     ("Noooooo way should shrink.", [5, 12, 22]),
     ("Yesssss with trailing s normalized.", [6, 14, 28]),
     ("Hahahahaha laughter normalized.", [5, 12, 24]),
     ("Wooooow amazement shrinks.", [5, 12, 24]),
-
     # Repeated patterns (regression)
-    ("HTML <i>italic</i> and <script>alert('x')</script> must be removed but surrounding words remain intact through streaming.", [10, 30, 60, 90]),
-    ("Oh, you're such a nerd! But I love it. So, let's Oh, you're such a nerd! But I love it. So, let's see. 27 plus 36 Oh, you're such a nerd! But I love it. So, let's see. 27 plus 36 equals. 63! You're right, I knew you would be. So, how'd that go over with your brother? Did you make him feel dumb?", [40, 80, 120, 160, 220, 280]),
+    (
+        "HTML <i>italic</i> and <script>alert('x')</script> must be removed but surrounding words remain intact through streaming.",
+        [10, 30, 60, 90],
+    ),
+    (
+        "Oh, you're such a nerd! But I love it. So, let's Oh, you're such a nerd! But I love it. So, let's see. 27 plus 36 Oh, you're such a nerd! But I love it. So, let's see. 27 plus 36 equals. 63! You're right, I knew you would be. So, how'd that go over with your brother? Did you make him feel dumb?",
+        [40, 80, 120, 160, 220, 280],
+    ),
     ("Echo echo echo should not replay when buffered.", [5, 12, 22, 35, 48]),
     ("The the the repeated words not duplicated.", [4, 10, 18, 32, 45]),
-
     # Opening quotes and colons (regression - must preserve spacing and punctuation)
     ("She said 'hello there' to the crowd.", [8, 18, 30, 42]),
     ("Got that 'come hither' look down pat.", [6, 14, 26, 38]),
@@ -194,19 +255,16 @@ STREAMING_SANITIZER_CASES = [
     ("The answer: forty two.", [6, 14, 22]),
     ("Mixed quote 'and colon: together' works.", [8, 20, 34, 45]),
     ("Nested 'single quotes' and \"double quotes\" preserved.", [8, 22, 38, 55]),
-
     # Ellipsis preservation regression (three dots must not collapse to single period)
     ("Or... maybe... less?", [5, 12, 18]),
     ("What... is going on here... really?", [6, 14, 26, 35]),
     ("Wait... no... yes... done.", [5, 10, 16, 22]),
-
     # Spaced dots regression (". . " should collapse to single period)
     ("Drive a man wild. . What do you think?", [10, 22, 35]),
     ("Sentence one. . Sentence two.", [8, 16, 28]),
     ("Multiple. . . periods. . separated.", [8, 18, 30]),
     ("End with spaced dots. . .", [8, 18]),
     ("Period. .Word without space.", [6, 12, 22]),
-
     # Temperature units (°F, °C, °K → degrees Fahrenheit/Celsius/Kelvin)
     ("It's 72°F outside today.", [5, 12, 22]),
     ("The temperature is 20°C in the lab.", [10, 22, 35]),
@@ -216,7 +274,6 @@ STREAMING_SANITIZER_CASES = [
     ("Rotate 45° to the left.", [6, 14, 24]),
     ("A 90° angle is perpendicular.", [4, 12, 26]),
     ("Mixed temps 32°F equals 0°C exactly.", [8, 18, 30, 42]),
-
     # Percent sign (% → percent)
     ("The test showed 85% accuracy.", [8, 18, 28]),
     ("Only 50% of users completed it.", [6, 14, 26]),
@@ -225,7 +282,6 @@ STREAMING_SANITIZER_CASES = [
     ("Split 50% here and 50% there.", [6, 14, 24, 32]),
     ("A 0% chance of rain today.", [4, 12, 24]),
     ("Increased by 200% over baseline.", [8, 18, 30]),
-
     # Dash/hyphen contextual handling
     # Emdashes (-- or — or –) → space
     ("Hello--world becomes hello world.", [6, 14, 28]),
@@ -261,7 +317,6 @@ STREAMING_SANITIZER_CASES = [
     ("Year range 2020-2024 covered.", [8, 18, 28]),
     ("Pages 10-15 are missing.", [6, 14, 24]),
     ("It's -5°F and dropping--brrr.", [6, 14, 24]),
-
     # Emoticon stripping (common chat emoticons must be removed)
     ("That's hilarious ;) keep going.", [10, 18, 28]),
     ("You're so funny ;P haha.", [8, 16, 24]),
@@ -286,7 +341,6 @@ STREAMING_SANITIZER_CASES = [
     ("Ending with emoticon ;)", [10, 20]),
     (";) Starting with emoticon.", [4, 14, 26]),
     ("Emoticon at boundary;) here.", [10, 14, 24]),
-
     # Ellipsis preservation (no space after ... followed by text)
     ("Wait...really?", [5, 10]),
     ("Hmm...interesting thought.", [4, 10, 22]),
@@ -302,4 +356,3 @@ STREAMING_SANITIZER_CASES = [
 ]
 
 __all__ = ["STREAMING_SANITIZER_CASES"]
-

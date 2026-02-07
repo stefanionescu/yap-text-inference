@@ -7,30 +7,28 @@ and error handling for benchmark runs.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-import asyncio
 from typing import Any
 
 import websockets
-from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.metrics import error_result
-from tests.state import SessionContext, StreamState
 from tests.helpers.websocket import (
-    record_token,
-    with_api_key,
-    iter_messages,
-    create_tracker,
-    record_toolcall,
-    send_client_end,
-    finalize_metrics,
     build_start_payload,
     connect_with_retries,
+    create_tracker,
+    finalize_metrics,
+    iter_messages,
+    record_token,
+    record_toolcall,
+    send_client_end,
+    with_api_key,
 )
-
-from tests.state import BenchmarkConfig
+from tests.state import BenchmarkConfig, SessionContext, StreamState
 
 
 async def _execute_phase(
@@ -59,10 +57,7 @@ async def _send_and_stream(
 ) -> dict[str, Any]:
     """Send a start message and stream the response."""
     if cfg.chat_prompt is None:
-        raise ValueError(
-            "chat_prompt is required for benchmark. "
-            "Use select_chat_prompt(gender) to get a valid prompt."
-        )
+        raise ValueError("chat_prompt is required for benchmark. Use select_chat_prompt(gender) to get a valid prompt.")
     ctx = SessionContext(
         session_id=session_id,
         gender=cfg.gender,
@@ -137,7 +132,8 @@ def _build_success_result(metrics: dict[str, Any], phase: int) -> dict[str, Any]
 
 def _build_error_result(msg: dict[str, Any], phase: int) -> dict[str, Any]:
     """Build an error result from a server error message."""
-    from tests.helpers.errors import ServerError
+    from tests.helpers.errors import ServerError  # noqa: PLC0415
+
     error = ServerError.from_message(msg)
     return {
         "ok": False,
@@ -156,9 +152,7 @@ async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
 
     session_id = f"bench-{uuid.uuid4()}"
     try:
-        async with connect_with_retries(
-            lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)
-        ) as ws:
+        async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)) as ws:
             try:
                 for phase in range(1, phases + 1):
                     result = await _execute_phase(ws, cfg, phase, session_id)

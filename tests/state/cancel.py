@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -48,11 +48,7 @@ class CancelClientResult:
     @property
     def all_passed(self) -> bool:
         """Check if all phases passed."""
-        return (
-            self.cancel_phase.passed
-            and self.drain_phase.passed
-            and self.recovery_phase.passed
-        )
+        return self.cancel_phase.passed and self.drain_phase.passed and self.recovery_phase.passed
 
 
 @dataclass

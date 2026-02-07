@@ -16,34 +16,34 @@ last activity time against the idle timeout (WS_IDLE_TIMEOUT_S).
 Usage:
     lifecycle = WebSocketLifecycle(websocket)
     lifecycle.start()  # Start watchdog
-    
+
     # In message loop:
     lifecycle.touch()  # Reset idle timer
-    
+
     # On cleanup:
     await lifecycle.stop()
 """
 
 from __future__ import annotations
 
-import time
 import asyncio
-import logging
 import contextlib
+import logging
+import time
 
 from fastapi import WebSocket
 
-from ...config.websocket import WS_IDLE_TIMEOUT_S, WS_CLOSE_IDLE_CODE, WS_WATCHDOG_TICK_S, WS_CLOSE_IDLE_REASON
+from ...config.websocket import WS_CLOSE_IDLE_CODE, WS_CLOSE_IDLE_REASON, WS_IDLE_TIMEOUT_S, WS_WATCHDOG_TICK_S
 
 logger = logging.getLogger(__name__)
 
 
 class WebSocketLifecycle:
     """Tracks activity timestamps and enforces idle timeouts.
-    
+
     This class manages the lifecycle of a single WebSocket connection,
     specifically handling idle timeout detection and enforcement.
-    
+
     Attributes:
         _ws: The WebSocket connection being managed.
         _idle_timeout_s: Seconds of inactivity before closing.
@@ -59,7 +59,7 @@ class WebSocketLifecycle:
         idle_close_code: int | None = None,
     ):
         """Initialize lifecycle manager for a WebSocket connection.
-        
+
         Args:
             websocket: The WebSocket connection to manage.
             idle_timeout_s: Override for idle timeout (defaults to config).
@@ -69,9 +69,7 @@ class WebSocketLifecycle:
         self._ws = websocket
         self._idle_timeout_s = float(idle_timeout_s or WS_IDLE_TIMEOUT_S)
         self._watchdog_tick_s = float(watchdog_tick_s or WS_WATCHDOG_TICK_S)
-        self._idle_close_code = (
-            idle_close_code if idle_close_code is not None else WS_CLOSE_IDLE_CODE
-        )
+        self._idle_close_code = idle_close_code if idle_close_code is not None else WS_CLOSE_IDLE_CODE
         self._idle_close_reason = WS_CLOSE_IDLE_REASON
         self._last_activity = time.monotonic()
         self._stop_event = asyncio.Event()  # Signals watchdog to stop
@@ -107,7 +105,7 @@ class WebSocketLifecycle:
 
     async def _watchdog_loop(self) -> None:
         """Background loop that periodically checks for idle connections.
-        
+
         Runs until stopped or idle timeout is reached. Closes the WebSocket
         with an appropriate code when idle timeout expires.
         """
@@ -134,5 +132,3 @@ class WebSocketLifecycle:
 
 
 __all__ = ["WebSocketLifecycle"]
-
-

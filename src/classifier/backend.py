@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 
 import torch  # type: ignore[import]
-from transformers import AutoTokenizer, AutoModelForSequenceClassification  # type: ignore[import]
+from transformers import AutoModelForSequenceClassification, AutoTokenizer  # type: ignore[import]
 
 from src.state import ClassifierModelInfo
 
@@ -38,10 +38,10 @@ logger = logging.getLogger(__name__)
 
 class TorchClassifierBackend:
     """PyTorch backend supporting both BERT-style and Longformer models.
-    
+
     This class handles the actual model loading and inference, supporting
     various transformer architectures for sequence classification.
-    
+
     Attributes:
         _info: Model metadata (type, max_length, num_labels).
         _device: Target device string.
@@ -71,11 +71,15 @@ class TorchClassifierBackend:
         tokenizer_max = getattr(self._tokenizer, "model_max_length", None)
         self._max_length = min(info.max_length, tokenizer_max) if tokenizer_max else info.max_length
 
-        self._model = AutoModelForSequenceClassification.from_pretrained(
-            info.model_id,
-            torch_dtype=dtype if device.startswith("cuda") else None,
-            trust_remote_code=True,
-        ).to(device=device, dtype=dtype).eval()
+        self._model = (
+            AutoModelForSequenceClassification.from_pretrained(
+                info.model_id,
+                torch_dtype=dtype if device.startswith("cuda") else None,
+                trust_remote_code=True,
+            )
+            .to(device=device, dtype=dtype)
+            .eval()
+        )
 
         if device.startswith("cuda"):
             torch.backends.cuda.matmul.allow_tf32 = True
@@ -93,13 +97,13 @@ class TorchClassifierBackend:
 
     def infer(self, texts: list[str]) -> torch.Tensor:
         """Run inference on a batch of texts.
-        
+
         Tokenizes inputs, runs the model, and returns logits.
         Handles Longformer global attention masks automatically.
-        
+
         Args:
             texts: List of input texts to classify.
-            
+
         Returns:
             Tensor of shape (batch_size, num_labels) containing logits.
         """

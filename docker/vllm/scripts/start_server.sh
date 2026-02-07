@@ -26,4 +26,3 @@ SERVER_PID=$!
 
 # Wait on server (container stays alive)
 wait "${SERVER_PID}"
-

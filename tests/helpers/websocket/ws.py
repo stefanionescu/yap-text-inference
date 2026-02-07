@@ -7,12 +7,12 @@ It normalizes URLs to ensure consistent path handling across all test scripts.
 
 from __future__ import annotations
 
-import os
-import json
 import asyncio
 import contextlib
-from collections.abc import Callable, Awaitable
-from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
+import json
+import os
+from collections.abc import Awaitable, Callable
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from tests.config import DEFAULT_WS_PATH
 

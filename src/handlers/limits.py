@@ -4,7 +4,7 @@ This module provides a time-based rate limiter using the sliding window
 algorithm. It's used to prevent abuse by limiting:
 
 - Messages per connection per time window
-- Cancel requests per time window  
+- Cancel requests per time window
 - Persona updates per time window
 
 Sliding Window Algorithm:
@@ -19,7 +19,7 @@ applies to any rolling window of the specified duration.
 
 Example:
     limiter = SlidingWindowRateLimiter(limit=10, window_seconds=60)
-    
+
     for message in messages:
         try:
             limiter.consume()
@@ -30,8 +30,8 @@ Example:
 
 from __future__ import annotations
 
-import time
 import collections
+import time
 from collections.abc import Callable
 
 from src.errors import RateLimitError
@@ -42,22 +42,22 @@ TimeFn = Callable[[], float]
 
 class SlidingWindowRateLimiter:
     """Track events over a rolling window.
-    
+
     This rate limiter uses a sliding window algorithm that provides smooth
     rate limiting without the "burst at window boundary" problem of fixed
     windows.
-    
+
     The limiter can be disabled by setting limit=0 or window_seconds=0,
     in which case consume() always succeeds.
-    
+
     Attributes:
         limit: Maximum events allowed per window.
         window_seconds: Duration of the sliding window.
-    
+
     Example:
         # Allow 25 messages per 60 seconds
         limiter = SlidingWindowRateLimiter(limit=25, window_seconds=60)
-        
+
         try:
             limiter.consume()  # Record event
         except RateLimitError as e:
@@ -72,7 +72,7 @@ class SlidingWindowRateLimiter:
         now_fn: TimeFn | None = None,
     ) -> None:
         """Initialize the rate limiter.
-        
+
         Args:
             limit: Maximum events per window. Set to 0 to disable.
             window_seconds: Window duration in seconds. Set to 0 to disable.
@@ -86,10 +86,10 @@ class SlidingWindowRateLimiter:
 
     def consume(self) -> None:
         """Record an event or raise RateLimitError if the window is saturated.
-        
+
         This method is thread-safe for single-threaded async code but should
         not be called concurrently from multiple threads.
-        
+
         Raises:
             RateLimitError: If the rate limit has been exceeded.
         """
@@ -119,4 +119,3 @@ class SlidingWindowRateLimiter:
 
 
 __all__ = ["RateLimitError", "SlidingWindowRateLimiter"]
-

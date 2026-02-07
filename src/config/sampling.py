@@ -60,17 +60,17 @@ CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 # This helps avoid unwanted punctuation, filler words, and expressions.
 
 _DEFAULT_LOGIT_BIAS = {
-    "*": -100,      # Markdown emphasis
-    "(": -100,      # Parenthetical asides
+    "*": -100,  # Markdown emphasis
+    "(": -100,  # Parenthetical asides
     ")": -100,
-    "~": -100,      # Tildes
-    " - ": -100,    # Dashes
+    "~": -100,  # Tildes
+    " - ": -100,  # Dashes
     "-": -100,
-    "Mmh": -100,    # Filler sounds
+    "Mmh": -100,  # Filler sounds
     "hmm": -100,
-    "…": -100,      # Ellipsis
-    "Damn": -100,   # Profanity
-    "stud": -100,   # Unwanted terms
+    "…": -100,  # Ellipsis
+    "Damn": -100,  # Profanity
+    "stud": -100,  # Unwanted terms
 }
 
 # ============================================================================
@@ -135,4 +135,3 @@ __all__ = [
     "INFERENCE_STOP",
     "CHAT_LOGIT_BIAS",
 ]
-

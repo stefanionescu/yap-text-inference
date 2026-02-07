@@ -6,10 +6,20 @@ formats, query CUDA driver versions, and list remote HuggingFace engines.
 
 from __future__ import annotations
 
-import sys
+import contextlib
 import json
-from typing import Any
+import sys
 from pathlib import Path
+from typing import Any
+
+W_BIT_INT4_MAX = 4
+W_BIT_FP8_MIN = 8
+ENGINE_PATH_SLASHES = 2
+MIN_ARGS = 2
+MIN_QFORMAT_ARGS = 3
+MIN_LIST_ENGINES_ARGS = 3
+MIN_QUANT_INFO_ARGS = 3
+MIN_DOWNLOAD_ENGINE_ARGS = 5
 
 
 def detect_checkpoint_qformat(checkpoint_dir: str) -> str | None:
@@ -57,28 +67,26 @@ def detect_checkpoint_qformat(checkpoint_dir: str) -> str | None:
     for key in ("w_bit", "weight_bits", "weight_bit", "quant_bits"):
         raw = quant.get(key)
         if raw is not None:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 w_bit = int(raw) if isinstance(raw, str) else raw
-            except (ValueError, TypeError):
-                pass
             break
 
+    result: str | None = None
     # Determine qformat from algorithm string
     if "fp8" in algo:
-        return "fp8"
-    if "int8" in algo or "sq" in algo:
-        return "int8_sq"
-    if "int4" in algo or "awq" in algo:
-        return "int4_awq"
-
+        result = "fp8"
+    elif "int8" in algo or "sq" in algo:
+        result = "int8_sq"
+    elif "int4" in algo or "awq" in algo:
+        result = "int4_awq"
     # Fall back to weight bits
-    if isinstance(w_bit, int):
-        if w_bit <= 4:
-            return "int4_awq"
-        if w_bit >= 8:
-            return "fp8"
+    elif isinstance(w_bit, int):
+        if w_bit <= W_BIT_INT4_MAX:
+            result = "int4_awq"
+        elif w_bit >= W_BIT_FP8_MIN:
+            result = "fp8"
 
-    return None
+    return result
 
 
 def get_cuda_driver_version() -> str | None:
@@ -89,9 +97,9 @@ def get_cuda_driver_version() -> str | None:
     """
     try:
         try:
-            from cuda.bindings import runtime as cudart
+            from cuda.bindings import runtime as cudart  # noqa: PLC0415
         except Exception:
-            from cuda import cudart  # type: ignore[import-not-found,no-redef]
+            from cuda import cudart  # type: ignore[import-not-found,no-redef]  # noqa: PLC0415
 
         err, ver = cudart.cudaDriverGetVersion()
         if err == 0:
@@ -99,7 +107,7 @@ def get_cuda_driver_version() -> str | None:
             minor = (ver % 1000) // 10
             return f"{major}.{minor}"
     except Exception:
-        pass
+        return None
     return None
 
 
@@ -113,14 +121,12 @@ def list_remote_engines(repo_id: str) -> list[str]:
         List of engine labels (e.g., ["sm90_trt-llm-1.2.0rc5_cuda13.0"]).
     """
     try:
-        from huggingface_hub import list_repo_tree
+        from huggingface_hub import list_repo_tree  # noqa: PLC0415
 
-        items = list(
-            list_repo_tree(repo_id, path_in_repo="trt-llm/engines", repo_type="model")
-        )
+        items = list(list_repo_tree(repo_id, path_in_repo="trt-llm/engines", repo_type="model"))
         labels = []
         for item in items:
-            if item.path.startswith("trt-llm/engines/") and item.path.count("/") == 2:
+            if item.path.startswith("trt-llm/engines/") and item.path.count("/") == ENGINE_PATH_SLASHES:
                 label = item.path.split("/")[-1]
                 labels.append(label)
         return labels
@@ -164,27 +170,25 @@ def download_prebuilt_engine(
     Returns:
         Path to the downloaded engine directory, or None on failure.
     """
-    import os
+    import os  # noqa: PLC0415
 
-    from src.helpers.env import env_flag
+    from src.helpers.env import env_flag  # noqa: PLC0415
 
     # Configure HF progress bars based on SHOW_HF_LOGS
     if env_flag("SHOW_HF_LOGS", False):
         os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "0"
         os.environ.pop("TQDM_DISABLE", None)
-        try:
-            from huggingface_hub.utils import enable_progress_bars
+        with contextlib.suppress(Exception):
+            from huggingface_hub.utils import enable_progress_bars  # noqa: PLC0415
 
             enable_progress_bars()
-        except Exception:
-            pass
     else:
-        from src.scripts.filters import configure
+        from src.scripts.filters import configure  # noqa: PLC0415
 
         configure()
 
     try:
-        from huggingface_hub import snapshot_download
+        from huggingface_hub import snapshot_download  # noqa: PLC0415
 
         snapshot_download(
             repo_id=repo_id,
@@ -208,13 +212,13 @@ def download_prebuilt_engine(
 
 if __name__ == "__main__":
     # CLI interface for shell scripts
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         print("Usage: python -m src.scripts.trt.detection <command> [args]")
         sys.exit(1)
 
     cmd = sys.argv[1]
 
-    if cmd == "qformat" and len(sys.argv) >= 3:
+    if cmd == "qformat" and len(sys.argv) >= MIN_QFORMAT_ARGS:
         result = detect_checkpoint_qformat(sys.argv[2])
         if result:
             print(result)
@@ -226,23 +230,24 @@ if __name__ == "__main__":
             print(result)
         sys.exit(0 if result else 1)
 
-    elif cmd == "list-engines" and len(sys.argv) >= 3:
-        from src.helpers.env import env_flag
+    elif cmd == "list-engines" and len(sys.argv) >= MIN_LIST_ENGINES_ARGS:
+        from src.helpers.env import env_flag  # noqa: PLC0415
 
         if not env_flag("SHOW_HF_LOGS", False):
-            from src.scripts.filters import configure
+            from src.scripts.filters import configure  # noqa: PLC0415
+
             configure()
         engines = list_remote_engines(sys.argv[2])
         for engine in engines:
             print(engine)
         sys.exit(0)
 
-    elif cmd == "quant-info" and len(sys.argv) >= 3:
+    elif cmd == "quant-info" and len(sys.argv) >= MIN_QUANT_INFO_ARGS:
         info = read_checkpoint_quant_info(sys.argv[2])
         print(json.dumps(info))
         sys.exit(0)
 
-    elif cmd == "download-engine" and len(sys.argv) >= 5:
+    elif cmd == "download-engine" and len(sys.argv) >= MIN_DOWNLOAD_ENGINE_ARGS:
         result = download_prebuilt_engine(sys.argv[2], sys.argv[3], sys.argv[4])
         if result:
             print(result)
@@ -251,4 +256,3 @@ if __name__ == "__main__":
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
         sys.exit(1)
-

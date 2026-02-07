@@ -7,15 +7,14 @@ collects frames until a turn completes.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import time
-import asyncio
 from typing import Any
 
 from tests.helpers.websocket import iter_messages
-
 from tests.state import DrainConfig, DrainState, TurnResult
-
 
 # ============================================================================
 # Internal Helpers
@@ -24,12 +23,12 @@ from tests.state import DrainConfig, DrainState, TurnResult
 
 async def _close_connection(ws, *, reason: str | None = None) -> None:
     """Attempt to close the websocket connection gracefully."""
-    import inspect
+    import inspect  # noqa: PLC0415
 
     close = getattr(ws, "close", None)
     if close is None:
         return
-    try:
+    with contextlib.suppress(Exception):
         if reason is None:
             result = close()
         else:
@@ -39,8 +38,6 @@ async def _close_connection(ws, *, reason: str | None = None) -> None:
                 result = close()
         if inspect.isawaitable(result):
             await result
-    except Exception:
-        pass
 
 
 def _tool_status_to_bool(status: str | None) -> bool | None:
@@ -68,37 +65,30 @@ def _handle_toolcall(msg: dict[str, Any], state: DrainState, cfg: DrainConfig) -
 
 def _process_message(msg: dict[str, Any], state: DrainState, cfg: DrainConfig) -> bool:
     """Process a single message and update state.
-    
+
     Returns True if we should stop processing (done/error), False to continue.
     """
     msg_type = msg.get("type")
 
-    if msg_type == "ack":
-        return False
+    should_stop = False
 
     if msg_type == "toolcall":
         _handle_toolcall(msg, state, cfg)
-        return False
-
-    if msg_type in {"token", "final"}:
+    elif msg_type in {"token", "final"}:
         state.chat_seen = True
-        return False
-
-    if msg_type == "done":
+    elif msg_type == "done":
         state.done = True
         state.cancelled = False
-        return True
-
-    if msg_type == "cancelled":
+        should_stop = True
+    elif msg_type == "cancelled":
         state.done = True
         state.cancelled = True
-        return True
-
-    if msg_type == "error":
+        should_stop = True
+    elif msg_type == "error":
         state.error = msg
-        return True
+        should_stop = True
 
-    return False
+    return should_stop
 
 
 async def _get_message_with_timeout(
@@ -107,7 +97,7 @@ async def _get_message_with_timeout(
     cfg: DrainConfig,
 ) -> dict[str, Any]:
     """Get the next message with appropriate timeout.
-    
+
     Raises StopAsyncIteration if the stream ends.
     Raises asyncio.TimeoutError if timeout occurs.
     """
@@ -132,7 +122,7 @@ async def _receive_next_message(
     cfg: DrainConfig,
 ) -> TurnResult | None:
     """Check if we've timed out before the tool decision arrived.
-    
+
     Returns a TurnResult if timeout occurred, None to continue.
     """
     if state.tool_decision_received:
@@ -222,11 +212,7 @@ def _build_invalid_status_result(state: DrainState) -> TurnResult:
     """Build a TurnResult for invalid tool status."""
     if state.tool_status is None:
         reason = "chat_only" if state.chat_seen else "no_tool_response"
-        detail = (
-            "received chat output but no toolcall"
-            if state.chat_seen
-            else "no frames received"
-        )
+        detail = "received chat output but no toolcall" if state.chat_seen else "no frames received"
     else:
         reason = "invalid_tool_status"
         detail = f"toolcall status '{state.tool_status}' is not yes/no"
@@ -277,15 +263,15 @@ def _finalize_state(state: DrainState) -> TurnResult:
 
 async def drain_response(ws, cfg: DrainConfig) -> TurnResult:
     """Drain websocket frames until the server finishes the turn.
-    
+
     The timeout applies only to the TOOL response. Once the tool decision
     arrives, we continue waiting for chat to flush without enforcing the
     per-turn timeout.
-    
+
     Args:
         ws: Open WebSocket connection.
         cfg: Drain configuration with timeouts.
-    
+
     Returns:
         TurnResult with the final state of the turn.
     """

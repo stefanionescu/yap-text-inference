@@ -6,11 +6,7 @@ import os
 from dataclasses import dataclass, field
 
 from src.errors import EngineLabelError
-from src.quantization.trt.detection import (
-    detect_cuda_version,
-    detect_gpu_name,
-    detect_tensorrt_llm_version,
-)
+from src.quantization.trt.detection import detect_cuda_version, detect_gpu_name, detect_tensorrt_llm_version
 
 
 @dataclass
@@ -35,15 +31,13 @@ class EnvironmentInfo:
         trt_version = os.getenv("TRT_VERSION") or detect_tensorrt_llm_version()
         if not trt_version or trt_version == "unknown":
             raise EngineLabelError(
-                "TRT_VERSION not set and tensorrt_llm not importable. "
-                "This should be set in scripts/lib/env/trt.sh."
+                "TRT_VERSION not set and tensorrt_llm not importable. This should be set in scripts/lib/env/trt.sh."
             )
 
         cuda_version = os.getenv("CUDA_VERSION") or detect_cuda_version()
         if not cuda_version or cuda_version == "unknown":
             raise EngineLabelError(
-                "CUDA_VERSION not set and nvcc not found. "
-                "Ensure CUDA is installed or CUDA_VERSION is exported."
+                "CUDA_VERSION not set and nvcc not found. Ensure CUDA is installed or CUDA_VERSION is exported."
             )
 
         return cls(

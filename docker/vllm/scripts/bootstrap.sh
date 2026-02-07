@@ -20,4 +20,3 @@ fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
   log_info "[vllm] Tool model: ${TOOL_MODEL:-none} (fp32)"
 fi
-

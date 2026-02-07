@@ -16,24 +16,25 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from ...handlers.session import session_handler
-from .sampling import extract_sampling_overrides
-from .dispatch import dispatch_execution
 from src.state import StartPlan
-from ..input import normalize_gender, normalize_personality
+
+from ...config import CHAT_PROMPT_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
+from ...config.websocket import WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
+from ...handlers.session import session_handler
 from ...handlers.websocket.errors import send_error
 from ...handlers.websocket.helpers import safe_send_envelope
-from ...config.websocket import WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
-from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
 from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
+from ..input import normalize_gender, normalize_personality
 from ..validators import (
     ValidationError,
     require_prompt,
+    sanitize_prompt_with_limit,
     validate_optional_prefix,
     validate_required_gender,
-    sanitize_prompt_with_limit,
     validate_required_personality,
 )
+from .dispatch import dispatch_execution
+from .sampling import extract_sampling_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +72,9 @@ async def handle_start_message(
     request_id: str,
 ) -> None:
     """Handle 'start' message type by validating inputs and dispatching execution.
-    
+
     This is the main entry point for processing new conversation turns.
-    
+
     Args:
         ws: WebSocket connection for responses.
         msg: Parsed message dict containing:
@@ -84,7 +85,7 @@ async def handle_start_message(
             - user_utterance: The user's message
             - sampling: Optional sampling parameter overrides
         session_id: Session identifier from the message.
-        
+
     Side Effects:
         - Sends 'ack' response on success
         - Closes connection with error on validation failure
@@ -122,7 +123,7 @@ async def handle_start_message(
         check_screen_prefix=check_screen_prefix,
         screen_checked_prefix=screen_checked_prefix,
     )
-    
+
     updated_config = session_handler.get_session_config(session_id)
     static_prefix = updated_config.get("chat_prompt") or ""
     runtime_text = ""
@@ -203,9 +204,9 @@ def _extract_screen_prefixes(msg: dict[str, Any]) -> tuple[str | None, str | Non
 
 def _resolve_history(session_id: str, msg: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
     """Resolve history from message.
-    
+
     Accepts: "history": [{role: "user", content: "..."}, ...]
-    
+
     Returns:
         Tuple of (rendered_history_text, history_info_dict_or_none).
         history_info is only returned when warm history was sent.
@@ -240,9 +241,7 @@ def _count_history_tokens(rendered: str) -> int:
 
 def _trim_user_utterance(user_utt: str, session_id: str) -> str:
     """Trim user utterance to token limit based on deployment mode."""
-    effective_max = session_handler.get_effective_user_utt_max_tokens(
-        session_id, for_followup=False
-    )
+    effective_max = session_handler.get_effective_user_utt_max_tokens(session_id, for_followup=False)
     if DEPLOY_CHAT:
         return trim_text_to_token_limit_chat(user_utt, max_tokens=effective_max, keep="start")
     if DEPLOY_TOOL:

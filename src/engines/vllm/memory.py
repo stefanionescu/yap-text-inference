@@ -2,33 +2,33 @@
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
-from src.helpers.dedupe import warn_once
 from src.config.limits import (
-    BATCH_SCALE_MIN_SEQS,
-    BATCH_SCALE_MIN_RATIO,
-    MAX_NUM_SEQS_BASELINE,
-    BATCH_SCALE_MIN_TOKENS,
-    MAX_NUM_SEQS_MIN_FLOOR,
     BATCH_SCALE_GPU_FRAC_CAP,
-    MAX_NUM_SEQS_MAX_RESOLVED,
-    MAX_NUM_SEQS_BASELINE_LARGE,
-    MAX_NUM_SEQS_BASELINE_SMALL,
-    MAX_NUM_SEQS_BASELINE_MEDIUM,
-    MAX_NUM_SEQS_BASELINE_XLARGE,
-    MAX_NUM_SEQS_GPU_THRESHOLD_LARGE,
-    MAX_NUM_SEQS_GPU_THRESHOLD_SMALL,
-    MAX_NUM_SEQS_MEMORY_OPT_BASELINE,
+    BATCH_SCALE_MIN_RATIO,
+    BATCH_SCALE_MIN_SEQS,
+    BATCH_SCALE_MIN_TOKENS,
+    MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR,
     MAX_NUM_SEQS_ALLOCATION_RATIO_MAX,
     MAX_NUM_SEQS_ALLOCATION_RATIO_MIN,
+    MAX_NUM_SEQS_BASELINE,
+    MAX_NUM_SEQS_BASELINE_LARGE,
+    MAX_NUM_SEQS_BASELINE_MEDIUM,
+    MAX_NUM_SEQS_BASELINE_SMALL,
+    MAX_NUM_SEQS_BASELINE_XLARGE,
+    MAX_NUM_SEQS_GPU_THRESHOLD_LARGE,
     MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM,
-    MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR,
+    MAX_NUM_SEQS_GPU_THRESHOLD_SMALL,
+    MAX_NUM_SEQS_MAX_RESOLVED,
+    MAX_NUM_SEQS_MEMORY_OPT_BASELINE,
+    MAX_NUM_SEQS_MIN_FLOOR,
 )
+from src.helpers.dedupe import warn_once
+
+logger = logging.getLogger(__name__)
 
 # GPU memory thresholds -> baseline mappings (threshold_gib, baseline_value)
 # Ordered from smallest to largest threshold; first match wins
@@ -42,7 +42,7 @@ _GPU_BASELINE_TIERS: list[tuple[float, int]] = [
 def read_cuda_memory_snapshot() -> tuple[int, int] | None:
     """Return (free_bytes, total_bytes) for the current CUDA device."""
     try:
-        import torch
+        import torch  # noqa: PLC0415
     except Exception as exc:
         warn_once("cuda_torch_import", f"torch unavailable for CUDA mem introspection ({exc})")
         return None

@@ -5,7 +5,7 @@ to avoid spamming logs with repeated warnings.
 
 Usage:
     from src.helpers.dedupe import warn_once
-    
+
     warn_once("cuda_mem", "torch unavailable for CUDA mem introspection")
     warn_once("cuda_mem", "same warning")  # Suppressed
 """
@@ -22,18 +22,18 @@ _emitted_warnings: set[str] = set()
 
 def warn_once(key: str, message: str, *, prefix: str = "[config]") -> bool:
     """Emit a warning message only once per key.
-    
+
     Args:
         key: Unique identifier for this warning type.
         message: The warning message to print.
         prefix: Optional prefix for the message.
-        
+
     Returns:
         True if the warning was emitted, False if already emitted.
     """
     if key in _emitted_warnings:
         return False
-    
+
     _emitted_warnings.add(key)
     full_message = f"{prefix} Warning: {message}" if prefix else f"Warning: {message}"
     logger.warning(full_message)
@@ -42,18 +42,18 @@ def warn_once(key: str, message: str, *, prefix: str = "[config]") -> bool:
 
 def info_once(key: str, message: str, *, prefix: str = "[config]") -> bool:
     """Emit an info message only once per key.
-    
+
     Args:
         key: Unique identifier for this message type.
         message: The info message to print.
         prefix: Optional prefix for the message.
-        
+
     Returns:
         True if the message was emitted, False if already emitted.
     """
     if key in _emitted_warnings:
         return False
-    
+
     _emitted_warnings.add(key)
     full_message = f"{prefix} {message}" if prefix else message
     logger.info(full_message)

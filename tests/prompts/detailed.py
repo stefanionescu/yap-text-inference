@@ -1815,144 +1815,32 @@ User's Local Time and Date:
 # =============================================================================
 
 PERSONALITIES = {
-    "anna_flirty": {
-        "gender": "female",
-        "personality": "flirty",
-        "prompt": ANNA_FLIRTY
-    },
-    "anna_savage": {
-        "gender": "female",
-        "personality": "savage",
-        "prompt": ANNA_SAVAGE
-    },
-    "anna_religious": {
-        "gender": "female",
-        "personality": "religious",
-        "prompt": ANNA_RELIGIOUS
-    },
-    "anna_delulu": {
-        "gender": "female",
-        "personality": "delulu",
-        "prompt": ANNA_DELULU
-    },
-    "anna_spiritual": {
-        "gender": "female",
-        "personality": "spiritual",
-        "prompt": ANNA_SPIRITUAL
-    },
-    "anna_foodie": {
-        "gender": "female",
-        "personality": "foodie",
-        "prompt": ANNA_FOODIE
-    },
-    "anna_warm": {
-        "gender": "female",
-        "personality": "warm",
-        "prompt": ANNA_WARM
-    },
-    "anna_honest": {
-        "gender": "female",
-        "personality": "honest",
-        "prompt": ANNA_HONEST
-    },
-    "anna_zoomer": {
-        "gender": "female",
-        "personality": "zoomer",
-        "prompt": ANNA_ZOOMER
-    },
-    "anna_boomer": {
-        "gender": "female",
-        "personality": "boomer",
-        "prompt": ANNA_BOOMER
-    },
-    "anna_ex": {
-        "gender": "female",
-        "personality": "ex",
-        "prompt": ANNA_EX
-    },
-    "anna_kpop": {
-        "gender": "female",
-        "personality": "kpop",
-        "prompt": ANNA_KPOP
-    },
-    "anna_shopaholic": {
-        "gender": "female",
-        "personality": "shopaholic",
-        "prompt": ANNA_SHOPAHOLIC
-    },
-    "anna_epersona": {
-        "gender": "female",
-        "personality": "epersona",
-        "prompt": ANNA_EPERSONA
-    },
-    "mark_flirty": {
-        "gender": "male",
-        "personality": "flirty",
-        "prompt": MARK_FLIRTY
-    },
-    "mark_savage": {
-        "gender": "male",
-        "personality": "savage",
-        "prompt": MARK_SAVAGE
-    },
-    "mark_religious": {
-        "gender": "male",
-        "personality": "religious",
-        "prompt": MARK_RELIGIOUS
-    },
-    "mark_delulu": {
-        "gender": "male",
-        "personality": "delulu",
-        "prompt": MARK_DELULU
-    },
-    "mark_spiritual": {
-        "gender": "male",
-        "personality": "spiritual",
-        "prompt": MARK_SPIRITUAL
-    },
-    "mark_foodie": {
-        "gender": "male",
-        "personality": "foodie",
-        "prompt": MARK_FOODIE
-    },
-    "mark_warm": {
-        "gender": "male",
-        "personality": "warm",
-        "prompt": MARK_WARM
-    },
-    "mark_honest": {
-        "gender": "male",
-        "personality": "honest",
-        "prompt": MARK_HONEST
-    },
-    "mark_boomer": {
-        "gender": "male",
-        "personality": "boomer",
-        "prompt": MARK_BOOMER
-    },
-    "mark_zoomer": {
-        "gender": "male",
-        "personality": "zoomer",
-        "prompt": MARK_ZOOMER
-    },
-    "mark_ex": {
-        "gender": "male",
-        "personality": "ex",
-        "prompt": MARK_EX
-    },
-    "mark_kpop": {
-        "gender": "male",
-        "personality": "kpop",
-        "prompt": MARK_KPOP
-    },
-    "mark_shopaholic": {
-        "gender": "male",
-        "personality": "shopaholic",
-        "prompt": MARK_SHOPAHOLIC
-    },
-    "mark_epersona": {
-        "gender": "male",
-        "personality": "epersona",
-        "prompt": MARK_EPERSONA
-    },
+    "anna_flirty": {"gender": "female", "personality": "flirty", "prompt": ANNA_FLIRTY},
+    "anna_savage": {"gender": "female", "personality": "savage", "prompt": ANNA_SAVAGE},
+    "anna_religious": {"gender": "female", "personality": "religious", "prompt": ANNA_RELIGIOUS},
+    "anna_delulu": {"gender": "female", "personality": "delulu", "prompt": ANNA_DELULU},
+    "anna_spiritual": {"gender": "female", "personality": "spiritual", "prompt": ANNA_SPIRITUAL},
+    "anna_foodie": {"gender": "female", "personality": "foodie", "prompt": ANNA_FOODIE},
+    "anna_warm": {"gender": "female", "personality": "warm", "prompt": ANNA_WARM},
+    "anna_honest": {"gender": "female", "personality": "honest", "prompt": ANNA_HONEST},
+    "anna_zoomer": {"gender": "female", "personality": "zoomer", "prompt": ANNA_ZOOMER},
+    "anna_boomer": {"gender": "female", "personality": "boomer", "prompt": ANNA_BOOMER},
+    "anna_ex": {"gender": "female", "personality": "ex", "prompt": ANNA_EX},
+    "anna_kpop": {"gender": "female", "personality": "kpop", "prompt": ANNA_KPOP},
+    "anna_shopaholic": {"gender": "female", "personality": "shopaholic", "prompt": ANNA_SHOPAHOLIC},
+    "anna_epersona": {"gender": "female", "personality": "epersona", "prompt": ANNA_EPERSONA},
+    "mark_flirty": {"gender": "male", "personality": "flirty", "prompt": MARK_FLIRTY},
+    "mark_savage": {"gender": "male", "personality": "savage", "prompt": MARK_SAVAGE},
+    "mark_religious": {"gender": "male", "personality": "religious", "prompt": MARK_RELIGIOUS},
+    "mark_delulu": {"gender": "male", "personality": "delulu", "prompt": MARK_DELULU},
+    "mark_spiritual": {"gender": "male", "personality": "spiritual", "prompt": MARK_SPIRITUAL},
+    "mark_foodie": {"gender": "male", "personality": "foodie", "prompt": MARK_FOODIE},
+    "mark_warm": {"gender": "male", "personality": "warm", "prompt": MARK_WARM},
+    "mark_honest": {"gender": "male", "personality": "honest", "prompt": MARK_HONEST},
+    "mark_boomer": {"gender": "male", "personality": "boomer", "prompt": MARK_BOOMER},
+    "mark_zoomer": {"gender": "male", "personality": "zoomer", "prompt": MARK_ZOOMER},
+    "mark_ex": {"gender": "male", "personality": "ex", "prompt": MARK_EX},
+    "mark_kpop": {"gender": "male", "personality": "kpop", "prompt": MARK_KPOP},
+    "mark_shopaholic": {"gender": "male", "personality": "shopaholic", "prompt": MARK_SHOPAHOLIC},
+    "mark_epersona": {"gender": "male", "personality": "epersona", "prompt": MARK_EPERSONA},
 }

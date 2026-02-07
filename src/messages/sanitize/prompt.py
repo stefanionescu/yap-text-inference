@@ -12,13 +12,14 @@ from __future__ import annotations
 
 import unicodedata
 
-from .common import _strip_escaped_quotes
-from ...config.limits import PROMPT_SANITIZE_MAX_CHARS
 from ...config.filters import BIDI_CHAR_PATTERN, CTRL_CHAR_PATTERN
+from ...config.limits import PROMPT_SANITIZE_MAX_CHARS
+from .common import _strip_escaped_quotes
 
 try:
     from ftfy import fix_text  # type: ignore[import-not-found]
 except Exception:  # pragma: no cover - ftfy is declared in requirements
+
     def fix_text(text: str) -> str:  # type: ignore
         """Fallback when ftfy is not available."""
         return text
@@ -64,4 +65,3 @@ class PromptSanitizer:
 
 
 __all__ = ["sanitize_prompt", "PromptSanitizer"]
-

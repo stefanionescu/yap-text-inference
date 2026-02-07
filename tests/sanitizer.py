@@ -25,7 +25,7 @@ def _ensure_test_env() -> None:
 
 _ensure_test_env()
 
-from src.messages.sanitize.stream import StreamingSanitizer, _sanitize_stream_chunk
+from src.messages.sanitize.stream import StreamingSanitizer, _sanitize_stream_chunk  # noqa: E402
 
 
 def _stream_chunks(text: str, splits: Sequence[int]) -> str:
@@ -43,9 +43,7 @@ def _stream_chunks(text: str, splits: Sequence[int]) -> str:
 
 
 def _sanitize_once(text: str) -> str:
-    sanitized, _, _ = _sanitize_stream_chunk(
-        text, prefix_pending=True, capital_pending=True, strip_leading_ws=True
-    )
+    sanitized, _, _ = _sanitize_stream_chunk(text, prefix_pending=True, capital_pending=True, strip_leading_ws=True)
     return sanitized.rstrip()
 
 
@@ -53,4 +51,5 @@ def _sanitize_once(text: str) -> str:
 def test_streaming_matches_single_pass(text: str, splits: list[int]):
     streamed = _stream_chunks(text, splits)
     expected = _sanitize_once(text)
-    assert streamed == expected
+    if streamed != expected:
+        raise AssertionError(f"sanitizer mismatch: {streamed!r} != {expected!r}")

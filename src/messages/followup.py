@@ -12,12 +12,12 @@ from typing import Any
 from fastapi import WebSocket
 
 from ..config import DEPLOY_CHAT
-from ..handlers.session import session_handler
-from ..tokens import trim_text_to_token_limit_chat
+from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from ..execution.chat.runner import run_chat_generation
+from ..handlers.session import session_handler
 from ..handlers.websocket.errors import send_error
 from ..handlers.websocket.helpers import stream_chat_response
-from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
+from ..tokens import trim_text_to_token_limit_chat
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ async def handle_followup_message(
             reason_code="followup_unavailable",
         )
         return
-    
+
     cfg = session_handler.get_session_config(session_id)
     if not cfg:
         await send_error(
@@ -91,12 +91,8 @@ async def handle_followup_message(
     # Synthesize the follow-up prompt for the chat model
     prefix = session_handler.get_screen_checked_prefix(session_id)
     # Trim analysis_text to fit within budget after prefix is added
-    effective_max = session_handler.get_effective_user_utt_max_tokens(
-        session_id, for_followup=True
-    )
-    trimmed_analysis = trim_text_to_token_limit_chat(
-        analysis_text, max_tokens=effective_max, keep="start"
-    )
+    effective_max = session_handler.get_effective_user_utt_max_tokens(session_id, for_followup=True)
+    trimmed_analysis = trim_text_to_token_limit_chat(analysis_text, max_tokens=effective_max, keep="start")
     user_utt = f"{prefix} {trimmed_analysis}".strip()
     # Track user utterance for pairing with assistant response later.
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)

@@ -33,7 +33,7 @@ DEPLOY_MODE="${DEPLOY_MODE:-both}"
 
 if [ "${DEPLOY_MODE}" = "tool" ]; then
   export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
-  
+
   deps_export_pip
   ensure_ca_certificates
   export_ca_bundle_env_vars
@@ -41,7 +41,7 @@ if [ "${DEPLOY_MODE}" = "tool" ]; then
   ensure_virtualenv || exit 1
   ensure_pip_in_venv || exit 1
   activate_venv "${VENV_DIR}" || exit 1
-  
+
   # Install lightweight tool-only requirements
   # Apply tool noise filter unless SHOW_TOOL_LOGS is enabled
   log_info "[deps] Installing tool-only requirements..."
@@ -64,7 +64,7 @@ for line in sys.stdin:
       exit 1
     }
   fi
-  
+
   log_info "[deps] ✓ Tool-only dependencies installed"
   exit 0
 fi
@@ -83,9 +83,9 @@ if [ "${ENGINE_LOWER}" = "trt" ]; then
   source "${LIB_DIR}/deps/check.sh"
   source "${SCRIPT_DIR}/../engines/trt/detect.sh"
   source "${SCRIPT_DIR}/../engines/trt/install.sh"
-  
+
   export_env
-  
+
   if ! trt_assert_cuda13_driver "deps"; then
     log_err "[cuda] ✗ CUDA 13.x required for TensorRT-LLM"
     exit 1

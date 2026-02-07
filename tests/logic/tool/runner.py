@@ -7,13 +7,13 @@ concurrency, and reporting results.
 
 from __future__ import annotations
 
+from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT, PROGRESS_BAR_WIDTH
 from tests.helpers.prompt import select_chat_prompt
-from tests.config import PROGRESS_BAR_WIDTH, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.state import CaseResult, RunnerConfig, ToolTestCase
 
 from .cases import build_cases
 from .executor import run_all_cases
-from tests.state import CaseResult, RunnerConfig, ToolTestCase
-from .reporting import save_logs, print_summary, print_case_results
+from .reporting import print_case_results, print_summary, save_logs
 
 # ============================================================================
 # Internal Helpers
@@ -27,25 +27,26 @@ def _filter_by_step_count(
     """Filter cases by step count, returning filtered list and skip count."""
     if step_cap is None:
         return cases, 0
-    
+
     allowed: list[ToolTestCase] = []
     skipped_labels: list[str] = []
-    
+
     for case in cases:
         if len(case.steps) <= step_cap:
             allowed.append(case)
         else:
             skipped_labels.append(case.label or case.name)
-    
+
     skipped_count = len(skipped_labels)
     if skipped_count > 0:
         print(f"Skipping {skipped_count} tool cases exceeding {step_cap} steps")
-    
+
     return allowed, skipped_count
 
 
 def _make_progress_renderer() -> callable:
     """Create a progress callback for the progress bar."""
+
     def render(completed: int, total: int) -> None:
         total = max(1, total)
         ratio = min(max(completed / total, 0.0), 1.0)
@@ -54,6 +55,7 @@ def _make_progress_renderer() -> callable:
         line = f"\rProgress [{bar}] {completed}/{total} ({ratio * 100:5.1f}%)"
         end = "\n" if completed >= total else ""
         print(line, end=end, flush=True)
+
     return render
 
 
@@ -135,7 +137,7 @@ async def run_suite(
     )
     print_case_results(results, include_successes=show_successes)
     print_summary(results)
-    
+
     # Save logs to file
     log_file = save_logs(
         results,
@@ -146,7 +148,7 @@ async def run_suite(
         include_successes=show_successes,
     )
     print(f"\nLogs saved to: {log_file}")
-    
+
     return results
 
 

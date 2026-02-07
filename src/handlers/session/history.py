@@ -21,25 +21,25 @@ from __future__ import annotations
 
 import uuid
 
-from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
+from src.tokens import build_user_history_for_tool, count_tokens_chat, count_tokens_tool
 
+from .parsing import parse_history_as_tuples, parse_history_messages, parse_history_text
 from .state import HistoryTurn, SessionState
-from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
     """Render history turns to text format for prompt building.
-    
+
     Converts structured HistoryTurn objects into the standard text format:
         User: <message>
         Assistant: <response>
-    
+
     Each turn is separated by a blank line.
-    
+
     Args:
         turns: List of HistoryTurn objects to render.
-        
+
     Returns:
         Formatted history text, or empty string if no turns.
     """
@@ -65,50 +65,49 @@ def trim_history(
     target_tokens: int | None = None,
 ) -> None:
     """Trim history when it exceeds the configured trigger.
-    
+
     Uses a two-threshold (hysteresis) approach by default:
     - Triggers when tokens exceed HISTORY_MAX_TOKENS
     - Trims down to TRIMMED_HISTORY_LENGTH
-    
+
     Supplying a lower trigger (e.g., TRIMMED_HISTORY_LENGTH) forces eager
     trimming, which is useful when importing client-provided history.
-    
+
     When classifier-only, no trimming is done here - the classifier adapter
     handles its own trimming using its own tokenizer.
     """
     if not state.history_turns:
         return
-    
+
     if not DEPLOY_CHAT:
         if DEPLOY_TOOL:
             _trim_history_tool(state)
         return
-    
+
     effective_trigger = trigger_tokens or HISTORY_MAX_TOKENS
     effective_target = target_tokens or TRIMMED_HISTORY_LENGTH
-    if effective_target > effective_trigger:
-        effective_target = effective_trigger
-    
+    effective_target = min(effective_target, effective_trigger)
+
     rendered = render_history(state.history_turns)
     if not rendered:
         state.history_turns = []
         return
-    
+
     tokens = count_tokens_chat(rendered)
     # Only start trimming if we exceed the trigger threshold
     if tokens <= effective_trigger:
         return
-    
+
     # Calculate tokens to remove and estimate turns to drop
     tokens_to_remove = tokens - effective_target
     avg_tokens_per_turn = tokens // len(state.history_turns)
     estimated_drops = max(1, tokens_to_remove // max(1, avg_tokens_per_turn))
-    
+
     # Drop estimated turns in one batch (capped to leave at least 1 turn)
     drops = min(estimated_drops, len(state.history_turns) - 1)
     if drops > 0:
         state.history_turns = state.history_turns[drops:]
-    
+
     # Verify and adjust if still over target (usually 0-1 more iterations)
     rendered = render_history(state.history_turns)
     tokens = count_tokens_chat(rendered) if rendered else 0
@@ -165,7 +164,7 @@ def render_tool_history_text(turns: list[HistoryTurn]) -> str:
 
 def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
     """Extract raw user texts from history turns.
-    
+
     Returns list of user utterances (most recent last).
     Trimming is handled by the classifier adapter using its own tokenizer.
     """
@@ -176,29 +175,29 @@ def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
 
 class HistoryController:
     """History operations for SessionState.
-    
+
     Provides a clean interface for managing conversation history with
     automatic trimming. All read operations trigger trimming to ensure
     the history fits within token budgets.
-    
+
     This class is stateless - all state is stored in SessionState objects.
     A single HistoryController instance is typically shared across sessions.
     """
 
     def get_text(self, state: SessionState) -> str:
         """Get full rendered history (User + Assistant turns).
-        
+
         Triggers trimming before rendering to ensure budget compliance.
-        
+
         Args:
             state: The session state containing history turns.
-            
+
         Returns:
             Formatted history text.
         """
         trim_history(state)
         return render_history(state.history_turns)
-    
+
     def get_user_texts(self, state: SessionState) -> list[str]:
         """Get raw user texts (no trimming)."""
         trim_history(state)
@@ -216,7 +215,7 @@ class HistoryController:
 
     def set_messages(self, state: SessionState, messages: list[dict]) -> str:
         """Set history from JSON message array [{role, content}, ...].
-        
+
         Parses messages, trims to fit token budget, returns rendered history.
         """
         state.history_turns = parse_history_messages(messages)
@@ -252,12 +251,14 @@ class HistoryController:
 
         if not user and not assistant:
             return render_history(state.history_turns)
-        
-        state.history_turns.append(HistoryTurn(
-            turn_id=turn_id or uuid.uuid4().hex,
-            user=user,
-            assistant=assistant,
-        ))
+
+        state.history_turns.append(
+            HistoryTurn(
+                turn_id=turn_id or uuid.uuid4().hex,
+                user=user,
+                assistant=assistant,
+            )
+        )
         trim_history(state)
         return render_history(state.history_turns)
 

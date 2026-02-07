@@ -108,11 +108,11 @@ if is_trt_prequant "${MODEL_ID}"; then
     QFORMAT="${guessed_qformat}"
     _trt_export_quant_env "${QFORMAT}"
   fi
-  
+
   # Check for pre-built engine in the HF repo FIRST
   PREBUILT_ENGINE_LABEL=""
   PREBUILT_ENGINE_LABEL=$(find_compatible_engine "${MODEL_ID}") || true
-  
+
   if [ -n "${PREBUILT_ENGINE_LABEL}" ]; then
     # Download the pre-built engine - skip engine building later
     log_info "[quant] Using pre-built engine: ${PREBUILT_ENGINE_LABEL}"
@@ -121,14 +121,14 @@ if is_trt_prequant "${MODEL_ID}"; then
       PREBUILT_ENGINE_LABEL=""
     }
   fi
-  
+
   # Download pre-quantized checkpoint (needed for tokenizer and config even if using pre-built engine)
   CHECKPOINT_DIR=$(download_prequantized "${MODEL_ID}")
   if [ -z "${CHECKPOINT_DIR}" ]; then
     log_err "[quant] ✗ Failed to download pre-quantized model"
     exit 1
   fi
-  
+
   TRT_CHECKPOINT_DIR="${CHECKPOINT_DIR}"
   export TRT_CHECKPOINT_DIR
 
@@ -137,7 +137,7 @@ if is_trt_prequant "${MODEL_ID}"; then
     QFORMAT="${detected_qformat}"
     _trt_export_quant_env "${QFORMAT}"
   fi
-  
+
   # If we have a pre-built engine, use it and skip the engine build section later
   if [ -n "${PREBUILT_ENGINE_LABEL}" ] && [ -n "${PREBUILT_ENGINE_DIR:-}" ]; then
     TRT_ENGINE_DIR="${PREBUILT_ENGINE_DIR}"
@@ -148,7 +148,7 @@ if is_trt_prequant "${MODEL_ID}"; then
 else
   # Get checkpoint directory
   CHECKPOINT_DIR=$(get_checkpoint_dir "${MODEL_ID}" "${QFORMAT}")
-  
+
   # Check if checkpoint already exists
   if [ -d "${CHECKPOINT_DIR}" ] && [ -f "${CHECKPOINT_DIR}/config.json" ]; then
     if [ "${FORCE_REBUILD:-false}" != "true" ]; then
@@ -159,7 +159,7 @@ else
       log_info "[quant] FORCE_REBUILD=true, will re-quantize"
     fi
   fi
-  
+
   # Quantize if needed
   if [ -z "${TRT_CHECKPOINT_DIR:-}" ]; then
     if ! quantize_model "${MODEL_ID}" "${CHECKPOINT_DIR}" "${QFORMAT}"; then
@@ -221,7 +221,7 @@ fi
 
 # Save engine dir for server startup
 mkdir -p "${ROOT_DIR}/.run"
-echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" > "${ROOT_DIR}/.run/trt_engine_dir.env"
+echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" >"${ROOT_DIR}/.run/trt_engine_dir.env"
 
 # Optional: Push to HuggingFace (only when --push-quant flag is passed)
 if [ "${HF_AWQ_PUSH:-0}" = "1" ]; then

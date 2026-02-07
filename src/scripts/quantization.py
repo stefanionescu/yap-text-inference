@@ -6,24 +6,24 @@ Works with both TensorRT-LLM and vLLM quantization workflows.
 
 from __future__ import annotations
 
-import os
-import sys
-import runpy
 import argparse
+import contextlib
+import os
+import runpy
+import sys
 from collections.abc import Sequence
 
 # ============================================================================
 # Internal Helpers
 # ============================================================================
 
+
 def _apply_filters() -> None:
     """Apply log filters to quiet noisy dependencies."""
-    try:
-        from src.scripts.filters import configure
+    with contextlib.suppress(Exception):
+        from src.scripts.filters import configure  # noqa: PLC0415
+
         configure()
-    except Exception:
-        # Logging noise suppression is best-effort; do not block work.
-        pass
 
 
 def _apply_patch_script(patch_script: str | None) -> None:
@@ -39,7 +39,8 @@ def _apply_patch_script(patch_script: str | None) -> None:
 def _enable_hf_progress() -> None:
     """Re-enable HuggingFace progress bars (undo filter suppression)."""
     try:
-        from src.scripts.filters.hf import enable_hf_progress
+        from src.scripts.filters.hf import enable_hf_progress  # noqa: PLC0415
+
         enable_hf_progress()
         print("[model] HuggingFace progress bars enabled", file=sys.stderr)
     except Exception as e:
@@ -50,11 +51,12 @@ def _enable_hf_progress() -> None:
 # Model Download
 # ============================================================================
 
+
 def download_model(model_id: str, target_dir: str) -> None:
     """Download a Hugging Face model snapshot into target_dir."""
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
 
-    from src.helpers.env import env_flag
+    from src.helpers.env import env_flag  # noqa: PLC0415
 
     print("[model] Fetching repository metadata...", file=sys.stderr)
 
@@ -76,11 +78,11 @@ def download_model(model_id: str, target_dir: str) -> None:
 
 def download_prequantized(model_id: str, target_dir: str) -> None:
     """Download pre-quantized checkpoint assets from Hugging Face."""
-    import time
+    import time  # noqa: PLC0415
 
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
 
-    from src.helpers.env import env_flag
+    from src.helpers.env import env_flag  # noqa: PLC0415
 
     print("[model] Fetching repository metadata...", file=sys.stderr)
 
@@ -114,6 +116,7 @@ def download_prequantized(model_id: str, target_dir: str) -> None:
 # Quantization Runner
 # ============================================================================
 
+
 def run_quantization(
     script_path: str,
     script_args: list[str],
@@ -133,6 +136,7 @@ def run_quantization(
 # ============================================================================
 # CLI
 # ============================================================================
+
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Quantization CLI utilities")
@@ -183,4 +187,3 @@ __all__ = [
     "run_quantization",
     "main",
 ]
-

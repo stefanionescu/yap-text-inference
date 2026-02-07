@@ -52,6 +52,7 @@ def magenta(text: str) -> str:
 # Visual separators
 # ============================================================================
 
+
 def section_header(title: str, width: int = 60) -> str:
     """Create a prominent section header."""
     padding = width - len(title) - 4
@@ -76,7 +77,7 @@ def exchange_header(idx: int | None = None, persona: str | None = None, gender: 
         parts.append(persona)
     elif gender:
         parts.append(gender)
-    
+
     label = " ".join(parts) if parts else "Exchange"
     return dim(f"┌─ {label} {'─' * (50 - len(label))}")
 
@@ -89,6 +90,7 @@ def exchange_footer() -> str:
 # ============================================================================
 # Message formatting
 # ============================================================================
+
 
 def format_user(text: str) -> str:
     """Format a user message."""
@@ -103,38 +105,39 @@ def format_assistant(text: str) -> str:
 def format_metrics_inline(metrics: dict[str, Any]) -> str:
     """Format metrics as a compact inline string."""
     parts = []
-    
+
     ttfb = metrics.get("ttfb_ms") or metrics.get("ttfb_chat_ms")
     if ttfb is not None:
         parts.append(f"ttfb={ttfb:.0f}ms")
-    
+
     tool_ttfb = metrics.get("ttfb_toolcall_ms")
     if tool_ttfb is not None:
         parts.append(f"tool={tool_ttfb:.0f}ms")
-    
+
     first_3 = metrics.get("time_to_first_3_words_ms")
     if first_3 is not None:
         parts.append(f"3w={first_3:.0f}ms")
-    
+
     first_sent = metrics.get("time_to_first_complete_sentence_ms")
     if first_sent is not None:
         parts.append(f"sent={first_sent:.0f}ms")
-    
+
     total = metrics.get("total_ms")
     if total is not None:
         parts.append(f"total={total:.0f}ms")
-    
+
     chunks = metrics.get("chunks")
     chars = metrics.get("chars")
     if chunks is not None and chars is not None:
         parts.append(f"{chunks}chunks/{chars}chars")
-    
+
     return dim(" · ".join(parts)) if parts else ""
 
 
 # ============================================================================
 # Test result formatting
 # ============================================================================
+
 
 def format_pass(label: str) -> str:
     """Format a passing test result."""
@@ -155,6 +158,7 @@ def format_info(text: str) -> str:
 # ============================================================================
 # TTFB summary formatting
 # ============================================================================
+
 
 def format_ttfb_summary(
     kind: str,
@@ -178,6 +182,7 @@ def format_ttfb_summary(
 # Connection test formatting
 # ============================================================================
 
+
 def connection_test_header(name: str) -> str:
     """Create a connection test section header."""
     return f"\n{bold(f'▶ {name.upper()}')} connection test"
@@ -200,16 +205,31 @@ def connection_fail(label: str, reason: str) -> str:
 
 __all__ = [
     # Colors
-    "dim", "bold", "green", "red", "cyan", "yellow", "magenta",
+    "dim",
+    "bold",
+    "green",
+    "red",
+    "cyan",
+    "yellow",
+    "magenta",
     # Separators
-    "section_header", "test_header", "exchange_header", "exchange_footer",
+    "section_header",
+    "test_header",
+    "exchange_header",
+    "exchange_footer",
     # Messages
-    "format_user", "format_assistant", "format_metrics_inline",
+    "format_user",
+    "format_assistant",
+    "format_metrics_inline",
     # Results
-    "format_pass", "format_fail", "format_info",
+    "format_pass",
+    "format_fail",
+    "format_info",
     # TTFB
     "format_ttfb_summary",
     # Connections
-    "connection_test_header", "connection_status", "connection_pass", "connection_fail",
+    "connection_test_header",
+    "connection_status",
+    "connection_pass",
+    "connection_fail",
 ]
-

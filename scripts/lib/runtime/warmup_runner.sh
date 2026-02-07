@@ -35,7 +35,7 @@ warmup_parse_persona_spec() {
     if [ -z "${entry}" ]; then
       continue
     fi
-    if [[ "${entry}" == *:* ]]; then
+    if [[ ${entry} == *:* ]]; then
       warmup_add_persona_variant "${entry%%:*}" "${entry#*:}"
     else
       warmup_add_persona_variant "${entry}" ""
@@ -67,7 +67,7 @@ warmup_detect_persona_variants() {
       if [ -z "${line}" ]; then
         continue
       fi
-      if [[ "${line}" == *:* ]]; then
+      if [[ ${line} == *:* ]]; then
         warmup_add_persona_variant "${line%%:*}" "${line#*:}"
       else
         warmup_add_persona_variant "${line}" ""
@@ -135,7 +135,7 @@ warmup_run_with_retries() {
   local run_log=""
   local last_log=""
 
-  for (( attempt=1; attempt<=retries; attempt++ )); do
+  for ((attempt = 1; attempt <= retries; attempt++)); do
     run_log="${log_dir}/${log_prefix}_attempt${attempt}.log"
     last_log="${run_log}"
     warmup_log_internal "${label}: attempt ${attempt} → ${run_log}"
@@ -156,7 +156,7 @@ warmup_run_with_retries() {
 
 # Internal warmup log (to file only).
 warmup_log_internal() {
-  echo "[warmup] $*" >> "${WARMUP_LOG_FILE:-/dev/null}"
+  echo "[warmup] $*" >>"${WARMUP_LOG_FILE:-/dev/null}"
 }
 
 # Log phase results to both stderr (terminal) and server.log for visibility.
@@ -182,7 +182,7 @@ warmup_log_phase_result() {
   fi
   local server_log="${ROOT_DIR:-}/server.log"
   if [ -n "${ROOT_DIR:-}" ]; then
-    echo "${line}" >> "${server_log}"
+    echo "${line}" >>"${server_log}"
   fi
 }
 
@@ -241,17 +241,23 @@ warmup_choose_python() {
 warmup_detect_prompt_mode() {
   local deploy_mode="${DEPLOY_MODE:-}"
   case "${deploy_mode}" in
-    chat) echo "chat"; return 0 ;;
-    tool) echo "tool"; return 0 ;;
+    chat)
+      echo "chat"
+      return 0
+      ;;
+    tool)
+      echo "tool"
+      return 0
+      ;;
   esac
 
   local chat_flag="${DEPLOY_CHAT:-}"
   local tool_flag="${DEPLOY_TOOL:-}"
-  if [[ "${chat_flag}" = "1" && "${tool_flag}" = "1" ]]; then
+  if [[ ${chat_flag} == "1" && ${tool_flag} == "1" ]]; then
     echo "both"
-  elif [[ "${chat_flag}" = "1" ]]; then
+  elif [[ ${chat_flag} == "1" ]]; then
     echo "chat"
-  elif [[ "${tool_flag}" = "1" ]]; then
+  elif [[ ${tool_flag} == "1" ]]; then
     echo "tool"
   else
     echo "both"
@@ -269,7 +275,7 @@ warmup_detect_max_conn() {
   local root_dir="${2:-.}"
   local default_fallback="${3:-8}"
 
-  if [[ -n "${MAX_CONCURRENT_CONNECTIONS:-}" ]]; then
+  if [[ -n ${MAX_CONCURRENT_CONNECTIONS:-} ]]; then
     echo "${MAX_CONCURRENT_CONNECTIONS}"
     return 0
   fi
@@ -282,7 +288,7 @@ sys.path.insert(0, '${root_dir}')
 from src.config.limits import MAX_CONCURRENT_CONNECTIONS
 print(MAX_CONCURRENT_CONNECTIONS)
 " 2>/dev/null)"; then
-    if [[ -n "${py_output}" && "${py_output}" =~ ^[0-9]+$ ]]; then
+    if [[ -n ${py_output} && ${py_output} =~ ^[0-9]+$ ]]; then
       echo "${py_output}"
       return 0
     fi
@@ -291,4 +297,3 @@ print(MAX_CONCURRENT_CONNECTIONS)
   echo "${default_fallback}"
   return 1
 }
-

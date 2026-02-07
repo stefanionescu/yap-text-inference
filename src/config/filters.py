@@ -10,16 +10,16 @@ import re
 
 # Download-related progress bar groups in huggingface_hub
 HF_DOWNLOAD_GROUPS: tuple[str, ...] = (
-    "huggingface_hub.http_get",           # Standard downloads (snapshot_download/hf_hub_download)
-    "huggingface_hub.xet_get",            # Xet-accelerated downloads
+    "huggingface_hub.http_get",  # Standard downloads (snapshot_download/hf_hub_download)
+    "huggingface_hub.xet_get",  # Xet-accelerated downloads
     "huggingface_hub.snapshot_download",  # Parallel snapshot fetch progress
 )
 
 # Upload-related progress bar groups in huggingface_hub
 HF_UPLOAD_GROUPS: tuple[str, ...] = (
-    "huggingface_hub.lfs_upload",         # LFS file uploads
-    "huggingface_hub.hf_file_system",     # HfFileSystem operations
-    "huggingface_hub.hf_api",             # HfApi upload methods
+    "huggingface_hub.lfs_upload",  # LFS file uploads
+    "huggingface_hub.hf_file_system",  # HfFileSystem operations
+    "huggingface_hub.hf_api",  # HfApi upload methods
 )
 
 # All progress bar groups combined
@@ -43,7 +43,6 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"Loading extension modelopt", re.IGNORECASE),
     re.compile(r"Loaded extension modelopt", re.IGNORECASE),
     re.compile(r"current rank:\s*\d+,\s*tp rank:\s*\d+,\s*pp rank:\s*\d+", re.IGNORECASE),
-
     # === Engine initialization noise ===
     # Dated TRT-LLM logs: [01/01/2026-17:31:12] [TRT-LLM] [I/W] message
     re.compile(r"^\[\d{2}/\d{2}/\d{4}-\d{2}:\d{2}:\d{2}\]\s*\[TRT-LLM\]\s*\[[IWE]\]"),
@@ -96,7 +95,6 @@ TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # LLM backend selection
     re.compile(r"Using LLM with TensorRT backend", re.IGNORECASE),
     re.compile(r"Using default gpus_per_node:", re.IGNORECASE),
-
     # === Application TRT startup logs ===
     # Python logging format: INFO YYYY-MM-DD HH:MM:SS,mmm [module:line] message
     # Suppress verbose startup logs from src.engines.trt.* modules
@@ -132,11 +130,12 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"The argument `?trust_remote_code`? is to be used with Auto classes", re.IGNORECASE),
     # Multiple distributions warning (pip/packaging)
     re.compile(r"Multiple distributions found for package", re.IGNORECASE),
-
     # === Application vLLM startup logs ===
     # Python logging format: INFO YYYY-MM-DD HH:MM:SS,mmm [module:line] message
     # Suppress verbose startup logs from src.engines.vllm.* modules
-    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args|tokenizer|memory|factory):\d+\]"),
+    re.compile(
+        r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args|tokenizer|memory|factory):\d+\]"
+    ),
     # Suppress verbose startup logs from src.quantization.vllm.* modules
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.quantization\.vllm\.[\w.]+:\d+\]"),
     # Warmup logs specifically for vLLM
@@ -214,34 +213,34 @@ HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 
 EMOJI_PATTERN = re.compile(
     "["
-    "\U0001F1E6-\U0001F1FF"
-    "\U0001F300-\U0001F5FF"
-    "\U0001F600-\U0001F64F"
-    "\U0001F680-\U0001F6FF"
-    "\U0001F700-\U0001F77F"
-    "\U0001F780-\U0001F7FF"
-    "\U0001F800-\U0001F8FF"
-    "\U0001F900-\U0001F9FF"
-    "\U0001FA00-\U0001FA6F"
-    "\U0001FA70-\U0001FAFF"
-    "\u2600-\u26FF"
-    "\u2700-\u27BF"
+    "\U0001f1e6-\U0001f1ff"
+    "\U0001f300-\U0001f5ff"
+    "\U0001f600-\U0001f64f"
+    "\U0001f680-\U0001f6ff"
+    "\U0001f700-\U0001f77f"
+    "\U0001f780-\U0001f7ff"
+    "\U0001f800-\U0001f8ff"
+    "\U0001f900-\U0001f9ff"
+    "\U0001fa00-\U0001fa6f"
+    "\U0001fa70-\U0001faff"
+    "\u2600-\u26ff"
+    "\u2700-\u27bf"
     "]",
     flags=re.UNICODE,
 )
 
 EMOTICON_PATTERN = re.compile(
     r"(?<![A-Za-z0-9])(?:"
-    r"[:=;8][-^]?[)dDpP(/\\oO]|"    # Basic: :) :D :P :O :( :/ :\ and variants
-    r":'\(|"                        # Crying: :'(
-    r"<3|"                          # Heart
-    r":-?\||"                       # Neutral: :| :-|
-    r":-?/|"                        # Uncertain: :/ :-/
-    r":3(?!\d)|"                    # Cat face :3 (not :30 time)
-    r";-?[)pPdD]|"                  # Wink variants: ;) ;P ;D ;-) ;-P
-    r"\^_\^|"                       # Japanese happy
-    r"T_T|"                         # Crying
-    r"[xX][dD](?![a-zA-Z])|"        # XD xD
+    r"[:=;8][-^]?[)dDpP(/\\oO]|"  # Basic: :) :D :P :O :( :/ :\ and variants
+    r":'\(|"  # Crying: :'(
+    r"<3|"  # Heart
+    r":-?\||"  # Neutral: :| :-|
+    r":-?/|"  # Uncertain: :/ :-/
+    r":3(?!\d)|"  # Cat face :3 (not :30 time)
+    r";-?[)pPdD]|"  # Wink variants: ;) ;P ;D ;-) ;-P
+    r"\^_\^|"  # Japanese happy
+    r"T_T|"  # Crying
+    r"[xX][dD](?![a-zA-Z])|"  # XD xD
     r"\(?\u256F\u00B0\u25A1\u00B0\)?\u256F\uFE35\s*\u253B\u2501\u253B"  # Table flip
     r")",
     re.IGNORECASE,

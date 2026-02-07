@@ -14,10 +14,10 @@ Environment Variables:
         - 'both': Deploy chat LLM and tool classifier
         - 'chat': Deploy only the chat LLM
         - 'tool': Deploy only the tool classifier
-    
+
     CHAT_MODEL: HuggingFace model ID or local path for chat
         Example: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
-    
+
     TOOL_MODEL: HuggingFace model ID or local path for classifier
         Example: "yapwithai/yap-modernbert-screenshot-intent"
 """
@@ -59,4 +59,3 @@ __all__ = [
     "CHAT_MODEL",
     "TOOL_MODEL",
 ]
-

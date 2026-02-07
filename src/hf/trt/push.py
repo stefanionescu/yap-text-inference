@@ -3,19 +3,19 @@
 
 from __future__ import annotations
 
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 from src.helpers.env import env_flag
 
 if not env_flag("SHOW_HF_LOGS", False):
     from src.scripts.filters import configure
+
     configure()
 
 from src.hf import get_hf_api, verify_repo_exists
 from src.quantization.trt import get_engine_label
-
 from src.state import TRTPushJob
 
 
@@ -68,39 +68,38 @@ def push_engine_to_hf(
     engine_path = Path(engine_dir)
     if not engine_path.is_dir():
         print(f"[trt-hf] Error: Engine directory not found: {engine_dir}")
-        return False
-
-    if not list(engine_path.glob("rank*.engine")):
+    elif not list(engine_path.glob("rank*.engine")):
         print(f"[trt-hf] Error: No rank*.engine files found in {engine_dir}")
-        return False
+    else:
+        try:
+            engine_label = get_engine_label(engine_path)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[trt-hf] Error: Could not determine engine label: {exc}")
+            return False
 
-    try:
-        engine_label = get_engine_label(engine_path)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[trt-hf] Error: Could not determine engine label: {exc}")
-        return False
+        if not verify_repo_exists(api, repo_id, token):
+            return False
 
-    if not verify_repo_exists(api, repo_id, token):
-        return False
+        engines_path = f"trt-llm/engines/{engine_label}"
+        print("[trt-hf] Uploading engine...")
 
-    engines_path = f"trt-llm/engines/{engine_label}"
-    print("[trt-hf] Uploading engine...")
+        try:
+            api.upload_folder(
+                folder_path=str(engine_path),
+                path_in_repo=engines_path,
+                repo_id=repo_id,
+                token=token,
+                revision=branch,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[trt-hf] Error: Failed to upload engine: {exc}")
+            return False
 
-    try:
-        api.upload_folder(
-            folder_path=str(engine_path),
-            path_in_repo=engines_path,
-            repo_id=repo_id,
-            token=token,
-            revision=branch,
-        )
-    except Exception as exc:  # noqa: BLE001
-        print(f"[trt-hf] Error: Failed to upload engine: {exc}")
-        return False
+        print(f"[trt-hf] ✓ Engine uploaded to {repo_id}")
+        print(f"[trt-hf]   Path: {engines_path}")
+        return True
 
-    print(f"[trt-hf] ✓ Engine uploaded to {repo_id}")
-    print(f"[trt-hf]   Path: {engines_path}")
-    return True
+    return False
 
 
 # ============================================================================

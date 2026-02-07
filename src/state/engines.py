@@ -15,7 +15,7 @@ class EngineOutput:
     finished: bool = False
 
     @classmethod
-    def from_vllm(cls, output: Any) -> "EngineOutput":
+    def from_vllm(cls, output: Any) -> EngineOutput:
         if not getattr(output, "outputs", None):
             return cls(text="", finished=False)
         out = output.outputs[0]
@@ -26,7 +26,7 @@ class EngineOutput:
         )
 
     @classmethod
-    def from_trt(cls, chunk: Any, prev_text: str = "") -> "EngineOutput":
+    def from_trt(cls, chunk: Any, prev_text: str = "") -> EngineOutput:
         if not getattr(chunk, "outputs", None):
             return cls(text=prev_text, finished=False)
         out = chunk.outputs[0]

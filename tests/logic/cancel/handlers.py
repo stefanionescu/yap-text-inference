@@ -10,19 +10,19 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from tests.state import StreamState
 from tests.helpers.websocket import finalize_metrics
+from tests.state import StreamState
 
 
 def build_cancel_handlers(state: StreamState) -> dict[str, Any]:
     """Build message handlers for the cancel phase.
-    
+
     These handlers track basic state without timing metrics since
     the cancel phase is interrupted before completion.
-    
+
     Args:
         state: Mutable stream state to update as messages arrive.
-        
+
     Returns:
         Dict mapping message types to handler functions.
     """
@@ -71,13 +71,13 @@ def build_cancel_handlers(state: StreamState) -> dict[str, Any]:
 
 def build_recovery_handlers(state: StreamState) -> dict[str, Any]:
     """Build message handlers for the recovery phase.
-    
+
     These handlers track full timing metrics since the recovery
     phase runs to completion.
-    
+
     Args:
         state: Mutable stream state to update as messages arrive.
-        
+
     Returns:
         Dict mapping message types to handler functions.
     """
