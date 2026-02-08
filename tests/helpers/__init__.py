@@ -4,8 +4,40 @@ This module re-exports the most commonly used symbols from the helpers
 submodules. Import from here when you need standard test utilities.
 """
 
-from .cli import add_sampling_args, add_connection_args, build_sampling_payload
+from .setup import setup_repo_path
+from .rate import SlidingWindowPacer
+from .selection import choose_message
 from .env import get_int_env, get_float_env
+from .prompt import normalize_gender, select_chat_prompt
+from .concurrency import distribute_requests, sanitize_concurrency
+from .regex import word_count_at_least, contains_complete_sentence
+from .cli import add_sampling_args, add_connection_args, build_sampling_payload
+from .metrics import (
+    round_ms,
+    secs_to_ms,
+    record_ttfb,
+    error_result,
+    result_to_dict,
+    success_result,
+    has_ttfb_samples,
+    emit_ttfb_summary,
+    create_ttfb_aggregator,
+)
+from .websocket import (
+    recv_raw,
+    record_token,
+    with_api_key,
+    iter_messages,
+    parse_message,
+    consume_stream,
+    create_tracker,
+    record_toolcall,
+    send_client_end,
+    dispatch_message,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
+)
 from .fmt import (
     dim,
     red,
@@ -26,9 +58,6 @@ from .fmt import (
     format_ttfb_summary,
     format_metrics_inline,
 )
-from .rate import SlidingWindowPacer
-from .regex import word_count_at_least, contains_complete_sentence
-from .setup import setup_repo_path
 from .errors import (
     ServerError,
     StreamError,
@@ -47,35 +76,6 @@ from .errors import (
     ServerAtCapacityError,
     ConnectionRejectedError,
 )
-from .prompt import normalize_gender, select_chat_prompt
-from .metrics import (
-    round_ms,
-    secs_to_ms,
-    record_ttfb,
-    error_result,
-    result_to_dict,
-    success_result,
-    has_ttfb_samples,
-    emit_ttfb_summary,
-    create_ttfb_aggregator,
-)
-from .selection import choose_message
-from .websocket import (
-    recv_raw,
-    record_token,
-    with_api_key,
-    iter_messages,
-    parse_message,
-    consume_stream,
-    create_tracker,
-    record_toolcall,
-    send_client_end,
-    dispatch_message,
-    finalize_metrics,
-    build_start_payload,
-    connect_with_retries,
-)
-from .concurrency import distribute_requests, sanitize_concurrency
 
 __all__ = [
     # cli

@@ -6,9 +6,9 @@ from collections.abc import Callable
 
 from src.errors import ValidationError
 
-from .input import normalize_gender, normalize_personality, is_gender_empty_or_null, is_personality_empty_or_null
-from ..config import PERSONALITY_MAX_LEN, SCREEN_PREFIX_MAX_CHARS
 from .sanitize.prompt import sanitize_prompt
+from ..config import PERSONALITY_MAX_LEN, SCREEN_PREFIX_MAX_CHARS
+from .input import normalize_gender, normalize_personality, is_gender_empty_or_null, is_personality_empty_or_null
 
 
 def validate_required_gender(raw_gender: str | None) -> str:

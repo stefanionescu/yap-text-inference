@@ -7,6 +7,7 @@ implementation modular.
 
 from .base import TestClientError
 from .misc import StreamError, InputClosedError, MessageParseError, PromptSelectionError
+from .connection import ConnectionError, IdleTimeoutError, ConnectionClosedError, ConnectionRejectedError
 from .server import (
     ServerError,
     RateLimitError,
@@ -16,7 +17,6 @@ from .server import (
     InvalidMessageError,
     ServerAtCapacityError,
 )
-from .connection import ConnectionError, IdleTimeoutError, ConnectionClosedError, ConnectionRejectedError
 
 __all__ = [
     "TestClientError",

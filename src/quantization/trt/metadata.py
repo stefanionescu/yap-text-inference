@@ -20,8 +20,8 @@ from src.state import EnvironmentInfo
 from src.config import trt as trt_config
 from src.hf.license import compute_license_info
 
-from .label import EngineLabelError, _env_int, _env_str, get_engine_label
 from .detection import get_compute_capability_info
+from .label import EngineLabelError, _env_int, _env_str, get_engine_label
 
 # ============================================================================
 # Base Model Detection

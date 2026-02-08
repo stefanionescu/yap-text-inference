@@ -40,12 +40,12 @@ import logging
 from typing import Any
 from collections.abc import Callable, Awaitable, AsyncGenerator
 
-from src.state import CancelCheck, ChatStreamConfig
 from src.errors import StreamCancelledError
 from src.config.logging import CHAT_STREAM_LABEL
+from src.state import CancelCheck, ChatStreamConfig
 
-from ..compat import timeout as async_timeout
 from ...engines.base import BaseEngine
+from ..compat import timeout as async_timeout
 
 logger = logging.getLogger(__name__)
 

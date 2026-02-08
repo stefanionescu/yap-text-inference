@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from .base import TestClientError
 from .server import ServerError
+from .base import TestClientError
 
 IDLE_TIMEOUT_CLOSE_CODE = 4000
 

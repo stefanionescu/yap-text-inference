@@ -24,8 +24,8 @@ and proper cleanup when connections close.
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, cast
 from collections.abc import Callable
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from .state import SessionState

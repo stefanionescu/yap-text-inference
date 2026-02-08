@@ -57,6 +57,9 @@ configure_log_filters()
 from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
+from .helpers.validation import validate_env  # noqa: E402
+from .config.logging import configure_logging  # noqa: E402
+from .handlers.websocket import handle_websocket_connection  # noqa: E402
 from .config import DEPLOY_CHAT, DEPLOY_TOOL, INFERENCE_ENGINE  # noqa: E402
 from .engines import (  # noqa: E402
     get_engine,
@@ -66,9 +69,6 @@ from .engines import (  # noqa: E402
     ensure_cache_reset_daemon,
     engine_supports_cache_reset,
 )
-from .config.logging import configure_logging  # noqa: E402
-from .handlers.websocket import handle_websocket_connection  # noqa: E402
-from .helpers.validation import validate_env  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

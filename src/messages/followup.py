@@ -12,12 +12,12 @@ from typing import Any
 from fastapi import WebSocket
 
 from ..config import DEPLOY_CHAT
-from ..tokens import trim_text_to_token_limit_chat
-from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from ..handlers.session import session_handler
-from ..execution.chat.runner import run_chat_generation
 from ..handlers.websocket.errors import send_error
+from ..tokens import trim_text_to_token_limit_chat
+from ..execution.chat.runner import run_chat_generation
 from ..handlers.websocket.helpers import stream_chat_response
+from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 
 logger = logging.getLogger(__name__)
 

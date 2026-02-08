@@ -6,6 +6,7 @@ import os
 import logging
 from typing import Any
 
+from src.helpers.dedupe import warn_once
 from src.config.limits import (
     BATCH_SCALE_MIN_SEQS,
     BATCH_SCALE_MIN_RATIO,
@@ -26,7 +27,6 @@ from src.config.limits import (
     MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM,
     MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR,
 )
-from src.helpers.dedupe import warn_once
 
 logger = logging.getLogger(__name__)
 

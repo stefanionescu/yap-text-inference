@@ -40,9 +40,9 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 from tests.helpers.errors import ServerError  # noqa: E402
 from tests.logic.warmup.runner import run_once  # noqa: E402
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:

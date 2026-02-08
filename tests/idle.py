@@ -12,11 +12,11 @@ from pathlib import Path
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tests.config import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
 from tests.logic.idle import run_idle_suite
-from tests.helpers.cli import add_connection_args
 from tests.helpers.setup import setup_repo_path
 from tests.helpers.websocket import with_api_key
+from tests.helpers.cli import add_connection_args
+from tests.config import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
 
 
 def _parse_args() -> argparse.Namespace:

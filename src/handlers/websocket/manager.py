@@ -22,12 +22,20 @@ from collections.abc import Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from .auth import authenticate_websocket
-from .errors import send_error, reject_connection
-from .limits import consume_limiter, select_rate_limiter
-from .parser import parse_client_message
-from ..limits import SlidingWindowRateLimiter
+from ..instances import connections
 from .helpers import safe_send_envelope
+from .auth import authenticate_websocket
+from .parser import parse_client_message
+from .lifecycle import WebSocketLifecycle
+from ..limits import SlidingWindowRateLimiter
+from .errors import send_error, reject_connection
+from ...messages.start import handle_start_message
+from ...messages.cancel import handle_cancel_message
+from ...messages.followup import handle_followup_message
+from .limits import consume_limiter, select_rate_limiter
+from ..session import session_handler, abort_session_requests
+from ...engines import reset_engine_caches, clear_caches_on_disconnect
+from ...logging import log_context, set_log_context, reset_log_context
 from ...config import (
     WS_CANCEL_WINDOW_SECONDS,
     WS_MAX_CANCELS_PER_WINDOW,
@@ -35,13 +43,6 @@ from ...config import (
     WS_MAX_MESSAGES_PER_WINDOW,
     CACHE_RESET_MIN_SESSION_SECONDS,
 )
-from ..session import session_handler, abort_session_requests
-from ...engines import reset_engine_caches, clear_caches_on_disconnect
-from ...logging import log_context, set_log_context, reset_log_context
-from .lifecycle import WebSocketLifecycle
-from ..instances import connections
-from ...messages.start import handle_start_message
-from ...messages.cancel import handle_cancel_message
 from ...config.websocket import (
     WS_ERROR_INTERNAL,
     WS_CLOSE_BUSY_CODE,
@@ -53,7 +54,6 @@ from ...config.websocket import (
     WS_CLOSE_UNAUTHORIZED_CODE,
     WS_CLOSE_CLIENT_REQUEST_CODE,
 )
-from ...messages.followup import handle_followup_message
 
 logger = logging.getLogger(__name__)
 

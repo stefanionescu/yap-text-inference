@@ -15,9 +15,9 @@ from typing import Any
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-from tests.state import StreamState, SessionContext, BenchmarkConfig
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.metrics import error_result
+from tests.state import StreamState, SessionContext, BenchmarkConfig
 from tests.helpers.websocket import (
     record_token,
     with_api_key,

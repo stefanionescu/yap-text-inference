@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..validators import ValidationError
 from ...config import (
     DEPLOY_CHAT,
     CHAT_MIN_P_MAX,
@@ -37,7 +38,6 @@ from ...config import (
     CHAT_REPETITION_PENALTY_MAX,
     CHAT_REPETITION_PENALTY_MIN,
 )
-from ..validators import ValidationError
 
 # Sampling field configuration: (name, type, min, max, invalid_code, range_code)
 _SAMPLING_FIELDS: tuple[tuple[str, type, float | int, float | int, str, str], ...] = (

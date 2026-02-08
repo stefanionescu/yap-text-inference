@@ -16,8 +16,8 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from threading import Lock
+from typing import TYPE_CHECKING
 
 from ..config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 

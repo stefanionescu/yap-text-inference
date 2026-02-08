@@ -15,15 +15,19 @@ from typing import Any
 
 import websockets
 
+from tests.helpers.errors import ServerError
+from tests.helpers.selection import choose_message
+from tests.helpers.prompt import select_chat_prompt
 from tests.state import StreamState, SessionContext
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-    DEFAULT_SERVER_WS_URL,
-    DEFAULT_WS_PING_TIMEOUT,
-    WARMUP_FALLBACK_MESSAGE,
-    DEFAULT_RECV_TIMEOUT_SEC,
-    DEFAULT_WS_PING_INTERVAL,
+from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
+from tests.logic.conversation.stream import stream_exchange
+from tests.helpers.websocket import (
+    with_api_key,
+    create_tracker,
+    send_client_end,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
 )
 from tests.helpers.fmt import (
     dim,
@@ -35,19 +39,15 @@ from tests.helpers.fmt import (
     format_assistant,
     format_metrics_inline,
 )
-from tests.helpers.errors import ServerError
-from tests.helpers.prompt import select_chat_prompt
-from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
-from tests.helpers.selection import choose_message
-from tests.helpers.websocket import (
-    with_api_key,
-    create_tracker,
-    send_client_end,
-    finalize_metrics,
-    build_start_payload,
-    connect_with_retries,
+from tests.config import (
+    DEFAULT_GENDER,
+    DEFAULT_PERSONALITY,
+    DEFAULT_SERVER_WS_URL,
+    DEFAULT_WS_PING_TIMEOUT,
+    WARMUP_FALLBACK_MESSAGE,
+    DEFAULT_RECV_TIMEOUT_SEC,
+    DEFAULT_WS_PING_INTERVAL,
 )
-from tests.logic.conversation.stream import stream_exchange
 
 
 def _print_server_error_hint(error: ServerError, api_key: str) -> None:

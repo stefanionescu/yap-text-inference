@@ -13,8 +13,8 @@ import asyncio
 import contextlib
 from typing import Any
 
-from tests.state import DrainState, TurnResult, DrainConfig
 from tests.helpers.websocket import iter_messages
+from tests.state import DrainState, TurnResult, DrainConfig
 
 # ============================================================================
 # Internal Helpers

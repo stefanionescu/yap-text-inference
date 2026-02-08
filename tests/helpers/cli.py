@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import os
 from typing import Any
-from argparse import Namespace, ArgumentParser
 from collections.abc import Mapping
+from argparse import Namespace, ArgumentParser
 
 from tests.config import (
     CHAT_TOP_K_DEFAULT,

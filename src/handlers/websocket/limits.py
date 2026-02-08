@@ -15,10 +15,10 @@ import secrets
 from typing import TYPE_CHECKING, Any
 
 from .errors import build_error_payload
-from ..limits import RateLimitError, SlidingWindowRateLimiter
 from .helpers import safe_send_envelope
-from ...config.chat import MESSAGE_RATE_LIMIT_MESSAGES
 from ...config.websocket import WS_ERROR_RATE_LIMITED
+from ...config.chat import MESSAGE_RATE_LIMIT_MESSAGES
+from ..limits import RateLimitError, SlidingWindowRateLimiter
 
 if TYPE_CHECKING:
     from fastapi import WebSocket

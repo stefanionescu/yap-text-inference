@@ -14,6 +14,8 @@ from typing import Any
 
 import websockets
 
+from tests.helpers.fmt import dim
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.state import (
     SessionContext,
     DrainPhaseResult,
@@ -22,8 +24,6 @@ from tests.state import (
     NormalClientResult,
     RecoveryPhaseResult,
 )
-from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
-from tests.helpers.fmt import dim
 from tests.helpers.websocket import (
     iter_messages,
     create_tracker,
@@ -34,8 +34,8 @@ from tests.helpers.websocket import (
     connect_with_retries,
 )
 
-from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
 from .handlers import build_recovery_handlers
+from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
 
 
 async def run_normal_client(

@@ -11,9 +11,9 @@ import time
 from typing import Any
 
 from tests.state import StreamState
-from tests.helpers.regex import word_count_at_least, contains_complete_sentence
-from tests.helpers.errors import StreamError
 from tests.helpers.metrics import round_ms
+from tests.helpers.errors import StreamError
+from tests.helpers.regex import word_count_at_least, contains_complete_sentence
 
 from .message import iter_messages
 

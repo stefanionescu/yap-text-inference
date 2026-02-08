@@ -10,7 +10,9 @@ import contextlib
 from typing import TYPE_CHECKING
 from dataclasses import field, dataclass
 
+from tests.logic.live.commands import dispatch_command
 from tests.helpers.fmt import dim, bold, cyan, yellow, magenta
+from tests.helpers.websocket import record_token, build_start_payload as build_ws_start_payload
 from tests.helpers.errors import (
     ServerError,
     RateLimitError,
@@ -19,8 +21,6 @@ from tests.helpers.errors import (
     InputClosedError,
     ConnectionClosedError,
 )
-from tests.helpers.websocket import record_token, build_start_payload as build_ws_start_payload
-from tests.logic.live.commands import dispatch_command
 
 from .metrics import StreamState, SessionContext
 

@@ -13,8 +13,21 @@ from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
+from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.errors import ServerError, StreamError
 from tests.state import StreamState, TTFBSamples, SessionContext
+from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
+from tests.helpers.websocket import (
+    with_api_key,
+    iter_messages,
+    consume_stream,
+    create_tracker,
+    send_client_end,
+    finalize_metrics,
+    build_start_payload,
+)
 from tests.helpers.fmt import (
     dim,
     green,
@@ -25,19 +38,6 @@ from tests.helpers.fmt import (
     exchange_header,
     format_assistant,
     format_metrics_inline,
-)
-from tests.helpers.errors import ServerError, StreamError
-from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
-from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
-from tests.helpers.websocket import (
-    with_api_key,
-    iter_messages,
-    consume_stream,
-    create_tracker,
-    send_client_end,
-    finalize_metrics,
-    build_start_payload,
 )
 
 # ============================================================================

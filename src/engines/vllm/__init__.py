@@ -21,10 +21,10 @@ lazily when the engine is first created, not at import time.
 
 from __future__ import annotations
 
-from .cache import CacheResetManager
-from .setup import configure_runtime_env
 from .engine import VLLMEngine
+from .cache import CacheResetManager
 from .factory import VLLMEngineSingleton
+from .setup import configure_runtime_env
 
 __all__ = [
     "CacheResetManager",

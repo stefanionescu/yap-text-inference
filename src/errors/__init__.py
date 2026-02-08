@@ -11,11 +11,11 @@ Organization:
     - quantization.py: Quantization/engine label errors
 """
 
-from .engine import EngineNotReadyError, EngineShutdownError
 from .limits import RateLimitError
-from .stream import StreamCancelledError
 from .validation import ValidationError
+from .stream import StreamCancelledError
 from .quantization import EngineLabelError
+from .engine import EngineNotReadyError, EngineShutdownError
 
 __all__ = [
     # Engine errors

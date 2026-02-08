@@ -6,8 +6,8 @@ import os
 import json
 import logging
 import contextlib
-from typing import Any, TypeVar
 from pathlib import Path
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 

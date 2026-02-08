@@ -16,8 +16,8 @@ from typing import Any
 
 import websockets
 
-from tests.state import SessionContext, DrainPhaseResult, CancelPhaseResult, RecoveryPhaseResult
 from tests.helpers.fmt import dim
+from tests.state import SessionContext, DrainPhaseResult, CancelPhaseResult, RecoveryPhaseResult
 from tests.helpers.websocket import (
     iter_messages,
     create_tracker,
