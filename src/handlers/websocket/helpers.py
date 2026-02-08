@@ -23,19 +23,19 @@ Message Protocol:
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import json
+import asyncio
 import logging
-from collections.abc import AsyncIterator
+import contextlib
 from typing import Any
+from collections.abc import AsyncIterator
 
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.state import _ChatStreamState
 
-from ...config.websocket import WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID, WS_KEY_TYPE
 from ..session import session_handler
+from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
 
 logger = logging.getLogger(__name__)
 

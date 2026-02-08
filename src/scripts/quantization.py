@@ -6,11 +6,11 @@ Works with both TensorRT-LLM and vLLM quantization workflows.
 
 from __future__ import annotations
 
+import os
+import sys
+import runpy
 import argparse
 import contextlib
-import os
-import runpy
-import sys
 from collections.abc import Sequence
 
 # ============================================================================

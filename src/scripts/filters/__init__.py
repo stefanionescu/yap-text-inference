@@ -31,6 +31,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from src.helpers.env import env_flag
 
@@ -38,7 +39,7 @@ logger = logging.getLogger("log_filter")
 
 # Lazy imports to avoid triggering huggingface_hub on package import
 # These are imported when needed by configure()
-_STATE = {
+_STATE: dict[str, Any] = {
     "hf": None,
     "transformers": None,
     "trt": None,

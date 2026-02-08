@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 
-from src.config.gpu import DEFAULT_COMPUTE_CAPABILITY, SM_COMPUTE_CAPABILITY
+from src.config.gpu import SM_COMPUTE_CAPABILITY, DEFAULT_COMPUTE_CAPABILITY
 
 
 def detect_tensorrt_llm_version() -> str:

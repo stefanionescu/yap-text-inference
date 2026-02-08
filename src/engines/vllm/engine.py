@@ -12,10 +12,10 @@ Key Features:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
-from collections.abc import AsyncGenerator
+import contextlib
 from typing import Any
+from collections.abc import AsyncGenerator
 
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 

@@ -6,12 +6,13 @@ Uses stream filtering to catch worker process output and progress bars.
 
 from __future__ import annotations
 
-import contextlib
 import io
-import logging
 import os
 import re
 import sys
+import logging
+import contextlib
+from typing import cast
 from collections.abc import Iterable
 
 from src.config.filters import VLLM_NOISE_PATTERNS
@@ -93,12 +94,18 @@ def _install_stream_filters() -> None:
         return
 
     try:
-        sys.stdout = VLLMNoiseFilterStream(sys.stdout, VLLM_NOISE_PATTERNS)
-        sys.stderr = VLLMNoiseFilterStream(sys.stderr, VLLM_NOISE_PATTERNS)
+        sys.stdout = VLLMNoiseFilterStream(cast(io.TextIOBase, sys.stdout), VLLM_NOISE_PATTERNS)
+        sys.stderr = VLLMNoiseFilterStream(cast(io.TextIOBase, sys.stderr), VLLM_NOISE_PATTERNS)
         if hasattr(sys, "__stdout__") and sys.__stdout__ is not None:
-            sys.__stdout__ = VLLMNoiseFilterStream(sys.__stdout__, VLLM_NOISE_PATTERNS)
+            sys.__stdout__ = VLLMNoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stdout__),
+                VLLM_NOISE_PATTERNS,
+            )
         if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
-            sys.__stderr__ = VLLMNoiseFilterStream(sys.__stderr__, VLLM_NOISE_PATTERNS)
+            sys.__stderr__ = VLLMNoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stderr__),
+                VLLM_NOISE_PATTERNS,
+            )
         _STATE["streams_patched"] = True
     except Exception as exc:  # pragma: no cover
         logger.debug("failed to wrap stdio for vLLM log filtering: %s", exc)

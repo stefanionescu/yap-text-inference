@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import os
 
-from ..helpers.quantization import detect_chat_quantization, normalize_engine
+from ..helpers.quantization import normalize_engine, detect_chat_quantization
 
 # ============================================================================
 # Engine Selection

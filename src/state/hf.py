@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
+from pathlib import Path
+from dataclasses import dataclass
 
-from src.config.quantization import CHAT_TEMPLATE_FILES, TOKENIZER_FILES
-from src.config.trt import TRT_HF_CHECKPOINTS_PATH, TRT_HF_ENGINES_PATH_FMT
 from src.hf import create_repo_if_needed
+from src.config.trt import TRT_HF_CHECKPOINTS_PATH, TRT_HF_ENGINES_PATH_FMT
+from src.hf.vllm.job import _IGNORE_PATTERNS, load_metadata, regenerate_readme, classify_prequantized_source
 from src.hf.trt.readme import render_trt_readme
 from src.hf.trt.tokenizer import find_tokenizer_dir
-from src.hf.vllm.job import _IGNORE_PATTERNS, classify_prequantized_source, load_metadata, regenerate_readme
-from src.quantization.trt import collect_metadata, detect_base_model, get_engine_label
+from src.quantization.trt import collect_metadata, get_engine_label, detect_base_model
+from src.config.quantization import TOKENIZER_FILES, CHAT_TEMPLATE_FILES
 
 if TYPE_CHECKING:  # pragma: no cover - optional dependency
     from huggingface_hub import HfApi

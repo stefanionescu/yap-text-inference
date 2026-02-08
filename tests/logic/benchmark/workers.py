@@ -6,12 +6,12 @@ concurrent workers and managing the async task lifecycle.
 
 from __future__ import annotations
 
-import asyncio
 import time
+import asyncio
 from typing import Any
 
-from tests.helpers.concurrency import distribute_requests
 from tests.state import BenchmarkConfig
+from tests.helpers.concurrency import distribute_requests
 
 from .connection import execute_connection
 

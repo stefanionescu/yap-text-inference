@@ -8,23 +8,23 @@ and invokes `run_idle_suite`.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
-from collections.abc import Awaitable, Callable
+import asyncio
+from collections.abc import Callable, Awaitable
 
 import websockets
 
-from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
+    dim,
+    section_header,
     connection_fail,
     connection_pass,
     connection_status,
     connection_test_header,
-    dim,
-    section_header,
 )
-from tests.helpers.websocket import connect_with_retries, send_client_end
+from tests.helpers.websocket import send_client_end, connect_with_retries
 
 
 def _open_connection(ws_url: str):

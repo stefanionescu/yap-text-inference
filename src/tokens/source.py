@@ -12,9 +12,9 @@ decide which loading strategy to use.
 
 from __future__ import annotations
 
-import contextlib
-import json
 import os
+import json
+import contextlib
 from pathlib import Path
 
 from src.state import TokenizerSource, TransformersTarget

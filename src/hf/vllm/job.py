@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import os
-from pathlib import Path
+import json
 from typing import Any
+from pathlib import Path
 
 from src.config.quantization import AWQ_MODEL_MARKERS
 from src.quantization.vllm.utils.template import generate_readme

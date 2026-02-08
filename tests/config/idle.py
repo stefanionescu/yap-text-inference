@@ -11,7 +11,7 @@ import os
 
 from tests.helpers.env import get_float_env
 
-from .defaults import IDLE_EXPECT_DEFAULT, IDLE_GRACE_DEFAULT, IDLE_NORMAL_WAIT_DEFAULT
+from .defaults import IDLE_GRACE_DEFAULT, IDLE_EXPECT_DEFAULT, IDLE_NORMAL_WAIT_DEFAULT
 
 # Resolve idle expect fallback: prefer WS_IDLE_TIMEOUT_S if set, else use default
 _ws_idle_raw = os.getenv("WS_IDLE_TIMEOUT_S")

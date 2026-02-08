@@ -26,8 +26,8 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from ...config.websocket import WS_UNKNOWN_REQUEST_ID, WS_UNKNOWN_SESSION_ID
 from .helpers import safe_send_envelope
+from ...config.websocket import WS_UNKNOWN_REQUEST_ID, WS_UNKNOWN_SESSION_ID
 
 
 def build_error_payload(

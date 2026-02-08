@@ -22,10 +22,10 @@ from __future__ import annotations
 import uuid
 
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
-from src.tokens import build_user_history_for_tool, count_tokens_chat, count_tokens_tool
+from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool
 
-from .parsing import parse_history_as_tuples, parse_history_messages, parse_history_text
 from .state import HistoryTurn, SessionState
+from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 
 
 def render_history(turns: list[HistoryTurn]) -> str:

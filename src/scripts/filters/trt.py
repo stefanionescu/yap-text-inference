@@ -6,13 +6,14 @@ Uses stream filtering to catch C++ output that bypasses Python logging.
 
 from __future__ import annotations
 
-import contextlib
 import io
-import logging
 import os
 import re
 import sys
+import logging
 import warnings
+import contextlib
+from typing import cast
 from collections.abc import Iterable
 
 from src.config.filters import TRTLLM_NOISE_PATTERNS
@@ -95,13 +96,19 @@ def _install_stream_filters() -> None:
         return
 
     try:
-        sys.stdout = NoiseFilterStream(sys.stdout, TRTLLM_NOISE_PATTERNS)
-        sys.stderr = NoiseFilterStream(sys.stderr, TRTLLM_NOISE_PATTERNS)
+        sys.stdout = NoiseFilterStream(cast(io.TextIOBase, sys.stdout), TRTLLM_NOISE_PATTERNS)
+        sys.stderr = NoiseFilterStream(cast(io.TextIOBase, sys.stderr), TRTLLM_NOISE_PATTERNS)
         # Also wrap __stdout__/__stderr__ in case libraries use them directly
         if hasattr(sys, "__stdout__") and sys.__stdout__ is not None:
-            sys.__stdout__ = NoiseFilterStream(sys.__stdout__, TRTLLM_NOISE_PATTERNS)
+            sys.__stdout__ = NoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stdout__),
+                TRTLLM_NOISE_PATTERNS,
+            )
         if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
-            sys.__stderr__ = NoiseFilterStream(sys.__stderr__, TRTLLM_NOISE_PATTERNS)
+            sys.__stderr__ = NoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stderr__),
+                TRTLLM_NOISE_PATTERNS,
+            )
         _STATE["streams_patched"] = True
     except Exception as exc:  # pragma: no cover
         logger.debug("failed to wrap stdio for TRT log filtering: %s", exc)

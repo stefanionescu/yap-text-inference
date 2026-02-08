@@ -10,10 +10,10 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from tests.state import StreamState
+from tests.helpers.regex import word_count_at_least, contains_complete_sentence
 from tests.helpers.errors import StreamError
 from tests.helpers.metrics import round_ms
-from tests.helpers.regex import contains_complete_sentence, word_count_at_least
-from tests.state import StreamState
 
 from .message import iter_messages
 

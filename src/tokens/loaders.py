@@ -11,9 +11,9 @@ that may need to fetch the tokenizer from the source model.
 
 from __future__ import annotations
 
-import contextlib
-import logging
 import os
+import logging
+import contextlib
 
 from tokenizers import Tokenizer
 

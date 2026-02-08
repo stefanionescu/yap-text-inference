@@ -23,10 +23,10 @@ Usage:
 
 from __future__ import annotations
 
-import argparse
-import asyncio
 import os
 import sys
+import asyncio
+import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path
@@ -39,11 +39,11 @@ from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
-    HISTORY_BENCH_DEFAULT_CONCURRENCY,
     HISTORY_BENCH_DEFAULT_REQUESTS,
+    HISTORY_BENCH_DEFAULT_CONCURRENCY,
     HISTORY_BENCH_DEFAULT_TIMEOUT_SEC,
 )
-from tests.helpers.cli import add_connection_args, add_sampling_args, build_sampling_payload  # noqa: E402
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 from tests.helpers.errors import ServerError  # noqa: E402
 
 

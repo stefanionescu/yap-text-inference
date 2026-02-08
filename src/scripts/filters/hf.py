@@ -5,13 +5,14 @@ Controls visibility of HuggingFace download/upload progress bars.
 
 from __future__ import annotations
 
-import contextlib
-import importlib
-import logging
 import os
+import logging
+import importlib
+import contextlib
+from typing import cast
 from collections.abc import Iterable
 
-from src.config.filters import HF_ALL_GROUPS, HF_DOWNLOAD_GROUPS, HF_UPLOAD_GROUPS
+from src.config.filters import HF_ALL_GROUPS, HF_UPLOAD_GROUPS, HF_DOWNLOAD_GROUPS
 
 logger = logging.getLogger("log_filter")
 
@@ -37,7 +38,9 @@ def label_hf_snapshot_progress(group: str) -> None:
     if getattr(base_tqdm, "__dict__", {}).get("_log_filter_patched"):
         return
 
-    class SnapshotQuietTqdm(base_tqdm):
+    base_tqdm_type = cast(type, base_tqdm)
+
+    class SnapshotQuietTqdm(base_tqdm_type):  # type: ignore[misc,valid-type]
         _log_filter_patched = True
 
         def __init__(self, *args, **kwargs):
@@ -46,12 +49,12 @@ def label_hf_snapshot_progress(group: str) -> None:
                 kwargs.setdefault("name", group)
             super().__init__(*args, **kwargs)
 
-    tqdm_module.tqdm = SnapshotQuietTqdm
-    utils_module.tqdm = SnapshotQuietTqdm
+    tqdm_module.tqdm = SnapshotQuietTqdm  # type: ignore[attr-defined]
+    utils_module.tqdm = SnapshotQuietTqdm  # type: ignore[attr-defined]
 
     # Snapshot download stores a direct reference when imported, so update it too
     if hasattr(snapshot_module, "hf_tqdm"):
-        snapshot_module.hf_tqdm = SnapshotQuietTqdm
+        snapshot_module.hf_tqdm = SnapshotQuietTqdm  # type: ignore[attr-defined]
 
 
 def disable_hf_progress(groups: Iterable[str]) -> None:

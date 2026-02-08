@@ -15,45 +15,45 @@ Message Types:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
-from collections.abc import Callable
+import contextlib
 from typing import Any
+from collections.abc import Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ...config import (
-    CACHE_RESET_MIN_SESSION_SECONDS,
-    WS_CANCEL_WINDOW_SECONDS,
-    WS_MAX_CANCELS_PER_WINDOW,
-    WS_MAX_MESSAGES_PER_WINDOW,
-    WS_MESSAGE_WINDOW_SECONDS,
-)
-from ...config.websocket import (
-    WS_CLOSE_BUSY_CODE,
-    WS_CLOSE_CLIENT_REQUEST_CODE,
-    WS_CLOSE_UNAUTHORIZED_CODE,
-    WS_ERROR_AUTH_FAILED,
-    WS_ERROR_INTERNAL,
-    WS_ERROR_INVALID_MESSAGE,
-    WS_ERROR_INVALID_PAYLOAD,
-    WS_ERROR_SERVER_BUSY,
-    WS_WATCHDOG_TICK_S,
-)
-from ...engines import clear_caches_on_disconnect, reset_engine_caches
-from ...logging import log_context, reset_log_context, set_log_context
-from ...messages.cancel import handle_cancel_message
-from ...messages.followup import handle_followup_message
-from ...messages.start import handle_start_message
-from ..instances import connections
-from ..limits import SlidingWindowRateLimiter
-from ..session import abort_session_requests, session_handler
 from .auth import authenticate_websocket
-from .errors import reject_connection, send_error
-from .helpers import safe_send_envelope
-from .lifecycle import WebSocketLifecycle
+from .errors import send_error, reject_connection
 from .limits import consume_limiter, select_rate_limiter
 from .parser import parse_client_message
+from ..limits import SlidingWindowRateLimiter
+from .helpers import safe_send_envelope
+from ...config import (
+    WS_CANCEL_WINDOW_SECONDS,
+    WS_MAX_CANCELS_PER_WINDOW,
+    WS_MESSAGE_WINDOW_SECONDS,
+    WS_MAX_MESSAGES_PER_WINDOW,
+    CACHE_RESET_MIN_SESSION_SECONDS,
+)
+from ..session import session_handler, abort_session_requests
+from ...engines import reset_engine_caches, clear_caches_on_disconnect
+from ...logging import log_context, set_log_context, reset_log_context
+from .lifecycle import WebSocketLifecycle
+from ..instances import connections
+from ...messages.start import handle_start_message
+from ...messages.cancel import handle_cancel_message
+from ...config.websocket import (
+    WS_ERROR_INTERNAL,
+    WS_CLOSE_BUSY_CODE,
+    WS_WATCHDOG_TICK_S,
+    WS_ERROR_AUTH_FAILED,
+    WS_ERROR_SERVER_BUSY,
+    WS_ERROR_INVALID_MESSAGE,
+    WS_ERROR_INVALID_PAYLOAD,
+    WS_CLOSE_UNAUTHORIZED_CODE,
+    WS_CLOSE_CLIENT_REQUEST_CODE,
+)
+from ...messages.followup import handle_followup_message
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ def _create_rate_limiters() -> tuple[SlidingWindowRateLimiter, SlidingWindowRate
     return message_limiter, cancel_limiter
 
 
-async def _run_message_loop(
+async def _run_message_loop(  # noqa: PLR0915
     ws: WebSocket,
     lifecycle: WebSocketLifecycle,
     message_limiter: SlidingWindowRateLimiter,
@@ -212,8 +212,19 @@ async def _run_message_loop(
 
         lifecycle.touch()
         msg_type = msg.get("type")
-        msg_session_id = msg.get("session_id")
-        msg_request_id = msg.get("request_id")
+        if not isinstance(msg_type, str):
+            await send_error(
+                ws,
+                error_code=WS_ERROR_INVALID_MESSAGE,
+                message="message missing type field",
+                reason_code="invalid_message_type",
+            )
+            continue
+
+        raw_session_id = msg.get("session_id")
+        raw_request_id = msg.get("request_id")
+        msg_session_id = raw_session_id if isinstance(raw_session_id, str) else ""
+        msg_request_id = raw_request_id if isinstance(raw_request_id, str) else ""
         payload = msg.get("payload") or {}
 
         with log_context(session_id=msg_session_id, request_id=msg_request_id):

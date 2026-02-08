@@ -5,12 +5,12 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from src.state import CalibrationConfig
 from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT, MOE_CALIBRATION_SAMPLES_LIMIT
 from src.helpers.calibration import TotalLengthPolicy, resolve_total_len
-from src.state import CalibrationConfig
 
 from ..utils import is_awq_dir, resolve_calibration_seqlen
-from ..utils.model import is_moe_model, load_model_config, prefetch_model
+from ..utils.model import is_moe_model, prefetch_model, load_model_config
 from .llmcompressor import quantize
 
 CHAT_TOTAL_POLICY = TotalLengthPolicy(

@@ -21,7 +21,7 @@ from __future__ import annotations
 import os
 from typing import Final
 
-from src.helpers.env import configure_vllm_fp8_kv_cache, env_flag
+from src.helpers.env import env_flag, configure_vllm_fp8_kv_cache
 
 _AUTO_CONFIG_FLAG: Final[str] = "YAP_AUTO_CONFIGURE_ENV"
 _SKIP_AUTOCONFIG_FLAG: Final[str] = "YAP_SKIP_ENV_AUTOCONFIG"

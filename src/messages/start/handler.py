@@ -18,23 +18,23 @@ from fastapi import WebSocket
 
 from src.state import StartPlan
 
-from ...config import CHAT_PROMPT_MAX_TOKENS, DEPLOY_CHAT, DEPLOY_TOOL
+from ..input import normalize_gender, normalize_personality
+from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
+from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
+from .dispatch import dispatch_execution
+from .sampling import extract_sampling_overrides
+from ..validators import (
+    ValidationError,
+    require_prompt,
+    validate_optional_prefix,
+    validate_required_gender,
+    sanitize_prompt_with_limit,
+    validate_required_personality,
+)
 from ...config.websocket import WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from ...handlers.session import session_handler
 from ...handlers.websocket.errors import send_error
 from ...handlers.websocket.helpers import safe_send_envelope
-from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
-from ..input import normalize_gender, normalize_personality
-from ..validators import (
-    ValidationError,
-    require_prompt,
-    sanitize_prompt_with_limit,
-    validate_optional_prefix,
-    validate_required_gender,
-    validate_required_personality,
-)
-from .dispatch import dispatch_execution
-from .sampling import extract_sampling_overrides
 
 logger = logging.getLogger(__name__)
 

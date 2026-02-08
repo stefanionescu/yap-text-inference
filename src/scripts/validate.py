@@ -33,9 +33,9 @@ def validate_models(
     from src.config.models import ALLOWED_TOOL_MODELS  # noqa: PLC0415
     from src.helpers.models import get_allowed_chat_models  # noqa: PLC0415
     from src.helpers.quantization import (  # noqa: PLC0415
+        is_awq_model_name,
         classify_prequantized_model,
         classify_trt_prequantized_model,
-        is_awq_model_name,
     )
 
     errors: list[str] = []

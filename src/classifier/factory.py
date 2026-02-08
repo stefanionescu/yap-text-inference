@@ -7,13 +7,13 @@ The singleton management is handled by the registry module.
 from __future__ import annotations
 
 from src.config import (
+    TOOL_MODEL,
     TOOL_COMPILE,
-    TOOL_DECISION_THRESHOLD,
     TOOL_GPU_FRAC,
     TOOL_MAX_LENGTH,
-    TOOL_MICROBATCH_MAX_DELAY_MS,
+    TOOL_DECISION_THRESHOLD,
     TOOL_MICROBATCH_MAX_SIZE,
-    TOOL_MODEL,
+    TOOL_MICROBATCH_MAX_DELAY_MS,
 )
 from src.config.timeouts import TOOL_TIMEOUT_S
 
@@ -30,6 +30,8 @@ def create_classifier_adapter() -> ClassifierToolAdapter:
     Returns:
         A new ClassifierToolAdapter instance configured from environment.
     """
+    if not TOOL_MODEL:
+        raise ValueError("TOOL_MODEL must be set to initialize the classifier adapter.")
     return ClassifierToolAdapter(
         model_path=TOOL_MODEL,
         threshold=TOOL_DECISION_THRESHOLD,

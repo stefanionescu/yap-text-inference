@@ -15,11 +15,11 @@ Note:
 
 from __future__ import annotations
 
+import time
 import asyncio
 import logging
-import time
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
+from collections.abc import Callable, Awaitable
 
 from src.config import CACHE_RESET_INTERVAL_SECONDS
 
@@ -155,13 +155,13 @@ class CacheResetManager:
 
             wait = max(0.0, interval - self.seconds_since_last_reset())
             if wait <= 0:
-                await reset_caches_fn("timer", force=True)
+                await reset_caches_fn("timer", True)
                 continue
 
             try:
                 await asyncio.wait_for(self._event.wait(), timeout=wait)
             except asyncio.TimeoutError:
-                await reset_caches_fn("timer", force=True)
+                await reset_caches_fn("timer", True)
             else:
                 if self._event.is_set():
                     self._event.clear()

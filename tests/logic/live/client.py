@@ -7,19 +7,19 @@ It handles message parsing, error reporting, and stats logging.
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import json
+import asyncio
 import logging
+import contextlib
 from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.helpers.errors import ConnectionClosedError, IdleTimeoutError, ServerError, TestClientError
-from tests.helpers.fmt import cyan, dim, format_metrics_inline
+from tests.state import LiveSession, StreamState, StreamResult, _StreamContext
+from tests.helpers.fmt import dim, cyan, format_metrics_inline
+from tests.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError
 from tests.helpers.metrics import round_ms
-from tests.helpers.websocket import create_tracker, finalize_metrics, iter_messages, record_toolcall, send_client_end
-from tests.state import LiveSession, StreamResult, StreamState, _StreamContext
+from tests.helpers.websocket import iter_messages, create_tracker, record_toolcall, send_client_end, finalize_metrics
 
 logger = logging.getLogger("live")
 

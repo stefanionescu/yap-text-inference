@@ -9,14 +9,14 @@ Submodules:
 """
 
 from src.scripts.trt.detection import (
-    detect_checkpoint_qformat,
-    get_cuda_driver_version,
     list_remote_engines,
+    get_cuda_driver_version,
+    detect_checkpoint_qformat,
     read_checkpoint_quant_info,
 )
 from src.scripts.trt.validation import (
-    validate_cuda_runtime,
     validate_mpi_runtime,
+    validate_cuda_runtime,
     validate_python_libraries,
     validate_trt_installation,
 )

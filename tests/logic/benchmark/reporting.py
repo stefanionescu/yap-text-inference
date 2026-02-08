@@ -7,10 +7,10 @@ error breakdown, and phase-separated metrics for double-ttfb mode.
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable
 from typing import Any
+from collections.abc import Iterable
 
-from tests.helpers.fmt import bold, dim, green, red, section_header
+from tests.helpers.fmt import dim, red, bold, green, section_header
 
 PHASE_FIRST = 1
 PHASE_SECOND = 2

@@ -13,17 +13,17 @@ The functions are organized in logical sections:
 
 from __future__ import annotations
 
-import contextlib
-import logging
 import os
 import stat
-from collections.abc import Callable
+import logging
+import contextlib
 from typing import Any
+from collections.abc import Callable
 
 from src.config import AWQ_METADATA_FILENAME, QUANT_CONFIG_FILENAMES, UNSUPPORTED_QUANT_DTYPE_FIELDS
-from src.config.quantization import QUANT_NAME_MAPPING
 from src.helpers.io import read_json_file, write_json_file
 from src.helpers.models import is_local_model_path
+from src.config.quantization import QUANT_NAME_MAPPING
 
 logger = logging.getLogger(__name__)
 

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
 from contextlib import contextmanager
-from contextvars import ContextVar
+from contextvars import Token, ContextVar
+from collections.abc import Iterator
 
 _SESSION_ID: ContextVar[str] = ContextVar("session_id", default="-")
 _REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="-")
@@ -17,9 +17,9 @@ def set_log_context(
     session_id: str | None = None,
     request_id: str | None = None,
     client_id: str | None = None,
-) -> list[tuple[ContextVar[str], object]]:
+) -> list[tuple[ContextVar[str], Token[str]]]:
     """Set log context values and return tokens for reset."""
-    tokens: list[tuple[ContextVar[str], object]] = []
+    tokens: list[tuple[ContextVar[str], Token[str]]] = []
     if session_id is not None:
         tokens.append((_SESSION_ID, _SESSION_ID.set(session_id)))
     if request_id is not None:
@@ -29,7 +29,7 @@ def set_log_context(
     return tokens
 
 
-def reset_log_context(tokens: list[tuple[ContextVar[str], object]]) -> None:
+def reset_log_context(tokens: list[tuple[ContextVar[str], Token[str]]]) -> None:
     """Reset log context values using tokens returned by set_log_context."""
     for var, token in tokens:
         var.reset(token)
@@ -69,7 +69,7 @@ def install_log_context() -> None:
         return record
 
     logging.setLogRecordFactory(record_factory)
-    install_log_context._installed = True
+    install_log_context._installed = True  # type: ignore[attr-defined]
 
 
 __all__ = [

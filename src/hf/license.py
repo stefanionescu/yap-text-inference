@@ -12,15 +12,15 @@ Key Functions:
 
 from __future__ import annotations
 
-import logging
 import os
+import logging
 
 from src.config.templates import (
-    CHAT_TEMPLATE_NAME,
-    MISTRAL_RESEARCH_LICENSE,
-    MISTRAL_RESEARCH_MODELS,
     QWEN_LICENSE,
+    CHAT_TEMPLATE_NAME,
     QWEN_LICENSE_MODELS,
+    MISTRAL_RESEARCH_MODELS,
+    MISTRAL_RESEARCH_LICENSE,
 )
 
 logger = logging.getLogger(__name__)

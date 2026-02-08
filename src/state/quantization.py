@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import field, dataclass
 
 from src.errors import EngineLabelError
-from src.quantization.trt.detection import detect_cuda_version, detect_gpu_name, detect_tensorrt_llm_version
+from src.quantization.trt.detection import detect_gpu_name, detect_cuda_version, detect_tensorrt_llm_version
 
 
 @dataclass

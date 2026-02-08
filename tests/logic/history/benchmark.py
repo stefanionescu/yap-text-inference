@@ -10,11 +10,11 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from tests.helpers.concurrency import distribute_requests, sanitize_concurrency
-from tests.helpers.prompt import select_chat_prompt
-from tests.logic.benchmark.reporting import print_report
-from tests.messages.history import HISTORY_RECALL_MESSAGES
 from tests.state import HistoryBenchConfig
+from tests.helpers.prompt import select_chat_prompt
+from tests.messages.history import HISTORY_RECALL_MESSAGES
+from tests.helpers.concurrency import distribute_requests, sanitize_concurrency
+from tests.logic.benchmark.reporting import print_report
 
 from .connection import execute_history_connection
 

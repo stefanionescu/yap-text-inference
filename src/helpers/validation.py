@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from src.config.deploy import CHAT_MODEL, DEPLOY_CHAT, DEPLOY_TOOL, TOOL_MODEL
-from src.config.engine import CHAT_QUANTIZATION, INFERENCE_ENGINE
-from src.config.limits import HISTORY_MAX_TOKENS, MAX_CONCURRENT_CONNECTIONS, TRIMMED_HISTORY_LENGTH
-from src.config.quantization import SUPPORTED_ENGINES
-from src.config.secrets import TEXT_API_KEY
 from src.config.trt import TRT_ENGINE_DIR
+from src.config.deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
+from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
+from src.config.limits import HISTORY_MAX_TOKENS, TRIMMED_HISTORY_LENGTH, MAX_CONCURRENT_CONNECTIONS
+from src.config.secrets import TEXT_API_KEY
 from src.tokens.validation import validate_model_tokenizer
+from src.config.quantization import SUPPORTED_ENGINES
 
 from .models import is_classifier_model
 from .quantization import classify_prequantized_model

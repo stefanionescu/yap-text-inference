@@ -65,7 +65,13 @@ if ((${#PYTHON_TARGETS[@]})); then
   fi
 
   if python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('mypy') else 1)"; then
-    run_quiet "mypy" python -m mypy "${PYTHON_TARGETS[@]}" --config-file pyproject.toml
+    MYPY_TARGETS=()
+    if [[ -d src ]]; then
+      MYPY_TARGETS+=("src")
+    fi
+    if ((${#MYPY_TARGETS[@]})); then
+      run_quiet "mypy" python -m mypy "${MYPY_TARGETS[@]}" --config-file pyproject.toml
+    fi
   fi
 
   run_quiet "checknames" python scripts/checknames.py

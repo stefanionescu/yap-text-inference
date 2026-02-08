@@ -1,9 +1,9 @@
 """Template utilities for generating AWQ model documentation."""
 
-import json
 import os
-from textwrap import dedent
+import json
 from typing import Any
+from textwrap import dedent
 
 from src.hf.license import compute_license_info, resolve_template_name
 

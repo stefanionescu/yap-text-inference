@@ -7,8 +7,8 @@ to proactively uninstall mismatched packages before reinstalling.
 
 from __future__ import annotations
 
-import importlib.util
 import sys
+import importlib.util
 
 # Exit code indicating CUDA mismatch was detected
 EXIT_CODE_MISMATCH = 42

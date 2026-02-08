@@ -26,28 +26,28 @@ Env:
 
 from __future__ import annotations
 
-import argparse
+import sys
 import asyncio
 import logging
-import sys
+import argparse
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.config import (
-    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
-    CANCEL_DRAIN_TIMEOUT_DEFAULT,
-    CANCEL_NUM_CLIENTS_DEFAULT,
-    CANCEL_POST_WAIT_DEFAULT,
-    CANCEL_RECV_TIMEOUT_DEFAULT,
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
+    CANCEL_POST_WAIT_DEFAULT,
+    CANCEL_NUM_CLIENTS_DEFAULT,
+    CANCEL_RECV_TIMEOUT_DEFAULT,
+    CANCEL_DRAIN_TIMEOUT_DEFAULT,
+    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
 )
 from tests.helpers.cli import add_connection_args
+from tests.logic.cancel import run_cancel_suite
 from tests.helpers.setup import setup_repo_path
 from tests.helpers.websocket import with_api_key
-from tests.logic.cancel import run_cancel_suite
 
 
 def _parse_args() -> argparse.Namespace:

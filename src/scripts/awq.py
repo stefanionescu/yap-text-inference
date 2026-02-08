@@ -6,8 +6,8 @@ source model information from cached quantization artifacts.
 
 from __future__ import annotations
 
-import json
 import sys
+import json
 from pathlib import Path
 
 MIN_ARGS = 2

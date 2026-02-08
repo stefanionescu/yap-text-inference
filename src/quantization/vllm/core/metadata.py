@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import contextlib
-import json
 import os
+import json
+import contextlib
 from typing import Any
 
 from ..utils.template import generate_readme

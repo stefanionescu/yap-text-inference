@@ -10,32 +10,32 @@ For abort functionality, see the `abort` module.
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import time
+import asyncio
 from typing import Any
 
 from src.config import (
     CHAT_MODEL,
-    DEFAULT_CHECK_SCREEN_PREFIX,
-    DEFAULT_SCREEN_CHECKED_PREFIX,
+    TOOL_MODEL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
-    TOOL_MODEL,
+    DEFAULT_CHECK_SCREEN_PREFIX,
+    DEFAULT_SCREEN_CHECKED_PREFIX,
 )
 
-from ...tokens.prefix import count_prefix_tokens, get_effective_user_utt_max_tokens, strip_screen_prefix
+from .time import format_session_timestamp
+from .state import SESSION_IDLE_TTL_SECONDS, SessionState
 from .config import resolve_screen_prefix, update_session_config as _update_config
 from .history import HistoryController
 from .requests import (
     CANCELLED_SENTINEL,
-    cancel_session_requests as _cancel_requests,
-    cleanup_session_requests as _cleanup_requests,
     has_running_task as _has_running,
     is_request_cancelled as _is_cancelled,
+    cancel_session_requests as _cancel_requests,
+    cleanup_session_requests as _cleanup_requests,
 )
-from .state import SESSION_IDLE_TTL_SECONDS, SessionState
-from .time import format_session_timestamp
+from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 
 
 class SessionHandler:

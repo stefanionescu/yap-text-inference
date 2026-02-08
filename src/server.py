@@ -33,8 +33,8 @@ Example:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
+import contextlib
 import multiprocessing
 
 # ============================================================================
@@ -58,15 +58,15 @@ from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
 from .config import DEPLOY_CHAT, DEPLOY_TOOL, INFERENCE_ENGINE  # noqa: E402
-from .config.logging import configure_logging  # noqa: E402
 from .engines import (  # noqa: E402
-    engine_supports_cache_reset,
-    ensure_cache_reset_daemon,
     get_engine,
     shutdown_engine,
-    warm_chat_engine,
     warm_classifier,
+    warm_chat_engine,
+    ensure_cache_reset_daemon,
+    engine_supports_cache_reset,
 )
+from .config.logging import configure_logging  # noqa: E402
 from .handlers.websocket import handle_websocket_connection  # noqa: E402
 from .helpers.validation import validate_env  # noqa: E402
 
@@ -98,7 +98,7 @@ async def preload_engines() -> None:
     The chat engine and classifier are warmed concurrently to minimize
     total startup time.
     """
-    tasks: list[asyncio.Task[None]] = []
+    tasks: list[asyncio.Task[object]] = []
 
     # Warm engines concurrently based on deployment configuration
     if DEPLOY_CHAT:

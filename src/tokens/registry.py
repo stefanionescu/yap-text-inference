@@ -16,10 +16,10 @@ Usage:
 
 from __future__ import annotations
 
-from threading import Lock
 from typing import TYPE_CHECKING
+from threading import Lock
 
-from ..config import CHAT_MODEL, DEPLOY_CHAT, DEPLOY_TOOL, TOOL_MODEL
+from ..config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 
 if TYPE_CHECKING:
     from .tokenizer import FastTokenizer

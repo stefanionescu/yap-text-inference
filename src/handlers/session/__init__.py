@@ -15,8 +15,8 @@ Key components:
 - abort_session_requests: Clean request cancellation
 """
 
-from ..instances import session_handler
 from .abort import abort_session_requests
 from .manager import SessionHandler
+from ..instances import session_handler
 
 __all__ = ["SessionHandler", "session_handler", "abort_session_requests"]

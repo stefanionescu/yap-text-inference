@@ -25,8 +25,8 @@ from __future__ import annotations
 
 import os
 
-from ..helpers.env import resolve_gpu_fracs
 from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
+from ..helpers.env import resolve_gpu_fracs
 
 # ============================================================================
 # GPU Memory Allocation

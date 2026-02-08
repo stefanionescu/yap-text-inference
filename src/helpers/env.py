@@ -6,8 +6,8 @@ configuration values that depend on deployment mode.
 
 from __future__ import annotations
 
-import json
 import os
+import json
 
 
 def env_flag(name: str, default: bool) -> bool:
