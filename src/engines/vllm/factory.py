@@ -15,14 +15,14 @@ from __future__ import annotations
 
 import logging
 
-from src.config import CHAT_MODEL, DEPLOY_CHAT, CHAT_MAX_LEN, CHAT_GPU_FRAC
 from src.helpers.env import env_flag
+from src.config import CHAT_MODEL, DEPLOY_CHAT, CHAT_MAX_LEN, CHAT_GPU_FRAC
 
-from .args import make_engine_args
-from .setup import configure_runtime_env
 from .engine import VLLMEngine
-from .fallback import create_engine_with_fallback
+from .args import make_engine_args
 from ..singleton import AsyncSingleton
+from .setup import configure_runtime_env
+from .fallback import create_engine_with_fallback
 
 logger = logging.getLogger(__name__)
 

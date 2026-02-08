@@ -19,10 +19,10 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
-from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW  # noqa: E402
-from tests.helpers.cli import add_connection_args  # noqa: E402
-from tests.helpers.websocket import with_api_key  # noqa: E402
 from tests.logic.tool.runner import run_suite  # noqa: E402
+from tests.helpers.websocket import with_api_key  # noqa: E402
+from tests.helpers.cli import add_connection_args  # noqa: E402
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:

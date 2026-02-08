@@ -1,5 +1,6 @@
 """Core AWQ quantization functionality."""
 
+from .quantizer import AWQQuantizer
 from .fixes import apply_post_quantization_fixes
 from .detection import (
     log_quant_detection,
@@ -8,7 +9,6 @@ from .detection import (
     sanitize_quant_metadata,
     strip_unsupported_fields,
 )
-from .quantizer import AWQQuantizer
 
 __all__ = [
     "AWQQuantizer",

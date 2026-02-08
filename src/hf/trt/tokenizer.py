@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.config.trt import TRT_CHECKPOINT_SUFFIXES, TRT_TOKENIZER_CONFIG_FILE
 from src.config.quantization import TOKENIZER_FILES
+from src.config.trt import TRT_CHECKPOINT_SUFFIXES, TRT_TOKENIZER_CONFIG_FILE
 
 
 def _has_tokenizer(directory: Path) -> bool:

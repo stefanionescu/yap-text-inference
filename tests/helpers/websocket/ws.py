@@ -11,8 +11,8 @@ import os
 import json
 import asyncio
 import contextlib
-from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
 from collections.abc import Callable, Awaitable
+from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
 
 from tests.config import DEFAULT_WS_PATH
 

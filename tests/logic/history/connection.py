@@ -14,10 +14,10 @@ from typing import Any
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-from tests.state import StreamState, SessionContext, HistoryBenchConfig
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.errors import StreamError
 from tests.helpers.metrics import error_result
+from tests.state import StreamState, SessionContext, HistoryBenchConfig
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.helpers.websocket import (
     with_api_key,

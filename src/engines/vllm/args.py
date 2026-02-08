@@ -34,10 +34,12 @@ from typing import Any
 from vllm.config import AttentionConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.config import KV_DTYPE, CHAT_QUANTIZATION, DEFAULT_MAX_BATCHED_TOKENS
 from src.helpers.env import env_flag
-from src.config.limits import MEMORY_OPT_GPU_FRAC_CAP
 from src.helpers.models import is_local_model_path
+from src.config.limits import MEMORY_OPT_GPU_FRAC_CAP
+from src.config.quantization import FLOAT16_QUANT_METHODS
+from src.config import KV_DTYPE, CHAT_QUANTIZATION, DEFAULT_MAX_BATCHED_TOKENS
+from src.quantization.vllm.core.detection import log_quant_detection, detect_quant_backend, resolve_model_origin
 from src.helpers.profiles import (
     model_uses_mla,
     get_tokenizer_kwargs,
@@ -46,11 +48,9 @@ from src.helpers.profiles import (
     model_requires_fla_runtime,
     model_needs_memory_optimization,
 )
-from src.config.quantization import FLOAT16_QUANT_METHODS
-from src.quantization.vllm.core.detection import log_quant_detection, detect_quant_backend, resolve_model_origin
 
-from .memory import auto_max_num_seqs, configure_kv_cache, scale_batching_limits
 from .tokenizer import inject_tokenizer_kwargs
+from .memory import auto_max_num_seqs, configure_kv_cache, scale_batching_limits
 
 
 def _ensure_fla_runtime_available(model_identifier: str) -> None:

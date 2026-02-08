@@ -15,10 +15,10 @@ from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.state import LiveSession, StreamState, StreamResult, _StreamContext
-from tests.helpers.fmt import dim, cyan, format_metrics_inline
-from tests.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError
 from tests.helpers.metrics import round_ms
+from tests.helpers.fmt import dim, cyan, format_metrics_inline
+from tests.state import LiveSession, StreamState, StreamResult, _StreamContext
+from tests.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError
 from tests.helpers.websocket import iter_messages, create_tracker, record_toolcall, send_client_end, finalize_metrics
 
 logger = logging.getLogger("live")

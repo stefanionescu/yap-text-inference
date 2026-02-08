@@ -24,10 +24,11 @@ from src.config import (
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
 
+from .history import HistoryController
 from .time import format_session_timestamp
 from .state import SESSION_IDLE_TTL_SECONDS, SessionState
 from .config import resolve_screen_prefix, update_session_config as _update_config
-from .history import HistoryController
+from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 from .requests import (
     CANCELLED_SENTINEL,
     has_running_task as _has_running,
@@ -35,7 +36,6 @@ from .requests import (
     cancel_session_requests as _cancel_requests,
     cleanup_session_requests as _cleanup_requests,
 )
-from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 
 
 class SessionHandler:

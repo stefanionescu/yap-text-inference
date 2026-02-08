@@ -35,6 +35,8 @@ except ModuleNotFoundError:
 
 setup_repo_path()
 
+from tests.helpers.errors import ServerError  # noqa: E402
+from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -43,8 +45,6 @@ from tests.config import (  # noqa: E402
     HISTORY_BENCH_DEFAULT_CONCURRENCY,
     HISTORY_BENCH_DEFAULT_TIMEOUT_SEC,
 )
-from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
-from tests.helpers.errors import ServerError  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:

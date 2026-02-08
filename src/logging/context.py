@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import Token, ContextVar
-from collections.abc import Iterator
 
 _SESSION_ID: ContextVar[str] = ContextVar("session_id", default="-")
 _REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="-")

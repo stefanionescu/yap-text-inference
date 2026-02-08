@@ -6,6 +6,7 @@ The singleton management is handled by the registry module.
 
 from __future__ import annotations
 
+from src.config.timeouts import TOOL_TIMEOUT_S
 from src.config import (
     TOOL_MODEL,
     TOOL_COMPILE,
@@ -15,7 +16,6 @@ from src.config import (
     TOOL_MICROBATCH_MAX_SIZE,
     TOOL_MICROBATCH_MAX_DELAY_MS,
 )
-from src.config.timeouts import TOOL_TIMEOUT_S
 
 from .adapter import ClassifierToolAdapter
 

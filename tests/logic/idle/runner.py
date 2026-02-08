@@ -15,6 +15,7 @@ from collections.abc import Callable, Awaitable
 
 import websockets
 
+from tests.helpers.websocket import send_client_end, connect_with_retries
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
     dim,
@@ -24,7 +25,6 @@ from tests.helpers.fmt import (
     connection_status,
     connection_test_header,
 )
-from tests.helpers.websocket import send_client_end, connect_with_retries
 
 
 def _open_connection(ws_url: str):

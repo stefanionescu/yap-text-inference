@@ -13,6 +13,7 @@ import uuid
 import websockets
 
 from tests.state import StreamState, SessionContext
+from tests.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
     dim,
@@ -26,7 +27,6 @@ from tests.helpers.fmt import (
     format_assistant,
     format_metrics_inline,
 )
-from tests.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 from tests.helpers.websocket import (
     record_token,
     with_api_key,

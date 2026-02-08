@@ -15,14 +15,14 @@ from typing import Any
 import websockets  # type: ignore[import-not-found]
 
 from tests.state import LiveSession, print_help
-from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import dim, section_header
-from tests.helpers.errors import ServerError, IdleTimeoutError, ConnectionClosedError
-from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.helpers.websocket import with_api_key, connect_with_retries
+from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.helpers.errors import ServerError, IdleTimeoutError, ConnectionClosedError
 
-from .cli import interactive_loop
 from .client import LiveClient
+from .cli import interactive_loop
 from .personas import PersonaRegistry
 
 logger = logging.getLogger("live")

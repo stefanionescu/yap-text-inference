@@ -28,8 +28,8 @@ from src.config.tool import (
     TOOL_POSITIVE_LABEL_INDEX,
 )
 
-from .info import build_model_info
 from .batch import BatchExecutor
+from .info import build_model_info
 from .backend import TorchClassifierBackend
 
 logger = logging.getLogger(__name__)

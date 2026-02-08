@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import time
 from typing import Any
-from dataclasses import field, dataclass
 from collections.abc import Sequence
+from dataclasses import field, dataclass
 
 
 @dataclass(frozen=True)

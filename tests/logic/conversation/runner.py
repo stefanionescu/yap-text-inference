@@ -15,8 +15,12 @@ from collections.abc import Sequence
 import websockets  # type: ignore[import-not-found]
 
 from tests.state import ConversationSession
-from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.helpers.rate import SlidingWindowPacer
+from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.env import get_int_env, get_float_env
+from tests.helpers.websocket import with_api_key, create_tracker, send_client_end
+from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
     dim,
     format_user,
@@ -26,10 +30,6 @@ from tests.helpers.fmt import (
     format_assistant,
     format_metrics_inline,
 )
-from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.prompt import select_chat_prompt
-from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
-from tests.helpers.websocket import with_api_key, create_tracker, send_client_end
 
 from .stream import stream_exchange
 from .session import build_start_payload

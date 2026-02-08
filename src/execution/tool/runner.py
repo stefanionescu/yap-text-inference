@@ -31,10 +31,10 @@ import logging
 from typing import Any
 
 from .filter import filter_tool_phrase
-from ...config import TOOL_LANGUAGE_FILTER
 from .language import is_mostly_english
-from ...classifier import get_classifier_adapter
+from ...config import TOOL_LANGUAGE_FILTER
 from ...handlers.session import session_handler
+from ...classifier import get_classifier_adapter
 
 logger = logging.getLogger(__name__)
 
