@@ -10,8 +10,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from tests.helpers.websocket import finalize_metrics
 from tests.state import StreamState
+from tests.helpers.websocket import finalize_metrics
 
 
 def build_cancel_handlers(state: StreamState) -> dict[str, Any]:

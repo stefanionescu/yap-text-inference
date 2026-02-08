@@ -9,19 +9,19 @@ For engine label generation, see the `label` module.
 
 from __future__ import annotations
 
-import contextlib
-import json
 import os
-from datetime import datetime, timezone
-from pathlib import Path
+import json
+import contextlib
 from typing import Any
+from pathlib import Path
+from datetime import datetime, timezone
 
+from src.state import EnvironmentInfo
 from src.config import trt as trt_config
 from src.hf.license import compute_license_info
-from src.state import EnvironmentInfo
 
-from .detection import get_compute_capability_info
 from .label import EngineLabelError, _env_int, _env_str, get_engine_label
+from .detection import get_compute_capability_info
 
 # ============================================================================
 # Base Model Detection

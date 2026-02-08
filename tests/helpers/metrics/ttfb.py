@@ -7,11 +7,11 @@ summary statistics (p50, p90, p95). Uses TTFBSamples from tests.state for data.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Mapping, Sequence
 from typing import Any
+from collections.abc import Mapping, Callable, Sequence
 
-from tests.helpers.fmt import bold, dim, section_header
 from tests.state import TTFBSamples
+from tests.helpers.fmt import dim, bold, section_header
 
 # ============================================================================
 # Internal Helpers

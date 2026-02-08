@@ -13,8 +13,8 @@ Edge Case Handling:
     - Returns (None, False) for cancelled/empty results
 """
 
-import json
 import re
+import json
 from typing import Any
 
 
@@ -62,7 +62,7 @@ def parse_tool_result(tool_result: dict | None) -> tuple[Any, bool]:
         - raw_field: Parsed list or None
         - is_tool: Boolean indicating if tool should be called
     """
-    raw_field = None
+    raw_field: list[Any] | str | None = None
     is_tool = False
 
     raw_txt = (tool_result or {}).get("text") if tool_result else None

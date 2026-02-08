@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal
+from dataclasses import dataclass
 
 _ScreenAction = Literal["no_screenshot", "take_screenshot", "pass"]
 

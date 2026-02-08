@@ -59,7 +59,7 @@ CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0"))
 # -100 effectively bans the token entirely.
 # This helps avoid unwanted punctuation, filler words, and expressions.
 
-_DEFAULT_LOGIT_BIAS = {
+_DEFAULT_LOGIT_BIAS: dict[str, float] = {
     "*": -100,  # Markdown emphasis
     "(": -100,  # Parenthetical asides
     ")": -100,

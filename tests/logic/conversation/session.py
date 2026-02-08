@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from tests.state import SessionContext, ConversationSession
 from tests.helpers.websocket import build_start_payload as build_ws_start_payload
-from tests.state import ConversationSession, SessionContext
 
 
 def build_start_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:

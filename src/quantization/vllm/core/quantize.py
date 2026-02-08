@@ -6,13 +6,13 @@ Usage:
     python -m quant.quantize --model MODEL_PATH --out OUTPUT_DIR [options]
 """
 
-import argparse
 import os
 import sys
+import argparse
 
+from src.state import CalibrationConfig
 from src.helpers.models import is_classifier_model
 from src.quantization.vllm.core import AWQQuantizer
-from src.state import CalibrationConfig
 
 
 def main() -> int:

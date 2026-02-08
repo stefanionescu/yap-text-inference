@@ -8,24 +8,24 @@ This module provides async functions for each test phase:
 
 from __future__ import annotations
 
-import asyncio
 import json
-import logging
 import time
+import asyncio
+import logging
 from typing import Any
 
 import websockets
 
+from tests.state import SessionContext, DrainPhaseResult, CancelPhaseResult, RecoveryPhaseResult
 from tests.helpers.fmt import dim
 from tests.helpers.websocket import (
-    build_cancel_payload,
-    build_start_payload,
+    iter_messages,
     create_tracker,
     dispatch_message,
     finalize_metrics,
-    iter_messages,
+    build_start_payload,
+    build_cancel_payload,
 )
-from tests.state import CancelPhaseResult, DrainPhaseResult, RecoveryPhaseResult, SessionContext
 
 from .handlers import build_cancel_handlers, build_recovery_handlers
 

@@ -14,15 +14,15 @@ Key Differences from vLLM:
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
+from collections.abc import AsyncGenerator
 
 if TYPE_CHECKING:
     from tensorrt_llm.executor import GenerationResult  # type: ignore
 else:
     GenerationResult = Any  # Actual import happens lazily inside SuppressedFDContext
 
-from ..base import BaseEngine, EngineNotReadyError, EngineOutput
+from ..base import BaseEngine, EngineOutput, EngineNotReadyError
 
 logger = logging.getLogger(__name__)
 

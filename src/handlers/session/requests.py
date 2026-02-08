@@ -24,7 +24,8 @@ and proper cleanup when connections close.
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
+from collections.abc import Callable
 
 if TYPE_CHECKING:
     from .state import SessionState
@@ -82,7 +83,7 @@ def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
 def track_task(
     state: SessionState,
     task: asyncio.Task,
-    get_state_callback: callable,
+    get_state_callback: Callable[[], SessionState | None],
 ) -> None:
     """Register an asyncio.Task for the session with auto-cleanup.
 
@@ -135,7 +136,7 @@ def cleanup_session_requests(state: SessionState | None) -> dict[str, str]:
     """
     if not state:
         return {"active": "", "tool": ""}
-    active_req = state.active_request_id if state.active_request_id not in (None, CANCELLED_SENTINEL) else ""
+    active_req = "" if state.active_request_id in (None, CANCELLED_SENTINEL) else cast(str, state.active_request_id)
     tool_req = state.tool_request_id or ""
     state.active_request_id = None
     state.tool_request_id = None

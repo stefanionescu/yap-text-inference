@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import AsyncGenerator
 from typing import TypeVar
+from collections.abc import AsyncGenerator
 
 T = TypeVar("T")
 

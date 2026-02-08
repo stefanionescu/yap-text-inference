@@ -17,7 +17,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from src.config import INFERENCE_ENGINE
 
@@ -26,11 +26,14 @@ if TYPE_CHECKING:
     from .trt.factory import TRTEngineSingleton
     from .vllm.factory import VLLMEngineSingleton
 
+
+class _EngineState(TypedDict):
+    trt: TRTEngineSingleton | None
+    vllm: VLLMEngineSingleton | None
+
+
 # Singleton instances - created lazily on first access
-_STATE: dict[str, TRTEngineSingleton | VLLMEngineSingleton | None] = {
-    "trt": None,
-    "vllm": None,
-}
+_STATE: _EngineState = {"trt": None, "vllm": None}
 
 
 def _get_trt_singleton() -> TRTEngineSingleton:
@@ -72,13 +75,13 @@ async def get_engine() -> BaseEngine:
 async def shutdown_engine() -> None:
     """Shutdown all initialized engines."""
     if INFERENCE_ENGINE == "vllm":
-        singleton = _get_vllm_singleton()
-        if singleton.is_initialized:
-            await singleton.shutdown()
+        vllm_singleton = _get_vllm_singleton()
+        if vllm_singleton.is_initialized:
+            await vllm_singleton.shutdown()
     else:
-        singleton = _get_trt_singleton()
-        if singleton.is_initialized:
-            await singleton.shutdown()
+        trt_singleton = _get_trt_singleton()
+        if trt_singleton.is_initialized:
+            await trt_singleton.shutdown()
 
 
 async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
@@ -153,7 +156,9 @@ def ensure_cache_reset_daemon() -> None:
 
     from .vllm.cache import CacheResetManager  # noqa: PLC0415
 
-    CacheResetManager.get_instance().ensure_daemon_running(reset_engine_caches)
+    CacheResetManager.get_instance().ensure_daemon_running(
+        lambda reason, force: reset_engine_caches(reason, force=force)
+    )
 
 
 __all__ = [

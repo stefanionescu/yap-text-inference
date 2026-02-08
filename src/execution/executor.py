@@ -30,12 +30,12 @@ import logging
 
 from fastapi import WebSocket
 
-from ..config.timeouts import TOOL_TIMEOUT_S
-from ..handlers.session import session_handler
-from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
 from .chat import run_chat_generation
 from .tool.parser import parse_tool_result
 from .tool.runner import launch_tool_request
+from ..config.timeouts import TOOL_TIMEOUT_S
+from ..handlers.session import session_handler
+from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +72,11 @@ async def run_execution(
     """
     # Run tool router (do not mark active to avoid clobbering chat req id)
     # Timeout is handled internally by tool_runner.py (mirroring the chat stream)
-    tool_req_id, tool_coro = launch_tool_request(session_id, user_utt)
+    tool_req_id, tool_task = launch_tool_request(session_id, user_utt)
     logger.info(f"sequential_exec: tool start req_id={tool_req_id}")
 
     try:
-        tool_res = await asyncio.wait_for(tool_coro, timeout=TOOL_TIMEOUT_S)
+        tool_res = await asyncio.wait_for(tool_task, timeout=TOOL_TIMEOUT_S)
     except asyncio.TimeoutError:
         logger.warning(
             "sequential_exec: tool timeout session_id=%s req_id=%s timeout_s=%.1f",
@@ -84,7 +84,7 @@ async def run_execution(
             tool_req_id,
             TOOL_TIMEOUT_S,
         )
-        await cancel_task(tool_coro)
+        await cancel_task(tool_task)
         tool_res = {"cancelled": True, "text": "[]", "timeout": True}
 
     # Parse tool decision

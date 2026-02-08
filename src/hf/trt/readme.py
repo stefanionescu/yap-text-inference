@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import Any
+from pathlib import Path
 
 
 def render_trt_readme(metadata: dict[str, Any]) -> str:

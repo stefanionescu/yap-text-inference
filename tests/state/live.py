@@ -2,27 +2,27 @@
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
-import logging
 import os
 import signal
-from dataclasses import dataclass, field
+import asyncio
+import logging
+import contextlib
 from typing import TYPE_CHECKING
+from dataclasses import field, dataclass
 
+from tests.helpers.fmt import dim, bold, cyan, yellow, magenta
 from tests.helpers.errors import (
-    ConnectionClosedError,
+    ServerError,
+    RateLimitError,
+    TestClientError,
     IdleTimeoutError,
     InputClosedError,
-    RateLimitError,
-    ServerError,
-    TestClientError,
+    ConnectionClosedError,
 )
-from tests.helpers.fmt import bold, cyan, dim, magenta, yellow
-from tests.helpers.websocket import build_start_payload as build_ws_start_payload, record_token
+from tests.helpers.websocket import record_token, build_start_payload as build_ws_start_payload
 from tests.logic.live.commands import dispatch_command
 
-from .metrics import SessionContext, StreamState
+from .metrics import StreamState, SessionContext
 
 if TYPE_CHECKING:
     from tests.logic.live.client import LiveClient

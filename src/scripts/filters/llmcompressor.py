@@ -8,10 +8,11 @@ tqdm output that bypasses Python logging.
 from __future__ import annotations
 
 import io
-import logging
 import os
 import re
 import sys
+import logging
+from typing import cast
 from collections.abc import Iterable
 
 from src.config.filters import LLMCOMPRESSOR_NOISE_PATTERNS
@@ -93,12 +94,18 @@ def _install_stream_filters() -> None:
         return
 
     try:
-        sys.stdout = LLMCompressorNoiseFilterStream(sys.stdout, LLMCOMPRESSOR_NOISE_PATTERNS)
-        sys.stderr = LLMCompressorNoiseFilterStream(sys.stderr, LLMCOMPRESSOR_NOISE_PATTERNS)
+        sys.stdout = LLMCompressorNoiseFilterStream(cast(io.TextIOBase, sys.stdout), LLMCOMPRESSOR_NOISE_PATTERNS)
+        sys.stderr = LLMCompressorNoiseFilterStream(cast(io.TextIOBase, sys.stderr), LLMCOMPRESSOR_NOISE_PATTERNS)
         if hasattr(sys, "__stdout__") and sys.__stdout__ is not None:
-            sys.__stdout__ = LLMCompressorNoiseFilterStream(sys.__stdout__, LLMCOMPRESSOR_NOISE_PATTERNS)
+            sys.__stdout__ = LLMCompressorNoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stdout__),
+                LLMCOMPRESSOR_NOISE_PATTERNS,
+            )
         if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
-            sys.__stderr__ = LLMCompressorNoiseFilterStream(sys.__stderr__, LLMCOMPRESSOR_NOISE_PATTERNS)
+            sys.__stderr__ = LLMCompressorNoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stderr__),
+                LLMCOMPRESSOR_NOISE_PATTERNS,
+            )
         _STATE["streams_patched"] = True
     except Exception as exc:  # pragma: no cover
         logger.debug("failed to wrap stdio for llmcompressor log filtering: %s", exc)

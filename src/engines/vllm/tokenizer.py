@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import inspect
 import logging
-import os
-from typing import Any
+from typing import Any, TypedDict
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 
@@ -14,7 +14,13 @@ from src.helpers.profiles import get_model_profile, normalize_model_id
 
 logger = logging.getLogger(__name__)
 
-_STATE = {"installed": False, "markers": set()}
+
+class _TokenizerPatchState(TypedDict):
+    installed: bool
+    markers: set[str]
+
+
+_STATE: _TokenizerPatchState = {"installed": False, "markers": set()}
 
 
 def _resolve_tokenizer_kwarg_key() -> str | None:
@@ -100,7 +106,7 @@ def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
     if _STATE["installed"]:
         return True
 
-    original = AutoTokenizer.from_pretrained.__func__
+    original = getattr(AutoTokenizer.from_pretrained, "__func__", AutoTokenizer.from_pretrained)
 
     def _patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
         normalized = _normalize_tokenizer_identifier(pretrained_model_name_or_path)
@@ -108,8 +114,8 @@ def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
             kwargs.setdefault("fix_mistral_regex", True)
         return original(cls, pretrained_model_name_or_path, *args, **kwargs)
 
-    AutoTokenizer._yap_original_from_pretrained = original
-    AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)
+    AutoTokenizer._yap_original_from_pretrained = original  # type: ignore[attr-defined]
+    AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)  # type: ignore[method-assign,assignment]
     _STATE["installed"] = True
     logger.info(
         "[config] Applied AutoTokenizer monkeypatch for fix_mistral_regex (markers: %s)",

@@ -11,7 +11,7 @@ import sys
 
 # Add parent to path for utils import
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils import download_snapshot, get_hf_token, log_skip, log_success
+from utils import log_skip, log_success, get_hf_token, download_snapshot
 
 
 def main() -> None:

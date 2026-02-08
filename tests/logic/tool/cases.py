@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from tests.messages.tool import TOOL_DEFAULT_MESSAGES
 from tests.state import CaseStep, ToolTestCase
+from tests.messages.tool import TOOL_DEFAULT_MESSAGES
 
 PAIR_LEN = 2
 

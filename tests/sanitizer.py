@@ -11,8 +11,8 @@ from collections.abc import Sequence
 
 import pytest
 
-from tests.helpers.setup import setup_repo_path
 from tests.messages import STREAMING_SANITIZER_CASES
+from tests.helpers.setup import setup_repo_path
 
 
 def _ensure_test_env() -> None:

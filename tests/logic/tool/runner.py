@@ -7,13 +7,13 @@ concurrency, and reporting results.
 
 from __future__ import annotations
 
-from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT, PROGRESS_BAR_WIDTH
-from tests.helpers.prompt import select_chat_prompt
 from tests.state import CaseResult, RunnerConfig, ToolTestCase
+from tests.config import PROGRESS_BAR_WIDTH, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.helpers.prompt import select_chat_prompt
 
 from .cases import build_cases
 from .executor import run_all_cases
-from .reporting import print_case_results, print_summary, save_logs
+from .reporting import save_logs, print_summary, print_case_results
 
 # ============================================================================
 # Internal Helpers

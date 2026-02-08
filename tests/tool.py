@@ -7,10 +7,10 @@ Parses command-line arguments and defers execution to tool.runner.
 
 from __future__ import annotations
 
-import argparse
+import sys
 import asyncio
 import logging
-import sys
+import argparse
 
 try:
     from tests.helpers.setup import setup_repo_path

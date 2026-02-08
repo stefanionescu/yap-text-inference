@@ -18,8 +18,8 @@ import re
 from src.state import FilterResult, _ScreenAction
 
 from ...config.patterns import (
-    SCREENSHOT_REJECT_PATTERNS,
     SCREENSHOT_TAKE_X_PATTERN,
+    SCREENSHOT_REJECT_PATTERNS,
     SCREENSHOT_TRIGGER_PATTERNS,
     SCREENSHOT_TRIGGER_QUANTITIES,
 )

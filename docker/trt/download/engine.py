@@ -2,8 +2,8 @@
 """Download pre-built TRT engine from HuggingFace at Docker build time."""
 
 import os
-import shutil
 import sys
+import shutil
 
 # Add common download utils to path (works in both dev and Docker contexts)
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,7 +16,7 @@ for path in common_paths:
         sys.path.insert(0, path)
         break
 
-from utils import download_snapshot, get_hf_token, log_skip, log_success, verify_files_exist  # noqa: E402
+from utils import log_skip, log_success, get_hf_token, download_snapshot, verify_files_exist  # noqa: E402
 
 
 def main() -> None:

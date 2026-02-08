@@ -100,7 +100,7 @@ def _trim_history_preserve_messages_with(
     if len(parts) <= 1:
         return trim_fn(history_text, max_tokens, keep="end")
 
-    result_parts = []
+    result_parts: list[str] = []
     current_tokens = 0
 
     for i in range(len(parts) - 1, -1, -1):

@@ -7,7 +7,7 @@ This package provides:
 - TRT-LLM model push workflows (trt/)
 """
 
-from .api import create_repo_if_needed, get_hf_api, verify_repo_exists
+from .api import get_hf_api, verify_repo_exists, create_repo_if_needed
 from .license import compute_license_info, fetch_license_from_hf, resolve_template_name
 
 __all__ = [

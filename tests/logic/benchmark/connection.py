@@ -7,28 +7,28 @@ and error handling for benchmark runs.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
+import asyncio
 from typing import Any
 
 import websockets
-from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
+from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
+from tests.state import StreamState, SessionContext, BenchmarkConfig
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.metrics import error_result
 from tests.helpers.websocket import (
-    build_start_payload,
-    connect_with_retries,
-    create_tracker,
-    finalize_metrics,
-    iter_messages,
     record_token,
+    with_api_key,
+    iter_messages,
+    create_tracker,
     record_toolcall,
     send_client_end,
-    with_api_key,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
 )
-from tests.state import BenchmarkConfig, SessionContext, StreamState
 
 
 async def _execute_phase(

@@ -13,32 +13,32 @@ from typing import Any
 
 import websockets  # type: ignore[import-not-found]
 
-from tests.config import DEFAULT_WS_PING_INTERVAL, DEFAULT_WS_PING_TIMEOUT
-from tests.helpers.errors import ServerError, StreamError
+from tests.state import StreamState, TTFBSamples, SessionContext
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.fmt import (
     dim,
+    green,
+    yellow,
+    format_user,
+    section_header,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
-    format_user,
-    green,
-    section_header,
-    yellow,
 )
-from tests.helpers.metrics import create_ttfb_aggregator, emit_ttfb_summary, has_ttfb_samples, record_ttfb
+from tests.helpers.errors import ServerError, StreamError
 from tests.helpers.prompt import select_chat_prompt
+from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
+from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.helpers.websocket import (
-    build_start_payload,
+    with_api_key,
+    iter_messages,
     consume_stream,
     create_tracker,
-    finalize_metrics,
-    iter_messages,
     send_client_end,
-    with_api_key,
+    finalize_metrics,
+    build_start_payload,
 )
-from tests.messages.history import HISTORY_RECALL_MESSAGES, WARM_HISTORY
-from tests.state import SessionContext, StreamState, TTFBSamples
 
 # ============================================================================
 # Internal Helpers

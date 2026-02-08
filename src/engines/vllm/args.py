@@ -27,26 +27,27 @@ The built AsyncEngineArgs is passed to AsyncLLMEngine.from_engine_args().
 
 from __future__ import annotations
 
-import importlib.util
 import os
+import importlib.util
+from typing import Any
 
 from vllm.config import AttentionConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 
-from src.config import CHAT_QUANTIZATION, DEFAULT_MAX_BATCHED_TOKENS, KV_DTYPE
-from src.config.limits import MEMORY_OPT_GPU_FRAC_CAP
-from src.config.quantization import FLOAT16_QUANT_METHODS
+from src.config import KV_DTYPE, CHAT_QUANTIZATION, DEFAULT_MAX_BATCHED_TOKENS
 from src.helpers.env import env_flag
+from src.config.limits import MEMORY_OPT_GPU_FRAC_CAP
 from src.helpers.models import is_local_model_path
 from src.helpers.profiles import (
-    get_max_batched_tokens,
+    model_uses_mla,
     get_tokenizer_kwargs,
-    model_needs_memory_optimization,
+    get_max_batched_tokens,
     model_requires_bfloat16,
     model_requires_fla_runtime,
-    model_uses_mla,
+    model_needs_memory_optimization,
 )
-from src.quantization.vllm.core.detection import detect_quant_backend, log_quant_detection, resolve_model_origin
+from src.config.quantization import FLOAT16_QUANT_METHODS
+from src.quantization.vllm.core.detection import log_quant_detection, detect_quant_backend, resolve_model_origin
 
 from .memory import auto_max_num_seqs, configure_kv_cache, scale_batching_limits
 from .tokenizer import inject_tokenizer_kwargs
@@ -63,7 +64,7 @@ def _ensure_fla_runtime_available(model_identifier: str) -> None:
     )
 
 
-def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None, dict]:
+def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None, dict[str, Any]]:
     """Resolve the quantization backend and detect from model config if needed.
 
     Returns:
@@ -74,7 +75,7 @@ def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None
         return None, {}
 
     inference_quant = raw_quant
-    quant_payload = {}
+    quant_payload: dict[str, Any] = {}
 
     if raw_quant == "awq":
         inference_quant = "awq_marlin"

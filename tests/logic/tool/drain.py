@@ -7,14 +7,14 @@ collects frames until a turn completes.
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import json
 import time
+import asyncio
+import contextlib
 from typing import Any
 
+from tests.state import DrainState, TurnResult, DrainConfig
 from tests.helpers.websocket import iter_messages
-from tests.state import DrainConfig, DrainState, TurnResult
 
 # ============================================================================
 # Internal Helpers

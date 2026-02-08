@@ -24,18 +24,17 @@ invoking the model. This improves latency for known patterns.
 
 from __future__ import annotations
 
-import asyncio
-import logging
 import time
 import uuid
-from collections.abc import Awaitable
+import asyncio
+import logging
 from typing import Any
 
-from ...classifier import get_classifier_adapter
-from ...config import TOOL_LANGUAGE_FILTER
-from ...handlers.session import session_handler
 from .filter import filter_tool_phrase
+from ...config import TOOL_LANGUAGE_FILTER
 from .language import is_mostly_english
+from ...classifier import get_classifier_adapter
+from ...handlers.session import session_handler
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +130,7 @@ async def run_toolcall(
 def launch_tool_request(
     session_id: str,
     user_utt: str,
-) -> tuple[str, Awaitable[dict[str, Any]]]:
+) -> tuple[str, asyncio.Task[dict[str, Any]]]:
     """Create a tool request task and register its request ID."""
     tool_req_id = f"tool-{uuid.uuid4()}"
     session_handler.set_tool_request(session_id, tool_req_id)

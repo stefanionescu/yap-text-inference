@@ -7,7 +7,7 @@ import re
 import time
 from typing import Any
 
-from src.config.limits import DOWNLOAD_BACKOFF_MAX_SECONDS, DOWNLOAD_MAX_RETRIES
+from src.config.limits import DOWNLOAD_MAX_RETRIES, DOWNLOAD_BACKOFF_MAX_SECONDS
 
 
 def is_awq_dir(path: str) -> bool:

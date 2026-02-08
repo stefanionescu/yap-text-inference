@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 
 import torch  # type: ignore[import]
-from transformers import AutoModelForSequenceClassification, AutoTokenizer  # type: ignore[import]
+from transformers import AutoTokenizer, AutoModelForSequenceClassification  # type: ignore[import]
 
 from src.state import ClassifierModelInfo
 

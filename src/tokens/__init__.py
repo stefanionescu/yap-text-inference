@@ -24,16 +24,16 @@ Token counting is critical for staying within model context limits and
 managing GPU memory usage (KV cache sizing).
 """
 
-from .prefix import count_prefix_tokens, get_effective_user_utt_max_tokens, strip_screen_prefix
 from .utils import (  # Chat-specific; Tool-specific
-    build_user_history_for_tool,
     count_tokens_chat,
     count_tokens_tool,
-    trim_history_preserve_messages_chat,
-    trim_history_preserve_messages_tool,
+    build_user_history_for_tool,
     trim_text_to_token_limit_chat,
     trim_text_to_token_limit_tool,
+    trim_history_preserve_messages_chat,
+    trim_history_preserve_messages_tool,
 )
+from .prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 
 __all__ = [
     # Chat

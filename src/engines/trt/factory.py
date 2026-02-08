@@ -17,17 +17,17 @@ Optional Configuration:
 
 from __future__ import annotations
 
+import os
 import asyncio
 import logging
-import os
 from typing import Any
 
 from src.config import CHAT_MODEL, DEPLOY_CHAT, TRT_ENGINE_DIR
 from src.helpers.env import env_flag
 
-from ..singleton import AsyncSingleton
-from .engine import TRTEngine
 from .setup import build_kv_cache_config, read_checkpoint_model_type, validate_runtime_batch_size
+from .engine import TRTEngine
+from ..singleton import AsyncSingleton
 
 logger = logging.getLogger(__name__)
 

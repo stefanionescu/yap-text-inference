@@ -22,7 +22,7 @@ for path in common_paths:
         sys.path.insert(0, path)
         break
 
-from utils import download_snapshot, get_hf_token, log_skip, log_success  # noqa: E402
+from utils import log_skip, log_success, get_hf_token, download_snapshot  # noqa: E402
 
 # Files and directories to exclude when downloading model files
 IGNORE_PATTERNS = [

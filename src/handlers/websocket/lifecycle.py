@@ -26,14 +26,14 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
-import logging
 import time
+import asyncio
+import logging
+import contextlib
 
 from fastapi import WebSocket
 
-from ...config.websocket import WS_CLOSE_IDLE_CODE, WS_CLOSE_IDLE_REASON, WS_IDLE_TIMEOUT_S, WS_WATCHDOG_TICK_S
+from ...config.websocket import WS_IDLE_TIMEOUT_S, WS_CLOSE_IDLE_CODE, WS_WATCHDOG_TICK_S, WS_CLOSE_IDLE_REASON
 
 logger = logging.getLogger(__name__)
 

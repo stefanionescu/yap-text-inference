@@ -13,9 +13,9 @@ Organization:
 
 from .engine import EngineNotReadyError, EngineShutdownError
 from .limits import RateLimitError
-from .quantization import EngineLabelError
 from .stream import StreamCancelledError
 from .validation import ValidationError
+from .quantization import EngineLabelError
 
 __all__ = [
     # Engine errors

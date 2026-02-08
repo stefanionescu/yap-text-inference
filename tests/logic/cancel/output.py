@@ -6,16 +6,16 @@ to the console using the standard test output formatting helpers.
 
 from __future__ import annotations
 
+from tests.state import CancelClientResult, NormalClientResult
 from tests.helpers.fmt import (
+    red,
+    green,
+    format_user,
     exchange_footer,
     exchange_header,
     format_assistant,
     format_metrics_inline,
-    format_user,
-    green,
-    red,
 )
-from tests.state import CancelClientResult, NormalClientResult
 
 CANCEL_TEST_MESSAGE = "hey there! tell me a story about a magical forest"
 RECOVERY_PREVIEW_CHARS = 80

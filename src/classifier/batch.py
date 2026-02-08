@@ -25,10 +25,10 @@ handling many small classification requests concurrently.
 
 from __future__ import annotations
 
-import threading
 import time
-from collections.abc import Callable
+import threading
 from queue import Empty, Queue
+from collections.abc import Callable
 
 import torch  # type: ignore[import]
 

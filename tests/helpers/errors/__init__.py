@@ -6,17 +6,17 @@ implementation modular.
 """
 
 from .base import TestClientError
-from .connection import ConnectionClosedError, ConnectionError, ConnectionRejectedError, IdleTimeoutError
-from .misc import InputClosedError, MessageParseError, PromptSelectionError, StreamError
+from .misc import StreamError, InputClosedError, MessageParseError, PromptSelectionError
 from .server import (
+    ServerError,
+    RateLimitError,
+    ValidationError,
     AuthenticationError,
     InternalServerError,
     InvalidMessageError,
-    RateLimitError,
     ServerAtCapacityError,
-    ServerError,
-    ValidationError,
 )
+from .connection import ConnectionError, IdleTimeoutError, ConnectionClosedError, ConnectionRejectedError
 
 __all__ = [
     "TestClientError",

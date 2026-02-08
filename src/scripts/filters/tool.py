@@ -7,9 +7,10 @@ progress, classifier warmup logs, and deprecation warnings.
 from __future__ import annotations
 
 import io
-import logging
 import re
 import sys
+import logging
+from typing import cast
 from collections.abc import Iterable
 
 from src.config.filters import TOOL_NOISE_PATTERNS
@@ -91,12 +92,18 @@ def _install_stream_filters() -> None:
         return
 
     try:
-        sys.stdout = ToolNoiseFilterStream(sys.stdout, TOOL_NOISE_PATTERNS)
-        sys.stderr = ToolNoiseFilterStream(sys.stderr, TOOL_NOISE_PATTERNS)
+        sys.stdout = ToolNoiseFilterStream(cast(io.TextIOBase, sys.stdout), TOOL_NOISE_PATTERNS)
+        sys.stderr = ToolNoiseFilterStream(cast(io.TextIOBase, sys.stderr), TOOL_NOISE_PATTERNS)
         if hasattr(sys, "__stdout__") and sys.__stdout__ is not None:
-            sys.__stdout__ = ToolNoiseFilterStream(sys.__stdout__, TOOL_NOISE_PATTERNS)
+            sys.__stdout__ = ToolNoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stdout__),
+                TOOL_NOISE_PATTERNS,
+            )
         if hasattr(sys, "__stderr__") and sys.__stderr__ is not None:
-            sys.__stderr__ = ToolNoiseFilterStream(sys.__stderr__, TOOL_NOISE_PATTERNS)
+            sys.__stderr__ = ToolNoiseFilterStream(  # type: ignore[misc,assignment]
+                cast(io.TextIOBase, sys.__stderr__),
+                TOOL_NOISE_PATTERNS,
+            )
         _STATE["streams_patched"] = True
     except Exception as exc:  # pragma: no cover
         logger.debug("failed to wrap stdio for tool log filtering: %s", exc)

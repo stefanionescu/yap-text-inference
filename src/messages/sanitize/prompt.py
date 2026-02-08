@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import unicodedata
 
-from ...config.filters import BIDI_CHAR_PATTERN, CTRL_CHAR_PATTERN
-from ...config.limits import PROMPT_SANITIZE_MAX_CHARS
 from .common import _strip_escaped_quotes
+from ...config.limits import PROMPT_SANITIZE_MAX_CHARS
+from ...config.filters import BIDI_CHAR_PATTERN, CTRL_CHAR_PATTERN
 
 try:
     from ftfy import fix_text  # type: ignore[import-not-found]
