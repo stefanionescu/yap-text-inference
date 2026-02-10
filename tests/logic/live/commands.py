@@ -98,7 +98,7 @@ async def _handle_history_command(
     raw_command: str,
 ) -> bool:
     """Print the accumulated conversation history."""
-    _ = registry, raw_command  # unused
+    del registry, raw_command
     if client.session.history:
         print("\n--- conversation history ---")
         for msg in client.session.history:
@@ -119,7 +119,7 @@ async def _handle_info_command(
     raw_command: str,
 ) -> bool:
     """Display session and persona metadata."""
-    _ = registry, raw_command
+    del registry, raw_command
     persona = client.session.persona
     logger.info(
         "Session %s persona=%s gender=%s personality=%s history_chars=%d",
@@ -159,7 +159,7 @@ async def _handle_stop_command(
     raw_command: str,
 ) -> bool:
     """Stop and close the live session."""
-    _ = registry, raw_command
+    del registry, raw_command
     logger.info("Stopping live session...")
     await client.close()
     logger.info("Stopped live session.")

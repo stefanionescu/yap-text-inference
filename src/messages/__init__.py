@@ -18,10 +18,8 @@ cancel.py:
     Handles request cancellation during streaming. Aborts the
     active generation request and cleans up state.
 
-chat/:
-    Chat-related handlers and prompt building:
-    - prompt.py: Dynamic persona/prompt updates mid-session
-    - builder.py: Chat prompt construction using tokenizer templates
+chat.py:
+    Chat prompt construction using tokenizer templates.
 
 validators.py:
     Input validation utilities shared across message handlers.
@@ -35,5 +33,5 @@ sanitize/:
 
 Import from submodules directly to avoid circular imports:
     from src.messages.start import handle_start_message
-    from src.messages.chat.builder import build_chat_prompt_with_prefix
+    from src.messages.chat import build_chat_prompt_with_prefix
 """

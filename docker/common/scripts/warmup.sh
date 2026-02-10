@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # Shared warmup script for Docker containers.
 #
 # Waits for the inference server to become healthy, then runs warmup tests

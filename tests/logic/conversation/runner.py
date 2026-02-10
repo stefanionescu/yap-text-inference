@@ -12,7 +12,7 @@ import uuid
 import logging
 from collections.abc import Sequence
 
-import websockets  # type: ignore[import-not-found]
+import websockets
 
 from tests.state import ConversationSession
 from tests.helpers.rate import SlidingWindowPacer

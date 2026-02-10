@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # vLLM GPU detection and optimization.
 #
 # Sources shared GPU detection from common/ and applies vLLM-specific defaults.

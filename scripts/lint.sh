@@ -1,34 +1,61 @@
 #!/usr/bin/env bash
-# =============================================================================
-# Linting Script
-# =============================================================================
-# Runs isort, Ruff, mypy (if installed), naming checks, and ShellCheck on the codebase.
-#
-# Usage: bash scripts/lint.sh [--fix]
-
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${REPO_ROOT}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
+RUN_FIX=0
+ONLY=""
 
-command -v python >/dev/null 2>&1 || {
-  echo "python is required to run linting." >&2
-  exit 1
+usage() {
+  cat <<'USAGE'
+Usage: scripts/lint.sh [--fix] [--only python|shell]
+
+Runs linters across the repository:
+  - Python: isort, ruff (lint + format), mypy (type check)
+  - Shell:  shellcheck (lint), shfmt (format if available)
+
+Options:
+  --fix              Apply auto-fixes (ruff format/check --fix, shfmt -w)
+  --only python      Run only Python linters
+  --only shell       Run only shell linters
+  -h, --help         Show this help
+
+Install dev tools:
+  python -m pip install -r requirements-dev.txt
+
+Shell formatting (optional):
+  Install shfmt to enable shell formatting in --fix mode.
+  macOS:  brew install shfmt
+  Linux:  see https://github.com/mvdan/sh#shfmt for install options
+USAGE
 }
 
-PYTHON_TARGETS=()
-for path in src tests docker; do
-  if [[ -d ${path} ]]; then
-    PYTHON_TARGETS+=("${path}")
-  fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --fix)
+      RUN_FIX=1
+      shift
+      ;;
+    --only)
+      ONLY=${2:-}
+      if [[ -z $ONLY || ($ONLY != "python" && $ONLY != "shell") ]]; then
+        echo "Error: --only expects 'python' or 'shell'" >&2
+        exit 2
+      fi
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
 done
 
-FIX_MODE=false
-for arg in "$@"; do
-  if [[ ${arg} == "--fix" ]]; then
-    FIX_MODE=true
-  fi
-done
+have() { command -v "$1" >/dev/null 2>&1; }
 
 run_quiet() {
   local label="$1"
@@ -45,59 +72,97 @@ run_quiet() {
   return 1
 }
 
-if ((${#PYTHON_TARGETS[@]})); then
-  if ${FIX_MODE}; then
-    run_quiet "isort" python -m isort --settings-path pyproject.toml "${PYTHON_TARGETS[@]}"
-  else
-    run_quiet "isort" python -m isort --settings-path pyproject.toml --check-only --diff "${PYTHON_TARGETS[@]}"
-  fi
-
-  if ${FIX_MODE}; then
-    run_quiet "ruff format" python -m ruff format --config pyproject.toml "${PYTHON_TARGETS[@]}"
-  else
-    run_quiet "ruff format" python -m ruff format --config pyproject.toml --check "${PYTHON_TARGETS[@]}"
-  fi
-
-  if ${FIX_MODE}; then
-    run_quiet "ruff lint" python -m ruff check --config pyproject.toml --fix "${PYTHON_TARGETS[@]}"
-  else
-    run_quiet "ruff lint" python -m ruff check --config pyproject.toml "${PYTHON_TARGETS[@]}"
-  fi
-
-  if python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('mypy') else 1)"; then
-    MYPY_TARGETS=()
-    if [[ -d src ]]; then
-      MYPY_TARGETS+=("src")
-    fi
-    if ((${#MYPY_TARGETS[@]})); then
-      run_quiet "mypy" python -m mypy "${MYPY_TARGETS[@]}" --config-file pyproject.toml
-    fi
-  fi
-
-  run_quiet "checknames" python scripts/checknames.py
-fi
-
-if ((BASH_VERSINFO[0] >= 4)); then
-  mapfile -t SHELL_FILES < <(git ls-files '*.sh')
-else
-  SHELL_FILES=()
-  while IFS= read -r line; do
-    SHELL_FILES+=("$line")
-  done < <(git ls-files '*.sh')
-fi
-
-if ((${#SHELL_FILES[@]})); then
-  if ! command -v shellcheck >/dev/null 2>&1; then
-    echo "shellcheck is not installed. Install dev deps with 'pip install -r requirements-dev.txt' or your package manager." >&2
+run_python() {
+  if ! python -m isort --version >/dev/null 2>&1; then
+    echo "isort not found. Install dev deps: python -m pip install -r requirements-dev.txt" >&2
     exit 1
   fi
-  run_quiet "shellcheck" shellcheck --shell=bash --external-sources --severity=style --exclude=SC1090,SC1091 "${SHELL_FILES[@]}"
 
-  if command -v shfmt >/dev/null 2>&1; then
-    if ${FIX_MODE}; then
+  if [[ $RUN_FIX -eq 1 ]]; then
+    run_quiet "isort" python -m isort --settings-path pyproject.toml "$ROOT_DIR"
+  else
+    run_quiet "isort" python -m isort --settings-path pyproject.toml --check-only --diff "$ROOT_DIR"
+  fi
+
+  if ! python -m ruff --version >/dev/null 2>&1; then
+    echo "ruff not found. Install dev deps: python -m pip install -r requirements-dev.txt" >&2
+    exit 1
+  fi
+
+  if [[ $RUN_FIX -eq 1 ]]; then
+    run_quiet "ruff format" python -m ruff format --config "$ROOT_DIR/pyproject.toml" "$ROOT_DIR"
+  else
+    run_quiet "ruff format" python -m ruff format --config "$ROOT_DIR/pyproject.toml" --check "$ROOT_DIR"
+  fi
+
+  if [[ $RUN_FIX -eq 1 ]]; then
+    run_quiet "ruff lint" python -m ruff check --config "$ROOT_DIR/pyproject.toml" --fix "$ROOT_DIR"
+  else
+    run_quiet "ruff lint" python -m ruff check --config "$ROOT_DIR/pyproject.toml" "$ROOT_DIR"
+  fi
+
+  if python -m src.scripts.validation.package importlinter; then
+    run_quiet "import-linter" lint-imports
+  fi
+
+  if python -m src.scripts.validation.package mypy; then
+    PY_DIRS=()
+    [[ -d "$ROOT_DIR/server" ]] && PY_DIRS+=("$ROOT_DIR/server")
+    [[ -d "$ROOT_DIR/tests" ]] && PY_DIRS+=("$ROOT_DIR/tests")
+    if [[ ${#PY_DIRS[@]} -gt 0 ]]; then
+      run_quiet "mypy" python -m mypy "${PY_DIRS[@]}"
+    fi
+  fi
+
+  run_quiet "file-length" python "$ROOT_DIR/linting/file_length.py"
+  run_quiet "single-file-folders" python "$ROOT_DIR/linting/single_file_folders.py"
+  run_quiet "prefix-collisions" python "$ROOT_DIR/linting/prefix_collisions.py"
+  run_quiet "no-inline-python" python "$ROOT_DIR/linting/no_inline_python.py"
+}
+
+run_shell() {
+  # Prefer git-tracked files; fallback to find. Avoid bash 4+ mapfile for macOS compatibility.
+  TMP_LIST="$(mktemp)"
+  git -C "$ROOT_DIR" ls-files -z "*.sh" >"$TMP_LIST" 2>/dev/null || true
+  if [[ ! -s $TMP_LIST ]]; then
+    find "$ROOT_DIR" -type f -name "*.sh" -print0 >"$TMP_LIST"
+  fi
+
+  SHELL_FILES=()
+  while IFS= read -r -d '' file; do
+    SHELL_FILES+=("$file")
+  done <"$TMP_LIST"
+
+  if [[ ${#SHELL_FILES[@]} -gt 0 ]]; then
+    if ! have shellcheck; then
+      echo "shellcheck not found. Install dev deps: python -m pip install -r requirements-dev.txt" >&2
+      rm -f "$TMP_LIST"
+      exit 1
+    fi
+    run_quiet "shellcheck" shellcheck -x "${SHELL_FILES[@]}"
+  fi
+
+  if have shfmt; then
+    if [[ $RUN_FIX -eq 1 ]]; then
       run_quiet "shfmt" shfmt -w -i 2 -ci -s "${SHELL_FILES[@]}"
     else
+      # -d outputs unified diff if formatting differs
       run_quiet "shfmt" shfmt -d -i 2 -ci -s "${SHELL_FILES[@]}"
     fi
   fi
-fi
+
+  rm -f "$TMP_LIST"
+}
+
+case "$ONLY" in
+  python)
+    run_python
+    ;;
+  shell)
+    run_shell
+    ;;
+  "")
+    run_python
+    run_shell
+    ;;
+esac

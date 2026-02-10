@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # vLLM deploy mode configuration.
 #
 # Sources shared deploy mode logic from common/ and sets vLLM-specific flags.

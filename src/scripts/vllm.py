@@ -75,7 +75,7 @@ def get_vllm_version() -> str:
 if __name__ == "__main__":
     # CLI interface for shell scripts
     if len(sys.argv) < MIN_ARGS:
-        print("Usage: python -m src.scripts.vllm.detection <command>")
+        print("Usage: python -m src.scripts.vllm <command>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -104,3 +104,11 @@ if __name__ == "__main__":
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
         sys.exit(1)
+
+
+__all__ = [
+    "get_cuda_version",
+    "get_torch_version",
+    "get_vllm_version",
+    "is_vllm_installed",
+]

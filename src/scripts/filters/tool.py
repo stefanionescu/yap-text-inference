@@ -18,6 +18,7 @@ from src.config.filters import TOOL_NOISE_PATTERNS
 logger = logging.getLogger("log_filter")
 
 _STATE = {"streams_patched": False}
+MIN_ARGS = 2
 
 
 class ToolNoiseFilterStream:
@@ -131,4 +132,34 @@ def configure_tool_logging() -> None:
     _install_stream_filters()
 
 
-__all__ = ["configure_tool_logging", "ToolNoiseFilterStream", "is_tool_noise"]
+def _filter_stdin() -> int:
+    """Filter stdin lines, dropping tool noise, and echo the rest."""
+    for line in sys.stdin:
+        if not is_tool_noise(line):
+            sys.stdout.write(line)
+            sys.stdout.flush()
+    return 0
+
+
+def main() -> int:
+    """CLI entry point for tool log filtering."""
+    if len(sys.argv) < MIN_ARGS:
+        print("Usage: python -m src.scripts.filters.tool <configure-logging|filter-logs>", file=sys.stderr)
+        return 1
+
+    cmd = sys.argv[1]
+    if cmd == "configure-logging":
+        configure_tool_logging()
+        return 0
+    if cmd == "filter-logs":
+        return _filter_stdin()
+
+    print(f"Unknown command: {cmd}", file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+__all__ = ["configure_tool_logging", "ToolNoiseFilterStream", "is_tool_noise", "main"]

@@ -12,7 +12,7 @@ import asyncio
 import logging
 from typing import Any
 
-import websockets  # type: ignore[import-not-found]
+import websockets
 
 from tests.state import LiveSession, print_help
 from tests.helpers.fmt import dim, section_header

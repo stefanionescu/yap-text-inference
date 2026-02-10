@@ -56,7 +56,11 @@ class IdleTimeoutError(ConnectionClosedError):
 
     @staticmethod
     def matches(close_code: int | None, close_reason: str | None) -> bool:
-        return close_code == IDLE_TIMEOUT_CLOSE_CODE or (close_reason and "idle" in close_reason.lower())
+        if close_code == IDLE_TIMEOUT_CLOSE_CODE:
+            return True
+        if close_reason is None:
+            return False
+        return "idle" in close_reason.lower()
 
 
 class ConnectionRejectedError(ConnectionError):

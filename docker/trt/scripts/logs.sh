@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # TRT logging - sources shared logging utilities.
 #
 # This wrapper exists so runtime scripts can source logs.sh from the same

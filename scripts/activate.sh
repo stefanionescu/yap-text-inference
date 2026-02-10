@@ -12,12 +12,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export ROOT_DIR
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/noise/python.sh"
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/common/log.sh"
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/deps/venv.sh"
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/env/runtime.sh"
 
 venv_dir="$(get_venv_dir)"
@@ -30,7 +31,7 @@ if [ ! -f "${activate_script}" ]; then
 fi
 
 if [ "$#" -gt 0 ]; then
-  # shellcheck disable=SC1091
+  # shellcheck disable=SC1090,SC1091
   source "${activate_script}"
   log_info "[activate] Running inside ${venv_dir}: $*"
   exec "$@"

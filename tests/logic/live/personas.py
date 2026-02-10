@@ -14,9 +14,9 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-from tests.config import PERSONA_MODULE
 from tests.state import PersonaDefinition
 from tests.helpers.prompt import normalize_gender
+from tests.config import PERSONA_MODULE, DEFAULT_PERSONA_NAME
 
 # ============================================================================
 # Data Structures
@@ -88,4 +88,4 @@ class PersonaRegistry:
         return sorted({persona.name for persona in personas})
 
 
-__all__ = ["PersonaRegistry"]
+__all__ = ["DEFAULT_PERSONA_NAME", "PersonaRegistry"]

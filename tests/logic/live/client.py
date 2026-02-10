@@ -13,7 +13,7 @@ import logging
 import contextlib
 from typing import Any
 
-import websockets  # type: ignore[import-not-found]
+import websockets
 
 from tests.helpers.metrics import round_ms
 from tests.helpers.fmt import dim, cyan, format_metrics_inline

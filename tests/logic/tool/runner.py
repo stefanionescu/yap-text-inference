@@ -7,6 +7,8 @@ concurrency, and reporting results.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from tests.helpers.prompt import select_chat_prompt
 from tests.state import CaseResult, RunnerConfig, ToolTestCase
 from tests.config import PROGRESS_BAR_WIDTH, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
@@ -44,7 +46,7 @@ def _filter_by_step_count(
     return allowed, skipped_count
 
 
-def _make_progress_renderer() -> callable:
+def _make_progress_renderer() -> Callable[[int, int], None]:
     """Create a progress callback for the progress bar."""
 
     def render(completed: int, total: int) -> None:
