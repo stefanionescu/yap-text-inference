@@ -11,7 +11,7 @@ import json
 import uuid
 from typing import Any
 
-import websockets  # type: ignore[import-not-found]
+import websockets
 
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.errors import ServerError, StreamError

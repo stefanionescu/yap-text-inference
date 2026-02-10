@@ -12,7 +12,8 @@ from tests.helpers.websocket import record_token, iter_messages, record_toolcall
 
 logger = logging.getLogger(__name__)
 
-_Handler = Callable[[dict[str, Any]], Awaitable[bool | None] | bool | None]
+HandlerResult = bool | None | dict[str, Any]
+_Handler = Callable[[dict[str, Any]], Awaitable[HandlerResult] | HandlerResult]
 
 
 # ============================================================================
@@ -30,24 +31,27 @@ def _handle_ack(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> b
     return True
 
 
-def _handle_toolcall(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> None:
+def _handle_toolcall(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> bool:
     record_toolcall(state)
     # Capture toolcall result for tool-only mode display
     state.toolcall_status = msg.get("status")
     state.toolcall_raw = msg.get("raw")
+    return True
 
 
-def _handle_token(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> None:
+def _handle_token(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> bool:
     record_token(state, msg.get("text", ""))
+    return True
 
 
-def _handle_final(msg: dict[str, Any], state: StreamState) -> None:
+def _handle_final(msg: dict[str, Any], state: StreamState) -> bool:
     normalized = msg.get("normalized_text")
     if normalized:
         state.final_text = normalized
+    return True
 
 
-def _handle_done(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> bool:
+def _handle_done(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> dict[str, Any]:
     metrics = finalize_metrics(state, cancelled=False)
     return {"_done": True, "metrics": metrics}
 
@@ -64,9 +68,9 @@ def _handle_error(msg: dict[str, Any]) -> None:
 def _build_exchange_handlers(state: StreamState, exchange_idx: int) -> dict[str, _Handler]:
     return {
         "ack": lambda msg: _handle_ack(msg, state, exchange_idx),
-        "toolcall": lambda msg: (_handle_toolcall(msg, state, exchange_idx) or True),
-        "token": lambda msg: (_handle_token(msg, state, exchange_idx) or True),
-        "final": lambda msg: (_handle_final(msg, state) or True),
+        "toolcall": lambda msg: _handle_toolcall(msg, state, exchange_idx),
+        "token": lambda msg: _handle_token(msg, state, exchange_idx),
+        "final": lambda msg: _handle_final(msg, state),
         "done": lambda msg: _handle_done(msg, state, exchange_idx),
         "cancelled": lambda msg: _handle_cancelled(msg, state),
         "error": _handle_error,

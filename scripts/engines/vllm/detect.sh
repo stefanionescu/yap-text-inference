@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # =============================================================================
 # vLLM Detection Utilities
 # =============================================================================
@@ -17,23 +18,23 @@ source "${_VLLM_DETECT_DIR}/../../lib/env/flashinfer.sh"
 # Detect CUDA version from torch (for FlashInfer wheel selection)
 vllm_detect_cuda_version() {
   local python_exec="${1:-python}"
-  "${python_exec}" -m src.scripts.vllm.detection cuda-version 2>/dev/null || true
+  "${python_exec}" -m src.scripts.vllm cuda-version 2>/dev/null || true
 }
 
 # Detect torch major.minor version (for FlashInfer wheel selection)
 vllm_detect_torch_version() {
   local python_exec="${1:-python}"
-  "${python_exec}" -m src.scripts.vllm.detection torch-version 2>/dev/null || true
+  "${python_exec}" -m src.scripts.vllm torch-version 2>/dev/null || true
 }
 
 # Check if vLLM is installed
 vllm_is_installed() {
   local python_exec="${1:-python}"
-  "${python_exec}" -m src.scripts.vllm.detection is-installed 2>/dev/null
+  "${python_exec}" -m src.scripts.vllm is-installed 2>/dev/null
 }
 
 # Get vLLM version
 vllm_get_version() {
   local python_exec="${1:-python}"
-  "${python_exec}" -m src.scripts.vllm.detection version 2>/dev/null || echo "unknown"
+  "${python_exec}" -m src.scripts.vllm version 2>/dev/null || echo "unknown"
 }

@@ -27,11 +27,18 @@ import os
 import sys
 import asyncio
 import argparse
+from importlib import import_module
+from collections.abc import Callable
 
-try:
-    from tests.helpers.setup import setup_repo_path
-except ModuleNotFoundError:
-    from helpers.setup import setup_repo_path  # type: ignore[import-not-found]
+
+def _load_setup_repo_path() -> Callable[[], str]:
+    try:
+        return import_module("tests.helpers.setup").setup_repo_path
+    except ModuleNotFoundError:
+        return import_module("helpers.setup").setup_repo_path
+
+
+setup_repo_path = _load_setup_repo_path()
 
 setup_repo_path()
 

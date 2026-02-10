@@ -29,7 +29,7 @@ def _iter_response_lines(result: CaseResult) -> Iterator[str]:
     """Iterate over formatted response lines for a case result."""
     responses = result.responses or []
     if not responses:
-        return iter(())
+        return
 
     def _stringify(value: object) -> str:
         if isinstance(value, str):

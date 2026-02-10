@@ -1,5 +1,8 @@
-# Linting / formatting dependencies
+# Development-only tools for linting and code quality
+
 ruff==0.6.9
 isort==5.13.2
-shellcheck-py==0.11.0.1
-
+mypy==1.11.2
+shellcheck-py==0.10.0.1
+numpy==1.26.4
+import-linter==2.1

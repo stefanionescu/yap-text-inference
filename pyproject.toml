@@ -2,6 +2,7 @@
 target-version = "py310"
 line-length = 120
 
+# Exclude common build and cache directories; ruff only inspects Python files.
 exclude = [
     ".git",
     ".venv",
@@ -13,7 +14,11 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "B", "UP", "C4", "SIM", "N", "S", "W", "PL"]
+# Lint rules: pyflakes/pycodestyle, bugbear, pyupgrade, comprehensions, simplify,
+# naming, security, warnings, pylint subset. Import sorting handled by isort.
+select = ["E", "F", "B", "UP", "C4", "SIM", "N", "S", "W", "PL", "PLC0415"]
+# Ignore docstring and annotation-style checks by default; keep formatting-related ignores
+# compatible with the ruff formatter.
 ignore = ["D", "ANN", "COM812", "ISC001"]
 
 [tool.ruff.lint.isort]
@@ -26,10 +31,7 @@ force-sort-within-sections = true
 [tool.ruff.lint.pylint]
 max-args = 15
 max-branches = 20
-
-[tool.ruff.lint.per-file-ignores]
-"tests/prompts/*.py" = ["E501"]
-"tests/messages/history.py" = ["E501"]
+max-statements = 50
 
 [tool.ruff.format]
 quote-style = "double"
@@ -41,10 +43,9 @@ line-ending = "auto"
 python_version = "3.10"
 pretty = true
 show_error_codes = true
-warn_unused_ignores = false
+warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
-exclude = "(tests/|docker/|scripts/)"
 strict_optional = true
 ignore_missing_imports = true
 disallow_untyped_defs = false
@@ -58,3 +59,12 @@ combine_as_imports = true
 length_sort = true
 length_sort_straight = true
 force_sort_within_sections = true
+
+[tool.importlinter]
+root_packages = ["src"]
+
+[[tool.importlinter.contracts]]
+name = "state must not import streaming"
+type = "forbidden"
+source_modules = ["src.state"]
+forbidden_modules = ["src.streaming"]

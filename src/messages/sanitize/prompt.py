@@ -17,10 +17,10 @@ from ...config.limits import PROMPT_SANITIZE_MAX_CHARS
 from ...config.filters import BIDI_CHAR_PATTERN, CTRL_CHAR_PATTERN
 
 try:
-    from ftfy import fix_text  # type: ignore[import-not-found]
+    from ftfy import fix_text
 except Exception:  # pragma: no cover - ftfy is declared in requirements
 
-    def fix_text(text: str) -> str:  # type: ignore
+    def fix_text(text: str) -> str:
         """Fallback when ftfy is not available."""
         return text
 

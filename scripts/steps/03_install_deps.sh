@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # =============================================================================
 # Dependency Installation
 # =============================================================================
@@ -51,15 +52,11 @@ if [ "${DEPLOY_MODE}" = "tool" ]; then
       exit 1
     }
   else
-    python -c "from src.scripts.filters.tool import configure_tool_logging; configure_tool_logging()" 2>/dev/null || true
-    pip install --no-cache-dir -r "${ROOT_DIR}/requirements-tool.txt" 2>&1 | python -c "
-import sys
-from src.scripts.filters.tool import is_tool_noise
-for line in sys.stdin:
-    if not is_tool_noise(line):
-        sys.stdout.write(line)
-        sys.stdout.flush()
-" || {
+    PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python -m src.scripts.filters.tool configure-logging 2>/dev/null || true
+    pip install --no-cache-dir -r "${ROOT_DIR}/requirements-tool.txt" 2>&1 |
+      PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
+        python -m src.scripts.filters.tool filter-logs || {
       log_err "[deps] ✗ Failed to install tool-only requirements"
       exit 1
     }

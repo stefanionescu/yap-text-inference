@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import uuid
 import asyncio
+from typing import cast
 
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.fmt import dim, red, bold, green, section_header
@@ -120,8 +121,8 @@ async def run_cancel_suite(
 
     # Run all tasks concurrently
     all_results = await asyncio.gather(cancel_task, *normal_tasks)
-    cancel_result: CancelClientResult = all_results[0]
-    normal_results: list[NormalClientResult] = list(all_results[1:])
+    cancel_result = cast(CancelClientResult, all_results[0])
+    normal_results = cast(list[NormalClientResult], list(all_results[1:]))
 
     # Print results
     print(f"\n{bold('▶ CANCEL CLIENT RESULTS')}")

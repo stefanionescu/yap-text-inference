@@ -169,13 +169,9 @@ async def _cleanup_session(session_id: str | None) -> float:
 def _create_rate_limiters() -> tuple[SlidingWindowRateLimiter, SlidingWindowRateLimiter]:
     """Initialize per-connection rate limiters."""
     message_limiter = SlidingWindowRateLimiter(
-        limit=WS_MAX_MESSAGES_PER_WINDOW,
-        window_seconds=WS_MESSAGE_WINDOW_SECONDS,
+        limit=WS_MAX_MESSAGES_PER_WINDOW, window_seconds=WS_MESSAGE_WINDOW_SECONDS
     )
-    cancel_limiter = SlidingWindowRateLimiter(
-        limit=WS_MAX_CANCELS_PER_WINDOW,
-        window_seconds=WS_CANCEL_WINDOW_SECONDS,
-    )
+    cancel_limiter = SlidingWindowRateLimiter(limit=WS_MAX_CANCELS_PER_WINDOW, window_seconds=WS_CANCEL_WINDOW_SECONDS)
     return message_limiter, cancel_limiter
 
 

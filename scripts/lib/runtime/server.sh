@@ -70,11 +70,8 @@ _read_trt_kv_dtype() {
     return 0
   fi
 
-  python3 -c "
-import json
-with open('${metadata_file}') as f:
-    print(json.load(f).get('kv_cache_dtype', ''))
-" 2>/dev/null || true
+  PYTHONPATH="${ROOT_DIR:-}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python3 -m src.scripts.validation.metadata "${metadata_file}" kv_cache_dtype 2>/dev/null || true
 }
 
 # Log current deployment configuration.
@@ -139,7 +136,8 @@ resolve_uvicorn() {
   )
 
   # Try venv python -m uvicorn first (most reliable)
-  if [ -x "${venv_dir}/bin/python" ] && "${venv_dir}/bin/python" -c "import uvicorn" >/dev/null 2>&1; then
+  if [ -x "${venv_dir}/bin/python" ] && PYTHONPATH="${ROOT_DIR:-}${PYTHONPATH:+:${PYTHONPATH}}" \
+    "${venv_dir}/bin/python" -m src.scripts.validation.package uvicorn >/dev/null 2>&1; then
     SERVER_CMD=("${venv_dir}/bin/python" "-m" "uvicorn" "${SERVER_CMD_ARGS[@]}")
     return 0
   fi
@@ -157,13 +155,15 @@ resolve_uvicorn() {
   fi
 
   # Try system python3 -m uvicorn
-  if command -v python3 >/dev/null 2>&1 && python3 -c "import uvicorn" >/dev/null 2>&1; then
+  if command -v python3 >/dev/null 2>&1 && PYTHONPATH="${ROOT_DIR:-}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python3 -m src.scripts.validation.package uvicorn >/dev/null 2>&1; then
     SERVER_CMD=("python3" "-m" "uvicorn" "${SERVER_CMD_ARGS[@]}")
     return 0
   fi
 
   # Try system python -m uvicorn
-  if command -v python >/dev/null 2>&1 && python -c "import uvicorn" >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1 && PYTHONPATH="${ROOT_DIR:-}${PYTHONPATH:+:${PYTHONPATH}}" \
+    python -m src.scripts.validation.package uvicorn >/dev/null 2>&1; then
     SERVER_CMD=("python" "-m" "uvicorn" "${SERVER_CMD_ARGS[@]}")
     return 0
   fi

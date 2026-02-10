@@ -63,7 +63,10 @@ async def dispatch_message(
 
     Handlers can be synchronous or asynchronous callables.
     """
-    handler = handlers.get(msg.get("type"), default)
+    message_type = msg.get("type")
+    handler = handlers.get(message_type) if isinstance(message_type, str) else None
+    if handler is None:
+        handler = default
     if handler is None:
         return None
 

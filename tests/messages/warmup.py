@@ -1,6 +1,6 @@
 """Warmup harness default prompts."""
 
-WARMUP_DEFAULT_MESSAGES = [
+WARMUP_DEFAULT_MESSAGES: list[str] = [
     # "be more unhinged",
     # "can you speak other languages?",
     # "s'il vous plaît parlez en français je vous en prie !",

@@ -27,7 +27,10 @@ class ServerError(TestClientError):
     @classmethod
     def from_message(cls, msg: dict[str, Any]) -> ServerError:
         """Create an appropriate ServerError subclass from a server error message."""
-        payload = msg.get("payload") if isinstance(msg.get("payload"), dict) else {}
+        payload: dict[str, Any] = {}
+        payload_raw = msg.get("payload")
+        if isinstance(payload_raw, dict):
+            payload = payload_raw
         error_code = msg.get("code") or payload.get("code") or msg.get("error_code", "unknown")
         message = msg.get("message") or payload.get("message") or str(msg)
         extra = {

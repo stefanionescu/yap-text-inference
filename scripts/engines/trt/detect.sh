@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # =============================================================================
 # TRT-LLM Detection Utilities - Entry Point
 # =============================================================================
@@ -48,7 +49,8 @@ detect_trtllm_version() {
   # 2. Detect via Python import
   if command -v python >/dev/null 2>&1; then
     local version
-    version=$(python -c "import tensorrt_llm; print(tensorrt_llm.__version__)" 2>/dev/null | tail -n1 || echo "")
+    version=$(PYTHONPATH="${_TRT_DETECT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python -m src.scripts.validation.version tensorrt_llm 2>/dev/null | tail -n1 || echo "")
     if [ -n "${version}" ]; then
       # Cache for subsequent calls
       export TRTLLM_INSTALLED_VERSION="${version}"

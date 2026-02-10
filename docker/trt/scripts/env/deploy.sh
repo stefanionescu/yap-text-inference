@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # TRT deploy mode configuration.
 #
 # Sources shared deploy mode logic from common/ and sets TRT-specific flags.

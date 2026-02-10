@@ -56,6 +56,8 @@ async def run_cancel_phase(
 
     start_payload = build_start_payload(ctx, user_msg)
     start_request_id = start_payload.get("request_id")
+    if not isinstance(start_request_id, str):
+        raise RuntimeError("start payload missing request_id")
     await ws.send(json.dumps(start_payload))
     print(dim("  [cancel] sent start message..."))
 

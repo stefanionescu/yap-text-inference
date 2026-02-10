@@ -13,7 +13,7 @@ import asyncio
 from typing import Any
 from collections.abc import Callable, Sequence
 
-import websockets  # type: ignore[import-not-found]
+import websockets
 
 from tests.helpers.metrics import secs_to_ms
 from tests.helpers.rate import SlidingWindowPacer

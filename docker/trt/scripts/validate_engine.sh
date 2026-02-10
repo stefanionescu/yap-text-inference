@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Validate that the baked-in TRT engine is compatible with the runtime GPU.
 # Compares sm_arch from build_metadata.json with the detected GPU's SM architecture.
@@ -11,6 +12,7 @@
 
 _VALIDATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_VALIDATE_SCRIPT_DIR}/logs.sh"
+ROOT_DIR="${ROOT_DIR:-$(cd "${_VALIDATE_SCRIPT_DIR}/../../.." && pwd)}"
 
 validate_engine_gpu_compatibility() {
   local engine_dir="${TRT_ENGINE_DIR:-/opt/engines/trt-chat}"
@@ -39,29 +41,12 @@ validate_engine_gpu_compatibility() {
   local engine_gpu_name=""
 
   if command -v python3 >/dev/null 2>&1; then
-    engine_sm_arch=$(python3 -c "
-import json
-import sys
-try:
-    with open('${metadata_file}') as f:
-        data = json.load(f)
-    print(data.get('sm_arch', ''))
-except Exception as e:
-    print(f'ERROR: {e}', file=sys.stderr)
-    sys.exit(1)
-" 2>/dev/null) || true
+    engine_sm_arch=$(PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python3 -m src.scripts.validation.metadata "${metadata_file}" sm_arch 2>/dev/null) || true
 
     # shellcheck disable=SC2034  # Reserved for future validation
-    engine_gpu_name=$(python3 -c "
-import json
-import sys
-try:
-    with open('${metadata_file}') as f:
-        data = json.load(f)
-    print(data.get('gpu_name', ''))
-except Exception:
-    pass
-" 2>/dev/null) || true
+    engine_gpu_name=$(PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
+      python3 -m src.scripts.validation.metadata "${metadata_file}" gpu_name 2>/dev/null) || true
   fi
 
   # STRICT: Require sm_arch in metadata

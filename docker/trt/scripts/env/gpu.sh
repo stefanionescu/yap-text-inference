@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # TRT GPU detection and optimization.
 #
 # Sources shared GPU detection from common/ and applies TRT-specific defaults.

@@ -12,6 +12,7 @@ This module re-exports configuration constants from smaller modules:
 - secrets: secrets like API_KEY
 """
 
+from .cli import PACKAGE_MIN_ARGS
 from .secrets import TEXT_API_KEY
 from .gpu import KV_DTYPE, GPU_SM_ARCH, CHAT_GPU_FRAC, TOOL_GPU_FRAC
 from .quantization import TRT_FP8_SM_ARCHS, SUPPORTED_ENGINES, VLLM_QUANTIZATIONS
@@ -105,6 +106,8 @@ from .limits import (
 )
 
 __all__ = [
+    # cli
+    "PACKAGE_MIN_ARGS",
     # deploy
     "HF_REPO_PATTERN",
     "DEPLOY_MODE",
