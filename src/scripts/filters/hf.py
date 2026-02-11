@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import logging
-import importlib
 import contextlib
 from typing import cast
 from collections.abc import Iterable
@@ -24,9 +23,9 @@ def label_hf_snapshot_progress(group: str) -> None:
     to snapshot download progress bars, allowing them to be selectively disabled.
     """
     try:
-        tqdm_module = importlib.import_module("huggingface_hub.utils.tqdm")
-        utils_module = importlib.import_module("huggingface_hub.utils")
-        snapshot_module = importlib.import_module("huggingface_hub._snapshot_download")
+        import huggingface_hub.utils as utils_module  # noqa: PLC0415
+        import huggingface_hub.utils.tqdm as tqdm_module  # noqa: PLC0415
+        import huggingface_hub._snapshot_download as snapshot_module  # noqa: PLC0415
     except ModuleNotFoundError:
         return
 
@@ -60,7 +59,7 @@ def label_hf_snapshot_progress(group: str) -> None:
 def disable_hf_progress(groups: Iterable[str]) -> None:
     """Disable HuggingFace progress bars for specified groups."""
     try:
-        hub_utils = importlib.import_module("huggingface_hub.utils")
+        import huggingface_hub.utils as hub_utils  # noqa: PLC0415
     except ModuleNotFoundError:
         return
 

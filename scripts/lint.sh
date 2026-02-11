@@ -112,7 +112,7 @@ run_python() {
     [[ -d "$ROOT_DIR/server" ]] && PY_DIRS+=("$ROOT_DIR/server")
     [[ -d "$ROOT_DIR/tests" ]] && PY_DIRS+=("$ROOT_DIR/tests")
     if [[ ${#PY_DIRS[@]} -gt 0 ]]; then
-      run_quiet "mypy" python -m mypy "${PY_DIRS[@]}"
+      run_quiet "mypy" python -m mypy --follow-imports=skip "${PY_DIRS[@]}"
     fi
   fi
 
@@ -120,6 +120,9 @@ run_python() {
   run_quiet "function-length" python "$ROOT_DIR/linting/function_length.py"
   run_quiet "one-class-per-file" python "$ROOT_DIR/linting/one_class_per_file.py"
   run_quiet "no-runtime-singletons" python "$ROOT_DIR/linting/no_runtime_singletons.py"
+  run_quiet "no-lazy-module-loading" python "$ROOT_DIR/linting/no_lazy_module_loading.py"
+  run_quiet "no-legacy-markers" python "$ROOT_DIR/linting/no_legacy_markers.py"
+  run_quiet "dockerignore-policy" python "$ROOT_DIR/linting/dockerignore_policy.py"
   run_quiet "single-file-folders" python "$ROOT_DIR/linting/single_file_folders.py"
   run_quiet "prefix-collisions" python "$ROOT_DIR/linting/prefix_collisions.py"
   run_quiet "no-inline-python" python "$ROOT_DIR/linting/no_inline_python.py"

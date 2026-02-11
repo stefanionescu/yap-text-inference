@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {
+      "id": 0,
+      "content": "[UNK]",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    }
+  ],
+  "normalizer": null,
+  "pre_tokenizer": {
+    "type": "Whitespace"
+  },
+  "post_processor": null,
+  "decoder": null,
+  "model": {
+    "type": "WordLevel",
+    "vocab": {
+      "[UNK]": 0,
+      "SCREEN": 1,
+      "Assistant": 2,
+      "CHECK": 3,
+      "NOW": 4,
+      "ON": 5,
+      "THE": 6,
+      "User": 7,
+      "a": 8,
+      "a1": 9,
+      "a2": 10,
+      "a3": 11,
+      "alpha": 12,
+      "are": 13,
+      "b": 14,
+      "bravo": 15,
+      "c": 16,
+      "charlie": 17,
+      "d": 18,
+      "eight": 19,
+      "five": 20,
+      "four": 21,
+      "great": 22,
+      "hello": 23,
+      "hi": 24,
+      "how": 25,
+      "ignored": 26,
+      "one": 27,
+      "seven": 28,
+      "six": 29,
+      "three": 30,
+      "two": 31,
+      "u1": 32,
+      "u2": 33,
+      "u3": 34,
+      "world": 35,
+      "x": 36,
+      "y": 37,
+      "you": 38
+    },
+    "unk_token": "[UNK]"
+  }
+}

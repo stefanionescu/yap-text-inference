@@ -19,10 +19,10 @@ from .helpers import safe_send_envelope
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
 from ..limits import SlidingWindowRateLimiter
-from ...messages.start import handle_start_message
 from ...messages.cancel import handle_cancel_message
 from ...messages.followup import handle_followup_message
 from .limits import consume_limiter, select_rate_limiter
+from ...messages.start.handler import handle_start_message
 from ...config.websocket import (
     WS_WATCHDOG_TICK_S,
     WS_ERROR_INVALID_MESSAGE,

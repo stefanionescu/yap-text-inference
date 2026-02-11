@@ -215,6 +215,9 @@ bash scripts/lint.sh
   - runtime Python function length limits (60 LOC; `src/**/*.py`)
   - one top-level class per runtime Python file (`src/**/*.py`) (dataclasses exempt)
   - no lazy singleton runtime patterns (`src/**/*.py`)
+  - no lazy module loading/export patterns (`src/**/*.py`; no `__getattr__` lazy exports or `importlib.import_module` indirection)
+  - no legacy/backward-compatibility markers in runtime orchestration modules
+  - Docker ignore policy: only `docker/vllm/.dockerignore` and `docker/trt/.dockerignore` are allowed
 - ShellCheck (and shfmt checks when available)
 
 ## API — WebSocket `/ws`
@@ -522,9 +525,20 @@ The pipeline writes metadata (`awq_metadata.json` or `build_metadata.json`) and 
 
 ## Test Clients
 
-All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/warmup.py`) or source `.venv-local/bin/activate` for CPU-only testing.
+All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/warmup.py`) or source `.venv-local/bin/activate` for unit testing.
 
 > **Note:** Test clients always send a chat prompt. In tool-only deployments, the server ignores it automatically.
+
+### Unit Tests
+
+Run deterministic unit tests for token accounting, history trimming, and start-message history metrics:
+
+```bash
+python -m pytest -q \
+  tests/unit/start_history.py \
+  tests/unit/history_accounting.py \
+  tests/unit/token_accounting.py
+```
 
 ### Warmup Test Client
 
