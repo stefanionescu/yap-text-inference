@@ -30,18 +30,35 @@ import logging
 
 from fastapi import WebSocket
 
+from src.engines.base import BaseEngine
+from src.tokens.tokenizer import FastTokenizer
+from src.handlers.session.manager import SessionHandler
+from src.classifier.adapter import ClassifierToolAdapter
+
 from .chat import run_chat_generation
 from .tool.parser import parse_tool_result
 from ..config.timeouts import TOOL_TIMEOUT_S
 from .tool.runner import launch_tool_request
-from ..handlers.instances import session_handler
 from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
 
 
-async def _await_tool_decision(session_id: str, user_utt: str) -> tuple[str, bool]:
-    tool_req_id, tool_task = launch_tool_request(session_id, user_utt)
+async def _await_tool_decision(
+    session_id: str,
+    user_utt: str,
+    *,
+    session_handler: SessionHandler,
+    classifier_adapter: ClassifierToolAdapter,
+    language_detector: object | None,
+) -> tuple[str, bool]:
+    tool_req_id, tool_task = launch_tool_request(
+        session_id,
+        user_utt,
+        session_handler=session_handler,
+        classifier_adapter=classifier_adapter,
+        language_detector=language_detector,
+    )
     logger.info("sequential_exec: tool start req_id=%s", tool_req_id)
     try:
         tool_res = await asyncio.wait_for(tool_task, timeout=TOOL_TIMEOUT_S)
@@ -72,7 +89,13 @@ async def _send_toolcall_status(
     logger.info("sequential_exec: sent toolcall %s", decision)
 
 
-def _resolve_user_utterance_for_chat(session_id: str, user_utt: str, is_tool: bool) -> str:
+def _resolve_user_utterance_for_chat(
+    session_id: str,
+    user_utt: str,
+    is_tool: bool,
+    *,
+    session_handler: SessionHandler,
+) -> str:
     if not is_tool:
         return user_utt
     prefix = session_handler.get_check_screen_prefix(session_id)
@@ -90,6 +113,11 @@ async def run_execution(
     *,
     history_turn_id: str | None = None,
     sampling_overrides: dict[str, float | int] | None = None,
+    session_handler: SessionHandler,
+    chat_engine: BaseEngine,
+    chat_tokenizer: FastTokenizer,
+    classifier_adapter: ClassifierToolAdapter,
+    language_detector: object | None,
 ) -> None:
     """Execute sequential tool-then-chat workflow.
 
@@ -109,12 +137,23 @@ async def run_execution(
         history_turn_id: Optional existing turn ID for streaming updates.
         sampling_overrides: Optional sampling parameter overrides.
     """
-    raw_field, is_tool = await _await_tool_decision(session_id, user_utt)
+    raw_field, is_tool = await _await_tool_decision(
+        session_id,
+        user_utt,
+        session_handler=session_handler,
+        classifier_adapter=classifier_adapter,
+        language_detector=language_detector,
+    )
     await _send_toolcall_status(ws, session_id, request_id, raw_field, is_tool)
 
     # Start chat stream (for take_screenshot or no tool call)
     session_handler.set_active_request(session_id, request_id)
-    user_utt_for_chat = _resolve_user_utterance_for_chat(session_id, user_utt, is_tool)
+    user_utt_for_chat = _resolve_user_utterance_for_chat(
+        session_id,
+        user_utt,
+        is_tool,
+        session_handler=session_handler,
+    )
 
     final_text = await stream_chat_response(
         ws,
@@ -124,6 +163,9 @@ async def run_execution(
             runtime_text,
             history_text,
             user_utt_for_chat,
+            engine=chat_engine,
+            session_handler=session_handler,
+            chat_tokenizer=chat_tokenizer,
             request_id=request_id,
             sampling_overrides=sampling_overrides,
         ),
@@ -132,6 +174,7 @@ async def run_execution(
         user_utt_for_chat,
         history_turn_id=history_turn_id,
         history_user_utt=user_utt,
+        session_handler=session_handler,
     )
     logger.info("sequential_exec: done chars=%s", len(final_text))
 

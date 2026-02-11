@@ -17,17 +17,18 @@ from typing import Any
 from fastapi import WebSocket
 
 from src.state import StartPlan
+from src.runtime.dependencies import RuntimeDeps
+from src.handlers.session.manager import SessionHandler
 
+from ...tokens import count_tokens_chat
 from .dispatch import dispatch_execution
 from .sampling import extract_sampling_overrides
-from ...handlers.instances import session_handler
 from ...handlers.websocket.errors import send_error
+from ...config import DEPLOY_CHAT, CHAT_PROMPT_MAX_TOKENS
+from .history import resolve_history, trim_user_utterance
 from ..input import normalize_gender, normalize_personality
 from ...handlers.websocket.helpers import safe_send_envelope
-from ...handlers.session.parsing import parse_history_messages
-from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
 from ...config.websocket import WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
-from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
 from ..validators import (
     ValidationError,
     require_prompt,
@@ -85,6 +86,7 @@ def _resolve_start_inputs(
 
 def _update_start_session_config(
     *,
+    session_handler: SessionHandler,
     session_id: str,
     gender: str | None,
     personality: str | None,
@@ -109,14 +111,15 @@ def _update_start_session_config(
 
 
 def _prepare_turn_payload(
+    session_handler: SessionHandler,
     session_id: str,
     payload: dict[str, Any],
     updated_config: dict[str, Any],
-) -> tuple[str, str, str, str, dict[str, Any] | None, str]:
+) -> tuple[str, str, str, str, dict[str, Any] | None, str | None]:
     static_prefix = updated_config.get("chat_prompt") or ""
     runtime_text = ""
-    history_text, history_info = _resolve_history(session_id, payload)
-    user_utt = _trim_user_utterance(payload.get("user_utterance", ""), session_id)
+    history_text, history_info = resolve_history(session_handler, session_id, payload)
+    user_utt = trim_user_utterance(session_handler, session_id, payload.get("user_utterance", ""))
     history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
     return static_prefix, runtime_text, history_text, user_utt, history_info, history_turn_id
 
@@ -129,7 +132,7 @@ def _build_start_plan(
     runtime_text: str,
     history_text: str,
     user_utt: str,
-    history_turn_id: str,
+    history_turn_id: str | None,
     sampling_overrides: dict[str, float | int | bool],
 ) -> StartPlan:
     return StartPlan(
@@ -144,11 +147,78 @@ def _build_start_plan(
     )
 
 
+async def _send_start_ack(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+    base_config: dict[str, Any],
+    updated_config: dict[str, Any],
+    history_info: dict[str, Any] | None,
+) -> bool:
+    sent = await safe_send_envelope(
+        ws,
+        msg_type="ack",
+        session_id=session_id,
+        request_id=request_id,
+        payload=_build_ack_payload(session_id, base_config, updated_config, history_info),
+    )
+    if sent:
+        logger.info("handle_start: ack sent session_id=%s", session_id)
+    return sent
+
+
+async def _resolve_start_inputs_or_close(
+    ws: WebSocket,
+    payload: dict[str, Any],
+    session_id: str,
+    request_id: str,
+) -> (
+    tuple[
+        str | None,
+        str | None,
+        str | None,
+        dict[str, float | int | bool],
+        str | None,
+        str | None,
+    ]
+    | None
+):
+    try:
+        return _resolve_start_inputs(payload)
+    except ValidationError as err:
+        await _close_with_validation_error(ws, session_id, request_id, err)
+        return None
+
+
+def _schedule_execution_task(
+    ws: WebSocket,
+    plan: StartPlan,
+    runtime_deps: RuntimeDeps,
+    session_handler: SessionHandler,
+) -> None:
+    task = asyncio.create_task(dispatch_execution(ws, plan, runtime_deps))
+    session_handler.track_task(plan.session_id, task)
+
+
+def _log_start_request(payload: dict[str, Any], session_id: str) -> None:
+    logger.info(
+        "handle_start: session_id=%s gender_in=%s personality_in=%s hist_len=%s user_len=%s",
+        session_id,
+        payload.get("gender"),
+        payload.get("personality"),
+        len(payload.get("history", [])),
+        len(payload.get("user_utterance", "")),
+    )
+
+
 async def handle_start_message(
     ws: WebSocket,
     payload: dict[str, Any],
     session_id: str,
     request_id: str,
+    *,
+    session_handler: SessionHandler,
+    runtime_deps: RuntimeDeps,
 ) -> None:
     """Handle 'start' message type by validating inputs and dispatching execution.
 
@@ -170,25 +240,21 @@ async def handle_start_message(
         - Closes connection with error on validation failure
         - Spawns background task for execution
     """
-    logger.info(
-        "handle_start: session_id=%s gender_in=%s personality_in=%s hist_len=%s user_len=%s",
-        session_id,
-        payload.get("gender"),
-        payload.get("personality"),
-        len(payload.get("history", [])),
-        len(payload.get("user_utterance", "")),
-    )
+    _log_start_request(payload, session_id)
     session_config = session_handler.initialize_session(session_id)
 
-    try:
-        gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix = (
-            _resolve_start_inputs(payload)
-        )
-    except ValidationError as err:
-        await _close_with_validation_error(ws, session_id, request_id, err)
+    resolved_inputs = await _resolve_start_inputs_or_close(
+        ws,
+        payload,
+        session_id,
+        request_id,
+    )
+    if resolved_inputs is None:
         return
+    gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix = resolved_inputs
 
     updated_config = _update_start_session_config(
+        session_handler=session_handler,
         session_id=session_id,
         gender=gender,
         personality=personality,
@@ -198,18 +264,21 @@ async def handle_start_message(
         screen_checked_prefix=screen_checked_prefix,
     )
     static_prefix, runtime_text, history_text, user_utt, history_info, history_turn_id = _prepare_turn_payload(
-        session_id, payload, updated_config
+        session_handler,
+        session_id,
+        payload,
+        updated_config,
     )
 
-    if not await safe_send_envelope(
+    if not await _send_start_ack(
         ws,
-        msg_type="ack",
-        session_id=session_id,
-        request_id=request_id,
-        payload=_build_ack_payload(session_id, session_config, updated_config, history_info),
+        session_id,
+        request_id,
+        session_config,
+        updated_config,
+        history_info,
     ):
         return
-    logger.info("handle_start: ack sent session_id=%s", session_id)
 
     plan = _build_start_plan(
         session_id=session_id,
@@ -222,8 +291,7 @@ async def handle_start_message(
         sampling_overrides=sampling_overrides,
     )
 
-    task = asyncio.create_task(dispatch_execution(ws, plan))
-    session_handler.track_task(session_id, task)
+    _schedule_execution_task(ws, plan, runtime_deps, session_handler)
 
 
 def _validate_persona(msg: dict[str, Any]) -> tuple[str | None, str | None]:
@@ -267,56 +335,6 @@ def _extract_screen_prefixes(msg: dict[str, Any]) -> tuple[str | None, str | Non
         invalid_error_code="invalid_screen_checked_prefix",
     )
     return check_prefix, screen_checked_prefix
-
-
-def _resolve_history(session_id: str, msg: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
-    """Resolve history from message.
-
-    Accepts: "history": [{role: "user", content: "..."}, ...]
-
-    Returns:
-        Tuple of (rendered_history_text, history_info_dict_or_none).
-        history_info is only returned when warm history was sent.
-    """
-    if "history" in msg:
-        history_messages = msg.get("history")
-        if isinstance(history_messages, list):
-            input_count = len(history_messages)
-            parsed_turns = parse_history_messages(history_messages)
-            input_turn_count = len(parsed_turns)
-            rendered = session_handler.set_history_turns(session_id, parsed_turns)
-            retained_count = session_handler.get_history_turn_count(session_id)
-            history_tokens = _count_history_tokens(rendered)
-            history_info = {
-                "input_messages": input_count,
-                "input_turns": input_turn_count,
-                "retained_turns": retained_count,
-                "trimmed": retained_count < input_turn_count,
-                "history_tokens": history_tokens,
-            }
-            return rendered, history_info
-    return session_handler.get_history_text(session_id), None
-
-
-def _count_history_tokens(rendered: str) -> int:
-    """Count history tokens using the appropriate tokenizer for the deployment mode."""
-    if not rendered:
-        return 0
-    if DEPLOY_CHAT:
-        return count_tokens_chat(rendered)
-    if DEPLOY_TOOL:
-        return count_tokens_tool(rendered)
-    return 0
-
-
-def _trim_user_utterance(user_utt: str, session_id: str) -> str:
-    """Trim user utterance to token limit based on deployment mode."""
-    effective_max = session_handler.get_effective_user_utt_max_tokens(session_id, for_followup=False)
-    if DEPLOY_CHAT:
-        return trim_text_to_token_limit_chat(user_utt, max_tokens=effective_max, keep="start")
-    if DEPLOY_TOOL:
-        return trim_text_to_token_limit_tool(user_utt, max_tokens=effective_max, keep="start")
-    return user_utt or ""
 
 
 def _build_ack_payload(

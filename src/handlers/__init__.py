@@ -6,10 +6,6 @@ connections.py:
     Manages WebSocket connection slots with semaphore-based limiting.
     Prevents server overload by rejecting connections at capacity.
 
-instances.py:
-    Singleton instances for ConnectionHandler and SessionHandler.
-    Serves as the assembly point for global handler objects.
-
 limits.py:
     Sliding window rate limiter for per-connection message throttling.
     Protects against spam and abuse.

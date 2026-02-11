@@ -20,7 +20,7 @@ class ChatStreamConfig:
     request_id: str
     prompt: str
     sampling_params: Any
-    engine_getter: Callable[[], Awaitable[BaseEngine]]
+    engine: BaseEngine
     timeout_s: float
     flush_ms: float = 0.0
     cancel_check: CancelCheck = None

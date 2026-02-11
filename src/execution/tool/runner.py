@@ -30,11 +30,12 @@ import asyncio
 import logging
 from typing import Any
 
+from src.handlers.session.manager import SessionHandler
+from src.classifier.adapter import ClassifierToolAdapter
+
 from .filter import filter_tool_phrase
 from .language import is_mostly_english
 from ...config import TOOL_LANGUAGE_FILTER
-from ...classifier import get_classifier_adapter
-from ...handlers.instances import session_handler
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,9 @@ async def _run_classifier_toolcall(
     session_id: str,
     user_utt: str,
     req_id: str,
+    *,
+    classifier_adapter: ClassifierToolAdapter,
+    session_handler: SessionHandler,
 ) -> dict[str, Any]:
     """Run tool call using classifier model.
 
@@ -54,15 +58,12 @@ async def _run_classifier_toolcall(
     """
     t0 = time.perf_counter()
 
-    # Get classifier adapter (lazily initialized, has its own tokenizer)
-    adapter = get_classifier_adapter()
-
     # Snapshot trimmed user-only history (most recent last, already token-limited)
     tool_history = session_handler.get_tool_history_text(session_id)
 
     def _classify_sync() -> str:
         """Run classifier inference in a worker thread."""
-        return adapter.run_tool_inference(user_utt, tool_history)
+        return classifier_adapter.run_tool_inference(user_utt, tool_history)
 
     loop = asyncio.get_running_loop()
     text = await loop.run_in_executor(None, _classify_sync)
@@ -78,6 +79,9 @@ async def _run_classifier_toolcall(
 async def run_toolcall(
     session_id: str,
     user_utt: str,
+    session_handler: SessionHandler,
+    classifier_adapter: ClassifierToolAdapter,
+    language_detector: Any | None,
     request_id: str | None = None,
     mark_active: bool = True,
 ) -> dict[str, Any]:
@@ -116,7 +120,7 @@ async def run_toolcall(
 
     # Language filter: skip tool call if message is not mostly English
     # Only check if phrase filter didn't match (to avoid blocking known patterns)
-    if TOOL_LANGUAGE_FILTER and not is_mostly_english(user_utt):
+    if TOOL_LANGUAGE_FILTER and not is_mostly_english(user_utt, language_detector):
         logger.info("tool_runner: skipped (non-English) session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": "[]"}
 
@@ -124,12 +128,22 @@ async def run_toolcall(
         session_handler.set_active_request(session_id, req_id)
 
     # Route to classifier
-    return await _run_classifier_toolcall(session_id, user_utt, req_id)
+    return await _run_classifier_toolcall(
+        session_id,
+        user_utt,
+        req_id,
+        classifier_adapter=classifier_adapter,
+        session_handler=session_handler,
+    )
 
 
 def launch_tool_request(
     session_id: str,
     user_utt: str,
+    *,
+    session_handler: SessionHandler,
+    classifier_adapter: ClassifierToolAdapter,
+    language_detector: Any | None,
 ) -> tuple[str, asyncio.Task[dict[str, Any]]]:
     """Create a tool request task and register its request ID."""
     tool_req_id = f"tool-{uuid.uuid4()}"
@@ -138,6 +152,9 @@ def launch_tool_request(
         run_toolcall(
             session_id,
             user_utt,
+            session_handler=session_handler,
+            classifier_adapter=classifier_adapter,
+            language_detector=language_detector,
             request_id=tool_req_id,
             mark_active=False,
         )

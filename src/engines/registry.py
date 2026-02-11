@@ -1,17 +1,7 @@
-"""Central registry for inference engine singleton instances.
+"""Central registry for configured engine runtime dependencies.
 
-This module owns all engine singleton instances, providing a single location
-for lifecycle management. Entry-point code (server.py) interacts with this
-registry; other modules receive engine instances as parameters.
-
-The registry uses lazy initialization - singletons are created on first access,
-not at import time.
-
-Usage:
-    from src.engines.registry import get_engine, shutdown_engine
-
-    engine = await get_engine()
-    await shutdown_engine()
+Engine instances are built eagerly during startup and registered here for
+shared access. No lazy singleton initialization is performed in this module.
 """
 
 from __future__ import annotations
@@ -19,149 +9,106 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, TypedDict
 
-from src.config import INFERENCE_ENGINE
-
 if TYPE_CHECKING:
     from .base import BaseEngine
-    from .trt.factory import TRTEngineSingleton
-    from .vllm.factory import VLLMEngineSingleton
+    from .vllm.cache import CacheResetManager
 
 
-class _EngineState(TypedDict):
-    trt: TRTEngineSingleton | None
-    vllm: VLLMEngineSingleton | None
+class _RuntimeState(TypedDict):
+    engine: BaseEngine | None
+    cache_reset_manager: CacheResetManager | None
 
 
-# Singleton instances - created lazily on first access
-_STATE: _EngineState = {"trt": None, "vllm": None}
+_STATE: _RuntimeState = {
+    "engine": None,
+    "cache_reset_manager": None,
+}
+_NOOP_CACHE_EVENT = asyncio.Event()
 
 
-def _get_trt_singleton() -> TRTEngineSingleton:
-    """Get or create the TRT engine singleton manager."""
-    singleton = _STATE["trt"]
-    if singleton is None:
-        from .trt.factory import TRTEngineSingleton  # noqa: PLC0415
-
-        singleton = TRTEngineSingleton()
-        _STATE["trt"] = singleton
-    return singleton
+def configure_engine_runtime(
+    engine: BaseEngine | None,
+    cache_reset_manager: CacheResetManager | None = None,
+) -> None:
+    """Register runtime engine dependencies."""
+    _STATE["engine"] = engine
+    _STATE["cache_reset_manager"] = cache_reset_manager
 
 
-def _get_vllm_singleton() -> VLLMEngineSingleton:
-    """Get or create the vLLM engine singleton manager."""
-    singleton = _STATE["vllm"]
-    if singleton is None:
-        from .vllm.factory import VLLMEngineSingleton  # noqa: PLC0415
-
-        singleton = VLLMEngineSingleton()
-        _STATE["vllm"] = singleton
-    return singleton
+def clear_engine_runtime() -> None:
+    """Clear configured runtime engine dependencies."""
+    configure_engine_runtime(None, None)
 
 
 async def get_engine() -> BaseEngine:
-    """Get the configured inference engine instance.
-
-    Returns the appropriate engine based on INFERENCE_ENGINE config:
-    - 'vllm': Returns VLLMEngine
-    - 'trt': Returns TRTEngine
-
-    The engine is lazily initialized on first call.
-    """
-    if INFERENCE_ENGINE == "vllm":
-        return await _get_vllm_singleton().get()
-    return await _get_trt_singleton().get()
+    """Return configured runtime chat engine."""
+    engine = _STATE["engine"]
+    if engine is None:
+        raise RuntimeError("Chat engine has not been configured in runtime bootstrap")
+    return engine
 
 
 async def shutdown_engine() -> None:
-    """Shutdown all initialized engines."""
-    if INFERENCE_ENGINE == "vllm":
-        vllm_singleton = _get_vllm_singleton()
-        if vllm_singleton.is_initialized:
-            await vllm_singleton.shutdown()
-    else:
-        trt_singleton = _get_trt_singleton()
-        if trt_singleton.is_initialized:
-            await trt_singleton.shutdown()
-
-
-async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
-    """Reset engine caches if supported.
-
-    For vLLM: Resets prefix and multimodal caches.
-    For TRT-LLM: No-op (block reuse handles memory management).
-
-    Args:
-        reason: Human-readable reason for the reset.
-        force: Force reset even if interval hasn't elapsed.
-
-    Returns:
-        True if caches were reset, False otherwise.
-    """
-    if INFERENCE_ENGINE != "vllm":
-        return False
-
-    singleton = _get_vllm_singleton()
-    if not singleton.is_initialized:
-        return False
-
-    from .vllm.cache import CacheResetManager  # noqa: PLC0415
-
-    engine = await singleton.get()
-    return await CacheResetManager.get_instance().try_reset(engine, reason, force=force)
-
-
-def cache_reset_reschedule_event() -> asyncio.Event:
-    """Get the cache reset reschedule event (vLLM only).
-
-    For TRT-LLM, returns a dummy event that's never set.
-    """
-    if INFERENCE_ENGINE == "vllm":
-        from .vllm.cache import CacheResetManager  # noqa: PLC0415
-
-        return CacheResetManager.get_instance().reschedule_event
-    return asyncio.Event()
-
-
-def seconds_since_last_cache_reset() -> float:
-    """Get seconds since last cache reset (vLLM only).
-
-    For TRT-LLM, returns 0.0 (cache reset not applicable).
-    """
-    if INFERENCE_ENGINE == "vllm":
-        from .vllm.cache import CacheResetManager  # noqa: PLC0415
-
-        return CacheResetManager.get_instance().seconds_since_last_reset()
-    return 0.0
-
-
-async def clear_caches_on_disconnect() -> None:
-    """Clear caches when all clients disconnect (vLLM only)."""
-    if INFERENCE_ENGINE == "vllm":
-        await reset_engine_caches("all_clients_disconnected", force=True)
+    """Shutdown configured engine and clear runtime references."""
+    engine = _STATE["engine"]
+    clear_engine_runtime()
+    if engine is not None:
+        await engine.shutdown()
 
 
 def engine_supports_cache_reset() -> bool:
-    """Check if the current engine supports cache reset operations."""
-    return INFERENCE_ENGINE == "vllm"
+    """Check whether configured runtime engine supports cache reset."""
+    engine = _STATE["engine"]
+    cache_reset_manager = _STATE["cache_reset_manager"]
+    return engine is not None and engine.supports_cache_reset and cache_reset_manager is not None
+
+
+async def reset_engine_caches(reason: str, *, force: bool = False) -> bool:
+    """Reset configured engine caches (vLLM only)."""
+    if not engine_supports_cache_reset():
+        return False
+    engine = _STATE["engine"]
+    cache_reset_manager = _STATE["cache_reset_manager"]
+    if engine is None or cache_reset_manager is None:
+        return False
+    return await cache_reset_manager.try_reset(engine, reason, force=force)
+
+
+def cache_reset_reschedule_event() -> asyncio.Event:
+    """Get cache reset reschedule event if available."""
+    cache_reset_manager = _STATE["cache_reset_manager"]
+    if cache_reset_manager is None:
+        return _NOOP_CACHE_EVENT
+    return cache_reset_manager.reschedule_event
+
+
+def seconds_since_last_cache_reset() -> float:
+    """Get elapsed seconds since previous cache reset."""
+    cache_reset_manager = _STATE["cache_reset_manager"]
+    if cache_reset_manager is None:
+        return 0.0
+    return cache_reset_manager.seconds_since_last_reset()
+
+
+async def clear_caches_on_disconnect() -> None:
+    """Clear caches when no active clients remain (vLLM only)."""
+    if engine_supports_cache_reset():
+        await reset_engine_caches("all_clients_disconnected", force=True)
 
 
 def ensure_cache_reset_daemon() -> None:
-    """Start the cache reset daemon if configuration enables it.
-
-    Safe to call multiple times - will not start duplicate daemons.
-    Only applicable for vLLM engine.
-    """
-    if INFERENCE_ENGINE != "vllm":
+    """Ensure cache reset daemon is running when available."""
+    cache_reset_manager = _STATE["cache_reset_manager"]
+    if not engine_supports_cache_reset() or cache_reset_manager is None:
         return
-
-    from .vllm.cache import CacheResetManager  # noqa: PLC0415
-
-    CacheResetManager.get_instance().ensure_daemon_running(
-        lambda reason, force: reset_engine_caches(reason, force=force)
+    cache_reset_manager.ensure_daemon_running(
+        lambda reason, force: reset_engine_caches(reason, force=force),
     )
 
 
 __all__ = [
+    "configure_engine_runtime",
+    "clear_engine_runtime",
     "get_engine",
     "shutdown_engine",
     "reset_engine_caches",

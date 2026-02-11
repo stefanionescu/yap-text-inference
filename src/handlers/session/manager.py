@@ -1,11 +1,4 @@
-"""Session handler orchestration logic.
-
-This module implements the central session management for the inference server.
-SessionHandler coordinates per-connection state including lifecycle, configuration,
-history, request tracking, and rate limiting.
-
-The global `session_handler` singleton is instantiated in the `instances` module.
-"""
+"""Session handler orchestration logic."""
 
 from __future__ import annotations
 
@@ -13,9 +6,8 @@ import copy
 import time
 import asyncio
 import contextlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from src.engines import get_engine
 from src.state.session import HistoryTurn, SessionState
 from src.config.timeouts import SESSION_IDLE_TTL_SECONDS
 from src.config import (
@@ -39,6 +31,9 @@ from .requests import (
     cleanup_session_requests as _cleanup_requests,
 )
 
+if TYPE_CHECKING:
+    from src.engines.base import BaseEngine
+
 
 class SessionHandler:
     """Handles session metadata, request tracking, and lifecycle.
@@ -57,14 +52,21 @@ class SessionHandler:
 
     CANCELLED_SENTINEL = CANCELLED_SENTINEL
 
-    def __init__(self, idle_ttl_seconds: int = SESSION_IDLE_TTL_SECONDS):
+    def __init__(
+        self,
+        *,
+        chat_engine: BaseEngine | None = None,
+        idle_ttl_seconds: int = SESSION_IDLE_TTL_SECONDS,
+    ):
         """Initialize the session handler.
 
         Args:
+            chat_engine: Eagerly initialized chat engine for abort handling.
             idle_ttl_seconds: Time in seconds before idle sessions are evicted.
                 Defaults to SESSION_IDLE_TTL_SECONDS from environment.
         """
         self._sessions: dict[str, SessionState] = {}  # session_id -> state
+        self._chat_engine = chat_engine
         self._idle_ttl_seconds = idle_ttl_seconds
         self._history = HistoryController()  # Shared history helper
 
@@ -306,9 +308,9 @@ class SessionHandler:
         request_info = self.cleanup_session_requests(session_id)
 
         active_request_id = request_info.get("active")
-        if DEPLOY_CHAT and active_request_id:
+        if DEPLOY_CHAT and active_request_id and self._chat_engine is not None:
             with contextlib.suppress(Exception):
-                await (await get_engine()).abort(active_request_id)
+                await self._chat_engine.abort(active_request_id)
 
         if clear_state:
             self.clear_session_state(session_id)

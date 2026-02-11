@@ -12,10 +12,10 @@ Key Functions:
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
 from collections.abc import Sequence
 
-from ..tokens.registry import get_chat_tokenizer
+from src.tokens.tokenizer import FastTokenizer
+
 from ..config.chat import CHAT_TEMPLATE_ENABLE_THINKING
 from ..handlers.session.history import parse_history_as_tuples
 
@@ -36,24 +36,26 @@ def build_chat_prompt_with_prefix(
     runtime_text: str,
     history_text: str,
     user_utt: str,
+    chat_tokenizer: FastTokenizer,
 ) -> str:
     """Build the chat prompt using the tokenizer's native chat template."""
     history_turns = parse_history_as_tuples(history_text)
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     messages = _build_messages(system_prompt, history_turns, user_utt)
-    return _apply_chat_template(messages, add_generation_prompt=True)
+    return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 
 def build_chat_warm_prompt(
     static_prefix: str,
     runtime_text: str,
     history_text: str,
+    chat_tokenizer: FastTokenizer,
 ) -> str:
     """Build a prompt that primes persona + history without a fresh user query."""
     history_turns = parse_history_as_tuples(history_text)
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     messages = _build_messages(system_prompt, history_turns, user_utt=None)
-    return _apply_chat_template(messages, add_generation_prompt=True)
+    return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 
 # ============================================================================
@@ -103,20 +105,14 @@ def _build_messages(
     return messages
 
 
-@lru_cache(maxsize=1)
-def _get_cached_chat_tokenizer():
-    """Get the chat tokenizer (cached)."""
-    return get_chat_tokenizer()
-
-
 def _apply_chat_template(
+    chat_tokenizer: FastTokenizer,
     messages: list[dict[str, str]],
     add_generation_prompt: bool = True,
 ) -> str:
     """Apply the tokenizer's chat template to format messages."""
-    tokenizer = _get_cached_chat_tokenizer()
     try:
-        return tokenizer.apply_chat_template(
+        return chat_tokenizer.apply_chat_template(
             messages,
             add_generation_prompt,
             **_CHAT_TEMPLATE_DEFAULT_KWARGS,

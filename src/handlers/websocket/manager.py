@@ -12,14 +12,14 @@ import contextlib
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from src.runtime.dependencies import RuntimeDeps
+
 from .auth import authenticate_websocket
 from .lifecycle import WebSocketLifecycle
 from .message_loop import run_message_loop
 from ..limits import SlidingWindowRateLimiter
 from .errors import send_error, reject_connection
-from ..instances import connections, session_handler
 from ...logging import set_log_context, reset_log_context
-from ...engines import reset_engine_caches, clear_caches_on_disconnect
 from ...config.websocket import (
     WS_ERROR_INTERNAL,
     WS_CLOSE_BUSY_CODE,
@@ -38,8 +38,9 @@ from ...config import (
 logger = logging.getLogger(__name__)
 
 
-async def _prepare_connection(ws: WebSocket) -> bool:
+async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
     """Authenticate and admit a WebSocket connection."""
+    connections = runtime_deps.connections
     if not await authenticate_websocket(ws):
         await reject_connection(
             ws,
@@ -69,8 +70,9 @@ async def _prepare_connection(ws: WebSocket) -> bool:
     return True
 
 
-async def _cleanup_session(session_id: str | None) -> float:
+async def _cleanup_session(runtime_deps: RuntimeDeps, session_id: str | None) -> float:
     """Clean up session resources on disconnect and return duration."""
+    session_handler = runtime_deps.session_handler
     duration = 0.0
     if session_id:
         duration = session_handler.get_session_duration(session_id)
@@ -93,18 +95,20 @@ def _create_rate_limiters() -> tuple[SlidingWindowRateLimiter, SlidingWindowRate
 
 async def _finalize_connection(
     ws: WebSocket,
+    runtime_deps: RuntimeDeps,
     lifecycle: WebSocketLifecycle | None,
     session_id: str | None,
     admitted: bool,
 ) -> None:
     """Handle teardown actions after the connection loop exits."""
+    connections = runtime_deps.connections
     if lifecycle is not None:
         with contextlib.suppress(Exception):
             await lifecycle.stop()
 
     session_duration = 0.0
     try:
-        session_duration = await _cleanup_session(session_id)
+        session_duration = await _cleanup_session(runtime_deps, session_id)
     except Exception:  # noqa: BLE001
         logger.exception("WebSocket cleanup failed")
 
@@ -120,7 +124,7 @@ async def _finalize_connection(
     should_reset = session_id is not None and session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
     if should_reset:
         with contextlib.suppress(Exception):
-            triggered = await reset_engine_caches("long_session", force=True)
+            triggered = await runtime_deps.reset_engine_caches("long_session", force=True)
             if triggered:
                 logger.info(
                     "cache reset after long session_id=%s duration=%.1fs",
@@ -130,10 +134,10 @@ async def _finalize_connection(
 
     if remaining == 0:
         with contextlib.suppress(Exception):
-            await clear_caches_on_disconnect()
+            await runtime_deps.clear_caches_on_disconnect()
 
 
-async def handle_websocket_connection(ws: WebSocket) -> None:
+async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> None:
     """Handle WebSocket connection and route messages to appropriate handlers."""
     client = ws.client
     client_id = f"{client.host}:{client.port}" if client else "unknown"
@@ -142,7 +146,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
         lifecycle: WebSocketLifecycle | None = None
         admitted = False
 
-        if not await _prepare_connection(ws):
+        if not await _prepare_connection(ws, runtime_deps):
             return
 
         admitted = True
@@ -153,11 +157,17 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
 
         logger.info(
             "WebSocket connection accepted. Active: %s",
-            connections.get_connection_count(),
+            runtime_deps.connections.get_connection_count(),
         )
 
         try:
-            session_id = await run_message_loop(ws, lifecycle, message_limiter, cancel_limiter)
+            session_id = await run_message_loop(
+                ws,
+                lifecycle,
+                message_limiter,
+                cancel_limiter,
+                runtime_deps,
+            )
         except WebSocketDisconnect:
             pass
         except Exception as exc:  # noqa: BLE001
@@ -172,7 +182,7 @@ async def handle_websocket_connection(ws: WebSocket) -> None:
                     reason_code="internal_exception",
                 )
         finally:
-            await _finalize_connection(ws, lifecycle, session_id, admitted)
+            await _finalize_connection(ws, runtime_deps, lifecycle, session_id, admitted)
     finally:
         reset_log_context(tokens)
 

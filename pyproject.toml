@@ -79,10 +79,16 @@ source_modules = ["src.state"]
 forbidden_modules = ["src.hf.trt.push", "src.hf.vllm.push"]
 
 [[tool.importlinter.contracts]]
-name = "session package must not import handler instances"
+name = "session package must not import websocket or runtime orchestration"
 type = "forbidden"
 source_modules = ["src.handlers.session"]
-forbidden_modules = ["src.handlers.instances"]
+forbidden_modules = ["src.handlers.websocket", "src.messages", "src.runtime", "src.server"]
+
+[[tool.importlinter.contracts]]
+name = "runtime bootstrap package must not import websocket stack"
+type = "forbidden"
+source_modules = ["src.runtime"]
+forbidden_modules = ["src.handlers.websocket", "src.messages", "src.server"]
 
 [[tool.importlinter.contracts]]
 name = "config must not import state"

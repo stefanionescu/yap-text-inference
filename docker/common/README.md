@@ -19,17 +19,15 @@ Logging functions aligned with `scripts/lib/common/log.sh`:
 
 ### Warmup (`scripts/warmup.sh`)
 
-Waits for server health and runs warmup tests.
+Waits for server health and exits.
 
 Features:
 - Health check polling with configurable timeout
-- Runs `tests/warmup.py` to exercise the model
-- Mirrors `scripts/warmup.sh` behavior
+- No test-client execution inside Docker
 
 Environment variables:
 - `WARMUP_MAX_WAIT` - Max seconds to wait for health (default: 300)
-- `RUN_WARMUP_TESTS` - Set to 0 to skip warmup tests
-- `WARMUP_RETRIES` - Number of retry attempts (default: 2)
+- `WARMUP_WAIT_INTERVAL` - Sleep interval between checks (default: 5)
 
 ### GPU Detection (`scripts/gpu_detect.sh`)
 

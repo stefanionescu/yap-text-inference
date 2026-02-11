@@ -7,7 +7,7 @@ Key Features:
 
 1. Engine Abstraction:
    - Works with both vLLM and TensorRT-LLM
-   - Accepts an engine getter function for lazy initialization
+   - Uses a pre-initialized engine instance
 
 2. Micro-Buffering:
    - Accumulates small chunks for flush_ms duration
@@ -38,7 +38,7 @@ import time
 import asyncio
 import logging
 from typing import Any
-from collections.abc import Callable, Awaitable, AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from src.errors import StreamCancelledError
 from src.config.logging import CHAT_STREAM_LABEL
@@ -105,7 +105,7 @@ class ChatStreamController:
     async def _iter_emitted_chunks(self) -> AsyncGenerator[str, None]:
         cfg = self._cfg
         async for out in _stream_with_timeout(
-            get_engine=cfg.engine_getter,
+            engine=cfg.engine,
             prompt=cfg.prompt,
             sampling_params=cfg.sampling_params,
             request_id=cfg.request_id,
@@ -245,7 +245,7 @@ class ChatStreamController:
 
 
 async def _stream_with_timeout(
-    get_engine: Callable[[], Awaitable[BaseEngine]],
+    engine: BaseEngine,
     prompt: str,
     sampling_params: Any,
     request_id: str,
@@ -253,7 +253,6 @@ async def _stream_with_timeout(
     cancel_check: CancelCheck = None,
 ) -> AsyncGenerator[Any, None]:
     """Stream generation with timeout and cancellation support."""
-    engine = await get_engine()
     stream = engine.generate_stream(
         prompt=prompt,
         sampling_params=sampling_params,

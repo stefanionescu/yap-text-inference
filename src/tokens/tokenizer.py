@@ -5,8 +5,8 @@ This module provides the FastTokenizer class that wraps either:
 2. A HuggingFace transformers tokenizer (AutoTokenizer, slower but more compatible)
 
 FastTokenizer provides a unified interface for token counting, trimming, and
-encoding. Singleton accessors for chat and tool tokenizers are in the
-registry module (src/tokens/registry.py).
+encoding. Runtime-configured accessors for chat and tool tokenizers are in
+the registry module (src/tokens/registry.py).
 
 Environment Variables:
     TOKENIZERS_PARALLELISM=false: Set automatically to avoid fork warnings

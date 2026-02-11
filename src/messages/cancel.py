@@ -14,11 +14,18 @@ cancellation periodically and terminates gracefully.
 
 from fastapi import WebSocket
 
-from ..handlers.instances import session_handler
+from src.handlers.session.manager import SessionHandler
+
 from ..handlers.websocket.helpers import safe_send_envelope
 
 
-async def handle_cancel_message(ws: WebSocket, session_id: str, request_id: str) -> None:
+async def handle_cancel_message(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+    *,
+    session_handler: SessionHandler,
+) -> None:
     """Handle 'cancel' message type by aborting active requests.
 
     Args:
