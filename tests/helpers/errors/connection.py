@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from tests.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON
+
 from .server import ServerError
 from .base import TestClientError
-
-IDLE_TIMEOUT_CLOSE_CODE = 4000
 
 
 class ConnectionError(TestClientError):
@@ -49,14 +49,14 @@ class IdleTimeoutError(ConnectionClosedError):
         self,
         message: str = "Connection closed due to inactivity",
         *,
-        close_code: int | None = IDLE_TIMEOUT_CLOSE_CODE,
-        close_reason: str | None = "idle_timeout",
+        close_code: int | None = WS_IDLE_CLOSE_CODE,
+        close_reason: str | None = WS_IDLE_CLOSE_REASON,
     ):
         super().__init__(message, close_code=close_code, close_reason=close_reason)
 
     @staticmethod
     def matches(close_code: int | None, close_reason: str | None) -> bool:
-        if close_code == IDLE_TIMEOUT_CLOSE_CODE:
+        if close_code == WS_IDLE_CLOSE_CODE:
             return True
         if close_reason is None:
             return False

@@ -204,7 +204,16 @@ bash scripts/lint.sh
 # exit the subshell when finished
 ```
 
-`scripts/lint.sh` runs Ruff on Python and ShellCheck on shell scripts.
+`scripts/lint.sh` runs:
+- isort (import ordering)
+- Ruff format + lint
+- import-linter contracts
+- import cycle detection (hard-fail on cycles)
+- mypy (when installed)
+- custom repo lint checks, including:
+  - runtime file length limits (300 LOC; `src/**/*.py`, `scripts/**/*.sh`, `docker/**/*.sh`)
+  - runtime Python function length limits (60 LOC; `src/**/*.py`)
+- ShellCheck (and shfmt checks when available)
 
 ## API — WebSocket `/ws`
 
@@ -476,7 +485,7 @@ Uploads: vLLM AWQ/W4A16 exports or TRT-LLM checkpoints/engines (4-bit or 8-bit).
 > **Note:** `--push-quant` and `--push-engine` are mutually exclusive.
 
 **Required whenever `--push-quant` is present:**
-- `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) with write access
+- `HF_TOKEN` with write access
 - `HF_PUSH_REPO_ID` – target Hugging Face repo (e.g., `your-org/model-awq`)
 
 **Optional:**
@@ -528,7 +537,7 @@ python3 tests/warmup.py --gender male --personality flirty "hello there"
 Environment overrides honored by the client:
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
 - `GENDER` (aliases `woman|man`)
-- `PERSONALITY` (alias `PERSONA_STYLE`, default `wholesome`)
+- `PERSONALITY` (default `wholesome`)
 - `RECV_TIMEOUT_SEC` (default `60`)
 
 Example:

@@ -14,7 +14,7 @@ cancellation periodically and terminates gracefully.
 
 from fastapi import WebSocket
 
-from ..handlers.session import abort_session_requests
+from ..handlers.instances import session_handler
 from ..handlers.websocket.helpers import safe_send_envelope
 
 
@@ -27,7 +27,7 @@ async def handle_cancel_message(ws: WebSocket, session_id: str, request_id: str)
         request_id: Request ID to cancel/acknowledge.
     """
     if session_id:
-        await abort_session_requests(session_id, clear_state=False)
+        await session_handler.abort_session_requests(session_id, clear_state=False)
 
     await safe_send_envelope(
         ws,

@@ -40,6 +40,45 @@ from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat
 logger = logging.getLogger(__name__)
 
 
+async def _await_tool_decision(session_id: str, user_utt: str) -> tuple[str, bool]:
+    tool_req_id, tool_task = launch_tool_request(session_id, user_utt)
+    logger.info("sequential_exec: tool start req_id=%s", tool_req_id)
+    try:
+        tool_res = await asyncio.wait_for(tool_task, timeout=TOOL_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "sequential_exec: tool timeout session_id=%s req_id=%s timeout_s=%.1f",
+            session_id,
+            tool_req_id,
+            TOOL_TIMEOUT_S,
+        )
+        await cancel_task(tool_task)
+        tool_res = {"cancelled": True, "text": "[]", "timeout": True}
+    finally:
+        session_handler.clear_tool_request_id(session_id)
+    raw_field, is_tool = parse_tool_result(tool_res)
+    return raw_field, is_tool
+
+
+async def _send_toolcall_status(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+    raw_field: str,
+    is_tool: bool,
+) -> None:
+    decision = "yes" if is_tool else "no"
+    await send_toolcall(ws, session_id, request_id, decision, raw_field)
+    logger.info("sequential_exec: sent toolcall %s", decision)
+
+
+def _resolve_user_utterance_for_chat(session_id: str, user_utt: str, is_tool: bool) -> str:
+    if not is_tool:
+        return user_utt
+    prefix = session_handler.get_check_screen_prefix(session_id)
+    return f"{prefix} {user_utt}".strip()
+
+
 async def run_execution(
     ws: WebSocket,
     session_id: str,
@@ -70,46 +109,12 @@ async def run_execution(
         history_turn_id: Optional existing turn ID for streaming updates.
         sampling_overrides: Optional sampling parameter overrides.
     """
-    # Run tool router (do not mark active to avoid clobbering chat req id)
-    # Timeout is handled internally by tool_runner.py (mirroring the chat stream)
-    tool_req_id, tool_task = launch_tool_request(session_id, user_utt)
-    logger.info(f"sequential_exec: tool start req_id={tool_req_id}")
-
-    try:
-        tool_res = await asyncio.wait_for(tool_task, timeout=TOOL_TIMEOUT_S)
-    except asyncio.TimeoutError:
-        logger.warning(
-            "sequential_exec: tool timeout session_id=%s req_id=%s timeout_s=%.1f",
-            session_id,
-            tool_req_id,
-            TOOL_TIMEOUT_S,
-        )
-        await cancel_task(tool_task)
-        tool_res = {"cancelled": True, "text": "[]", "timeout": True}
-
-    # Parse tool decision
-    raw_field, is_tool = parse_tool_result(tool_res)
-
-    # Cleanup tool req id tracking (no longer in-flight)
-    session_handler.clear_tool_request_id(session_id)
-
-    if is_tool:
-        # Tool detected: send toolcall response
-        await send_toolcall(ws, session_id, request_id, "yes", raw_field)
-        logger.info("sequential_exec: sent toolcall yes")
-    else:
-        # Tool says NO (or timed out): notify client
-        await send_toolcall(ws, session_id, request_id, "no", raw_field)
-        logger.info("sequential_exec: sent toolcall no")
+    raw_field, is_tool = await _await_tool_decision(session_id, user_utt)
+    await _send_toolcall_status(ws, session_id, request_id, raw_field, is_tool)
 
     # Start chat stream (for take_screenshot or no tool call)
     session_handler.set_active_request(session_id, request_id)
-    # If tool said yes (take_screenshot), prefix the user utterance with CHECK SCREEN hint
-    if is_tool:
-        prefix = session_handler.get_check_screen_prefix(session_id)
-        user_utt_for_chat = f"{prefix} {user_utt}".strip()
-    else:
-        user_utt_for_chat = user_utt
+    user_utt_for_chat = _resolve_user_utterance_for_chat(session_id, user_utt, is_tool)
 
     final_text = await stream_chat_response(
         ws,
@@ -128,7 +133,7 @@ async def run_execution(
         history_turn_id=history_turn_id,
         history_user_utt=user_utt,
     )
-    logger.info(f"sequential_exec: done chars={len(final_text)}")
+    logger.info("sequential_exec: done chars=%s", len(final_text))
 
 
 __all__ = ["run_execution"]

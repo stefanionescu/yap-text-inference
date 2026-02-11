@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Enforce maximum code-line limits per file.
+"""Enforce maximum code-line limits per runtime file.
 
-src/  -> 300 code lines max
-tests/ -> 600 code lines max
+Python files in src/ must not exceed 300 code lines.
+Shell scripts in scripts/ and docker/ must not exceed 300 code lines.
 
 Blank lines, comment-only lines, and docstring-only lines are excluded from
 the count. __init__.py barrel-export files (only imports and __all__) are exempt.
@@ -16,11 +16,12 @@ import tokenize
 from pathlib import Path
 
 SRC_LIMIT = 300
-TEST_LIMIT = 600
+SHELL_LIMIT = 300
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = ROOT / "src"
-TEST_DIR = ROOT / "tests"
+SCRIPTS_DIR = ROOT / "scripts"
+DOCKER_DIR = ROOT / "docker"
 
 
 def _comment_lines(filepath: Path) -> set[int]:
@@ -102,10 +103,28 @@ def _count_code_lines(filepath: Path) -> int:
     return count
 
 
+def _count_shell_code_lines(filepath: Path) -> int:
+    """Count non-blank, non-comment lines for shell scripts."""
+    try:
+        raw_lines = filepath.read_text().splitlines()
+    except (OSError, UnicodeDecodeError):
+        return 0
+
+    count = 0
+    for line in raw_lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            continue
+        count += 1
+    return count
+
+
 def main() -> int:
     violations: list[str] = []
 
-    for directory, limit in [(SRC_DIR, SRC_LIMIT), (TEST_DIR, TEST_LIMIT)]:
+    for directory, limit in [(SRC_DIR, SRC_LIMIT)]:
         if not directory.is_dir():
             continue
         for py_file in sorted(directory.rglob("*.py")):
@@ -115,6 +134,15 @@ def main() -> int:
             if code_lines > limit:
                 rel = py_file.relative_to(ROOT)
                 violations.append(f"  {rel}: {code_lines} code lines (limit {limit})")
+
+    for directory in (SCRIPTS_DIR, DOCKER_DIR):
+        if not directory.is_dir():
+            continue
+        for sh_file in sorted(directory.rglob("*.sh")):
+            code_lines = _count_shell_code_lines(sh_file)
+            if code_lines > SHELL_LIMIT:
+                rel = sh_file.relative_to(ROOT)
+                violations.append(f"  {rel}: {code_lines} code lines (limit {SHELL_LIMIT})")
 
     if violations:
         print("File length violations:", file=sys.stderr)

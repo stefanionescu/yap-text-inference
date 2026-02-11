@@ -11,6 +11,61 @@ if TYPE_CHECKING:  # pragma: no cover - optional dependency
 
 
 @dataclass
+class AWQPushJob:
+    """Coordinates metadata refresh and upload for AWQ exports."""
+
+    api: HfApi
+    repo_id: str
+    token: str
+    branch: str
+    commit_message: str
+    src_dir: Path
+    private: bool
+    allow_create: bool
+
+    def run(self) -> bool:
+        from src.hf import create_repo_if_needed  # noqa: PLC0415
+        from src.hf.vllm.job import (  # noqa: PLC0415
+            _IGNORE_PATTERNS,
+            load_metadata,
+            regenerate_readme,
+            classify_prequantized_source,
+        )
+
+        metadata = load_metadata(self.src_dir)
+        source_model = (metadata.get("source_model") or "").strip() or "unknown"
+
+        prequant_kind = classify_prequantized_source(source_model)
+        if prequant_kind:
+            print(
+                f"[hf-push] Source model '{source_model}' already looks like {prequant_kind.upper()} weights; refusing to upload."  # noqa: E501
+            )
+            return False
+
+        regenerate_readme(self.src_dir, metadata)
+
+        if self.allow_create:
+            create_repo_if_needed(self.api, self.repo_id, self.token, self.private)
+
+        try:
+            self.api.upload_folder(
+                folder_path=str(self.src_dir),
+                repo_id=self.repo_id,
+                repo_type="model",
+                revision=self.branch,
+                commit_message=self.commit_message,
+                token=self.token,
+                ignore_patterns=_IGNORE_PATTERNS,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[hf-push] Error: Failed to upload AWQ folder: {exc}")
+            return False
+
+        print("[hf-push] Upload complete")
+        return True
+
+
+@dataclass
 class TRTPushJob:
     """Encapsulates the TRT checkpoint+engine push workflow for testability."""
 
@@ -148,56 +203,6 @@ class TRTPushJob:
             print("[trt-hf] ✓ Uploaded chat template assets")
         else:
             print("[trt-hf] No chat template/generation_config files found. Skipping")
-
-
-@dataclass
-class AWQPushJob:
-    """Coordinates metadata refresh and upload for AWQ exports."""
-
-    api: HfApi
-    repo_id: str
-    token: str
-    branch: str
-    commit_message: str
-    src_dir: Path
-    private: bool
-    allow_create: bool
-
-    def run(self) -> bool:
-        from src.hf import create_repo_if_needed
-        from src.hf.vllm.job import _IGNORE_PATTERNS, load_metadata, regenerate_readme, classify_prequantized_source
-
-        metadata = load_metadata(self.src_dir)
-        source_model = (metadata.get("source_model") or "").strip() or "unknown"
-
-        prequant_kind = classify_prequantized_source(source_model)
-        if prequant_kind:
-            print(
-                f"[hf-push] Source model '{source_model}' already looks like {prequant_kind.upper()} weights; refusing to upload."  # noqa: E501
-            )
-            return False
-
-        regenerate_readme(self.src_dir, metadata)
-
-        if self.allow_create:
-            create_repo_if_needed(self.api, self.repo_id, self.token, self.private)
-
-        try:
-            self.api.upload_folder(
-                folder_path=str(self.src_dir),
-                repo_id=self.repo_id,
-                repo_type="model",
-                revision=self.branch,
-                commit_message=self.commit_message,
-                token=self.token,
-                ignore_patterns=_IGNORE_PATTERNS,
-            )
-        except Exception as exc:  # noqa: BLE001
-            print(f"[hf-push] Error: Failed to upload AWQ folder: {exc}")
-            return False
-
-        print("[hf-push] Upload complete")
-        return True
 
 
 __all__ = [

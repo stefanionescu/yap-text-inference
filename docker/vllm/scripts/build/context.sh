@@ -10,6 +10,7 @@ prepare_build_context() {
 
   # Core files
   cp -a "${DOCKERFILE}" "${TMP_BUILD_DIR}/Dockerfile"
+  cp -a "${SCRIPT_DIR}/.dockerignore" "${TMP_BUILD_DIR}/.dockerignore"
   cp -a "${ROOT_DIR}/requirements-vllm.txt" "${TMP_BUILD_DIR}/requirements.txt"
   cp -a "${ROOT_DIR}/src" "${TMP_BUILD_DIR}/src"
 
@@ -28,11 +29,6 @@ prepare_build_context() {
   # Copy common download utilities
   mkdir -p "${TMP_BUILD_DIR}/common/download"
   cp -a "${SCRIPT_DIR}/../common/download"/* "${TMP_BUILD_DIR}/common/download/"
-
-  # Copy tests for warmup
-  if [ -d "${ROOT_DIR}/tests" ]; then
-    cp -a "${ROOT_DIR}/tests" "${TMP_BUILD_DIR}/tests"
-  fi
 
   # shellcheck disable=SC2034  # consumed by parent build script after sourcing
   BUILD_CONTEXT="${TMP_BUILD_DIR}"

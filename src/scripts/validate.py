@@ -10,6 +10,8 @@ from __future__ import annotations
 import os
 import sys
 
+VALIDATE_SUPPORTED_ENGINES: tuple[str, ...] = ("trt", "vllm")
+
 
 def validate_models(
     deploy_mode: str,
@@ -40,10 +42,10 @@ def validate_models(
 
     errors: list[str] = []
 
-    # Normalize engine
-    engine = (engine or "trt").lower()
-    if engine not in ("trt", "vllm"):
-        engine = "trt"
+    engine = (engine or "").lower()
+    if engine not in VALIDATE_SUPPORTED_ENGINES:
+        errors.append(f"INFERENCE_ENGINE must be one of {VALIDATE_SUPPORTED_ENGINES}, got: {engine}")
+        return errors
 
     deploy_chat = deploy_mode in ("both", "chat")
     deploy_tool = deploy_mode in ("both", "tool")
@@ -86,11 +88,18 @@ def validate_models(
 if __name__ == "__main__":
     # CLI interface for shell scripts
     # Reads configuration from environment variables
-    deploy_mode = os.environ.get("DEPLOY_MODE", "both")
+    deploy_mode = os.environ.get("DEPLOY_MODE") or ""
     chat_model = os.environ.get("CHAT_MODEL") or None
     tool_model = os.environ.get("TOOL_MODEL") or None
     chat_quantization = os.environ.get("CHAT_QUANTIZATION") or None
-    engine = os.environ.get("INFERENCE_ENGINE") or os.environ.get("ENGINE_TYPE", "trt")
+    engine = os.environ.get("INFERENCE_ENGINE") or ""
+
+    if deploy_mode not in ("both", "chat", "tool"):
+        print(
+            "[validate] ✗ DEPLOY_MODE must be one of ('both', 'chat', 'tool') and must be exported by shell config.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     errors = validate_models(
         deploy_mode=deploy_mode,

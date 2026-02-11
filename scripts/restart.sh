@@ -102,7 +102,7 @@ This script always:
   • Keeps dependencies unless --install-deps or stop.sh removes them
 
 Required environment variables:
-  TEXT_API_KEY, HF_TOKEN (or HUGGINGFACE_HUB_TOKEN), MAX_CONCURRENT_CONNECTIONS
+  TEXT_API_KEY, HF_TOKEN, MAX_CONCURRENT_CONNECTIONS
 
 Examples:
   bash scripts/restart.sh both             # TRT engine with existing caches

@@ -105,6 +105,8 @@ run_python() {
     run_quiet "import-linter" lint-imports
   fi
 
+  run_quiet "import-cycles" python "$ROOT_DIR/linting/import_cycles.py"
+
   if python -m src.scripts.validation.package mypy; then
     PY_DIRS=()
     [[ -d "$ROOT_DIR/server" ]] && PY_DIRS+=("$ROOT_DIR/server")
@@ -115,6 +117,8 @@ run_python() {
   fi
 
   run_quiet "file-length" python "$ROOT_DIR/linting/file_length.py"
+  run_quiet "function-length" python "$ROOT_DIR/linting/function_length.py"
+  run_quiet "one-class-per-file" python "$ROOT_DIR/linting/one_class_per_file.py"
   run_quiet "single-file-folders" python "$ROOT_DIR/linting/single_file_folders.py"
   run_quiet "prefix-collisions" python "$ROOT_DIR/linting/prefix_collisions.py"
   run_quiet "no-inline-python" python "$ROOT_DIR/linting/no_inline_python.py"

@@ -168,7 +168,6 @@ ENV TOOL_MODEL=/opt/models/tool
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY common/ /app/common/
-COPY tests/ /app/tests/
 RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
 
 # Default environment knobs for production

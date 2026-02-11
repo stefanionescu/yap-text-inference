@@ -21,49 +21,48 @@ from .fixes import apply_post_quantization_fixes
 from .metadata import save_quantization_metadata
 
 
-def quantize(
-    *,
-    calibration_config: CalibrationConfig,
-    model_path: str,
-    resolved_model_path: str,
-    output_dir: str,
-    quant_config: dict[str, Any],
-    target_seqlen: int,
-    hf_model_type: str,
-    calibration_kind: str,
-) -> bool:
-    """Quantize a model with the llmcompressor backend."""
-
+def _import_compressor() -> tuple[Any, Any] | None:
     try:
         import llmcompressor  # noqa: PLC0415
         from llmcompressor import oneshot  # noqa: PLC0415
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to import llmcompressor: {exc}")
-        return False
+        return None
+    return llmcompressor, oneshot
 
-    compressor_version = getattr(llmcompressor, "__version__", "unknown")
-    dataset_info = _resolve_dataset(calibration_config)
 
-    recipe = _build_recipe(quant_config)
-
+def _import_auto_model_cls() -> Any | None:
     try:
         from transformers import AutoModelForCausalLM  # type: ignore[import]  # noqa: PLC0415
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to import transformers: {exc}")
-        return False
+        return None
+    return AutoModelForCausalLM
 
+
+def _load_model(auto_model_cls: Any, resolved_model_path: str) -> Any | None:
     load_kwargs: dict[str, Any] = {
         "dtype": torch.bfloat16,
         "trust_remote_code": True,
         "device_map": None,
     }
-
     try:
-        model = AutoModelForCausalLM.from_pretrained(resolved_model_path, **load_kwargs)
+        return auto_model_cls.from_pretrained(resolved_model_path, **load_kwargs)
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to load model: {exc}")
-        return False
+        return None
 
+
+def _run_quantization_and_cleanup(
+    *,
+    oneshot: Any,
+    recipe: list[Any],
+    dataset_info: _DatasetInfo,
+    calibration_config: CalibrationConfig,
+    output_dir: str,
+    target_seqlen: int,
+    model: Any,
+) -> bool:
     try:
         _run_quantization(
             oneshot=oneshot,
@@ -80,6 +79,49 @@ def quantize(
         return False
     finally:
         _cleanup_model(model)
+    return True
+
+
+def quantize(
+    *,
+    calibration_config: CalibrationConfig,
+    model_path: str,
+    resolved_model_path: str,
+    output_dir: str,
+    quant_config: dict[str, Any],
+    target_seqlen: int,
+    hf_model_type: str,
+    calibration_kind: str,
+) -> bool:
+    """Quantize a model with the llmcompressor backend."""
+
+    compressor = _import_compressor()
+    if compressor is None:
+        return False
+    llmcompressor, oneshot = compressor
+
+    compressor_version = getattr(llmcompressor, "__version__", "unknown")
+    dataset_info = _resolve_dataset(calibration_config)
+    recipe = _build_recipe(quant_config)
+
+    auto_model_cls = _import_auto_model_cls()
+    if auto_model_cls is None:
+        return False
+
+    model = _load_model(auto_model_cls, resolved_model_path)
+    if model is None:
+        return False
+
+    if not _run_quantization_and_cleanup(
+        oneshot=oneshot,
+        recipe=recipe,
+        dataset_info=dataset_info,
+        calibration_config=calibration_config,
+        output_dir=output_dir,
+        target_seqlen=target_seqlen,
+        model=model,
+    ):
+        return False
 
     _persist_metadata(
         model_path=model_path,

@@ -5,26 +5,15 @@ from __future__ import annotations
 import os
 import re
 
+from src.config.models import (
+    ALLOWED_TOOL_MODELS,
+    ALLOWED_BASE_CHAT_MODELS,
+    ALLOWED_BASE_MOE_CHAT_MODELS,
+    ALLOWED_TRT_QUANT_CHAT_MODELS,
+    ALLOWED_VLLM_QUANT_CHAT_MODELS,
+)
+
 from .quantization import is_prequantized_model
-
-
-def _get_model_lists():
-    """Lazy import model lists to avoid circular imports."""
-    from src.config.models import (  # noqa: PLC0415
-        ALLOWED_TOOL_MODELS,
-        ALLOWED_BASE_CHAT_MODELS,
-        ALLOWED_BASE_MOE_CHAT_MODELS,
-        ALLOWED_TRT_QUANT_CHAT_MODELS,
-        ALLOWED_VLLM_QUANT_CHAT_MODELS,
-    )
-
-    return {
-        "ALLOWED_BASE_CHAT_MODELS": ALLOWED_BASE_CHAT_MODELS,
-        "ALLOWED_BASE_MOE_CHAT_MODELS": ALLOWED_BASE_MOE_CHAT_MODELS,
-        "ALLOWED_TOOL_MODELS": ALLOWED_TOOL_MODELS,
-        "ALLOWED_VLLM_QUANT_CHAT_MODELS": ALLOWED_VLLM_QUANT_CHAT_MODELS,
-        "ALLOWED_TRT_QUANT_CHAT_MODELS": ALLOWED_TRT_QUANT_CHAT_MODELS,
-    }
 
 
 def is_local_model_path(value: str | None) -> bool:
@@ -45,10 +34,8 @@ def is_classifier_model(model: str | None) -> bool:
     """
     if not model:
         return False
-    # Lazy import to avoid circular import
-    lists = _get_model_lists()
     # Check explicit allowlist
-    if model in lists["ALLOWED_TOOL_MODELS"]:
+    if model in ALLOWED_TOOL_MODELS:
         return True
     # Accept local paths as classifier models (typically /app/models/tool in Docker)
     # This allows preloaded models to be used without being in the explicit allowlist
@@ -86,11 +73,8 @@ def is_moe_model(model: str | None) -> bool:
     if not model:
         return False
 
-    # Lazy import to avoid circular import
-    lists = _get_model_lists()
-
     # Check explicit MoE allowlist first
-    if model in lists["ALLOWED_BASE_MOE_CHAT_MODELS"]:
+    if model in ALLOWED_BASE_MOE_CHAT_MODELS:
         return True
 
     # Heuristic detection from model identifier
@@ -107,8 +91,7 @@ def is_moe_model(model: str | None) -> bool:
 
 def get_all_base_chat_models() -> list[str]:
     """Return combined list of all base chat models (dense + MoE)."""
-    lists = _get_model_lists()
-    return lists["ALLOWED_BASE_CHAT_MODELS"] + lists["ALLOWED_BASE_MOE_CHAT_MODELS"]
+    return ALLOWED_BASE_CHAT_MODELS + ALLOWED_BASE_MOE_CHAT_MODELS
 
 
 def get_allowed_chat_models(engine: str = "vllm") -> list[str]:
@@ -117,12 +100,11 @@ def get_allowed_chat_models(engine: str = "vllm") -> list[str]:
     For both engines, base models (dense + MoE) can be quantized on-the-fly.
     Additionally, each engine has its own pre-quantized model list.
     """
-    lists = _get_model_lists()
-    base_models = lists["ALLOWED_BASE_CHAT_MODELS"] + lists["ALLOWED_BASE_MOE_CHAT_MODELS"]
+    base_models = ALLOWED_BASE_CHAT_MODELS + ALLOWED_BASE_MOE_CHAT_MODELS
     if engine == "trt":
-        return base_models + lists["ALLOWED_TRT_QUANT_CHAT_MODELS"]
+        return base_models + ALLOWED_TRT_QUANT_CHAT_MODELS
     # Default to VLLM
-    return base_models + lists["ALLOWED_VLLM_QUANT_CHAT_MODELS"]
+    return base_models + ALLOWED_VLLM_QUANT_CHAT_MODELS
 
 
 __all__ = [

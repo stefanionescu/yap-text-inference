@@ -6,6 +6,9 @@
 # Calls Python to check models without loading heavy vLLM dependencies.
 
 validate_models_early() {
+  # shellcheck disable=SC1091
+  source "${ROOT_DIR}/scripts/config/validate.sh"
+
   # Find Python - prefer venv if available
   local python_cmd="python3"
   if [ -f "${ROOT_DIR}/.venv/bin/python" ]; then
@@ -15,11 +18,11 @@ validate_models_early() {
   # Run lightweight validation via Python module
   # Environment variables are read directly by the Python script
   if ! PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
-    DEPLOY_MODE="${DEPLOY_MODE:-both}" \
+    DEPLOY_MODE="${DEPLOY_MODE:-${VALIDATE_DEFAULT_DEPLOY_MODE}}" \
     CHAT_MODEL="${CHAT_MODEL:-}" \
     TOOL_MODEL="${TOOL_MODEL:-}" \
     CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}" \
-    INFERENCE_ENGINE="${INFERENCE_ENGINE:-${ENGINE_TYPE:-trt}}" \
+    INFERENCE_ENGINE="${INFERENCE_ENGINE:-${VALIDATE_DEFAULT_ENGINE}}" \
     "${python_cmd}" -m src.scripts.validate; then
     log_err "[validate] ✗ Model validation failed - check model names and allowlists"
     return 1

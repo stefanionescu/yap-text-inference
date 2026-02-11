@@ -27,7 +27,6 @@ def resolve_token(cli_token: str | None) -> str:
     candidates = [
         cli_token,
         os.getenv("HF_TOKEN"),
-        os.getenv("HUGGINGFACE_TOKEN"),
     ]
     for candidate in candidates:
         if candidate:

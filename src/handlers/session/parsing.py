@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid
 
-from .state import HistoryTurn
+from src.state.session import HistoryTurn
 
 
 def parse_history_text(history_text: str) -> list[HistoryTurn]:

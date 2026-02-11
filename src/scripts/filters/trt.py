@@ -18,6 +18,8 @@ from collections.abc import Iterable
 
 from src.config.filters import TRTLLM_NOISE_PATTERNS
 
+from .fd import SuppressedFDContext
+
 logger = logging.getLogger("log_filter")
 
 # Track whether streams have been patched to avoid double-patching
@@ -158,12 +160,9 @@ def configure_trt_logging() -> None:
     _suppress_loggers()
     _suppress_warnings()
 
-    # Suppress TensorRT-LLM logging via environment variables
-    # These must be set BEFORE tensorrt_llm is imported
-    # TRT-LLM C++ code checks these env vars for log level
+    # Suppress TensorRT-LLM logging via environment variable.
+    # This must be set before tensorrt_llm is imported.
     os.environ.setdefault("TRTLLM_LOG_LEVEL", "ERROR")
-    os.environ.setdefault("TLLM_LOG_LEVEL", "ERROR")  # Alternative env var name
-    os.environ.setdefault("TRT_LLM_LOG_LEVEL", "ERROR")  # Yet another variant
 
     # Suppress datasets progress bars
     _suppress_datasets_progress()
@@ -189,65 +188,6 @@ def configure_trt_logger() -> None:
     with contextlib.suppress(Exception):
         if hasattr(trt_logger, "set_level"):
             trt_logger.set_level("error")
-
-
-class SuppressedFDContext:
-    """Context manager that suppresses C++ stdout/stderr by redirecting file descriptors.
-
-    This is necessary because TensorRT-LLM's C++ code writes directly to file
-    descriptors, bypassing Python's sys.stdout/stderr wrappers.
-    """
-
-    def __init__(self, suppress_stdout: bool = True, suppress_stderr: bool = True):
-        self._suppress_stdout = suppress_stdout
-        self._suppress_stderr = suppress_stderr
-        self._saved_stdout_fd: int | None = None
-        self._saved_stderr_fd: int | None = None
-        self._devnull: int | None = None
-
-    def __enter__(self) -> SuppressedFDContext:
-        # Flush all Python and C stdio buffers before redirecting
-        sys.stdout.flush()
-        sys.stderr.flush()
-        with contextlib.suppress(Exception):
-            import ctypes  # noqa: PLC0415
-
-            libc = ctypes.CDLL(None)
-            libc.fflush(None)  # Flush all C stdio streams
-
-        self._devnull = os.open(os.devnull, os.O_WRONLY)
-
-        if self._suppress_stdout:
-            self._saved_stdout_fd = os.dup(1)
-            os.dup2(self._devnull, 1)
-
-        if self._suppress_stderr:
-            self._saved_stderr_fd = os.dup(2)
-            os.dup2(self._devnull, 2)
-
-        return self
-
-    def __exit__(self, *args) -> None:
-        # Flush any remaining output before restoring
-        with contextlib.suppress(Exception):
-            import ctypes  # noqa: PLC0415
-
-            libc = ctypes.CDLL(None)
-            libc.fflush(None)
-
-        sys.stdout.flush()
-        sys.stderr.flush()
-
-        if self._saved_stdout_fd is not None:
-            os.dup2(self._saved_stdout_fd, 1)
-            os.close(self._saved_stdout_fd)
-
-        if self._saved_stderr_fd is not None:
-            os.dup2(self._saved_stderr_fd, 2)
-            os.close(self._saved_stderr_fd)
-
-        if self._devnull is not None:
-            os.close(self._devnull)
 
 
 __all__ = [

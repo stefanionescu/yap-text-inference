@@ -15,13 +15,9 @@ ensure_required_env_vars() {
   fi
 
   if [ -z "${HF_TOKEN:-}" ]; then
-    if [ -n "${HUGGINGFACE_HUB_TOKEN:-}" ]; then
-      HF_TOKEN="${HUGGINGFACE_HUB_TOKEN}"
-    else
-      log_err "[env] ✗ HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) environment variable is required to access Hugging Face models."
-      log_err "[env] ✗ Set it with: export HF_TOKEN='hf_xxx'"
-      has_errors=1
-    fi
+    log_err "[env] ✗ HF_TOKEN environment variable is required to access Hugging Face models."
+    log_err "[env] ✗ Set it with: export HF_TOKEN='hf_xxx'"
+    has_errors=1
   fi
 
   if [ -z "${MAX_CONCURRENT_CONNECTIONS:-}" ]; then
@@ -113,7 +109,7 @@ validate_push_quant_prereqs() {
 
   # HF_TOKEN is required for any push
   if [ -z "${HF_TOKEN:-}" ]; then
-    log_err "[env] ✗ --push-quant requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set."
+    log_err "[env] ✗ --push-quant requires HF_TOKEN to be set."
     log_err "[env] ✗ Set it with: export HF_TOKEN='hf_xxx'"
     has_errors=1
   fi
@@ -188,7 +184,7 @@ validate_push_engine_prereqs() {
 
   # HF_TOKEN is required for any push
   if [ -z "${HF_TOKEN:-}" ]; then
-    log_err "[env] ✗ --push-engine requires HF_TOKEN (or HUGGINGFACE_HUB_TOKEN) to be set."
+    log_err "[env] ✗ --push-engine requires HF_TOKEN to be set."
     log_err "[env] ✗ Set it with: export HF_TOKEN='hf_xxx'"
     has_errors=1
   fi

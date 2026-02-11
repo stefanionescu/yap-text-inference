@@ -47,8 +47,6 @@ export MAX_CONCURRENT_CONNECTIONS=64         # Required capacity guard
 export TRT_MAX_BATCH_SIZE=64                 # Required for TRT: max sequences per forward pass (baked into engine)
 ```
 
-`HUGGINGFACE_HUB_TOKEN` is also accepted and will be mirrored into `HF_TOKEN` automatically.
-
 Then you can run:
 
 ```bash
@@ -124,6 +122,9 @@ docker run -d --gpus all --name yap-tool \
 
 > Tool models are PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally so restarts reuse them.
 
+Build scripts construct minimal temporary Docker contexts and use engine-local
+ignore files (`docker/vllm/.dockerignore`, `docker/trt/.dockerignore`).
+
 See `docker/README.md` for build arguments, image behavior, and run options.
 
 ## Quantization
@@ -184,7 +185,7 @@ bash scripts/main.sh --trt yapwithai/impish-12b-trt-awq yapwithai/yap-longformer
 bash scripts/main.sh --vllm chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
 ```
 
-> **Note:** The code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct backend. Just set `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` for private repos—no re-quantization step is needed.
+> **Note:** The code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct backend. Set `HF_TOKEN` for private repos—no re-quantization step is needed.
 
 > **TRT pre-quantized models:** These are checkpoints, not pre-built engines. You still need to set `TRT_MAX_BATCH_SIZE` because the engine is built locally from the checkpoint. Name your repo with `trt-awq` for 4-bit exports or `trt` + `fp8`/`8bit`/`int8` markers so the launcher can auto-detect the quantization type.
 
