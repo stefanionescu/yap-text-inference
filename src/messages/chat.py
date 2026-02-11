@@ -15,9 +15,9 @@ import logging
 from functools import lru_cache
 from collections.abc import Sequence
 
-from ...tokens.registry import get_chat_tokenizer
-from ...config.chat import CHAT_TEMPLATE_ENABLE_THINKING
-from ...handlers.session.history import parse_history_as_tuples
+from ..tokens.registry import get_chat_tokenizer
+from ..config.chat import CHAT_TEMPLATE_ENABLE_THINKING
+from ..handlers.session.history import parse_history_as_tuples
 
 logger = logging.getLogger(__name__)
 
