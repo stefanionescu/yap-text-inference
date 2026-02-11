@@ -531,13 +531,17 @@ All test clients run against the WebSocket endpoint. Run them via `scripts/activ
 
 ### Unit Tests
 
-Run deterministic unit tests for token accounting, history trimming, and start-message history metrics:
+Run deterministic CPU-only unit tests for sanitizer behavior, token accounting, history trimming, start-message metrics, and websocket helper logic:
 
 ```bash
 python -m pytest -q \
+  tests/sanitizer.py \
   tests/unit/start_history.py \
   tests/unit/history_accounting.py \
-  tests/unit/token_accounting.py
+  tests/unit/token_accounting.py \
+  tests/unit/history_parsing.py \
+  tests/unit/prefix_accounting.py \
+  tests/unit/ws_helpers.py
 ```
 
 ### Warmup Test Client

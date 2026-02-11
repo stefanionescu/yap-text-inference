@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.tokens import utils as token_utils
-from tests.unit.local_tokenizer import use_local_tokenizers
+from tests.helpers.tokenizer import use_local_tokenizers
 
 
 def test_count_and_trim_text_with_local_tokenizer() -> None:

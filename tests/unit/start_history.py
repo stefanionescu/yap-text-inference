@@ -7,13 +7,17 @@ import pytest
 import src.messages.start.history as start_history
 import src.handlers.session.history as session_history
 from src.handlers.session.manager import SessionHandler
-from tests.unit.local_tokenizer import use_local_tokenizers
+from tests.helpers.tokenizer import use_local_tokenizers
 
 
 def _build_session_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:
     monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
     monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
     monkeypatch.setattr(session_history, "TOOL_HISTORY_TOKENS", 800)
+    monkeypatch.setattr(session_history, "DEPLOY_CHAT", True)
+    monkeypatch.setattr(session_history, "DEPLOY_TOOL", False)
+    monkeypatch.setattr(start_history, "DEPLOY_CHAT", True)
+    monkeypatch.setattr(start_history, "DEPLOY_TOOL", False)
     return SessionHandler(chat_engine=None)
 
 
