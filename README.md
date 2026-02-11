@@ -123,8 +123,8 @@ docker run -d --gpus all --name yap-tool \
 > Tool models are PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally so restarts reuse them.
 
 Build scripts construct minimal temporary Docker contexts and use strict
-allowlist ignore files (`.dockerignore`, `docker/vllm/.dockerignore`,
-`docker/trt/.dockerignore`). Docker contexts include only runtime build assets
+allowlist ignore files (`docker/vllm/.dockerignore`, `docker/trt/.dockerignore`).
+Docker contexts include only runtime build assets
 (no repo docs and no test clients).
 
 See `docker/README.md` for build arguments, image behavior, and run options.
@@ -246,6 +246,15 @@ Highlights:
 - [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions.
 
 All of them run on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
+
+For CPU-only unit validation of token/history accounting (no server required):
+
+```bash
+python -m pytest -q \
+  tests/unit/start_history.py \
+  tests/unit/history_accounting.py \
+  tests/unit/token_accounting.py
+```
 
 ## Stopping and Restarting
 

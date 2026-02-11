@@ -32,6 +32,6 @@ sanitize/:
     - common.py: Shared sanitization patterns
 
 Import from submodules directly to avoid circular imports:
-    from src.messages.start import handle_start_message
+    from src.messages.start.handler import handle_start_message
     from src.messages.chat import build_chat_prompt_with_prefix
 """

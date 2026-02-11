@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import importlib
 from importlib import metadata
 
 MIN_ARGS = 2
@@ -14,19 +13,10 @@ def get_package_version(package_name: str) -> str | None:
     try:
         version = metadata.version(package_name)
     except Exception:
-        version = None
-    if version:
-        return version
-
-    try:
-        module = importlib.import_module(package_name)
-    except Exception:
         return None
-
-    version = getattr(module, "__version__", None)
-    if version is None:
+    if not version:
         return None
-    return str(version)
+    return version
 
 
 def main() -> int:

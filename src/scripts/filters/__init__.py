@@ -31,77 +31,51 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from src.helpers.env import env_flag
 
+from . import (
+    hf as hf_filters,
+    trt as trt_filters,
+    tool as tool_filters,
+    vllm as vllm_filters,
+    transformers as transformers_filters,
+    llmcompressor as llmcompressor_filters,
+)
+
 logger = logging.getLogger("log_filter")
 
-# Lazy imports to avoid triggering huggingface_hub on package import
-# These are imported when needed by configure()
-_STATE: dict[str, Any] = {
-    "hf": None,
-    "transformers": None,
-    "trt": None,
-    "vllm": None,
-    "llmcompressor": None,
-    "tool": None,
-    "configured": False,
-}
+_STATE = {"configured": False}
 
 
 def configure_hf_logging(disable_downloads: bool = True, disable_uploads: bool = True) -> None:
-    """Configure HuggingFace logging (lazy import)."""
-    if _STATE["hf"] is None:
-        from . import hf as _hf_module_local  # noqa: PLC0415
-
-        _STATE["hf"] = _hf_module_local
-    _STATE["hf"].configure_hf_logging(disable_downloads, disable_uploads)
+    """Configure HuggingFace logging."""
+    hf_filters.configure_hf_logging(disable_downloads, disable_uploads)
 
 
 def configure_transformers_logging() -> None:
-    """Configure transformers logging (lazy import)."""
-    if _STATE["transformers"] is None:
-        from . import transformers as _transformers_module_local  # noqa: PLC0415
-
-        _STATE["transformers"] = _transformers_module_local
-    _STATE["transformers"].configure_transformers_logging()
+    """Configure transformers logging."""
+    transformers_filters.configure_transformers_logging()
 
 
 def configure_trt_logging() -> None:
-    """Configure TensorRT-LLM logging (lazy import)."""
-    if _STATE["trt"] is None:
-        from . import trt as _trt_module_local  # noqa: PLC0415
-
-        _STATE["trt"] = _trt_module_local
-    _STATE["trt"].configure_trt_logging()
+    """Configure TensorRT-LLM logging."""
+    trt_filters.configure_trt_logging()
 
 
 def configure_vllm_logging() -> None:
-    """Configure vLLM logging (lazy import)."""
-    if _STATE["vllm"] is None:
-        from . import vllm as _vllm_module_local  # noqa: PLC0415
-
-        _STATE["vllm"] = _vllm_module_local
-    _STATE["vllm"].configure_vllm_logging()
+    """Configure vLLM logging."""
+    vllm_filters.configure_vllm_logging()
 
 
 def configure_llmcompressor_logging() -> None:
-    """Configure LLMCompressor/AutoAWQ logging (lazy import)."""
-    if _STATE["llmcompressor"] is None:
-        from . import llmcompressor as _llmcompressor_module_local  # noqa: PLC0415
-
-        _STATE["llmcompressor"] = _llmcompressor_module_local
-    _STATE["llmcompressor"].configure_llmcompressor_logging()
+    """Configure LLMCompressor/AutoAWQ logging."""
+    llmcompressor_filters.configure_llmcompressor_logging()
 
 
 def configure_tool_logging() -> None:
-    """Configure tool classifier logging (lazy import)."""
-    if _STATE["tool"] is None:
-        from . import tool as _tool_module_local  # noqa: PLC0415
-
-        _STATE["tool"] = _tool_module_local
-    _STATE["tool"].configure_tool_logging()
+    """Configure tool classifier logging."""
+    tool_filters.configure_tool_logging()
 
 
 def configure() -> None:

@@ -1,6 +1,6 @@
 """Async compatibility helpers for Python 3.10+.
 
-Provides shims for asyncio features added in Python 3.11.
+Provides replacements for asyncio features added in Python 3.11.
 """
 
 from __future__ import annotations
