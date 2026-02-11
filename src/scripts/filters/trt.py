@@ -132,8 +132,7 @@ def _suppress_loggers() -> None:
 
 
 def _suppress_warnings() -> None:
-    """Suppress deprecation warnings from torch/modelopt."""
-    warnings.filterwarnings("ignore", message=r".*torch_dtype.*deprecated.*")
+    """Suppress warning noise from torch/modelopt."""
     warnings.filterwarnings("ignore", message=r".*Use.*dtype.*instead.*")
     warnings.filterwarnings("ignore", message=".*Python version.*below the recommended.*")
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="modelopt")

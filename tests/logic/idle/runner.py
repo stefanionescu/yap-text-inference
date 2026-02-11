@@ -2,7 +2,7 @@
 
 Provides async helpers for exercising the `/ws` endpoint with several
 connection scenarios (normal close, rapid churn, ping/pong, and idle
-watchdog). The CLI wrapper in `tests/idle.py` parses arguments
+watchdog). The CLI wrapper in `tests/integration/idle.py` parses arguments
 and invokes `run_idle_suite`.
 """
 

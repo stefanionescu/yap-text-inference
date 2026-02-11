@@ -238,12 +238,14 @@ This installs client deps (`websockets`, `httpx`, `orjson`) without CUDA wheels.
 
 Highlights:
 
-- [`tests/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars.
-- [`tests/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/detailed.py`.
-- [`tests/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics.
-- [`tests/vision.py`](ADVANCED.md#vision--toolcall-test) – validates the toolcall branch used by vision flows.
-- [`tests/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call model (timeouts, concurrency, limit flags).
-- [`tests/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions.
+- [`tests/e2e/warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars.
+- [`tests/e2e/live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/prompts/detailed.py`.
+- [`tests/e2e/conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics.
+- [`tests/e2e/vision.py`](ADVANCED.md#vision--toolcall-test) – validates the toolcall branch used by vision flows.
+- [`tests/e2e/tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call model (timeouts, concurrency, limit flags).
+- [`tests/e2e/bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions.
+- [`tests/integration/cancel.py`](ADVANCED.md#cancel-regression-test) – verifies cancel behavior and recovery across concurrent clients.
+- [`tests/integration/idle.py`](ADVANCED.md#idle-timeout-test) – validates idle watchdog close behavior and normal connection lifecycle.
 
 All of them run on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
 
@@ -251,7 +253,7 @@ For CPU-only unit validation (no server or GPU required):
 
 ```bash
 python -m pytest -q \
-  tests/sanitizer.py \
+  tests/integration/sanitizer.py \
   tests/unit/start_history.py \
   tests/unit/history_accounting.py \
   tests/unit/token_accounting.py \

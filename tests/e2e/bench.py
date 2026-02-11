@@ -31,21 +31,12 @@ import os
 import sys
 import asyncio
 import argparse
-from importlib import import_module
-from collections.abc import Callable
+from pathlib import Path
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-def _load_setup_repo_path() -> Callable[[], str]:
-    try:
-        return import_module("tests.helpers.setup").setup_repo_path
-    except ModuleNotFoundError:
-        return import_module("helpers.setup").setup_repo_path
-
-
-setup_repo_path = _load_setup_repo_path()
-
-setup_repo_path()
-
+from tests.helpers.setup import setup_repo_path  # noqa: E402
 from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
@@ -58,6 +49,8 @@ from tests.config import (  # noqa: E402
     BENCHMARK_DEFAULT_TIMEOUT_SEC,
     BENCHMARK_WINDOW_DURATION_DEFAULT,
 )
+
+setup_repo_path()
 
 
 def _parse_args() -> argparse.Namespace:

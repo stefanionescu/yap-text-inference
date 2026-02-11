@@ -73,9 +73,8 @@ QUANT_CONFIG_FILENAMES = (
 # AWQ metadata filename written by our quantizer
 AWQ_METADATA_FILENAME = "awq_metadata.json"
 
-# Fields in quantization configs that vLLM V1 doesn't support
+# Fields stripped from quantization configs when preparing vLLM engine args
 UNSUPPORTED_QUANT_DTYPE_FIELDS = ("scale_dtype", "zp_dtype")
-
 
 __all__ = [
     "INFERENCE_ENGINE",

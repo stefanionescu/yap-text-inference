@@ -35,7 +35,6 @@ HF_ALL_GROUPS: tuple[str, ...] = HF_DOWNLOAD_GROUPS + HF_UPLOAD_GROUPS
 TRTLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # === Quantization-related noise ===
     re.compile(r"\[TensorRT-LLM].*TensorRT LLM version", re.IGNORECASE),
-    re.compile(r"`?torch_dtype`?\s*(is\s+)?deprecated", re.IGNORECASE),
     re.compile(r"Registered <class 'transformers\.models\..+'> to _QuantAttention", re.IGNORECASE),
     re.compile(r"Inserted \d+ quantizers", re.IGNORECASE),
     re.compile(r"Caching activation statistics", re.IGNORECASE),
@@ -134,7 +133,7 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
     # Python logging format: INFO YYYY-MM-DD HH:MM:SS,mmm [module:line] message
     # Suppress verbose startup logs from src.engines.vllm.* modules
     re.compile(
-        r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|fallback|args|tokenizer|memory|factory):\d+\]"
+        r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.engines\.vllm\.(engine|cache_daemon|setup|create|args|tokenizer|memory|factory):\d+\]"
     ),
     # Suppress verbose startup logs from src.quantization.vllm.* modules
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.quantization\.vllm\.[\w.]+:\d+\]"),
@@ -150,8 +149,6 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
 # Patterns for suppressing tool classifier warmup and dependency install noise.
 # These match pip output and classifier initialization logs during tool deployment.
 TOOL_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
-    # torch_dtype deprecation warning from transformers
-    re.compile(r"`?torch_dtype`?\s*(is\s+)?deprecated", re.IGNORECASE),
     # Classifier ready logs from src.classifier.adapter
     re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.classifier\.adapter:\d+\]"),
     # pip install output lines

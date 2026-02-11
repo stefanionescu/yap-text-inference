@@ -525,7 +525,7 @@ The pipeline writes metadata (`awq_metadata.json` or `build_metadata.json`) and 
 
 ## Test Clients
 
-All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/warmup.py`) or source `.venv-local/bin/activate` for unit testing.
+All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/e2e/warmup.py`) or source `.venv-local/bin/activate` for unit testing.
 
 > **Note:** Test clients always send a chat prompt. In tool-only deployments, the server ignores it automatically.
 
@@ -535,7 +535,7 @@ Run deterministic CPU-only unit tests for sanitizer behavior, token accounting, 
 
 ```bash
 python -m pytest -q \
-  tests/sanitizer.py \
+  tests/integration/sanitizer.py \
   tests/unit/start_history.py \
   tests/unit/history_accounting.py \
   tests/unit/token_accounting.py \
@@ -548,9 +548,9 @@ python -m pytest -q \
 
 ```bash
 # run these after entering the venv via 'bash scripts/activate.sh'
-python3 tests/warmup.py
-python3 tests/warmup.py "who was Columbus?"
-python3 tests/warmup.py --gender male --personality flirty "hello there"
+python3 tests/e2e/warmup.py
+python3 tests/e2e/warmup.py "who was Columbus?"
+python3 tests/e2e/warmup.py --gender male --personality flirty "hello there"
 ```
 
 
@@ -565,7 +565,7 @@ Example:
 ```bash
 SERVER_WS_URL=ws://127.0.0.1:8000/ws \
 RECV_TIMEOUT_SEC=120 \
-python3 tests/warmup.py --gender female --personality savage "hey there"
+python3 tests/e2e/warmup.py --gender female --personality savage "hey there"
 ```
 
 Append `--double-ttfb` to send two identical requests back-to-back and compare cold vs warm latency.
@@ -574,7 +574,7 @@ Append `--double-ttfb` to send two identical requests back-to-back and compare c
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/live.py \
+TEXT_API_KEY=your_api_key python3 tests/e2e/live.py \
   --server ws://127.0.0.1:8000 \
   --persona default_live_persona
 ```
@@ -591,7 +591,7 @@ Flags:
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/conversation.py --server ws://127.0.0.1:8000
+TEXT_API_KEY=your_api_key python3 tests/e2e/conversation.py --server ws://127.0.0.1:8000
 ```
 
 Streams a 10-turn script to test history eviction and KV-cache reuse.
@@ -599,7 +599,7 @@ Streams a 10-turn script to test history eviction and KV-cache reuse.
 ### Vision / Toolcall Test
 
 ```bash
-TEXT_API_KEY=your_api_key python3 tests/vision.py
+TEXT_API_KEY=your_api_key python3 tests/e2e/vision.py
 ```
 
 Tests that toolcall decisions fire before chat streaming.
@@ -607,7 +607,7 @@ Tests that toolcall decisions fire before chat streaming.
 ### Tool Regression Test
 
 ```bash
-TEXT_API_KEY=your_api_key python3 tests/tool.py \
+TEXT_API_KEY=your_api_key python3 tests/e2e/tool.py \
   --server ws://127.0.0.1:8000/ws \
   --timeout 5 \
   --concurrency 4 \
@@ -623,9 +623,9 @@ TEXT_API_KEY=your_api_key python3 tests/tool.py \
 
 ```bash
 # run inside the scripts/activate.sh environment
-python3 tests/bench.py -n 32 -c 8
-python3 tests/bench.py --gender female --personality flirty "who was Columbus?"
-python3 tests/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+python3 tests/e2e/bench.py -n 32 -c 8
+python3 tests/e2e/bench.py --gender female --personality flirty "who was Columbus?"
+python3 tests/e2e/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
 Reports p50/p95 latencies under concurrent load.
@@ -636,9 +636,9 @@ Pass `--double-ttfb` to run two sequential transactions per connection and compa
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/history.py
-TEXT_API_KEY=your_api_key python3 tests/history.py --gender male --personality flirty
-TEXT_API_KEY=your_api_key python3 tests/history.py --temperature 0.8 --top_p 0.9
+TEXT_API_KEY=your_api_key python3 tests/e2e/history.py
+TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --gender male --personality flirty
+TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --temperature 0.8 --top_p 0.9
 ```
 
 Connects with a pre-built conversation history, then sends follow-up messages to test the assistant's recall of earlier exchanges. Tracks TTFB for each response and prints summary statistics (p50, p90, p95). Useful for validating prefix caching and KV cache reuse.
@@ -647,23 +647,36 @@ Connects with a pre-built conversation history, then sends follow-up messages to
 
 ```bash
 # 8 connections, 4 concurrent (defaults)
-TEXT_API_KEY=your_api_key python3 tests/history.py --bench
+TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --bench
 
 # Custom load: 16 connections, 8 concurrent
-TEXT_API_KEY=your_api_key python3 tests/history.py --bench -n 16 -c 8
+TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --bench -n 16 -c 8
 
 # With custom timeout
-TEXT_API_KEY=your_api_key python3 tests/history.py --bench -n 32 -c 16 --timeout 300
+TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --bench -n 32 -c 16 --timeout 300
 ```
 
 Each connection starts with the full warm history and cycles through all recall messages. Output matches the benchmark client format with p50/p95 latencies.
+
+### Cancel Regression Test
+
+```bash
+# run inside the scripts/activate.sh environment
+TEXT_API_KEY=your_api_key python3 tests/integration/cancel.py
+TEXT_API_KEY=your_api_key python3 tests/integration/cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
+```
+
+Validates cancel behavior and recovery:
+- Cancels an in-flight response after receiving initial tokens
+- Verifies no extra post-cancel stream frames are emitted
+- Sends a recovery request and confirms the session continues normally
 
 ### Idle Timeout Test
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/idle.py
-TEXT_API_KEY=your_api_key python3 tests/idle.py --normal-wait 5 --idle-expect-seconds 150
+TEXT_API_KEY=your_api_key python3 tests/integration/idle.py
+TEXT_API_KEY=your_api_key python3 tests/integration/idle.py --normal-wait 5 --idle-expect-seconds 150
 ```
 
 Tests WebSocket idle timeout and connection lifecycle:

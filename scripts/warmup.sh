@@ -120,7 +120,7 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
     "${PY_BIN}" \
     "${LOG_DIR}" \
     "${WARMUP_RETRIES}" \
-    "tests/warmup.py" "${persona_args[@]}"; then
+    "tests/e2e/warmup.py" "${persona_args[@]}"; then
     warmup_all_passed=0
   fi
   sleep "${WARMUP_RUN_DELAY_SECS}"
@@ -133,7 +133,7 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
     "${PY_BIN}" \
     "${LOG_DIR}" \
     "${WARMUP_RETRIES}" \
-    "tests/bench.py" \
+    "tests/e2e/bench.py" \
     "--requests" "${max_conn}" \
     "--concurrency" "${max_conn}" \
     "${persona_args[@]}"; then

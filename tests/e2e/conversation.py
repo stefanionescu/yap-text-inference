@@ -11,8 +11,8 @@ remain stable under bounded-history constraints. Each exchange logs:
   - time to first complete sentence
 
 Usage:
-    python3 tests/conversation.py
-    python3 tests/conversation.py --server ws://127.0.0.1:8000/ws
+    python3 tests/e2e/conversation.py
+    python3 tests/e2e/conversation.py --server ws://127.0.0.1:8000/ws
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ import argparse
 from pathlib import Path
 
 if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.helpers.errors import ServerError
 from tests.helpers.setup import setup_repo_path

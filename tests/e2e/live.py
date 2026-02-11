@@ -11,27 +11,21 @@
 
 from __future__ import annotations
 
+import sys
 import asyncio
 import logging
 import argparse
-from importlib import import_module
-from collections.abc import Callable
+from pathlib import Path
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-def _load_setup_repo_path() -> Callable[[], str]:
-    try:
-        return import_module("tests.helpers.setup").setup_repo_path
-    except ModuleNotFoundError:
-        return import_module("helpers.setup").setup_repo_path
-
-
-setup_repo_path = _load_setup_repo_path()
-
-setup_repo_path()
-
+from tests.helpers.setup import setup_repo_path  # noqa: E402
 from tests.logic.live.personas import DEFAULT_PERSONA_NAME  # noqa: E402
 from tests.config import DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC  # noqa: E402
 from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
+
+setup_repo_path()
 
 
 def _parse_args() -> argparse.Namespace:
