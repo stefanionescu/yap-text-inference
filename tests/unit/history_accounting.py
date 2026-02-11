@@ -7,7 +7,7 @@ import pytest
 from src.state.session import HistoryTurn
 import src.handlers.session.history as session_history
 from src.handlers.session.manager import SessionHandler
-from tests.unit.local_tokenizer import use_local_tokenizers
+from tests.helpers.tokenizer import use_local_tokenizers
 
 
 def _build_session_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:

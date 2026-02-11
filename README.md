@@ -247,13 +247,17 @@ Highlights:
 
 All of them run on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
 
-For CPU-only unit validation of token/history accounting (no server required):
+For CPU-only unit validation (no server or GPU required):
 
 ```bash
 python -m pytest -q \
+  tests/sanitizer.py \
   tests/unit/start_history.py \
   tests/unit/history_accounting.py \
-  tests/unit/token_accounting.py
+  tests/unit/token_accounting.py \
+  tests/unit/history_parsing.py \
+  tests/unit/prefix_accounting.py \
+  tests/unit/ws_helpers.py
 ```
 
 ## Stopping and Restarting
