@@ -29,7 +29,7 @@ setup_repo_path = _load_setup_repo_path()
 
 setup_repo_path()
 
-from tests.logic.live import DEFAULT_PERSONA_NAME  # noqa: E402
+from tests.logic.live.personas import DEFAULT_PERSONA_NAME  # noqa: E402
 from tests.config import DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC  # noqa: E402
 from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 
@@ -74,7 +74,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = _parse_args()
 
-    from tests.logic.live import run  # noqa: PLC0415
+    from tests.logic.live.runner import run  # noqa: PLC0415
 
     asyncio.run(
         run(
