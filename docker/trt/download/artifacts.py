@@ -116,7 +116,7 @@ def download_checkpoint(
 
 def get_hf_token() -> str | None:
     """Get HuggingFace token from environment or mounted secret."""
-    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN") or None
+    token = os.environ.get("HF_TOKEN") or None
     if token:
         return token
 

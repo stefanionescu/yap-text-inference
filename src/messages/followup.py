@@ -22,6 +22,84 @@ from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOA
 logger = logging.getLogger(__name__)
 
 
+async def _send_followup_error(
+    ws: WebSocket,
+    *,
+    session_id: str,
+    request_id: str,
+    error_code: str,
+    message: str,
+    reason_code: str,
+) -> None:
+    await send_error(
+        ws,
+        session_id=session_id,
+        request_id=request_id,
+        error_code=error_code,
+        message=message,
+        reason_code=reason_code,
+    )
+
+
+async def _get_session_config(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+) -> dict[str, Any] | None:
+    cfg = session_handler.get_session_config(session_id)
+    if cfg:
+        return cfg
+    await _send_followup_error(
+        ws,
+        session_id=session_id,
+        request_id=request_id,
+        error_code=WS_ERROR_INVALID_MESSAGE,
+        message="no active session; send 'start' first",
+        reason_code="no_active_session",
+    )
+    return None
+
+
+async def _extract_analysis_text(
+    ws: WebSocket,
+    payload: dict[str, Any],
+    session_id: str,
+    request_id: str,
+) -> str | None:
+    analysis_text = (payload.get("analysis_text") or "").strip()
+    if analysis_text:
+        return analysis_text
+    await _send_followup_error(
+        ws,
+        session_id=session_id,
+        request_id=request_id,
+        error_code=WS_ERROR_INVALID_PAYLOAD,
+        message="analysis_text is required",
+        reason_code="missing_analysis_text",
+    )
+    return None
+
+
+async def _resolve_chat_prompt(
+    ws: WebSocket,
+    cfg: dict[str, Any],
+    session_id: str,
+    request_id: str,
+) -> str | None:
+    static_prefix = cfg.get("chat_prompt") or ""
+    if static_prefix:
+        return static_prefix
+    await _send_followup_error(
+        ws,
+        session_id=session_id,
+        request_id=request_id,
+        error_code=WS_ERROR_INVALID_SETTINGS,
+        message="chat_prompt must be set in session (send in start)",
+        reason_code="missing_chat_prompt",
+    )
+    return None
+
+
 async def handle_followup_message(
     ws: WebSocket,
     payload: dict[str, Any],
@@ -38,7 +116,7 @@ async def handle_followup_message(
         - user_utterance: str (ignored for synthesis; may be used by clients)
     """
     if not DEPLOY_CHAT:
-        await send_error(
+        await _send_followup_error(
             ws,
             session_id=session_id,
             request_id=request_id,
@@ -48,45 +126,19 @@ async def handle_followup_message(
         )
         return
 
-    cfg = session_handler.get_session_config(session_id)
-    if not cfg:
-        await send_error(
-            ws,
-            session_id=session_id,
-            request_id=request_id,
-            error_code=WS_ERROR_INVALID_MESSAGE,
-            message="no active session; send 'start' first",
-            reason_code="no_active_session",
-        )
+    cfg = await _get_session_config(ws, session_id, request_id)
+    if cfg is None:
         return
 
-    analysis_text = (payload.get("analysis_text") or "").strip()
-    if not analysis_text:
-        await send_error(
-            ws,
-            session_id=session_id,
-            request_id=request_id,
-            error_code=WS_ERROR_INVALID_PAYLOAD,
-            message="analysis_text is required",
-            reason_code="missing_analysis_text",
-        )
+    analysis_text = await _extract_analysis_text(ws, payload, session_id, request_id)
+    if analysis_text is None:
         return
 
     history_text = session_handler.get_history_text(session_id)
-
-    # Resolve persona: require session-provided chat prompt
-    static_prefix = cfg.get("chat_prompt") or ""
-    runtime_text = ""
-    if not static_prefix:
-        await send_error(
-            ws,
-            session_id=session_id,
-            request_id=request_id,
-            error_code=WS_ERROR_INVALID_SETTINGS,
-            message="chat_prompt must be set in session (send in start)",
-            reason_code="missing_chat_prompt",
-        )
+    static_prefix = await _resolve_chat_prompt(ws, cfg, session_id, request_id)
+    if static_prefix is None:
         return
+    runtime_text = ""
 
     # Synthesize the follow-up prompt for the chat model
     prefix = session_handler.get_screen_checked_prefix(session_id)

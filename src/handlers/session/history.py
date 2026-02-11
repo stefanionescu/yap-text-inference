@@ -21,10 +21,10 @@ from __future__ import annotations
 
 import uuid
 
+from src.state.session import HistoryTurn, SessionState
 from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
 
-from .state import HistoryTurn, SessionState
 from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 
 
@@ -222,6 +222,12 @@ class HistoryController:
         trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
         return render_history(state.history_turns)
 
+    def set_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
+        """Set history from pre-parsed turns and apply import-time trimming."""
+        state.history_turns = turns
+        trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
+        return render_history(state.history_turns)
+
     def append_user_turn(self, state: SessionState, user_utt: str) -> str | None:
         user = (user_utt or "").strip()
         if not user:
@@ -269,7 +275,6 @@ __all__ = [
     "render_tool_history_text",
     "get_user_texts",
     "HistoryController",
-    # Re-export parsing functions for backwards compatibility
     "parse_history_text",
     "parse_history_messages",
     "parse_history_as_tuples",

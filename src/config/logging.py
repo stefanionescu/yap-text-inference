@@ -6,14 +6,11 @@ import contextlib
 
 from src.logging import install_log_context
 
-APP_LOG_LEVEL = (os.getenv("LOG_LEVEL") or os.getenv("APP_LOG_LEVEL") or "INFO").upper()
+APP_LOG_LEVEL = (os.getenv("APP_LOG_LEVEL") or "INFO").upper()
 APP_LOG_FORMAT = os.getenv(
-    "LOG_FORMAT",
-    os.getenv(
-        "APP_LOG_FORMAT",
-        "%(levelname)s %(asctime)s name=%(name)s session_id=%(session_id)s "
-        "request_id=%(request_id)s client_id=%(client_id)s msg=%(message)s",
-    ),
+    "APP_LOG_FORMAT",
+    "%(levelname)s %(asctime)s name=%(name)s session_id=%(session_id)s "
+    "request_id=%(request_id)s client_id=%(client_id)s msg=%(message)s",
 )
 APP_LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"
 

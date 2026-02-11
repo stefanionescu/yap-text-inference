@@ -140,7 +140,7 @@ async def run_once(args) -> None:
     if not api_key:
         raise ValueError("TEXT_API_KEY environment variable is required and must be set before running tests")
     gender_env = os.getenv("GENDER")
-    personality_env = os.getenv("PERSONALITY") or os.getenv("PERSONA_STYLE")
+    personality_env = os.getenv("PERSONALITY")
     gender = args.gender or gender_env or DEFAULT_GENDER
     personality = args.personality or personality_env or DEFAULT_PERSONALITY
     sampling_overrides = getattr(args, "sampling", None) or None

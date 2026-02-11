@@ -11,7 +11,6 @@ import os
 from .gpu import CHAT_GPU_FRAC
 
 # Directory paths
-# NOTE: TRTLLM_ENGINE_DIR is translated to TRT_ENGINE_DIR by shell scripts
 TRT_ENGINE_DIR = os.getenv("TRT_ENGINE_DIR", "")
 TRT_CHECKPOINT_DIR = os.getenv("TRT_CHECKPOINT_DIR", "")
 TRT_REPO_DIR = os.getenv("TRT_REPO_DIR", "")  # Path to TensorRT-LLM repo for quantization

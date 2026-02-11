@@ -23,7 +23,6 @@ ignore = ["D", "ANN", "COM812", "ISC001"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/state/hf.py" = ["PLC0415"]
-"src/handlers/session/abort.py" = ["PLC0415"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -84,4 +83,27 @@ name = "session package must not import handler instances"
 type = "forbidden"
 source_modules = ["src.handlers.session"]
 forbidden_modules = ["src.handlers.instances"]
-ignore_imports = ["src.handlers.session.abort -> src.handlers.instances"]
+
+[[tool.importlinter.contracts]]
+name = "config must not import state"
+type = "forbidden"
+source_modules = ["src.config"]
+forbidden_modules = ["src.state"]
+
+[[tool.importlinter.contracts]]
+name = "config must not import runtime orchestration packages"
+type = "forbidden"
+source_modules = ["src.config"]
+forbidden_modules = ["src.handlers", "src.messages", "src.execution", "src.server", "src.scripts"]
+
+[[tool.importlinter.contracts]]
+name = "engines must not import handlers"
+type = "forbidden"
+source_modules = ["src.engines"]
+forbidden_modules = ["src.handlers"]
+
+[[tool.importlinter.contracts]]
+name = "scripts must not import engines directly"
+type = "forbidden"
+source_modules = ["src.scripts"]
+forbidden_modules = ["src.engines"]

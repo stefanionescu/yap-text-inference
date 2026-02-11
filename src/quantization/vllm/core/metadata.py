@@ -18,7 +18,7 @@ def _env_flag(name: str, default: bool) -> bool:
 
 
 def _gather_runtime_metadata() -> dict[str, Any]:
-    kv_dtype = os.getenv("KV_DTYPE") or os.getenv("VLLM_KV_CACHE_DTYPE") or os.getenv("KV_CACHE_DTYPE") or "auto"
+    kv_dtype = os.getenv("KV_DTYPE", "auto")
     use_v1 = _env_flag("VLLM_USE_V1", True)
     paged_attention = _env_flag("VLLM_PAGED_ATTENTION", True)
     kv_reuse = _env_flag("VLLM_KV_CACHE_REUSE", bool(use_v1))
@@ -27,7 +27,7 @@ def _gather_runtime_metadata() -> dict[str, Any]:
         "vllm_use_v1": use_v1,
         "paged_attention": paged_attention,
         "kv_cache_reuse": kv_reuse,
-        "engine_name": "vLLM V1" if use_v1 else "vLLM legacy scheduler",
+        "engine_name": "vLLM V1" if use_v1 else "vLLM V0 scheduler",
     }
 
 

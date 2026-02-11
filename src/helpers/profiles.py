@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.config.profiles import MODEL_PROFILES, ModelProfile
+from src.state.profiles import MODEL_PROFILES, ModelProfile
 
 
 def normalize_model_id(model_id: str | None) -> str:

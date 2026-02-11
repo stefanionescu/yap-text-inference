@@ -16,6 +16,7 @@ import websockets
 
 from tests.state import LiveSession, print_help
 from tests.helpers.fmt import dim, section_header
+from tests.config.defaults import WS_IDLE_CLOSE_CODE
 from tests.helpers.websocket import with_api_key, connect_with_retries
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
@@ -26,8 +27,6 @@ from .cli import interactive_loop
 from .personas import PersonaRegistry
 
 logger = logging.getLogger("live")
-
-IDLE_CLOSE_CODE = 4000
 
 
 def _prepare_session(
@@ -90,7 +89,7 @@ async def _run_session(
 def _log_ws_close(exc: Exception) -> None:
     close_code = getattr(exc, "code", None)
     close_reason = getattr(exc, "reason", None)
-    if close_code == IDLE_CLOSE_CODE or (close_reason and "idle" in str(close_reason).lower()):
+    if close_code == WS_IDLE_CLOSE_CODE or (close_reason and "idle" in str(close_reason).lower()):
         logger.info("Session ended due to inactivity. Goodbye!")
     else:
         logger.warning("Server closed the connection (code=%s). Exiting.", close_code)

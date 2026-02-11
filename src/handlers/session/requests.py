@@ -28,7 +28,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
-    from .state import SessionState
+    from src.state.session import SessionState
 
 
 # Special sentinel value indicating the session was explicitly cancelled

@@ -10,6 +10,26 @@ from src.quantization.trt.detection import detect_gpu_name, detect_cuda_version,
 
 
 @dataclass
+class CalibrationConfig:
+    """Configuration for AWQ calibration."""
+
+    dataset: str = "open_platypus"
+    nsamples: int = 64
+    seqlen: int = 2048
+    w_bit: int = 4
+    q_group_size: int = 128
+    zero_point: bool = True
+    version: str = "GEMM"
+
+
+@dataclass
+class _DatasetInfo:
+    requested: str
+    effective: str
+    fallback_from: str | None = None
+
+
+@dataclass
 class EnvironmentInfo:
     """Container for environment-detected build information."""
 
@@ -49,26 +69,6 @@ class EnvironmentInfo:
     def make_label(self) -> str:
         """Generate the engine label string."""
         return f"{self.sm_arch}_trt-llm-{self.trt_version}_cuda{self.cuda_version}"
-
-
-@dataclass
-class CalibrationConfig:
-    """Configuration for AWQ calibration."""
-
-    dataset: str = "open_platypus"
-    nsamples: int = 64
-    seqlen: int = 2048
-    w_bit: int = 4
-    q_group_size: int = 128
-    zero_point: bool = True
-    version: str = "GEMM"
-
-
-@dataclass
-class _DatasetInfo:
-    requested: str
-    effective: str
-    fallback_from: str | None = None
 
 
 __all__ = [

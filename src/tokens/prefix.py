@@ -25,7 +25,7 @@ from .utils import count_tokens_chat
 from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS, DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 
 if TYPE_CHECKING:
-    from ..handlers.session.state import SessionState
+    from ..state.session import SessionState
 
 
 def count_prefix_tokens(prefix: str | None) -> int:

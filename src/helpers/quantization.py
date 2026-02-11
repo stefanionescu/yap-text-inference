@@ -4,11 +4,7 @@ This module provides functions for detecting and classifying quantization
 methods from model names, engine normalization, and GPU compatibility checks.
 """
 
-# Constants duplicated from config to avoid circular import
-# (config/engine.py imports from this module, config/__init__ imports engine)
-SUPPORTED_ENGINES: tuple[str, ...] = ("vllm", "trt")
-VLLM_QUANTIZATIONS: set[str] = {"awq", "gptq", "gptq_marlin"}
-TRT_FP8_SM_ARCHS: tuple[str, ...] = ("sm89", "sm90")
+from src.config.quantization import TRT_FP8_SM_ARCHS, SUPPORTED_ENGINES, VLLM_QUANTIZATIONS
 
 _W4A16_HINTS = ("w4a16", "compressed-tensors", "autoround")
 
@@ -145,7 +141,7 @@ def map_quant_mode_to_trt(
     Args:
         quant_mode: Generic quantization mode (4bit, 8bit, awq, fp8, int8_sq)
         sm_arch: GPU SM architecture (sm80, sm89, sm90) - used to select fp8 vs int8_sq
-        is_moe: Reserved for compatibility; MoE now uses int4_awq
+        is_moe: Reserved parameter; MoE now uses int4_awq
 
     Returns:
         TRT-LLM qformat string: int4_awq, fp8, or int8_sq

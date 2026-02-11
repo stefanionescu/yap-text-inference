@@ -125,7 +125,7 @@ def _get_hf_download_fn() -> Callable[[str, str], str | None] | None:
         logger.warning("[config] huggingface_hub not available: %s", exc)
         return None
 
-    token = os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
+    token = os.getenv("HF_TOKEN")
     cache_dir = os.getenv("HF_HOME")
 
     def download(repo_id: str, filename: str) -> str | None:

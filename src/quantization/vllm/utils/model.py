@@ -108,7 +108,7 @@ def prefetch_model(model_path: str) -> str | None:
         print(f"[awq] Failed to import huggingface_hub for snapshot download: {exc}")
         return None
 
-    token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
+    token = os.environ.get("HF_TOKEN")
     cache_dir = os.environ.get("HF_HOME")
 
     print("[awq] Fetching model from Hub...")
@@ -134,8 +134,7 @@ def prefetch_model(model_path: str) -> str | None:
     if last_err is not None:
         print(
             "[awq] Quantization failed: could not download model from Hugging Face. "
-            "Check network access, repository visibility, and set HF_TOKEN or "
-            "HUGGINGFACE_HUB_TOKEN if needed."
+            "Check network access, repository visibility, and set HF_TOKEN if needed."
         )
         return None
 

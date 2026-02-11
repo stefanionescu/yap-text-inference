@@ -66,7 +66,7 @@ PERSONALITY_MAX_LEN = int(os.getenv("PERSONALITY_MAX_LEN", "20"))
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5–15ms
 STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
-# History and user limits (approximate tokens)
+# History and user limits (token counts from active tokenizer path)
 # HISTORY_MAX_TOKENS: threshold that triggers trimming
 # TRIMMED_HISTORY_LENGTH: target length after trimming (must be < HISTORY_MAX_TOKENS)
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))

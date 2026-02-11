@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from src.classifier.batch import BatchFuture
+    from src.classifier.future import BatchFuture
 
 
 @dataclass(slots=True)

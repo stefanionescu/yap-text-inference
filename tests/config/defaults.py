@@ -61,6 +61,10 @@ PROGRESS_BAR_WIDTH = 30
 # WebSocket queue limit (None = unlimited)
 WS_MAX_QUEUE = None
 
+# WebSocket idle close behavior
+WS_IDLE_CLOSE_CODE = 4000
+WS_IDLE_CLOSE_REASON = "idle_timeout"
+
 # Persona registry defaults
 PERSONA_MODULE = "tests.prompts.detailed"
 DEFAULT_PERSONA_NAME = "anna_flirty"
@@ -95,6 +99,8 @@ __all__ = [
     "DEFAULT_WS_PATH",
     "PROGRESS_BAR_WIDTH",
     "WS_MAX_QUEUE",
+    "WS_IDLE_CLOSE_CODE",
+    "WS_IDLE_CLOSE_REASON",
     "PERSONA_MODULE",
     "DEFAULT_PERSONA_NAME",
 ]

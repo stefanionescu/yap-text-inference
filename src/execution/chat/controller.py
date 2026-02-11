@@ -88,16 +88,7 @@ class ChatStreamController:
         """Enable async iteration: `async for chunk in controller`."""
         return self.iter_text()
 
-    async def iter_text(self) -> AsyncGenerator[str, None]:
-        """Main streaming loop with buffering, timeout, and cancellation.
-
-        Yields:
-            Text chunks (possibly buffered based on flush_ms).
-
-        Raises:
-            asyncio.TimeoutError: If generation exceeds timeout_s.
-            StreamCancelledError: If cancel_check returns True.
-        """
+    def _log_stream_start(self) -> float:
         start = time.perf_counter()
         cfg = self._cfg
         self._start_time = start
@@ -109,51 +100,80 @@ class ChatStreamController:
             cfg.timeout_s,
             cfg.flush_ms,
         )
+        return start
 
+    async def _iter_emitted_chunks(self) -> AsyncGenerator[str, None]:
+        cfg = self._cfg
+        async for out in _stream_with_timeout(
+            get_engine=cfg.engine_getter,
+            prompt=cfg.prompt,
+            sampling_params=cfg.sampling_params,
+            request_id=cfg.request_id,
+            timeout_s=cfg.timeout_s,
+            cancel_check=cfg.cancel_check,
+        ):
+            delta = self._extract_delta(out)
+            if not delta:
+                continue
+            for chunk in self._emit(delta):
+                yield chunk
+
+    def _log_cancelled(self) -> None:
+        cfg = self._cfg
+        logger.info(
+            "%s_stream: cancelled session_id=%s req_id=%s",
+            CHAT_STREAM_LABEL,
+            cfg.session_id,
+            cfg.request_id,
+        )
+
+    def _log_timeout(self) -> None:
+        cfg = self._cfg
+        logger.warning(
+            "%s_stream: timeout session_id=%s req_id=%s",
+            CHAT_STREAM_LABEL,
+            cfg.session_id,
+            cfg.request_id,
+        )
+
+    def _log_stream_end(self, start: float) -> None:
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        cfg = self._cfg
+        logger.info(
+            "%s_stream: end session_id=%s req_id=%s total_len=%s ms=%.1f",
+            CHAT_STREAM_LABEL,
+            cfg.session_id,
+            cfg.request_id,
+            len(self._full_text),
+            elapsed_ms,
+        )
+
+    async def iter_text(self) -> AsyncGenerator[str, None]:
+        """Main streaming loop with buffering, timeout, and cancellation.
+
+        Yields:
+            Text chunks (possibly buffered based on flush_ms).
+
+        Raises:
+            asyncio.TimeoutError: If generation exceeds timeout_s.
+            StreamCancelledError: If cancel_check returns True.
+        """
+        start = self._log_stream_start()
         try:
-            async for out in _stream_with_timeout(
-                get_engine=cfg.engine_getter,
-                prompt=cfg.prompt,
-                sampling_params=cfg.sampling_params,
-                request_id=cfg.request_id,
-                timeout_s=cfg.timeout_s,
-                cancel_check=cfg.cancel_check,
-            ):
-                delta = self._extract_delta(out)
-                if not delta:
-                    continue
-                for chunk in self._emit(delta):
-                    yield chunk
+            async for chunk in self._iter_emitted_chunks():
+                yield chunk
         except StreamCancelledError:
             self._cancelled = True
-            logger.info(
-                "%s_stream: cancelled session_id=%s req_id=%s",
-                CHAT_STREAM_LABEL,
-                cfg.session_id,
-                cfg.request_id,
-            )
+            self._log_cancelled()
         except asyncio.TimeoutError:
-            logger.warning(
-                "%s_stream: timeout session_id=%s req_id=%s",
-                CHAT_STREAM_LABEL,
-                cfg.session_id,
-                cfg.request_id,
-            )
+            self._log_timeout()
             raise
         finally:
             if not self._cancelled:
                 tail = self._flush_tail()
                 if tail:
                     yield tail
-            elapsed_ms = (time.perf_counter() - start) * 1000.0
-            logger.info(
-                "%s_stream: end session_id=%s req_id=%s total_len=%s ms=%.1f",
-                CHAT_STREAM_LABEL,
-                cfg.session_id,
-                cfg.request_id,
-                len(self._full_text),
-                elapsed_ms,
-            )
+            self._log_stream_end(start)
 
     @property
     def full_text(self) -> str:
@@ -239,12 +259,11 @@ async def _stream_with_timeout(
         sampling_params=sampling_params,
         request_id=request_id,
     )
-    cancel_checker = _CancelChecker(cancel_check)
 
     try:
         async with async_timeout(timeout_s):
             async for out in stream:
-                if await cancel_checker.triggered():
+                if await _is_cancelled(cancel_check):
                     await engine.abort(request_id)
                     raise StreamCancelledError()
                 yield out
@@ -253,17 +272,13 @@ async def _stream_with_timeout(
         raise
 
 
-class _CancelChecker:
-    def __init__(self, cancel_check: CancelCheck):
-        self._check = cancel_check
-
-    async def triggered(self) -> bool:
-        if self._check is None:
-            return False
-        result = self._check()
-        if asyncio.iscoroutine(result):
-            result = await result
-        return bool(result)
+async def _is_cancelled(cancel_check: CancelCheck) -> bool:
+    if cancel_check is None:
+        return False
+    result = cancel_check()
+    if asyncio.iscoroutine(result):
+        result = await result
+    return bool(result)
 
 
 __all__ = [

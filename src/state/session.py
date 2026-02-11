@@ -27,16 +27,7 @@ from dataclasses import field, dataclass
 
 @dataclass
 class HistoryTurn:
-    """One user/assistant exchange in the running conversation.
-
-    During streaming generation, assistant may be empty until
-    the response is complete.
-
-    Attributes:
-        turn_id: Unique identifier for this turn (UUID hex string).
-        user: The user's message for this turn.
-        assistant: The assistant's response (empty during streaming).
-    """
+    """One user/assistant exchange in the running conversation."""
 
     turn_id: str
     user: str

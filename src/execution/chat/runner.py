@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import uuid
 import functools
+from typing import Any
 from collections.abc import AsyncGenerator
 
 from ...config.timeouts import GEN_TIMEOUT_S
@@ -46,6 +47,21 @@ from ...config.sampling import (
     CHAT_FREQUENCY_PENALTY,
     CHAT_REPETITION_PENALTY,
 )
+
+
+def _resolve_sampling_overrides(
+    overrides: dict[str, float | int | bool],
+) -> dict[str, float | int | bool]:
+    return {
+        "temperature": float(overrides.get("temperature", CHAT_TEMPERATURE)),
+        "top_p": float(overrides.get("top_p", CHAT_TOP_P)),
+        "top_k": int(overrides.get("top_k", CHAT_TOP_K)),
+        "min_p": float(overrides.get("min_p", CHAT_MIN_P)),
+        "repetition_penalty": float(overrides.get("repetition_penalty", CHAT_REPETITION_PENALTY)),
+        "presence_penalty": float(overrides.get("presence_penalty", CHAT_PRESENCE_PENALTY)),
+        "frequency_penalty": float(overrides.get("frequency_penalty", CHAT_FREQUENCY_PENALTY)),
+        "sanitize_output": bool(overrides.get("sanitize_output", True)),
+    }
 
 
 @functools.cache
@@ -84,6 +100,63 @@ def _get_logit_bias_map() -> dict[int, float]:
     return id_bias
 
 
+def _build_sampling_params(overrides: dict[str, float | int | bool]) -> Any:
+    logit_bias = _get_logit_bias_map()
+    return create_sampling_params(
+        temperature=float(overrides["temperature"]),
+        top_p=float(overrides["top_p"]),
+        top_k=int(overrides["top_k"]),
+        min_p=float(overrides["min_p"]),
+        repetition_penalty=float(overrides["repetition_penalty"]),
+        presence_penalty=float(overrides["presence_penalty"]),
+        frequency_penalty=float(overrides["frequency_penalty"]),
+        max_tokens=CHAT_MAX_OUT,
+        stop=INFERENCE_STOP,
+        logit_bias=logit_bias if logit_bias else None,
+    )
+
+
+def _build_stream(
+    *,
+    session_id: str,
+    request_id: str,
+    prompt: str,
+    sampling_params: Any,
+) -> ChatStreamController:
+    return ChatStreamController(
+        ChatStreamConfig(
+            session_id=session_id,
+            request_id=request_id,
+            prompt=prompt,
+            sampling_params=sampling_params,
+            engine_getter=get_engine,
+            timeout_s=float(GEN_TIMEOUT_S),
+            flush_ms=float(STREAM_FLUSH_MS),
+            cancel_check=lambda: session_handler.is_request_cancelled(session_id, request_id),
+        )
+    )
+
+
+async def _stream_with_optional_sanitizer(
+    stream: ChatStreamController,
+    sanitize_output: bool,
+) -> AsyncGenerator[str, None]:
+    sanitizer = StreamingSanitizer() if sanitize_output else None
+    completed = False
+    async for chunk in stream:
+        if sanitizer is None:
+            yield chunk
+            continue
+        clean = sanitizer.push(chunk)
+        if clean:
+            yield clean
+    completed = True
+    if completed and sanitizer is not None:
+        tail = sanitizer.flush()
+        if tail:
+            yield tail
+
+
 async def run_chat_generation(
     session_id: str,
     static_prefix: str,
@@ -120,63 +193,18 @@ async def run_chat_generation(
     req_id = request_id or f"chat-{uuid.uuid4()}"
     session_handler.set_active_request(session_id, req_id)
 
-    overrides = sampling_overrides or {}
-    temperature = float(overrides.get("temperature", CHAT_TEMPERATURE))
-    top_p = float(overrides.get("top_p", CHAT_TOP_P))
-    top_k = int(overrides.get("top_k", CHAT_TOP_K))
-    min_p = float(overrides.get("min_p", CHAT_MIN_P))
-    repetition_penalty = float(overrides.get("repetition_penalty", CHAT_REPETITION_PENALTY))
-    presence_penalty = float(overrides.get("presence_penalty", CHAT_PRESENCE_PENALTY))
-    frequency_penalty = float(overrides.get("frequency_penalty", CHAT_FREQUENCY_PENALTY))
-    sanitize_output = bool(overrides.get("sanitize_output", True))
-
-    logit_bias = _get_logit_bias_map()
-
-    # Use unified sampling params factory
-    params = create_sampling_params(
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        min_p=min_p,
-        repetition_penalty=repetition_penalty,
-        presence_penalty=presence_penalty,
-        frequency_penalty=frequency_penalty,
-        max_tokens=CHAT_MAX_OUT,
-        stop=INFERENCE_STOP,
-        logit_bias=logit_bias if logit_bias else None,
-    )
+    overrides = _resolve_sampling_overrides(sampling_overrides or {})
+    params = _build_sampling_params(overrides)
 
     prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
-    stream = ChatStreamController(
-        ChatStreamConfig(
-            session_id=session_id,
-            request_id=req_id,
-            prompt=prompt,
-            sampling_params=params,
-            engine_getter=get_engine,
-            timeout_s=float(GEN_TIMEOUT_S),
-            flush_ms=float(STREAM_FLUSH_MS),
-            cancel_check=lambda: session_handler.is_request_cancelled(session_id, req_id),
-        )
+    stream = _build_stream(
+        session_id=session_id,
+        request_id=req_id,
+        prompt=prompt,
+        sampling_params=params,
     )
-
-    sanitizer = StreamingSanitizer() if sanitize_output else None
-    normal_completion = False
-    try:
-        async for chunk in stream:
-            if sanitizer:
-                clean = sanitizer.push(chunk)
-                if clean:
-                    yield clean
-            else:
-                yield chunk
-        normal_completion = True
-    finally:
-        pass
-    if normal_completion and sanitizer:
-        tail = sanitizer.flush()
-        if tail:
-            yield tail
+    async for chunk in _stream_with_optional_sanitizer(stream, sanitize_output=bool(overrides["sanitize_output"])):
+        yield chunk
 
 
 __all__ = ["run_chat_generation"]

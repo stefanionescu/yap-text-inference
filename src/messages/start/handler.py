@@ -24,6 +24,7 @@ from ...handlers.instances import session_handler
 from ...handlers.websocket.errors import send_error
 from ..input import normalize_gender, normalize_personality
 from ...handlers.websocket.helpers import safe_send_envelope
+from ...handlers.session.parsing import parse_history_messages
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
 from ...config.websocket import WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
@@ -65,6 +66,84 @@ async def _close_with_validation_error(
     logger.info("handle_start: error → %s; connection closed", err.error_code)
 
 
+def _resolve_start_inputs(
+    payload: dict[str, Any],
+) -> tuple[
+    str | None,
+    str | None,
+    str | None,
+    dict[str, float | int | bool],
+    str | None,
+    str | None,
+]:
+    gender, personality = _validate_persona(payload)
+    chat_prompt = _extract_chat_prompt(payload)
+    sampling_overrides = extract_sampling_overrides(payload)
+    check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(payload)
+    return gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix
+
+
+def _update_start_session_config(
+    *,
+    session_id: str,
+    gender: str | None,
+    personality: str | None,
+    chat_prompt: str | None,
+    sampling_overrides: dict[str, float | int | bool],
+    check_screen_prefix: str | None,
+    screen_checked_prefix: str | None,
+) -> dict[str, Any]:
+    sampling_payload = sampling_overrides if DEPLOY_CHAT else None
+    if DEPLOY_CHAT and sampling_payload is None:
+        sampling_payload = {}
+    session_handler.update_session_config(
+        session_id,
+        chat_gender=gender,
+        chat_personality=personality,
+        chat_prompt=chat_prompt,
+        chat_sampling=sampling_payload,
+        check_screen_prefix=check_screen_prefix,
+        screen_checked_prefix=screen_checked_prefix,
+    )
+    return session_handler.get_session_config(session_id)
+
+
+def _prepare_turn_payload(
+    session_id: str,
+    payload: dict[str, Any],
+    updated_config: dict[str, Any],
+) -> tuple[str, str, str, str, dict[str, Any] | None, str]:
+    static_prefix = updated_config.get("chat_prompt") or ""
+    runtime_text = ""
+    history_text, history_info = _resolve_history(session_id, payload)
+    user_utt = _trim_user_utterance(payload.get("user_utterance", ""), session_id)
+    history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
+    return static_prefix, runtime_text, history_text, user_utt, history_info, history_turn_id
+
+
+def _build_start_plan(
+    *,
+    session_id: str,
+    request_id: str,
+    static_prefix: str,
+    runtime_text: str,
+    history_text: str,
+    user_utt: str,
+    history_turn_id: str,
+    sampling_overrides: dict[str, float | int | bool],
+) -> StartPlan:
+    return StartPlan(
+        session_id=session_id,
+        request_id=request_id,
+        static_prefix=static_prefix,
+        runtime_text=runtime_text,
+        history_text=history_text,
+        user_utt=user_utt,
+        history_turn_id=history_turn_id,
+        sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
+    )
+
+
 async def handle_start_message(
     ws: WebSocket,
     payload: dict[str, Any],
@@ -102,37 +181,25 @@ async def handle_start_message(
     session_config = session_handler.initialize_session(session_id)
 
     try:
-        gender, personality = _validate_persona(payload)
-        chat_prompt = _extract_chat_prompt(payload)
-        sampling_overrides = extract_sampling_overrides(payload)
-        check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(payload)
+        gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix = (
+            _resolve_start_inputs(payload)
+        )
     except ValidationError as err:
         await _close_with_validation_error(ws, session_id, request_id, err)
         return
 
-    sampling_payload = None
-    if DEPLOY_CHAT:
-        sampling_payload = sampling_overrides if sampling_overrides else {}
-
-    session_handler.update_session_config(
-        session_id,
-        chat_gender=gender,
-        chat_personality=personality,
+    updated_config = _update_start_session_config(
+        session_id=session_id,
+        gender=gender,
+        personality=personality,
         chat_prompt=chat_prompt,
-        chat_sampling=sampling_payload,
+        sampling_overrides=sampling_overrides,
         check_screen_prefix=check_screen_prefix,
         screen_checked_prefix=screen_checked_prefix,
     )
-
-    updated_config = session_handler.get_session_config(session_id)
-    static_prefix = updated_config.get("chat_prompt") or ""
-    runtime_text = ""
-    history_text, history_info = _resolve_history(session_id, payload)
-    user_utt = _trim_user_utterance(payload.get("user_utterance", ""), session_id)
-    # Track user utterance for pairing with assistant response later.
-    # Don't re-fetch history_text - it already contains previous turns,
-    # and user_utt is passed separately to the prompt builder.
-    history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
+    static_prefix, runtime_text, history_text, user_utt, history_info, history_turn_id = _prepare_turn_payload(
+        session_id, payload, updated_config
+    )
 
     if not await safe_send_envelope(
         ws,
@@ -144,7 +211,7 @@ async def handle_start_message(
         return
     logger.info("handle_start: ack sent session_id=%s", session_id)
 
-    plan = StartPlan(
+    plan = _build_start_plan(
         session_id=session_id,
         request_id=request_id,
         static_prefix=static_prefix,
@@ -152,7 +219,7 @@ async def handle_start_message(
         history_text=history_text,
         user_utt=user_utt,
         history_turn_id=history_turn_id,
-        sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
+        sampling_overrides=sampling_overrides,
     )
 
     task = asyncio.create_task(dispatch_execution(ws, plan))
@@ -215,13 +282,16 @@ def _resolve_history(session_id: str, msg: dict[str, Any]) -> tuple[str, dict[st
         history_messages = msg.get("history")
         if isinstance(history_messages, list):
             input_count = len(history_messages)
-            rendered = session_handler.set_history_messages(session_id, history_messages)
+            parsed_turns = parse_history_messages(history_messages)
+            input_turn_count = len(parsed_turns)
+            rendered = session_handler.set_history_turns(session_id, parsed_turns)
             retained_count = session_handler.get_history_turn_count(session_id)
             history_tokens = _count_history_tokens(rendered)
             history_info = {
                 "input_messages": input_count,
+                "input_turns": input_turn_count,
                 "retained_turns": retained_count,
-                "trimmed": retained_count < (input_count // 2),  # Rough heuristic: turns ≈ messages/2
+                "trimmed": retained_count < input_turn_count,
                 "history_tokens": history_tokens,
             }
             return rendered, history_info

@@ -5,7 +5,6 @@ SessionHandler coordinates per-connection state including lifecycle, configurati
 history, request tracking, and rate limiting.
 
 The global `session_handler` singleton is instantiated in the `instances` module.
-For abort functionality, see the `abort` module.
 """
 
 from __future__ import annotations
@@ -13,8 +12,12 @@ from __future__ import annotations
 import copy
 import time
 import asyncio
+import contextlib
 from typing import Any
 
+from src.engines import get_engine
+from src.state.session import HistoryTurn, SessionState
+from src.config.timeouts import SESSION_IDLE_TTL_SECONDS
 from src.config import (
     CHAT_MODEL,
     TOOL_MODEL,
@@ -26,7 +29,6 @@ from src.config import (
 
 from .history import HistoryController
 from .time import format_session_timestamp
-from .state import SESSION_IDLE_TTL_SECONDS, SessionState
 from .config import resolve_screen_prefix, update_session_config as _update_config
 from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 from .requests import (
@@ -209,6 +211,13 @@ class SessionHandler:
         state.touch()
         return rendered
 
+    def set_history_turns(self, session_id: str, turns: list[HistoryTurn]) -> str:
+        """Set history from pre-parsed turns and apply import-time trimming."""
+        state = self._ensure_state(session_id)
+        rendered = self._history.set_turns(state, turns)
+        state.touch()
+        return rendered
+
     def get_history_turn_count(self, session_id: str) -> int:
         """Get the number of history turns currently stored for a session."""
         state = self._get_state(session_id)
@@ -282,6 +291,29 @@ class SessionHandler:
 
     def cleanup_session_requests(self, session_id: str) -> dict[str, str]:
         return _cleanup_requests(self._get_state(session_id))
+
+    async def abort_session_requests(
+        self,
+        session_id: str | None,
+        *,
+        clear_state: bool = False,
+    ) -> dict[str, str]:
+        """Cancel tracked requests and best-effort abort active engine work."""
+        if not session_id:
+            return {"active": "", "tool": ""}
+
+        self.cancel_session_requests(session_id)
+        request_info = self.cleanup_session_requests(session_id)
+
+        active_request_id = request_info.get("active")
+        if DEPLOY_CHAT and active_request_id:
+            with contextlib.suppress(Exception):
+                await (await get_engine()).abort(active_request_id)
+
+        if clear_state:
+            self.clear_session_state(session_id)
+
+        return request_info
 
     # ============================================================================
     # Token budget helpers

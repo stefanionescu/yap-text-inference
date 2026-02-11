@@ -21,6 +21,42 @@ from src.state import TokenizerValidationResult
 from ..config.deploy import HF_REPO_PATTERN
 
 
+def _invalid_result(model_path: str, error_message: str) -> TokenizerValidationResult:
+    return TokenizerValidationResult(
+        valid=False,
+        error_message=error_message,
+        model_path=model_path,
+        has_tokenizer_json=False,
+        has_tokenizer_config=False,
+    )
+
+
+def _remote_result(model_path: str) -> TokenizerValidationResult:
+    return TokenizerValidationResult(
+        valid=True,
+        error_message=None,
+        model_path=model_path,
+        has_tokenizer_json=False,
+        has_tokenizer_config=False,
+        is_remote=True,
+    )
+
+
+def _missing_tokenizer_message(model_path: str, tokenizer_json: str, tokenizer_config: str) -> str:
+    return (
+        f"Tokenizer files not found in model directory: {model_path}\n"
+        "Expected at least one of:\n"
+        f"  - {tokenizer_json}\n"
+        f"  - {tokenizer_config}\n"
+        "\n"
+        "If using a pre-quantized model from HuggingFace:\n"
+        "  Ensure the download completed successfully and includes tokenizer files.\n"
+        "\n"
+        "If using a locally quantized model:\n"
+        "  Re-run quantization to regenerate the tokenizer files."
+    )
+
+
 def _is_huggingface_repo_id(path: str) -> bool:
     """Check if a path looks like a HuggingFace repo ID.
 
@@ -49,35 +85,19 @@ def validate_tokenizer_exists(model_path: str) -> TokenizerValidationResult:
         TokenizerValidationResult with validation status and details.
     """
     if not model_path:
-        return TokenizerValidationResult(
-            valid=False,
-            error_message="Model path is empty",
-            model_path=model_path,
-            has_tokenizer_json=False,
-            has_tokenizer_config=False,
-        )
+        return _invalid_result(model_path, "Model path is empty")
 
     # HuggingFace repo IDs are validated at load time, not here
     if _is_huggingface_repo_id(model_path):
-        return TokenizerValidationResult(
-            valid=True,
-            error_message=None,
-            model_path=model_path,
-            has_tokenizer_json=False,
-            has_tokenizer_config=False,
-            is_remote=True,
-        )
+        return _remote_result(model_path)
 
     if not os.path.isdir(model_path):
-        return TokenizerValidationResult(
-            valid=False,
-            error_message=(
+        return _invalid_result(
+            model_path,
+            (
                 f"Model directory does not exist: {model_path}\n"
                 "Ensure the model has been downloaded or the path is correct."
             ),
-            model_path=model_path,
-            has_tokenizer_json=False,
-            has_tokenizer_config=False,
         )
 
     tokenizer_json = os.path.join(model_path, "tokenizer.json")
@@ -95,23 +115,9 @@ def validate_tokenizer_exists(model_path: str) -> TokenizerValidationResult:
             has_tokenizer_config=has_tokenizer_config,
         )
 
-    return TokenizerValidationResult(
-        valid=False,
-        error_message=(
-            f"Tokenizer files not found in model directory: {model_path}\n"
-            "Expected at least one of:\n"
-            f"  - {tokenizer_json}\n"
-            f"  - {tokenizer_config}\n"
-            "\n"
-            "If using a pre-quantized model from HuggingFace:\n"
-            "  Ensure the download completed successfully and includes tokenizer files.\n"
-            "\n"
-            "If using a locally quantized model:\n"
-            "  Re-run quantization to regenerate the tokenizer files."
-        ),
-        model_path=model_path,
-        has_tokenizer_json=False,
-        has_tokenizer_config=False,
+    return _invalid_result(
+        model_path,
+        _missing_tokenizer_message(model_path, tokenizer_json, tokenizer_config),
     )
 
 

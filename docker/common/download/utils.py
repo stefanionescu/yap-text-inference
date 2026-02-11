@@ -14,13 +14,12 @@ def get_hf_token() -> str | None:
 
     Priority:
         1. HF_TOKEN environment variable
-        2. HUGGINGFACE_HUB_TOKEN environment variable
-        3. /run/secrets/hf_token mounted secret (Docker BuildKit)
+        2. /run/secrets/hf_token mounted secret (Docker BuildKit)
 
     Returns:
         Token string if found, None otherwise.
     """
-    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN") or None
+    token = os.environ.get("HF_TOKEN") or None
     if token:
         return token
 

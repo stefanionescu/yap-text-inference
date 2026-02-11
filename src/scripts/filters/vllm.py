@@ -7,15 +7,15 @@ Uses stream filtering to catch worker process output and progress bars.
 from __future__ import annotations
 
 import io
-import os
 import re
 import sys
 import logging
-import contextlib
 from typing import cast
 from collections.abc import Iterable
 
 from src.config.filters import VLLM_NOISE_PATTERNS
+
+from .fd import SuppressedFDContext
 
 logger = logging.getLogger("log_filter")
 
@@ -133,68 +133,6 @@ def configure_vllm_logging() -> None:
     """
     _suppress_vllm_loggers()
     _install_stream_filters()
-
-
-class SuppressedFDContext:
-    """Context manager that suppresses C++ stdout/stderr by redirecting file descriptors.
-
-    This is necessary because vLLM worker processes write directly to file
-    descriptors, bypassing Python's sys.stdout/stderr wrappers.
-
-    When file descriptors are redirected before spawning workers, the workers
-    inherit the redirected fds and their output is also suppressed.
-    """
-
-    def __init__(self, suppress_stdout: bool = True, suppress_stderr: bool = True):
-        self._suppress_stdout = suppress_stdout
-        self._suppress_stderr = suppress_stderr
-        self._saved_stdout_fd: int | None = None
-        self._saved_stderr_fd: int | None = None
-        self._devnull: int | None = None
-
-    def __enter__(self) -> SuppressedFDContext:
-        # Flush all Python and C stdio buffers before redirecting
-        sys.stdout.flush()
-        sys.stderr.flush()
-        with contextlib.suppress(Exception):
-            import ctypes  # noqa: PLC0415
-
-            libc = ctypes.CDLL(None)
-            libc.fflush(None)  # Flush all C stdio streams
-
-        self._devnull = os.open(os.devnull, os.O_WRONLY)
-
-        if self._suppress_stdout:
-            self._saved_stdout_fd = os.dup(1)
-            os.dup2(self._devnull, 1)
-
-        if self._suppress_stderr:
-            self._saved_stderr_fd = os.dup(2)
-            os.dup2(self._devnull, 2)
-
-        return self
-
-    def __exit__(self, *args) -> None:
-        # Flush any remaining output before restoring
-        with contextlib.suppress(Exception):
-            import ctypes  # noqa: PLC0415
-
-            libc = ctypes.CDLL(None)
-            libc.fflush(None)
-
-        sys.stdout.flush()
-        sys.stderr.flush()
-
-        if self._saved_stdout_fd is not None:
-            os.dup2(self._saved_stdout_fd, 1)
-            os.close(self._saved_stdout_fd)
-
-        if self._saved_stderr_fd is not None:
-            os.dup2(self._saved_stderr_fd, 2)
-            os.close(self._saved_stderr_fd)
-
-        if self._devnull is not None:
-            os.close(self._devnull)
 
 
 __all__ = ["configure_vllm_logging", "SuppressedFDContext", "VLLMNoiseFilterStream", "is_vllm_noise"]

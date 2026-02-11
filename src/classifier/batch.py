@@ -34,54 +34,7 @@ import torch  # type: ignore[import]
 
 from src.state import RequestItem
 
-
-class BatchFuture:
-    """Lightweight, thread-safe future for batch executor results.
-
-    Simpler than asyncio.Future or concurrent.futures.Future,
-    optimized for the specific use case of cross-thread result delivery.
-
-    Thread Safety:
-        Uses threading.Event for synchronization.
-        Safe to call set_result/set_exception from one thread
-        and result() from another.
-    """
-
-    def __init__(self) -> None:
-        self._event = threading.Event()
-        self._result: list[float] | None = None
-        self._exc: Exception | None = None
-
-    def set_result(self, result: list[float]) -> None:
-        """Set the result value and wake waiters."""
-        self._result = result
-        self._event.set()
-
-    def set_exception(self, exc: Exception) -> None:
-        """Set an exception to be raised and wake waiters."""
-        self._exc = exc
-        self._event.set()
-
-    def result(self, timeout: float | None = None) -> list[float]:
-        """Wait for and return the result, or raise the stored exception.
-
-        Args:
-            timeout: Max seconds to wait (None = forever).
-
-        Returns:
-            List of class probabilities.
-
-        Raises:
-            TimeoutError: If timeout expires before result is set.
-            Exception: The stored exception if set_exception was called.
-        """
-        if not self._event.wait(timeout):
-            raise TimeoutError("Classifier batch timed out")
-        if self._exc is not None:
-            raise self._exc
-        if self._result is None:
-            raise RuntimeError("Classifier batch completed without result")
-        return self._result
+from .future import BatchFuture
 
 
 class BatchExecutor:

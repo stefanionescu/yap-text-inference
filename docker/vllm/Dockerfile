@@ -163,7 +163,6 @@ ENV SHOW_HF_LOGS=1 \
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY common/ /app/common/
-COPY tests/ /app/tests/
 
 # Set proper permissions
 RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true

@@ -27,7 +27,7 @@ from src.config import DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFI
 from ...tokens.prefix import count_prefix_tokens
 
 if TYPE_CHECKING:
-    from .state import SessionState
+    from src.state.session import SessionState
 
 
 def update_session_config(
