@@ -11,25 +11,18 @@ import sys
 import asyncio
 import logging
 import argparse
-from importlib import import_module
-from collections.abc import Callable
+from pathlib import Path
 
-
-def _load_setup_repo_path() -> Callable[[], str]:
-    try:
-        return import_module("tests.helpers.setup").setup_repo_path
-    except ModuleNotFoundError:
-        return import_module("helpers.setup").setup_repo_path
-
-
-setup_repo_path = _load_setup_repo_path()
-
-setup_repo_path()
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.logic.tool.runner import run_suite  # noqa: E402
+from tests.helpers.setup import setup_repo_path  # noqa: E402
 from tests.helpers.websocket import with_api_key  # noqa: E402
 from tests.helpers.cli import add_connection_args  # noqa: E402
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW  # noqa: E402
+
+setup_repo_path()
 
 
 def _parse_args() -> argparse.Namespace:

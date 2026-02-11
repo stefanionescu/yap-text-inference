@@ -8,9 +8,9 @@ from src.helpers.env import env_flag
 from src.config import CHAT_MODEL, DEPLOY_CHAT, CHAT_MAX_LEN, CHAT_GPU_FRAC
 
 from .engine import VLLMEngine
+from .create import create_engine
 from .args import make_engine_args
 from .setup import configure_runtime_env
-from .fallback import create_engine_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,12 @@ def _create_raw_engine(engine_args: object) -> object:
     show_vllm_logs = env_flag("SHOW_VLLM_LOGS", False)
 
     if show_vllm_logs:
-        return create_engine_with_fallback(engine_args)
+        return create_engine(engine_args)
 
     from src.scripts.filters.vllm import SuppressedFDContext  # noqa: PLC0415
 
     with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
-        return create_engine_with_fallback(engine_args)
+        return create_engine(engine_args)
 
 
 __all__ = ["create_vllm_engine"]

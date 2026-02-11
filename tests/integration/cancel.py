@@ -13,9 +13,9 @@ This test validates the cancel message handling using multiple concurrent client
 The test works with all deployment modes (tool only, chat only, or both).
 
 Usage:
-  python3 tests/cancel.py
-  python3 tests/cancel.py --server ws://localhost:8000/ws
-  python3 tests/cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
+  python3 tests/integration/cancel.py
+  python3 tests/integration/cancel.py --server ws://localhost:8000/ws
+  python3 tests/integration/cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
@@ -33,7 +33,7 @@ import argparse
 from pathlib import Path
 
 if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.helpers.setup import setup_repo_path
 from tests.logic.cancel import run_cancel_suite

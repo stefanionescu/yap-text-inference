@@ -12,9 +12,9 @@ Metrics reported:
 - first_3_words_ms: time from request send to first three words
 
 Usage:
-  python3 tests/warmup.py
-  python3 tests/warmup.py "your custom message"
-  python3 tests/warmup.py --gender male --personality playful "hello there"
+  python3 tests/e2e/warmup.py
+  python3 tests/e2e/warmup.py "your custom message"
+  python3 tests/e2e/warmup.py --gender male --personality playful "hello there"
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
@@ -32,24 +32,17 @@ import sys
 import asyncio
 import logging
 import argparse
-from importlib import import_module
-from collections.abc import Callable
+from pathlib import Path
 
-
-def _load_setup_repo_path() -> Callable[[], str]:
-    try:
-        return import_module("tests.helpers.setup").setup_repo_path
-    except ModuleNotFoundError:
-        return import_module("helpers.setup").setup_repo_path
-
-
-setup_repo_path = _load_setup_repo_path()
-
-setup_repo_path()
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.helpers.errors import ServerError  # noqa: E402
 from tests.logic.warmup.runner import run_once  # noqa: E402
+from tests.helpers.setup import setup_repo_path  # noqa: E402
 from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
+
+setup_repo_path()
 
 
 def _parse_args() -> argparse.Namespace:

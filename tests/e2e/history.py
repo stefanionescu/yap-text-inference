@@ -15,10 +15,10 @@ Environment Variables:
 - PERSONALITY: personality (default: flirty)
 
 Usage:
-  python3 tests/history.py
-  python3 tests/history.py --gender male
-  python3 tests/history.py --temperature 0.8 --top-p 0.9
-  python3 tests/history.py --bench -n 16 -c 8
+  python3 tests/e2e/history.py
+  python3 tests/e2e/history.py --gender male
+  python3 tests/e2e/history.py --temperature 0.8 --top-p 0.9
+  python3 tests/e2e/history.py --bench -n 16 -c 8
 """
 
 from __future__ import annotations
@@ -27,22 +27,13 @@ import os
 import sys
 import asyncio
 import argparse
-from importlib import import_module
-from collections.abc import Callable
+from pathlib import Path
 
-
-def _load_setup_repo_path() -> Callable[[], str]:
-    try:
-        return import_module("tests.helpers.setup").setup_repo_path
-    except ModuleNotFoundError:
-        return import_module("helpers.setup").setup_repo_path
-
-
-setup_repo_path = _load_setup_repo_path()
-
-setup_repo_path()
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.helpers.errors import ServerError  # noqa: E402
+from tests.helpers.setup import setup_repo_path  # noqa: E402
 from tests.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
@@ -52,6 +43,8 @@ from tests.config import (  # noqa: E402
     HISTORY_BENCH_DEFAULT_CONCURRENCY,
     HISTORY_BENCH_DEFAULT_TIMEOUT_SEC,
 )
+
+setup_repo_path()
 
 
 def _parse_args() -> argparse.Namespace:
