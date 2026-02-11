@@ -1,8 +1,4 @@
-"""TRT-LLM HuggingFace push utilities."""
+"""TRT-LLM HuggingFace push utilities.
 
-from .push import push_engine_to_hf, push_checkpoint_to_hf
-
-__all__ = [
-    "push_engine_to_hf",
-    "push_checkpoint_to_hf",
-]
+Do not re-export from .push here — it would create a circular import.
+"""

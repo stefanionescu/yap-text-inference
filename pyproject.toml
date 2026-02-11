@@ -21,6 +21,9 @@ select = ["E", "F", "B", "UP", "C4", "SIM", "N", "S", "W", "PL", "PLC0415"]
 # compatible with the ruff formatter.
 ignore = ["D", "ANN", "COM812", "ISC001"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/state/hf.py" = ["PLC0415"]
+
 [tool.ruff.lint.isort]
 combine-as-imports = true
 known-first-party = ["src", "tests"]
@@ -68,3 +71,9 @@ name = "state must not import streaming"
 type = "forbidden"
 source_modules = ["src.state"]
 forbidden_modules = ["src.streaming"]
+
+[[tool.importlinter.contracts]]
+name = "state must not depend on hf push modules"
+type = "forbidden"
+source_modules = ["src.state"]
+forbidden_modules = ["src.hf.trt.push", "src.hf.vllm.push"]
