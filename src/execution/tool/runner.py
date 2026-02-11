@@ -33,8 +33,8 @@ from typing import Any
 from .filter import filter_tool_phrase
 from .language import is_mostly_english
 from ...config import TOOL_LANGUAGE_FILTER
-from ...handlers.session import session_handler
 from ...classifier import get_classifier_adapter
+from ...handlers.instances import session_handler
 
 logger = logging.getLogger(__name__)
 

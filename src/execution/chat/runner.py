@@ -28,7 +28,7 @@ import functools
 from collections.abc import AsyncGenerator
 
 from ...config.timeouts import GEN_TIMEOUT_S
-from ...handlers.session import session_handler
+from ...handlers.instances import session_handler
 from ...tokens.registry import get_chat_tokenizer
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...messages.sanitize import StreamingSanitizer

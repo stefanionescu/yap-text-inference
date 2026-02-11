@@ -19,8 +19,8 @@ from fastapi import WebSocket
 from src.state import StartPlan
 
 from .dispatch import dispatch_execution
-from ...handlers.session import session_handler
 from .sampling import extract_sampling_overrides
+from ...handlers.instances import session_handler
 from ...handlers.websocket.errors import send_error
 from ..input import normalize_gender, normalize_personality
 from ...handlers.websocket.helpers import safe_send_envelope
