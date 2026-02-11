@@ -24,16 +24,17 @@ async generator of text chunks regardless of vLLM vs TRT-LLM backend.
 from __future__ import annotations
 
 import uuid
-import functools
 from typing import Any
 from collections.abc import AsyncGenerator
 
+from src.engines.base import BaseEngine
+from src.tokens.tokenizer import FastTokenizer
+from src.handlers.session.manager import SessionHandler
+
 from ...config.timeouts import GEN_TIMEOUT_S
-from ...handlers.instances import session_handler
-from ...tokens.registry import get_chat_tokenizer
+from ...engines import create_sampling_params
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...messages.sanitize import StreamingSanitizer
-from ...engines import get_engine, create_sampling_params
 from ...messages.chat import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
 from ...config.sampling import (
@@ -64,8 +65,7 @@ def _resolve_sampling_overrides(
     }
 
 
-@functools.cache
-def _get_logit_bias_map() -> dict[int, float]:
+def _build_logit_bias_map(chat_tokenizer: FastTokenizer) -> dict[int, float]:
     """Build logit bias map from text tokens to token IDs.
 
     The CHAT_LOGIT_BIAS config maps text strings to bias values.
@@ -81,14 +81,9 @@ def _get_logit_bias_map() -> dict[int, float]:
     if not CHAT_LOGIT_BIAS:
         return {}
 
-    try:
-        tokenizer = get_chat_tokenizer()
-    except Exception:
-        return {}
-
     id_bias: dict[int, float] = {}
     for text, bias in CHAT_LOGIT_BIAS.items():
-        ids = tokenizer.encode_ids(text)
+        ids = chat_tokenizer.encode_ids(text)
         if not ids:
             continue
         for token_id in ids:
@@ -100,8 +95,8 @@ def _get_logit_bias_map() -> dict[int, float]:
     return id_bias
 
 
-def _build_sampling_params(overrides: dict[str, float | int | bool]) -> Any:
-    logit_bias = _get_logit_bias_map()
+def _build_sampling_params(overrides: dict[str, float | int | bool], chat_tokenizer: FastTokenizer) -> Any:
+    logit_bias = _build_logit_bias_map(chat_tokenizer)
     return create_sampling_params(
         temperature=float(overrides["temperature"]),
         top_p=float(overrides["top_p"]),
@@ -122,6 +117,8 @@ def _build_stream(
     request_id: str,
     prompt: str,
     sampling_params: Any,
+    engine: BaseEngine,
+    session_handler: SessionHandler,
 ) -> ChatStreamController:
     return ChatStreamController(
         ChatStreamConfig(
@@ -129,7 +126,7 @@ def _build_stream(
             request_id=request_id,
             prompt=prompt,
             sampling_params=sampling_params,
-            engine_getter=get_engine,
+            engine=engine,
             timeout_s=float(GEN_TIMEOUT_S),
             flush_ms=float(STREAM_FLUSH_MS),
             cancel_check=lambda: session_handler.is_request_cancelled(session_id, request_id),
@@ -163,8 +160,11 @@ async def run_chat_generation(
     runtime_text: str,
     history_text: str,
     user_utt: str,
-    request_id: str | None = None,
     *,
+    engine: BaseEngine,
+    session_handler: SessionHandler,
+    chat_tokenizer: FastTokenizer,
+    request_id: str | None = None,
     sampling_overrides: dict[str, float | int | bool] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream chat generation with optional micro-coalescing.
@@ -194,14 +194,22 @@ async def run_chat_generation(
     session_handler.set_active_request(session_id, req_id)
 
     overrides = _resolve_sampling_overrides(sampling_overrides or {})
-    params = _build_sampling_params(overrides)
+    params = _build_sampling_params(overrides, chat_tokenizer)
 
-    prompt = build_chat_prompt_with_prefix(static_prefix, runtime_text, history_text, user_utt)
+    prompt = build_chat_prompt_with_prefix(
+        static_prefix,
+        runtime_text,
+        history_text,
+        user_utt,
+        chat_tokenizer,
+    )
     stream = _build_stream(
         session_id=session_id,
         request_id=req_id,
         prompt=prompt,
         sampling_params=params,
+        engine=engine,
+        session_handler=session_handler,
     )
     async for chunk in _stream_with_optional_sanitizer(stream, sanitize_output=bool(overrides["sanitize_output"])):
         yield chunk

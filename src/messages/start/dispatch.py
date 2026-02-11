@@ -24,6 +24,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from src.state import StartPlan
+from src.runtime.dependencies import RuntimeDeps
 
 from ...config.timeouts import TOOL_TIMEOUT_S
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL
@@ -40,7 +41,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
+async def dispatch_execution(
+    ws: WebSocket,
+    plan: StartPlan,
+    runtime_deps: RuntimeDeps,
+) -> None:
     """Dispatch execution based on deployment configuration.
 
     Routes to the appropriate execution path:
@@ -53,15 +58,21 @@ async def dispatch_execution(ws: WebSocket, plan: StartPlan) -> None:
         plan: Validated execution plan with all parameters.
     """
     if DEPLOY_CHAT and DEPLOY_TOOL:
-        await _run_sequential(ws, plan)
+        await _run_sequential(ws, plan, runtime_deps)
     elif DEPLOY_CHAT and not DEPLOY_TOOL:
-        await _run_chat_only(ws, plan)
+        await _run_chat_only(ws, plan, runtime_deps)
     elif DEPLOY_TOOL and not DEPLOY_CHAT:
-        await _run_tool_only(ws, plan)
+        await _run_tool_only(ws, plan, runtime_deps)
 
 
-async def _run_sequential(ws: WebSocket, plan: StartPlan) -> None:
+async def _run_sequential(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
     """Run sequential tool-then-chat execution."""
+    if (
+        runtime_deps.chat_engine is None
+        or runtime_deps.classifier_adapter is None
+        or runtime_deps.chat_tokenizer is None
+    ):
+        raise RuntimeError("Sequential execution requires chat engine, chat tokenizer, and classifier adapter")
     logger.info("handle_start: sequential execution session_id=%s", plan.session_id)
     await run_execution(
         ws,
@@ -73,11 +84,18 @@ async def _run_sequential(ws: WebSocket, plan: StartPlan) -> None:
         plan.user_utt,
         history_turn_id=plan.history_turn_id,
         sampling_overrides=plan.sampling_overrides,
+        session_handler=runtime_deps.session_handler,
+        chat_engine=runtime_deps.chat_engine,
+        chat_tokenizer=runtime_deps.chat_tokenizer,
+        classifier_adapter=runtime_deps.classifier_adapter,
+        language_detector=runtime_deps.tool_language_detector,
     )
 
 
-async def _run_chat_only(ws: WebSocket, plan: StartPlan) -> None:
+async def _run_chat_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
     """Run chat-only streaming execution."""
+    if runtime_deps.chat_engine is None or runtime_deps.chat_tokenizer is None:
+        raise RuntimeError("Chat-only execution requires chat engine and chat tokenizer")
     logger.info("handle_start: chat-only streaming session_id=%s", plan.session_id)
     final_text = await stream_chat_response(
         ws,
@@ -87,6 +105,9 @@ async def _run_chat_only(ws: WebSocket, plan: StartPlan) -> None:
             plan.runtime_text,
             plan.history_text,
             plan.user_utt,
+            engine=runtime_deps.chat_engine,
+            session_handler=runtime_deps.session_handler,
+            chat_tokenizer=runtime_deps.chat_tokenizer,
             request_id=plan.request_id,
             sampling_overrides=plan.sampling_overrides,
         ),
@@ -95,16 +116,26 @@ async def _run_chat_only(ws: WebSocket, plan: StartPlan) -> None:
         plan.user_utt,
         history_turn_id=plan.history_turn_id,
         history_user_utt=plan.user_utt,
+        session_handler=runtime_deps.session_handler,
     )
     logger.info("handle_start: chat-only done session_id=%s chars=%s", plan.session_id, len(final_text))
 
 
-async def _run_tool_only(ws: WebSocket, plan: StartPlan) -> None:
+async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
     """Run tool-only classification execution."""
+    if runtime_deps.classifier_adapter is None:
+        raise RuntimeError("Tool-only execution requires classifier adapter")
     logger.info("handle_start: tool-only routing session_id=%s", plan.session_id)
     try:
         tool_res = await asyncio.wait_for(
-            run_toolcall(plan.session_id, plan.user_utt, mark_active=False),
+            run_toolcall(
+                plan.session_id,
+                plan.user_utt,
+                session_handler=runtime_deps.session_handler,
+                classifier_adapter=runtime_deps.classifier_adapter,
+                language_detector=runtime_deps.tool_language_detector,
+                mark_active=False,
+            ),
             timeout=TOOL_TIMEOUT_S,
         )
     except asyncio.TimeoutError:

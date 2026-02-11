@@ -10,9 +10,11 @@ from collections.abc import Callable
 
 from fastapi import WebSocket
 
+from src.runtime.dependencies import RuntimeDeps
+from src.handlers.session.manager import SessionHandler
+
 from .errors import send_error
 from ...logging import log_context
-from ..instances import session_handler
 from .helpers import safe_send_envelope
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
@@ -30,9 +32,9 @@ from ...config.websocket import (
 
 logger = logging.getLogger(__name__)
 
-SessionHandlerFn = Callable[[WebSocket, dict[str, Any], str, str], Any]
+SessionMessageHandlerFn = Callable[..., Any]
 
-_SESSION_MESSAGE_HANDLERS: dict[str, SessionHandlerFn] = {
+_SESSION_MESSAGE_HANDLERS: dict[str, SessionMessageHandlerFn] = {
     "followup": handle_followup_message,
 }
 
@@ -76,11 +78,21 @@ async def _handle_start_command(
     session_id: str,
     request_id: str,
     current_session_id: str | None,
+    *,
+    session_handler: SessionHandler,
+    runtime_deps: RuntimeDeps,
 ) -> str | None:
     if current_session_id and session_handler.has_running_task(current_session_id):
         await session_handler.abort_session_requests(current_session_id, clear_state=False)
 
-    await handle_start_message(ws, payload, session_id, request_id)
+    await handle_start_message(
+        ws,
+        payload,
+        session_id,
+        request_id,
+        session_handler=session_handler,
+        runtime_deps=runtime_deps,
+    )
     logger.info("WS start scheduled for session_id=%s request_id=%s", session_id, request_id)
     return session_id
 
@@ -181,6 +193,41 @@ async def _ensure_active_session(
     return False
 
 
+async def _handle_cancel_command(
+    ws: WebSocket,
+    active_session_id: str | None,
+    msg_request_id: str,
+    *,
+    session_handler: SessionHandler,
+) -> str | None:
+    if active_session_id is None:
+        return active_session_id
+    logger.info("WS recv: cancel session_id=%s request_id=%s", active_session_id, msg_request_id)
+    await handle_cancel_message(
+        ws,
+        active_session_id,
+        msg_request_id,
+        session_handler=session_handler,
+    )
+    return active_session_id
+
+
+async def _send_unknown_message_type_error(
+    ws: WebSocket,
+    msg_type: str,
+    msg_session_id: str,
+    msg_request_id: str,
+) -> None:
+    await send_error(
+        ws,
+        session_id=msg_session_id,
+        request_id=msg_request_id,
+        error_code=WS_ERROR_INVALID_MESSAGE,
+        message=f"Message type '{msg_type}' is not supported.",
+        reason_code="unknown_message_type",
+    )
+
+
 async def _dispatch_session_message(
     ws: WebSocket,
     *,
@@ -189,6 +236,8 @@ async def _dispatch_session_message(
     msg_session_id: str,
     msg_request_id: str,
     active_session_id: str | None,
+    session_handler: SessionHandler,
+    runtime_deps: RuntimeDeps,
 ) -> str | None:
     if msg_type == "start":
         logger.info(
@@ -204,26 +253,31 @@ async def _dispatch_session_message(
             msg_session_id,
             msg_request_id,
             active_session_id,
+            session_handler=session_handler,
+            runtime_deps=runtime_deps,
         )
     if not await _ensure_active_session(ws, active_session_id, msg_session_id, msg_request_id):
         return active_session_id
     if msg_type == "cancel":
-        logger.info("WS recv: cancel session_id=%s request_id=%s", active_session_id, msg_request_id)
-        await handle_cancel_message(ws, active_session_id, msg_request_id)
-        return active_session_id
+        return await _handle_cancel_command(
+            ws,
+            active_session_id,
+            msg_request_id,
+            session_handler=session_handler,
+        )
     session_handler_fn = _SESSION_MESSAGE_HANDLERS.get(msg_type)
     if session_handler_fn:
         logger.info("WS recv: %s session_id=%s", msg_type, active_session_id)
-        await session_handler_fn(ws, payload, active_session_id, msg_request_id)
+        await session_handler_fn(
+            ws,
+            payload,
+            active_session_id,
+            msg_request_id,
+            session_handler=session_handler,
+            runtime_deps=runtime_deps,
+        )
         return active_session_id
-    await send_error(
-        ws,
-        session_id=msg_session_id,
-        request_id=msg_request_id,
-        error_code=WS_ERROR_INVALID_MESSAGE,
-        message=f"Message type '{msg_type}' is not supported.",
-        reason_code="unknown_message_type",
-    )
+    await _send_unknown_message_type_error(ws, msg_type, msg_session_id, msg_request_id)
     return active_session_id
 
 
@@ -232,9 +286,11 @@ async def run_message_loop(
     lifecycle: WebSocketLifecycle,
     message_limiter: SlidingWindowRateLimiter,
     cancel_limiter: SlidingWindowRateLimiter,
+    runtime_deps: RuntimeDeps,
 ) -> str | None:
     """Receive, validate, and dispatch client messages."""
     session_id: str | None = None
+    session_handler = runtime_deps.session_handler
 
     while True:
         raw_msg, should_close = await _recv_text_with_watchdog(ws, lifecycle)
@@ -275,6 +331,8 @@ async def run_message_loop(
                 msg_session_id=msg_session_id,
                 msg_request_id=msg_request_id,
                 active_session_id=session_id,
+                session_handler=session_handler,
+                runtime_deps=runtime_deps,
             )
 
     return session_id

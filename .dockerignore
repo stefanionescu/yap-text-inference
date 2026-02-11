@@ -1,0 +1,29 @@
+# Deny everything by default.
+**
+
+# Keep only files required for Docker image builds.
+!.dockerignore
+!requirements-vllm.txt
+!requirements-trt.txt
+
+# Runtime application code.
+!src/
+!src/**
+
+# Engine-specific Docker build stacks.
+!docker/common/download/
+!docker/common/download/**
+!docker/common/scripts/
+!docker/common/scripts/**
+!docker/trt/Dockerfile
+!docker/trt/.dockerignore
+!docker/trt/download/
+!docker/trt/download/**
+!docker/trt/scripts/
+!docker/trt/scripts/**
+!docker/vllm/Dockerfile
+!docker/vllm/.dockerignore
+!docker/vllm/download/
+!docker/vllm/download/**
+!docker/vllm/scripts/
+!docker/vllm/scripts/**

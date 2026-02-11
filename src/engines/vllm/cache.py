@@ -24,7 +24,7 @@ from collections.abc import Callable, Awaitable
 from src.config import CACHE_RESET_INTERVAL_SECONDS
 
 if TYPE_CHECKING:
-    from .engine import VLLMEngine
+    from src.engines.base import BaseEngine
 
 logger = logging.getLogger(__name__)
 
@@ -40,33 +40,15 @@ class CacheResetManager:
     - Event signaling for daemon coordination
     - Background daemon for periodic resets
 
-    Use get_instance() to access the singleton. The singleton is managed
-    here rather than in registry.py because cache reset is vLLM-specific
-    and tightly coupled to the cache module.
+    This manager is instantiated during runtime bootstrap and passed into
+    request-handling code through the runtime dependency container.
     """
-
-    _instance: CacheResetManager | None = None
 
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self._event = asyncio.Event()
         self._last_reset = time.monotonic()
         self._daemon_task: asyncio.Task[None] | None = None
-
-    @classmethod
-    def get_instance(cls) -> CacheResetManager:
-        """Get the singleton CacheResetManager instance.
-
-        Creates the instance on first access.
-        """
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    @classmethod
-    def reset_instance(cls) -> None:
-        """Reset the singleton instance (for testing)."""
-        cls._instance = None
 
     @property
     def reschedule_event(self) -> asyncio.Event:
@@ -79,7 +61,7 @@ class CacheResetManager:
 
     async def try_reset(
         self,
-        engine: VLLMEngine,
+        engine: BaseEngine,
         reason: str,
         *,
         force: bool = False,

@@ -33,8 +33,8 @@ from collections.abc import AsyncIterator
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.state import _ChatStreamState
+from src.handlers.session.manager import SessionHandler
 
-from ..instances import session_handler
 from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
 
 logger = logging.getLogger(__name__)
@@ -209,6 +209,7 @@ async def _send_completion_frames(ws: WebSocket, state: _ChatStreamState) -> Non
 
 
 def _append_history(
+    session_handler: SessionHandler,
     session_id: str,
     history_user: str,
     final_text: str,
@@ -233,6 +234,7 @@ async def stream_chat_response(
     initial_text_already_sent: bool = True,
     history_user_utt: str | None = None,
     history_turn_id: str | None = None,
+    session_handler: SessionHandler,
 ) -> str:
     """Stream chat chunks, emit final/done messages, and record history.
 
@@ -274,11 +276,11 @@ async def stream_chat_response(
             await _send_completion_frames(ws, state)
     except asyncio.CancelledError:
         if state.text_visible:
-            _append_history(session_id, history_user, state.final_text, history_turn_id)
+            _append_history(session_handler, session_id, history_user, state.final_text, history_turn_id)
         raise
 
     if not state.interrupted:
-        _append_history(session_id, history_user, state.final_text, history_turn_id)
+        _append_history(session_handler, session_id, history_user, state.final_text, history_turn_id)
     return state.final_text
 
 

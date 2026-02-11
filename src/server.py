@@ -32,7 +32,6 @@ Example:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import contextlib
 import multiprocessing
@@ -57,18 +56,11 @@ configure_log_filters()
 from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
+from .runtime import build_runtime_deps  # noqa: E402
 from .helpers.validation import validate_env  # noqa: E402
 from .config.logging import configure_logging  # noqa: E402
+from .runtime.bootstrap import clear_runtime_registries  # noqa: E402
 from .handlers.websocket import handle_websocket_connection  # noqa: E402
-from .config import DEPLOY_CHAT, DEPLOY_TOOL, INFERENCE_ENGINE  # noqa: E402
-from .engines import (  # noqa: E402
-    get_engine,
-    shutdown_engine,
-    warm_classifier,
-    warm_chat_engine,
-    ensure_cache_reset_daemon,
-    engine_supports_cache_reset,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -76,55 +68,30 @@ app = FastAPI(default_response_class=ORJSONResponse)
 
 configure_logging()
 
-# Engine-specific runtime setup - only load vLLM modules when using vLLM
-if INFERENCE_ENGINE == "vllm":
-    from .engines.vllm.setup import configure_runtime_env
-
-    configure_runtime_env()
-
 validate_env()
 
 
 @app.on_event("startup")
 async def preload_engines() -> None:
-    """Load any configured engines before accepting traffic.
+    """Build all runtime dependencies before accepting traffic."""
+    runtime_deps = await build_runtime_deps()
+    app.state.runtime_deps = runtime_deps
 
-    This startup hook ensures models are loaded and ready before the
-    server starts accepting WebSocket connections. Benefits:
-    - First request doesn't incur model loading latency
-    - Configuration errors are caught at startup
-    - Load balancers can check /healthz after warmup completes
-
-    The chat engine and classifier are warmed concurrently to minimize
-    total startup time.
-    """
-    tasks: list[asyncio.Task[object]] = []
-
-    # Warm engines concurrently based on deployment configuration
-    if DEPLOY_CHAT:
-        tasks.append(asyncio.create_task(warm_chat_engine(get_engine)))
-
-    if DEPLOY_TOOL:
-        tasks.append(asyncio.create_task(warm_classifier()))
-
-    if not tasks:
-        return
-
-    # Wait for all engines to be ready
-    await asyncio.gather(*tasks)
-
-    # Start background cache management for vLLM
-    # TRT-LLM uses built-in block reuse and doesn't need this
-    if engine_supports_cache_reset():
-        ensure_cache_reset_daemon()
+    if runtime_deps.supports_cache_reset():
+        runtime_deps.ensure_cache_reset_daemon()
     else:
         logger.info("cache reset daemon: disabled (TRT-LLM uses block reuse)")
 
 
 @app.on_event("shutdown")
 async def stop_engines() -> None:
-    """Ensure all engines shut down cleanly when the server exits."""
-    await shutdown_engine()
+    """Ensure runtime dependencies shut down cleanly."""
+    runtime_deps = getattr(app.state, "runtime_deps", None)
+    try:
+        if runtime_deps is not None:
+            await runtime_deps.shutdown()
+    finally:
+        clear_runtime_registries()
 
 
 @app.get("/")
@@ -154,4 +121,7 @@ async def favicon():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """Main WebSocket endpoint for chat interactions."""
-    await handle_websocket_connection(websocket)
+    runtime_deps = getattr(app.state, "runtime_deps", None)
+    if runtime_deps is None:
+        raise RuntimeError("Runtime dependencies are not initialized")
+    await handle_websocket_connection(websocket, runtime_deps)

@@ -11,8 +11,10 @@ from typing import Any
 
 from fastapi import WebSocket
 
+from src.runtime.dependencies import RuntimeDeps
+from src.handlers.session.manager import SessionHandler
+
 from ..config import DEPLOY_CHAT
-from ..handlers.instances import session_handler
 from ..handlers.websocket.errors import send_error
 from ..tokens import trim_text_to_token_limit_chat
 from ..execution.chat.runner import run_chat_generation
@@ -45,6 +47,8 @@ async def _get_session_config(
     ws: WebSocket,
     session_id: str,
     request_id: str,
+    *,
+    session_handler: SessionHandler,
 ) -> dict[str, Any] | None:
     cfg = session_handler.get_session_config(session_id)
     if cfg:
@@ -100,11 +104,82 @@ async def _resolve_chat_prompt(
     return None
 
 
+def _build_followup_user_utterance(
+    session_handler: SessionHandler,
+    session_id: str,
+    analysis_text: str,
+) -> tuple[str, str, str | None]:
+    prefix = session_handler.get_screen_checked_prefix(session_id)
+    effective_max = session_handler.get_effective_user_utt_max_tokens(session_id, for_followup=True)
+    trimmed_analysis = trim_text_to_token_limit_chat(analysis_text, max_tokens=effective_max, keep="start")
+    user_utt = f"{prefix} {trimmed_analysis}".strip()
+    history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
+    return user_utt, trimmed_analysis, history_turn_id
+
+
+async def _validate_chat_runtime(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+    runtime_deps: RuntimeDeps,
+) -> bool:
+    if runtime_deps.chat_engine is not None and runtime_deps.chat_tokenizer is not None:
+        return True
+    await _send_followup_error(
+        ws,
+        session_id=session_id,
+        request_id=request_id,
+        error_code=WS_ERROR_INVALID_SETTINGS,
+        message="chat runtime dependencies are not initialized",
+        reason_code="chat_runtime_unavailable",
+    )
+    return False
+
+
+async def _stream_followup_response(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+    static_prefix: str,
+    history_text: str,
+    user_utt: str,
+    trimmed_analysis: str,
+    history_turn_id: str | None,
+    sampling_overrides: Any,
+    session_handler: SessionHandler,
+    runtime_deps: RuntimeDeps,
+) -> None:
+    await stream_chat_response(
+        ws,
+        run_chat_generation(
+            session_id=session_id,
+            static_prefix=static_prefix,
+            runtime_text="",
+            history_text=history_text,
+            user_utt=user_utt,
+            engine=runtime_deps.chat_engine,
+            session_handler=session_handler,
+            chat_tokenizer=runtime_deps.chat_tokenizer,
+            request_id=request_id,
+            sampling_overrides=sampling_overrides,
+        ),
+        session_id,
+        request_id,
+        user_utt,
+        history_turn_id=history_turn_id,
+        history_user_utt=trimmed_analysis,
+        session_handler=session_handler,
+    )
+
+
 async def handle_followup_message(
     ws: WebSocket,
     payload: dict[str, Any],
     session_id: str,
     request_id: str,
+    *,
+    session_handler: SessionHandler,
+    runtime_deps: RuntimeDeps,
 ) -> None:
     """Handle 'followup' message to continue with chat-only using analysis.
 
@@ -126,7 +201,12 @@ async def handle_followup_message(
         )
         return
 
-    cfg = await _get_session_config(ws, session_id, request_id)
+    cfg = await _get_session_config(
+        ws,
+        session_id,
+        request_id,
+        session_handler=session_handler,
+    )
     if cfg is None:
         return
 
@@ -138,33 +218,27 @@ async def handle_followup_message(
     static_prefix = await _resolve_chat_prompt(ws, cfg, session_id, request_id)
     if static_prefix is None:
         return
-    runtime_text = ""
 
-    # Synthesize the follow-up prompt for the chat model
-    prefix = session_handler.get_screen_checked_prefix(session_id)
-    # Trim analysis_text to fit within budget after prefix is added
-    effective_max = session_handler.get_effective_user_utt_max_tokens(session_id, for_followup=True)
-    trimmed_analysis = trim_text_to_token_limit_chat(analysis_text, max_tokens=effective_max, keep="start")
-    user_utt = f"{prefix} {trimmed_analysis}".strip()
-    # Track user utterance for pairing with assistant response later.
-    history_turn_id = session_handler.append_user_utterance(session_id, user_utt)
+    user_utt, trimmed_analysis, history_turn_id = _build_followup_user_utterance(
+        session_handler,
+        session_id,
+        analysis_text,
+    )
 
     sampling_overrides = cfg.get("chat_sampling")
+    if not await _validate_chat_runtime(ws, session_id, request_id, runtime_deps):
+        return
 
-    await stream_chat_response(
+    await _stream_followup_response(
         ws,
-        run_chat_generation(
-            session_id=session_id,
-            static_prefix=static_prefix,
-            runtime_text=runtime_text,
-            history_text=history_text,
-            user_utt=user_utt,
-            request_id=request_id,
-            sampling_overrides=sampling_overrides,
-        ),
         session_id,
         request_id,
+        static_prefix,
+        history_text,
         user_utt,
-        history_turn_id=history_turn_id,
-        history_user_utt=trimmed_analysis,
+        trimmed_analysis,
+        history_turn_id,
+        sampling_overrides,
+        session_handler,
+        runtime_deps,
     )

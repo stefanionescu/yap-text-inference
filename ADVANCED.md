@@ -213,6 +213,8 @@ bash scripts/lint.sh
 - custom repo lint checks, including:
   - runtime file length limits (300 LOC; `src/**/*.py`, `scripts/**/*.sh`, `docker/**/*.sh`)
   - runtime Python function length limits (60 LOC; `src/**/*.py`)
+  - one top-level class per runtime Python file (`src/**/*.py`) (dataclasses exempt)
+  - no lazy singleton runtime patterns (`src/**/*.py`)
 - ShellCheck (and shfmt checks when available)
 
 ## API — WebSocket `/ws`
