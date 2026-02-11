@@ -22,18 +22,18 @@ from collections.abc import Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..instances import connections
 from .helpers import safe_send_envelope
 from .auth import authenticate_websocket
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
+from ..session import abort_session_requests
 from ..limits import SlidingWindowRateLimiter
 from .errors import send_error, reject_connection
 from ...messages.start import handle_start_message
 from ...messages.cancel import handle_cancel_message
+from ..instances import connections, session_handler
 from ...messages.followup import handle_followup_message
 from .limits import consume_limiter, select_rate_limiter
-from ..session import session_handler, abort_session_requests
 from ...engines import reset_engine_caches, clear_caches_on_disconnect
 from ...logging import log_context, set_log_context, reset_log_context
 from ...config import (

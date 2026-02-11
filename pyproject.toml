@@ -23,6 +23,7 @@ ignore = ["D", "ANN", "COM812", "ISC001"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/state/hf.py" = ["PLC0415"]
+"src/handlers/session/abort.py" = ["PLC0415"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -77,3 +78,10 @@ name = "state must not depend on hf push modules"
 type = "forbidden"
 source_modules = ["src.state"]
 forbidden_modules = ["src.hf.trt.push", "src.hf.vllm.push"]
+
+[[tool.importlinter.contracts]]
+name = "session package must not import handler instances"
+type = "forbidden"
+source_modules = ["src.handlers.session"]
+forbidden_modules = ["src.handlers.instances"]
+ignore_imports = ["src.handlers.session.abort -> src.handlers.instances"]

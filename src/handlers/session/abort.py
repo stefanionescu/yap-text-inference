@@ -20,8 +20,6 @@ import contextlib
 
 from src.config import DEPLOY_CHAT
 
-from ..instances import session_handler
-
 
 async def abort_session_requests(
     session_id: str | None,
@@ -46,6 +44,8 @@ async def abort_session_requests(
     """
     if not session_id:
         return {"active": "", "tool": ""}
+
+    from ..instances import session_handler  # noqa: PLC0415
 
     session_handler.cancel_session_requests(session_id)
     req_info = session_handler.cleanup_session_requests(session_id)

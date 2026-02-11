@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import WebSocket
 
 from ..config import DEPLOY_CHAT
-from ..handlers.session import session_handler
+from ..handlers.instances import session_handler
 from ..handlers.websocket.errors import send_error
 from ..tokens import trim_text_to_token_limit_chat
 from ..execution.chat.runner import run_chat_generation

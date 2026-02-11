@@ -34,7 +34,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from src.state import _ChatStreamState
 
-from ..session import session_handler
+from ..instances import session_handler
 from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
 
 logger = logging.getLogger(__name__)
