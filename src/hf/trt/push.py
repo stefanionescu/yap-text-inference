@@ -16,7 +16,7 @@ if not env_flag("SHOW_HF_LOGS", False):
 
 from src.state import TRTPushJob
 from src.hf import get_hf_api, verify_repo_exists
-from src.quantization.trt import get_engine_label
+from src.quantization.trt.label import get_engine_label
 
 
 def push_checkpoint_to_hf(

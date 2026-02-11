@@ -1,9 +1,4 @@
-"""vLLM AWQ Quantization Package."""
+"""vLLM AWQ Quantization Package.
 
-from .core import AWQQuantizer
-from .utils.model import is_awq_dir
-
-__all__ = [
-    "AWQQuantizer",
-    "is_awq_dir",
-]
+Do not re-export from submodules here — it would create a circular import.
+"""

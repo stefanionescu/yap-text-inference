@@ -6,14 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
-from src.hf import create_repo_if_needed
-from src.hf.trt.readme import render_trt_readme
-from src.hf.trt.tokenizer import find_tokenizer_dir
-from src.config.quantization import TOKENIZER_FILES, CHAT_TEMPLATE_FILES
-from src.config.trt import TRT_HF_CHECKPOINTS_PATH, TRT_HF_ENGINES_PATH_FMT
-from src.quantization.trt import collect_metadata, get_engine_label, detect_base_model
-from src.hf.vllm.job import _IGNORE_PATTERNS, load_metadata, regenerate_readme, classify_prequantized_source
-
 if TYPE_CHECKING:  # pragma: no cover - optional dependency
     from huggingface_hub import HfApi
 
@@ -34,6 +26,11 @@ class TRTPushJob:
     private: bool
 
     def run(self) -> bool:
+        from src.hf import create_repo_if_needed
+        from src.hf.trt.readme import render_trt_readme
+        from src.hf.trt.tokenizer import find_tokenizer_dir
+        from src.quantization.trt.metadata import collect_metadata, detect_base_model
+
         if not self.checkpoint_path.is_dir():
             print(f"[trt-hf] Error: Checkpoint directory not found: {self.checkpoint_path}")
             return False
@@ -51,7 +48,7 @@ class TRTPushJob:
         staging_dir.mkdir(parents=True, exist_ok=True)
 
         create_repo_if_needed(self.api, self.repo_id, self.token, self.private)
-        self._upload_readme(metadata, staging_dir)
+        self._upload_readme(render_trt_readme, metadata, staging_dir)
         self._upload_checkpoint()
         self._upload_engine()
 
@@ -78,13 +75,15 @@ class TRTPushJob:
             print(f"[trt-hf] Warning: Failed to upload {dest}: {exc}")
             return False
 
-    def _upload_readme(self, metadata: dict, staging_dir: Path) -> None:
-        readme_content = render_trt_readme(metadata)
+    def _upload_readme(self, render_fn: object, metadata: dict, staging_dir: Path) -> None:
+        readme_content = render_fn(metadata)  # type: ignore[operator]
         readme_path = staging_dir / "README.md"
         readme_path.write_text(readme_content, encoding="utf-8")
         self._upload_file(readme_path, "README.md")
 
     def _upload_checkpoint(self) -> None:
+        from src.config.trt import TRT_HF_CHECKPOINTS_PATH
+
         print("[trt-hf] Uploading checkpoint...")
         self.api.upload_folder(
             folder_path=str(self.checkpoint_path),
@@ -97,6 +96,9 @@ class TRTPushJob:
     def _upload_engine(self) -> None:
         if not self.engine_provided or not self.engine_path.is_dir():
             return
+
+        from src.config.trt import TRT_HF_ENGINES_PATH_FMT
+        from src.quantization.trt.label import get_engine_label
 
         engine_label = get_engine_label(self.engine_path)
         engines_path = TRT_HF_ENGINES_PATH_FMT.format(engine_label=engine_label)
@@ -118,6 +120,8 @@ class TRTPushJob:
             print("[trt-hf] Warning: Tokenizer not found; TRT-LLM will download from base model at runtime")
             return
 
+        from src.config.quantization import TOKENIZER_FILES
+
         print("[trt-hf] Uploading tokenizer...")
         for filename in TOKENIZER_FILES:
             src_file = tokenizer_dir / filename
@@ -125,6 +129,8 @@ class TRTPushJob:
                 self._upload_file(src_file, filename)
 
     def _upload_chat_assets(self, candidate_dirs: list[Path]) -> None:
+        from src.config.quantization import CHAT_TEMPLATE_FILES
+
         uploaded = 0
         tried_dirs: set[Path] = set()
 
@@ -158,6 +164,9 @@ class AWQPushJob:
     allow_create: bool
 
     def run(self) -> bool:
+        from src.hf import create_repo_if_needed
+        from src.hf.vllm.job import _IGNORE_PATTERNS, load_metadata, regenerate_readme, classify_prequantized_source
+
         metadata = load_metadata(self.src_dir)
         source_model = (metadata.get("source_model") or "").strip() or "unknown"
 

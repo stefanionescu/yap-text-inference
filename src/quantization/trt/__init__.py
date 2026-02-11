@@ -1,16 +1,4 @@
-"""TRT-LLM quantization metadata and detection utilities."""
+"""TRT-LLM quantization metadata and detection utilities.
 
-from .metadata import collect_metadata, get_engine_label, detect_base_model
-from .detection import detect_gpu_name, detect_cuda_version, detect_tensorrt_llm_version, get_compute_capability_info
-
-__all__ = [
-    # Metadata
-    "collect_metadata",
-    "detect_base_model",
-    "get_engine_label",
-    # Detection
-    "detect_cuda_version",
-    "detect_gpu_name",
-    "detect_tensorrt_llm_version",
-    "get_compute_capability_info",
-]
+Do not re-export from submodules here — it would create a circular import.
+"""
