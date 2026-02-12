@@ -217,7 +217,7 @@ bash scripts/lint.sh
   - no lazy singleton runtime patterns (`src/**/*.py`)
   - no lazy module loading/export patterns (`src/**/*.py`; no `__getattr__` lazy exports or `importlib.import_module` indirection)
   - no legacy/backward-compatibility markers in runtime orchestration modules
-  - Docker ignore policy: only `docker/vllm/.dockerignore` and `docker/trt/.dockerignore` are allowed
+  - Docker ignore policy from `linting/policy.toml` (engine-local mode: only `docker/vllm/.dockerignore` and `docker/trt/.dockerignore` are allowed)
 - ShellCheck (and shfmt checks when available)
 
 ## API — WebSocket `/ws`
