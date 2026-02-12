@@ -123,7 +123,8 @@ docker run -d --gpus all --name yap-tool \
 > Tool models are PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally so restarts reuse them.
 
 Build scripts construct minimal temporary Docker contexts and use strict
-allowlist ignore files (`docker/vllm/.dockerignore`, `docker/trt/.dockerignore`).
+policy-driven allowlist ignore files (`linting/policy.toml` with
+`docker/vllm/.dockerignore` and `docker/trt/.dockerignore`).
 Docker contexts include only runtime build assets
 (no repo docs and no test clients).
 

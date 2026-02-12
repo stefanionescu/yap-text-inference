@@ -6,3 +6,4 @@ mypy==1.11.2
 shellcheck-py==0.10.0.1
 numpy==1.26.4
 import-linter==2.1
+tomli==2.2.1
