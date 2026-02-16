@@ -713,6 +713,12 @@ This separation ensures the reported percentiles reflect real conversational lat
 - Chat prompts are rendered using each model's tokenizer
 - **vLLM:** Prefix caching reuses repeated prompts automatically. Swapping the system prompt keeps history KV hot.
 - **TensorRT-LLM:** Block reuse handles KV cache automatically.
+- **Tool classifier context windows are model-aware by default:**
+  - Longformer-based tool models: `1536` tokens
+  - BERT/ModernBERT-based tool models: `512` tokens
+  - You can override with `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS`.
+  - Effective tool history budget is clamped to the classifier's effective max sequence length.
+- **Oversized latest user messages for tool routing are tail-truncated (keep end)** so the most recent part still reaches the classifier.
 
 ## Known Issues
 

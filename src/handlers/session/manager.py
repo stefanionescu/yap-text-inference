@@ -189,13 +189,13 @@ class SessionHandler:
         state.touch()
         return self._history.get_user_texts(state)
 
-    def get_tool_history_text(self, session_id: str) -> str:
+    def get_tool_history_text(self, session_id: str, *, max_tokens: int | None = None) -> str:
         """Get trimmed history tailored for the classifier/tool model."""
         state = self._get_state(session_id)
         if not state:
             return ""
         state.touch()
-        return self._history.get_tool_history_text(state)
+        return self._history.get_tool_history_text(state, max_tokens=max_tokens)
 
     def set_history_text(self, session_id: str, history_text: str) -> str:
         state = self._ensure_state(session_id)

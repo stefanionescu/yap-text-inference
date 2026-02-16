@@ -21,6 +21,16 @@ def test_build_user_history_for_tool_respects_token_budget() -> None:
         assert history == "three\nfour five six"
 
 
+def test_build_user_history_for_tool_trims_single_oversized_latest_message() -> None:
+    with use_local_tokenizers():
+        history = token_utils.build_user_history_for_tool(
+            ["one two three four five six"],
+            max_tokens=3,
+        )
+        assert history == "four five six"
+        assert token_utils.count_tokens_tool(history) == 3
+
+
 def test_trim_history_preserve_messages_keeps_latest_chunks() -> None:
     with use_local_tokenizers():
         history = "one two three\n\nfour five six\n\nseven eight"

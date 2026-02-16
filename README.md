@@ -66,6 +66,13 @@ Default GPU allocation:
 
 Tool model default: `yapwithai/yap-longformer-screenshot-intent`. Override with `TOOL_MODEL` (must be compatible with `AutoModelForSequenceClassification`).
 
+Tool classifier token budgets are model-aware when not explicitly configured:
+- Longformer-based tool models default to a `1536` token classifier window.
+- BERT/ModernBERT-based tool models default to a `512` token classifier window.
+- Set `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS` to override defaults.
+- If `TOOL_HISTORY_TOKENS` is higher than the classifier window, it is clamped to fit.
+- If the newest user message alone exceeds the tool history budget, the server keeps the latest tail that fits instead of dropping the message.
+
 Examples:
 ```bash
 # TRT-LLM with INT4-AWQ quantization (default engine)

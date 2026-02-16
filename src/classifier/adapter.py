@@ -29,8 +29,8 @@ from src.config.tool import (
 )
 
 from .batch import BatchExecutor
-from .info import build_model_info
 from .backend import TorchClassifierBackend
+from .info import build_model_info, resolve_history_token_limit
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,8 @@ class ClassifierToolAdapter:
         threshold: float = 0.66,
         device: str | None = None,
         compile_model: bool = True,
-        max_length: int = 1536,
+        max_length: int | None = None,
+        history_max_tokens: int | None = None,
         batch_max_size: int = 3,
         batch_max_delay_ms: float = 10.0,
         request_timeout_s: float = 5.0,
@@ -72,7 +73,8 @@ class ClassifierToolAdapter:
             threshold: Probability threshold for positive classification.
             device: Target device (defaults to cuda if available).
             compile_model: Whether to use torch.compile() for optimization.
-            max_length: Maximum input sequence length.
+            max_length: Optional total input sequence length override.
+            history_max_tokens: Optional history token budget override.
             batch_max_size: Maximum requests per micro-batch.
             batch_max_delay_ms: Maximum wait time to fill a batch.
             request_timeout_s: Per-request timeout for classification.
@@ -88,12 +90,18 @@ class ClassifierToolAdapter:
 
         self._configure_gpu_limit()
         self._model_info: ClassifierModelInfo = build_model_info(model_path, max_length)
+        resolved_history_tokens = resolve_history_token_limit(
+            max_length=self._model_info.max_length,
+            history_tokens=history_max_tokens,
+        )
         self._backend = TorchClassifierBackend(
             self._model_info,
             device=self.device,
             dtype=self.dtype,
             compile_model=compile_model,
         )
+        # Clamp history budget to the backend's effective tokenizer/model max length.
+        self.max_history_tokens = min(resolved_history_tokens, self._backend.max_length)
         self._batch = BatchExecutor(
             self._backend.infer,
             max_batch_size=batch_max_size,
@@ -108,6 +116,13 @@ class ClassifierToolAdapter:
             self._backend.__class__.__name__,
             batch_max_size,
             batch_max_delay_ms,
+        )
+        logger.info(
+            "classifier: token limits model=%s config_max_length=%s backend_max_length=%s history_tokens=%s",
+            model_path,
+            self._model_info.max_length,
+            self._backend.max_length,
+            self.max_history_tokens,
         )
 
     # ============================================================================
