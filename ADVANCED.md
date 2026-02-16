@@ -5,6 +5,7 @@ This document covers advanced operations, configuration, and deep-dive details f
 ## Contents
 
 - [Authentication Coverage](#authentication-coverage)
+- [Telemetry](#telemetry)
 - [Inference Engine Configuration](#inference-engine-configuration)
   - [Engine Selection](#engine-selection)
   - [vLLM Configuration](#vllm-configuration)
@@ -47,6 +48,91 @@ This document covers advanced operations, configuration, and deep-dive details f
 
 - `/healthz` – No authentication required
 - `/ws` – Requires API key
+
+## Telemetry
+
+The server supports optional production observability via **Sentry** (error tracking) and **Axiom** (traces + metrics via OpenTelemetry). Both are disabled by default — the service runs identically when credentials are absent, with zero overhead (no-op meters/tracers).
+
+### Enabling Telemetry
+
+Set the relevant environment variables to activate each backend:
+
+| Backend | Enable by setting | What you get |
+|---------|-------------------|--------------|
+| Sentry | `SENTRY_DSN` | Error reports with `session_id`/`request_id`/`client_id` tags, rate-limited per error class (10 s) |
+| Axiom | `AXIOM_API_TOKEN` | OpenTelemetry traces (session → request → generation spans) and metrics exported via OTLP/HTTP |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SENTRY_DSN` | _(empty)_ | Sentry DSN. Leave empty to disable. |
+| `SENTRY_ENVIRONMENT` | `production` | Sentry environment tag |
+| `SENTRY_RELEASE` | _(empty)_ | Sentry release tag |
+| `SENTRY_SAMPLE_RATE` | `1.0` | Error event sample rate (0.0–1.0) |
+| `AXIOM_API_TOKEN` | _(empty)_ | Axiom API token. Leave empty to disable. |
+| `AXIOM_DATASET` | `text-inference-api` | Axiom dataset name |
+| `AXIOM_ENVIRONMENT` | `production` | Deployment environment for traces/metrics |
+| `CLOUD_PLATFORM` | _(empty)_ | Fleet tag (`runpod`, `lambda-labs`, `aws`, `hetzner`, etc.) |
+| `OTEL_SERVICE_NAME` | `yap-text-inference-api` | OTel service name on every span and metric |
+| `OTEL_TRACES_EXPORT_INTERVAL_MS` | `5000` | Span batch flush interval |
+| `OTEL_METRICS_EXPORT_INTERVAL_MS` | `15000` | Metric export interval |
+| `OTEL_TRACES_BATCH_SIZE` | `512` | Max spans per export batch |
+
+### Staging vs Production
+
+Set `SENTRY_ENVIRONMENT` and `AXIOM_ENVIRONMENT` to `staging` for non-production deployments. All events and metrics are tagged with the environment value.
+
+### Metrics Reference
+
+**Histograms:**
+
+| Metric | Unit | Description |
+|--------|------|-------------|
+| `text_inference.ttft` | s | Time to first token |
+| `text_inference.request_latency` | s | End-to-end request latency |
+| `text_inference.token_latency` | s | Inter-token arrival time |
+| `text_inference.connection_duration` | s | WebSocket session duration |
+| `text_inference.connection_semaphore_wait` | s | Slot acquisition wait |
+| `text_inference.prompt_tokens` | {token} | Input prompt token count |
+| `text_inference.completion_tokens` | {token} | Output completion token count |
+| `text_inference.generations_per_session` | {request} | Requests per session |
+| `text_inference.startup_duration` | s | Server startup time |
+| `text_inference.tool_classification_latency` | s | Tool classifier inference time |
+
+**Counters:**
+
+| Metric | Unit | Description |
+|--------|------|-------------|
+| `text_inference.requests_total` | {request} | Total requests (status dimension) |
+| `text_inference.tokens_generated_total` | {token} | Total tokens generated |
+| `text_inference.prompt_tokens_total` | {token} | Total prompt tokens processed |
+| `text_inference.connections_rejected_total` | {connection} | Rejected at capacity |
+| `text_inference.session_churn_total` | {session} | Completed sessions |
+| `text_inference.cancellation_total` | {request} | Client cancellations |
+| `text_inference.errors_total` | {error} | Unhandled errors (error.type dimension) |
+| `text_inference.timeout_disconnects_total` | {connection} | Idle timeout disconnects |
+| `text_inference.rate_limit_violations_total` | {violation} | Rate limit hits |
+| `text_inference.tool_classifications_total` | {classification} | Tool classifier calls |
+| `text_inference.cache_resets_total` | {reset} | vLLM cache resets |
+
+**Gauges:**
+
+| Metric | Unit | Description |
+|--------|------|-------------|
+| `text_inference.active_connections` | {connection} | Current WebSocket connections |
+| `text_inference.active_generations` | {generation} | Currently running generations |
+
+**GPU Observables (multi-device):**
+
+| Metric | Unit | Description |
+|--------|------|-------------|
+| `text_inference.gpu.memory_used` | By | GPU memory in use |
+| `text_inference.gpu.memory_free` | By | GPU memory available |
+| `text_inference.gpu.memory_total` | By | Total GPU memory |
+| `text_inference.gpu.utilization` | % | GPU compute utilization |
+
+GPU metrics are reported per device with a `gpu.device.id` attribute. On CPU-only machines these observables return empty (no errors).
 
 ## Inference Engine Configuration
 

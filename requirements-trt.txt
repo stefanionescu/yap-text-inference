@@ -40,3 +40,9 @@ wheel==0.45.1
 # Text sanitization
 phonenumbers==9.0.3
 ftfy==6.2.3
+
+# Telemetry
+opentelemetry-api==1.33.0
+opentelemetry-sdk==1.33.0
+opentelemetry-exporter-otlp-proto-http==1.33.0
+sentry-sdk==2.22.0

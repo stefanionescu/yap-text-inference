@@ -28,12 +28,14 @@ Example:
             await handler.disconnect(ws)
 """
 
+import time
 import asyncio
 import logging
 
 from fastapi import WebSocket
 
 from ..config import MAX_CONCURRENT_CONNECTIONS
+from ..telemetry.instruments import get_metrics
 from ..config.websocket import WS_HANDSHAKE_ACQUIRE_TIMEOUT_S
 
 logger = logging.getLogger(__name__)
@@ -84,15 +86,20 @@ class ConnectionHandler:
         Returns:
             True if connection was accepted, False if at capacity
         """
+        m = get_metrics()
+        t0 = time.monotonic()
         try:
             await asyncio.wait_for(self._semaphore.acquire(), timeout=self.acquire_timeout)
         except asyncio.TimeoutError:
+            m.connection_semaphore_wait.record(time.monotonic() - t0)
+            m.connections_rejected_total.add(1)
             logger.warning(
                 "Connection rejected: at capacity (%s/%s)",
                 len(self.active_connections),
                 self.max_connections,
             )
             return False
+        m.connection_semaphore_wait.record(time.monotonic() - t0)
 
         try:
             async with self._lock:

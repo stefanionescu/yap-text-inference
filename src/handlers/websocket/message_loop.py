@@ -19,6 +19,7 @@ from .helpers import safe_send_envelope
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
 from ..limits import SlidingWindowRateLimiter
+from ...telemetry.instruments import get_metrics
 from ...messages.cancel import handle_cancel_message
 from ...messages.followup import handle_followup_message
 from .limits import consume_limiter, select_rate_limiter
@@ -202,6 +203,7 @@ async def _handle_cancel_command(
 ) -> str | None:
     if active_session_id is None:
         return active_session_id
+    get_metrics().cancellation_total.add(1)
     logger.info("WS recv: cancel session_id=%s request_id=%s", active_session_id, msg_request_id)
     await handle_cancel_message(
         ws,
@@ -240,6 +242,7 @@ async def _dispatch_session_message(
     runtime_deps: RuntimeDeps,
 ) -> str | None:
     if msg_type == "start":
+        get_metrics().requests_total.add(1, {"status": "started"})
         logger.info(
             "WS recv: start session_id=%s gender=%s len(history)=%s len(user)=%s",
             msg_session_id,

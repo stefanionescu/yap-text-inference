@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from .errors import build_error_payload
 from .helpers import safe_send_envelope
+from ...telemetry.instruments import get_metrics
 from ...config.websocket import WS_ERROR_RATE_LIMITED
 from ...config.chat import MESSAGE_RATE_LIMIT_MESSAGES
 from ..limits import RateLimitError, SlidingWindowRateLimiter
@@ -72,6 +73,7 @@ async def consume_limiter(
     try:
         limiter.consume()
     except RateLimitError as err:
+        get_metrics().rate_limit_violations_total.add(1)
         retry_in = int(max(1, math.ceil(err.retry_in))) if err.retry_in > 0 else 1
         limit_desc = limiter.limit
         window_desc = int(limiter.window_seconds)
