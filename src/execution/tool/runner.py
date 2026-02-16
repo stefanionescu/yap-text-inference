@@ -30,6 +30,8 @@ import asyncio
 import logging
 from typing import Any
 
+from src.telemetry.sentry import add_breadcrumb
+from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
 from src.classifier.adapter import ClassifierToolAdapter
 
@@ -72,6 +74,10 @@ async def _run_classifier_toolcall(
     text = await loop.run_in_executor(None, _classify_sync)
 
     dt_ms = (time.perf_counter() - t0) * 1000.0
+    m = get_metrics()
+    m.tool_classification_latency.record(dt_ms / 1000.0)
+    m.tool_classifications_total.add(1)
+    add_breadcrumb("Tool classified", category="tool", data={"result": text, "ms": dt_ms})
     logger.info(
         "tool_runner[classifier]: done session_id=%s req_id=%s result=%s ms=%.1f", session_id, req_id, text, dt_ms
     )

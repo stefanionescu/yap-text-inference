@@ -33,6 +33,8 @@ import contextlib
 
 from fastapi import WebSocket
 
+from ...telemetry.sentry import add_breadcrumb
+from ...telemetry.instruments import get_metrics
 from ...config.websocket import WS_IDLE_TIMEOUT_S, WS_CLOSE_IDLE_CODE, WS_WATCHDOG_TICK_S, WS_CLOSE_IDLE_REASON
 
 logger = logging.getLogger(__name__)
@@ -116,6 +118,8 @@ class WebSocketLifecycle:
                     break
                 # Check if connection has been idle too long
                 if (time.monotonic() - self._last_activity) >= self._idle_timeout_s:
+                    get_metrics().timeout_disconnects_total.add(1)
+                    add_breadcrumb("Idle timeout", category="lifecycle")
                     logger.info("WebSocket idle timeout reached; closing connection")
                     self._stop_event.set()  # Signal handler to exit
                     await self._close_ws()

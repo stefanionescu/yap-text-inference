@@ -29,6 +29,7 @@ from collections.abc import AsyncGenerator
 
 from src.engines.base import BaseEngine
 from src.tokens.tokenizer import FastTokenizer
+from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
 
 from ...config.timeouts import GEN_TIMEOUT_S
@@ -203,6 +204,11 @@ async def run_chat_generation(
         user_utt,
         chat_tokenizer,
     )
+    prompt_token_count = len(chat_tokenizer.encode_ids(prompt))
+    m = get_metrics()
+    m.prompt_tokens.record(prompt_token_count)
+    m.prompt_tokens_total.add(prompt_token_count)
+
     stream = _build_stream(
         session_id=session_id,
         request_id=req_id,
