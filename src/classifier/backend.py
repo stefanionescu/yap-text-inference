@@ -129,6 +129,11 @@ class TorchClassifierBackend:
                 outputs = self._model(**enc)
             return outputs.logits
 
+    @property
+    def max_length(self) -> int:
+        """Return effective backend max sequence length after tokenizer clamp."""
+        return self._max_length
+
 
 __all__ = [
     "TorchClassifierBackend",

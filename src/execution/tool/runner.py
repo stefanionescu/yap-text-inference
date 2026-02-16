@@ -59,7 +59,10 @@ async def _run_classifier_toolcall(
     t0 = time.perf_counter()
 
     # Snapshot trimmed user-only history (most recent last, already token-limited)
-    tool_history = session_handler.get_tool_history_text(session_id)
+    tool_history = session_handler.get_tool_history_text(
+        session_id,
+        max_tokens=classifier_adapter.max_history_tokens,
+    )
 
     def _classify_sync() -> str:
         """Run classifier inference in a worker thread."""

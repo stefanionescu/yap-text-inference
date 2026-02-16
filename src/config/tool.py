@@ -62,8 +62,13 @@ TOOL_COMPILE = env_flag("TOOL_COMPILE", False)
 # Classifier uses recent conversation history for context. These limits
 # prevent OOM and keep latency low.
 
-TOOL_HISTORY_TOKENS = int(os.getenv("TOOL_HISTORY_TOKENS", "1536"))  # History budget
-TOOL_MAX_LENGTH = int(os.getenv("TOOL_MAX_LENGTH", "1536"))  # Total input budget
+_tool_history_tokens_raw = os.getenv("TOOL_HISTORY_TOKENS")
+TOOL_HISTORY_TOKENS_CONFIGURED = _tool_history_tokens_raw is not None
+TOOL_HISTORY_TOKENS = int(_tool_history_tokens_raw) if _tool_history_tokens_raw is not None else 1536
+
+_tool_max_length_raw = os.getenv("TOOL_MAX_LENGTH")
+TOOL_MAX_LENGTH_CONFIGURED = _tool_max_length_raw is not None
+TOOL_MAX_LENGTH = int(_tool_max_length_raw) if _tool_max_length_raw is not None else 1536
 
 # ============================================================================
 # Micro-batching
@@ -99,7 +104,9 @@ __all__ = [
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",
+    "TOOL_HISTORY_TOKENS_CONFIGURED",
     "TOOL_MAX_LENGTH",
+    "TOOL_MAX_LENGTH_CONFIGURED",
     "TOOL_MICROBATCH_MAX_SIZE",
     "TOOL_MICROBATCH_MAX_DELAY_MS",
     "TOOL_MIN_TIMEOUT_S",

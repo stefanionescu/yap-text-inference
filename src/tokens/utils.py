@@ -185,10 +185,16 @@ def build_user_history_for_tool(
         if not stripped:
             continue
         line_tokens = count_tokens_tool(stripped)
+        if not selected and line_tokens > max_tokens:
+            # If latest utterance alone exceeds budget, keep the most recent tail.
+            clipped = trim_text_to_token_limit_tool(stripped, max_tokens=max_tokens, keep="end").strip()
+            if clipped:
+                selected.insert(0, clipped)
+            break
         additional = line_tokens
         if selected:
             additional += newline_tokens
-        if selected and total_tokens + additional > max_tokens:
+        if total_tokens + additional > max_tokens:
             break
         selected.insert(0, stripped)
         total_tokens += additional

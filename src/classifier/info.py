@@ -1,17 +1,9 @@
-"""Model metadata helpers for the classifier adapter.
+"""Model metadata and context-window helpers for classifier runtime.
 
-This module provides utilities for extracting metadata from HuggingFace
-model configurations. The metadata is used to:
-
-1. Determine model type (BERT-style vs Longformer)
-2. Configure sequence length limits
-3. Set up the correct inference path
-
-ClassifierModelInfo:
-    Dataclass holding model metadata extracted from config.json
-
-build_model_info():
-    Factory function that reads HuggingFace config and builds metadata.
+This module inspects HuggingFace config metadata to determine:
+1. Model family (Longformer vs BERT-style),
+2. Effective classifier max_length defaults,
+3. Effective tool-history budget clamping rules.
 """
 
 from __future__ import annotations
@@ -20,8 +12,23 @@ from transformers import AutoConfig  # type: ignore[import]
 
 from src.state import ClassifierModelInfo
 
+# Model-family defaults for tool classifier context windows.
+LONGFORMER_DEFAULT_MAX_LENGTH = 1536
+BERT_DEFAULT_MAX_LENGTH = 512
 
-def build_model_info(model_path: str, max_length: int) -> ClassifierModelInfo:
+
+def _default_max_length(model_type: str) -> int:
+    return LONGFORMER_DEFAULT_MAX_LENGTH if model_type == "longformer" else BERT_DEFAULT_MAX_LENGTH
+
+
+def resolve_history_token_limit(*, max_length: int, history_tokens: int | None) -> int:
+    """Resolve and clamp the history-token budget for classifier context."""
+    if history_tokens is None:
+        return max(1, int(max_length))
+    return max(1, min(int(history_tokens), int(max_length)))
+
+
+def build_model_info(model_path: str, max_length: int | None) -> ClassifierModelInfo:
     """Inspect the Hugging Face config and produce classifier metadata.
 
     Reads config.json from the model path/repo to determine:
@@ -30,7 +37,7 @@ def build_model_info(model_path: str, max_length: int) -> ClassifierModelInfo:
 
     Args:
         model_path: HuggingFace model ID or local directory path.
-        max_length: User-configured maximum sequence length.
+        max_length: Optional maximum sequence length override.
 
     Returns:
         ClassifierModelInfo with extracted/configured metadata.
@@ -38,13 +45,19 @@ def build_model_info(model_path: str, max_length: int) -> ClassifierModelInfo:
     config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
     config_type = getattr(config, "model_type", "").lower()
     model_type = "longformer" if config_type == "longformer" else "bert"
+    resolved_max_length = int(max_length) if max_length is not None else _default_max_length(model_type)
     num_labels = int(getattr(config, "num_labels", 2))
     return ClassifierModelInfo(
         model_id=model_path,
         model_type=model_type,
-        max_length=max_length,
+        max_length=max(1, resolved_max_length),
         num_labels=num_labels,
     )
 
 
-__all__ = ["build_model_info"]
+__all__ = [
+    "LONGFORMER_DEFAULT_MAX_LENGTH",
+    "BERT_DEFAULT_MAX_LENGTH",
+    "resolve_history_token_limit",
+    "build_model_info",
+]

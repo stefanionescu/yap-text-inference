@@ -22,8 +22,8 @@ from __future__ import annotations
 import uuid
 
 from src.state.session import HistoryTurn, SessionState
-from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
+from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool, trim_text_to_token_limit_tool
 
 from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 
@@ -63,6 +63,7 @@ def trim_history(
     *,
     trigger_tokens: int | None = None,
     target_tokens: int | None = None,
+    tool_history_tokens: int | None = None,
 ) -> None:
     """Trim history when it exceeds the configured trigger.
 
@@ -81,7 +82,7 @@ def trim_history(
 
     if not DEPLOY_CHAT:
         if DEPLOY_TOOL:
-            _trim_history_tool(state)
+            _trim_history_tool(state, max_tokens=tool_history_tokens)
         return
 
     effective_trigger = trigger_tokens or HISTORY_MAX_TOKENS
@@ -117,7 +118,7 @@ def trim_history(
         tokens = count_tokens_chat(rendered) if rendered else 0
 
 
-def _trim_history_tool(state: SessionState) -> None:
+def _trim_history_tool(state: SessionState, *, max_tokens: int | None = None) -> None:
     """Trim history turns so user-only tokens stay within TOOL_HISTORY_TOKENS.
 
     In tool-only deployments, the chat trimming path is skipped.
@@ -126,20 +127,30 @@ def _trim_history_tool(state: SessionState) -> None:
     """
     if not state.history_turns:
         return
+    budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS))
     user_texts = get_user_texts(state.history_turns)
     if not user_texts:
         state.history_turns = []
         return
     tokens = _count_user_tokens_tool(user_texts)
-    if tokens <= TOOL_HISTORY_TOKENS:
+    if tokens <= budget:
         return
     # Drop oldest turns until user-only tokens fit
     while len(state.history_turns) > 1:
         state.history_turns.pop(0)
         user_texts = get_user_texts(state.history_turns)
         tokens = _count_user_tokens_tool(user_texts)
-        if tokens <= TOOL_HISTORY_TOKENS:
+        if tokens <= budget:
             break
+
+    if not state.history_turns:
+        return
+
+    latest_turn = state.history_turns[-1]
+    latest_user = (latest_turn.user or "").strip()
+    if latest_user and count_tokens_tool(latest_user) > budget:
+        # Keep the newest tail so single-message overflows remain usable.
+        latest_turn.user = trim_text_to_token_limit_tool(latest_user, max_tokens=budget, keep="end")
 
 
 def _count_user_tokens_tool(user_texts: list[str]) -> int:
@@ -149,16 +160,17 @@ def _count_user_tokens_tool(user_texts: list[str]) -> int:
     return count_tokens_tool("\n".join(user_texts))
 
 
-def render_tool_history_text(turns: list[HistoryTurn]) -> str:
+def render_tool_history_text(turns: list[HistoryTurn], *, max_tokens: int | None = None) -> str:
     """Render user-only history trimmed for the classifier/tool model."""
     if not DEPLOY_TOOL:
         return ""
     user_texts = get_user_texts(turns)
     if not user_texts:
         return ""
+    budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS))
     return build_user_history_for_tool(
         user_texts,
-        TOOL_HISTORY_TOKENS,
+        budget,
     )
 
 
@@ -203,10 +215,10 @@ class HistoryController:
         trim_history(state)
         return get_user_texts(state.history_turns)
 
-    def get_tool_history_text(self, state: SessionState) -> str:
+    def get_tool_history_text(self, state: SessionState, *, max_tokens: int | None = None) -> str:
         """Get trimmed user-only history for the classifier/tool model."""
-        trim_history(state)
-        return render_tool_history_text(state.history_turns)
+        trim_history(state, tool_history_tokens=max_tokens)
+        return render_tool_history_text(state.history_turns, max_tokens=max_tokens)
 
     def set_text(self, state: SessionState, history_text: str) -> str:
         state.history_turns = parse_history_text(history_text)
