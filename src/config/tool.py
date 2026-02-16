@@ -22,8 +22,9 @@ Environment Variables:
     TOOL_COMPILE: Enable torch.compile optimization
     TOOL_HISTORY_TOKENS: Max tokens of history context
     TOOL_MAX_LENGTH: Max total input length
-    TOOL_MICROBATCH_MAX_SIZE: Max requests per batch
-    TOOL_MICROBATCH_MAX_DELAY_MS: Max wait time for batch fill
+
+Note: Micro-batching parameters (batch size, delay) are hardcoded per model
+in src.config.models.TOOL_MODEL_BATCH_CONFIG.
 """
 
 from __future__ import annotations
@@ -71,13 +72,17 @@ TOOL_MAX_LENGTH_CONFIGURED = _tool_max_length_raw is not None
 TOOL_MAX_LENGTH = int(_tool_max_length_raw) if _tool_max_length_raw is not None else 1536
 
 # ============================================================================
-# Micro-batching
+# Per-model micro-batching
 # ============================================================================
-# Batch concurrent requests to improve GPU utilization. The executor waits
-# up to max_delay_ms to fill a batch of max_size before running inference.
+# Hardcoded batch parameters per tool model.  Keyed by model ID.
+# batch_max_size  – max requests per micro-batch
+# batch_max_delay_ms – max wait time (ms) to fill a batch
 
-TOOL_MICROBATCH_MAX_SIZE = int(os.getenv("TOOL_MICROBATCH_MAX_SIZE", "3"))
-TOOL_MICROBATCH_MAX_DELAY_MS = float(os.getenv("TOOL_MICROBATCH_MAX_DELAY_MS", "10.0"))
+TOOL_MODEL_BATCH_CONFIG: dict[str, dict[str, int | float]] = {
+    "yapwithai/yap-longformer-screenshot-intent": {"batch_max_size": 3, "batch_max_delay_ms": 10.0},
+    "yapwithai/yap-modernbert-screenshot-intent": {"batch_max_size": 5, "batch_max_delay_ms": 15.0},
+    "yapwithai/yap-distilroberta-screenshot-intent": {"batch_max_size": 10, "batch_max_delay_ms": 25.0},
+}
 
 # ============================================================================
 # Classifier Runtime Constants
@@ -107,12 +112,11 @@ __all__ = [
     "TOOL_HISTORY_TOKENS_CONFIGURED",
     "TOOL_MAX_LENGTH",
     "TOOL_MAX_LENGTH_CONFIGURED",
-    "TOOL_MICROBATCH_MAX_SIZE",
-    "TOOL_MICROBATCH_MAX_DELAY_MS",
     "TOOL_MIN_TIMEOUT_S",
     "TOOL_MIN_GPU_FRAC",
     "TOOL_MAX_GPU_FRAC",
     "TOOL_POSITIVE_RESULT",
     "TOOL_NEGATIVE_RESULT",
     "TOOL_POSITIVE_LABEL_INDEX",
+    "TOOL_MODEL_BATCH_CONFIG",
 ]

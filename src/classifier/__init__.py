@@ -27,8 +27,9 @@ Configuration (via environment):
     TOOL_DECISION_THRESHOLD: Probability threshold for screenshot detection
     TOOL_COMPILE: Whether to use torch.compile()
     TOOL_MAX_LENGTH: Maximum input tokens
-    TOOL_MICROBATCH_MAX_SIZE: Max requests per batch
-    TOOL_MICROBATCH_MAX_DELAY_MS: Max wait time for batch
+
+Micro-batching parameters (batch size, delay) are hardcoded per model
+in src.config.models.TOOL_MODEL_BATCH_CONFIG.
 
 Usage:
     from src.classifier import get_classifier_adapter
