@@ -10,11 +10,8 @@ from __future__ import annotations
 import asyncio
 
 from src.tokens.tokenizer import FastTokenizer
-from src.engines.vllm.cache import CacheResetManager
 from src.tokens.registry import configure_tokenizers
-from src.engines.trt.factory import create_trt_engine
 from src.handlers.connections import ConnectionHandler
-from src.engines.vllm.factory import create_vllm_engine
 from src.handlers.session.manager import SessionHandler
 from src.classifier.factory import create_classifier_adapter
 from src.classifier.registry import configure_classifier_adapter
@@ -29,7 +26,11 @@ async def _build_chat_engine():
     if not DEPLOY_CHAT:
         return None
     if INFERENCE_ENGINE == "vllm":
+        from src.engines.vllm.factory import create_vllm_engine  # noqa: PLC0415
+
         return await create_vllm_engine()
+    from src.engines.trt.factory import create_trt_engine  # noqa: PLC0415
+
     return await create_trt_engine()
 
 
@@ -73,9 +74,11 @@ async def build_runtime_deps() -> RuntimeDeps:
 
     session_handler = SessionHandler(chat_engine=chat_engine)
     connections = ConnectionHandler()
-    cache_reset_manager = (
-        CacheResetManager() if (chat_engine is not None and chat_engine.supports_cache_reset) else None
-    )
+    cache_reset_manager = None
+    if chat_engine is not None and chat_engine.supports_cache_reset:
+        from src.engines.vllm.cache import CacheResetManager  # noqa: PLC0415
+
+        cache_reset_manager = CacheResetManager()
     configure_engine_runtime(chat_engine, cache_reset_manager=cache_reset_manager)
     configure_tokenizers(chat_tokenizer=chat_tokenizer, tool_tokenizer=tool_tokenizer)
     configure_classifier_adapter(classifier_adapter)
