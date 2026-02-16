@@ -34,6 +34,9 @@ from .info import build_model_info, resolve_history_token_limit
 
 logger = logging.getLogger(__name__)
 
+_POSITIVE_JSON = json.dumps(TOOL_POSITIVE_RESULT)
+_NEGATIVE_JSON = json.dumps(TOOL_NEGATIVE_RESULT)
+
 
 class ClassifierToolAdapter:
     """Microbatched classifier adapter for screenshot intent detection.
@@ -201,7 +204,7 @@ class ClassifierToolAdapter:
             p_yes,
             user_utt[:80],
         )
-        return json.dumps(TOOL_POSITIVE_RESULT if should_take else TOOL_NEGATIVE_RESULT)
+        return _POSITIVE_JSON if should_take else _NEGATIVE_JSON
 
 
 __all__ = ["ClassifierToolAdapter"]

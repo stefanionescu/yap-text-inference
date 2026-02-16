@@ -113,6 +113,7 @@ class TorchClassifierBackend:
             padding=True,
             truncation=True,
             max_length=self._max_length,
+            pad_to_multiple_of=8,
         )
         enc = {k: v.to(self._device) for k, v in enc.items()}
 

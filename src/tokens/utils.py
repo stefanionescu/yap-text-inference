@@ -155,6 +155,15 @@ def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> s
     return out
 
 
+_NEWLINE_TOKEN_CACHE: list[int] = []
+
+
+def _get_newline_tokens() -> int:
+    if not _NEWLINE_TOKEN_CACHE:
+        _NEWLINE_TOKEN_CACHE.append(count_tokens_tool("\n"))
+    return _NEWLINE_TOKEN_CACHE[0]
+
+
 def build_user_history_for_tool(
     user_texts: list[str],
     max_tokens: int,
@@ -176,7 +185,7 @@ def build_user_history_for_tool(
     if max_tokens <= 0 or not user_texts:
         return ""
 
-    newline_tokens = count_tokens_tool("\n")
+    newline_tokens = _get_newline_tokens()
     selected: list[str] = []
     total_tokens = 0
 
