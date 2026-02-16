@@ -109,7 +109,7 @@ class BatchExecutor:
         texts = [req.text for req in batch]
         try:
             logits = self._infer_fn(texts)
-            probs = torch.softmax(logits, dim=-1).detach().cpu().tolist()
+            probs = torch.softmax(logits.detach().cpu(), dim=-1).tolist()
             if len(probs) != len(batch):
                 raise RuntimeError(f"Batch size mismatch: {len(batch)} requests, {len(probs)} results")
             for req, prob in zip(batch, probs, strict=True):
