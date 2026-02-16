@@ -17,9 +17,13 @@ from src.runtime.dependencies import RuntimeDeps
 from .auth import authenticate_websocket
 from .lifecycle import WebSocketLifecycle
 from .message_loop import run_message_loop
+from ...telemetry.traces import session_span
 from ..limits import SlidingWindowRateLimiter
+from ...config.telemetry import classify_error
+from ...telemetry.instruments import get_metrics
 from .errors import send_error, reject_connection
 from ...logging import set_log_context, reset_log_context
+from ...telemetry.sentry import capture_error, add_breadcrumb
 from ...config.websocket import (
     WS_ERROR_INTERNAL,
     WS_CLOSE_BUSY_CODE,
@@ -99,8 +103,10 @@ async def _finalize_connection(
     lifecycle: WebSocketLifecycle | None,
     session_id: str | None,
     admitted: bool,
+    generation_count: int = 0,
 ) -> None:
     """Handle teardown actions after the connection loop exits."""
+    m = get_metrics()
     connections = runtime_deps.connections
     if lifecycle is not None:
         with contextlib.suppress(Exception):
@@ -109,11 +115,19 @@ async def _finalize_connection(
     session_duration = 0.0
     try:
         session_duration = await _cleanup_session(runtime_deps, session_id)
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        capture_error(exc)
+        m.errors_total.add(1, {"error.type": "cleanup_failed"})
         logger.exception("WebSocket cleanup failed")
 
     if not admitted:
         return
+
+    m.active_connections.add(-1)
+    m.connection_duration.record(session_duration)
+    m.session_churn_total.add(1)
+    if generation_count:
+        m.generations_per_session.record(generation_count)
 
     with contextlib.suppress(Exception):
         await connections.disconnect(ws)
@@ -126,6 +140,8 @@ async def _finalize_connection(
         with contextlib.suppress(Exception):
             triggered = await runtime_deps.reset_engine_caches("long_session", force=True)
             if triggered:
+                m.cache_resets_total.add(1)
+                add_breadcrumb("Cache reset", category="engine")
                 logger.info(
                     "cache reset after long session_id=%s duration=%.1fs",
                     session_id,
@@ -142,6 +158,7 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
     client = ws.client
     client_id = f"{client.host}:{client.port}" if client else "unknown"
     tokens = set_log_context(client_id=client_id)
+    m = get_metrics()
     try:
         lifecycle: WebSocketLifecycle | None = None
         admitted = False
@@ -150,6 +167,8 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
             return
 
         admitted = True
+        m.active_connections.add(1)
+        add_breadcrumb("Connection accepted", category="server")
         session_id: str | None = None
         message_limiter, cancel_limiter = _create_rate_limiters()
         lifecycle = WebSocketLifecycle(ws)
@@ -161,16 +180,19 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
         )
 
         try:
-            session_id = await run_message_loop(
-                ws,
-                lifecycle,
-                message_limiter,
-                cancel_limiter,
-                runtime_deps,
-            )
+            with session_span(session_id=session_id or "", client_id=client_id):
+                session_id = await run_message_loop(
+                    ws,
+                    lifecycle,
+                    message_limiter,
+                    cancel_limiter,
+                    runtime_deps,
+                )
         except WebSocketDisconnect:
             pass
         except Exception as exc:  # noqa: BLE001
+            capture_error(exc)
+            m.errors_total.add(1, {"error.type": classify_error(exc)})
             logger.exception("WebSocket error")
             with contextlib.suppress(Exception):
                 await send_error(

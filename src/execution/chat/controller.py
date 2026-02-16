@@ -41,7 +41,11 @@ from typing import Any
 from collections.abc import AsyncGenerator
 
 from src.errors import StreamCancelledError
+from src.telemetry.sentry import capture_error
+from src.config.telemetry import classify_error
 from src.config.logging import CHAT_STREAM_LABEL
+from src.telemetry.traces import generation_span
+from src.telemetry.instruments import get_metrics
 from src.state import CancelCheck, ChatStreamConfig
 
 from ...engines.base import BaseEngine
@@ -158,17 +162,37 @@ class ChatStreamController:
             asyncio.TimeoutError: If generation exceeds timeout_s.
             StreamCancelledError: If cancel_check returns True.
         """
+        m = get_metrics()
+        m.active_generations.add(1)
         start = self._log_stream_start()
+        last_emit = start
         try:
-            async for chunk in self._iter_emitted_chunks():
-                yield chunk
+            with generation_span(engine_type=type(self._cfg.engine).__name__) as gspan:
+                async for chunk in self._iter_emitted_chunks():
+                    now = time.perf_counter()
+                    if now - last_emit > 0:
+                        m.token_latency.record(now - last_emit)
+                    last_emit = now
+                    yield chunk
+                gspan.set_attribute("completion_tokens", len(self._full_text))
+                gspan.set_attribute("finish_reason", "complete")
         except StreamCancelledError:
             self._cancelled = True
             self._log_cancelled()
         except asyncio.TimeoutError:
+            m.errors_total.add(1, {"error.type": "generation_timeout"})
             self._log_timeout()
             raise
+        except Exception as exc:
+            capture_error(exc)
+            m.errors_total.add(1, {"error.type": classify_error(exc)})
+            raise
         finally:
+            m.active_generations.add(-1)
+            elapsed = time.perf_counter() - start
+            m.request_latency.record(elapsed)
+            m.completion_tokens.record(len(self._full_text))
+            m.tokens_generated_total.add(max(1, len(self._full_text) // 4))
             if not self._cancelled:
                 tail = self._flush_tail()
                 if tail:
@@ -234,6 +258,7 @@ class ChatStreamController:
             if self._start_time is None:
                 return
             self._ttfb_ms = (time.perf_counter() - self._start_time) * 1000.0
+            get_metrics().ttft.record(self._ttfb_ms / 1000.0)
             cfg = self._cfg
             logger.info(
                 "%s_stream: first token session_id=%s req_id=%s ttfb_ms=%.1f",
