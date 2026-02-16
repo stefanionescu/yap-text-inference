@@ -32,6 +32,8 @@ from fastapi import WebSocket
 
 from src.engines.base import BaseEngine
 from src.tokens.tokenizer import FastTokenizer
+from src.telemetry.sentry import add_breadcrumb
+from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
 from src.classifier.adapter import ClassifierToolAdapter
 
@@ -63,6 +65,9 @@ async def _await_tool_decision(
     try:
         tool_res = await asyncio.wait_for(tool_task, timeout=TOOL_TIMEOUT_S)
     except asyncio.TimeoutError:
+        m = get_metrics()
+        m.errors_total.add(1, {"error.type": "timeout"})
+        add_breadcrumb("Tool timeout", category="execution", data={"timeout_s": TOOL_TIMEOUT_S})
         logger.warning(
             "sequential_exec: tool timeout session_id=%s req_id=%s timeout_s=%.1f",
             session_id,

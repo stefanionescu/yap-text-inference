@@ -32,6 +32,7 @@ Example:
 
 from __future__ import annotations
 
+import time
 import logging
 import contextlib
 import multiprocessing
@@ -57,10 +58,13 @@ from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
 from .runtime import build_runtime_deps  # noqa: E402
+from .telemetry.sentry import capture_error  # noqa: E402
 from .helpers.validation import validate_env  # noqa: E402
 from .config.logging import configure_logging  # noqa: E402
 from .runtime.bootstrap import clear_runtime_registries  # noqa: E402
 from .handlers.websocket import handle_websocket_connection  # noqa: E402
+from .telemetry.setup import init_telemetry, shutdown_telemetry  # noqa: E402
+from .telemetry.instruments import get_metrics, initialize_metrics  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +78,23 @@ validate_env()
 @app.on_event("startup")
 async def preload_engines() -> None:
     """Build all runtime dependencies before accepting traffic."""
-    runtime_deps = await build_runtime_deps()
+    t0 = time.monotonic()
+    init_telemetry()
+    initialize_metrics()
+
+    try:
+        runtime_deps = await build_runtime_deps()
+    except Exception as exc:
+        capture_error(exc, extra={"phase": "bootstrap"})
+        raise
     app.state.runtime_deps = runtime_deps
 
     if runtime_deps.supports_cache_reset():
         runtime_deps.ensure_cache_reset_daemon()
     else:
         logger.info("cache reset daemon: disabled (TRT-LLM uses block reuse)")
+
+    get_metrics().startup_duration.record(time.monotonic() - t0)
 
 
 @app.on_event("shutdown")
@@ -92,6 +106,7 @@ async def stop_engines() -> None:
             await runtime_deps.shutdown()
     finally:
         clear_runtime_registries()
+        shutdown_telemetry()
 
 
 @app.get("/")

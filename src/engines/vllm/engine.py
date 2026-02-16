@@ -20,6 +20,7 @@ from collections.abc import AsyncGenerator
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 
 from ..base import BaseEngine, EngineOutput
+from ...telemetry.sentry import capture_error, add_breadcrumb
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,8 @@ class VLLMEngine(BaseEngine):
         try:
             await self._engine.shutdown()
             logger.info("vLLM: engine shutdown complete")
-        except Exception:
+        except Exception as exc:
+            capture_error(exc, extra={"phase": "engine_shutdown"})
             logger.warning("vLLM: engine shutdown failed", exc_info=True)
 
     @property
@@ -96,7 +98,9 @@ class VLLMEngine(BaseEngine):
         try:
             await _reset_vllm_caches(self._engine)
             return True
-        except Exception:
+        except Exception as exc:
+            capture_error(exc, extra={"reason": reason})
+            add_breadcrumb("Cache reset failed", category="engine")
             logger.warning("cache reset failed", exc_info=True)
             return False
 

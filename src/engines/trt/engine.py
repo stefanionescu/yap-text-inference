@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 else:
     GenerationResult = Any  # Actual import happens lazily inside SuppressedFDContext
 
+from ...telemetry.sentry import capture_error
+from ...telemetry.instruments import get_metrics
 from ..base import BaseEngine, EngineOutput, EngineNotReadyError
 
 logger = logging.getLogger(__name__)
@@ -107,13 +109,16 @@ class TRTEngine(BaseEngine):
 
         executor = getattr(self._llm, "_executor", self._executor)
         if executor is None:
+            get_metrics().errors_total.add(1, {"error.type": "executor_unavailable"})
             logger.warning("TRT-LLM: executor not available for cancellation")
             return
 
         try:
             executor.abort_request(int(trt_request_id))
             logger.info("TRT-LLM: cancelled request_id=%s", request_id)
-        except Exception:  # noqa: BLE001 - best effort abort
+        except Exception as exc:  # noqa: BLE001 - best effort abort
+            capture_error(exc)
+            get_metrics().errors_total.add(1, {"error.type": "trt_abort_failed"})
             logger.warning("TRT-LLM: failed to cancel request_id=%s", request_id, exc_info=True)
 
     async def shutdown(self) -> None:

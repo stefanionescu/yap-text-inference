@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import WebSocket
 
 from src.state import StartPlan
+from src.telemetry.sentry import capture_error
 from src.runtime.dependencies import RuntimeDeps
 from src.handlers.session.manager import SessionHandler
 
@@ -186,6 +187,7 @@ async def _resolve_start_inputs_or_close(
     try:
         return _resolve_start_inputs(payload)
     except ValidationError as err:
+        capture_error(err)
         await _close_with_validation_error(ws, session_id, request_id, err)
         return None
 
