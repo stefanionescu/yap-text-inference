@@ -123,6 +123,7 @@ ALLOWED_TRT_QUANT_CHAT_MODELS: list[str] = [
 ALLOWED_TOOL_MODELS: list[str] = [
     "yapwithai/yap-longformer-screenshot-intent",
     "yapwithai/yap-modernbert-screenshot-intent",
+    "yapwithai/yap-distilroberta-screenshot-intent",
 ]
 
 __all__ = [

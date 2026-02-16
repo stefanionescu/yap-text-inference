@@ -38,6 +38,19 @@ def test_build_model_info_uses_bert_default_when_not_overridden(monkeypatch) -> 
     assert info.max_length == 512
 
 
+def test_build_model_info_treats_roberta_family_as_bert_path(monkeypatch) -> None:
+    monkeypatch.setattr(
+        classifier_info.AutoConfig,
+        "from_pretrained",
+        lambda *_args, **_kwargs: _DummyConfig("roberta", num_labels=2),
+    )
+
+    info = classifier_info.build_model_info("dummy-model", max_length=None)
+
+    assert info.model_type == "bert"
+    assert info.max_length == 512
+
+
 def test_build_model_info_respects_max_length_override(monkeypatch) -> None:
     monkeypatch.setattr(
         classifier_info.AutoConfig,
