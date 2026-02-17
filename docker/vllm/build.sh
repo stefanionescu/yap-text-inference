@@ -71,7 +71,7 @@ usage() {
   echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
   echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
   echo "  CHAT_MODEL          - Pre-quantized chat model HF repo (required for chat/both)"
-  echo "                        Must contain: awq, gptq, w4a16, compressed-tensors, or autoround"
+  echo "                        Name should contain awq/gptq/fp8, or config.json must declare quant_method"
   echo "  TOOL_MODEL          - Tool classifier model HF repo (required for tool/both)"
   echo "  TAG                 - Image tag (MUST start with 'vllm-')"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"

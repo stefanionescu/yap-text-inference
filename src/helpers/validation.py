@@ -85,12 +85,13 @@ def validate_env() -> None:
         # TRT_ENGINE_DIR can be empty if we're building from scratch
         pass  # Will be set during quantization/build step
 
-    # Quantization is required for chat models (auto-detected from CHAT_MODEL name)
+    # Quantization is required for chat models (auto-detected from name or config files)
     if DEPLOY_CHAT:
         if not CHAT_QUANTIZATION:
             errors.append(
                 f"Could not detect quantization from CHAT_MODEL='{CHAT_MODEL}'. "
-                "Model name must contain 'awq', 'gptq', or 'fp8', or set CHAT_QUANTIZATION manually."
+                "Ensure the model directory contains a config.json with quantization_config.quant_method, "
+                "or set CHAT_QUANTIZATION manually."
             )
         elif CHAT_QUANTIZATION.lower() not in _VALID_QUANT_FORMATS:
             errors.append(

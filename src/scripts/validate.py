@@ -26,7 +26,7 @@ def validate_models(
         deploy_mode: Deployment mode (both, chat, tool).
         chat_model: Chat model identifier or path.
         tool_model: Tool model identifier or path.
-        chat_quantization: Chat quantization (auto-detected from model name).
+        chat_quantization: Chat quantization (auto-detected from model name or config files).
         engine: Inference engine (trt, vllm).
 
     Returns:
