@@ -7,8 +7,10 @@
 !requirements.txt
 !download/
 !download/**
-!common/
-!common/**
+!common/download/
+!common/download/**
+!common/scripts/
+!common/scripts/**
 !scripts/
 !scripts/**
 !src/

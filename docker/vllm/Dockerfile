@@ -15,11 +15,11 @@ ENV TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
 ENV FORCE_CUDA=1
 ENV MAX_JOBS=8
 
-# Install system dependencies (Ubuntu 24.04 uses python3.12 by default, but we install 3.11 for compatibility)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-dev \
-    python3.11-venv \
+    python3.12 \
+    python3.12-dev \
+    python3.12-venv \
     python3-pip \
     ca-certificates \
     git \
@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create Python virtual environment
-RUN python3.11 -m venv /opt/venv
+RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade pip and install wheel
@@ -98,8 +98,8 @@ ENV TOOL_MODEL_PATH=/opt/models/tool
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-venv \
+    python3.12 \
+    python3.12-venv \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/* \
@@ -162,10 +162,11 @@ ENV SHOW_HF_LOGS=1 \
 # ----------------------------------------------------------------------------
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
-COPY common/ /app/common/
+COPY common/scripts/ /app/common/scripts/
 
-# Set proper permissions
-RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
+# Clean up build-time-only download scripts and set proper permissions
+RUN rm -rf /app/download /app/common/download \
+    && chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
 
 # Expose port
 EXPOSE 8000
@@ -177,6 +178,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Default command
 CMD ["/app/scripts/main.sh"]
 
-LABEL org.opencontainers.image.title="Yap Text Inference vLLM (CUDA 13.0, Py311)" \
+LABEL org.opencontainers.image.title="Yap Text Inference vLLM (CUDA 13.0, Py312)" \
       org.opencontainers.image.description="vLLM inference image for pre-quantized AWQ/GPTQ models." \
       org.opencontainers.image.source="https://github.com/Yap-With-AI/yap-text-inference"

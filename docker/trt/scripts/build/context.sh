@@ -18,15 +18,13 @@ prepare_build_context() {
   mkdir -p "${TMP_BUILD_DIR}/scripts"
   cp -a "${SCRIPT_DIR}/scripts"/* "${TMP_BUILD_DIR}/scripts/"
 
-  # Copy common scripts for runtime use
+  # Copy common runtime scripts (no download utils - those are build-time only)
   mkdir -p "${TMP_BUILD_DIR}/common/scripts"
   cp -a "${SCRIPT_DIR}/../common/scripts"/* "${TMP_BUILD_DIR}/common/scripts/"
 
-  # Copy download scripts - TRT-specific and common
+  # Copy download scripts - TRT-specific and common (used during docker build only)
   mkdir -p "${TMP_BUILD_DIR}/download"
   cp -a "${SCRIPT_DIR}/download"/* "${TMP_BUILD_DIR}/download/"
-
-  # Copy common download utilities
   mkdir -p "${TMP_BUILD_DIR}/common/download"
   cp -a "${SCRIPT_DIR}/../common/download"/* "${TMP_BUILD_DIR}/common/download/"
 

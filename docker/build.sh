@@ -8,7 +8,7 @@ set -euo pipefail
 # - TRT images: Require TRT_ENGINE_REPO and TRT_ENGINE_LABEL to specify the exact engine
 # - vLLM images: Require pre-quantized CHAT_MODEL (AWQ/GPTQ/W4A16)
 #
-# Tags MUST follow naming convention: trt-* or vllm-*
+# Tags MUST follow naming convention: trt-* or vllm-* (except tool-only deploys)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -24,9 +24,10 @@ case "${ENGINE}" in
     ;;
 esac
 
-# Validate tag naming convention
+# Validate tag naming convention (only for chat/both deploys that use an engine)
 TAG="${TAG:-}"
-if [[ -n ${TAG} ]]; then
+DEPLOY_MODE="${DEPLOY_MODE:-both}"
+if [[ -n ${TAG} && ${DEPLOY_MODE} != "tool" ]]; then
   case "${ENGINE}" in
     trt)
       if [[ ! ${TAG} =~ ^trt- ]]; then

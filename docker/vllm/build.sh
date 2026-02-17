@@ -32,8 +32,8 @@ HF_TOKEN="${HF_TOKEN:-}"
 # Custom tag (MUST start with vllm-)
 TAG="${TAG:-vllm-${DEPLOY_MODE_VAL}}"
 
-# Validate tag naming convention
-if [[ ! ${TAG} =~ ^vllm- ]]; then
+# Validate tag naming convention (only for chat/both deploys that use vLLM)
+if [[ ${DEPLOY_MODE_VAL} != "tool" && ! ${TAG} =~ ^vllm- ]]; then
   echo "[build] ✗ TAG must start with 'vllm-' for vLLM images" >&2
   echo "[build]   Got: ${TAG}" >&2
   echo "[build]   Example: vllm-qwen30b-awq" >&2

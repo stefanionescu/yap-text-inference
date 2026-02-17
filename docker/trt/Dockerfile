@@ -167,8 +167,10 @@ ENV TOOL_MODEL=/opt/models/tool
 # ----------------------------------------------------------------------------
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
-COPY common/ /app/common/
-RUN chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
+COPY common/scripts/ /app/common/scripts/
+# Clean up build-time-only download scripts and set proper permissions
+RUN rm -rf /app/download /app/common/download \
+    && chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
 
 # Default environment knobs for production
 ENV HF_TRANSFER=1 \
