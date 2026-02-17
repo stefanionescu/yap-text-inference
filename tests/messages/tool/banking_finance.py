@@ -1,9 +1,6 @@
 """Banking and finance scenarios: Venmo requests, suspicious charges, crypto, budgeting, subscriptions."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Venmo Request Drama - Someone Won't Pay Back
     # User venting about a friend dodging a Venmo request for weeks
@@ -261,4 +258,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

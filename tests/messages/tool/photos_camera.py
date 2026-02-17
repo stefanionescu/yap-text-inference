@@ -1,9 +1,6 @@
 """Photos and camera scenarios: selfie filters, gallery cleanup, portrait mode, panoramas, photo dumps."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Selfie Filter Comparison - Trying Different Filters
     # Friends comparing selfie filters and debating which ones look best
@@ -239,4 +236,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

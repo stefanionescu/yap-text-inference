@@ -1,9 +1,6 @@
 """Planning and creative scenarios: studying, cooking, travel, design."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 11: Study Session Struggle - Homework Help & Confused About Notes
     # User studying for exam, needs help reading notes and solving problems
@@ -111,4 +108,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

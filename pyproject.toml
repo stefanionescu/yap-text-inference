@@ -25,6 +25,7 @@ ignore = ["D", "ANN", "COM812", "ISC001"]
 "src/state/hf.py" = ["PLC0415"]
 "src/telemetry/*.py" = ["PLC0415", "S110"]
 "tests/**/*.py" = ["S101", "PLR2004"]
+"tests/messages/**/*.py" = ["E501", "W", "B", "UP", "C4", "SIM", "N", "S", "PL"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true

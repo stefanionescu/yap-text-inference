@@ -1,9 +1,6 @@
 """Tech support and gaming scenarios."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 7: Tech Support Nightmare - Phone Acting Weird
     # User has tech issues, showing error messages and weird behavior
@@ -82,4 +79,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

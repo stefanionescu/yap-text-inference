@@ -1,9 +1,6 @@
 """TikTok and Reels scenarios: FYP discoveries, viral videos, duets, trending sounds, mukbang, BookTok."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: FYP Algorithm Accuracy - User freaked out by how targeted their feed is
     # Someone scrolling their For You Page and realizing TikTok knows them too well
@@ -357,4 +354,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

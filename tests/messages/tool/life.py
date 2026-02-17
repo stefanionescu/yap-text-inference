@@ -1,9 +1,6 @@
 """Life scenarios: group chat drama, job hunting, apartment search, fitness."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 3: Group Chat Drama - Screenshots & Receipts
     # User is dealing with friend drama and showing messages as evidence
@@ -103,4 +100,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

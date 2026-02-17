@@ -1,9 +1,6 @@
 """Daily utility scenarios: weather checks, calendar conflicts, alarms, notes, storage, battery health."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Weather App Obsession - Outfit Planning Paralysis
     # User keeps refreshing the weather app trying to figure out what to wear
@@ -249,4 +246,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

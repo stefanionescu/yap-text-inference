@@ -1,9 +1,6 @@
 """Social media browsing scenarios: Instagram stories, Twitter/X threads, Reddit posts, Facebook Marketplace."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Explore Page Rabbit Hole - Instagram Algorithm Trap
     # User falls down an Instagram explore page spiral late at night
@@ -249,4 +246,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

@@ -1,9 +1,6 @@
 """App usage scenarios: dating apps, shopping, food ordering, social media."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Dating App Dilemma - Swiping & Profile Feedback
     # User is on a dating app asking for help with matches and their own profile
@@ -99,4 +96,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

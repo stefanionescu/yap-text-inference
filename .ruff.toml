@@ -22,7 +22,7 @@ fixable = ["ALL"]
 
 [lint.per-file-ignores]
 "tests/prompts/*.py" = ["E501"]
-"tests/messages/history.py" = ["E501"]
+"tests/messages/**/*.py" = ["E501", "W", "B", "UP"]
 
 [format]
 quote-style = "double"

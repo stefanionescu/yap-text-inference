@@ -1,9 +1,6 @@
 """Edge case scenarios: idioms, typos, meta questions, hypotheticals, abstract requests."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 21: Idioms & Metaphorical Language - False Triggers
     # Testing phrases with look/see that are NOT visual requests
@@ -123,4 +120,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

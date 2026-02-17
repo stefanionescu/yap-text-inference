@@ -1,9 +1,6 @@
 """Visual sharing scenarios: memes, house tours, pet photos, unboxing."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 16: Meme Sharing Spree - Deictic Heavy Reactions
     # User sharing memes and reacting with lots of "this" and "that" references
@@ -106,4 +103,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

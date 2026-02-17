@@ -1,9 +1,6 @@
 """Maps and navigation scenarios: getting lost, ride tracking, surge pricing, parking, flights, transit."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Sketchy Directions - Google Maps Leading Somewhere Wrong
     # User following GPS into a bad area and questioning the route on screen
@@ -262,4 +259,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]
