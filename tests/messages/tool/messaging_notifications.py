@@ -1,9 +1,6 @@
 """Messaging and notification scenarios: text receipts, DMs, email overload, group chats, Discord, Slack."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Read Receipts Betrayal - Left on Read Drama
     # User spiraling over being left on read, checking timestamps on screen
@@ -241,4 +238,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

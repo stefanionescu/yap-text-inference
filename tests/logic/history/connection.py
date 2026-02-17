@@ -117,7 +117,12 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
                 for phase, user_text in enumerate(HISTORY_RECALL_MESSAGES, 1):
                     hist = list(WARM_HISTORY) if phase == 1 else None
                     result = await _execute_transaction(
-                        ws, cfg, session_id, user_text, phase, history=hist,
+                        ws,
+                        cfg,
+                        session_id,
+                        user_text,
+                        phase,
+                        history=hist,
                     )
                     results.append(result)
 

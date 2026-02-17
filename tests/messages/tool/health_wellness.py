@@ -1,9 +1,6 @@
 """Health and wellness scenarios: step counts, sleep tracking, calorie counting, screen time, fitness stats."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Step Count Competition - Trying to beat a friend's daily steps
     # User is in a step count challenge and obsessively checking the leaderboard
@@ -245,4 +242,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

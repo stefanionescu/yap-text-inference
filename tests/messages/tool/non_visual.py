@@ -1,9 +1,6 @@
 """Non-visual scenarios: memories, comparing others, restaurant talk."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 27: Memory Lane - Past Experiences & Stories
     # User reminiscing about past events, not showing current content
@@ -75,4 +72,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

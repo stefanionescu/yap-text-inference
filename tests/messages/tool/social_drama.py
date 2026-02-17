@@ -1,9 +1,6 @@
 """Social drama scenarios: online drama, gossip, work complaints."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 18: Online Drama Recap - Implicit Visual References & Commentary
     # User explaining internet drama with lots of implicit "look at what happened"
@@ -77,4 +74,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]

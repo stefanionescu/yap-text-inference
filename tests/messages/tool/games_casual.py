@@ -1,9 +1,6 @@
 """Games and casual gaming scenarios: Wordle, gacha, Candy Crush, Pokemon GO, chess, mobile ads."""
-# ruff: noqa: E501  # Test data - long strings are intentional
 
-from .tool_types import ToolDefaultEntry
-
-TOOL_MESSAGES: list[ToolDefaultEntry] = [
+DATA = [
     # ═══════════════════════════════════════════════════════════════════════════════
     # TEST 1: Wordle Daily Struggle - Sharing Grid Without Spoilers
     # Friend texts about their Wordle attempt and shares the colored grid
@@ -241,4 +238,4 @@ TOOL_MESSAGES: list[ToolDefaultEntry] = [
     ),
 ]
 
-__all__ = ["TOOL_MESSAGES"]
+__all__ = ["DATA"]
