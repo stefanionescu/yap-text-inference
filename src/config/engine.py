@@ -13,12 +13,14 @@ TensorRT-LLM:
     - Lower latency, higher throughput
     - Built-in KV cache block reuse
 
-Quantization is auto-detected from CHAT_MODEL name:
-    - Model name contains 'awq' → 4-bit AWQ
-    - Model name contains 'gptq' → 4-bit GPTQ
-    - Model name contains 'fp8' → 8-bit FP8
+Quantization is auto-detected in two stages:
+    1. Model name heuristics (e.g. 'awq', 'gptq', 'fp8' in CHAT_MODEL)
+    2. Config file inspection (reads quant_method from config.json on disk)
 
-If auto-detection fails, set CHAT_QUANTIZATION manually.
+The second stage covers local paths like /opt/models/chat where the
+directory name carries no quantization markers.
+
+If auto-detection still fails, set CHAT_QUANTIZATION manually.
 
 Environment Variables:
     INFERENCE_ENGINE: 'vllm' or 'trt'
@@ -45,7 +47,7 @@ INFERENCE_ENGINE = normalize_engine(os.getenv("INFERENCE_ENGINE", "trt"))
 # ============================================================================
 # Quantization Configuration
 # ============================================================================
-# Auto-detected from CHAT_MODEL name. Manual override via CHAT_QUANTIZATION.
+# Auto-detected from CHAT_MODEL name or config files. Manual override via CHAT_QUANTIZATION.
 
 _manual_quant = os.getenv("CHAT_QUANTIZATION")
 CHAT_QUANTIZATION = _manual_quant or detect_chat_quantization(

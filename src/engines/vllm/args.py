@@ -205,7 +205,7 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     # Normalize KV cache dtype
     kv_dtype_value = (KV_DTYPE or "").strip()
 
-    # Resolve quantization backend (auto-detected from CHAT_MODEL name)
+    # Resolve quantization backend (auto-detected from model name or config files)
     inference_quant, _ = _resolve_quantization(model, CHAT_QUANTIZATION)
 
     # Get model requirements from profile

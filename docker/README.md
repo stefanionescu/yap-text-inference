@@ -84,7 +84,7 @@ vLLM works for most use cases. It supports pre-quantized AWQ and GPTQ models fro
 
 ### Supported Models
 
-Chat models must be pre-quantized (name must contain `awq`, `gptq`, `w4a16`, `compressed-tensors`, or `autoround`).
+Chat models must be pre-quantized. Quantization is auto-detected from the model name (e.g. `awq`, `gptq`, `fp8`) or from `quantization_config.quant_method` in the model's `config.json`.
 
 ### Build Examples
 
@@ -296,7 +296,7 @@ docker stats yap-server
 
 ### vLLM Issues
 
-1. **"not a pre-quantized model"** - Chat model name must contain `awq`, `gptq`, etc.
+1. **"not a pre-quantized model"** - Chat model name must contain `awq`, `gptq`, etc., or `config.json` must declare `quant_method`.
 2. **"not in the allowed list"** - Tool model must be in `src/config/models.py`
 3. **"TAG must start with 'vllm-'"** - Use the correct tag prefix
 

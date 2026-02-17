@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/env/defaults.sh"
 
 log_info "[vllm] Docker vLLM Configuration: GPU=${DETECTED_GPU_NAME:-unknown}"
 if [ "${DEPLOY_CHAT}" = "1" ]; then
-  # Quantization is auto-detected from CHAT_MODEL name by Python (src/config/engine.py)
+  # Quantization is auto-detected from model name or config files by Python (src/config/engine.py)
   log_info "[vllm] Chat model: ${CHAT_MODEL:-none} (quant: ${CHAT_QUANTIZATION:-auto})"
 fi
 if [ "${DEPLOY_TOOL}" = "1" ]; then
