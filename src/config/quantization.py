@@ -53,9 +53,11 @@ QUANT_CONFIG_FILENAMES: tuple[str, ...] = (
     "awq_config.json",
 )
 
-# Mapping from config-file quant_method values to generic quantization names
-# used by detect_chat_quantization (awq, gptq, fp8, int8)
+# Mapping from config-file quant_method / quant_algo values to generic quantization
+# names used by detect_chat_quantization (awq, gptq, fp8, int8).
+# Covers both HuggingFace (quant_method) and TRT-LLM checkpoint (quant_algo) formats.
 QUANT_CONFIG_METHOD_MAP: dict[str, str] = {
+    # HuggingFace quant_method values
     "awq": "awq",
     "gptq": "gptq",
     "gptq_marlin": "gptq",
@@ -63,13 +65,22 @@ QUANT_CONFIG_METHOD_MAP: dict[str, str] = {
     "int8": "int8",
     "compressed-tensors": "awq",
     "autoround": "awq",
+    # TRT-LLM quant_algo values
+    "w4a16_awq": "awq",
+    "w4a16": "awq",
+    "int4_awq": "awq",
+    "int8_sq": "int8",
+    "w8a8_sq_per_channel": "int8",
+    "w8a8_sq_per_tensor_per_token": "int8",
 }
 
-# Keys to search for the quantization method inside a quantization_config dict
-QUANT_CONFIG_METHOD_KEYS: tuple[str, ...] = ("quant_method", "quantization_method")
+# Keys to search for the quantization method string inside a config dict.
+# Covers HuggingFace (quant_method), TRT-LLM (quant_algo), and older formats
+# where the top-level "quantization" value is a plain string like "awq".
+QUANT_CONFIG_METHOD_KEYS: tuple[str, ...] = ("quant_method", "quantization_method", "quant_algo", "quantization")
 
-# Top-level keys to search as a fallback for older config formats
-QUANT_CONFIG_FALLBACK_KEYS: tuple[str, ...] = ("quant_method", "quantization_method", "quantization")
+# Parent keys that may contain a nested quantization dict (checked in order)
+QUANT_CONFIG_PARENT_KEYS: tuple[str, ...] = ("quantization_config", "pretrained_config", "quantization", "quant_config")
 
 # Tokenizer files to copy when pushing quantized models to HuggingFace
 # Different models use different tokenizer formats
@@ -103,7 +114,7 @@ __all__ = [
     "QUANT_CONFIG_FILENAMES",
     "QUANT_CONFIG_METHOD_MAP",
     "QUANT_CONFIG_METHOD_KEYS",
-    "QUANT_CONFIG_FALLBACK_KEYS",
+    "QUANT_CONFIG_PARENT_KEYS",
     "TOKENIZER_FILES",
     "CHAT_TEMPLATE_FILES",
 ]
