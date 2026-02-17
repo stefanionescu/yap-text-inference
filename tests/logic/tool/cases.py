@@ -7,8 +7,6 @@ history during multi-step test execution.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from tests.state import CaseStep, ToolTestCase
 from tests.messages.tool import TOOL_DEFAULT_MESSAGES
 
@@ -67,14 +65,4 @@ def build_cases() -> list[ToolTestCase]:
     return cases
 
 
-def render_history(history: Sequence[CaseStep]) -> list[dict[str, str]]:
-    """Render a sequence of case steps as conversation history."""
-    if not history:
-        return []
-    messages: list[dict[str, str]] = []
-    for step in history:
-        messages.append({"role": "user", "content": step.text})
-    return messages
-
-
-__all__ = ["build_cases", "render_history"]
+__all__ = ["build_cases"]

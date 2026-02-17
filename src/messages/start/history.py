@@ -16,7 +16,16 @@ def resolve_history(
     session_id: str,
     payload: dict[str, Any],
 ) -> tuple[str, dict[str, Any] | None]:
-    """Resolve and trim history payload into runtime text plus metadata."""
+    """Resolve and trim history payload into runtime text plus metadata.
+
+    History is only accepted on the first request of a session (when the
+    session has no turns yet).  After that the server accumulates history
+    itself via ``append_user_utterance`` / ``append_history_turn`` and any
+    client-sent history is silently ignored.
+    """
+    if session_handler.get_history_turn_count(session_id) > 0:
+        return session_handler.get_history_text(session_id), None
+
     history_messages = payload.get("history")
     if not isinstance(history_messages, list):
         return session_handler.get_history_text(session_id), None

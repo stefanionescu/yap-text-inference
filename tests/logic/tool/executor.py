@@ -30,7 +30,6 @@ from tests.state import (
     SessionContext,
 )
 
-from .cases import render_history
 from .drain import DrainConfig, drain_response
 from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
 
@@ -79,15 +78,13 @@ async def _execute_case(
     cfg: RunnerConfig,
 ) -> CaseResult:
     """Execute a single test case over an open WebSocket connection."""
-    history: list[CaseStep] = []
     turn_raws: list[Any] = []
     step_timings: list[StepTiming] = []
     failures: list[FailureRecord] = []
     step_pacer = SlidingWindowPacer(STEP_MAX_PER_WINDOW, STEP_WINDOW_SECONDS)
 
     for step_idx, step in enumerate(case.steps, start=1):
-        result = await _execute_step(ws, cfg, session_id, step, step_idx, history, step_pacer)
-        history.append(step)
+        result = await _execute_step(ws, cfg, session_id, step, step_idx, step_pacer)
         turn_raws.append(result.tool_raw)
         step_timings.append(
             StepTiming(
@@ -110,11 +107,10 @@ async def _execute_step(
     session_id: str,
     step: CaseStep,
     step_idx: int,
-    history: list[CaseStep],
     step_pacer: SlidingWindowPacer,
 ) -> TurnResult:
     """Execute a single step within a test case."""
-    payload = _build_step_payload(cfg, session_id, step.text, history)
+    payload = _build_step_payload(cfg, session_id, step.text)
     await step_pacer.wait_turn()
     turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
     return _coerce_missing_tool_result(turn, step.expect_tool)
@@ -124,7 +120,6 @@ def _build_step_payload(
     cfg: RunnerConfig,
     session_id: str,
     user_text: str,
-    history: list[CaseStep],
 ) -> dict[str, Any]:
     """Build the start message payload for a step.
 
@@ -141,7 +136,7 @@ def _build_step_payload(
         personality=cfg.personality,
         chat_prompt=cfg.chat_prompt,
     )
-    return build_start_payload(ctx, user_text, history=render_history(history))
+    return build_start_payload(ctx, user_text)
 
 
 def _check_step_result(

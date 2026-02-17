@@ -90,7 +90,6 @@ async def run_conversation(
                 await message_pacer.wait_turn()
                 await ws.send(json.dumps(payload))
                 assistant_text, metrics = await stream_exchange(ws, state, recv_timeout, idx)
-                session.append_exchange(user_text, assistant_text)
                 record_ttfb(ttfb_samples, metrics)
 
                 print(f"  {format_assistant(assistant_text)}")

@@ -94,3 +94,64 @@ def test_trim_user_utterance_uses_effective_budget(
 
         trimmed = start_history.trim_user_utterance(session_handler, session_id, "alpha bravo charlie")
         assert start_history.count_tokens_chat(trimmed) <= 5
+
+
+def test_resolve_history_allows_seed_on_fresh_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fresh session with 0 turns accepts client-sent history."""
+    with use_local_tokenizers():
+        session_handler = _build_session_handler(monkeypatch)
+        session_id = "session-fresh-seed"
+        session_handler.initialize_session(session_id)
+
+        assert session_handler.get_history_turn_count(session_id) == 0
+
+        payload = {
+            "history": [
+                {"role": "user", "content": "hello"},
+                {"role": "assistant", "content": "hi there"},
+            ]
+        }
+
+        rendered, history_info = start_history.resolve_history(session_handler, session_id, payload)
+
+        assert "hello" in rendered
+        assert history_info is not None
+        assert history_info["input_messages"] == 2
+        assert history_info["retained_turns"] == 1
+
+
+def test_resolve_history_ignores_history_after_first_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    """After the first request adds a turn, subsequent history payloads are ignored."""
+    with use_local_tokenizers():
+        session_handler = _build_session_handler(monkeypatch)
+        session_id = "session-ignore-resend"
+        session_handler.initialize_session(session_id)
+
+        # Seed history on fresh session (first request).
+        seed_payload = {
+            "history": [
+                {"role": "user", "content": "first hello"},
+                {"role": "assistant", "content": "first hi"},
+            ]
+        }
+        rendered_1, info_1 = start_history.resolve_history(session_handler, session_id, seed_payload)
+        assert info_1 is not None
+        assert "first hello" in rendered_1
+
+        # Simulate the server processing the first request — adds a turn.
+        session_handler.append_user_utterance(session_id, "follow-up")
+        assert session_handler.get_history_turn_count(session_id) > 0
+
+        # Second request sends different history — should be ignored.
+        second_payload = {
+            "history": [
+                {"role": "user", "content": "OVERWRITE ATTEMPT"},
+                {"role": "assistant", "content": "OVERWRITE ATTEMPT"},
+            ]
+        }
+        rendered_2, info_2 = start_history.resolve_history(session_handler, session_id, second_payload)
+
+        # Guard should return early with no history_info and preserve accumulated history.
+        assert info_2 is None
+        assert "OVERWRITE ATTEMPT" not in rendered_2
+        assert "first hello" in rendered_2
