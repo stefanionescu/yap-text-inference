@@ -45,6 +45,32 @@ AWQ_MODEL_MARKERS: tuple[str, ...] = (
     "autoround",
 )
 
+# Config files checked for quantization metadata (ordered by priority)
+QUANT_CONFIG_FILENAMES: tuple[str, ...] = (
+    "config.json",
+    "quantization_config.json",
+    "quant_config.json",
+    "awq_config.json",
+)
+
+# Mapping from config-file quant_method values to generic quantization names
+# used by detect_chat_quantization (awq, gptq, fp8, int8)
+QUANT_CONFIG_METHOD_MAP: dict[str, str] = {
+    "awq": "awq",
+    "gptq": "gptq",
+    "gptq_marlin": "gptq",
+    "fp8": "fp8",
+    "int8": "int8",
+    "compressed-tensors": "awq",
+    "autoround": "awq",
+}
+
+# Keys to search for the quantization method inside a quantization_config dict
+QUANT_CONFIG_METHOD_KEYS: tuple[str, ...] = ("quant_method", "quantization_method")
+
+# Top-level keys to search as a fallback for older config formats
+QUANT_CONFIG_FALLBACK_KEYS: tuple[str, ...] = ("quant_method", "quantization_method", "quantization")
+
 # Tokenizer files to copy when pushing quantized models to HuggingFace
 # Different models use different tokenizer formats
 TOKENIZER_FILES: tuple[str, ...] = (
@@ -74,6 +100,10 @@ __all__ = [
     "FLOAT16_QUANT_METHODS",
     "QUANT_NAME_MAPPING",
     "AWQ_MODEL_MARKERS",
+    "QUANT_CONFIG_FILENAMES",
+    "QUANT_CONFIG_METHOD_MAP",
+    "QUANT_CONFIG_METHOD_KEYS",
+    "QUANT_CONFIG_FALLBACK_KEYS",
     "TOKENIZER_FILES",
     "CHAT_TEMPLATE_FILES",
 ]

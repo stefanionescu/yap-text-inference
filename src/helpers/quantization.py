@@ -4,7 +4,18 @@ This module provides functions for detecting and classifying quantization
 methods from model names, engine normalization, and GPU compatibility checks.
 """
 
-from src.config.quantization import TRT_FP8_SM_ARCHS, SUPPORTED_ENGINES, VLLM_QUANTIZATIONS
+import os
+
+from src.helpers.io import read_json_file
+from src.config.quantization import (
+    TRT_FP8_SM_ARCHS,
+    SUPPORTED_ENGINES,
+    VLLM_QUANTIZATIONS,
+    QUANT_CONFIG_FILENAMES,
+    QUANT_CONFIG_METHOD_MAP,
+    QUANT_CONFIG_METHOD_KEYS,
+    QUANT_CONFIG_FALLBACK_KEYS,
+)
 
 _W4A16_HINTS = ("w4a16", "compressed-tensors", "autoround")
 
@@ -167,11 +178,52 @@ def map_quant_mode_to_trt(
     return result
 
 
-def detect_chat_quantization(model: str | None, engine: str) -> str | None:
-    """Auto-detect quantization method from model name.
+def _detect_quant_from_model_config(model_path: str) -> str | None:
+    """Detect quantization from config files in a local model directory.
 
-    Examines the model path/ID for quantization markers and returns the
-    appropriate quantization method string.
+    Reads config.json (and similar) to find the ``quant_method`` field that
+    HuggingFace models always ship.  This is the reliable fallback when the
+    model path has been renamed to a generic local directory (e.g.
+    ``/opt/models/chat``) and name-based heuristics cannot work.
+    """
+    if not os.path.isdir(model_path):
+        return None
+
+    for filename in QUANT_CONFIG_FILENAMES:
+        config_path = os.path.join(model_path, filename)
+        if not os.path.isfile(config_path):
+            continue
+        payload = read_json_file(config_path)
+        if not isinstance(payload, dict):
+            continue
+
+        # HuggingFace standard: quantization_config.quant_method
+        quant_cfg = payload.get("quantization_config")
+        if isinstance(quant_cfg, dict):
+            for key in QUANT_CONFIG_METHOD_KEYS:
+                raw = quant_cfg.get(key)
+                if isinstance(raw, str):
+                    mapped = QUANT_CONFIG_METHOD_MAP.get(raw.strip().lower())
+                    if mapped:
+                        return mapped
+
+        # Top-level fallback (some older formats)
+        for key in QUANT_CONFIG_FALLBACK_KEYS:
+            raw = payload.get(key)
+            if isinstance(raw, str):
+                mapped = QUANT_CONFIG_METHOD_MAP.get(raw.strip().lower())
+                if mapped:
+                    return mapped
+
+    return None
+
+
+def detect_chat_quantization(model: str | None, engine: str) -> str | None:
+    """Auto-detect quantization method from model name or config files.
+
+    Detection order:
+      1. Model name heuristics (works for HuggingFace repo IDs)
+      2. Config file inspection (works for local paths like /opt/models/chat)
 
     Args:
         model: Model path or HuggingFace ID.
@@ -193,8 +245,13 @@ def detect_chat_quantization(model: str | None, engine: str) -> str | None:
         if trt_quant in ("trt_int8", "trt_8bit"):
             return "int8"
 
-    # Fall back to generic pre-quantized detection
-    return classify_prequantized_model(model)
+    # Name-based pre-quantized detection
+    name_result = classify_prequantized_model(model)
+    if name_result:
+        return name_result
+
+    # Fall back to reading quantization metadata from model config files on disk
+    return _detect_quant_from_model_config(model)
 
 
 __all__ = [
