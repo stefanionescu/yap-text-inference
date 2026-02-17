@@ -62,12 +62,8 @@ fi
 # Robust path resolution for start script
 START_SCRIPT="${SCRIPT_DIR}/start_server.sh"
 if [ ! -x "${START_SCRIPT}" ]; then
-  if [ -x "${SCRIPT_DIR}/common/start_server.sh" ]; then
-    START_SCRIPT="${SCRIPT_DIR}/common/start_server.sh"
-  else
-    log_error "[server] ✗ start_server.sh not found; looked in ${SCRIPT_DIR}/start_server.sh and ${SCRIPT_DIR}/common/start_server.sh"
-    ls -la "${SCRIPT_DIR}" || true
-    exit 1
-  fi
+  log_error "[server] ✗ start_server.sh not found at ${START_SCRIPT}"
+  ls -la "${SCRIPT_DIR}" || true
+  exit 1
 fi
 exec "${START_SCRIPT}"

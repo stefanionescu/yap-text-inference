@@ -38,8 +38,8 @@ HF_TOKEN="${HF_TOKEN:-}"
 # Custom tag (MUST start with trt-)
 TAG="${TAG:-trt-${DEPLOY_MODE_VAL}}"
 
-# Validate tag naming convention
-if [[ ! ${TAG} =~ ^trt- ]]; then
+# Validate tag naming convention (only for chat/both deploys that use TRT)
+if [[ ${DEPLOY_MODE_VAL} != "tool" && ! ${TAG} =~ ^trt- ]]; then
   echo "[build] ✗ TAG must start with 'trt-' for TensorRT images" >&2
   echo "[build]   Got: ${TAG}" >&2
   echo "[build]   Example: trt-qwen30b-sm90" >&2

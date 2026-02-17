@@ -92,7 +92,7 @@ _validate_chat_model_shell() {
   return 0
 }
 
-# Shell validation for tool model
+# Shell validation for tool model (format-only; canonical list lives in src/config/models.py)
 _validate_tool_model_shell() {
   local model="$1"
   if [[ -z $model ]]; then
@@ -100,20 +100,11 @@ _validate_tool_model_shell() {
     return 1
   fi
 
-  # Allowed tool models (synced with src/config/models.py:ALLOWED_TOOL_MODELS)
-  local allowed_models=(
-    "yapwithai/yap-longformer-screenshot-intent"
-    "yapwithai/yap-modernbert-screenshot-intent"
-  )
+  if [[ $model != *"/"* ]]; then
+    echo "[validate] TOOL_MODEL '$model' is not a valid HuggingFace repo format (owner/repo)" >&2
+    return 1
+  fi
 
-  for allowed in "${allowed_models[@]}"; do
-    if [[ $model == "$allowed" ]]; then
-      echo "[validate] TOOL_MODEL: $model"
-      return 0
-    fi
-  done
-
-  echo "[validate] TOOL_MODEL '$model' is not in the allowed list" >&2
-  echo "[validate] See src/config/models.py for allowed tool models" >&2
-  return 1
+  echo "[validate] TOOL_MODEL: $model"
+  return 0
 }

@@ -21,11 +21,9 @@ def get_allowed_tool_models() -> list[str]:
 
         return list(ALLOWED_TOOL_MODELS)
     except ImportError:
-        # Fallback for build-time when src is in build context
-        return [
-            "yapwithai/yap-longformer-screenshot-intent",
-            "yapwithai/yap-modernbert-screenshot-intent",
-        ]
+        # At build-time src may not be importable; return empty list so
+        # validate_tool_model falls through to format-only validation.
+        return []
 
 
 def get_awq_model_markers() -> list[str]:
@@ -109,17 +107,27 @@ def validate_chat_model(model: str, engine: str = "vllm") -> tuple[bool, str]:
 def validate_tool_model(model: str) -> tuple[bool, str]:
     """Validate tool model configuration.
 
+    Checks against ALLOWED_TOOL_MODELS when importable, otherwise falls back
+    to format-only validation (non-empty + valid HF repo format).
+
     Returns:
         (is_valid, message) tuple
     """
     if not model:
         return False, "TOOL_MODEL is required but not set"
 
-    allowed = get_allowed_tool_models()
-    if model in allowed:
-        return True, f"✓ TOOL_MODEL: {model}"
+    if "/" not in model:
+        return False, f"TOOL_MODEL '{model}' is not a valid HuggingFace repo format (owner/repo)"
 
-    return False, (f"TOOL_MODEL '{model}' is not in the allowed list. Allowed: {', '.join(allowed)}")
+    allowed = get_allowed_tool_models()
+    if allowed:
+        # Runtime check against the canonical allowlist
+        if model in allowed:
+            return True, f"✓ TOOL_MODEL: {model}"
+        return False, (f"TOOL_MODEL '{model}' is not in the allowed list. Allowed: {', '.join(allowed)}")
+
+    # Build-time: src not importable — accept any valid HF repo format
+    return True, f"✓ TOOL_MODEL: {model}"
 
 
 def validate_trt_engine_repo(repo: str) -> tuple[bool, str]:
