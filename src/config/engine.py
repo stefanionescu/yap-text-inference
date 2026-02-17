@@ -62,14 +62,6 @@ CHAT_QUANTIZATION = _manual_quant or detect_chat_quantization(
 # Default max batched tokens for chunked prefill (used when no profile or env override)
 DEFAULT_MAX_BATCHED_TOKENS = int(os.getenv("DEFAULT_MAX_BATCHED_TOKENS", "256"))
 
-# Quantization config file candidates (checked in order)
-QUANT_CONFIG_FILENAMES = (
-    "config.json",
-    "quantization_config.json",
-    "quant_config.json",
-    "awq_config.json",
-)
-
 # AWQ metadata filename written by our quantizer
 AWQ_METADATA_FILENAME = "awq_metadata.json"
 
@@ -80,7 +72,6 @@ __all__ = [
     "INFERENCE_ENGINE",
     "CHAT_QUANTIZATION",
     "DEFAULT_MAX_BATCHED_TOKENS",
-    "QUANT_CONFIG_FILENAMES",
     "AWQ_METADATA_FILENAME",
     "UNSUPPORTED_QUANT_DTYPE_FIELDS",
 ]
