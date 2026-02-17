@@ -80,13 +80,12 @@ def _print_exchange(
 async def _send_start_request(
     ws,
     ctx: SessionContext,
-    history: list[dict[str, str]],
     user_text: str,
     ttfb_samples: TTFBSamples,
     idx: int,
 ) -> tuple[str, dict[str, Any]]:
     """Send a start request and collect the response with metrics tracking."""
-    payload = build_start_payload(ctx, user_text, history=history)
+    payload = build_start_payload(ctx, user_text)
 
     state = create_tracker()
     await ws.send(json.dumps(payload))
@@ -160,20 +159,14 @@ async def _run_history_sequence(
     _print_exchange(1, first_user_text, reply, metrics)
     record_ttfb(ttfb_samples, metrics)
 
-    history.append({"role": "user", "content": first_user_text})
-    history.append({"role": "assistant", "content": reply})
-
     for idx, user_text in enumerate(HISTORY_RECALL_MESSAGES[1:], 2):
         reply, _ = await _send_start_request(
             ws,
             ctx,
-            history,
             user_text,
             ttfb_samples,
             idx,
         )
-        history.append({"role": "user", "content": user_text})
-        history.append({"role": "assistant", "content": reply})
 
 
 # ============================================================================

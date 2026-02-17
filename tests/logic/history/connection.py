@@ -52,14 +52,15 @@ async def _execute_transaction(
     ws,
     cfg: HistoryBenchConfig,
     session_id: str,
-    history: list[dict[str, str]],
     user_text: str,
     phase: int,
+    *,
+    history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Execute a single transaction with timeout handling."""
     try:
         return await asyncio.wait_for(
-            _send_and_stream(ws, cfg, session_id, history, user_text, phase),
+            _send_and_stream(ws, cfg, session_id, user_text, phase, history=history),
             timeout=cfg.timeout_s,
         )
     except asyncio.TimeoutError:
@@ -72,9 +73,10 @@ async def _send_and_stream(
     ws,
     cfg: HistoryBenchConfig,
     session_id: str,
-    history: list[dict[str, str]],
     user_text: str,
     phase: int,
+    *,
+    history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Send a start message and stream the response."""
     ctx = SessionContext(
@@ -84,7 +86,7 @@ async def _send_and_stream(
         chat_prompt=cfg.chat_prompt,
         sampling=cfg.sampling,
     )
-    payload = build_start_payload(ctx, user_text, history=history)
+    payload = build_start_payload(ctx, user_text, history=history) if history else build_start_payload(ctx, user_text)
     state = create_tracker()
 
     await ws.send(json.dumps(payload))
@@ -108,21 +110,19 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
     results: list[dict[str, Any]] = []
     auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
     session_id = f"history-bench-{uuid.uuid4()}"
-    history: list[dict[str, str]] = list(WARM_HISTORY)
 
     try:
         async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)) as ws:
             try:
                 for phase, user_text in enumerate(HISTORY_RECALL_MESSAGES, 1):
-                    result = await _execute_transaction(ws, cfg, session_id, history, user_text, phase)
+                    hist = list(WARM_HISTORY) if phase == 1 else None
+                    result = await _execute_transaction(
+                        ws, cfg, session_id, user_text, phase, history=hist,
+                    )
                     results.append(result)
 
                     if not result.get("ok"):
                         break
-
-                    reply = result.get("reply", "")
-                    history.append({"role": "user", "content": user_text})
-                    history.append({"role": "assistant", "content": reply})
             finally:
                 await send_client_end(ws, session_id)
     except (ConnectionClosedOK, ConnectionClosedError) as exc:

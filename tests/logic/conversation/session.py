@@ -26,7 +26,7 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
         chat_prompt=session.chat_prompt,
         sampling=session.sampling,
     )
-    return build_ws_start_payload(ctx, user_text, history=session.history)
+    return build_ws_start_payload(ctx, user_text)
 
 
 __all__ = ["build_start_payload"]
