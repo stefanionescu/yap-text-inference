@@ -14,7 +14,7 @@ from src.config.quantization import (
     QUANT_CONFIG_FILENAMES,
     QUANT_CONFIG_METHOD_MAP,
     QUANT_CONFIG_METHOD_KEYS,
-    QUANT_CONFIG_FALLBACK_KEYS,
+    QUANT_CONFIG_PARENT_KEYS,
 )
 
 _W4A16_HINTS = ("w4a16", "compressed-tensors", "autoround")
@@ -178,13 +178,27 @@ def map_quant_mode_to_trt(
     return result
 
 
+def _extract_method_from_dict(data: dict) -> str | None:
+    """Try to find a known quant method value in *data*."""
+    for key in QUANT_CONFIG_METHOD_KEYS:
+        raw = data.get(key)
+        if isinstance(raw, str):
+            mapped = QUANT_CONFIG_METHOD_MAP.get(raw.strip().lower())
+            if mapped:
+                return mapped
+    return None
+
+
 def _detect_quant_from_model_config(model_path: str) -> str | None:
     """Detect quantization from config files in a local model directory.
 
-    Reads config.json (and similar) to find the ``quant_method`` field that
-    HuggingFace models always ship.  This is the reliable fallback when the
-    model path has been renamed to a generic local directory (e.g.
-    ``/opt/models/chat``) and name-based heuristics cannot work.
+    Reads config.json (and similar) to find quantization metadata.
+    Handles both HuggingFace configs (``quantization_config.quant_method``)
+    and TRT-LLM checkpoint configs (``pretrained_config.quantization.quant_algo``).
+
+    This is the reliable fallback when the model path has been renamed to a
+    generic local directory (e.g. ``/opt/models/chat``) and name-based
+    heuristics cannot work.
     """
     if not os.path.isdir(model_path):
         return None
@@ -197,23 +211,29 @@ def _detect_quant_from_model_config(model_path: str) -> str | None:
         if not isinstance(payload, dict):
             continue
 
-        # HuggingFace standard: quantization_config.quant_method
-        quant_cfg = payload.get("quantization_config")
-        if isinstance(quant_cfg, dict):
-            for key in QUANT_CONFIG_METHOD_KEYS:
-                raw = quant_cfg.get(key)
-                if isinstance(raw, str):
-                    mapped = QUANT_CONFIG_METHOD_MAP.get(raw.strip().lower())
-                    if mapped:
-                        return mapped
+        # Walk into known parent keys that may contain a quantization dict.
+        # Handles HuggingFace (quantization_config), TRT-LLM (pretrained_config →
+        # quantization), and other nesting patterns.
+        for parent_key in QUANT_CONFIG_PARENT_KEYS:
+            parent = payload.get(parent_key)
+            if not isinstance(parent, dict):
+                continue
+            # Check the parent itself (e.g. quantization_config.quant_method)
+            result = _extract_method_from_dict(parent)
+            if result:
+                return result
+            # Check one level deeper (e.g. pretrained_config.quantization.quant_algo)
+            for child_key in QUANT_CONFIG_PARENT_KEYS:
+                child = parent.get(child_key)
+                if isinstance(child, dict):
+                    result = _extract_method_from_dict(child)
+                    if result:
+                        return result
 
-        # Top-level fallback (some older formats)
-        for key in QUANT_CONFIG_FALLBACK_KEYS:
-            raw = payload.get(key)
-            if isinstance(raw, str):
-                mapped = QUANT_CONFIG_METHOD_MAP.get(raw.strip().lower())
-                if mapped:
-                    return mapped
+        # Top-level fallback (flat configs with quant_method or quantization as a string)
+        result = _extract_method_from_dict(payload)
+        if result:
+            return result
 
     return None
 
