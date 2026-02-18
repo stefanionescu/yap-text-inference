@@ -39,7 +39,11 @@ import asyncio
 import logging
 from typing import Any
 from collections.abc import AsyncGenerator
-from asyncio import timeout as async_timeout
+
+try:
+    from asyncio import timeout as async_timeout
+except ImportError:  # Python < 3.11
+    from async_timeout import timeout as async_timeout
 
 from src.errors import StreamCancelledError
 from src.telemetry.sentry import capture_error
