@@ -18,10 +18,9 @@ def resolve_history(
 ) -> tuple[str, dict[str, Any] | None]:
     """Resolve and trim history payload into runtime text plus metadata.
 
-    History is only accepted on the first request of a session (when the
-    session has no turns yet).  After that the server accumulates history
-    itself via ``append_user_utterance`` / ``append_history_turn`` and any
-    client-sent history is silently ignored.
+    History is only accepted when the session has no turns yet.  Since
+    'start' is restricted to once per connection, this guard is normally
+    not hit — it serves as a safety net against unexpected session reuse.
     """
     if session_handler.get_history_turn_count(session_id) > 0:
         return session_handler.get_history_text(session_id), None
