@@ -30,8 +30,8 @@ ensure_required_env_vars() {
     log_err "[env] ✗ MAX_CONCURRENT_CONNECTIONS environment variable must be explicitly set."
     log_err "[env] ✗ Choose a capacity that matches your deployment and run: export MAX_CONCURRENT_CONNECTIONS=<number>"
     has_errors=1
-  elif ! [[ ${MAX_CONCURRENT_CONNECTIONS} =~ ${CFG_PATTERN_NON_NEGATIVE_INT} ]]; then
-    log_err "[env] ✗ MAX_CONCURRENT_CONNECTIONS must be an integer but was '${MAX_CONCURRENT_CONNECTIONS}'."
+  elif ! [[ ${MAX_CONCURRENT_CONNECTIONS} =~ ${CFG_PATTERN_POSITIVE_INT} ]]; then
+    log_err "[env] ✗ MAX_CONCURRENT_CONNECTIONS must be a positive integer (>= 1) but was '${MAX_CONCURRENT_CONNECTIONS}'."
     has_errors=1
   fi
 
