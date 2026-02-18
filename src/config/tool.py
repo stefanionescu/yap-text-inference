@@ -67,9 +67,13 @@ TOOL_MAX_LENGTH = int(_tool_max_length_raw) if _tool_max_length_raw is not None 
 # batch_max_delay_ms – max wait time (ms) to fill a batch
 
 TOOL_MODEL_BATCH_CONFIG: dict[str, dict[str, int | float]] = {
-    "yapwithai/yap-longformer-screenshot-intent": {"batch_max_size": 3, "batch_max_delay_ms": 10.0},
-    "yapwithai/yap-modernbert-screenshot-intent": {"batch_max_size": 5, "batch_max_delay_ms": 15.0},
-    "yapwithai/yap-distilroberta-screenshot-intent": {"batch_max_size": 10, "batch_max_delay_ms": 25.0},
+    "yapwithai/yap-longformer-screenshot-intent": {"batch_max_size": 3, "batch_max_delay_ms": 10.0, "max_length": 1536},
+    "yapwithai/yap-modernbert-screenshot-intent": {"batch_max_size": 5, "batch_max_delay_ms": 15.0, "max_length": 512},
+    "yapwithai/yap-distilroberta-screenshot-intent": {
+        "batch_max_size": 10,
+        "batch_max_delay_ms": 25.0,
+        "max_length": 512,
+    },
 }
 
 # ============================================================================

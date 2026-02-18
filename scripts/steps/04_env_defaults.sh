@@ -29,8 +29,12 @@ ensure_cuda_ready_for_engine "env" || exit 1
 
 log_info "[env] Setting environment defaults..."
 
-# Detect FlashInfer availability for runtime tuning (optional)
-detect_flashinfer
+# Detect FlashInfer availability for runtime tuning (optional, skip for tool-only)
+if [ "${DEPLOY_MODE:-both}" != "tool" ]; then
+  detect_flashinfer
+else
+  export HAS_FLASHINFER=0
+fi
 
 setup_deploy_mode_and_validate || exit 1
 
@@ -38,8 +42,6 @@ apply_engine_defaults
 
 # Speed up subsequent installs and centralize caches under repo
 set_repo_cache_paths
-
-# Backend selection remains centralized in Python; env override applied in apply_engine_defaults
 
 # --- GPU detection and optimization ---
 gpu_init_detection "env"

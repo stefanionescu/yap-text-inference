@@ -133,11 +133,14 @@ export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
 ensure_cuda_ready_for_engine "restart" || exit 1
 
 # Torch/TorchVision mismatch causes runtime import errors; remove mismatched wheels
-torch_cuda_mismatch_guard "[restart]"
-if [ "${TORCHVISION_CUDA_MISMATCH_DETECTED:-0}" = "1" ] && [ "${INSTALL_DEPS:-0}" != "1" ]; then
-  log_info "[restart] torch/torchvision mismatch detected; forcing --install-deps for clean reinstall"
-  INSTALL_DEPS=1
-  export INSTALL_DEPS
+# (irrelevant for tool-only -- no engine-specific torch builds)
+if [ "${DEPLOY_MODE}" != "tool" ]; then
+  torch_cuda_mismatch_guard "[restart]"
+  if [ "${TORCHVISION_CUDA_MISMATCH_DETECTED:-0}" = "1" ] && [ "${INSTALL_DEPS:-0}" != "1" ]; then
+    log_info "[restart] torch/torchvision mismatch detected; forcing --install-deps for clean reinstall"
+    INSTALL_DEPS=1
+    export INSTALL_DEPS
+  fi
 fi
 
 # Validate --push-quant prerequisites early (before any heavy operations)
