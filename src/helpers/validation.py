@@ -60,6 +60,8 @@ def validate_env() -> None:
     # Required limits
     if MAX_CONCURRENT_CONNECTIONS is None:
         errors.append("MAX_CONCURRENT_CONNECTIONS environment variable is required")
+    elif MAX_CONCURRENT_CONNECTIONS <= 0:
+        errors.append("MAX_CONCURRENT_CONNECTIONS must be a positive integer (>= 1)")
 
     # History trimming configuration
     if TRIMMED_HISTORY_LENGTH >= HISTORY_MAX_TOKENS:

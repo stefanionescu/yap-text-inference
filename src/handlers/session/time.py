@@ -14,7 +14,7 @@ e.g., "Good morning" vs "Good evening" in system prompts.
 
 from __future__ import annotations
 
-from datetime import UTC, tzinfo, datetime
+from datetime import tzinfo, datetime, timezone
 
 from src.state import SessionTimestamp
 
@@ -78,10 +78,10 @@ def format_session_timestamp(
         SessionTimestamp: Structured timestamp with ISO, classification, and human display value.
     """
 
-    target_tz = tz or UTC
-    current = now or datetime.now(tz=UTC)
+    target_tz = tz or timezone.utc  # noqa: UP017
+    current = now or datetime.now(tz=timezone.utc)  # noqa: UP017
     if current.tzinfo is None:
-        current = current.replace(tzinfo=UTC)
+        current = current.replace(tzinfo=timezone.utc)  # noqa: UP017
     localized = current.astimezone(target_tz)
 
     classification = get_time_classification(localized.hour)
