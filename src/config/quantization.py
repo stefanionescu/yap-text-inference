@@ -32,6 +32,9 @@ QUANT_NAME_MAPPING: dict[str, str] = {
 # - int8_sq: 8-bit SmoothQuant INT8 (Ampere A100 sm80, older GPUs without FP8)
 TRT_QUANTIZATIONS: set[str] = {"int4_awq", "fp8", "int8_sq"}
 
+# All recognized quantization formats across all engines
+VALID_QUANT_FORMATS: frozenset[str] = frozenset(VLLM_QUANTIZATIONS | TRT_QUANTIZATIONS | {"int8"})
+
 # GPU SM architectures that support native FP8
 # - sm89: Ada Lovelace (L40S, RTX 40 series: 4090, 4080, 4070 Ti, 4070, 4060 Ti, 4060)
 # - sm90: Hopper (H100, H200)
@@ -106,6 +109,7 @@ CHAT_TEMPLATE_FILES: tuple[str, ...] = (
 __all__ = [
     "SUPPORTED_ENGINES",
     "TRT_QUANTIZATIONS",
+    "VALID_QUANT_FORMATS",
     "TRT_FP8_SM_ARCHS",
     "VLLM_QUANTIZATIONS",
     "FLOAT16_QUANT_METHODS",

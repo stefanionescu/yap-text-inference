@@ -6,6 +6,7 @@ import os
 from dataclasses import field, dataclass
 
 from src.errors import EngineLabelError
+from src.config.calibration import CALIB_DEFAULT_DATASET
 from src.quantization.trt.detection import detect_gpu_name, detect_cuda_version, detect_tensorrt_llm_version
 
 
@@ -13,7 +14,7 @@ from src.quantization.trt.detection import detect_gpu_name, detect_cuda_version,
 class CalibrationConfig:
     """Configuration for AWQ calibration."""
 
-    dataset: str = "open_platypus"
+    dataset: str = CALIB_DEFAULT_DATASET
     nsamples: int = 64
     seqlen: int = 2048
     w_bit: int = 4
