@@ -1,5 +1,6 @@
 # Environment and cache
 venv/
+!scripts/lib/deps/venv/
 .env
 cache/
 __pycache__/
