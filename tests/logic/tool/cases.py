@@ -1,8 +1,7 @@
-"""Test case construction and helpers for the tool regression suite.
+"""Test case construction for the tool regression suite.
 
-This module provides functions to build test cases from the raw message data
-in tests/messages/tool.py and helper functions for rendering conversation
-history during multi-step test execution.
+This module builds test cases from the raw message data in
+tests/messages/tool/.
 """
 
 from __future__ import annotations
