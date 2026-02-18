@@ -121,7 +121,11 @@ def test_resolve_history_allows_seed_on_fresh_session(monkeypatch: pytest.Monkey
 
 
 def test_resolve_history_ignores_history_after_first_request(monkeypatch: pytest.MonkeyPatch) -> None:
-    """After the first request adds a turn, subsequent history payloads are ignored."""
+    """Guard: if a session already has turns, client-sent history is ignored.
+
+    This scenario is unreachable in normal flow (start is once-per-connection)
+    but tests the safety net in resolve_history.
+    """
     with use_local_tokenizers():
         session_handler = _build_session_handler(monkeypatch)
         session_id = "session-ignore-resend"
