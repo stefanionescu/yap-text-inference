@@ -192,14 +192,34 @@ resolve_uvicorn() {
 await_server_health() {
   local deadline=$((SECONDS + WARMUP_TIMEOUT_SECS))
   local urls=("${SERVER_LOCAL_HEALTH_URLS[@]}")
+  local last_err="" elapsed=0 start_secs=$SECONDS next_status=$((SECONDS + 30))
 
   while ((SECONDS <= deadline)); do
-    if bash "${WARMUP_HEALTH_CHECK_SCRIPT}" "${urls[@]}" >/dev/null 2>&1; then
+    # Fail fast if server process died
+    if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
+      log_err "[server] ✗ Server process (PID=${SERVER_PID}) died during health check"
+      return 1
+    fi
+
+    # Attempt health check, capture stderr for diagnostics
+    if last_err=$(bash "${WARMUP_HEALTH_CHECK_SCRIPT}" "${urls[@]}" 2>&1 >/dev/null); then
       return 0
     fi
+
+    # Periodic status check every ~30s
+    elapsed=$((SECONDS - start_secs))
+    if ((SECONDS >= next_status)); then
+      next_status=$((SECONDS + 30))
+    fi
+
     sleep "${WARMUP_HEALTH_POLL_INTERVAL_SECS}"
   done
 
+  elapsed=$((SECONDS - start_secs))
+  log_err "[server] ✗ Health check timed out after ${elapsed}s"
+  if [ -n "${last_err}" ]; then
+    log_err "[server]   Last health check error: ${last_err}"
+  fi
   return 1
 }
 
@@ -214,7 +234,7 @@ start_background() {
   local root_dir="${1:-${ROOT_DIR:-}}"
 
   # Start as a new session so Ctrl+C in the calling shell won't touch it
-  setsid "${SERVER_CMD[@]}" >>"${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}" 2>&1 &
+  PYTHONUNBUFFERED=1 setsid "${SERVER_CMD[@]}" >>"${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}" 2>&1 &
   SERVER_PID=$!
   write_pid "${root_dir}" "${SERVER_PID}"
 }
