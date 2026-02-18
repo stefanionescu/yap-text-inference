@@ -14,6 +14,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Engine selection: vllm (default) or trt
 ENGINE="${ENGINE:-vllm}"
+DEPLOY_MODE="${DEPLOY_MODE:-both}"
+
+# Auto-route tool-only builds to lightweight tool build path
+if [[ ${DEPLOY_MODE} == "tool" ]]; then
+  exec "${SCRIPT_DIR}/tool/build.sh" "$@"
+fi
 
 # Validate engine selection
 case "${ENGINE}" in
@@ -94,6 +100,13 @@ usage() {
     CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
     TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
     TAG=trt-qwen30b-sm90 \
+    ./docker/build.sh
+
+  # Tool-only: Lightweight image (auto-routed, no ENGINE needed)
+  DOCKER_USERNAME=myuser \
+    DEPLOY_MODE=tool \
+    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
+    TAG=tool-only \
     ./docker/build.sh
 EOF
   echo ""

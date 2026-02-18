@@ -80,6 +80,11 @@ warmup_log_internal "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark 
 
 warmup_all_passed=1
 
+if [ "${DEPLOY_MODE:-both}" = "tool" ]; then
+  log_info "[warmup] Tool-only deployment; skipping chat warmup."
+  exit 0
+fi
+
 warmup_detect_persona_variants "${PY_BIN}"
 for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
   IFS='|' read -r persona_gender persona_personality <<<"${persona}"

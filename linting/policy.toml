@@ -1,6 +1,6 @@
 [dockerignore]
 mode = "engine_local"
-required_files = ["docker/trt/.dockerignore", "docker/vllm/.dockerignore"]
+required_files = ["docker/trt/.dockerignore", "docker/tool/.dockerignore", "docker/vllm/.dockerignore"]
 forbidden_files = [".dockerignore"]
 allowed_extra_files = []
 allow_only_listed = true

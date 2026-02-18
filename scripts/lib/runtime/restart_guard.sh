@@ -132,6 +132,11 @@ handle_engine_switch() {
     return 1 # Already handled
   fi
 
+  # Tool-only mode doesn't use an inference engine; skip engine comparison
+  if [ "${deploy_mode}" = "tool" ]; then
+    return 1
+  fi
+
   if ! engine_changed "${desired_engine}" "${root_dir}"; then
     return 1 # No engine switch needed
   fi

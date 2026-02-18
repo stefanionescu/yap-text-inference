@@ -11,7 +11,7 @@ class _DummyConfig:
         self.num_labels = num_labels
 
 
-def test_build_model_info_uses_longformer_default_when_not_overridden(monkeypatch) -> None:
+def test_build_model_info_uses_fallback_default_when_not_overridden(monkeypatch) -> None:
     monkeypatch.setattr(
         tool_info.AutoConfig,
         "from_pretrained",
@@ -21,7 +21,7 @@ def test_build_model_info_uses_longformer_default_when_not_overridden(monkeypatc
     info = tool_info.build_model_info("dummy-model", max_length=None)
 
     assert info.model_type == "longformer"
-    assert info.max_length == 1536
+    assert info.max_length == 512
     assert info.num_labels == 3
 
 

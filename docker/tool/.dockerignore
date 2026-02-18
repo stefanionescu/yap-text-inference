@@ -1,0 +1,15 @@
+# Deny everything by default.
+**
+
+# Allow only files required by the tool-only Dockerfile.
+!.dockerignore
+!Dockerfile
+!requirements.txt
+!common/download/
+!common/download/**
+!common/scripts/
+!common/scripts/**
+!scripts/
+!scripts/**
+!src/
+!src/**

@@ -76,8 +76,8 @@ def validate_env() -> None:
     if DEPLOY_TOOL and TOOL_MODEL and not is_tool_model(TOOL_MODEL):
         errors.append("TOOL_MODEL must be one of the tool models (vLLM tool engines are disabled)")
 
-    # Validate engine selection
-    if INFERENCE_ENGINE not in SUPPORTED_ENGINES:
+    # Validate engine selection (only relevant when deploying a chat model)
+    if DEPLOY_CHAT and INFERENCE_ENGINE not in SUPPORTED_ENGINES:
         errors.append(f"INFERENCE_ENGINE must be one of {SUPPORTED_ENGINES}, got: {INFERENCE_ENGINE}")
 
     # TRT-specific validation

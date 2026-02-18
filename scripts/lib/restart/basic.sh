@@ -11,7 +11,7 @@ _RESTART_BASIC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_RESTART_BASIC_DIR}/../noise/logging.sh"
 
 # Wipe all pip/venv dependencies and caches for a clean reinstall
-# Preserves: HF cache, TRT repo, models, AWQ cache, quantized engines
+# Preserves: HF cache, models, and (for chat/both) TRT repo, AWQ cache, quantized engines
 # This is ONLY called when --install-deps is passed (explicit user request)
 wipe_dependencies_for_reinstall() {
   local root="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -21,10 +21,12 @@ wipe_dependencies_for_reinstall() {
   cleanup_venvs "${root}"
   cleanup_repo_pip_cache "${root}"
   cleanup_repo_runtime_caches "${root}"
-  cleanup_system_vllm_caches
-  cleanup_system_trt_caches
-  cleanup_system_compiler_caches
-  cleanup_system_nvidia_caches
+  if [ "${DEPLOY_MODE:-both}" != "tool" ]; then
+    cleanup_system_vllm_caches
+    cleanup_system_trt_caches
+    cleanup_system_compiler_caches
+    cleanup_system_nvidia_caches
+  fi
   cleanup_pip_caches
 
   # Remove dep hash markers (forces full reinstall)
@@ -50,10 +52,13 @@ run_install_deps_if_needed() {
   wipe_dependencies_for_reinstall
 
   # Ensure correct Python version is available (TRT needs 3.10, vLLM uses system python)
-  INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
-    log_err "[restart] ✗ Failed to set up Python environment"
-    exit 1
-  }
+  # Tool-only only needs system python3, skip step 02
+  if [ "${DEPLOY_MODE:-}" != "tool" ]; then
+    INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/02_python_env.sh" || {
+      log_err "[restart] ✗ Failed to set up Python environment"
+      exit 1
+    }
+  fi
 
   # Reinstall all dependencies from scratch (force mode)
   FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
@@ -75,6 +80,11 @@ run_basic_restart() {
   if [ -n "${CHAT_QUANTIZATION:-}" ] && [ "${CHAT_QUANTIZATION}" != "awq" ]; then
     SHOULD_USE_GENERIC=1
   elif [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "awq" ]; then
+    SHOULD_USE_GENERIC=1
+  fi
+
+  # Tool-only never uses AWQ; always use the generic restart path
+  if [ "${DEPLOY_MODE:-}" = "tool" ]; then
     SHOULD_USE_GENERIC=1
   fi
 
