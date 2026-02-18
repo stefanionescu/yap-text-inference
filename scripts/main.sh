@@ -93,7 +93,12 @@ push_quant_apply_policy "${CHAT_QUANTIZATION:-}" "main"
 validate_push_quant_prereqs "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 
 # Enable/disable engine push based on engine type (only TRT)
-push_engine_apply_policy "${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}" "main"
+if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+  HF_ENGINE_PUSH=0
+  export HF_ENGINE_PUSH
+else
+  push_engine_apply_policy "${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}" "main"
+fi
 validate_push_engine_prereqs
 
 # Snapshot desired config for smart restart detection
@@ -101,7 +106,11 @@ DESIRED_DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
 DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
 DESIRED_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
-DESIRED_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
+if [ "${DESIRED_DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+  DESIRED_ENGINE=""
+else
+  DESIRED_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
+fi
 
 # If the server is already running, decide whether to keep caches or reset.
 # NOTE: Engine switch (vllm <-> trt) triggers FULL environment wipe automatically.

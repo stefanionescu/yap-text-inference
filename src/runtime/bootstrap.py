@@ -24,6 +24,8 @@ from .dependencies import RuntimeDeps
 async def _build_chat_engine():
     if not DEPLOY_CHAT:
         return None
+    if INFERENCE_ENGINE not in {"vllm", "trt"}:
+        raise RuntimeError(f"Unsupported chat inference engine: {INFERENCE_ENGINE!r}")
     if INFERENCE_ENGINE == "vllm":
         from src.engines.vllm.factory import create_vllm_engine  # noqa: PLC0415
 

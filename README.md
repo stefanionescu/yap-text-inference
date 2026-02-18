@@ -57,6 +57,9 @@ bash scripts/main.sh [--trt|--vllm] [4bit|8bit] <chat_model> <tool_model>
 bash scripts/main.sh [--trt|--vllm] [4bit|8bit] chat <chat_model>
 bash scripts/main.sh tool <tool_model>
 
+# Tool-only mode is engine-agnostic:
+# do not pass --trt/--vllm/--engine or INFERENCE_ENGINE
+
 # Ctrl+C stops the log tail only; use scripts/stop.sh to stop the server
 ```
 
@@ -227,7 +230,7 @@ The server supports two inference backends:
 | **PyTorch** | 2.9.x | 2.9.x |
 | **MoE Support** | Via FLA | FP8 only (other quants error) |
 
-Select the engine with CLI flags or environment variable:
+Select the engine with CLI flags or environment variable (chat/both deployments only):
 
 ```bash
 # TensorRT-LLM (default)
@@ -241,6 +244,8 @@ bash scripts/main.sh --vllm 4bit <chat_model> <tool_model>
 export INFERENCE_ENGINE=vllm
 bash scripts/main.sh 4bit <chat_model> <tool_model>
 ```
+
+Tool-only deployments do not accept engine flags and ignore `INFERENCE_ENGINE`.
 
 > **Engine switching:** Changing engines (e.g., `--trt` to `--vllm`) wipes HF caches, pip deps, quantized models, and engine artifacts.
 
@@ -296,8 +301,8 @@ NUKE_ALL=0 bash scripts/stop.sh
 bash scripts/restart.sh [both|chat|tool]
 
 # Switch engines during restart (triggers full wipe)
-bash scripts/restart.sh --vllm [both|chat|tool]
-bash scripts/restart.sh --trt [both|chat|tool]
+bash scripts/restart.sh --vllm [both|chat]
+bash scripts/restart.sh --trt [both|chat]
 
 # Restart and reinstall dependencies (e.g., refresh venv)
 bash scripts/restart.sh both --install-deps
@@ -321,7 +326,7 @@ bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model
 ```
 
 Key restart flags:
-- `--trt` / `--vllm`: Select inference engine (switching wipes the environment).
+- `--trt` / `--vllm`: Select inference engine for `both`/`chat` only (switching wipes the environment). Tool-only mode rejects engine flags.
 - `--keep-models` (default) reuses cached exports; combine with `NUKE_ALL=0` for fast restarts.
 - `--reset-models` wipes caches before relaunching with different models or quantization.
 - `--install-deps` reinstalls `.venv` before launching.

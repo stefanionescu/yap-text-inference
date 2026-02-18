@@ -38,7 +38,7 @@ set_deploy_flags() {
 # Validate that required models are configured for the deploy mode
 validate_deploy_models() {
   local log_prefix="${1:-[docker]}"
-  local engine="${2:-vllm}"
+  local engine="${2:-}"
 
   if [ "${DEPLOY_CHAT}" = "1" ] && [ -z "${CHAT_MODEL:-}" ]; then
     log_err "${log_prefix} ✗ CHAT_MODEL not configured in this image. This image was not built correctly."
@@ -57,10 +57,10 @@ validate_deploy_models() {
 }
 
 # Initialize deploy mode configuration
-# Usage: init_deploy_mode "[prefix]" "engine"
+# Usage: init_deploy_mode "[prefix]" ["engine"]
 init_deploy_mode() {
   local log_prefix="${1:-[docker]}"
-  local engine="${2:-vllm}"
+  local engine="${2:-}"
 
   normalize_deploy_mode "${log_prefix}"
   set_deploy_flags

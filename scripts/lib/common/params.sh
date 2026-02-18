@@ -158,6 +158,17 @@ push_engine_apply_policy() {
   local engine="${1:-${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}}"
   local context="${2:-push}"
   local requested="${HF_ENGINE_PUSH_REQUESTED:-${HF_ENGINE_PUSH:-0}}"
+  local deploy_mode="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
+
+  # Tool-only deployments have no chat engine artifacts to push.
+  if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    HF_ENGINE_PUSH=0
+    export HF_ENGINE_PUSH
+    if [ "${requested}" = "1" ]; then
+      log_info "[${context}] --push-engine is not supported for tool-only deployments; ignoring."
+    fi
+    return 0
+  fi
 
   if [ "${requested}" != "1" ]; then
     HF_ENGINE_PUSH=0

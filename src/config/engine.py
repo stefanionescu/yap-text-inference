@@ -23,7 +23,8 @@ directory name carries no quantization markers.
 If auto-detection still fails, set CHAT_QUANTIZATION manually.
 
 Environment Variables:
-    INFERENCE_ENGINE: 'vllm' or 'trt'
+    INFERENCE_ENGINE: 'vllm' or 'trt' (used when DEPLOY_MODE includes chat)
+        Tool-only deployments set INFERENCE_ENGINE to None.
     CHAT_QUANTIZATION: Override auto-detected quantization (optional)
 
 Note:
@@ -35,13 +36,18 @@ from __future__ import annotations
 
 import os
 
+from .deploy import DEPLOY_CHAT
 from ..helpers.quantization import normalize_engine, detect_chat_quantization
 
 # ============================================================================
 # Engine Selection
 # ============================================================================
 
-INFERENCE_ENGINE = normalize_engine(os.getenv("INFERENCE_ENGINE", "trt"))
+if DEPLOY_CHAT:
+    INFERENCE_ENGINE: str | None = normalize_engine(os.getenv("INFERENCE_ENGINE", "trt"))
+else:
+    # Tool-only deployments do not use chat inference engines.
+    INFERENCE_ENGINE = None
 
 
 # ============================================================================

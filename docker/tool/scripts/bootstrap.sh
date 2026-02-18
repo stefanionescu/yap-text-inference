@@ -9,7 +9,7 @@ log_info "[tool] Setting environment defaults (tool-only image)..."
 
 # Source modular env configuration (no runtime.sh or gpu.sh -- tool-only doesn't need them)
 source "/app/common/scripts/deploy_mode.sh"
-init_deploy_mode "[tool]" "vllm"
+init_deploy_mode "[tool]"
 source "${SCRIPT_DIR}/env/defaults.sh"
 
 if [ "${DEPLOY_TOOL}" = "1" ]; then

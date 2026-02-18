@@ -14,7 +14,7 @@ import re
 import sys
 
 
-def _load_validation_config() -> tuple[list[str], list[str]]:
+def _load_validation_config(engine: str | None = None) -> tuple[list[str], list[str]]:
     """Load allowlists from src config/helpers.
 
     Returns:
@@ -30,8 +30,10 @@ def _load_validation_config() -> tuple[list[str], list[str]]:
     except Exception as exc:
         raise RuntimeError(f"failed to import validation config from src/: {exc}") from exc
 
-    engine = os.environ.get("ENGINE", "vllm").strip().lower()
-    return list(ALLOWED_TOOL_MODELS), list(get_allowed_chat_models(engine))
+    allowed_chat_models: list[str] = []
+    if engine:
+        allowed_chat_models = list(get_allowed_chat_models(engine))
+    return list(ALLOWED_TOOL_MODELS), allowed_chat_models
 
 
 def _is_local_path(value: str) -> bool:
@@ -118,21 +120,28 @@ def validate_for_deploy(
     trt_engine_label: str = "",
 ) -> tuple[bool, list[str]]:
     """Validate all models for a deploy mode."""
+    deploy_chat = deploy_mode in ("chat", "both")
+    deploy_tool = deploy_mode in ("tool", "both")
+    normalized_engine = (engine or "").strip().lower()
+
+    if deploy_chat and normalized_engine not in {"trt", "vllm"}:
+        return False, [f"[validate] ✗ ENGINE must be 'trt' or 'vllm' for deploy mode '{deploy_mode}'"]
+
     try:
-        allowed_tool_models, allowed_chat_models = _load_validation_config()
+        allowed_tool_models, allowed_chat_models = _load_validation_config(normalized_engine if deploy_chat else None)
     except RuntimeError as exc:
         return False, [f"[validate] ✗ {exc}"]
 
     messages: list[str] = []
     all_valid = True
 
-    if deploy_mode in ("chat", "both"):
-        valid, msg = validate_chat_model(chat_model, engine, allowed_chat_models)
+    if deploy_chat:
+        valid, msg = validate_chat_model(chat_model, normalized_engine, allowed_chat_models)
         messages.append(f"[validate] {msg}")
         if not valid:
             all_valid = False
 
-        if engine == "trt":
+        if normalized_engine == "trt":
             valid, msg = validate_trt_engine_repo(trt_engine_repo)
             messages.append(f"[validate] {msg}")
             if not valid:
@@ -143,7 +152,7 @@ def validate_for_deploy(
             if not valid:
                 all_valid = False
 
-    if deploy_mode in ("tool", "both"):
+    if deploy_tool:
         valid, msg = validate_tool_model(tool_model, allowed_tool_models)
         messages.append(f"[validate] {msg}")
         if not valid:
@@ -160,7 +169,7 @@ def main() -> None:
     deploy_mode = os.environ.get("DEPLOY_MODE", "both")
     chat_model = os.environ.get("CHAT_MODEL", "")
     tool_model = os.environ.get("TOOL_MODEL", "")
-    engine = os.environ.get("ENGINE", "vllm").strip().lower()
+    engine = os.environ.get("ENGINE", "").strip().lower()
     trt_engine_repo = os.environ.get("TRT_ENGINE_REPO", "")
     trt_engine_label = os.environ.get("TRT_ENGINE_LABEL", "")
 

@@ -8,7 +8,8 @@
 # shellcheck disable=SC2034
 readonly -a CFG_RESTART_USAGE_LINES=(
   "Usage:"
-  "  restart.sh <deploy_mode> [--trt|--vllm] [--install-deps] [--keep-models]"
+  "  restart.sh <deploy_mode> [--install-deps] [--keep-models]"
+  "  restart.sh <deploy_mode> [--trt|--vllm] [--install-deps] [--keep-models]  # chat/both only"
   "      Quick restart that reuses existing quantized caches (default behavior)."
   "      NOTE: deploy_mode (both|chat|tool) is REQUIRED."
   ""
@@ -18,10 +19,11 @@ readonly -a CFG_RESTART_USAGE_LINES=(
   "             [--install-deps]"
   "      Reconfigure which models/quantization are deployed without reinstalling deps."
   ""
-  "Inference Engines:"
+  "Inference Engines (chat/both only):"
   "  --trt           Use TensorRT-LLM engine (default)"
   "  --vllm          Use vLLM engine"
   "  --engine=X      Explicit engine selection (trt or vllm)"
+  "  NOTE: tool-only mode rejects engine flags"
   ""
   "  NOTE: Switching engines (trt <-> vllm) triggers FULL environment wipe:"
   "        all HF caches, pip deps, quantized models, and engine artifacts."

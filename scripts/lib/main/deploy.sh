@@ -37,12 +37,6 @@ log_deploy_config() {
 # Returns: deployment command string
 build_deploy_cmd() {
   local script_dir="$1"
-  local quantizer="quantization/vllm_quantizer.sh"
-  local engine_label="vLLM"
-  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
-    quantizer="quantization/trt_quantizer.sh"
-    engine_label="TRT"
-  fi
 
   # Tool-only mode: skip Python env verification and quantization (no chat engine needed)
   if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
@@ -56,6 +50,13 @@ build_deploy_cmd() {
       echo '[main] Use scripts/stop.sh to stop the server'
 CMD
     return
+  fi
+
+  local quantizer="quantization/vllm_quantizer.sh"
+  local engine_label="vLLM"
+  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
+    quantizer="quantization/trt_quantizer.sh"
+    engine_label="TRT"
   fi
 
   cat <<CMD
@@ -74,7 +75,12 @@ CMD
 # Export all required environment variables for background process
 export_runtime_env() {
   export QUANT_MODE DEPLOY_MODE CHAT_MODEL TOOL_MODEL
-  export CHAT_QUANTIZATION INFERENCE_ENGINE
+  export CHAT_QUANTIZATION
+  if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" != "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    export INFERENCE_ENGINE
+  else
+    unset INFERENCE_ENGINE 2>/dev/null || true
+  fi
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
 }
 

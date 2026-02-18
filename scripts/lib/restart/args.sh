@@ -24,13 +24,40 @@ parse_args() {
   RECONFIG_CHAT_MODEL="${RECONFIG_CHAT_MODEL:-}"
   RECONFIG_TOOL_MODEL="${RECONFIG_TOOL_MODEL:-}"
   RECONFIG_CHAT_QUANTIZATION="${RECONFIG_CHAT_QUANTIZATION:-}"
+  local first_engine_flag=""
+  local -a deferred_engine_flags=()
 
   while [ $# -gt 0 ]; do
-    # Try common flags first
-    if parse_common_flag "$1" "${2:-}"; then
+    # Parse non-engine common flags first.
+    if parse_common_non_engine_flag "$1" "${2:-}"; then
       shift "${ARGS_SHIFT_COUNT}"
       continue
     fi
+
+    # Defer engine handling until deploy mode is known.
+    local engine_parse_rc=0
+    if parse_engine_flag_token "$1" "${2:-}"; then
+      engine_parse_rc=0
+    else
+      engine_parse_rc=$?
+    fi
+    case "${engine_parse_rc}" in
+      0)
+        if [ -z "${first_engine_flag}" ]; then
+          first_engine_flag="${ENGINE_FLAG_NAME}"
+        fi
+        deferred_engine_flags+=("${ENGINE_FLAG_NAME}")
+        if [ "${ENGINE_FLAG_NAME}" = "--engine" ]; then
+          deferred_engine_flags+=("${ENGINE_FLAG_VALUE}")
+        fi
+        shift "${ARGS_SHIFT_COUNT}"
+        continue
+        ;;
+      2)
+        log_err "[restart] ✗ --engine requires a value (trt|vllm)"
+        return 1
+        ;;
+    esac
 
     case "$1" in
       "${CFG_DEPLOY_MODE_BOTH}" | "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}")
@@ -128,10 +155,17 @@ parse_args() {
     return 1
   fi
 
-  # Normalize engine selection
-  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE}")"; then
-    log_err "[restart] ✗ Unknown engine '${INFERENCE_ENGINE}'. Expected trt|vllm."
-    return 1
+  if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    if [ ${#deferred_engine_flags[@]} -gt 0 ]; then
+      log_err "[restart] ✗ ${first_engine_flag} is not supported when DEPLOY_MODE='tool'."
+      log_err "[restart] ✗ Remove engine flags (--trt/--vllm/--engine) for tool-only deployments."
+      return 1
+    fi
+    unset INFERENCE_ENGINE
+  else
+    if ! apply_deferred_engine_flags "[restart]" "${deferred_engine_flags[@]}"; then
+      return 1
+    fi
   fi
 
   # Validate mutually exclusive flags
