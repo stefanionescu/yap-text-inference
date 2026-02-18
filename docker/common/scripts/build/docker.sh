@@ -6,7 +6,7 @@
 
 require_docker() {
   if ! docker info >/dev/null 2>&1; then
-    log_error "[build] ✗ Docker is not running. Please start Docker and try again."
+    log_err "[build] ✗ Docker is not running. Please start Docker and try again."
     exit 1
   fi
 }

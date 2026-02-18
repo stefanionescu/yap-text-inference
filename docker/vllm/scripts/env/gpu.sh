@@ -4,20 +4,7 @@
 #
 # Sources shared GPU detection from common/ and applies vLLM-specific defaults.
 
-_GPU_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Find common scripts directory (works in Docker and dev contexts)
-if [ -d "/app/common/scripts" ]; then
-  _GPU_COMMON_SCRIPTS="/app/common/scripts"
-elif [ -d "${_GPU_SCRIPT_DIR}/../../../common/scripts" ]; then
-  _GPU_COMMON_SCRIPTS="${_GPU_SCRIPT_DIR}/../../../common/scripts"
-else
-  echo "[vllm] ERROR: Cannot find common scripts directory" >&2
-  exit 1
-fi
-
-# Source shared GPU detection
-source "${_GPU_COMMON_SCRIPTS}/gpu.sh"
+source "/app/common/scripts/gpu.sh"
 
 # Initialize GPU detection
 gpu_init_detection

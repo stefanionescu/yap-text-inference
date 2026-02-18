@@ -17,22 +17,29 @@ ROOT_DIR="${ROOT_DIR:-$(cd "${_VALIDATE_SCRIPT_DIR}/../../.." && pwd)}"
 validate_engine_gpu_compatibility() {
   local engine_dir="${TRT_ENGINE_DIR:-/opt/engines/trt-chat}"
   local metadata_file="${engine_dir}/build_metadata.json"
+  local deploy_chat="${DEPLOY_CHAT:-0}"
 
-  # Skip validation if no engine directory (tool-only deployment)
-  if [ ! -d "${engine_dir}" ]; then
-    log_info "[validate] No TRT engine directory - tool-only deployment, skipping GPU validation"
+  # Tool-only images intentionally have no chat engine.
+  if [ "${deploy_chat}" != "1" ]; then
+    log_info "[validate] DEPLOY_CHAT=0 - skipping TRT engine validation"
     return 0
   fi
 
-  # Skip if no engine files (tool-only deployment)
+  # Chat deployments must have a real engine directory.
+  if [ ! -d "${engine_dir}" ]; then
+    log_err "[validate] ✗ TRT engine directory not found: ${engine_dir}"
+    return 1
+  fi
+
+  # Chat deployments must include engine files.
   if ! ls "${engine_dir}"/rank*.engine >/dev/null 2>&1; then
-    log_info "[validate] No engine files found - tool-only deployment, skipping GPU validation"
-    return 0
+    log_err "[validate] ✗ No TRT engine files found in ${engine_dir}"
+    return 1
   fi
 
   # STRICT: Require metadata file
   if [ ! -f "${metadata_file}" ]; then
-    log_error "[validate] ✗ Missing engine metadata"
+    log_err "[validate] ✗ Missing engine metadata"
     return 1
   fi
 
@@ -51,7 +58,7 @@ validate_engine_gpu_compatibility() {
 
   # STRICT: Require sm_arch in metadata
   if [ -z "${engine_sm_arch}" ]; then
-    log_error "[validate] ✗ Invalid engine metadata: missing sm_arch"
+    log_err "[validate] ✗ Invalid engine metadata: missing sm_arch"
     return 1
   fi
 
@@ -60,13 +67,13 @@ validate_engine_gpu_compatibility() {
 
   # STRICT: Require runtime GPU detection
   if [ -z "${runtime_sm_arch}" ]; then
-    log_error "[validate] ✗ Cannot detect runtime GPU"
+    log_err "[validate] ✗ Cannot detect runtime GPU"
     return 1
   fi
 
   # Compare SM architectures
   if [ "${engine_sm_arch}" != "${runtime_sm_arch}" ]; then
-    log_error "[validate] ✗ GPU mismatch: engine=${engine_sm_arch}, runtime=${runtime_sm_arch}"
+    log_err "[validate] ✗ GPU mismatch: engine=${engine_sm_arch}, runtime=${runtime_sm_arch}"
     return 1
   fi
 
@@ -76,6 +83,6 @@ validate_engine_gpu_compatibility() {
 
 # Run validation
 if ! validate_engine_gpu_compatibility; then
-  log_error "[validate] Engine/GPU compatibility check failed. Aborting."
+  log_err "[validate] Engine/GPU compatibility check failed. Aborting."
   exit 1
 fi

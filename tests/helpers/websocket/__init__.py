@@ -1,9 +1,8 @@
-"""WebSocket utilities for test clients.
+"""Static WebSocket helper exports for test clients."""
 
-This subpackage provides utilities for WebSocket communication including
-connection handling, message parsing, payload building, and stream consumption.
-"""
+from __future__ import annotations
 
+from . import ws
 from .message import iter_messages, parse_message, dispatch_message
 from .ws import recv_raw, with_api_key, send_client_end, connect_with_retries
 from .stream import record_token, consume_stream, create_tracker, record_toolcall, finalize_metrics
@@ -16,25 +15,22 @@ from .payloads import (
 )
 
 __all__ = [
-    # message
-    "dispatch_message",
-    "iter_messages",
-    "parse_message",
-    # payloads
     "build_cancel_payload",
     "build_end_payload",
     "build_envelope",
     "build_message_payload",
     "build_start_payload",
-    # stream
+    "connect_with_retries",
     "consume_stream",
     "create_tracker",
+    "dispatch_message",
     "finalize_metrics",
+    "iter_messages",
+    "parse_message",
     "record_token",
     "record_toolcall",
-    # ws
-    "connect_with_retries",
     "recv_raw",
     "send_client_end",
     "with_api_key",
+    "ws",
 ]

@@ -10,7 +10,7 @@ import math
 from typing import Any
 from collections.abc import Mapping, Callable, Sequence
 
-from tests.state import TTFBSamples
+from tests.state.metrics import TTFBSamples
 from tests.helpers.fmt import dim, bold, section_header
 
 # ============================================================================

@@ -7,7 +7,7 @@
 # shellcheck disable=SC2034
 readonly CFG_DEFAULT_DEPLOY_MODE="both"
 readonly CFG_DEFAULT_ENGINE="trt"
-readonly CFG_DEFAULT_RUNTIME_ENGINE="vllm"
+readonly CFG_DEFAULT_RUNTIME_ENGINE="trt"
 
 # shellcheck disable=SC2034
 readonly CFG_MAX_SERVER_LOG_BYTES=$((100 * 1024 * 1024))

@@ -1,6 +1,8 @@
 # vLLM Docker Image
 
 vLLM inference image with models baked in.
+This stack is for vLLM chat deployments (`DEPLOY_MODE=chat|both`).
+For tool-only images, use `docker/build.sh` with `DEPLOY_MODE=tool` (auto-routes to `docker/tool/build.sh`).
 
 ## Contents
 
@@ -36,9 +38,9 @@ docker run -d --gpus all --name yap-server \
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
-| `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
+| `DEPLOY_MODE` | Yes | `chat` or `both` |
 | `CHAT_MODEL` | If chat/both | Pre-quantized HF model (AWQ/GPTQ/W4A16) |
-| `TOOL_MODEL` | If tool/both | Tool model HF repo |
+| `TOOL_MODEL` | If both | Tool model HF repo |
 | `TAG` | Yes | Image tag (must start with `vllm-`) |
 | `HF_TOKEN` | If private | HuggingFace token |
 
@@ -52,4 +54,3 @@ docker run -d --gpus all --name yap-server \
 | `TOOL_GPU_FRAC` | No | 0.20 | GPU fraction for tool model |
 | `KV_DTYPE` | No | auto | KV cache dtype (fp8, int8, auto) |
 | `VLLM_USE_V1` | No | 1 | Use vLLM V1 engine |
-

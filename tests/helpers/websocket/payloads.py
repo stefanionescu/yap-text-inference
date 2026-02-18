@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from tests.state import SessionContext
+from tests.state.metrics import SessionContext
 
 
 def build_envelope(
