@@ -8,7 +8,10 @@ set -euo pipefail
 # - TRT images: Require TRT_ENGINE_REPO and TRT_ENGINE_LABEL to specify the exact engine
 # - vLLM images: Require pre-quantized CHAT_MODEL (AWQ/GPTQ/W4A16)
 #
-# Tags MUST follow naming convention: trt-* or vllm-* (except tool-only deploys)
+# Tags MUST follow naming convention by deploy mode:
+# - chat/both with ENGINE=vllm: vllm-*
+# - chat/both with ENGINE=trt: trt-*
+# - tool-only: tool-*
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -18,6 +21,13 @@ DEPLOY_MODE="${DEPLOY_MODE:-both}"
 
 # Auto-route tool-only builds to lightweight tool build path
 if [[ ${DEPLOY_MODE} == "tool" ]]; then
+  TAG="${TAG:-}"
+  if [[ -n ${TAG} && ! ${TAG} =~ ^tool- ]]; then
+    echo "[build] ✗ TAG must start with 'tool-' for tool-only images" >&2
+    echo "[build]   Got: ${TAG}" >&2
+    echo "[build]   Example: tool-modernbert" >&2
+    exit 1
+  fi
   exec "${SCRIPT_DIR}/tool/build.sh" "$@"
 fi
 
@@ -70,7 +80,9 @@ usage() {
   echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
   echo "  CHAT_MODEL          - Chat model HF repo (required for chat/both)"
   echo "  TOOL_MODEL          - Tool model HF repo (required for tool/both)"
-  echo "  TAG                 - Image tag (MUST start with 'trt-' or 'vllm-')"
+  echo "  TAG                 - Image tag prefix by mode:"
+  echo "                        chat/both => trt- or vllm- (based on ENGINE)"
+  echo "                        tool      => tool-"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (required for private repos)"
   echo ""

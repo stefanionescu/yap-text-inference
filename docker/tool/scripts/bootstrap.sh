@@ -3,12 +3,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/logs.sh"
+source "/app/common/scripts/logs.sh"
 
 log_info "[tool] Setting environment defaults (tool-only image)..."
 
 # Source modular env configuration (no runtime.sh or gpu.sh -- tool-only doesn't need them)
-source "${SCRIPT_DIR}/env/deploy.sh"
+source "/app/common/scripts/deploy_mode.sh"
+init_deploy_mode "[tool]" "vllm"
 source "${SCRIPT_DIR}/env/defaults.sh"
 
 if [ "${DEPLOY_TOOL}" = "1" ]; then

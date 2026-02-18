@@ -3,6 +3,7 @@
 TRT-LLM inference image with models baked in.
 This stack is for TRT chat deployments (`DEPLOY_MODE=chat|both`).
 For tool-only images, use `docker/build.sh` with `DEPLOY_MODE=tool` (auto-routes to `docker/tool/build.sh`).
+Tool-only stack docs live in `docker/tool/README.md`.
 
 ## Contents
 

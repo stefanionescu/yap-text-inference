@@ -3,13 +3,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/logs.sh"
+source "/app/common/scripts/logs.sh"
 
 log_info "[vllm] Setting environment defaults (vLLM AWQ image)..."
 
 # Source modular env configuration
 source "${SCRIPT_DIR}/env/runtime.sh"
-source "${SCRIPT_DIR}/env/deploy.sh"
+source "/app/common/scripts/deploy_mode.sh"
+init_deploy_mode "[vllm]" "vllm"
 source "${SCRIPT_DIR}/env/gpu.sh"
 source "${SCRIPT_DIR}/env/defaults.sh"
 

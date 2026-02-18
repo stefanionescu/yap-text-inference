@@ -2,8 +2,7 @@
 # shellcheck disable=SC1091
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/logs.sh"
+source "/app/common/scripts/logs.sh"
 source "/app/common/scripts/server.sh"
 
 cd /app
@@ -37,4 +36,4 @@ if ! validate_engine; then
   exit 1
 fi
 
-start_server_with_warmup "trt" "${SCRIPT_DIR}/warmup.sh" "${ROOT_DIR}"
+start_server_with_warmup "trt" "/app/common/scripts/warmup.sh" "${ROOT_DIR}"

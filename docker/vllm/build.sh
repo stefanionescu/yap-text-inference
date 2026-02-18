@@ -61,8 +61,8 @@ COMMON_DIR="${SCRIPT_DIR}/../common"
 source "${COMMON_DIR}/scripts/logs.sh"
 source "${COMMON_DIR}/scripts/build/docker.sh"
 source "${COMMON_DIR}/scripts/build/args.sh"
-source "${SCRIPT_DIR}/scripts/build/context.sh"
-source "${SCRIPT_DIR}/scripts/build/validate.sh"
+source "${COMMON_DIR}/scripts/build/context.sh"
+source "${COMMON_DIR}/scripts/build/validate.sh"
 
 # Usage function
 usage() {
@@ -126,7 +126,7 @@ fi
 
 # Validate models based on deploy mode
 log_info "[build] Validating models for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
-if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
+if ! validate_models_for_deploy_common "vllm" "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
   log_err "[build] ✗ Model validation failed. Build aborted."
   exit 1
 fi
@@ -146,7 +146,7 @@ if [[ -n ${TOOL_MODEL} ]]; then
 fi
 
 # Build the image
-prepare_build_context
+prepare_build_context_common "${SCRIPT_DIR}" "requirements-vllm.txt" "1" "yap-vllm"
 
 init_build_args
 
