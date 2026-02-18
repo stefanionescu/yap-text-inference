@@ -40,9 +40,6 @@ ENV CHAT_MODEL=""
 ENV TOOL_MODEL=${TOOL_MODEL}
 ENV CHAT_QUANTIZATION=""
 
-# Engine type
-ENV INFERENCE_ENGINE=vllm
-
 # Default directories for baked-in models
 ENV MODELS_DIR=/opt/models
 ENV CHAT_MODEL_PATH=/opt/models/chat

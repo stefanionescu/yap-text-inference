@@ -96,7 +96,7 @@ fi
 
 # Validate tool model
 log_info "[build] Validating models for DEPLOY_MODE=tool..."
-if ! validate_models_for_deploy_common "vllm" "tool" "" "${TOOL_MODEL}"; then
+if ! validate_models_for_deploy_common "" "tool" "" "${TOOL_MODEL}"; then
   log_err "[build] ✗ Model validation failed. Build aborted."
   exit 1
 fi

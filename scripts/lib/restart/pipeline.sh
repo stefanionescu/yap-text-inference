@@ -50,7 +50,12 @@ restart_stage_parse_and_validate() {
       ;;
   esac
 
-  export INSTALL_DEPS DEPLOY_MODE INFERENCE_ENGINE
+  export INSTALL_DEPS DEPLOY_MODE
+  if [ "${DEPLOY_MODE}" != "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    export INFERENCE_ENGINE
+  else
+    unset INFERENCE_ENGINE 2>/dev/null || true
+  fi
 }
 
 restart_stage_preflight() {

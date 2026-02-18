@@ -16,6 +16,8 @@ clear_model_artifacts() {
   # Clear stale TRT engine path reference
   rm -f "${ROOT_DIR}/${CFG_RUNTIME_TRT_ENGINE_ENV_FILE}" 2>/dev/null || true
 
+  local deploy_mode="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
+
   # Model-specific artifacts (always clear on model switch)
   local model_paths=(
     "${ROOT_DIR}/.awq"
@@ -23,8 +25,9 @@ clear_model_artifacts() {
     "${ROOT_DIR}/models"
   )
 
-  # vLLM engine caches (only clear if NOT using vLLM)
-  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" != "${CFG_ENGINE_VLLM}" ]; then
+  # Tool-only mode is engine-agnostic: clear both vLLM and TRT-specific caches.
+  if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ] ||
+    [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" != "${CFG_ENGINE_VLLM}" ]; then
     model_paths+=(
       "${ROOT_DIR}/.vllm_cache"
       "${ROOT_DIR}/.flashinfer"
@@ -34,7 +37,8 @@ clear_model_artifacts() {
 
   # TRT engine infrastructure (only clear if NOT using TRT)
   # .trtllm-repo contains quantization scripts - preserve if staying on TRT
-  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" != "${CFG_ENGINE_TRT}" ]; then
+  if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ] ||
+    [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" != "${CFG_ENGINE_TRT}" ]; then
     model_paths+=("${ROOT_DIR}/.trtllm-repo")
   fi
 
@@ -165,7 +169,7 @@ reconfigure_models() {
   # Run quantization/build pipeline (only if we're NOT preserving cache):
   # - vLLM: only needed for AWQ (FP8/INT8 are runtime quantization)
   # - TRT: ALWAYS needed (all quantization modes require compiled engine)
-  if [ "${preserve_cache}" != "1" ]; then
+  if [ "${preserve_cache}" != "1" ] && [ "${deploy_chat}" = "1" ]; then
     if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
       if _restart_needs_trt_engine_build || _restart_needs_awq_pipeline; then
         source "${SCRIPT_DIR}/quantization/trt_quantizer.sh"
@@ -184,7 +188,10 @@ reconfigure_models() {
   # Push TRT engine if requested and we didn't go through the quantizer
   # (quantizer handles its own push; this handles cached/prebuilt engines)
   # Skip if engine was downloaded from HuggingFace (no point pushing back what we downloaded)
-  if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ] && [ "${USING_PREBUILT_ENGINE:-0}" != "1" ]; then
+  if [ "${deploy_chat}" = "1" ] &&
+    [ "${HF_ENGINE_PUSH:-0}" = "1" ] &&
+    [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ] &&
+    [ "${USING_PREBUILT_ENGINE:-0}" != "1" ]; then
     # Load engine dir from saved env if not already set
     if [ -z "${TRT_ENGINE_DIR:-}" ]; then
       local trt_env_file="${ROOT_DIR}/${CFG_RUNTIME_TRT_ENGINE_ENV_FILE}"

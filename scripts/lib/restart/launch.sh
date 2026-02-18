@@ -23,9 +23,17 @@ launch_server_background() {
   local command_string="bash '${ROOT_DIR}/scripts/steps/05_start_server.sh'"
   local quant_label="${CHAT_QUANTIZATION:-${CFG_QUANT_MODE_AUTO}}"
   local engine_label="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
-  run_background \
-    "${ROOT_DIR}" \
-    "${command_string}" \
-    "1" \
-    "Starting server (${engine_label} engine, ${quant_label} quantization)..."
+  if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    run_background \
+      "${ROOT_DIR}" \
+      "${command_string}" \
+      "1" \
+      "Starting server (tool-only deployment)..."
+  else
+    run_background \
+      "${ROOT_DIR}" \
+      "${command_string}" \
+      "1" \
+      "Starting server (${engine_label} engine, ${quant_label} quantization)..."
+  fi
 }

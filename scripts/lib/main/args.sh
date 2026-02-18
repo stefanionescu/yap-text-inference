@@ -20,22 +20,46 @@ parse_cli() {
   local quant_type="auto"
   local deploy_mode="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
   local deploy_explicit=0
+  local first_engine_flag=""
   local -a positional_args=()
+  local -a deferred_engine_flags=()
 
   while [ $# -gt 0 ]; do
-    # Try common flags first
-    if parse_common_flag "$1" "${2:-}"; then
+    # Parse non-engine common flags first.
+    if parse_common_non_engine_flag "$1" "${2:-}"; then
       shift "${ARGS_SHIFT_COUNT}"
       continue
     fi
+
+    # Defer engine handling until deploy mode is known.
+    local engine_parse_rc=0
+    if parse_engine_flag_token "$1" "${2:-}"; then
+      engine_parse_rc=0
+    else
+      engine_parse_rc=$?
+    fi
+    case "${engine_parse_rc}" in
+      0)
+        if [ -z "${first_engine_flag}" ]; then
+          first_engine_flag="${ENGINE_FLAG_NAME}"
+        fi
+        deferred_engine_flags+=("${ENGINE_FLAG_NAME}")
+        if [ "${ENGINE_FLAG_NAME}" = "--engine" ]; then
+          deferred_engine_flags+=("${ENGINE_FLAG_VALUE}")
+        fi
+        shift "${ARGS_SHIFT_COUNT}"
+        continue
+        ;;
+      2)
+        log_err "[main] ✗ --engine requires a value (trt|vllm)"
+        return 1
+        ;;
+    esac
 
     case "$1" in
       -h | --help)
         show_usage
         return 1
-        ;;
-      --tensorrt)
-        INFERENCE_ENGINE="trt"
         ;;
       --deploy-mode)
         if ! cli_set_deploy_mode_value "${2:-}" "[main]" deploy_mode; then
@@ -95,9 +119,17 @@ parse_cli() {
     return 1
   fi
 
-  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE}")"; then
-    log_err "[main] ✗ Unknown engine type '${INFERENCE_ENGINE:-}'. Expected trt|vllm."
-    return 1
+  if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    if [ ${#deferred_engine_flags[@]} -gt 0 ]; then
+      log_err "[main] ✗ ${first_engine_flag} is not supported when DEPLOY_MODE='tool'."
+      log_err "[main] ✗ Remove engine flags (--trt/--vllm/--engine) for tool-only deployments."
+      return 1
+    fi
+    unset INFERENCE_ENGINE
+  else
+    if ! apply_deferred_engine_flags "[main]" "${deferred_engine_flags[@]}"; then
+      return 1
+    fi
   fi
 
   case "${quant_type}" in

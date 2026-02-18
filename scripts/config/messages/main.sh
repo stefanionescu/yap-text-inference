@@ -8,20 +8,21 @@
 # shellcheck disable=SC2034
 readonly -a CFG_MAIN_USAGE_LINES=(
   "Usage:"
-  '  $0 [--vllm|--trt] [4bit|8bit] <chat_model> <tool_model> [deploy_mode]'
+  '  $0 [--vllm|--trt] [4bit|8bit] <chat_model> <tool_model>'
   '  $0 [--vllm|--trt] [4bit|8bit] chat <chat_model>'
-  '  $0 [--vllm|--trt] [4bit|8bit] tool <tool_model>'
   '  $0 [--vllm|--trt] [4bit|8bit] both <chat_model> <tool_model>'
+  '  $0 tool <tool_model>'
   ""
   "Behavior:"
   "  - Always runs deployment in background (auto-detached)"
   "  - Auto-tails logs (Ctrl+C stops tail, deployment continues)"
   "  - Use scripts/stop.sh to stop the deployment"
   ""
-  "Inference Engines:"
+  "Inference Engines (chat/both only):"
   "  --trt       -> Use TensorRT-LLM engine (default, requires CUDA 13.0+)"
   "  --vllm      -> Use vLLM engine"
   "  --engine=X  -> Explicit engine selection (trt or vllm)"
+  "  NOTE: tool-only mode rejects engine flags"
   ""
   "Quantization:"
   "  Omit flag  -> auto-detects GPTQ/AWQ/W4A16 hints; otherwise runs 8bit"
@@ -62,7 +63,7 @@ readonly -a CFG_MAIN_USAGE_LINES=(
   "Environment options:"
   "  DEPLOY_MODE=both|chat|tool    - Which models to deploy (default: both)"
   "  --deploy-mode=both|chat|tool  - CLI override for DEPLOY_MODE"
-  "  INFERENCE_ENGINE=trt|vllm     - Inference engine (default: trt)"
+  "  INFERENCE_ENGINE=trt|vllm     - Inference engine for chat/both deployments"
   "  GPU_SM_ARCH=sm80|sm89|sm90    - GPU architecture (auto-detected)"
   ""
   "Examples:"

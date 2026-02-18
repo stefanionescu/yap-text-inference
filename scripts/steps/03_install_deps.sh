@@ -35,13 +35,19 @@ DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 # Skip heavy engine dependencies and use minimal requirements.
 
 if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+  unset INFERENCE_ENGINE 2>/dev/null || true
   export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
+  local_tool_python_bin="$(command -v python3 || command -v python || true)"
 
   deps_export_pip
   ensure_ca_certificates
   export_ca_bundle_env_vars
   ensure_torch_cuda_arch_list
-  ensure_virtualenv || exit 1
+  if [ -z "${local_tool_python_bin}" ]; then
+    log_err "[deps] ✗ Tool-only deployment requires python3 (or python) in PATH"
+    exit 1
+  fi
+  ensure_virtualenv "${VENV_DIR}" "${local_tool_python_bin}" || exit 1
   ensure_pip_in_venv || exit 1
   activate_venv "${VENV_DIR}" || exit 1
 

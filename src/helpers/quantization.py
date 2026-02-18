@@ -238,7 +238,7 @@ def _detect_quant_from_model_config(model_path: str) -> str | None:
     return None
 
 
-def detect_chat_quantization(model: str | None, engine: str) -> str | None:
+def detect_chat_quantization(model: str | None, engine: str | None) -> str | None:
     """Auto-detect quantization method from model name or config files.
 
     Detection order:
@@ -247,7 +247,7 @@ def detect_chat_quantization(model: str | None, engine: str) -> str | None:
 
     Args:
         model: Model path or HuggingFace ID.
-        engine: Inference engine ('vllm' or 'trt').
+        engine: Inference engine ('vllm' or 'trt'). Optional in tool-only mode.
 
     Returns:
         Quantization method string ('awq', 'gptq', 'fp8', 'int8') or None.

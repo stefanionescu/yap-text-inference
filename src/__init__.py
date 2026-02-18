@@ -35,6 +35,6 @@ Environment Variables:
     Optional:
         - CHAT_QUANTIZATION: Override auto-detected quantization (awq, gptq, fp8)
         - DEPLOY_MODE: 'both', 'chat', or 'tool' (default: 'both')
-        - INFERENCE_ENGINE: 'vllm' or 'trt' (default: 'trt')
+        - INFERENCE_ENGINE: 'vllm' or 'trt' for chat/both deployments (default: 'trt')
         - TOOL_MODEL: Tool model for tool routing
 """

@@ -125,6 +125,9 @@ def create_sampling_params(
     Returns:
         Engine-specific SamplingParams instance.
     """
+    if INFERENCE_ENGINE is None:
+        raise RuntimeError("Sampling parameters are unavailable when DEPLOY_MODE='tool'")
+
     if INFERENCE_ENGINE == "vllm":
         return _create_vllm_params(
             temperature=temperature,

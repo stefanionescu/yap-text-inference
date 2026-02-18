@@ -73,7 +73,11 @@ run_install_deps_if_needed() {
   fi
 
   # Reinstall all dependencies from scratch (force mode)
-  FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
+  if [ "${DEPLOY_MODE:-}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    FORCE_REINSTALL=1 DEPLOY_MODE="${CFG_DEPLOY_MODE_TOOL}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
+  else
+    FORCE_REINSTALL=1 INFERENCE_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}" "${SCRIPT_DIR}/steps/03_install_deps.sh"
+  fi
 }
 
 run_basic_restart() {

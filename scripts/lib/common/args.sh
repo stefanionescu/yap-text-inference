@@ -14,7 +14,7 @@ source "${_COMMON_ARGS_DIR}/../../config/patterns.sh"
 
 # Initialize common argument state variables.
 # Call this before parsing to set up defaults.
-# NOTE: Default engine is TRT. This is the single source of truth for the default.
+# Engine defaults are applied by mode-specific parsers (chat/both only).
 init_common_state() {
   SHOW_HF_LOGS="${SHOW_HF_LOGS:-0}"
   SHOW_TRT_LOGS="${SHOW_TRT_LOGS:-0}"
@@ -25,8 +25,8 @@ init_common_state() {
   HF_AWQ_PUSH=0
   HF_ENGINE_PUSH_REQUESTED="${HF_ENGINE_PUSH_REQUESTED:-0}"
   HF_ENGINE_PUSH=0
-  # Default inference engine is TRT (TensorRT-LLM)
-  INFERENCE_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
+  # Engine selection is mode-aware and applied after deploy mode resolution.
+  INFERENCE_ENGINE="${INFERENCE_ENGINE:-}"
 }
 
 # Validate that mutually exclusive flags are not both set.
@@ -50,15 +50,18 @@ export_common_state() {
   export SHOW_HF_LOGS SHOW_TRT_LOGS SHOW_VLLM_LOGS SHOW_LLMCOMPRESSOR_LOGS SHOW_TOOL_LOGS
   export HF_AWQ_PUSH HF_AWQ_PUSH_REQUESTED
   export HF_ENGINE_PUSH HF_ENGINE_PUSH_REQUESTED
-  export INFERENCE_ENGINE
+  if [ -n "${INFERENCE_ENGINE:-}" ]; then
+    export INFERENCE_ENGINE
+  else
+    unset INFERENCE_ENGINE 2>/dev/null || true
+  fi
 }
 
-# Try to parse a common flag. Returns 0 and sets ARGS_SHIFT_COUNT if handled.
-# Returns 1 if the flag is not a common flag.
-# Usage: if parse_common_flag "$1" "$2"; then shift $ARGS_SHIFT_COUNT; fi
-parse_common_flag() {
+# Parse common non-engine flags. Returns 0 and sets ARGS_SHIFT_COUNT if handled.
+# Returns 1 if the flag is not handled.
+# Usage: if parse_common_non_engine_flag "$1" "$2"; then shift $ARGS_SHIFT_COUNT; fi
+parse_common_non_engine_flag() {
   local flag="$1"
-  local next_arg="${2:-}"
   ARGS_SHIFT_COUNT=1 # default; may be updated below
 
   case "${flag}" in
@@ -90,29 +93,101 @@ parse_common_flag() {
       HF_ENGINE_PUSH_REQUESTED=1
       return 0
       ;;
+  esac
+
+  return 1
+}
+
+# Parse engine flags without applying them. The caller decides when to apply.
+# Returns:
+#   0 if handled (sets ARGS_SHIFT_COUNT, ENGINE_FLAG_NAME, ENGINE_FLAG_VALUE)
+#   1 if not an engine flag
+#   2 if invalid engine flag usage (e.g., --engine missing value)
+parse_engine_flag_token() {
+  local flag="$1"
+  local next_arg="${2:-}"
+
+  ARGS_SHIFT_COUNT=1
+  ENGINE_FLAG_NAME=""
+  ENGINE_FLAG_VALUE=""
+
+  case "${flag}" in
     --trt)
-      INFERENCE_ENGINE="${CFG_ENGINE_TRT}"
+      ENGINE_FLAG_NAME="--trt"
+      ENGINE_FLAG_VALUE="${CFG_ENGINE_TRT}"
+      return 0
+      ;;
+    --tensorrt)
+      ENGINE_FLAG_NAME="--tensorrt"
+      ENGINE_FLAG_VALUE="${CFG_ENGINE_TRT}"
       return 0
       ;;
     --vllm)
-      INFERENCE_ENGINE="${CFG_ENGINE_VLLM}"
+      ENGINE_FLAG_NAME="--vllm"
+      ENGINE_FLAG_VALUE="${CFG_ENGINE_VLLM}"
       return 0
       ;;
     --engine)
       if [ -z "${next_arg}" ]; then
-        return 1
+        return 2
       fi
-      INFERENCE_ENGINE="${next_arg}"
+      ENGINE_FLAG_NAME="--engine"
+      ENGINE_FLAG_VALUE="${next_arg}"
       ARGS_SHIFT_COUNT=2
       return 0
       ;;
     --engine=*)
-      INFERENCE_ENGINE="${flag#--engine=}"
+      ENGINE_FLAG_NAME="--engine"
+      ENGINE_FLAG_VALUE="${flag#--engine=}"
       return 0
       ;;
   esac
 
   return 1
+}
+
+# Apply a sequence of deferred engine flags in order.
+# Usage: apply_deferred_engine_flags <context> <flag_array...>
+apply_deferred_engine_flags() {
+  local context="$1"
+  shift
+  local -a deferred_flags=("$@")
+
+  # Default engine for chat/both deployments.
+  INFERENCE_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
+
+  local idx=0
+  local total=${#deferred_flags[@]}
+  while [ "${idx}" -lt "${total}" ]; do
+    local flag="${deferred_flags[$idx]}"
+    case "${flag}" in
+      --trt | --tensorrt)
+        INFERENCE_ENGINE="${CFG_ENGINE_TRT}"
+        ;;
+      --vllm)
+        INFERENCE_ENGINE="${CFG_ENGINE_VLLM}"
+        ;;
+      --engine)
+        idx=$((idx + 1))
+        if [ "${idx}" -ge "${total}" ]; then
+          log_err "${context} ✗ --engine requires a value (trt|vllm)"
+          return 1
+        fi
+        INFERENCE_ENGINE="${deferred_flags[$idx]}"
+        ;;
+      *)
+        log_err "${context} ✗ Unknown deferred engine flag '${flag}'"
+        return 1
+        ;;
+    esac
+    idx=$((idx + 1))
+  done
+
+  if ! INFERENCE_ENGINE="$(cli_normalize_engine "${INFERENCE_ENGINE}")"; then
+    log_err "${context} ✗ Unknown engine '${INFERENCE_ENGINE:-}'. Expected trt|vllm."
+    return 1
+  fi
+  return 0
 }
 
 # Build an array of common flags for forwarding to another script.

@@ -27,7 +27,7 @@ def validate_models(
         chat_model: Chat model identifier or path.
         tool_model: Tool model identifier or path.
         chat_quantization: Chat quantization (auto-detected from model name or config files).
-        engine: Inference engine (trt, vllm).
+        engine: Inference engine (trt, vllm). Optional for tool-only mode.
 
     Returns:
         List of error messages. Empty list means validation passed.
@@ -42,16 +42,15 @@ def validate_models(
 
     errors: list[str] = []
 
-    engine = (engine or "").lower()
-    if engine not in VALIDATE_SUPPORTED_ENGINES:
-        errors.append(f"INFERENCE_ENGINE must be one of {VALIDATE_SUPPORTED_ENGINES}, got: {engine}")
-        return errors
-
     deploy_chat = deploy_mode in ("both", "chat")
     deploy_tool = deploy_mode in ("both", "tool")
-    allowed_chat_models = get_allowed_chat_models(engine)
+    normalized_engine = (engine or "").lower()
+    if deploy_chat and normalized_engine not in VALIDATE_SUPPORTED_ENGINES:
+        errors.append(f"INFERENCE_ENGINE must be one of {VALIDATE_SUPPORTED_ENGINES}, got: {normalized_engine}")
+        return errors
 
     if deploy_chat:
+        allowed_chat_models = get_allowed_chat_models(normalized_engine)
         if not chat_model:
             errors.append("CHAT_MODEL is required when DEPLOY_MODE='both' or 'chat'")
         else:
@@ -60,7 +59,8 @@ def validate_models(
                 detected = classify_trt_prequantized_model(chat_model) or classify_prequantized_model(chat_model)
                 suffix = f" (detected pre-quantized '{detected}')" if detected else ""
                 errors.append(
-                    f"CHAT_MODEL must be allowlisted for engine '{engine}' or a local path{suffix}: {chat_model}"
+                    f"CHAT_MODEL must be allowlisted for engine '{normalized_engine}' "
+                    f"or a local path{suffix}: {chat_model}"
                 )
 
     if deploy_tool:
