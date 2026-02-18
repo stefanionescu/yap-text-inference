@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 # =============================================================================
 # TensorRT Script Configuration Values
 # =============================================================================
 # Canonical TRT defaults shared across shell scripts.
+[[ -n ${_CFG_TRT_LOADED:-} ]] && return 0
+_CFG_TRT_LOADED=1
 
-# shellcheck disable=SC2034
 readonly CFG_TRT_REQUIRED_PYTHON_VERSION="3.10"
 readonly CFG_TRT_VERSION="1.2.0rc5"
 readonly CFG_TRT_PIP_PACKAGE="tensorrt_llm"
@@ -16,14 +18,12 @@ readonly CFG_TRT_CLONE_FILTER="blob:none"
 readonly CFG_TRT_CLONE_ATTEMPTS="5"
 readonly CFG_TRT_CLONE_BACKOFF_SECONDS="2"
 
-# shellcheck disable=SC2034
 readonly CFG_TRT_PYTORCH_VERSION="2.9.0+cu130"
 readonly CFG_TRT_TORCHVISION_VERSION="0.24.0+cu130"
 readonly CFG_TRT_TORCHAUDIO_VERSION="2.9.0+cu130"
 readonly CFG_TRT_PYTORCH_INDEX_URL="https://download.pytorch.org/whl/cu130"
 readonly CFG_TRT_TORCH_CONSTRAINTS_REL=".run/trt_torch_constraints.txt"
 
-# shellcheck disable=SC2034
 readonly CFG_MPI_VERSION_PIN="4.1.6-7ubuntu2"
 readonly CFG_TRT_NEED_MPI="1"
 readonly CFG_TRT_FP8_SM_ARCHS="sm89 sm90"
@@ -56,6 +56,5 @@ readonly CFG_TRT_QUANT_LOG_LEVEL="error"
 readonly CFG_TRT_TQDM_DISABLE_DEFAULT="1"
 readonly CFG_TRT_HF_PROGRESS_BARS_DISABLE_DEFAULT="1"
 
-# shellcheck disable=SC2034
 readonly CFG_PIP_INSTALL_ATTEMPTS="5"
 readonly CFG_PIP_INSTALL_BACKOFF_SECONDS="2"

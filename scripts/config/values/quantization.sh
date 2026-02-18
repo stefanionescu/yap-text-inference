@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 # =============================================================================
 # Quantization Script Configuration Values
 # =============================================================================
 # Canonical vLLM quantization defaults shared across shell scripts.
+[[ -n ${_CFG_QUANT_LOADED:-} ]] && return 0
+_CFG_QUANT_LOADED=1
 
-# shellcheck disable=SC2034
 readonly CFG_QUANT_MODE_8BIT_PLACEHOLDER="8bit"
 readonly CFG_QUANT_MODE_4BIT_PLACEHOLDER="4bit"
 readonly CFG_QUANT_MODE_AUTO="auto"
@@ -15,7 +17,6 @@ readonly CFG_QUANT_MODE_4BIT_BACKEND="awq"
 readonly CFG_QUANT_MODE_GPTQ_ALIAS="gptq"
 readonly CFG_QUANT_MODE_GPTQ_BACKEND="gptq_marlin"
 
-# shellcheck disable=SC2034
 readonly CFG_QUANT_KV_DTYPE_FP8="fp8"
 readonly CFG_QUANT_KV_DTYPE_INT8="int8"
 readonly CFG_QUANT_KV_DTYPE_AUTO="auto"
@@ -32,7 +33,6 @@ readonly CFG_QUANT_PREBUFFER_MAX_CHARS_A100="1000"
 readonly CFG_QUANT_PYTORCH_ALLOC_CONF="expandable_segments:True"
 readonly CFG_QUANT_CUDA_DEVICE_MAX_CONNECTIONS="1"
 
-# shellcheck disable=SC2034
 readonly CFG_QUANT_BACKEND_FLASHINFER="FLASHINFER"
 readonly CFG_QUANT_BACKEND_XFORMERS="XFORMERS"
 readonly CFG_HF_CA_CERTS_PATH="/etc/ssl/certs/ca-certificates.crt"

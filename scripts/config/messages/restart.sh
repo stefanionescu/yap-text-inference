@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034,SC1003
 # =============================================================================
 # Restart Script Message Configuration
 # =============================================================================
 # Canonical user-facing messages for scripts/restart.sh and restart helpers.
-# shellcheck disable=SC1003
+[[ -n ${_CFG_MSG_RESTART_LOADED:-} ]] && return 0
+_CFG_MSG_RESTART_LOADED=1
 
-# shellcheck disable=SC2034
 readonly -a CFG_RESTART_USAGE_LINES=(
   "Usage:"
   "  restart.sh <deploy_mode> [--install-deps] [--keep-models]"
@@ -73,25 +74,21 @@ readonly -a CFG_RESTART_USAGE_LINES=(
   "       --chat-quant 8bit"
 )
 
-# shellcheck disable=SC2034
 readonly CFG_RESTART_MSG_ENGINE_SWITCH_FAILED="[restart] Engine switch failed"
 readonly CFG_RESTART_MSG_INVALID_DEPLOY_MODE="[restart] Invalid deploy mode '%s'."
 readonly CFG_RESTART_MSG_NO_VENV="[restart] No virtual environment found at %s"
 readonly CFG_RESTART_MSG_NO_VENV_HINT="[restart] Run with --install-deps to create it, or run full deployment first"
 
-# shellcheck disable=SC2034
 readonly CFG_RESTART_ERR_PREQUANT_PUSH_QUANT="[restart] Cannot use --push-quant with a prequantized model."
 readonly CFG_RESTART_ERR_PREQUANT_MODEL_IS_QUANTIZED="[restart]   Model '%s' is already quantized."
 readonly CFG_RESTART_ERR_PREQUANT_NO_ARTIFACTS="[restart]   There are no local quantization artifacts to upload."
 readonly CFG_RESTART_ERR_PREQUANT_OPTION_1="[restart]     1. Remove --push-quant to use the prequantized model directly"
 readonly CFG_RESTART_ERR_PREQUANT_OPTION_2="[restart]     2. Use a base (non-quantized) model if you want to quantize and push"
 
-# shellcheck disable=SC2034
 readonly CFG_RESTART_ERR_AWQ_NOT_FOUND="[restart] No AWQ models found for deploy mode '%s'"
 readonly CFG_RESTART_ERR_AWQ_OPTION_1="[restart]   1. Run full deployment first: bash scripts/main.sh 4bit <chat_model> <tool_model>"
 readonly CFG_RESTART_ERR_AWQ_OPTION_2="[restart]   2. Ensure cached AWQ exports exist in %s/.awq/"
 
-# shellcheck disable=SC2034
 readonly CFG_RESTART_ERR_TRT_ENGINE_MISSING="[restart] TRT engine directory not found or not set."
 readonly CFG_RESTART_ERR_TRT_ENGINE_DIR="[restart]   TRT_ENGINE_DIR='%s'"
 readonly CFG_RESTART_ERR_TRT_ENGINE_OPTION_1="[restart]     1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
