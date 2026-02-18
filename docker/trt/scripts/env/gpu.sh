@@ -4,26 +4,13 @@
 #
 # Sources shared GPU detection from common/ and applies TRT-specific defaults.
 
-_GPU_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Find common scripts directory (works in Docker and dev contexts)
-if [ -d "/app/common/scripts" ]; then
-  _GPU_COMMON_SCRIPTS="/app/common/scripts"
-elif [ -d "${_GPU_SCRIPT_DIR}/../../../common/scripts" ]; then
-  _GPU_COMMON_SCRIPTS="${_GPU_SCRIPT_DIR}/../../../common/scripts"
-else
-  echo "[trt] ERROR: Cannot find common scripts directory" >&2
-  exit 1
-fi
-
-# Source shared GPU detection
-source "${_GPU_COMMON_SCRIPTS}/gpu.sh"
+source "/app/common/scripts/gpu.sh"
 
 # Initialize GPU detection
 gpu_init_detection
 gpu_apply_env_defaults
 
-# Export GPU_SM for artifact resolution (removes "sm" prefix for compatibility)
+# Export GPU_SM for artifact resolution
 if [ -n "${GPU_SM_ARCH:-}" ]; then
   export GPU_SM="${GPU_SM_ARCH}"
 fi

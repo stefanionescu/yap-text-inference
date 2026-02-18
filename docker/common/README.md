@@ -29,7 +29,7 @@ Environment variables:
 - `WARMUP_MAX_WAIT` - Max seconds to wait for health (default: 300)
 - `WARMUP_WAIT_INTERVAL` - Sleep interval between checks (default: 5)
 
-### GPU Detection (`scripts/gpu_detect.sh`)
+### GPU Detection (`scripts/gpu.sh`)
 
 Unified GPU detection mirroring `scripts/lib/common/gpu_detect.sh`:
 - `gpu_detect_sm_arch` - Get SM architecture (e.g., sm90)
@@ -71,8 +71,8 @@ Env vars: `TOOL_MODEL`, `TOOL_MODEL_PATH`, `HF_TOKEN`
 ### Validation (`download/validate.py`)
 
 Model validation using `src/config` as source of truth:
-- Validates chat model pre-quantization markers
-- Validates tool model against allowlist
+- Validates chat model allowlist/local-path policy per engine
+- Validates tool model allowlist/local-path policy
 - Validates TRT engine repo and label format
 
 Usage: `python validate.py` (reads from env vars)

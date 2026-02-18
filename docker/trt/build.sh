@@ -11,13 +11,20 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
 IMAGE_NAME="${IMAGE_NAME:-yap-text-api}"
 
-# Deploy mode: chat|tool|both
+# Deploy mode: chat|both (tool-only is handled by docker/tool/build.sh)
 DEPLOY_MODE_VAL="${DEPLOY_MODE:-both}"
 case "${DEPLOY_MODE_VAL}" in
-  chat | tool | both) ;;
+  chat | both) ;;
+  tool)
+    if [[ ${1:-} != "--help" ]]; then
+      echo "[build] DEPLOY_MODE=tool is not supported in docker/trt/build.sh" >&2
+      echo "[build] Use docker/tool/build.sh or docker/build.sh with DEPLOY_MODE=tool" >&2
+      exit 1
+    fi
+    ;;
   *)
-    echo "[build] Invalid DEPLOY_MODE='${DEPLOY_MODE_VAL}', defaulting to 'both'" >&2
-    DEPLOY_MODE_VAL="both"
+    echo "[build] Invalid DEPLOY_MODE='${DEPLOY_MODE_VAL}'. Must be 'chat' or 'both'" >&2
+    exit 1
     ;;
 esac
 
@@ -38,8 +45,8 @@ HF_TOKEN="${HF_TOKEN:-}"
 # Custom tag (MUST start with trt-)
 TAG="${TAG:-trt-${DEPLOY_MODE_VAL}}"
 
-# Validate tag naming convention (only for chat/both deploys that use TRT)
-if [[ ${DEPLOY_MODE_VAL} != "tool" && ! ${TAG} =~ ^trt- ]]; then
+# Validate tag naming convention
+if [[ ! ${TAG} =~ ^trt- ]]; then
   echo "[build] ✗ TAG must start with 'trt-' for TensorRT images" >&2
   echo "[build]   Got: ${TAG}" >&2
   echo "[build]   Example: trt-qwen30b-sm90" >&2
@@ -75,17 +82,19 @@ usage() {
   echo "Environment Variables:"
   echo "  DOCKER_USERNAME     - Docker Hub username (required)"
   echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
-  echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
+  echo "  DEPLOY_MODE         - chat|both (default: both)"
   echo "  CHAT_MODEL          - HuggingFace TRT-quantized model repo (required for chat/both)"
   echo "                        This repo contains the checkpoint for tokenizer"
   echo "  TRT_ENGINE_REPO     - HuggingFace repo with pre-built TRT engines (defaults to CHAT_MODEL)"
   echo "  TRT_ENGINE_LABEL    - Engine directory name in the repo (required for chat/both)"
   echo "                        Format: sm{arch}_trt-llm-{version}_cuda{version}"
   echo "                        Example: sm90_trt-llm-0.17.0_cuda12.8"
-  echo "  TOOL_MODEL          - Tool model HF repo (required for tool/both)"
+  echo "  TOOL_MODEL          - Tool model HF repo (required for both)"
   echo "  TAG                 - Image tag (MUST start with 'trt-')"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (for private repos)"
+  echo ""
+  echo "  Note: For tool-only images, use docker/tool/build.sh"
   echo ""
   echo "Options:"
   echo "  --help              - Show this help message"
@@ -98,13 +107,6 @@ usage() {
     CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
     TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
     TAG=trt-qwen30b-sm90 \
-    ./build.sh
-
-  # Build tool-only image
-  DOCKER_USERNAME=myuser \
-    DEPLOY_MODE=tool \
-    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
-    TAG=trt-tool-only \
     ./build.sh
 
   # Build both models
@@ -129,7 +131,7 @@ fi
 
 # Validate configuration
 if [[ ${DOCKER_USERNAME} == "your-username" ]]; then
-  log_error "[build] ✗ Please set DOCKER_USERNAME environment variable"
+  log_err "[build] ✗ Please set DOCKER_USERNAME environment variable"
   log_info "[build] Example: DOCKER_USERNAME=myuser $0"
   exit 1
 fi
@@ -137,7 +139,7 @@ fi
 # Validate models and engine configuration
 log_info "[build] Validating configuration for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
 if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}" "${TRT_ENGINE_REPO}" "${TRT_ENGINE_LABEL}"; then
-  log_error "[build] ✗ Configuration validation failed. Build aborted."
+  log_err "[build] ✗ Configuration validation failed. Build aborted."
   exit 1
 fi
 echo # blank line after validation
@@ -174,7 +176,7 @@ if ! docker push "${FULL_IMAGE_NAME}"; then
   log_warn "[build] ⚠ Initial docker push failed. Attempting non-interactive login and retry..."
   ensure_docker_login || true
   if ! docker push "${FULL_IMAGE_NAME}"; then
-    log_error "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+    log_err "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
     exit 1
   fi
 fi

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tests.state import BenchmarkResultData
+from tests.state.metrics import BenchmarkResultData
 
 
 def error_result(

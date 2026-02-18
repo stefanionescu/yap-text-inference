@@ -1,141 +1,84 @@
 #!/usr/bin/env python3
-"""Model validation for Docker builds.
+"""Strict model validation for Docker builds.
 
-Sources validation rules from src/config to ensure Docker and Python stay in sync.
-This module is called by build scripts to validate model configurations.
+Validation rules are intentionally aligned with local script validation:
+- Chat model: allowlisted for the selected engine OR explicit local path.
+- Tool model: allowlisted OR explicit local path.
+- TRT engine repo/label validation for TRT chat deployments.
 """
+
+from __future__ import annotations
 
 import os
 import re
 import sys
 
 
-def get_allowed_tool_models() -> list[str]:
-    """Get the allowed tool models from Python config."""
-    # Add src to path for imports
+def _load_validation_config() -> tuple[list[str], list[str]]:
+    """Load allowlists from src config/helpers.
+
+    Returns:
+        (allowed_tool_models, allowed_chat_models_for_engine)
+    """
     root_dir = os.environ.get("ROOT_DIR", "/app")
-    sys.path.insert(0, root_dir)
+    if root_dir not in sys.path:
+        sys.path.insert(0, root_dir)
 
     try:
         from src.config.models import ALLOWED_TOOL_MODELS  # noqa: PLC0415
+        from src.helpers.models import get_allowed_chat_models  # noqa: PLC0415
+    except Exception as exc:
+        raise RuntimeError(f"failed to import validation config from src/: {exc}") from exc
 
-        return list(ALLOWED_TOOL_MODELS)
-    except ImportError:
-        # At build-time src may not be importable; return empty list so
-        # validate_tool_model falls through to format-only validation.
-        return []
-
-
-def get_awq_model_markers() -> list[str]:
-    """Get the AWQ model markers from Python config."""
-    root_dir = os.environ.get("ROOT_DIR", "/app")
-    sys.path.insert(0, root_dir)
-
-    try:
-        from src.config.quantization import AWQ_MODEL_MARKERS  # noqa: PLC0415
-
-        return list(AWQ_MODEL_MARKERS)
-    except ImportError:
-        # Fallback for build-time
-        return ["awq", "w4a16", "compressed-tensors", "autoround"]
+    engine = os.environ.get("ENGINE", "vllm").strip().lower()
+    return list(ALLOWED_TOOL_MODELS), list(get_allowed_chat_models(engine))
 
 
-def is_prequantized_model(model: str) -> bool:
-    """Check if model name indicates pre-quantization."""
-    if not model or "/" not in model:
-        return False
-
-    model_lower = model.lower()
-    markers = get_awq_model_markers()
-
-    # Also check for gptq
-    all_markers = markers + ["gptq"]
-
-    return any(marker in model_lower for marker in all_markers)
+def _is_local_path(value: str) -> bool:
+    return bool(value and os.path.exists(value))
 
 
-def classify_quantization(model: str) -> str:
-    """Classify the quantization type of a model."""
-    if not model:
-        return ""
-
-    model_lower = model.lower()
-    markers = get_awq_model_markers()
-
-    # AWQ and related (W4A16, compressed-tensors, autoround all use awq_marlin)
-    if any(marker in model_lower for marker in markers):
-        return "awq"
-
-    # GPTQ
-    if "gptq" in model_lower:
-        return "gptq"
-
-    return ""
-
-
-def validate_chat_model(model: str, engine: str = "vllm") -> tuple[bool, str]:
-    """Validate chat model configuration.
-
-    Args:
-        model: HuggingFace model repo ID
-        engine: "vllm" or "trt"
-
-    Returns:
-        (is_valid, message) tuple
-    """
+def validate_chat_model(model: str, engine: str, allowed_chat_models: list[str]) -> tuple[bool, str]:
+    """Validate chat model configuration."""
     if not model:
         return False, "CHAT_MODEL is required but not set"
+
+    if _is_local_path(model):
+        return True, f"✓ CHAT_MODEL: local path ({model})"
 
     if "/" not in model:
         return False, f"CHAT_MODEL '{model}' is not a valid HuggingFace repo format (owner/repo)"
 
-    if engine == "vllm":
-        if not is_prequantized_model(model):
-            markers = get_awq_model_markers() + ["gptq"]
-            return False, (
-                f"CHAT_MODEL '{model}' is not a pre-quantized model. "
-                f"Chat model name must contain one of: {', '.join(markers)}"
-            )
+    if model not in allowed_chat_models:
+        return False, (
+            f"CHAT_MODEL '{model}' is not allowlisted for engine '{engine}'. "
+            "Use an allowlisted model or a local model path."
+        )
 
-        quant_type = classify_quantization(model)
-        return True, f"✓ CHAT_MODEL: {model} ({quant_type})"
-
-    # TRT just needs valid HF repo
     return True, f"✓ CHAT_MODEL: {model}"
 
 
-def validate_tool_model(model: str) -> tuple[bool, str]:
-    """Validate tool model configuration.
-
-    Checks against ALLOWED_TOOL_MODELS when importable, otherwise falls back
-    to format-only validation (non-empty + valid HF repo format).
-
-    Returns:
-        (is_valid, message) tuple
-    """
+def validate_tool_model(model: str, allowed_tool_models: list[str]) -> tuple[bool, str]:
+    """Validate tool model configuration."""
     if not model:
         return False, "TOOL_MODEL is required but not set"
+
+    if _is_local_path(model):
+        return True, f"✓ TOOL_MODEL: local path ({model})"
 
     if "/" not in model:
         return False, f"TOOL_MODEL '{model}' is not a valid HuggingFace repo format (owner/repo)"
 
-    allowed = get_allowed_tool_models()
-    if allowed:
-        # Runtime check against the canonical allowlist
-        if model in allowed:
-            return True, f"✓ TOOL_MODEL: {model}"
-        return False, (f"TOOL_MODEL '{model}' is not in the allowed list. Allowed: {', '.join(allowed)}")
+    if model not in allowed_tool_models:
+        return False, (
+            f"TOOL_MODEL '{model}' is not in the allowed list. " "Use an allowlisted tool model or a local model path."
+        )
 
-    # Build-time: src not importable — accept any valid HF repo format
     return True, f"✓ TOOL_MODEL: {model}"
 
 
 def validate_trt_engine_repo(repo: str) -> tuple[bool, str]:
-    """Validate TRT engine repo configuration.
-
-    Note: TRT_ENGINE_REPO defaults to CHAT_MODEL in the build script, so this
-    validation only fails if neither is set.
-    """
+    """Validate TRT engine repo configuration."""
     if not repo:
         return False, (
             "✗ TRT_ENGINE_REPO is not set and CHAT_MODEL is empty. "
@@ -157,11 +100,10 @@ def validate_trt_engine_label(label: str) -> tuple[bool, str]:
             "Example: TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8"
         )
 
-    # Pattern: sm{digits}_trt-llm-{version}_cuda{version}
     pattern = r"^sm\d+_trt-llm-[\d.]+.*_cuda[\d.]+$"
     if not re.match(pattern, label):
         return False, (
-            f"✗ TRT_ENGINE_LABEL '{label}' has invalid format. Expected: sm{{arch}}_trt-llm-{{version}}_cuda{{version}}"
+            f"✗ TRT_ENGINE_LABEL '{label}' has invalid format. " "Expected: sm{arch}_trt-llm-{version}_cuda{version}"
         )
 
     return True, f"✓ TRT_ENGINE_LABEL: {label}"
@@ -171,20 +113,21 @@ def validate_for_deploy(
     deploy_mode: str,
     chat_model: str,
     tool_model: str,
-    engine: str = "vllm",
+    engine: str,
     trt_engine_repo: str = "",
     trt_engine_label: str = "",
 ) -> tuple[bool, list[str]]:
-    """Validate all models for a deploy mode.
+    """Validate all models for a deploy mode."""
+    try:
+        allowed_tool_models, allowed_chat_models = _load_validation_config()
+    except RuntimeError as exc:
+        return False, [f"[validate] ✗ {exc}"]
 
-    Returns:
-        (all_valid, messages) tuple
-    """
-    messages = []
+    messages: list[str] = []
     all_valid = True
 
     if deploy_mode in ("chat", "both"):
-        valid, msg = validate_chat_model(chat_model, engine)
+        valid, msg = validate_chat_model(chat_model, engine, allowed_chat_models)
         messages.append(f"[validate] {msg}")
         if not valid:
             all_valid = False
@@ -201,7 +144,7 @@ def validate_for_deploy(
                 all_valid = False
 
     if deploy_mode in ("tool", "both"):
-        valid, msg = validate_tool_model(tool_model)
+        valid, msg = validate_tool_model(tool_model, allowed_tool_models)
         messages.append(f"[validate] {msg}")
         if not valid:
             all_valid = False
@@ -214,11 +157,10 @@ def validate_for_deploy(
 
 
 def main() -> None:
-    """CLI interface for validation."""
     deploy_mode = os.environ.get("DEPLOY_MODE", "both")
     chat_model = os.environ.get("CHAT_MODEL", "")
     tool_model = os.environ.get("TOOL_MODEL", "")
-    engine = os.environ.get("ENGINE", "vllm")
+    engine = os.environ.get("ENGINE", "vllm").strip().lower()
     trt_engine_repo = os.environ.get("TRT_ENGINE_REPO", "")
     trt_engine_label = os.environ.get("TRT_ENGINE_LABEL", "")
 

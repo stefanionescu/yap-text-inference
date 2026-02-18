@@ -54,8 +54,9 @@ def test_set_history_turns_keeps_expected_turn_count(monkeypatch: pytest.MonkeyP
         assert session_handler.get_history_turn_count(session_id) == 2
 
 
-def test_render_tool_history_text_respects_explicit_budget() -> None:
+def test_render_tool_history_text_respects_explicit_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     with use_local_tokenizers():
+        monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
         turns = [HistoryTurn(turn_id="t1", user="one two three four five", assistant="")]
         rendered = session_history.render_tool_history_text(turns, max_tokens=3)
         assert rendered == "three four five"

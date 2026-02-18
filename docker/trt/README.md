@@ -1,6 +1,8 @@
 # TensorRT-LLM Docker Image
 
 TRT-LLM inference image with models baked in.
+This stack is for TRT chat deployments (`DEPLOY_MODE=chat|both`).
+For tool-only images, use `docker/build.sh` with `DEPLOY_MODE=tool` (auto-routes to `docker/tool/build.sh`).
 
 ## Contents
 
@@ -37,11 +39,11 @@ docker run -d --gpus all --name yap-server \
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
-| `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
+| `DEPLOY_MODE` | Yes | `chat` or `both` |
 | `CHAT_MODEL` | If chat/both | HF repo for tokenizer/checkpoint |
 | `TRT_ENGINE_REPO` | No | HF repo with pre-built engines (defaults to `CHAT_MODEL`) |
 | `TRT_ENGINE_LABEL` | If chat/both | Engine directory (e.g., `sm90_trt-llm-0.17.0_cuda12.8`) |
-| `TOOL_MODEL` | If tool/both | Tool model HF repo |
+| `TOOL_MODEL` | If both | Tool model HF repo |
 | `TAG` | Yes | Image tag (must start with `trt-`) |
 | `HF_TOKEN` | If private | HuggingFace token |
 
@@ -52,4 +54,3 @@ docker run -d --gpus all --name yap-server \
 | `TEXT_API_KEY` | Yes | - | API key |
 | `MAX_CONCURRENT_CONNECTIONS` | Yes | - | Maximum concurrent WebSocket connections |
 | `TRT_KV_FREE_GPU_FRAC` | No | 0.90 | GPU fraction for KV cache |
-

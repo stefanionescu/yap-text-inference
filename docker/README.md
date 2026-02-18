@@ -13,17 +13,21 @@ The server supports two inference engines:
 
 ## Tag Naming Convention
 
-All image tags **MUST** follow this naming convention:
-- **vLLM images**: Tags must start with `vllm-` (e.g., `vllm-qwen30b-awq`)
-- **TRT images**: Tags must start with `trt-` (e.g., `trt-qwen30b-sm90`)
+For engine-backed deploys:
+- **vLLM (`DEPLOY_MODE=chat|both`)**: Tags must start with `vllm-` (e.g., `vllm-qwen30b-awq`)
+- **TRT (`DEPLOY_MODE=chat|both`)**: Tags must start with `trt-` (e.g., `trt-qwen30b-sm90`)
 
-The build will fail if the tag doesn't follow this convention.
+For tool-only deploys (`DEPLOY_MODE=tool`):
+- Any tag is allowed (default: `tool-only`)
+
+The build will fail if an engine-backed tag doesn't match the required prefix.
 
 ## Contents
 
 - [Engine Options](#engine-options)
 - [Tag Naming Convention](#tag-naming-convention)
 - [Quick Start](#quick-start)
+- [Tool-Only Image](#tool-only-image)
 - [vLLM Engine](#vllm-engine)
 - [TensorRT-LLM Engine](#tensorrt-llm-engine)
 - [Running Containers](#running-containers)
@@ -59,6 +63,13 @@ ENGINE=trt \
   TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
   TAG=trt-qwen30b-sm90 \
   bash docker/build.sh
+
+# Tool-only - lightweight image (auto-routed to docker/tool/build.sh)
+DOCKER_USERNAME=myuser \
+  DEPLOY_MODE=tool \
+  TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
+  TAG=tool-only \
+  bash docker/build.sh
 ```
 
 ### Run
@@ -73,9 +84,31 @@ docker run -d --gpus all --name yap-server \
   myuser/yap-text-api:vllm-qwen30b-awq
 ```
 
+## Tool-Only Image
+
+Tool-only images use the lightweight tool stack and do not include a chat engine.
+
+Use `DEPLOY_MODE=tool` with `docker/build.sh`; it auto-routes to `docker/tool/build.sh`.
+
+### Build Example
+
+```bash
+DOCKER_USERNAME=myuser \
+  DEPLOY_MODE=tool \
+  TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
+  TAG=tool-only \
+  bash docker/build.sh
+```
+
+### Runtime Notes
+
+- Do not set `ENGINE`, `CHAT_MODEL`, `TRT_ENGINE_REPO`, or `TRT_ENGINE_LABEL`.
+- `TOOL_MODEL` is baked in at build time; runtime only needs `TEXT_API_KEY` and other server settings.
+
 ## vLLM Engine
 
 vLLM works for most use cases. It supports pre-quantized AWQ and GPTQ models from HuggingFace.
+For tool-only images, use the [Tool-Only Image](#tool-only-image) flow.
 
 ### How It Works
 
@@ -99,17 +132,6 @@ ENGINE=vllm \
   bash docker/build.sh
 ```
 
-#### Tool-Only Image
-
-```bash
-ENGINE=vllm \
-  DOCKER_USERNAME=myuser \
-  DEPLOY_MODE=tool \
-  TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
-  TAG=vllm-tool-only \
-  bash docker/build.sh
-```
-
 #### Both Models
 
 ```bash
@@ -128,9 +150,9 @@ ENGINE=vllm \
 |----------|----------|-------------|
 | `ENGINE` | Yes | Set to `vllm` |
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
-| `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
+| `DEPLOY_MODE` | Yes | `chat` or `both` |
 | `CHAT_MODEL` | If chat/both | Pre-quantized HF model (AWQ/GPTQ/W4A16) |
-| `TOOL_MODEL` | If tool/both | Tool model from allowlist |
+| `TOOL_MODEL` | If both | Tool model from allowlist |
 | `TAG` | Yes | Image tag (MUST start with `vllm-`) |
 | `HF_TOKEN` | If private | HuggingFace token for private repos |
 
@@ -143,13 +165,11 @@ TensorRT-LLM provides better inference performance with pre-compiled engines.
 1. **Build time**: TRT engine downloaded from HuggingFace and baked into the image
 2. **Runtime**: Server starts immediately
 
-The tool model always runs as PyTorch (not TRT). Tool-only deployments don't need a TRT engine.
+The tool model always runs as PyTorch (not TRT). For tool-only images, use the [Tool-Only Image](#tool-only-image) flow.
 
 ### Requirements
 
 For **chat** or **both**: specify `CHAT_MODEL` and `TRT_ENGINE_LABEL`.
-
-For **tool-only**: just specify `TOOL_MODEL`.
 
 ### Engine Label Format
 
@@ -168,17 +188,6 @@ ENGINE=trt \
   CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
   TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
   TAG=trt-qwen30b-sm90 \
-  bash docker/build.sh
-```
-
-#### Tool-Only Image (No TRT Engine Required)
-
-```bash
-ENGINE=trt \
-  DOCKER_USERNAME=myuser \
-  DEPLOY_MODE=tool \
-  TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
-  TAG=trt-tool-only \
   bash docker/build.sh
 ```
 
@@ -201,11 +210,11 @@ ENGINE=trt \
 |----------|----------|-------------|
 | `ENGINE` | Yes | Set to `trt` |
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
-| `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
+| `DEPLOY_MODE` | Yes | `chat` or `both` |
 | `CHAT_MODEL` | If chat/both | HF repo for tokenizer/checkpoint |
 | `TRT_ENGINE_REPO` | No | HF repo with pre-built engines (defaults to `CHAT_MODEL`) |
 | `TRT_ENGINE_LABEL` | If chat/both | Engine directory name (e.g., `sm90_trt-llm-0.17.0_cuda12.8`) |
-| `TOOL_MODEL` | If tool/both | Tool model from allowlist |
+| `TOOL_MODEL` | If both | Tool model from allowlist |
 | `TAG` | Yes | Image tag (MUST start with `trt-`) |
 | `HF_TOKEN` | If private | HuggingFace token for private repos |
 
@@ -244,7 +253,7 @@ docker run -d --gpus all --name yap-server \
 |----------|----------|-------------|
 | `TEXT_API_KEY` | Yes | API key for authentication |
 | `MAX_CONCURRENT_CONNECTIONS` | Yes | Maximum concurrent WebSocket connections |
-| `CHAT_QUANTIZATION` | Yes | Quantization type: `awq`, `gptq`, `fp8`, etc. Required since model paths don't contain quant info |
+| `CHAT_QUANTIZATION` | No | Optional override for quantization (`awq`, `gptq`, `fp8`, etc.). Auto-detected from model config by default |
 
 ### GPU Memory Allocation (Both Engines)
 
@@ -296,7 +305,7 @@ docker stats yap-server
 
 ### vLLM Issues
 
-1. **"not a pre-quantized model"** - Chat model name must contain `awq`, `gptq`, etc., or `config.json` must declare `quant_method`.
+1. **"not allowlisted for engine"** - Use an allowlisted chat model for the selected engine (or provide a local model path).
 2. **"not in the allowed list"** - Tool model must be in `src/config/models.py`
 3. **"TAG must start with 'vllm-'"** - Use the correct tag prefix
 
@@ -305,7 +314,7 @@ docker stats yap-server
 1. **"GPU ARCHITECTURE MISMATCH"** - Engine built for different GPU. TRT engines are not portable across architectures. Check: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
 2. **"MISSING ENGINE METADATA"** - Engine missing `build_metadata.json`. Rebuild.
 3. **"CANNOT DETECT RUNTIME GPU"** - Run with `--gpus all`
-4. **"TRT_ENGINE_REPO is not set"** - Set `CHAT_MODEL` (used as default) or `TRT_ENGINE_REPO` explicitly
+4. **"TRT_ENGINE_REPO is not set"** - For TRT chat/both builds, set `CHAT_MODEL` (used as default) or `TRT_ENGINE_REPO` explicitly
 5. **"TRT_ENGINE_LABEL has invalid format"** - Must match `sm{digits}_trt-llm-{version}_cuda{version}`
 6. **"No .engine files found"** - Verify engine exists in repo
 7. **"TAG must start with 'trt-'"** - Use correct tag prefix
@@ -322,7 +331,6 @@ docker stats yap-server
 docker run -it --gpus all --rm \
   -e TEXT_API_KEY=test \
   -e MAX_CONCURRENT_CONNECTIONS=10 \
-  -e CHAT_QUANTIZATION=awq \
   myuser/yap-text-api:vllm-qwen30b-awq \
   /bin/bash
 ```

@@ -12,7 +12,7 @@ usage() {
   echo "Yap Text Inference Docker Container - TensorRT-LLM Engine"
   echo ""
   echo "This container is configured at build time with specific pre-quantized models."
-  echo "TRT engines are downloaded from HuggingFace on first run and cached."
+  echo "TRT engines are baked into the image during build."
   echo ""
   echo "Required Environment Variables:"
   echo "  TEXT_API_KEY                    - API key for authentication (required)"
@@ -53,7 +53,7 @@ fi
 source "${SCRIPT_DIR}/bootstrap.sh"
 
 if [ -z "${TEXT_API_KEY:-}" ]; then
-  log_error "[main] ✗ TEXT_API_KEY is required"
+  log_err "[main] ✗ TEXT_API_KEY is required"
   exit 1
 fi
 
@@ -62,7 +62,7 @@ fi
 # Robust path resolution for start script
 START_SCRIPT="${SCRIPT_DIR}/start_server.sh"
 if [ ! -x "${START_SCRIPT}" ]; then
-  log_error "[server] ✗ start_server.sh not found at ${START_SCRIPT}"
+  log_err "[server] ✗ start_server.sh not found at ${START_SCRIPT}"
   ls -la "${SCRIPT_DIR}" || true
   exit 1
 fi

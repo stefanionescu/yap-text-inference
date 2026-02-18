@@ -11,13 +11,20 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
 IMAGE_NAME="${IMAGE_NAME:-yap-text-api}"
 
-# Deploy mode: chat|tool|both
+# Deploy mode: chat|both (tool-only is handled by docker/tool/build.sh)
 DEPLOY_MODE_VAL="${DEPLOY_MODE:-both}"
 case "${DEPLOY_MODE_VAL}" in
-  chat | tool | both) ;;
+  chat | both) ;;
+  tool)
+    if [[ ${1:-} != "--help" ]]; then
+      echo "[build] DEPLOY_MODE=tool is not supported in docker/vllm/build.sh" >&2
+      echo "[build] Use docker/tool/build.sh or docker/build.sh with DEPLOY_MODE=tool" >&2
+      exit 1
+    fi
+    ;;
   *)
-    echo "[build] Invalid DEPLOY_MODE='${DEPLOY_MODE_VAL}', defaulting to 'both'" >&2
-    DEPLOY_MODE_VAL="both"
+    echo "[build] Invalid DEPLOY_MODE='${DEPLOY_MODE_VAL}'. Must be 'chat' or 'both'" >&2
+    exit 1
     ;;
 esac
 
@@ -32,8 +39,8 @@ HF_TOKEN="${HF_TOKEN:-}"
 # Custom tag (MUST start with vllm-)
 TAG="${TAG:-vllm-${DEPLOY_MODE_VAL}}"
 
-# Validate tag naming convention (only for chat/both deploys that use vLLM)
-if [[ ${DEPLOY_MODE_VAL} != "tool" && ! ${TAG} =~ ^vllm- ]]; then
+# Validate tag naming convention
+if [[ ! ${TAG} =~ ^vllm- ]]; then
   echo "[build] ✗ TAG must start with 'vllm-' for vLLM images" >&2
   echo "[build]   Got: ${TAG}" >&2
   echo "[build]   Example: vllm-qwen30b-awq" >&2
@@ -69,13 +76,15 @@ usage() {
   echo "Environment Variables:"
   echo "  DOCKER_USERNAME     - Docker Hub username (required)"
   echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
-  echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
+  echo "  DEPLOY_MODE         - chat|both (default: both)"
   echo "  CHAT_MODEL          - Pre-quantized chat model HF repo (required for chat/both)"
   echo "                        Name should contain awq/gptq/fp8, or config.json must declare quant_method"
-  echo "  TOOL_MODEL          - Tool model HF repo (required for tool/both)"
+  echo "  TOOL_MODEL          - Tool model HF repo (required for both)"
   echo "  TAG                 - Image tag (MUST start with 'vllm-')"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (for private repos)"
+  echo ""
+  echo "  Note: For tool-only images, use docker/tool/build.sh"
   echo ""
   echo "Options:"
   echo "  --help              - Show this help message"
@@ -87,13 +96,6 @@ usage() {
     DEPLOY_MODE=chat \
     CHAT_MODEL=cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit \
     TAG=vllm-qwen30b-awq \
-    ./build.sh
-
-  # Build tool-only image
-  DOCKER_USERNAME=myuser \
-    DEPLOY_MODE=tool \
-    TOOL_MODEL=yapwithai/yap-modernbert-screenshot-intent \
-    TAG=vllm-tool-only \
     ./build.sh
 
   # Build both models
@@ -117,7 +119,7 @@ fi
 
 # Validate configuration
 if [[ ${DOCKER_USERNAME} == "your-username" ]]; then
-  log_error "[build] ✗ Please set DOCKER_USERNAME environment variable"
+  log_err "[build] ✗ Please set DOCKER_USERNAME environment variable"
   log_info "[build] Example: DOCKER_USERNAME=myuser $0"
   exit 1
 fi
@@ -125,7 +127,7 @@ fi
 # Validate models based on deploy mode
 log_info "[build] Validating models for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
 if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
-  log_error "[build] ✗ Model validation failed. Build aborted."
+  log_err "[build] ✗ Model validation failed. Build aborted."
   exit 1
 fi
 echo # blank line after validation
@@ -166,7 +168,7 @@ if ! docker push "${FULL_IMAGE_NAME}"; then
   log_warn "[build] ⚠ Initial docker push failed. Attempting non-interactive login and retry..."
   ensure_docker_login || true
   if ! docker push "${FULL_IMAGE_NAME}"; then
-    log_error "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+    log_err "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
     exit 1
   fi
 fi

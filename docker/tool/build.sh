@@ -81,7 +81,7 @@ fi
 
 # Validate configuration
 if [[ ${DOCKER_USERNAME} == "your-username" ]]; then
-  log_error "[build] ✗ Please set DOCKER_USERNAME environment variable"
+  log_err "[build] ✗ Please set DOCKER_USERNAME environment variable"
   log_info "[build] Example: DOCKER_USERNAME=myuser $0"
   exit 1
 fi
@@ -89,7 +89,7 @@ fi
 # Validate tool model
 log_info "[build] Validating models for DEPLOY_MODE=tool..."
 if ! validate_models_for_deploy "tool" "" "${TOOL_MODEL}"; then
-  log_error "[build] ✗ Model validation failed. Build aborted."
+  log_err "[build] ✗ Model validation failed. Build aborted."
   exit 1
 fi
 echo # blank line after validation
@@ -123,7 +123,7 @@ if ! docker push "${FULL_IMAGE_NAME}"; then
   log_warn "[build] ⚠ Initial docker push failed. Attempting non-interactive login and retry..."
   ensure_docker_login || true
   if ! docker push "${FULL_IMAGE_NAME}"; then
-    log_error "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+    log_err "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
     exit 1
   fi
 fi

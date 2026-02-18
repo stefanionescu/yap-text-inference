@@ -53,7 +53,7 @@ Then you can run:
 # Chat + tool (default) - auto-detached deployment with log tailing
 bash scripts/main.sh [--trt|--vllm] [4bit|8bit] <chat_model> <tool_model>
 
-# Chat-only / tool-only helpers (host scripts only; Docker always runs both)
+# Chat-only / tool-only helpers (host scripts)
 bash scripts/main.sh [--trt|--vllm] [4bit|8bit] chat <chat_model>
 bash scripts/main.sh tool <tool_model>
 
@@ -99,39 +99,53 @@ This will:
 Deploy the server in Docker using the AWQ stack in `docker/`:
 
 ```bash
-# Build the image
-DOCKER_USERNAME=youruser DEPLOY_MODE=both ./docker/build.sh
+# Build chat + tool image (vLLM)
+ENGINE=vllm \
+  DOCKER_USERNAME=youruser \
+  DEPLOY_MODE=both \
+  CHAT_MODEL=cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit \
+  TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
+  TAG=vllm-qwen3-full \
+  ./docker/build.sh
 
 # Run (chat + tool)
 docker run -d --gpus all --name yap-awq \
   -e DEPLOY_MODE=both \
-  -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   -e TEXT_API_KEY=your_secret_key \
   -e HF_TOKEN=hf_your_api_token \
   -e MAX_CONCURRENT_CONNECTIONS=32 \
-  -p 8000:8000 youruser/yap-text-inference-awq:both
+  -p 8000:8000 youruser/yap-text-api:vllm-qwen3-full
 
-# Chat-only (uses default model: cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit)
-DOCKER_USERNAME=youruser DEPLOY_MODE=chat ./docker/build.sh
+# Chat-only (TRT example)
+ENGINE=trt \
+  DOCKER_USERNAME=youruser \
+  DEPLOY_MODE=chat \
+  CHAT_MODEL=yapwithai/qwen3-30b-trt-awq \
+  TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
+  TAG=trt-qwen30b-sm90 \
+  ./docker/build.sh
 docker run -d --gpus all --name yap-chat \
   -e DEPLOY_MODE=chat \
   -e TEXT_API_KEY=your_secret_key \
-  -p 8000:8000 youruser/yap-text-inference-awq:chat
+  -p 8000:8000 youruser/yap-text-api:trt-qwen30b-sm90
 
-# Tool-only
-DOCKER_USERNAME=youruser DEPLOY_MODE=tool ./docker/build.sh
+# Tool-only (canonical path, no ENGINE)
+DOCKER_USERNAME=youruser \
+  DEPLOY_MODE=tool \
+  TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
+  TAG=tool-only \
+  ./docker/build.sh
 docker run -d --gpus all --name yap-tool \
   -e DEPLOY_MODE=tool \
-  -e TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   -e TEXT_API_KEY=your_secret_key \
-  -p 8000:8000 youruser/yap-text-inference-awq:tool
+  -p 8000:8000 youruser/yap-text-api:tool-only
 ```
 
 > Tool models are PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally so restarts reuse them.
 
 Build scripts construct minimal temporary Docker contexts and use strict
 policy-driven allowlist ignore files (`linting/policy.toml` with
-`docker/vllm/.dockerignore` and `docker/trt/.dockerignore`).
+`docker/vllm/.dockerignore`, `docker/trt/.dockerignore`, and `docker/tool/.dockerignore`).
 Docker contexts include only runtime build assets
 (no repo docs and no test clients).
 

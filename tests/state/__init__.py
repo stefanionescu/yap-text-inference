@@ -1,4 +1,6 @@
-"""Centralized dataclasses for test state and helpers."""
+"""Static state type exports for test modules."""
+
+from __future__ import annotations
 
 from .history import HistoryBenchConfig
 from .conversation import ConversationSession
