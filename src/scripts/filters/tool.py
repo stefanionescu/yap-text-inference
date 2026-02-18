@@ -1,7 +1,7 @@
-"""Tool classifier log noise suppression.
+"""Tool log noise suppression.
 
 Suppresses verbose output during tool-only deployments including pip install
-progress, classifier warmup logs, and deprecation warnings.
+progress, tool warmup logs, and deprecation warnings.
 """
 
 from __future__ import annotations
@@ -22,9 +22,9 @@ MIN_ARGS = 2
 
 
 class ToolNoiseFilterStream:
-    """Wraps a stdio stream and drops tool classifier noise.
+    """Wraps a stdio stream and drops tool noise.
 
-    Tool-only deployments emit verbose pip install output and classifier
+    Tool-only deployments emit verbose pip install output and tool
     initialization logs. This stream wrapper intercepts and filters known
     noise patterns.
     """
@@ -113,16 +113,16 @@ def _install_stream_filters() -> None:
 def _suppress_tool_loggers() -> None:
     """Set tool-related loggers to WARNING level to reduce noise."""
     for logger_name in (
-        "src.classifier",
-        "src.classifier.adapter",
-        "src.classifier.backend",
-        "src.classifier.batch",
+        "src.tool",
+        "src.tool.adapter",
+        "src.tool.backend",
+        "src.tool.batch",
     ):
         logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 
 def configure_tool_logging() -> None:
-    """Suppress tool classifier log noise during deployment.
+    """Suppress tool log noise during deployment.
 
     This configures multiple layers of suppression:
     1. Python loggers set to WARNING level

@@ -33,5 +33,5 @@ tests/results/
 *.swo
 .cursor/
 
-classifier/models
-.venv_classifier
+tool/models
+.venv_tool

@@ -63,7 +63,7 @@ usage() {
   echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
   echo "  DEPLOY_MODE         - chat|tool|both (default: both)"
   echo "  CHAT_MODEL          - Chat model HF repo (required for chat/both)"
-  echo "  TOOL_MODEL          - Tool classifier HF repo (required for tool/both)"
+  echo "  TOOL_MODEL          - Tool model HF repo (required for tool/both)"
   echo "  TAG                 - Image tag (MUST start with 'trt-' or 'vllm-')"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (required for private repos)"

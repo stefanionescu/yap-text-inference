@@ -4,7 +4,7 @@ This module handles the tracking of active requests and asyncio tasks:
 
 1. Request ID Tracking:
    - active_request_id: The current chat generation request
-   - tool_request_id: The current tool/classifier request
+   - tool_request_id: The current tool request
    - CANCELLED_SENTINEL: Special value marking cancelled sessions
 
 2. Task Management:

@@ -38,7 +38,7 @@ docker run -d --gpus all --name yap-server \
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
 | `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
 | `CHAT_MODEL` | If chat/both | Pre-quantized HF model (AWQ/GPTQ/W4A16) |
-| `TOOL_MODEL` | If tool/both | Tool classifier HF repo |
+| `TOOL_MODEL` | If tool/both | Tool model HF repo |
 | `TAG` | Yes | Image tag (must start with `vllm-`) |
 | `HF_TOKEN` | If private | HuggingFace token |
 
@@ -49,7 +49,7 @@ docker run -d --gpus all --name yap-server \
 | `TEXT_API_KEY` | Yes | - | API key |
 | `MAX_CONCURRENT_CONNECTIONS` | Yes | - | Maximum concurrent WebSocket connections |
 | `CHAT_GPU_FRAC` | No | 0.90 | GPU fraction for chat model |
-| `TOOL_GPU_FRAC` | No | 0.20 | GPU fraction for tool classifier |
+| `TOOL_GPU_FRAC` | No | 0.20 | GPU fraction for tool model |
 | `KV_DTYPE` | No | auto | KV cache dtype (fp8, int8, auto) |
 | `VLLM_USE_V1` | No | 1 | Use vLLM V1 engine |
 

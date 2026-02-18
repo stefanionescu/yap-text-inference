@@ -1,22 +1,19 @@
-"""Tool classifier configuration.
+"""Tool model configuration.
 
-This module configures the screenshot intent classifier - a lightweight
+This module configures the screenshot intent tool model - a lightweight
 PyTorch model that determines whether the user is asking for a screenshot.
 
-The classifier runs independently of the main chat engine and is optimized
+The tool model runs independently of the main chat engine and is optimized
 for low latency. It uses:
 - Micro-batching to amortize GPU overhead
 - Left-truncation for long inputs
-- Language filtering to skip non-English messages
 
 Decision Flow:
     1. User sends a message
-    2. Language filter checks if message is English
-    3. Classifier runs inference with user + history context
-    4. If probability >= threshold, return take_screenshot tool call
+    2. Tool model runs inference with user + history context
+    3. If probability >= threshold, return take_screenshot tool call
 
 Environment Variables:
-    TOOL_LANGUAGE_FILTER: Skip classifier for non-English messages
     TOOL_DECISION_THRESHOLD: Probability threshold for screenshot detection
     TOOL_COMPILE: Enable torch.compile optimization
     TOOL_HISTORY_TOKENS: Max tokens of history context
@@ -33,17 +30,9 @@ import os
 from ..helpers.env import env_flag
 
 # ============================================================================
-# Language Filtering
-# ============================================================================
-# Skip classifier for non-English messages to avoid false positives.
-# Uses the lingua library for accurate detection, even on short text.
-
-TOOL_LANGUAGE_FILTER = env_flag("TOOL_LANGUAGE_FILTER", True)
-
-# ============================================================================
 # Decision Threshold
 # ============================================================================
-# Classifier outputs a probability for "should take screenshot".
+# Tool model outputs a probability for "should take screenshot".
 # Values >= threshold trigger the tool call. 0.66 balances precision/recall.
 
 TOOL_DECISION_THRESHOLD = float(os.getenv("TOOL_DECISION_THRESHOLD", "0.66"))
@@ -59,7 +48,7 @@ TOOL_COMPILE = env_flag("TOOL_COMPILE", False)
 # ============================================================================
 # Token Limits
 # ============================================================================
-# Classifier uses recent conversation history for context. These limits
+# Tool model uses recent conversation history for context. These limits
 # prevent OOM and keep latency low.
 
 _tool_history_tokens_raw = os.getenv("TOOL_HISTORY_TOKENS")
@@ -84,9 +73,9 @@ TOOL_MODEL_BATCH_CONFIG: dict[str, dict[str, int | float]] = {
 }
 
 # ============================================================================
-# Classifier Runtime Constants
+# Tool Runtime Constants
 # ============================================================================
-# Internal constants for classifier adapter behavior.
+# Internal constants for tool adapter behavior.
 
 # Minimum request timeout to prevent immediate failures
 TOOL_MIN_TIMEOUT_S = 0.1
@@ -104,7 +93,6 @@ TOOL_POSITIVE_LABEL_INDEX = 1
 
 
 __all__ = [
-    "TOOL_LANGUAGE_FILTER",
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",

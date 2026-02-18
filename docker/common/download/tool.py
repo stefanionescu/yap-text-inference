@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Download tool classifier model from HuggingFace at Docker build time.
+"""Download tool model from HuggingFace at Docker build time.
 
 This shared module is used by both TRT and vLLM Docker builds to download the
-tool classifier model. The tool model is a PyTorch model that runs on both
-engines without engine-specific compilation.
+tool model. The tool model is a PyTorch model that runs on both engines
+without engine-specific compilation.
 """
 
 import os

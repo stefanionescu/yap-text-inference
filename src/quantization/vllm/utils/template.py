@@ -155,7 +155,7 @@ def generate_readme(
 ) -> str:
     """Generate a comprehensive README using templates."""
 
-    # Tool models are classifier-only now; AWQ exports are always chat models
+    # Tool models are classification-only; AWQ exports are always chat models
     is_tool = False
 
     # Resolve template

@@ -64,7 +64,7 @@ Common download functionality:
 
 ### Tool Model (`download/tool.py`)
 
-Downloads the tool classifier from HuggingFace. Used by both engines.
+Downloads the tool model from HuggingFace. Used by both engines.
 
 Env vars: `TOOL_MODEL`, `TOOL_MODEL_PATH`, `HF_TOKEN`
 

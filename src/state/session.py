@@ -54,7 +54,7 @@ class SessionState:
         active_request_id: Tracks the current chat/generation request. Used to
             detect stale streaming responses when a newer request supersedes
             an older one. None when idle.
-        tool_request_id: Tracks the current tool/classifier request separately
+        tool_request_id: Tracks the current tool request separately
             from chat requests. Allows concurrent tool classification while
             chat generation is in progress. None when no tool request is active.
         created_at: Monotonic timestamp (from time.monotonic) when the session

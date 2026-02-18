@@ -1,7 +1,7 @@
-"""Classifier inference backend (PyTorch).
+"""Tool inference backend (PyTorch).
 
 This module provides the PyTorch-based inference backend for the
-classifier adapter. It handles:
+tool adapter. It handles:
 
 1. Model Loading:
    - AutoModelForSequenceClassification for any HuggingFace model
@@ -31,12 +31,12 @@ import logging
 import torch  # type: ignore[import]
 from transformers import AutoTokenizer, AutoModelForSequenceClassification  # type: ignore[import]
 
-from src.state import ClassifierModelInfo
+from src.state import ToolModelInfo
 
 logger = logging.getLogger(__name__)
 
 
-class TorchClassifierBackend:
+class TorchToolBackend:
     """PyTorch backend supporting both BERT-style and Longformer models.
 
     This class handles the actual model loading and inference, supporting
@@ -53,7 +53,7 @@ class TorchClassifierBackend:
 
     def __init__(
         self,
-        info: ClassifierModelInfo,
+        info: ToolModelInfo,
         *,
         device: str,
         dtype: torch.dtype,
@@ -88,10 +88,10 @@ class TorchClassifierBackend:
         if compile_model and hasattr(torch, "compile"):
             try:
                 self._model = torch.compile(self._model)  # type: ignore[arg-type]
-                logger.info("classifier: enabled torch.compile for %s", info.model_id)
+                logger.info("tool: enabled torch.compile for %s", info.model_id)
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "classifier: torch.compile failed, running eager: %s",
+                    "tool: torch.compile failed, running eager: %s",
                     exc,
                 )
 
@@ -137,5 +137,5 @@ class TorchClassifierBackend:
 
 
 __all__ = [
-    "TorchClassifierBackend",
+    "TorchToolBackend",
 ]

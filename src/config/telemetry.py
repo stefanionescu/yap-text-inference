@@ -80,7 +80,7 @@ METRIC_STARTUP_DURATION = ("text_inference.startup_duration", "s", "Server start
 METRIC_TOOL_CLASSIFICATION_LATENCY = (
     "text_inference.tool_classification_latency",
     "s",
-    "Tool classifier inference time",
+    "Tool model inference time",
 )
 
 # Counters
@@ -108,7 +108,7 @@ METRIC_RATE_LIMIT_VIOLATIONS_TOTAL = (
 METRIC_TOOL_CLASSIFICATIONS_TOTAL = (
     "text_inference.tool_classifications_total",
     "{classification}",
-    "Tool classifier calls",
+    "Tool model calls",
 )
 METRIC_CACHE_RESETS_TOTAL = ("text_inference.cache_resets_total", "{reset}", "vLLM cache resets")
 

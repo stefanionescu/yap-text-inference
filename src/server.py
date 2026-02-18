@@ -10,7 +10,7 @@ TensorRT-LLM backends. It provides:
 - Graceful shutdown with engine cleanup
 
 Server Lifecycle:
-    1. On startup: Preload configured engines (chat and/or classifier)
+    1. On startup: Preload configured engines (chat and/or tool)
     2. Accept WebSocket connections on /ws
     3. Route messages through handlers (start, followup, cancel, etc.)
     4. Periodically reset vLLM caches (timer-based or on long session end)

@@ -130,7 +130,7 @@ ENGINE=vllm \
 | `DOCKER_USERNAME` | Yes | Docker Hub username |
 | `DEPLOY_MODE` | Yes | `chat`, `tool`, or `both` |
 | `CHAT_MODEL` | If chat/both | Pre-quantized HF model (AWQ/GPTQ/W4A16) |
-| `TOOL_MODEL` | If tool/both | Tool classifier from allowlist |
+| `TOOL_MODEL` | If tool/both | Tool model from allowlist |
 | `TAG` | Yes | Image tag (MUST start with `vllm-`) |
 | `HF_TOKEN` | If private | HuggingFace token for private repos |
 
@@ -143,7 +143,7 @@ TensorRT-LLM provides better inference performance with pre-compiled engines.
 1. **Build time**: TRT engine downloaded from HuggingFace and baked into the image
 2. **Runtime**: Server starts immediately
 
-The tool classifier always runs as PyTorch (not TRT). Tool-only deployments don't need a TRT engine.
+The tool model always runs as PyTorch (not TRT). Tool-only deployments don't need a TRT engine.
 
 ### Requirements
 
@@ -182,7 +182,7 @@ ENGINE=trt \
   bash docker/build.sh
 ```
 
-#### Both Models (TRT Chat + PyTorch Tool Classifier)
+#### Both Models (TRT Chat + PyTorch Tool Model)
 
 ```bash
 ENGINE=trt \
@@ -205,7 +205,7 @@ ENGINE=trt \
 | `CHAT_MODEL` | If chat/both | HF repo for tokenizer/checkpoint |
 | `TRT_ENGINE_REPO` | No | HF repo with pre-built engines (defaults to `CHAT_MODEL`) |
 | `TRT_ENGINE_LABEL` | If chat/both | Engine directory name (e.g., `sm90_trt-llm-0.17.0_cuda12.8`) |
-| `TOOL_MODEL` | If tool/both | Tool classifier from allowlist |
+| `TOOL_MODEL` | If tool/both | Tool model from allowlist |
 | `TAG` | Yes | Image tag (MUST start with `trt-`) |
 | `HF_TOKEN` | If private | HuggingFace token for private repos |
 
@@ -250,7 +250,7 @@ docker run -d --gpus all --name yap-server \
 
 Memory allocation:
 
-| Deploy Mode | Chat Model | Tool Classifier |
+| Deploy Mode | Chat Model | Tool Model |
 |-------------|------------|-----------------|
 | `chat` only | 90% | - |
 | `tool` only | - | 90% |
@@ -261,7 +261,7 @@ Memory allocation:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CHAT_GPU_FRAC` | 0.90 (single) / 0.70 (both) | GPU memory for chat model |
-| `TOOL_GPU_FRAC` | 0.90 (single) / 0.20 (both) | GPU memory for tool classifier |
+| `TOOL_GPU_FRAC` | 0.90 (single) / 0.20 (both) | GPU memory for tool model |
 | `KV_DTYPE` | auto | KV cache dtype (fp8, int8, auto) |
 | `VLLM_USE_V1` | 1 | Use vLLM V1 engine |
 
@@ -270,7 +270,7 @@ Memory allocation:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TRT_KV_FREE_GPU_FRAC` | 0.90 (single) / 0.70 (both) | GPU fraction for TRT KV cache |
-| `TOOL_GPU_FRAC` | 0.90 (single) / 0.20 (both) | GPU memory for tool classifier |
+| `TOOL_GPU_FRAC` | 0.90 (single) / 0.20 (both) | GPU memory for tool model |
 
 ## Health & Monitoring
 

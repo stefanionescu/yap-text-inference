@@ -12,7 +12,7 @@ from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
 from src.config.deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 from src.config.limits import HISTORY_MAX_TOKENS, TRIMMED_HISTORY_LENGTH, MAX_CONCURRENT_CONNECTIONS
 
-from .models import is_classifier_model
+from .models import is_tool_model
 from .quantization import classify_prequantized_model
 
 logger = logging.getLogger(__name__)
@@ -73,8 +73,8 @@ def validate_env() -> None:
         errors.append("CHAT_MODEL is required when DEPLOY_MODE is 'both' or 'chat'")
     if DEPLOY_TOOL and not TOOL_MODEL:
         errors.append("TOOL_MODEL is required when DEPLOY_MODE is 'both' or 'tool'")
-    if DEPLOY_TOOL and TOOL_MODEL and not is_classifier_model(TOOL_MODEL):
-        errors.append("TOOL_MODEL must be one of the classifier models (vLLM tool engines are disabled)")
+    if DEPLOY_TOOL and TOOL_MODEL and not is_tool_model(TOOL_MODEL):
+        errors.append("TOOL_MODEL must be one of the tool models (vLLM tool engines are disabled)")
 
     # Validate engine selection
     if INFERENCE_ENGINE not in SUPPORTED_ENGINES:

@@ -1,4 +1,4 @@
-"""Classifier state dataclasses."""
+"""Tool state dataclasses."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from src.classifier.future import BatchFuture
+    from src.tool.future import BatchFuture
 
 
 @dataclass(slots=True)
@@ -18,8 +18,8 @@ class RequestItem:
 
 
 @dataclass(slots=True)
-class ClassifierModelInfo:
-    """Metadata describing the classifier checkpoint and runtime needs."""
+class ToolModelInfo:
+    """Metadata describing the tool checkpoint and runtime needs."""
 
     model_id: str
     model_type: str
@@ -27,4 +27,4 @@ class ClassifierModelInfo:
     num_labels: int
 
 
-__all__ = ["RequestItem", "ClassifierModelInfo"]
+__all__ = ["RequestItem", "ToolModelInfo"]

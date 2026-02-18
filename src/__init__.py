@@ -16,7 +16,7 @@ Architecture Overview:
     - execution/: Request execution pipeline (chat, tool routing)
     - handlers/: WebSocket and session management
     - messages/: Message type handlers (start, followup, cancel)
-    - classifier/: Lightweight screenshot intent classifier
+    - tool/: Lightweight screenshot intent tool model
     - tokens/: Tokenization utilities
     - helpers/: Shared utility functions
 
@@ -36,5 +36,5 @@ Environment Variables:
         - CHAT_QUANTIZATION: Override auto-detected quantization (awq, gptq, fp8)
         - DEPLOY_MODE: 'both', 'chat', or 'tool' (default: 'both')
         - INFERENCE_ENGINE: 'vllm' or 'trt' (default: 'trt')
-        - TOOL_MODEL: Classifier model for tool routing
+        - TOOL_MODEL: Tool model for tool routing
 """

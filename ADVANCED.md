@@ -98,7 +98,7 @@ Set `SENTRY_ENVIRONMENT` and `AXIOM_ENVIRONMENT` to `staging` for non-production
 | `text_inference.completion_tokens` | {token} | Output completion token count |
 | `text_inference.generations_per_session` | {request} | Requests per session |
 | `text_inference.startup_duration` | s | Server startup time |
-| `text_inference.tool_classification_latency` | s | Tool classifier inference time |
+| `text_inference.tool_classification_latency` | s | Tool model inference time |
 
 **Counters:**
 
@@ -113,7 +113,7 @@ Set `SENTRY_ENVIRONMENT` and `AXIOM_ENVIRONMENT` to `staging` for non-production
 | `text_inference.errors_total` | {error} | Unhandled errors (error.type dimension) |
 | `text_inference.timeout_disconnects_total` | {connection} | Idle timeout disconnects |
 | `text_inference.rate_limit_violations_total` | {violation} | Rate limit hits |
-| `text_inference.tool_classifications_total` | {classification} | Tool classifier calls |
+| `text_inference.tool_classifications_total` | {classification} | Tool model calls |
 | `text_inference.cache_resets_total` | {reset} | vLLM cache resets |
 
 **Gauges:**
@@ -799,12 +799,12 @@ This separation ensures the reported percentiles reflect real conversational lat
 - Chat prompts are rendered using each model's tokenizer
 - **vLLM:** Prefix caching reuses repeated prompts automatically. Swapping the system prompt keeps history KV hot.
 - **TensorRT-LLM:** Block reuse handles KV cache automatically.
-- **Tool classifier context windows are model-aware by default:**
+- **Tool model context windows are model-aware by default:**
   - Longformer-based tool models: `1536` tokens
   - BERT/ModernBERT-based tool models: `512` tokens
   - You can override with `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS`.
-  - Effective tool history budget is clamped to the classifier's effective max sequence length.
-- **Oversized latest user messages for tool routing are tail-truncated (keep end)** so the most recent part still reaches the classifier.
+  - Effective tool history budget is clamped to the tool model's effective max sequence length.
+- **Oversized latest user messages for tool routing are tail-truncated (keep end)** so the most recent part still reaches the tool model.
 
 ## Known Issues
 

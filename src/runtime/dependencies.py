@@ -7,17 +7,17 @@ request processing.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
 from collections.abc import Callable, Awaitable
 
 if TYPE_CHECKING:
     from src.engines.base import BaseEngine
+    from src.tool.adapter import ToolAdapter
     from src.tokens.tokenizer import FastTokenizer
     from src.engines.vllm.cache import CacheResetManager
     from src.handlers.connections import ConnectionHandler
     from src.handlers.session.manager import SessionHandler
-    from src.classifier.adapter import ClassifierToolAdapter
 
 
 CacheResetFn = Callable[[str, bool], Awaitable[bool]]
@@ -31,10 +31,9 @@ class RuntimeDeps:
     session_handler: SessionHandler
     chat_engine: BaseEngine | None
     cache_reset_manager: CacheResetManager | None
-    classifier_adapter: ClassifierToolAdapter | None
+    tool_adapter: ToolAdapter | None
     chat_tokenizer: FastTokenizer | None
     tool_tokenizer: FastTokenizer | None
-    tool_language_detector: Any | None = None
 
     def supports_cache_reset(self) -> bool:
         return (

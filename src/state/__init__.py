@@ -11,9 +11,9 @@ from .time import SessionTimestamp
 from .hf import AWQPushJob, TRTPushJob
 from .websocket import _ChatStreamState
 from .calibration import TotalLengthPolicy
+from .tool import RequestItem, ToolModelInfo
 from .session import HistoryTurn, SessionState
 from .execution import CancelCheck, ChatStreamConfig
-from .classifier import RequestItem, ClassifierModelInfo
 from .quantization import EnvironmentInfo, CalibrationConfig, _DatasetInfo
 from .tokens import TokenizerSource, TransformersTarget, TokenizerValidationResult
 
@@ -21,7 +21,7 @@ __all__ = [
     "AWQPushJob",
     "CancelCheck",
     "CalibrationConfig",
-    "ClassifierModelInfo",
+    "ToolModelInfo",
     "EngineOutput",
     "EnvironmentInfo",
     "HistoryTurn",

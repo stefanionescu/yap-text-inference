@@ -1,4 +1,4 @@
-# Lightweight dependencies for tool-only deployment (classifier model).
+# Lightweight dependencies for tool-only deployment (tool model).
 # The tool model uses plain PyTorch + HuggingFace transformers, no TRT-LLM or vLLM.
 #
 # Install via:

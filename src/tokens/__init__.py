@@ -18,7 +18,7 @@ Tool Model Functions (use TOOL_MODEL tokenizer):
     - count_tokens_tool(): Exact token count
     - trim_text_to_token_limit_tool(): Trim to token budget
     - trim_history_preserve_messages_tool(): Trim preserving turn boundaries
-    - build_user_history_for_tool(): Format user-only history for classifier
+    - build_user_history_for_tool(): Format user-only history for tool model
 
 Token counting is critical for staying within model context limits and
 managing GPU memory usage (KV cache sizing).

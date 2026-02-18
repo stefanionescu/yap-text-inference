@@ -1,6 +1,6 @@
-"""Batched classifier adapter for screenshot intent detection.
+"""Batched tool adapter for screenshot intent detection.
 
-This module provides the high-level ClassifierToolAdapter that:
+This module provides the high-level ToolAdapter that:
 
 1. Manages the classification backend lifecycle
 2. Formats inputs (history + current utterance)
@@ -18,7 +18,7 @@ import logging
 
 import torch  # type: ignore[import]
 
-from src.state import ClassifierModelInfo
+from src.state import ToolModelInfo
 from src.config.tool import (
     TOOL_MAX_GPU_FRAC,
     TOOL_MIN_GPU_FRAC,
@@ -29,7 +29,7 @@ from src.config.tool import (
 )
 
 from .batch import BatchExecutor
-from .backend import TorchClassifierBackend
+from .backend import TorchToolBackend
 from .info import build_model_info, resolve_history_token_limit
 
 logger = logging.getLogger(__name__)
@@ -38,17 +38,17 @@ _POSITIVE_JSON = json.dumps(TOOL_POSITIVE_RESULT)
 _NEGATIVE_JSON = json.dumps(TOOL_NEGATIVE_RESULT)
 
 
-class ClassifierToolAdapter:
-    """Microbatched classifier adapter for screenshot intent detection.
+class ToolAdapter:
+    """Microbatched tool adapter for screenshot intent detection.
 
     This class coordinates between:
-    - The PyTorch inference backend (TorchClassifierBackend)
+    - The PyTorch inference backend (TorchToolBackend)
     - The batching layer (BatchExecutor)
     - GPU memory management
     - Threshold-based decision making
 
     Attributes:
-        model_path: Path or HuggingFace ID of the classifier model.
+        model_path: Path or HuggingFace ID of the tool model.
         threshold: Probability threshold for "take screenshot" decision.
         device: CUDA device string (e.g., "cuda:0") or "cpu".
         dtype: Torch dtype (float16 for GPU, float32 for CPU).
@@ -69,7 +69,7 @@ class ClassifierToolAdapter:
         request_timeout_s: float = 5.0,
         gpu_memory_frac: float | None = None,
     ) -> None:
-        """Initialize the classifier adapter.
+        """Initialize the tool adapter.
 
         Args:
             model_path: HuggingFace model path or local directory.
@@ -92,12 +92,12 @@ class ClassifierToolAdapter:
         self._memory_fraction_configured: set[int] = set()
 
         self._configure_gpu_limit()
-        self._model_info: ClassifierModelInfo = build_model_info(model_path, max_length)
+        self._model_info: ToolModelInfo = build_model_info(model_path, max_length)
         resolved_history_tokens = resolve_history_token_limit(
             max_length=self._model_info.max_length,
             history_tokens=history_max_tokens,
         )
-        self._backend = TorchClassifierBackend(
+        self._backend = TorchToolBackend(
             self._model_info,
             device=self.device,
             dtype=self.dtype,
@@ -112,7 +112,7 @@ class ClassifierToolAdapter:
         )
 
         logger.info(
-            "classifier: ready model=%s type=%s device=%s backend=%s batch=%s/%s",
+            "tool: ready model=%s type=%s device=%s backend=%s batch=%s/%s",
             model_path,
             self._model_info.model_type,
             self.device,
@@ -121,7 +121,7 @@ class ClassifierToolAdapter:
             batch_max_delay_ms,
         )
         logger.info(
-            "classifier: token limits model=%s config_max_length=%s backend_max_length=%s history_tokens=%s",
+            "tool: token limits model=%s config_max_length=%s backend_max_length=%s history_tokens=%s",
             model_path,
             self._model_info.max_length,
             self._backend.max_length,
@@ -140,7 +140,7 @@ class ClassifierToolAdapter:
             return torch.cuda.current_device()
 
     def _configure_gpu_limit(self) -> None:
-        """Configure GPU memory limit for the classifier."""
+        """Configure GPU memory limit for the tool model."""
         if not self.device.startswith("cuda") or self._gpu_memory_frac is None:
             return
 
@@ -152,12 +152,12 @@ class ClassifierToolAdapter:
         try:
             torch.cuda.set_per_process_memory_fraction(fraction, device_index)
             self._memory_fraction_configured.add(device_index)
-            logger.info("classifier: reserved %.1f%% of cuda:%s", fraction * 100.0, device_index)
+            logger.info("tool: reserved %.1f%% of cuda:%s", fraction * 100.0, device_index)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("classifier: failed to set GPU memory fraction: %s", exc)
+            logger.warning("tool: failed to set GPU memory fraction: %s", exc)
 
     def _format_input(self, user_utt: str, user_history: str = "") -> str:
-        """Combine history and current utterance into classifier input."""
+        """Combine history and current utterance into tool model input."""
         parts = [p for p in [(user_history or "").strip(), user_utt.strip()] if p]
         return "\n".join(parts)
 
@@ -199,7 +199,7 @@ class ClassifierToolAdapter:
         """
         should_take, p_yes = self.classify(user_utt, user_history)
         logger.debug(
-            "classifier: result=%s prob=%.3f user=%r",
+            "tool: result=%s prob=%.3f user=%r",
             should_take,
             p_yes,
             user_utt[:80],
@@ -207,4 +207,4 @@ class ClassifierToolAdapter:
         return _POSITIVE_JSON if should_take else _NEGATIVE_JSON
 
 
-__all__ = ["ClassifierToolAdapter"]
+__all__ = ["ToolAdapter"]

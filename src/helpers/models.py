@@ -26,10 +26,10 @@ def is_local_model_path(value: str | None) -> bool:
         return False
 
 
-def is_classifier_model(model: str | None) -> bool:
-    """Check if model is a classifier (not autoregressive LLM).
+def is_tool_model(model: str | None) -> bool:
+    """Check if model is a tool model (not autoregressive LLM).
 
-    Classifier models use transformers AutoModelForSequenceClassification,
+    Tool models use transformers AutoModelForSequenceClassification,
     not vLLM, and cannot be quantized.
     """
     if not model:
@@ -37,7 +37,7 @@ def is_classifier_model(model: str | None) -> bool:
     # Check explicit allowlist
     if model in ALLOWED_TOOL_MODELS:
         return True
-    # Accept local paths as classifier models (typically /app/models/tool in Docker)
+    # Accept local paths as tool models (typically /app/models/tool in Docker)
     # This allows preloaded models to be used without being in the explicit allowlist
     return bool(is_local_model_path(model))
 
@@ -109,7 +109,7 @@ def get_allowed_chat_models(engine: str = "vllm") -> list[str]:
 
 __all__ = [
     "is_local_model_path",
-    "is_classifier_model",
+    "is_tool_model",
     "is_valid_model",
     "is_moe_model",
     "get_all_base_chat_models",

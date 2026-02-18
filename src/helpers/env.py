@@ -26,7 +26,7 @@ def resolve_gpu_fracs(deploy_chat: bool, deploy_tool: bool) -> tuple[float, floa
 
     Args:
         deploy_chat: Whether chat engine is being deployed.
-        deploy_tool: Whether tool classifier is being deployed.
+        deploy_tool: Whether tool model is being deployed.
 
     Returns:
         Tuple of (chat_gpu_frac, tool_gpu_frac).
@@ -48,7 +48,7 @@ def resolve_batch_scale_gpu_frac_cap(deploy_chat: bool, deploy_tool: bool) -> fl
 
     Args:
         deploy_chat: Whether chat engine is being deployed.
-        deploy_tool: Whether tool classifier is being deployed.
+        deploy_tool: Whether tool model is being deployed.
 
     Returns:
         GPU fraction cap value.

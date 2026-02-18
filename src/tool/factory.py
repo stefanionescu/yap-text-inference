@@ -1,6 +1,6 @@
-"""Factory function for creating classifier adapter instances.
+"""Factory function for creating tool adapter instances.
 
-This module provides a function to create a ClassifierToolAdapter instance.
+This module provides a function to create a ToolAdapter instance.
 The singleton management is handled by the registry module.
 """
 
@@ -15,11 +15,11 @@ from src.config.tool import (
     TOOL_HISTORY_TOKENS_CONFIGURED,
 )
 
-from .adapter import ClassifierToolAdapter
+from .adapter import ToolAdapter
 
 
-def create_classifier_adapter() -> ClassifierToolAdapter:
-    """Create a new ClassifierToolAdapter instance using config values.
+def create_tool_adapter() -> ToolAdapter:
+    """Create a new ToolAdapter instance using config values.
 
     This function reads configuration from environment variables and
     creates a fresh adapter instance. It does NOT manage singleton state -
@@ -29,14 +29,14 @@ def create_classifier_adapter() -> ClassifierToolAdapter:
     ``TOOL_MODEL_BATCH_CONFIG``.
 
     Returns:
-        A new ClassifierToolAdapter instance configured from environment.
+        A new ToolAdapter instance configured from environment.
     """
     if not TOOL_MODEL:
-        raise ValueError("TOOL_MODEL must be set to initialize the classifier adapter.")
+        raise ValueError("TOOL_MODEL must be set to initialize the tool adapter.")
     batch_cfg = TOOL_MODEL_BATCH_CONFIG.get(TOOL_MODEL, {})
     max_length = TOOL_MAX_LENGTH if TOOL_MAX_LENGTH_CONFIGURED else None
     history_max_tokens = TOOL_HISTORY_TOKENS if TOOL_HISTORY_TOKENS_CONFIGURED else None
-    return ClassifierToolAdapter(
+    return ToolAdapter(
         model_path=TOOL_MODEL,
         threshold=TOOL_DECISION_THRESHOLD,
         compile_model=TOOL_COMPILE,
@@ -49,4 +49,4 @@ def create_classifier_adapter() -> ClassifierToolAdapter:
     )
 
 
-__all__ = ["create_classifier_adapter"]
+__all__ = ["create_tool_adapter"]

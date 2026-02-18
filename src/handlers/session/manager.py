@@ -190,7 +190,7 @@ class SessionHandler:
         return self._history.get_user_texts(state)
 
     def get_tool_history_text(self, session_id: str, *, max_tokens: int | None = None) -> str:
-        """Get trimmed history tailored for the classifier/tool model."""
+        """Get trimmed history tailored for the tool model."""
         state = self._get_state(session_id)
         if not state:
             return ""

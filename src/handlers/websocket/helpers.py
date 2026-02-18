@@ -13,7 +13,7 @@ and streaming chat responses. It handles:
    - Recording conversation history on completion
 
 3. Task Management:
-   - Launching and tracking tool/classifier requests
+   - Launching and tracking tool requests
    - Clean task cancellation with proper await
 
 Message Protocol:

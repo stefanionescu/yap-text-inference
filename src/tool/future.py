@@ -1,4 +1,4 @@
-"""Thread-safe future primitive for classifier micro-batching."""
+"""Thread-safe future primitive for tool micro-batching."""
 
 from __future__ import annotations
 
@@ -26,11 +26,11 @@ class BatchFuture:
     def result(self, timeout: float | None = None) -> list[float]:
         """Wait for and return the result, or raise the stored exception."""
         if not self._event.wait(timeout):
-            raise TimeoutError("Classifier batch timed out")
+            raise TimeoutError("Tool batch timed out")
         if self._exc is not None:
             raise self._exc
         if self._result is None:
-            raise RuntimeError("Classifier batch completed without result")
+            raise RuntimeError("Tool batch completed without result")
         return self._result
 
 

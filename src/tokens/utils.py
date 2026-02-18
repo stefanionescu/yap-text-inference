@@ -17,7 +17,7 @@ trim_history_preserve_messages_*(): Trim conversation history while
     markers and paragraph breaks to avoid cutting mid-message.
 
 build_user_history_for_tool(): Format user-only messages (no assistant)
-    for the classifier/tool model, trimmed to fit token budget.
+    for the tool model, trimmed to fit token budget.
 
 All functions are logged at DEBUG level with input/output metrics.
 """
@@ -168,7 +168,7 @@ def build_user_history_for_tool(
     user_texts: list[str],
     max_tokens: int,
 ) -> str:
-    """Format + trim user-only history for the classifier/tool model.
+    """Format + trim user-only history for the tool model.
 
     Args:
         user_texts: Raw user utterances (most recent last).
