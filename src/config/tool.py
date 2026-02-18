@@ -11,10 +11,9 @@ for low latency. It uses:
 
 Decision Flow:
     1. User sends a message
-    2. Phrase filter checks for known patterns (typos, exact matches)
-    3. Language filter checks if message is English
-    4. Classifier runs inference with user + history context
-    5. If probability >= threshold, return take_screenshot tool call
+    2. Language filter checks if message is English
+    3. Classifier runs inference with user + history context
+    4. If probability >= threshold, return take_screenshot tool call
 
 Environment Variables:
     TOOL_LANGUAGE_FILTER: Skip classifier for non-English messages

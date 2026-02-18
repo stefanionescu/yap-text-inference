@@ -4,22 +4,13 @@ This module runs the tool/intent classification pipeline that determines
 whether a user message requires special handling (screenshot, control commands).
 
 Pipeline:
-    1. Phrase Filter: Check for exact pattern matches (fast, regex-based)
-       - Freestyle commands (start/stop)
-       - Gender switches
-       - Personality switches
-       - Screenshot triggers
-
-    2. Language Filter: Skip non-English messages (optional)
+    1. Language Filter: Skip non-English messages (optional)
        - Uses lingua library for language detection
        - Avoids false positives from non-English text
 
-    3. Classifier Model: Run lightweight classification model
+    2. Classifier Model: Run lightweight classification model
        - BERT-style sequence classifier
        - Returns tool name or empty array
-
-The phrase filter runs first to short-circuit common commands without
-invoking the model. This improves latency for known patterns.
 """
 
 from __future__ import annotations
@@ -35,7 +26,6 @@ from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
 from src.classifier.adapter import ClassifierToolAdapter
 
-from .filter import filter_tool_phrase
 from .language import is_mostly_english
 from ...config import TOOL_LANGUAGE_FILTER
 
@@ -97,9 +87,8 @@ async def run_toolcall(
     """Execute tool classification pipeline.
 
     Runs the full tool detection pipeline:
-    1. Phrase filter for known patterns
-    2. Language filter for non-English
-    3. Classifier model for intent detection
+    1. Language filter for non-English
+    2. Classifier model for intent detection
 
     Args:
         session_id: Session for history lookup and request tracking.
@@ -115,20 +104,7 @@ async def run_toolcall(
     """
     req_id = request_id or f"tool-{uuid.uuid4()}"
 
-    # Phrase filter: check for known patterns FIRST to avoid model call
-    # This must run before language filter to catch typos that might be misclassified as non-English
-    phrase_result = filter_tool_phrase(user_utt)
-    action = phrase_result.action
-
-    if action == "no_screenshot":
-        logger.info("tool_runner: phrase filter no_screenshot session_id=%s req_id=%s", session_id, req_id)
-        return {"cancelled": False, "text": "[]"}
-    if action == "take_screenshot":
-        logger.info("tool_runner: phrase filter take_screenshot session_id=%s req_id=%s", session_id, req_id)
-        return {"cancelled": False, "text": '[{"name": "take_screenshot"}]'}
-
     # Language filter: skip tool call if message is not mostly English
-    # Only check if phrase filter didn't match (to avoid blocking known patterns)
     if TOOL_LANGUAGE_FILTER and not is_mostly_english(user_utt, language_detector):
         logger.info("tool_runner: skipped (non-English) session_id=%s req_id=%s", session_id, req_id)
         return {"cancelled": False, "text": "[]"}

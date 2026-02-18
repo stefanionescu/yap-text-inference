@@ -15,18 +15,17 @@ chat/:
 
 tool/:
     Tool/classifier integration:
-    - runner.py: Tool call execution with filters
-    - filter.py: Screenshot pre-filtering
+    - runner.py: Tool call execution with language filter + classifier
     - parser.py: Parse tool results from classifier
     - language.py: English detection filter
 
 Workflow Overview:
-    User Message -> Tool Filter -> Tool Classifier -> Chat Model -> Response
+    User Message -> Language Filter -> Tool Classifier -> Chat Model -> Response
 
     If tool detects screenshot request:
         Prefix user message with "CHECK SCREEN" and run chat
 
 Import from submodules directly:
     from src.execution.chat.runner import run_chat_generation
-    from src.execution.tool.filter import filter_tool_phrase
+    from src.execution.tool.runner import run_toolcall
 """

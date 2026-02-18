@@ -38,7 +38,7 @@ write_lock() {
   echo "$$" >"${WARMUP_LOCK_FILE}"
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 cleanup_lock() {
   rm -f "${WARMUP_LOCK_FILE}" || true
 }

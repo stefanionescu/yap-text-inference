@@ -10,6 +10,7 @@ exclude = [
     "__pycache__",
     "build",
     "dist",
+    "linting",
     "scripts/build",
 ]
 

@@ -17,7 +17,7 @@ _cleanup_remove_dirs() {
   local dir
   for dir in "$@"; do
     [ -z "${dir}" ] && continue
-    [ -e "${dir}" ] && rm -rf "${dir}" || true
+    if [ -e "${dir}" ]; then rm -rf "${dir}"; fi
   done
 }
 
@@ -96,7 +96,7 @@ cleanup_stop_server_session() {
         ps -p "${pid}" >/dev/null 2>&1 || break
         sleep 1
       done
-      ps -p "${pid}" >/dev/null 2>&1 && kill -KILL -"${pid}" || true
+      if ps -p "${pid}" >/dev/null 2>&1; then kill -KILL -"${pid}" || true; fi
     fi
     rm -f "${pid_file}" || true
   else
@@ -128,7 +128,7 @@ cleanup_repo_caches() {
 
 cleanup_runtime_state() {
   local root_dir="$1"
-  [ -d "${root_dir}/.run" ] && rm -rf "${root_dir}/.run" || true
+  if [ -d "${root_dir}/.run" ]; then rm -rf "${root_dir}/.run"; fi
 }
 
 cleanup_venvs() {
@@ -224,7 +224,7 @@ cleanup_pip_caches() {
     "${py_cmd}" -m pip cache purge >/dev/null 2>&1 || true
     local sys_cache
     sys_cache=$("${py_cmd}" -m pip cache dir 2>/dev/null || true)
-    [ -n "${sys_cache}" ] && [ -d "${sys_cache}" ] && rm -rf "${sys_cache}" || true
+    if [ -n "${sys_cache}" ] && [ -d "${sys_cache}" ]; then rm -rf "${sys_cache}"; fi
   fi
 
   _cleanup_remove_dirs \
@@ -250,7 +250,7 @@ cleanup_gpu_processes() {
     done
   fi
 
-  [ "${hard_reset}" = "1" ] && nvidia-smi --gpu-reset || true
+  if [ "${hard_reset}" = "1" ]; then nvidia-smi --gpu-reset || true; fi
 }
 
 cleanup_tmp_dirs() {
@@ -263,7 +263,7 @@ cleanup_tmp_dirs() {
 
 cleanup_home_cache_roots() {
   _cleanup_remove_dirs "$HOME/.cache" "/root/.cache"
-  [ -n "${XDG_CACHE_HOME:-}" ] && [ -d "${XDG_CACHE_HOME}" ] && rm -rf "${XDG_CACHE_HOME}" || true
+  if [ -n "${XDG_CACHE_HOME:-}" ] && [ -d "${XDG_CACHE_HOME}" ]; then rm -rf "${XDG_CACHE_HOME}"; fi
 }
 
 cleanup_python_artifacts() {
