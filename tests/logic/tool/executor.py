@@ -17,8 +17,8 @@ import websockets
 
 from tests.helpers.metrics import secs_to_ms
 from tests.helpers.rate import SlidingWindowPacer
-from tests.helpers.websocket import send_client_end, build_start_payload, connect_with_retries
 from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
+from tests.helpers.websocket import send_client_end, build_start_payload, connect_with_retries, build_message_payload
 from tests.state import (
     CaseStep,
     CaseResult,
@@ -110,7 +110,7 @@ async def _execute_step(
     step_pacer: SlidingWindowPacer,
 ) -> TurnResult:
     """Execute a single step within a test case."""
-    payload = _build_step_payload(cfg, session_id, step.text)
+    payload = _build_step_payload(cfg, session_id, step.text, step_idx)
     await step_pacer.wait_turn()
     turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
     return _coerce_missing_tool_result(turn, step.expect_tool)
@@ -120,9 +120,11 @@ def _build_step_payload(
     cfg: RunnerConfig,
     session_id: str,
     user_text: str,
+    step_idx: int,
 ) -> dict[str, Any]:
-    """Build the start message payload for a step.
+    """Build the message payload for a step.
 
+    Uses 'start' for the first step and 'message' for subsequent steps.
     Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
     """
     if not cfg.chat_prompt:
@@ -130,13 +132,15 @@ def _build_step_payload(
             "chat_prompt is required for tool tests. Use select_chat_prompt(gender) to get a valid prompt."
         )
 
-    ctx = SessionContext(
-        session_id=session_id,
-        gender=cfg.gender,
-        personality=cfg.personality,
-        chat_prompt=cfg.chat_prompt,
-    )
-    return build_start_payload(ctx, user_text)
+    if step_idx == 1:
+        ctx = SessionContext(
+            session_id=session_id,
+            gender=cfg.gender,
+            personality=cfg.personality,
+            chat_prompt=cfg.chat_prompt,
+        )
+        return build_start_payload(ctx, user_text)
+    return build_message_payload(session_id, user_text)
 
 
 def _check_step_result(

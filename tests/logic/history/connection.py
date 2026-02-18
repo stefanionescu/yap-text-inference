@@ -28,6 +28,7 @@ from tests.helpers.websocket import (
     finalize_metrics,
     build_start_payload,
     connect_with_retries,
+    build_message_payload,
 )
 
 
@@ -78,15 +79,20 @@ async def _send_and_stream(
     *,
     history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Send a start message and stream the response."""
-    ctx = SessionContext(
-        session_id=session_id,
-        gender=cfg.gender,
-        personality=cfg.personality,
-        chat_prompt=cfg.chat_prompt,
-        sampling=cfg.sampling,
-    )
-    payload = build_start_payload(ctx, user_text, history=history) if history else build_start_payload(ctx, user_text)
+    """Send a start or message payload and stream the response."""
+    if phase == 1:
+        ctx = SessionContext(
+            session_id=session_id,
+            gender=cfg.gender,
+            personality=cfg.personality,
+            chat_prompt=cfg.chat_prompt,
+            sampling=cfg.sampling,
+        )
+        payload = (
+            build_start_payload(ctx, user_text, history=history) if history else build_start_payload(ctx, user_text)
+        )
+    else:
+        payload = build_message_payload(session_id, user_text, sampling=cfg.sampling)
     state = create_tracker()
 
     await ws.send(json.dumps(payload))

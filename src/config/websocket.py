@@ -65,6 +65,7 @@ WS_UNKNOWN_REQUEST_ID = "unknown"
 
 WS_TYPE_START = "start"
 WS_TYPE_CANCEL = "cancel"
+WS_TYPE_MESSAGE = "message"
 WS_TYPE_FOLLOWUP = "followup"
 WS_TYPE_PING = "ping"
 WS_TYPE_PONG = "pong"
@@ -111,6 +112,7 @@ __all__ = [
     "WS_UNKNOWN_REQUEST_ID",
     "WS_TYPE_START",
     "WS_TYPE_CANCEL",
+    "WS_TYPE_MESSAGE",
     "WS_TYPE_FOLLOWUP",
     "WS_TYPE_PING",
     "WS_TYPE_PONG",

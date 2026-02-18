@@ -12,7 +12,11 @@ from dataclasses import field, dataclass
 
 from tests.logic.live.commands import dispatch_command
 from tests.helpers.fmt import dim, bold, cyan, yellow, magenta
-from tests.helpers.websocket import record_token, build_start_payload as build_ws_start_payload
+from tests.helpers.websocket import (
+    record_token,
+    build_start_payload as build_ws_start_payload,
+    build_message_payload as build_ws_message_payload,
+)
 from tests.helpers.errors import (
     ServerError,
     RateLimitError,
@@ -49,6 +53,7 @@ class LiveSession:
     persona: PersonaDefinition
     history: list[dict[str, str]] = field(default_factory=list)
     sampling: dict[str, float | int] | None = None
+    _started: bool = False
 
     def build_start_payload(self, user_text: str) -> dict[str, object]:
         """Build the start message payload for a conversation turn."""
@@ -59,7 +64,17 @@ class LiveSession:
             chat_prompt=self.persona.prompt,
             sampling=self.sampling,
         )
-        return build_ws_start_payload(ctx, user_text, history=self.history)
+        payload = build_ws_start_payload(ctx, user_text, history=self.history)
+        self._started = True
+        return payload
+
+    def build_message_payload(self, user_text: str) -> dict[str, object]:
+        """Build the message payload for subsequent conversation turns."""
+        return build_ws_message_payload(
+            self.session_id,
+            user_text,
+            sampling=self.sampling,
+        )
 
     def append_exchange(self, user_text: str, assistant_text: str) -> None:
         self.history.append({"role": "user", "content": user_text})

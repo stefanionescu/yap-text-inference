@@ -41,6 +41,31 @@ def build_end_payload(session_id: str, request_id: str | None = None) -> dict[st
     return build_envelope("end", session_id, rid, {})
 
 
+def build_message_payload(
+    session_id: str,
+    user_text: str,
+    *,
+    request_id: str | None = None,
+    sampling: dict[str, float | int] | None = None,
+) -> dict[str, Any]:
+    """Build a message envelope for subsequent conversation turns.
+
+    Args:
+        session_id: The active session ID.
+        user_text: The user's message text.
+        request_id: Optional request ID (auto-generated if omitted).
+        sampling: Optional sampling parameter overrides.
+
+    Returns:
+        A dict ready to be JSON-serialized and sent over WebSocket.
+    """
+    inner_payload: dict[str, Any] = {"user_utterance": user_text}
+    if sampling:
+        inner_payload["sampling"] = sampling
+    rid = request_id or f"req-{uuid.uuid4()}"
+    return build_envelope("message", session_id, rid, inner_payload)
+
+
 def build_start_payload(
     ctx: SessionContext,
     user_text: str,
@@ -81,5 +106,6 @@ __all__ = [
     "build_cancel_payload",
     "build_end_payload",
     "build_envelope",
+    "build_message_payload",
     "build_start_payload",
 ]
