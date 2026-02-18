@@ -8,7 +8,6 @@ loop, and manages connection lifecycle and errors.
 from __future__ import annotations
 
 import uuid
-import asyncio
 import logging
 from typing import Any
 
@@ -135,7 +134,7 @@ async def run(
     ws_url = with_api_key(server_url, api_key=api_key)
     try:
         await _run_session(ws_url, session, timeout, registry, initial_message)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error("Timed out while connecting to %s", server_url)
         raise SystemExit(1) from None
     except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:

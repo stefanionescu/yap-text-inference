@@ -64,7 +64,7 @@ async def _await_tool_decision(
     logger.info("sequential_exec: tool start req_id=%s", tool_req_id)
     try:
         tool_res = await asyncio.wait_for(tool_task, timeout=TOOL_TIMEOUT_S)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         m = get_metrics()
         m.errors_total.add(1, {"error.type": "timeout"})
         add_breadcrumb("Tool timeout", category="execution", data={"timeout_s": TOOL_TIMEOUT_S})

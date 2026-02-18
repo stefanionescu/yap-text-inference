@@ -92,7 +92,7 @@ async def run_cancel_phase(
                 error = result.get("error")
                 break
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         error = f"timeout after {recv_timeout:.1f}s"
     except websockets.ConnectionClosed as exc:
         error = f"connection closed: {exc.code}"
@@ -142,7 +142,7 @@ async def run_drain_phase(
             spurious_count += 1
             spurious_types.append(msg_type)
             logger.warning("Spurious message after cancel: type=%s", msg_type)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         # Timeout is expected and means success
         pass
     except websockets.ConnectionClosed:
@@ -213,7 +213,7 @@ async def run_recovery_phase(
                 metrics = result.get("metrics", {})
                 break
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         error = f"timeout after {recv_timeout:.1f}s"
         metrics = finalize_metrics(state, cancelled=True)
     except websockets.ConnectionClosed as exc:

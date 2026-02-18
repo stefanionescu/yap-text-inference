@@ -105,7 +105,7 @@ async def _recv_text_with_watchdog(ws: WebSocket, lifecycle: WebSocketLifecycle)
             timeout=WS_WATCHDOG_TICK_S * 2,
         )
         return message, False
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return None, lifecycle.should_close()
 
 

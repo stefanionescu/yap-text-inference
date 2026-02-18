@@ -63,7 +63,7 @@ async def _execute_transaction(
             _send_and_stream(ws, cfg, session_id, user_text, phase, history=history),
             timeout=cfg.timeout_s,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return error_result("timeout", phase=phase)
     except Exception as exc:
         return error_result(str(exc), phase=phase)

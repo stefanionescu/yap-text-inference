@@ -95,7 +95,7 @@ async def run_normal_client(
                         metrics = result.get("metrics", {})
                         break
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 error = f"timeout after {recv_timeout:.1f}s"
                 metrics = finalize_metrics(state, cancelled=True)
             except websockets.ConnectionClosed as exc:

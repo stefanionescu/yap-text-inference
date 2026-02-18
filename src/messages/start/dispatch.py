@@ -138,7 +138,7 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
             ),
             timeout=TOOL_TIMEOUT_S,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning(
             "handle_start: tool-only timeout session_id=%s timeout_s=%.1f",
             plan.session_id,

@@ -68,7 +68,7 @@ async def _test_ping_pong(ws_url: str) -> None:
         await ws.send(json.dumps(ping_payload))
         try:
             payload = await asyncio.wait_for(ws.recv(), timeout=5.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise RuntimeError("no pong response within 5s") from None
         msg = json.loads(payload)
         if msg.get("type") != "pong":
@@ -91,7 +91,7 @@ async def _test_idle_watchdog(
         try:
             await asyncio.wait_for(ws.recv(), timeout=total_wait)
             raise RuntimeError("server sent data before idle close")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise RuntimeError(
                 f"server did not close within {total_wait:.0f}s (expected idle timeout: {expect_seconds:.0f}s)"
             ) from None

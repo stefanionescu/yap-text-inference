@@ -139,7 +139,7 @@ class LiveClient:
                 if msg_type == "error":
                     return self._handle_error_frame(msg, ctx)
                 logger.debug("Ignoring message type=%s payload=%s", msg_type, msg)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             raise TestClientError(f"recv timeout after {self.recv_timeout:.1f}s") from exc
         except (websockets.ConnectionClosedError, websockets.ConnectionClosedOK) as exc:
             close_code = getattr(exc, "code", None)
