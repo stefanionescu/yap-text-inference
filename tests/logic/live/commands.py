@@ -14,6 +14,8 @@ import logging
 from typing import TYPE_CHECKING
 from collections.abc import Callable, Awaitable
 
+from tests.helpers.fmt import dim, bold
+
 if TYPE_CHECKING:
     from .client import LiveClient
     from .personas import PersonaRegistry
@@ -70,8 +72,6 @@ async def _handle_help_command(
 ) -> bool:
     """Display the help message with available commands."""
     _ = raw_command  # unused; keeps signature uniform
-    from tests.state import print_help  # noqa: PLC0415
-
     print_help(client.session.persona.name, verbose=True)
     return False
 
@@ -166,6 +166,25 @@ async def _handle_stop_command(
     return True
 
 
+def print_help(current: str, verbose: bool = False) -> None:
+    """Print the help banner or detailed command list."""
+    if verbose:
+        print(
+            f"\n{bold('Commands:')}\n"
+            f"  {dim('/help')}                Get help with a command\n"
+            f"  {dim('/list')}                Show persona names\n"
+            f"  {dim('/history')}             Print accumulated conversation log\n"
+            f"  {dim('/info')}                Show session/persona metadata\n"
+            f"  {dim('/stats [on|off]')}      Toggle metrics logging\n"
+            f"  {dim('/stop|/quit')}          Stop and close the session\n"
+            "\n"
+            "Any line without a leading '/' is sent to the assistant.\n"
+            "Use /list to see available personas.\n"
+        )
+    else:
+        print(f"\n{bold('Interactive mode ready.')} Type /help for commands.\nCurrent persona: {current}\n")
+
+
 # ============================================================================
 # Command Registry
 # ============================================================================
@@ -211,4 +230,4 @@ async def dispatch_command(
     return await handler(arg, client, registry, raw_command=cmd)
 
 
-__all__ = ["dispatch_command"]
+__all__ = ["dispatch_command", "print_help"]
