@@ -8,9 +8,10 @@
 # preservation decisions, and quantization pipeline execution.
 
 RESTART_RECONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${RESTART_RECONFIG_DIR}/../../common/model_detect.sh"
+source "${RESTART_RECONFIG_DIR}/../../common/model/detect.sh"
 source "${RESTART_RECONFIG_DIR}/../../main/quant.sh"
 source "${RESTART_RECONFIG_DIR}/../../../config/values/core.sh"
+source "${RESTART_RECONFIG_DIR}/../../../config/values/runtime.sh"
 source "${RESTART_RECONFIG_DIR}/../../../config/values/quantization.sh"
 source "${RESTART_RECONFIG_DIR}/../../../config/patterns.sh"
 
@@ -43,12 +44,12 @@ _restart_autodetect_quantization() {
   if [ "${chat_enabled}" = "1" ]; then
     local chat_hint
     chat_hint="$(get_quantization_hint "${chat_model}")"
-    if [ "${chat_hint}" = "awq" ]; then
-      echo "awq"
+    if [ "${chat_hint}" = "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
+      echo "${CFG_QUANT_MODE_4BIT_BACKEND}"
       return
     fi
-    if [ "${chat_hint}" = "gptq_marlin" ]; then
-      echo "gptq_marlin"
+    if [ "${chat_hint}" = "${CFG_QUANT_MODE_GPTQ_BACKEND}" ]; then
+      echo "${CFG_QUANT_MODE_GPTQ_BACKEND}"
       return
     fi
   fi
@@ -65,11 +66,11 @@ _restart_normalize_quantization_flag() {
   fi
   local lowered="${value,,}"
   case "${lowered}" in
-    4bit)
+    "${CFG_QUANT_MODE_4BIT_PLACEHOLDER}")
       # 4-bit always maps to AWQ runtime
       echo "${CFG_QUANT_MODE_4BIT_BACKEND}"
       ;;
-    8bit)
+    "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}")
       # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
       echo "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
       ;;
@@ -82,7 +83,7 @@ _restart_normalize_quantization_flag() {
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
-    "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}" | fp8 | "${CFG_QUANT_MODE_4BIT_BACKEND}" | gptq | "${CFG_QUANT_MODE_GPTQ_BACKEND}")
+    "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}" | "${CFG_QUANT_MODE_FP8_BACKEND}" | "${CFG_QUANT_MODE_4BIT_BACKEND}" | "${CFG_QUANT_MODE_GPTQ_ALIAS}" | "${CFG_QUANT_MODE_GPTQ_BACKEND}")
       return 0
       ;;
     *)
@@ -103,7 +104,7 @@ _restart_needs_awq_pipeline() {
 _restart_needs_trt_engine_build() {
   if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
     # Check if engine directory exists and is valid
-    local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
+    local trt_env_file="${ROOT_DIR}/${CFG_RUNTIME_TRT_ENGINE_ENV_FILE}"
     if [ -f "${trt_env_file}" ]; then
       # shellcheck disable=SC1090
       source "${trt_env_file}"
@@ -144,7 +145,7 @@ _restart_load_previous_config() {
   PREV_DEPLOY_CHAT=0
   PREV_DEPLOY_TOOL=0
 
-  local last_env="${ROOT_DIR}/.run/last_config.env"
+  local last_env="${ROOT_DIR}/${CFG_RUNTIME_LAST_CONFIG_FILE}"
   if [ ! -f "${last_env}" ]; then
     return
   fi

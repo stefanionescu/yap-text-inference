@@ -8,16 +8,20 @@
 _RESTART_LAUNCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../config/values/core.sh
 source "${_RESTART_LAUNCH_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/runtime.sh
+source "${_RESTART_LAUNCH_DIR}/../../config/values/runtime.sh"
+# shellcheck source=../../config/values/quantization.sh
+source "${_RESTART_LAUNCH_DIR}/../../config/values/quantization.sh"
 
 launch_server_background() {
   if [ "${RESTART_RUNTIME_SNAPSHOT_DIRTY:-0}" = "1" ]; then
-    log_info "[restart] Persisting overridden runtime defaults before relaunch (.run/last_config.env)"
+    log_info "[restart] Persisting overridden runtime defaults before relaunch (${CFG_RUNTIME_LAST_CONFIG_FILE})"
     write_snapshot "${ROOT_DIR}"
     RESTART_RUNTIME_SNAPSHOT_DIRTY=0
   fi
 
   local command_string="bash '${ROOT_DIR}/scripts/steps/05_start_server.sh'"
-  local quant_label="${CHAT_QUANTIZATION:-auto}"
+  local quant_label="${CHAT_QUANTIZATION:-${CFG_QUANT_MODE_AUTO}}"
   local engine_label="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
   run_background \
     "${ROOT_DIR}" \

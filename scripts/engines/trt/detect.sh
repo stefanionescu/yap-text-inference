@@ -8,7 +8,7 @@
 #
 # GPU detection: use lib/common/gpu_detect.sh functions directly.
 # CUDA validation: see cuda.sh
-# Pre-built engines: see engine_hf.sh
+# Pre-built engines: see hf.sh
 
 _TRT_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _TRT_DETECT_ROOT="${ROOT_DIR:-$(cd "${_TRT_DETECT_DIR}/../../.." && pwd)}"
@@ -18,12 +18,16 @@ _TRT_DETECT_ROOT="${ROOT_DIR:-$(cd "${_TRT_DETECT_DIR}/../../.." && pwd)}"
 source "${_TRT_DETECT_DIR}/../../lib/common/gpu_detect.sh"
 # shellcheck source=../../lib/common/hf.sh
 source "${_TRT_DETECT_DIR}/../../lib/common/hf.sh"
+# shellcheck source=../../config/values/model.sh
+source "${_TRT_DETECT_DIR}/../../config/values/model.sh"
+# shellcheck source=../../config/values/trt.sh
+source "${_TRT_DETECT_DIR}/../../config/values/trt.sh"
 
 # Source specialized TRT modules
 # shellcheck source=cuda.sh
 source "${_TRT_DETECT_DIR}/cuda.sh"
-# shellcheck source=engine_hf.sh
-source "${_TRT_DETECT_DIR}/engine_hf.sh"
+# shellcheck source=hf.sh
+source "${_TRT_DETECT_DIR}/hf.sh"
 
 # Export ROOT_DIR for child modules
 _TRT_CUDA_ROOT="${_TRT_DETECT_ROOT}"
@@ -102,20 +106,20 @@ detect_qformat_from_name() {
   fi
   local lowered="${name,,}"
 
-  if [[ ${lowered} == *awq* ]]; then
-    echo "int4_awq"
+  if [[ ${lowered} == *"${CFG_MODEL_TOKEN_AWQ}"* ]]; then
+    echo "${CFG_TRT_DEFAULT_QFORMAT}"
     return 0
   fi
-  if [[ ${lowered} == *fp8* ]]; then
-    echo "fp8"
+  if [[ ${lowered} == *"${CFG_MODEL_TOKEN_FP8}"* ]]; then
+    echo "${CFG_TRT_QFORMAT_FP8}"
     return 0
   fi
-  if [[ ${lowered} == *int8* ]] || [[ ${lowered} == *int-8* ]]; then
-    echo "int8_sq"
+  if [[ ${lowered} == *"${CFG_MODEL_TOKEN_INT8}"* ]] || [[ ${lowered} == *"${CFG_MODEL_TOKEN_INT8_DASHED}"* ]]; then
+    echo "${CFG_TRT_QFORMAT_INT8_SQ}"
     return 0
   fi
-  if [[ ${lowered} == *8bit* ]] || [[ ${lowered} == *8-bit* ]]; then
-    echo "fp8"
+  if [[ ${lowered} == *"${CFG_MODEL_TOKEN_8BIT}"* ]] || [[ ${lowered} == *"${CFG_MODEL_TOKEN_8BIT_DASHED}"* ]]; then
+    echo "${CFG_TRT_QFORMAT_FP8}"
     return 0
   fi
   return 1

@@ -10,6 +10,8 @@
 
 _TRT_QUANT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _TRT_QUANT_ROOT="${ROOT_DIR:-$(cd "${_TRT_QUANT_DIR}/../../.." && pwd)}"
+# shellcheck source=../../config/values/trt.sh
+source "${_TRT_QUANT_DIR}/../../config/values/trt.sh"
 
 # =============================================================================
 # MODEL DOWNLOAD
@@ -108,7 +110,7 @@ quantize_model() {
 
   # Resolve qformat if not specified (pass model_id for MoE detection)
   if [ -z "${qformat}" ]; then
-    qformat=$(resolve_qformat "${CHAT_QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
+    qformat=$(resolve_qformat "${CHAT_QUANTIZATION:-${CFG_TRT_QUANT_DEFAULT_MODE}}" "${GPU_SM_ARCH:-}" "${model_id}")
   fi
 
   # Check if already quantized
@@ -152,23 +154,23 @@ quantize_model() {
     "${quant_script}"
     --model_dir "${local_model_dir}"
     --output_dir "${output_dir}"
-    --dtype "${TRT_DTYPE:-float16}"
+    --dtype "${TRT_DTYPE:-${CFG_TRT_DEFAULT_DTYPE}}"
     --qformat "${qformat}"
-    --calib_size "${TRT_CALIB_SIZE:-256}"
-    --batch_size "${TRT_CALIB_BATCH_SIZE:-16}"
+    --calib_size "${TRT_CALIB_SIZE:-${CFG_TRT_BUILD_FALLBACK_CALIB_SIZE}}"
+    --batch_size "${TRT_CALIB_BATCH_SIZE:-${CFG_TRT_BUILD_FALLBACK_CALIB_BATCH_SIZE}}"
   )
 
   # Add format-specific options
   case "${qformat}" in
     int4_awq)
-      quant_args+=(--awq_block_size "${TRT_AWQ_BLOCK_SIZE:-128}")
-      quant_args+=(--kv_cache_dtype int8)
+      quant_args+=(--awq_block_size "${TRT_AWQ_BLOCK_SIZE:-${CFG_TRT_DEFAULT_AWQ_BLOCK_SIZE}}")
+      quant_args+=(--kv_cache_dtype "${CFG_TRT_DEFAULT_KV_CACHE_INT8}")
       ;;
     fp8)
-      quant_args+=(--kv_cache_dtype fp8)
+      quant_args+=(--kv_cache_dtype "${CFG_TRT_DEFAULT_KV_CACHE_FP8}")
       ;;
     int8_sq)
-      quant_args+=(--kv_cache_dtype int8)
+      quant_args+=(--kv_cache_dtype "${CFG_TRT_DEFAULT_KV_CACHE_INT8}")
       ;;
   esac
 
@@ -180,9 +182,9 @@ quantize_model() {
   fi
 
   # Suppress TRT-LLM/modelopt log noise
-  export TRTLLM_LOG_LEVEL="${TRTLLM_LOG_LEVEL:-error}"
-  export TQDM_DISABLE="${TQDM_DISABLE:-1}"
-  export HF_HUB_DISABLE_PROGRESS_BARS="${HF_HUB_DISABLE_PROGRESS_BARS:-1}"
+  export TRTLLM_LOG_LEVEL="${TRTLLM_LOG_LEVEL:-${CFG_TRT_QUANT_LOG_LEVEL}}"
+  export TQDM_DISABLE="${TQDM_DISABLE:-${CFG_TRT_TQDM_DISABLE_DEFAULT}}"
+  export HF_HUB_DISABLE_PROGRESS_BARS="${HF_HUB_DISABLE_PROGRESS_BARS:-${CFG_TRT_HF_PROGRESS_BARS_DISABLE_DEFAULT}}"
 
   # Run with patch and log filter applied via Python helper
   local patch_args=()
@@ -325,7 +327,7 @@ validate_checkpoint() {
 # Get default checkpoint directory for a model
 get_checkpoint_dir() {
   local model_id="${1:-}"
-  local qformat="${2:-int4_awq}"
+  local qformat="${2:-${CFG_TRT_DEFAULT_QFORMAT}}"
 
   local model_name
   model_name=$(basename "${model_id}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
@@ -336,7 +338,7 @@ get_checkpoint_dir() {
 # Get default engine directory for a model
 get_engine_dir() {
   local model_id="${1:-}"
-  local qformat="${2:-int4_awq}"
+  local qformat="${2:-${CFG_TRT_DEFAULT_QFORMAT}}"
 
   local model_name
   model_name=$(basename "${model_id}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')

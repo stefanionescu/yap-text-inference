@@ -9,6 +9,8 @@
 _ENGINE_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../config/values/core.sh
 source "${_ENGINE_ENV_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/runtime.sh
+source "${_ENGINE_ENV_DIR}/../../config/values/runtime.sh"
 # shellcheck source=../../config/patterns.sh
 source "${_ENGINE_ENV_DIR}/../../config/patterns.sh"
 
@@ -26,7 +28,7 @@ apply_engine_defaults() {
 
   # TRT engine: load cached engine directory if available
   if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
-    local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
+    local trt_env_file="${ROOT_DIR}/${CFG_RUNTIME_TRT_ENGINE_ENV_FILE}"
     if [ -f "${trt_env_file}" ]; then
       # shellcheck disable=SC1090
       source "${trt_env_file}"

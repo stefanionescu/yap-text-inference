@@ -5,6 +5,10 @@
 # Helpers for managing warmup process lifecycle including stopping existing
 # warmup processes and cleaning up stale lock files.
 
+_COMMON_WARMUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/runtime.sh
+source "${_COMMON_WARMUP_DIR}/../../config/values/runtime.sh"
+
 stop_existing_warmup_processes() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   if [ -z "${root_dir}" ]; then
@@ -12,8 +16,7 @@ stop_existing_warmup_processes() {
     return 1
   fi
 
-  local run_dir="${root_dir}/.run"
-  local lock_file="${run_dir}/warmup.lock"
+  local lock_file="${root_dir}/${CFG_RUNTIME_WARMUP_LOCK_FILE}"
 
   if [ ! -f "${lock_file}" ]; then
     return 0 # No lock file, nothing to stop

@@ -6,9 +6,13 @@
 # Helper utilities for inferring quantization hints from model identifiers.
 # Detects pre-quantized models (AWQ, GPTQ, TRT) and MoE architectures.
 
-_MODEL_DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=string.sh
-source "${_MODEL_DETECT_DIR}/string.sh"
+_MODEL_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../string.sh
+source "${_MODEL_LIB_DIR}/../string.sh"
+# shellcheck source=../../../../config/values/model.sh
+source "${_MODEL_LIB_DIR}/../../../../config/values/model.sh"
+# shellcheck source=../../../../config/patterns.sh
+source "${_MODEL_LIB_DIR}/../../../../config/patterns.sh"
 
 is_gptq_name() {
   local value="${1:-}"
@@ -17,7 +21,7 @@ is_gptq_name() {
   if [ -z "${lowered}" ]; then
     return 1
   fi
-  str_contains "${lowered}" "gptq"
+  str_contains "${lowered}" "${CFG_MODEL_TOKEN_GPTQ}"
 }
 
 has_w4a16_hint() {
@@ -28,9 +32,9 @@ has_w4a16_hint() {
     return 1
   fi
   str_contains_any "${lowered}" \
-    "w4a16" \
-    "compressed-tensors" \
-    "autoround"
+    "${CFG_MODEL_TOKEN_W4A16}" \
+    "${CFG_MODEL_TOKEN_COMPRESSED_TENSORS}" \
+    "${CFG_MODEL_TOKEN_AUTOROUND}"
 }
 
 is_awq_name() {
@@ -40,7 +44,7 @@ is_awq_name() {
   if [ -z "${lowered}" ]; then
     return 1
   fi
-  if str_contains "${lowered}" "awq"; then
+  if str_contains "${lowered}" "${CFG_MODEL_TOKEN_AWQ}"; then
     return 0
   fi
   has_w4a16_hint "${lowered}"
@@ -49,11 +53,11 @@ is_awq_name() {
 classify_prequant() {
   local value="${1:-}"
   if is_awq_name "${value}"; then
-    echo "awq"
+    echo "${CFG_MODEL_TOKEN_AWQ}"
     return
   fi
   if is_gptq_name "${value}"; then
-    echo "gptq"
+    echo "${CFG_MODEL_TOKEN_GPTQ}"
     return
   fi
   echo ""
@@ -63,8 +67,8 @@ get_quantization_hint() {
   local classification
   classification="$(classify_prequant "$1")"
   case "${classification}" in
-    awq) echo "awq" ;;
-    gptq) echo "gptq_marlin" ;;
+    "${CFG_MODEL_TOKEN_AWQ}") echo "${CFG_MODEL_TOKEN_AWQ}" ;;
+    "${CFG_MODEL_TOKEN_GPTQ}") echo "${CFG_MODEL_TOKEN_GPTQ_MARLIN}" ;;
     *) echo "" ;;
   esac
 }
@@ -94,23 +98,23 @@ _trt_prequant_kind() {
   if [ -z "${lowered}" ]; then
     return 1
   fi
-  if ! str_contains "${lowered}" "trt"; then
+  if ! str_contains "${lowered}" "${CFG_MODEL_TOKEN_TRT}"; then
     return 1
   fi
-  if str_contains "${lowered}" "awq"; then
-    echo "trt_awq"
+  if str_contains "${lowered}" "${CFG_MODEL_TOKEN_AWQ}"; then
+    echo "${CFG_MODEL_TRT_KIND_AWQ}"
     return 0
   fi
-  if str_contains "${lowered}" "fp8"; then
-    echo "trt_fp8"
+  if str_contains "${lowered}" "${CFG_MODEL_TOKEN_FP8}"; then
+    echo "${CFG_MODEL_TRT_KIND_FP8}"
     return 0
   fi
-  if str_contains_any "${lowered}" "int8" "int-8"; then
-    echo "trt_int8"
+  if str_contains_any "${lowered}" "${CFG_MODEL_TOKEN_INT8}" "${CFG_MODEL_TOKEN_INT8_DASHED}"; then
+    echo "${CFG_MODEL_TRT_KIND_INT8}"
     return 0
   fi
-  if str_contains_any "${lowered}" "8bit" "8-bit"; then
-    echo "trt_8bit"
+  if str_contains_any "${lowered}" "${CFG_MODEL_TOKEN_8BIT}" "${CFG_MODEL_TOKEN_8BIT_DASHED}"; then
+    echo "${CFG_MODEL_TRT_KIND_8BIT}"
     return 0
   fi
   return 1
@@ -139,12 +143,17 @@ is_moe() {
   lowered="$(str_to_lower "${value}")"
 
   # Check for Qwen3 MoE naming: -aXb suffix
-  if echo "${lowered}" | grep -qE -- '-a[0-9]+b'; then
+  if echo "${lowered}" | grep -qE -- "${CFG_PATTERN_QWEN_MOE_SUFFIX}"; then
     return 0
   fi
 
   # Check common MoE markers
-  if str_contains_any "${lowered}" "moe" "mixtral" "deepseek-v2" "deepseek-v3" "ernie-4.5"; then
+  if str_contains_any "${lowered}" \
+    "${CFG_MODEL_TOKEN_MOE}" \
+    "${CFG_MODEL_TOKEN_MIXTRAL}" \
+    "${CFG_MODEL_TOKEN_DEEPSEEK_V2}" \
+    "${CFG_MODEL_TOKEN_DEEPSEEK_V3}" \
+    "${CFG_MODEL_TOKEN_ERNIE_45}"; then
     return 0
   fi
 
@@ -162,7 +171,7 @@ classify_trt() {
     return
   fi
   if is_moe "${value}"; then
-    echo "moe"
+    echo "${CFG_MODEL_TRT_KIND_MOE}"
     return
   fi
   echo ""

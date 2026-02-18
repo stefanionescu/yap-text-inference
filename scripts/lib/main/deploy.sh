@@ -7,6 +7,8 @@
 _MAIN_DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../config/values/core.sh
 source "${_MAIN_DEPLOY_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/quantization.sh
+source "${_MAIN_DEPLOY_DIR}/../../config/values/quantization.sh"
 # shellcheck source=../../config/patterns.sh
 source "${_MAIN_DEPLOY_DIR}/../../config/patterns.sh"
 
@@ -19,11 +21,11 @@ log_deploy_config() {
       log_info "[main] Tool model: ${TOOL_MODEL_NAME:-}"
       ;;
     "${CFG_DEPLOY_MODE_CHAT}")
-      log_info "[main] Configuration: mode=chat, engine=${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}, quantization=${QUANT_MODE:-auto}"
+      log_info "[main] Configuration: mode=chat, engine=${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}, quantization=${QUANT_MODE:-${CFG_QUANT_MODE_AUTO}}"
       log_info "[main] Chat model: ${CHAT_MODEL_NAME:-}"
       ;;
     *)
-      log_info "[main] Configuration: mode=both, engine=${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}, quantization=${QUANT_MODE:-auto}"
+      log_info "[main] Configuration: mode=both, engine=${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}, quantization=${QUANT_MODE:-${CFG_QUANT_MODE_AUTO}}"
       log_info "[main] Chat model: ${CHAT_MODEL_NAME:-}"
       log_info "[main] Tool model: ${TOOL_MODEL_NAME:-}"
       ;;

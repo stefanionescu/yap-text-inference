@@ -9,6 +9,8 @@
 _WARMUP_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../config/values/core.sh
 source "${_WARMUP_ENV_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/runtime.sh
+source "${_WARMUP_ENV_DIR}/../../config/values/runtime.sh"
 
 normalize_positive_int() {
   local var_name="${1:-}"
@@ -36,23 +38,18 @@ normalize_positive_int() {
 init_warmup_defaults() {
   local root_dir="${1:-}"
   local script_dir="${2:-}"
-  local log_dir
-  local run_dir
 
   if [ -z "${root_dir}" ] || [ -z "${script_dir}" ]; then
     echo "init_warmup_defaults: root_dir and script_dir are required" >&2
     return 1
   fi
 
-  log_dir="${LOG_DIR:-${root_dir}/logs}"
-  run_dir="${RUN_DIR:-${root_dir}/.run}"
-
   export WARMUP_HEALTH_POLL_INTERVAL_SECS="${WARMUP_HEALTH_POLL_INTERVAL_SECS:-${CFG_WARMUP_HEALTH_POLL_INTERVAL_SECS_DEFAULT}}"
   export WARMUP_RUN_DELAY_SECS="${WARMUP_RUN_DELAY_SECS:-${CFG_WARMUP_RUN_DELAY_SECS_DEFAULT}}"
   export WARMUP_DEFAULT_CONN_FALLBACK="${WARMUP_DEFAULT_CONN_FALLBACK:-${CFG_WARMUP_DEFAULT_CONN_FALLBACK}}"
 
-  export WARMUP_LOG_FILE="${WARMUP_LOG_FILE:-${log_dir}/warmup.log}"
-  export WARMUP_LOCK_FILE="${WARMUP_LOCK_FILE:-${run_dir}/warmup.lock}"
+  export WARMUP_LOG_FILE="${WARMUP_LOG_FILE:-${root_dir}/${CFG_RUNTIME_WARMUP_LOG_FILE}}"
+  export WARMUP_LOCK_FILE="${WARMUP_LOCK_FILE:-${root_dir}/${CFG_RUNTIME_WARMUP_LOCK_FILE}}"
   export WARMUP_HEALTH_CHECK_SCRIPT="${WARMUP_HEALTH_CHECK_SCRIPT:-${script_dir}/lib/common/health.sh}"
 
   normalize_positive_int WARMUP_TIMEOUT_SECS "${CFG_WARMUP_TIMEOUT_SECS_DEFAULT}"

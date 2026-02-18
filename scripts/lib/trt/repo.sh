@@ -97,8 +97,8 @@ trt_install_quant_requirements() {
   local repo_dir="${TRT_REPO_DIR:-${ROOT_DIR:-.}/${CFG_TRT_REPO_DIR_REL}}"
   local quant_reqs="${repo_dir}/examples/quantization/requirements.txt"
   local constraints_file="${repo_dir}/examples/constraints.txt"
-  local marker_file="${ROOT_DIR:-.}/.run/trt_quant_deps_installed"
-  local filtered_reqs="${ROOT_DIR:-.}/.run/quant_reqs.filtered.txt"
+  local marker_file="${ROOT_DIR:-.}/${CFG_TRT_QUANT_DEPS_MARKER_REL}"
+  local filtered_reqs="${ROOT_DIR:-.}/${CFG_TRT_QUANT_FILTERED_REQS_REL}"
 
   # Skip if already installed (marker present and requirements.txt unchanged)
   if [ -f "${marker_file}" ]; then

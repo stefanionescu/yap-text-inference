@@ -6,7 +6,7 @@
 # Core AWQ quantization logic for vLLM deployments.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../../lib/common/model_detect.sh"
+source "${SCRIPT_DIR}/../../lib/common/model/detect.sh"
 source "${SCRIPT_DIR}/../../lib/common/awq.sh"
 source "${SCRIPT_DIR}/../../lib/deps/venv/main.sh"
 
@@ -33,7 +33,7 @@ vllm_awq_should_use_prequant() {
 vllm_awq_quantize_chat_if_needed() {
   local out_dir="${AWQ_CACHE_DIR}/chat_awq"
 
-  if [[ ${CHAT_MODEL} == *GPTQ* ]]; then
+  if is_gptq_name "${CHAT_MODEL:-}"; then
     log_warn "[quant] ⚠ AWQ selected but GPTQ chat model provided; refusing."
     exit 1
   fi

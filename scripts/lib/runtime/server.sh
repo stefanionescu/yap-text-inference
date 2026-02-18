@@ -8,6 +8,8 @@
 _RUNTIME_SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../config/values/core.sh
 source "${_RUNTIME_SERVER_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/runtime.sh
+source "${_RUNTIME_SERVER_DIR}/../../config/values/runtime.sh"
 # shellcheck source=../../config/patterns.sh
 source "${_RUNTIME_SERVER_DIR}/../../config/patterns.sh"
 
@@ -20,7 +22,7 @@ source "${_RUNTIME_SERVER_DIR}/../../config/patterns.sh"
 # Usage: guard_check_pid <root_dir>
 guard_check_pid() {
   local root_dir="${1:-${ROOT_DIR:-}}"
-  local pid_file="${root_dir}/server.pid"
+  local pid_file="${root_dir}/${CFG_RUNTIME_SERVER_PID_FILE}"
 
   if [ ! -f "${pid_file}" ]; then
     return 0
@@ -44,14 +46,14 @@ guard_check_pid() {
 write_pid() {
   local root_dir="${1:-${ROOT_DIR:-}}"
   local pid="$2"
-  echo "${pid}" >"${root_dir}/server.pid"
+  echo "${pid}" >"${root_dir}/${CFG_RUNTIME_SERVER_PID_FILE}"
 }
 
 # Kill server process and clean up PID file.
 # Usage: kill_and_cleanup <root_dir>
 kill_and_cleanup() {
   local root_dir="${1:-${ROOT_DIR:-}}"
-  local pid_file="${root_dir}/server.pid"
+  local pid_file="${root_dir}/${CFG_RUNTIME_SERVER_PID_FILE}"
 
   if [ -f "${pid_file}" ]; then
     kill -TERM "-$(cat "${pid_file}")" 2>/dev/null || true
@@ -212,7 +214,7 @@ start_background() {
   local root_dir="${1:-${ROOT_DIR:-}}"
 
   # Start as a new session so Ctrl+C in the calling shell won't touch it
-  setsid "${SERVER_CMD[@]}" >>"${root_dir}/server.log" 2>&1 &
+  setsid "${SERVER_CMD[@]}" >>"${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}" 2>&1 &
   SERVER_PID=$!
   write_pid "${root_dir}" "${SERVER_PID}"
 }
@@ -225,8 +227,8 @@ log_started() {
 
   log_info "[server] ✓ Server started"
   log_info "[server] Health: curl -s ${health_hint}"
-  log_info "[server] All logs: tail -f ${root_dir}/server.log"
-  log_info "[server] Stop: kill -TERM -$(cat "${root_dir}/server.pid")"
+  log_info "[server] All logs: tail -f ${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}"
+  log_info "[server] Stop: kill -TERM -$(cat "${root_dir}/${CFG_RUNTIME_SERVER_PID_FILE}")"
   log_blank
 }
 
@@ -236,7 +238,7 @@ handle_startup_failure() {
   local root_dir="${1:-${ROOT_DIR:-}}"
 
   log_err "[server] ✗ Server did not become healthy within ${WARMUP_TIMEOUT_SECS}s"
-  log_err "[server] Check logs: tail -f ${root_dir}/server.log"
+  log_err "[server] Check logs: tail -f ${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}"
   kill_and_cleanup "${root_dir}"
   exit 1
 }

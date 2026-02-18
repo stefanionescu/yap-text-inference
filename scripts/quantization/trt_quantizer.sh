@@ -13,10 +13,10 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # Source common utilities
 source "${SCRIPT_DIR}/../lib/common/log.sh"
 source "${SCRIPT_DIR}/../lib/common/gpu_detect.sh"
-source "${SCRIPT_DIR}/../lib/common/model_detect.sh"
+source "${SCRIPT_DIR}/../lib/common/model/detect.sh"
 source "${SCRIPT_DIR}/../lib/common/hf.sh"
 
-# Source TRT libraries (must come after model_detect.sh for MoE detection)
+# Source TRT libraries (must come after model/detect.sh for MoE detection)
 source "${SCRIPT_DIR}/../lib/env/trt.sh"
 source "${SCRIPT_DIR}/../lib/trt/install.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"
