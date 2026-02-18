@@ -11,7 +11,7 @@
 # - Tool-only deployment (no engine) → SKIP
 
 _VALIDATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_VALIDATE_SCRIPT_DIR}/logs.sh"
+source "/app/common/scripts/logs.sh"
 ROOT_DIR="${ROOT_DIR:-$(cd "${_VALIDATE_SCRIPT_DIR}/../../.." && pwd)}"
 
 validate_engine_gpu_compatibility() {

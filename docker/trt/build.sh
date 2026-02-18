@@ -67,8 +67,8 @@ COMMON_DIR="${SCRIPT_DIR}/../common"
 source "${COMMON_DIR}/scripts/logs.sh"
 source "${COMMON_DIR}/scripts/build/docker.sh"
 source "${COMMON_DIR}/scripts/build/args.sh"
-source "${SCRIPT_DIR}/scripts/build/context.sh"
-source "${SCRIPT_DIR}/scripts/build/validate.sh"
+source "${COMMON_DIR}/scripts/build/context.sh"
+source "${COMMON_DIR}/scripts/build/validate.sh"
 
 # Usage function
 usage() {
@@ -138,7 +138,13 @@ fi
 
 # Validate models and engine configuration
 log_info "[build] Validating configuration for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
-if ! validate_models_for_deploy "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}" "${TRT_ENGINE_REPO}" "${TRT_ENGINE_LABEL}"; then
+if ! validate_models_for_deploy_common \
+  "trt" \
+  "${DEPLOY_MODE_VAL}" \
+  "${CHAT_MODEL}" \
+  "${TOOL_MODEL}" \
+  "${TRT_ENGINE_REPO}" \
+  "${TRT_ENGINE_LABEL}"; then
   log_err "[build] ✗ Configuration validation failed. Build aborted."
   exit 1
 fi
@@ -152,7 +158,7 @@ log_info "[build] Building Docker image..."
 log_info "[build] Pre-built engine will be baked into the image"
 
 # Build the image
-prepare_build_context
+prepare_build_context_common "${SCRIPT_DIR}" "requirements-trt.txt" "1" "yap-trt"
 init_build_args
 
 # Add model build args - these become ENV vars in the image

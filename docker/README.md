@@ -18,14 +18,15 @@ For engine-backed deploys:
 - **TRT (`DEPLOY_MODE=chat|both`)**: Tags must start with `trt-` (e.g., `trt-qwen30b-sm90`)
 
 For tool-only deploys (`DEPLOY_MODE=tool`):
-- Any tag is allowed (default: `tool-only`)
+- Tags must start with `tool-` (default: `tool-only`)
 
-The build will fail if an engine-backed tag doesn't match the required prefix.
+The build will fail if the tag doesn't match the required prefix for the deploy mode.
 
 ## Contents
 
 - [Engine Options](#engine-options)
 - [Tag Naming Convention](#tag-naming-convention)
+- [Script Architecture](#script-architecture)
 - [Quick Start](#quick-start)
 - [Tool-Only Image](#tool-only-image)
 - [vLLM Engine](#vllm-engine)
@@ -35,6 +36,14 @@ The build will fail if an engine-backed tag doesn't match the required prefix.
 - [Health & Monitoring](#health--monitoring)
 - [Troubleshooting](#troubleshooting)
 - [API Usage](#api-usage)
+
+## Script Architecture
+
+Docker scripting is self-contained under `docker/`:
+- Shared Docker logic lives in `docker/common/`.
+- Stack directories (`docker/vllm`, `docker/trt`, `docker/tool`) keep only stack-specific behavior.
+- Runtime scripts do not source host orchestration scripts under repo root `scripts/`.
+- Avoid pass-through wrappers; source common scripts directly when behavior is shared.
 
 ## Quick Start
 
@@ -324,6 +333,7 @@ docker stats yap-server
 1. **CUDA/GPU not available** - Ensure nvidia-docker is installed. Test: `docker run --gpus all nvidia/cuda:13.0.0-runtime-ubuntu24.04 nvidia-smi`
 2. **Out of memory** - Reduce fractions: `-e CHAT_GPU_FRAC=0.60` or use int8 KV: `-e KV_DTYPE=int8`
 3. **Large image** - Models are baked in; images will be 10-50GB
+4. **"TAG must start with 'tool-'"** - For `DEPLOY_MODE=tool`, use tags like `tool-modernbert` or `tool-only`
 
 ### Debug Mode
 

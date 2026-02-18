@@ -23,6 +23,14 @@ HF_TOKEN="${HF_TOKEN:-}"
 # Custom tag
 TAG="${TAG:-tool-only}"
 
+# Validate tag naming convention for tool-only images
+if [[ ! ${TAG} =~ ^tool- ]]; then
+  echo "[build] ✗ TAG must start with 'tool-' for tool-only images" >&2
+  echo "[build]   Got: ${TAG}" >&2
+  echo "[build]   Example: tool-modernbert" >&2
+  exit 1
+fi
+
 FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
 
 # Build configuration
@@ -37,8 +45,8 @@ COMMON_DIR="${SCRIPT_DIR}/../common"
 source "${COMMON_DIR}/scripts/logs.sh"
 source "${COMMON_DIR}/scripts/build/docker.sh"
 source "${COMMON_DIR}/scripts/build/args.sh"
-source "${SCRIPT_DIR}/scripts/build/context.sh"
-source "${SCRIPT_DIR}/scripts/build/validate.sh"
+source "${COMMON_DIR}/scripts/build/context.sh"
+source "${COMMON_DIR}/scripts/build/validate.sh"
 
 # Usage function
 usage() {
@@ -53,7 +61,7 @@ usage() {
   echo "  DOCKER_USERNAME     - Docker Hub username (required)"
   echo "  IMAGE_NAME          - Docker image name (default: yap-text-api)"
   echo "  TOOL_MODEL          - Tool model HF repo (required)"
-  echo "  TAG                 - Image tag (default: tool-only)"
+  echo "  TAG                 - Image tag (MUST start with 'tool-'; default: tool-only)"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (for private repos)"
   echo ""
@@ -88,7 +96,7 @@ fi
 
 # Validate tool model
 log_info "[build] Validating models for DEPLOY_MODE=tool..."
-if ! validate_models_for_deploy "tool" "" "${TOOL_MODEL}"; then
+if ! validate_models_for_deploy_common "vllm" "tool" "" "${TOOL_MODEL}"; then
   log_err "[build] ✗ Model validation failed. Build aborted."
   exit 1
 fi
@@ -103,7 +111,7 @@ log_info "[build] Tool-only image (no chat engine)"
 log_info "[build]   Tool model: ${TOOL_MODEL}"
 
 # Build the image
-prepare_build_context
+prepare_build_context_common "${SCRIPT_DIR}" "requirements-tool.txt" "0" "yap-tool"
 
 init_build_args
 
