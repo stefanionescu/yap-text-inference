@@ -7,8 +7,8 @@
 # Detects engine switching (vLLM/TRT) that requires full environment wipe.
 
 _RUNTIME_GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/runtime/cleanup.sh
-source "${_RUNTIME_GUARD_DIR}/cleanup.sh"
+# shellcheck source=lib/runtime/cleanup/main.sh
+source "${_RUNTIME_GUARD_DIR}/cleanup/main.sh"
 
 _pid_file() {
   local root_dir="${1:-${ROOT_DIR:-}}"

@@ -8,7 +8,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common/model_detect.sh"
 source "${SCRIPT_DIR}/../../lib/common/awq.sh"
-source "${SCRIPT_DIR}/../../lib/deps/venv.sh"
+source "${SCRIPT_DIR}/../../lib/deps/venv/main.sh"
 
 # Ensure AWQ cache directory exists
 vllm_awq_ensure_cache_dir() {

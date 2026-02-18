@@ -12,7 +12,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 export ROOT_DIR
 source "${SCRIPT_DIR}/../lib/noise/python.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
-source "${SCRIPT_DIR}/../lib/deps/venv.sh"
+source "${SCRIPT_DIR}/../lib/deps/venv/main.sh"
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
   log_warn "[gpu] ⚠ nvidia-smi not found; ensure this RunPod image has NVIDIA drivers."

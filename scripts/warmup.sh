@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Source venv helpers, logging, and env defaults
-source "${SCRIPT_DIR}/lib/deps/venv.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/lib/deps/venv/main.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/noise/python.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/common/log.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/common/string.sh" 2>/dev/null || true

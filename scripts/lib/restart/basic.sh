@@ -9,6 +9,8 @@
 _RESTART_BASIC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../noise/logging.sh
 source "${_RESTART_BASIC_DIR}/../noise/logging.sh"
+# shellcheck source=./errors.sh
+source "${_RESTART_BASIC_DIR}/errors.sh"
 
 # Wipe all pip/venv dependencies and caches for a clean reinstall
 # Preserves: HF cache, models, and (for chat/both) TRT repo, AWQ cache, quantized engines
@@ -149,13 +151,7 @@ run_basic_restart() {
   # 4. TRT engine: validate engine directory exists before starting server
   if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ "${DEPLOY_MODE}" != "tool" ]; then
     if [ -z "${TRT_ENGINE_DIR:-}" ] || [ ! -d "${TRT_ENGINE_DIR:-}" ]; then
-      log_err "[restart] ✗ TRT engine directory not found or not set."
-      log_err "[restart] TRT_ENGINE_DIR='${TRT_ENGINE_DIR:-<empty>}'"
-      log_blank
-      log_err "[restart] TensorRT-LLM requires a pre-built engine. Options:"
-      log_err "[restart]   1. Build TRT engine first: bash scripts/quantization/trt_quantizer.sh <model>"
-      log_err "[restart]   2. Use vLLM instead: bash scripts/restart.sh --vllm ${DEPLOY_MODE}"
-      log_err "[restart]   3. Or run full deployment: bash scripts/main.sh --trt <deploy_mode> <model>"
+      restart_err_missing_trt_engine "${DEPLOY_MODE}"
       exit 1
     fi
     log_info "[restart] ✓ TRT engine validated"

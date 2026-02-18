@@ -25,7 +25,7 @@ source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
 source "${SCRIPT_DIR}/lib/common/cli.sh"
-source "${SCRIPT_DIR}/lib/deps/venv.sh"
+source "${SCRIPT_DIR}/lib/deps/venv/main.sh"
 source "${SCRIPT_DIR}/lib/common/pytorch_guard.sh"
 
 # Runtime management

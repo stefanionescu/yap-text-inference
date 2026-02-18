@@ -21,6 +21,10 @@ if ! type is_trt_prequant >/dev/null 2>&1; then
   source "${_TRT_BUILD_DIR}/../../lib/common/model_detect.sh"
 fi
 
+if ! type trt_pipeline_run >/dev/null 2>&1; then
+  source "${_TRT_BUILD_DIR}/../../lib/trt/pipeline.sh"
+fi
+
 # =============================================================================
 # ENGINE BUILD
 # =============================================================================
@@ -250,85 +254,30 @@ quantize_and_build() {
     return 1
   fi
 
-  # Resolve qformat (pass model_id for MoE detection)
-  if [ -z "${qformat}" ]; then
-    qformat=$(resolve_qformat "${CHAT_QUANTIZATION:-4bit}" "${GPU_SM_ARCH:-}" "${model_id}")
+  # Load remaining TRT modules required by the shared pipeline when needed.
+  if ! type trt_prepare_repo >/dev/null 2>&1; then
+    source "${_TRT_BUILD_DIR}/../../lib/trt/install.sh"
+  fi
+  if ! type quantize_model >/dev/null 2>&1; then
+    source "${_TRT_BUILD_DIR}/quantize.sh"
+  fi
+  if ! type push_to_hf >/dev/null 2>&1; then
+    source "${_TRT_BUILD_DIR}/push.sh"
   fi
 
-  log_info "[build] Starting TRT quantize and build pipeline..."
-  log_info "[build]   Model: ${model_id}"
-  log_info "[build]   Format: ${qformat}"
-  log_info "[build]   GPU: ${GPU_SM_ARCH} (${DETECTED_GPU_NAME:-$(get_gpu_name)})"
+  export INFERENCE_ENGINE="trt"
+  export DEPLOY_CHAT=1
+  export CHAT_MODEL="${model_id}"
 
-  # Check if this is a pre-quantized model
-  if is_trt_prequant "${model_id}"; then
-    local prequant_kind
-    prequant_kind="$(classify_trt "${model_id}")"
-    if [ -n "${prequant_kind}" ]; then
-      log_info "[build] Detected pre-quantized TRT model (${prequant_kind})"
-    else
-      log_info "[build] Detected pre-quantized TRT model"
-    fi
-
-    # Check for pre-built engine in the HF repo FIRST
-    local prebuilt_engine_label
-    prebuilt_engine_label=$(find_compatible_engine "${model_id}") || true
-
-    if [ -n "${prebuilt_engine_label}" ]; then
-      # Download the pre-built engine - skip quantization entirely
-      log_info "[build] Using pre-built engine: ${prebuilt_engine_label}"
-      local engine_dir
-      engine_dir=$(download_prebuilt_engine "${model_id}" "${prebuilt_engine_label}") || {
-        log_warn "[build] ⚠ Failed to download pre-built engine, falling back to build from checkpoint"
-        prebuilt_engine_label=""
-      }
-
-      if [ -n "${prebuilt_engine_label}" ] && [ -n "${engine_dir}" ]; then
-        # Also download checkpoint for tokenizer and config
-        local ckpt_dir
-        ckpt_dir=$(download_prequantized "${model_id}") || return 1
-        TRT_CHECKPOINT_DIR="${ckpt_dir}"
-        TRT_ENGINE_DIR="${engine_dir}"
-        export TRT_ENGINE_DIR TRT_CHECKPOINT_DIR
-
-        # Save engine dir for later use
-        mkdir -p "${ROOT_DIR:-.}/.run"
-        echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" >"${ROOT_DIR:-.}/.run/trt_engine_dir.env"
-
-        log_info "[build] ✓ Using pre-built engine: ${TRT_ENGINE_DIR}"
-        return 0
-      fi
-    fi
-
-    # No compatible pre-built engine found - download checkpoint and build
-    local ckpt_dir
-    ckpt_dir=$(download_prequantized "${model_id}") || return 1
-    TRT_CHECKPOINT_DIR="${ckpt_dir}"
-  else
-    # Quantize the model
-    local ckpt_dir
-    ckpt_dir=$(get_checkpoint_dir "${model_id}" "${qformat}")
-    quantize_model "${model_id}" "${ckpt_dir}" "${qformat}" || return 1
-    TRT_CHECKPOINT_DIR="${ckpt_dir}"
+  if [ -n "${qformat}" ]; then
+    trt_export_quant_env "${qformat}"
+    case "${qformat}" in
+      int4_awq) CHAT_QUANTIZATION=4bit ;;
+      fp8 | int8_sq) CHAT_QUANTIZATION=8bit ;;
+      *) CHAT_QUANTIZATION="${qformat}" ;;
+    esac
+    export CHAT_QUANTIZATION
   fi
 
-  # Validate checkpoint before building
-  validate_checkpoint "${TRT_CHECKPOINT_DIR}" || return 1
-
-  # Build engine
-  local engine_dir
-  engine_dir=$(get_engine_dir "${model_id}" "${qformat}")
-  build_engine "${TRT_CHECKPOINT_DIR}" "${engine_dir}" || return 1
-
-  # Export engine directory for server
-  TRT_ENGINE_DIR="${engine_dir}"
-  export TRT_ENGINE_DIR TRT_CHECKPOINT_DIR
-
-  # Save engine dir for later use
-  mkdir -p "${ROOT_DIR:-.}/.run"
-  echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" >"${ROOT_DIR:-.}/.run/trt_engine_dir.env"
-
-  log_info "[build] ✓ Pipeline complete: ${TRT_ENGINE_DIR}"
-
-  return 0
+  trt_pipeline_run
 }

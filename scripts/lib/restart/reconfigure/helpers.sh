@@ -7,9 +7,9 @@
 # reinstalling dependencies. Handles model identity resolution, cache
 # preservation decisions, and quantization pipeline execution.
 
-RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${RESTART_LIB_DIR}/../common/model_detect.sh"
-source "${RESTART_LIB_DIR}/../main/quant.sh"
+RESTART_RECONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${RESTART_RECONFIG_DIR}/../../common/model_detect.sh"
+source "${RESTART_RECONFIG_DIR}/../../main/quant.sh"
 
 _restart_resolve_deploy_mode() {
   local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-both}}"
@@ -223,7 +223,3 @@ _restart_can_preserve_cache() {
 
   return 0
 }
-
-# Main reconfiguration actions (artifact cleanup + orchestration flow).
-# shellcheck source=./reconfigure_actions.sh
-source "${RESTART_LIB_DIR}/reconfigure_actions.sh"
