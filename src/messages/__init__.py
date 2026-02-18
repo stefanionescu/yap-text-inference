@@ -10,9 +10,16 @@ start/:
     - dispatch.py: Execution path routing
     - sampling.py: Sampling parameter extraction
 
+message.py:
+    Handles subsequent user messages within an existing session.
+    Validates user utterance, applies optional sampling overrides,
+    and dispatches execution. Does not accept history or persona
+    changes — those are locked at session creation via 'start'.
+
 followup.py:
-    Handles subsequent messages within an existing session.
-    Validates continuation state and routes to execution.
+    Handles follow-up messages within an existing session after
+    external screen analysis. Validates continuation state and
+    routes to execution.
 
 cancel.py:
     Handles request cancellation during streaming. Aborts the

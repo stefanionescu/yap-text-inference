@@ -32,7 +32,7 @@ from tests.helpers.fmt import (
 )
 
 from .stream import stream_exchange
-from .session import build_start_payload
+from .session import build_start_payload, build_message_payload
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,9 @@ async def run_conversation(
         try:
             for idx, user_text in enumerate(prompts, start=1):
                 state = create_tracker()
-                payload = build_start_payload(session, user_text)
+                payload = (
+                    build_start_payload(session, user_text) if idx == 1 else build_message_payload(session, user_text)
+                )
 
                 print(exchange_header(idx=idx))
                 print(f"  {format_user(user_text)}")

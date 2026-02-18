@@ -10,7 +10,10 @@ from __future__ import annotations
 from typing import Any
 
 from tests.state import SessionContext, ConversationSession
-from tests.helpers.websocket import build_start_payload as build_ws_start_payload
+from tests.helpers.websocket import (
+    build_start_payload as build_ws_start_payload,
+    build_message_payload as build_ws_message_payload,
+)
 
 
 def build_start_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:
@@ -29,4 +32,13 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
     return build_ws_start_payload(ctx, user_text)
 
 
-__all__ = ["build_start_payload"]
+def build_message_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:
+    """Build the message payload for subsequent conversation turns."""
+    return build_ws_message_payload(
+        session.session_id,
+        user_text,
+        sampling=session.sampling,
+    )
+
+
+__all__ = ["build_message_payload", "build_start_payload"]

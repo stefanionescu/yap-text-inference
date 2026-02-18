@@ -23,21 +23,6 @@ from .metrics import (
     emit_ttfb_summary,
     create_ttfb_aggregator,
 )
-from .websocket import (
-    recv_raw,
-    record_token,
-    with_api_key,
-    iter_messages,
-    parse_message,
-    consume_stream,
-    create_tracker,
-    record_toolcall,
-    send_client_end,
-    dispatch_message,
-    finalize_metrics,
-    build_start_payload,
-    connect_with_retries,
-)
 from .fmt import (
     dim,
     red,
@@ -57,6 +42,22 @@ from .fmt import (
     format_assistant,
     format_ttfb_summary,
     format_metrics_inline,
+)
+from .websocket import (
+    recv_raw,
+    record_token,
+    with_api_key,
+    iter_messages,
+    parse_message,
+    consume_stream,
+    create_tracker,
+    record_toolcall,
+    send_client_end,
+    dispatch_message,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
+    build_message_payload,
 )
 from .errors import (
     ServerError,
@@ -147,6 +148,7 @@ __all__ = [
     # selection
     "choose_message",
     # websocket
+    "build_message_payload",
     "build_start_payload",
     "connect_with_retries",
     "consume_stream",

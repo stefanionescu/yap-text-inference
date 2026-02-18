@@ -20,14 +20,6 @@ from tests.helpers.prompt import select_chat_prompt
 from tests.state import StreamState, SessionContext
 from tests.messages.warmup import WARMUP_DEFAULT_MESSAGES
 from tests.logic.conversation.stream import stream_exchange
-from tests.helpers.websocket import (
-    with_api_key,
-    create_tracker,
-    send_client_end,
-    finalize_metrics,
-    build_start_payload,
-    connect_with_retries,
-)
 from tests.helpers.fmt import (
     dim,
     red,
@@ -37,6 +29,15 @@ from tests.helpers.fmt import (
     exchange_header,
     format_assistant,
     format_metrics_inline,
+)
+from tests.helpers.websocket import (
+    with_api_key,
+    create_tracker,
+    send_client_end,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
+    build_message_payload,
 )
 from tests.config import (
     DEFAULT_GENDER,
@@ -169,22 +170,24 @@ async def run_once(args) -> None:
         recv_timeout = float(os.getenv("RECV_TIMEOUT_SEC", DEFAULT_RECV_TIMEOUT_SEC))
         num_transactions = 2 if double_ttfb else 1
 
-        session_id: str | None = None
+        session_id = str(uuid.uuid4())
+        ctx = SessionContext(
+            session_id=session_id,
+            gender=gender,
+            personality=personality,
+            chat_prompt=chat_prompt,
+            sampling=sampling_overrides,
+        )
         try:
             for idx in range(num_transactions):
                 phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
                 state = create_tracker()
-                session_id = str(uuid.uuid4())
-                ctx = SessionContext(
-                    session_id=session_id,
-                    gender=gender,
-                    personality=personality,
-                    chat_prompt=chat_prompt,
-                    sampling=sampling_overrides,
-                )
-                start_payload = build_start_payload(ctx, user_msg)
+                if idx == 0:
+                    payload = build_start_payload(ctx, user_msg)
+                else:
+                    payload = build_message_payload(session_id, user_msg, sampling=sampling_overrides)
 
-                await ws.send(json.dumps(start_payload))
+                await ws.send(json.dumps(payload))
                 assistant_text, metrics = await _stream_exchange(
                     ws,
                     state,

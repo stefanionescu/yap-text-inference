@@ -19,15 +19,6 @@ from tests.state import StreamState, TTFBSamples, SessionContext
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
-from tests.helpers.websocket import (
-    with_api_key,
-    iter_messages,
-    consume_stream,
-    create_tracker,
-    send_client_end,
-    finalize_metrics,
-    build_start_payload,
-)
 from tests.helpers.fmt import (
     dim,
     green,
@@ -38,6 +29,16 @@ from tests.helpers.fmt import (
     exchange_header,
     format_assistant,
     format_metrics_inline,
+)
+from tests.helpers.websocket import (
+    with_api_key,
+    iter_messages,
+    consume_stream,
+    create_tracker,
+    send_client_end,
+    finalize_metrics,
+    build_start_payload,
+    build_message_payload,
 )
 
 # ============================================================================
@@ -77,15 +78,15 @@ def _print_exchange(
     print(exchange_footer())
 
 
-async def _send_start_request(
+async def _send_message_request(
     ws,
     ctx: SessionContext,
     user_text: str,
     ttfb_samples: TTFBSamples,
     idx: int,
 ) -> tuple[str, dict[str, Any]]:
-    """Send a start request and collect the response with metrics tracking."""
-    payload = build_start_payload(ctx, user_text)
+    """Send a message request and collect the response with metrics tracking."""
+    payload = build_message_payload(ctx.session_id, user_text, sampling=ctx.sampling)
 
     state = create_tracker()
     await ws.send(json.dumps(payload))
@@ -160,7 +161,7 @@ async def _run_history_sequence(
     record_ttfb(ttfb_samples, metrics)
 
     for idx, user_text in enumerate(HISTORY_RECALL_MESSAGES[1:], 2):
-        reply, _ = await _send_start_request(
+        reply, _ = await _send_message_request(
             ws,
             ctx,
             user_text,

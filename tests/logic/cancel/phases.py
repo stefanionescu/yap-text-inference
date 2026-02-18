@@ -25,6 +25,7 @@ from tests.helpers.websocket import (
     finalize_metrics,
     build_start_payload,
     build_cancel_payload,
+    build_message_payload,
 )
 
 from .handlers import build_cancel_handlers, build_recovery_handlers
@@ -191,9 +192,9 @@ async def run_recovery_phase(
     state = create_tracker()
     handlers = build_recovery_handlers(state)
 
-    start_payload = build_start_payload(ctx, user_msg)
-    await ws.send(json.dumps(start_payload))
-    print(dim("  [recovery] sent start message..."))
+    recovery_payload = build_message_payload(ctx.session_id, user_msg, sampling=ctx.sampling)
+    await ws.send(json.dumps(recovery_payload))
+    print(dim("  [recovery] sent message..."))
 
     cancelled = False
     error: str | None = None
