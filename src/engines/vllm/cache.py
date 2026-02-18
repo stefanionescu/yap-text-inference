@@ -142,7 +142,7 @@ class CacheResetManager:
 
             try:
                 await asyncio.wait_for(self._event.wait(), timeout=wait)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await reset_caches_fn("timer", True)
             else:
                 if self._event.is_set():

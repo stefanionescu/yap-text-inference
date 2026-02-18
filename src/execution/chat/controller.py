@@ -39,6 +39,7 @@ import asyncio
 import logging
 from typing import Any
 from collections.abc import AsyncGenerator
+from asyncio import timeout as async_timeout
 
 from src.errors import StreamCancelledError
 from src.telemetry.sentry import capture_error
@@ -49,7 +50,6 @@ from src.telemetry.instruments import get_metrics
 from src.state import CancelCheck, ChatStreamConfig
 
 from ...engines.base import BaseEngine
-from ..compat import timeout as async_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ class ChatStreamController:
         except StreamCancelledError:
             self._cancelled = True
             self._log_cancelled()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             m.errors_total.add(1, {"error.type": "generation_timeout"})
             self._log_timeout()
             raise
@@ -291,7 +291,7 @@ async def _stream_with_timeout(
                     await engine.abort(request_id)
                     raise StreamCancelledError()
                 yield out
-    except asyncio.TimeoutError:
+    except TimeoutError:
         await engine.abort(request_id)
         raise
 

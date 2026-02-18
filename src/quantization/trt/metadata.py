@@ -14,7 +14,7 @@ import json
 import contextlib
 from typing import Any
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.state import EnvironmentInfo
 from src.config import trt as trt_config
@@ -103,7 +103,7 @@ def _collect_base_metadata(
         "quant_method": quant_method,
         "quant_method_upper": quant_method.upper().replace("_", "-"),
         "w_bit": _infer_weight_bits(quant_method),
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
     }
 
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 import os
 import json
 import uuid
-import asyncio
 from typing import Any
 
 import websockets
@@ -85,7 +84,7 @@ async def _stream_exchange(
         raise
     except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
         print(dim("  connection closed by server"))
-    except asyncio.TimeoutError:
+    except TimeoutError:
         print(f"  {red('TIMEOUT')} after {recv_timeout:.1f}s")
     finally:
         if not suppress_ack_warning and not state.ack_seen:

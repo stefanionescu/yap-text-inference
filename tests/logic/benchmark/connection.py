@@ -43,7 +43,7 @@ async def _execute_phase(
             _send_and_stream(ws, cfg, phase, session_id),
             timeout=cfg.timeout_s,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return error_result("timeout", phase=phase)
     except Exception as exc:
         return error_result(str(exc), phase=phase)

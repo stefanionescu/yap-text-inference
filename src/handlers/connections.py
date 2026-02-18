@@ -90,7 +90,7 @@ class ConnectionHandler:
         t0 = time.monotonic()
         try:
             await asyncio.wait_for(self._semaphore.acquire(), timeout=self.acquire_timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             m.connection_semaphore_wait.record(time.monotonic() - t0)
             m.connections_rejected_total.add(1)
             logger.warning(
