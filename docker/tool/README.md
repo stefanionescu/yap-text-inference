@@ -2,11 +2,14 @@
 
 Lightweight tool-only inference image with the tool model baked in. No chat engine is included.
 
+Use this stack when you only need the tool model (e.g., screenshot intent classification) without a chat inference engine. This produces a much smaller image than the vLLM or TRT stacks. For chat deployments, see the [main Docker README](../README.md).
+
 ## Contents
 
 - [Quick Start](#quick-start)
 - [Build Variables](#build-variables)
 - [Runtime Variables](#runtime-variables)
+- [Troubleshooting](#troubleshooting)
 
 ## Quick Start
 
@@ -30,6 +33,12 @@ docker run -d --gpus all --name yap-tool \
   myuser/yap-text-api:tool-modernbert
 ```
 
+### Verify
+
+```bash
+curl http://localhost:8000/healthz
+```
+
 ## Build Variables
 
 | Variable | Required | Description |
@@ -46,3 +55,9 @@ docker run -d --gpus all --name yap-tool \
 | `TEXT_API_KEY` | Yes | - | API key |
 | `MAX_CONCURRENT_CONNECTIONS` | Yes | - | Maximum concurrent WebSocket connections |
 | `TOOL_GPU_FRAC` | No | 0.90 | GPU fraction for tool model |
+
+## Troubleshooting
+
+For common issues (CUDA not available, OOM, large images), see [Troubleshooting](../README.md#troubleshooting) in the main Docker README.
+
+**"TAG must start with 'tool-'"**: Tags for tool-only images must use the `tool-` prefix (e.g., `tool-modernbert`, `tool-only`).
