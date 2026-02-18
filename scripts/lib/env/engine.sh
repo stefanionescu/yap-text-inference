@@ -6,6 +6,12 @@
 # Applies engine-specific defaults for vLLM and TRT-LLM. Most vLLM settings
 # are handled in Python; this module handles shell-level configuration.
 
+_ENGINE_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_ENGINE_ENV_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_ENGINE_ENV_DIR}/../../config/patterns.sh"
+
 apply_engine_defaults() {
   # vLLM engine settings are handled by Python in src/server.py and
   # src/engines/vllm/setup.py using os.environ.setdefault().
@@ -19,7 +25,7 @@ apply_engine_defaults() {
   fi
 
   # TRT engine: load cached engine directory if available
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
     local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
     if [ -f "${trt_env_file}" ]; then
       # shellcheck disable=SC1090

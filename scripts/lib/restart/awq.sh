@@ -8,6 +8,10 @@
 
 RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${RESTART_LIB_DIR}/../common/awq.sh"
+source "${RESTART_LIB_DIR}/../../config/values/core.sh"
+source "${RESTART_LIB_DIR}/../../config/values/quantization.sh"
+source "${RESTART_LIB_DIR}/../../config/values/trt.sh"
+source "${RESTART_LIB_DIR}/../../config/patterns.sh"
 
 _awq_read_source_model() {
   local dir="$1"
@@ -32,8 +36,8 @@ detect_awq_models() {
 
   local REQUIRE_CHAT=0
   case "${DEPLOY_MODE}" in
-    both) REQUIRE_CHAT=1 ;;
-    chat) REQUIRE_CHAT=1 ;;
+    "${CFG_DEPLOY_MODE_BOTH}") REQUIRE_CHAT=1 ;;
+    "${CFG_DEPLOY_MODE_CHAT}") REQUIRE_CHAT=1 ;;
   esac
 
   local LOCAL_CHAT_OK=0
@@ -51,7 +55,7 @@ detect_awq_models() {
     if [ "${LOCAL_CHAT_OK}" = "1" ]; then
       CHAT_AWQ_SOURCE="${CHAT_AWQ_DIR}"
       CHAT_AWQ_SOURCE_KIND="local"
-    elif [ "${last_chat_quant}" = "awq" ] && [ -n "${last_chat_model}" ]; then
+    elif [ "${last_chat_quant}" = "${CFG_QUANT_MODE_4BIT_BACKEND}" ] && [ -n "${last_chat_model}" ]; then
       CHAT_AWQ_SOURCE="${last_chat_model}"
       CHAT_AWQ_SOURCE_KIND="prequant"
     else
@@ -71,9 +75,9 @@ detect_awq_models() {
 setup_env_for_awq() {
   local DEPLOY_MODE="$1"
   export DEPLOY_MODE="${DEPLOY_MODE}"
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
+  if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_BOTH}" ] || [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_CHAT}" ]; then
     local chat_source="${CHAT_AWQ_SOURCE:-${CHAT_AWQ_DIR}}"
-    export CHAT_MODEL="${chat_source}" CHAT_QUANTIZATION=awq
+    export CHAT_MODEL="${chat_source}" CHAT_QUANTIZATION="${CFG_QUANT_MODE_4BIT_BACKEND}"
     if [ -z "${CHAT_MODEL_NAME:-}" ]; then
       if [ "${CHAT_AWQ_SOURCE_KIND:-local}" = "local" ]; then
         CHAT_MODEL_NAME="$(_awq_read_source_model "${chat_source}")"
@@ -84,7 +88,7 @@ setup_env_for_awq() {
   fi
   export CHAT_MODEL_NAME
 
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
+  if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_BOTH}" ] || [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
     local resolved_tool="${TOOL_MODEL:-}"
     if [ -z "${resolved_tool}" ]; then
       resolved_tool="$(read_last_config_value "TOOL_MODEL" "${ROOT_DIR}")"
@@ -106,7 +110,7 @@ validate_awq_push_prereqs() {
     return
   fi
   # Skip AWQ artifact check for TRT - TRT has its own push logic in push_cached_awq_models
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
     return
   fi
   if [ "${USING_LOCAL_MODELS:-0}" != "1" ]; then
@@ -125,11 +129,11 @@ push_cached_awq_models() {
   fi
 
   # If using TRT engine, push the TRT artifacts (checkpoint + engine)
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
     local engine_dir="${TRT_ENGINE_DIR:-}"
     if [ -d "${engine_dir}" ]; then
       # Derive checkpoint dir from engine dir name and qformat
-      local qformat="${TRT_QUANT_METHOD:-int4_awq}"
+      local qformat="${TRT_QUANT_METHOD:-${CFG_TRT_DEFAULT_QFORMAT}}"
       local engine_base
       engine_base="$(basename "${engine_dir}")"
       # engine dir pattern: <model>-trt-<qformat>
@@ -156,7 +160,7 @@ push_cached_awq_models() {
 
   log_info "[restart] Uploading cached AWQ artifacts to Hugging Face"
   local pushed=0
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
+  if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_BOTH}" ] || [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_CHAT}" ]; then
     vllm_awq_push_to_hf "${CHAT_AWQ_DIR}"
     pushed=1
   fi

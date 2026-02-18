@@ -10,7 +10,7 @@ _DETECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Source common modules
 source "${_DETECT_DIR}/flashinfer.sh"
 source "${_DETECT_DIR}/../common/gpu_detect.sh"
-source "${_DETECT_DIR}/../deps/venv.sh"
+source "${_DETECT_DIR}/../deps/venv/main.sh"
 
 # Detect FlashInfer availability and set HAS_FLASHINFER
 detect_flashinfer() {

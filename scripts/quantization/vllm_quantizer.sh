@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/../lib/noise/python.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
+source "${SCRIPT_DIR}/../config/values/quantization.sh"
 
 # vLLM quantization helpers
 source "${SCRIPT_DIR}/../lib/env/quantization.sh"
@@ -21,9 +22,9 @@ source "${SCRIPT_DIR}/../engines/vllm/quantize.sh"
 # Determine which engines requested AWQ
 AWQ_TARGET_CHAT=0
 if [ "${DEPLOY_CHAT:-0}" = "1" ]; then
-  if [ "${CHAT_QUANTIZATION:-}" = "awq" ]; then
+  if [ "${CHAT_QUANTIZATION:-}" = "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
     AWQ_TARGET_CHAT=1
-  elif [ -z "${CHAT_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "awq" ]; then
+  elif [ -z "${CHAT_QUANTIZATION:-}" ] && [ "${QUANTIZATION:-}" = "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
     AWQ_TARGET_CHAT=1
   fi
 fi

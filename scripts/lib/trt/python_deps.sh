@@ -8,8 +8,8 @@ _TRT_PYDEPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=../../lib/deps/pip.sh
 source "${_TRT_PYDEPS_DIR}/../deps/pip.sh"
-# shellcheck source=./config.sh
-source "${_TRT_PYDEPS_DIR}/config.sh"
+# shellcheck source=../env/trt.sh
+source "${_TRT_PYDEPS_DIR}/../env/trt.sh"
 
 # Ensure CUDA_HOME is set and valid
 trt_ensure_cuda_home() {
@@ -48,9 +48,9 @@ trt_ensure_cuda_home() {
 # Install PyTorch and TorchVision with matching CUDA versions
 # MUST be done BEFORE TensorRT-LLM to prevent version conflicts
 trt_install_pytorch() {
-  local torch_version="${TRT_PYTORCH_VERSION:-2.9.0+cu130}"
-  local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
-  local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+  local torch_version="${TRT_PYTORCH_VERSION:-${CFG_TRT_PYTORCH_VERSION}}"
+  local torchvision_version="${TRT_TORCHVISION_VERSION:-${CFG_TRT_TORCHVISION_VERSION}}"
+  local torch_idx="${TRT_PYTORCH_INDEX_URL:-${CFG_TRT_PYTORCH_INDEX_URL}}"
 
   log_section "[trt] Installing PyTorch..."
 
@@ -72,9 +72,9 @@ trt_install_pytorch() {
 
 # Persist torch/torchvision pins so downstream pip installs cannot swap CUDA builds
 trt_write_torch_constraints_file() {
-  local constraints_file="${TRT_TORCH_CONSTRAINTS_FILE:-${ROOT_DIR:-.}/.run/trt_torch_constraints.txt}"
-  local torch_version="${TRT_PYTORCH_VERSION:-2.9.0+cu130}"
-  local torchvision_version="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
+  local constraints_file="${TRT_TORCH_CONSTRAINTS_FILE:-${ROOT_DIR:-.}/${CFG_TRT_TORCH_CONSTRAINTS_REL}}"
+  local torch_version="${TRT_PYTORCH_VERSION:-${CFG_TRT_PYTORCH_VERSION}}"
+  local torchvision_version="${TRT_TORCHVISION_VERSION:-${CFG_TRT_TORCHVISION_VERSION}}"
 
   mkdir -p "$(dirname "${constraints_file}")"
   cat >"${constraints_file}" <<EOF
@@ -87,8 +87,8 @@ EOF
 
 # pip install with retry
 _trt_pip_install_with_retry() {
-  local max_attempts="${PIP_INSTALL_ATTEMPTS:-5}"
-  local delay="${PIP_INSTALL_BACKOFF_SECONDS:-2}"
+  local max_attempts="${PIP_INSTALL_ATTEMPTS:-${CFG_PIP_INSTALL_ATTEMPTS}}"
+  local delay="${PIP_INSTALL_BACKOFF_SECONDS:-${CFG_PIP_INSTALL_BACKOFF_SECONDS}}"
   local attempt=1
 
   while [ "${attempt}" -le "${max_attempts}" ]; do
@@ -112,7 +112,7 @@ trt_install_tensorrt_llm() {
   local nvidia_index="${TRT_EXTRA_INDEX_URL}"
   local target="${TRT_PIP_SPEC}"
   local trt_no_deps="${TRTLLM_NO_DEPS:-0}"
-  local torch_idx="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+  local torch_idx="${TRT_PYTORCH_INDEX_URL:-${CFG_TRT_PYTORCH_INDEX_URL}}"
   local constraints_file
   constraints_file=$(trt_write_torch_constraints_file) || {
     log_err "[trt] ✗ Unable to materialize torch constraints"
@@ -143,4 +143,3 @@ trt_install_tensorrt_llm() {
 
   return 0
 }
-

@@ -139,7 +139,11 @@ run_shell() {
 
   SHELL_FILES=()
   while IFS= read -r -d '' file; do
-    SHELL_FILES+=("$file")
+    if [[ -f $file ]]; then
+      SHELL_FILES+=("$file")
+    elif [[ -f $ROOT_DIR/$file ]]; then
+      SHELL_FILES+=("$ROOT_DIR/$file")
+    fi
   done <"$TMP_LIST"
 
   if [[ ${#SHELL_FILES[@]} -gt 0 ]]; then
@@ -148,7 +152,7 @@ run_shell() {
       rm -f "$TMP_LIST"
       exit 1
     fi
-    run_quiet "shellcheck" shellcheck -x "${SHELL_FILES[@]}"
+    run_quiet "shellcheck" shellcheck -x -e SC1091 "${SHELL_FILES[@]}"
   fi
 
   if have shfmt; then

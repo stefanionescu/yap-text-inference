@@ -5,24 +5,30 @@
 # Validates and configures deploy modes (chat, tool, both) and ensures
 # required models are specified for each deployment type.
 
+_ENV_DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_ENV_DEPLOY_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_ENV_DEPLOY_DIR}/../../config/patterns.sh"
+
 setup_deploy_mode_and_validate() {
   # Deploy mode: both | chat | tool (default: both)
-  export DEPLOY_MODE=${DEPLOY_MODE:-both}
+  export DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
   case "${DEPLOY_MODE}" in
-    both | chat | tool) ;;
+    "${CFG_DEPLOY_MODE_BOTH}" | "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}") ;;
     *)
-      log_warn "[env] ⚠ Invalid DEPLOY_MODE='${DEPLOY_MODE}', defaulting to 'both'"
-      export DEPLOY_MODE=both
+      log_warn "[env] Invalid DEPLOY_MODE='${DEPLOY_MODE}', defaulting to '${CFG_DEFAULT_DEPLOY_MODE}'"
+      export DEPLOY_MODE="${CFG_DEFAULT_DEPLOY_MODE}"
       ;;
   esac
 
   # Convenience booleans for shell usage
   local deploy_chat=0
   local deploy_tool=0
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "chat" ]; then
+  if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_BOTH}" ] || [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_CHAT}" ]; then
     deploy_chat=1
   fi
-  if [ "${DEPLOY_MODE}" = "both" ] || [ "${DEPLOY_MODE}" = "tool" ]; then
+  if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_BOTH}" ] || [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
     deploy_tool=1
   fi
   export DEPLOY_CHAT=${deploy_chat}

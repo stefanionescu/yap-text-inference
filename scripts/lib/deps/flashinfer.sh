@@ -7,7 +7,7 @@
 # FlashInfer provides optimized attention kernels for vLLM.
 
 _FI_DEP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_FI_DEP_DIR}/venv.sh"
+source "${_FI_DEP_DIR}/venv/main.sh"
 
 install_flashinfer_if_applicable() {
   local scope="${1:-deps}"

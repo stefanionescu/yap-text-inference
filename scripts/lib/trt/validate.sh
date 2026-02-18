@@ -81,4 +81,3 @@ trt_validate_installation() {
   log_blank
   return 0
 }
-

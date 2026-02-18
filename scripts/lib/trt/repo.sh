@@ -6,8 +6,8 @@
 _TRT_REPO_HELPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck disable=SC1091
-# shellcheck source=./config.sh
-source "${_TRT_REPO_HELPER_DIR}/config.sh"
+# shellcheck source=../env/trt.sh
+source "${_TRT_REPO_HELPER_DIR}/../env/trt.sh"
 
 if ! type pip_quiet >/dev/null 2>&1; then
   # shellcheck disable=SC1091
@@ -94,7 +94,7 @@ trt_prepare_repo() {
 
 # Install quantization requirements from the TRT-LLM repository
 trt_install_quant_requirements() {
-  local repo_dir="${TRT_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
+  local repo_dir="${TRT_REPO_DIR:-${ROOT_DIR:-.}/${CFG_TRT_REPO_DIR_REL}}"
   local quant_reqs="${repo_dir}/examples/quantization/requirements.txt"
   local constraints_file="${repo_dir}/examples/constraints.txt"
   local marker_file="${ROOT_DIR:-.}/.run/trt_quant_deps_installed"

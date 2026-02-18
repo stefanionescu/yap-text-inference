@@ -6,6 +6,12 @@
 # Shared argument parsing utilities for main.sh and restart.sh. Provides
 # unified parsing for logging flags, push flags, and engine selection.
 
+_COMMON_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_COMMON_ARGS_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_COMMON_ARGS_DIR}/../../config/patterns.sh"
+
 # Initialize common argument state variables.
 # Call this before parsing to set up defaults.
 # NOTE: Default engine is TRT. This is the single source of truth for the default.
@@ -20,7 +26,7 @@ init_common_state() {
   HF_ENGINE_PUSH_REQUESTED="${HF_ENGINE_PUSH_REQUESTED:-0}"
   HF_ENGINE_PUSH=0
   # Default inference engine is TRT (TensorRT-LLM)
-  INFERENCE_ENGINE="${INFERENCE_ENGINE:-trt}"
+  INFERENCE_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
 }
 
 # Validate that mutually exclusive flags are not both set.
@@ -85,11 +91,11 @@ parse_common_flag() {
       return 0
       ;;
     --trt)
-      INFERENCE_ENGINE="trt"
+      INFERENCE_ENGINE="${CFG_ENGINE_TRT}"
       return 0
       ;;
     --vllm)
-      INFERENCE_ENGINE="vllm"
+      INFERENCE_ENGINE="${CFG_ENGINE_VLLM}"
       return 0
       ;;
     --engine)

@@ -7,8 +7,8 @@
 
 _TRT_INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=./config.sh
-source "${_TRT_INSTALL_DIR}/config.sh"
+# shellcheck source=../env/trt.sh
+source "${_TRT_INSTALL_DIR}/../env/trt.sh"
 # shellcheck source=./python_deps.sh
 source "${_TRT_INSTALL_DIR}/python_deps.sh"
 # shellcheck source=./validate.sh
