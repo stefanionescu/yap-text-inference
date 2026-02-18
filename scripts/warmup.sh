@@ -103,7 +103,7 @@ cd "${ROOT_DIR}"
 sleep 0.1
 echo # Blank line to stdout (log_blank goes to stderr, can get interleaved)
 log_info "[warmup] Starting GPU warmup..."
-echo "[warmup] Starting GPU warmup..." >>"${ROOT_DIR}/server.log"
+echo "[warmup] Starting GPU warmup..." >>"${ROOT_DIR}/${CFG_RUNTIME_SERVER_LOG_FILE}"
 
 for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
   IFS='|' read -r persona_gender persona_personality <<<"${persona}"
@@ -155,10 +155,10 @@ done
 
 if [[ ${warmup_all_passed} -eq 1 ]]; then
   log_info "[warmup] ✓ Warmup complete."
-  echo "[warmup] ✓ Warmup complete." >>"${ROOT_DIR}/server.log"
+  echo "[warmup] ✓ Warmup complete." >>"${ROOT_DIR}/${CFG_RUNTIME_SERVER_LOG_FILE}"
   exit 0
 fi
 
 log_info "[warmup] Warmup finished with failures."
-echo "[warmup] Warmup finished with failures." >>"${ROOT_DIR}/server.log"
+echo "[warmup] Warmup finished with failures." >>"${ROOT_DIR}/${CFG_RUNTIME_SERVER_LOG_FILE}"
 exit 1

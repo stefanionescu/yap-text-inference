@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # =============================================================================
 # Early Model Validation
 # =============================================================================
 # Validates models against allowlists before deployment starts.
 # Calls Python to check models without loading heavy vLLM dependencies.
 
-validate_models_early() {
-  # shellcheck disable=SC1091
-  source "${ROOT_DIR}/scripts/config/values/core.sh"
+_MODEL_VALIDATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../../../config/values/core.sh
+source "${_MODEL_VALIDATE_DIR}/../../../../config/values/core.sh"
 
+validate_models_early() {
   # Find Python - prefer venv if available
   local python_cmd="python3"
   if [ -f "${ROOT_DIR}/.venv/bin/python" ]; then

@@ -13,6 +13,10 @@ source "${_RESTART_BASIC_DIR}/../noise/logging.sh"
 source "${_RESTART_BASIC_DIR}/errors.sh"
 # shellcheck source=../../config/values/core.sh
 source "${_RESTART_BASIC_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/runtime.sh
+source "${_RESTART_BASIC_DIR}/../../config/values/runtime.sh"
+# shellcheck source=../../config/values/trt.sh
+source "${_RESTART_BASIC_DIR}/../../config/values/trt.sh"
 # shellcheck source=../../config/values/quantization.sh
 source "${_RESTART_BASIC_DIR}/../../config/values/quantization.sh"
 # shellcheck source=../../config/patterns.sh
@@ -39,7 +43,7 @@ wipe_dependencies_for_reinstall() {
 
   # Remove dep hash markers (forces full reinstall)
   rm -f "${root}/.venv/.req_hash" 2>/dev/null || true
-  rm -f "${root}/.run/trt_quant_deps_installed" 2>/dev/null || true
+  rm -f "${root}/${CFG_TRT_QUANT_DEPS_MARKER_REL}" 2>/dev/null || true
 
   # Clean temp directories
   cleanup_tmp_dirs
@@ -85,9 +89,9 @@ run_basic_restart() {
   fi
 
   local SHOULD_USE_GENERIC=0
-  if [ -n "${CHAT_QUANTIZATION:-}" ] && [ "${CHAT_QUANTIZATION}" != "awq" ]; then
+  if [ -n "${CHAT_QUANTIZATION:-}" ] && [ "${CHAT_QUANTIZATION}" != "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
     SHOULD_USE_GENERIC=1
-  elif [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "awq" ]; then
+  elif [ -n "${LAST_CHAT_QUANT}" ] && [ "${LAST_CHAT_QUANT}" != "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
     SHOULD_USE_GENERIC=1
   fi
 
@@ -131,12 +135,12 @@ run_basic_restart() {
 
   if [ "${DEPLOY_MODE}" != "${CFG_DEPLOY_MODE_TOOL}" ] && [ -z "${CHAT_MODEL:-}" ]; then
     log_err "[restart] ✗ CHAT_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
-    [ -f "${SERVER_LOG}" ] && log_err "[restart] ✗ Hint: Could not parse chat model from server.log"
+    [ -f "${ROOT_DIR}/${CFG_RUNTIME_SERVER_LOG_FILE}" ] && log_err "[restart] ✗ Hint: Could not parse chat model from ${CFG_RUNTIME_SERVER_LOG_FILE}"
     exit 1
   fi
   if [ "${DEPLOY_MODE}" != "${CFG_DEPLOY_MODE_CHAT}" ] && [ -z "${TOOL_MODEL:-}" ]; then
     log_err "[restart] ✗ TOOL_MODEL is required for DEPLOY_MODE='${DEPLOY_MODE}'"
-    [ -f "${SERVER_LOG}" ] && log_err "[restart] ✗ Hint: Could not parse tool model from server.log"
+    [ -f "${ROOT_DIR}/${CFG_RUNTIME_SERVER_LOG_FILE}" ] && log_err "[restart] ✗ Hint: Could not parse tool model from ${CFG_RUNTIME_SERVER_LOG_FILE}"
     exit 1
   fi
 
@@ -171,25 +175,25 @@ run_basic_restart() {
     log_blank
   fi
 
-  local SERVER_LOG_PATH="${ROOT_DIR}/server.log"
+  local SERVER_LOG_PATH="${ROOT_DIR}/${CFG_RUNTIME_SERVER_LOG_FILE}"
   touch "${SERVER_LOG_PATH}"
   if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
     log_info "[restart] Starting server directly with existing models (tool-only deployment)..."
   else
-    log_info "[restart] Starting server directly with existing models (quant=${CHAT_QUANTIZATION:-auto})..."
+    log_info "[restart] Starting server directly with existing models (quant=${CHAT_QUANTIZATION:-${CFG_QUANT_MODE_AUTO}})..."
   fi
-  log_info "[restart] All logs: tail -f server.log"
+  log_info "[restart] All logs: tail -f ${CFG_RUNTIME_SERVER_LOG_FILE}"
   log_info "[restart] To stop: bash scripts/stop.sh"
   log_blank
 
-  mkdir -p "${ROOT_DIR}/.run"
+  mkdir -p "${ROOT_DIR}/${CFG_RUNTIME_RUN_DIR}"
   setsid nohup "${ROOT_DIR}/scripts/steps/05_start_server.sh" </dev/null >>"${SERVER_LOG_PATH}" 2>&1 &
   local BG_PID=$!
-  echo "${BG_PID}" >"${ROOT_DIR}/.run/deployment.pid"
+  echo "${BG_PID}" >"${ROOT_DIR}/${CFG_RUNTIME_DEPLOYMENT_PID_FILE}"
 
-  log_info "[restart] ✓ Server started. Logs: tail -f server.log"
-  local warmup_lock="${ROOT_DIR}/.run/warmup.lock"
-  local warmup_capture="${ROOT_DIR}/logs/warmup.server.log"
+  log_info "[restart] ✓ Server started. Logs: tail -f ${CFG_RUNTIME_SERVER_LOG_FILE}"
+  local warmup_lock="${ROOT_DIR}/${CFG_RUNTIME_WARMUP_LOCK_FILE}"
+  local warmup_capture="${ROOT_DIR}/${CFG_RUNTIME_WARMUP_CAPTURE_FILE}"
   touch "${SERVER_LOG_PATH}" || true
   noise_follow_server_logs "${SERVER_LOG_PATH}" "${warmup_lock}" "${warmup_capture}"
 }

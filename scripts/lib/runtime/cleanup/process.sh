@@ -5,7 +5,7 @@
 
 cleanup_stop_server_session() {
   local root_dir="$1"
-  local pid_file="${root_dir}/server.pid"
+  local pid_file="${root_dir}/${CFG_RUNTIME_SERVER_PID_FILE}"
 
   if [ -f "${pid_file}" ]; then
     local pid
@@ -65,5 +65,8 @@ cleanup_gpu_processes() {
 
 cleanup_server_artifacts() {
   local root_dir="$1"
-  rm -f "${root_dir}/server.log" "${root_dir}/server.pid" "${root_dir}/.server.log.trim" || true
+  rm -f \
+    "${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}" \
+    "${root_dir}/${CFG_RUNTIME_SERVER_PID_FILE}" \
+    "${root_dir}/${CFG_RUNTIME_SERVER_LOG_TRIM_FILE}" || true
 }

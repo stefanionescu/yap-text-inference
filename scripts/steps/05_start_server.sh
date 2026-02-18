@@ -14,7 +14,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # Source dependencies
 source "${SCRIPT_DIR}/../lib/noise/python.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
-source "${SCRIPT_DIR}/../lib/runtime/restart_guard.sh"
+source "${SCRIPT_DIR}/../lib/runtime/restart/main.sh"
 source "${SCRIPT_DIR}/../lib/runtime/server.sh"
 source "${SCRIPT_DIR}/../lib/deps/venv/main.sh"
 source "${SCRIPT_DIR}/../engines/trt/detect.sh"

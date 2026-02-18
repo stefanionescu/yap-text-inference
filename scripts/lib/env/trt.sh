@@ -177,7 +177,7 @@ gpu_supports_fp8() {
 # 4bit -> int4_awq for all models
 # 8bit -> fp8 (L40S/H100) or int8_sq (A100)
 resolve_qformat() {
-  local quant_mode="${1:-4bit}"
+  local quant_mode="${1:-${CFG_TRT_QUANT_DEFAULT_MODE}}"
   local sm_arch="${2:-${GPU_SM_ARCH:-}}"
 
   case "${quant_mode}" in
@@ -186,16 +186,16 @@ resolve_qformat() {
       ;;
     8bit)
       if gpu_supports_fp8 "${sm_arch}"; then
-        echo "fp8"
+        echo "${CFG_TRT_QFORMAT_FP8}"
       else
-        echo "int8_sq"
+        echo "${CFG_TRT_QFORMAT_INT8_SQ}"
       fi
       ;;
     fp8)
-      echo "fp8"
+      echo "${CFG_TRT_QFORMAT_FP8}"
       ;;
     int8 | int8_sq)
-      echo "int8_sq"
+      echo "${CFG_TRT_QFORMAT_INT8_SQ}"
       ;;
     *)
       echo "${CFG_TRT_DEFAULT_QFORMAT}"
@@ -208,7 +208,7 @@ resolve_kv_cache_dtype() {
   local qformat="${1:-${CFG_TRT_DEFAULT_QFORMAT}}"
 
   case "${qformat}" in
-    fp8)
+    "${CFG_TRT_QFORMAT_FP8}")
       # FP8 KV cache for fp8 quantization
       echo "${CFG_TRT_DEFAULT_KV_CACHE_FP8}"
       ;;

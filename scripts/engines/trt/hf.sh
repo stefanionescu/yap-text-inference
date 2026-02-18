@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # =============================================================================
 # TRT-LLM Pre-Built Engine Detection from HuggingFace
 # =============================================================================
@@ -6,8 +7,10 @@
 # from HuggingFace repositories. Engines are GPU-specific and require exact
 # SM arch, TRT-LLM version, and CUDA version matching.
 
-_TRT_ENGINE_HF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_TRT_ENGINE_HF_ROOT="${ROOT_DIR:-$(cd "${_TRT_ENGINE_HF_DIR}/../../.." && pwd)}"
+_TRT_HF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_TRT_HF_ROOT="${ROOT_DIR:-$(cd "${_TRT_HF_DIR}/../../.." && pwd)}"
+# shellcheck source=../../config/values/trt.sh
+source "${_TRT_HF_DIR}/../../config/values/trt.sh"
 
 # =============================================================================
 # ENGINE LABEL PARSING
@@ -27,14 +30,14 @@ parse_engine_label() {
   local sm_arch trtllm_version cuda_version
 
   # Extract SM arch (first part before _trt-llm-)
-  sm_arch="${label%%_trt-llm-*}"
+  sm_arch="${label%%"${CFG_TRT_ENGINE_LABEL_TRTLLM_SEPARATOR}"*}"
 
   # Extract TRT-LLM version (between _trt-llm- and _cuda)
-  local rest="${label#*_trt-llm-}"
-  trtllm_version="${rest%%_cuda*}"
+  local rest="${label#*"${CFG_TRT_ENGINE_LABEL_TRTLLM_SEPARATOR}"}"
+  trtllm_version="${rest%%"${CFG_TRT_ENGINE_LABEL_CUDA_SEPARATOR}"*}"
 
   # Extract CUDA version (after _cuda)
-  cuda_version="${rest#*_cuda}"
+  cuda_version="${rest#*"${CFG_TRT_ENGINE_LABEL_CUDA_SEPARATOR}"}"
 
   if [ -z "${sm_arch}" ] || [ -z "${trtllm_version}" ] || [ -z "${cuda_version}" ]; then
     return 1
@@ -56,7 +59,7 @@ list_remote_engines() {
     return 1
   fi
 
-  local python_root="${ROOT_DIR:-${_TRT_ENGINE_HF_ROOT}}"
+  local python_root="${ROOT_DIR:-${_TRT_HF_ROOT}}"
   PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
     python -m src.scripts.trt.detection list-engines "${repo_id}" 2>/dev/null || true
 }
@@ -124,12 +127,6 @@ find_compatible_engine() {
     return 1
   fi
 
-  local current_sm="${GPU_SM_ARCH:-$(detect_sm_arch)}"
-  local current_trtllm
-  current_trtllm=$(detect_trtllm_version)
-  local current_cuda
-  current_cuda=$(detect_cuda_version)
-
   log_info "[engine] Checking for pre-built engines for this GPU..."
 
   local engines
@@ -176,7 +173,7 @@ download_prebuilt_engine() {
   if [ -z "${target_dir}" ]; then
     local model_name
     model_name=$(basename "${repo_id}")
-    target_dir="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}/${model_name}-trt-engine"
+    target_dir="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}/${model_name}${CFG_TRT_ENGINE_DIR_SUFFIX}"
   fi
 
   log_info "[engine] Downloading pre-built engine..."
@@ -185,7 +182,7 @@ download_prebuilt_engine() {
 
   mkdir -p "${target_dir}"
 
-  local python_root="${ROOT_DIR:-${_TRT_ENGINE_HF_ROOT}}"
+  local python_root="${ROOT_DIR:-${_TRT_HF_ROOT}}"
   local engine_dir
   engine_dir=$(PYTHONPATH="${python_root}${PYTHONPATH:+:${PYTHONPATH}}" \
     python -m src.scripts.trt.detection download-engine \

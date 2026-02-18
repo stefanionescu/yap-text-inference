@@ -6,6 +6,8 @@
 # Functions for building TensorRT-LLM engines from quantized checkpoints.
 
 _TRT_BUILD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/trt.sh
+source "${_TRT_BUILD_DIR}/../../config/values/trt.sh"
 
 # Source common GPU detection (if not already sourced)
 if ! type get_gpu_name >/dev/null 2>&1; then
@@ -18,7 +20,7 @@ if ! type find_compatible_engine >/dev/null 2>&1; then
 fi
 
 if ! type is_trt_prequant >/dev/null 2>&1; then
-  source "${_TRT_BUILD_DIR}/../../lib/common/model_detect.sh"
+  source "${_TRT_BUILD_DIR}/../../lib/common/model/detect.sh"
 fi
 
 if ! type trt_pipeline_run >/dev/null 2>&1; then
@@ -60,8 +62,8 @@ build_engine() {
   local max_seq_len=$((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN))
 
   # Suppress TRT-LLM log noise via environment
-  export TRTLLM_LOG_LEVEL="${TRTLLM_LOG_LEVEL:-error}"
-  export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore}"
+  export TRTLLM_LOG_LEVEL="${TRTLLM_LOG_LEVEL:-${CFG_TRT_BUILD_LOG_LEVEL}}"
+  export PYTHONWARNINGS="${PYTHONWARNINGS:-${CFG_TRT_BUILD_PYTHON_WARNINGS}}"
 
   # Build the engine
   local build_cmd=(
@@ -74,10 +76,10 @@ build_engine() {
     --use_paged_context_fmha enable
     --kv_cache_type paged
     --remove_input_padding enable
-    --max_input_len "${TRT_MAX_INPUT_LEN:-8192}"
+    --max_input_len "${TRT_MAX_INPUT_LEN:-${CFG_TRT_BUILD_FALLBACK_MAX_INPUT_LEN}}"
     --max_seq_len "${max_seq_len}"
-    --max_batch_size "${TRT_MAX_BATCH_SIZE:-16}"
-    --log_level error
+    --max_batch_size "${TRT_MAX_BATCH_SIZE:-${CFG_TRT_BUILD_FALLBACK_MAX_BATCH_SIZE}}"
+    --log_level "${CFG_TRT_BUILD_LOG_LEVEL}"
     --workers "$(nproc --all)"
   )
 
@@ -126,10 +128,10 @@ trtllm-build \\
   --use_paged_context_fmha enable \\
   --kv_cache_type paged \\
   --remove_input_padding enable \\
-  --max_input_len ${TRT_MAX_INPUT_LEN:-8192} \\
+  --max_input_len ${TRT_MAX_INPUT_LEN:-${CFG_TRT_BUILD_FALLBACK_MAX_INPUT_LEN}} \\
   --max_seq_len $((TRT_MAX_INPUT_LEN + TRT_MAX_OUTPUT_LEN)) \\
-  --max_batch_size ${TRT_MAX_BATCH_SIZE:-16} \\
-  --log_level error
+  --max_batch_size ${TRT_MAX_BATCH_SIZE:-${CFG_TRT_BUILD_FALLBACK_MAX_BATCH_SIZE}} \\
+  --log_level ${CFG_TRT_BUILD_LOG_LEVEL}
 EOF
   chmod +x "${cmd_file}"
 
@@ -173,10 +175,10 @@ EOF
   fi
 
   # Determine KV cache dtype based on quantization format
-  local kv_cache_dtype="int8"
-  case "${TRT_QFORMAT:-int4_awq}" in
-    fp8) kv_cache_dtype="fp8" ;;
-    *) kv_cache_dtype="int8" ;;
+  local kv_cache_dtype="${CFG_TRT_DEFAULT_KV_CACHE_INT8}"
+  case "${TRT_QFORMAT:-${CFG_TRT_DEFAULT_QFORMAT}}" in
+    "${CFG_TRT_QFORMAT_FP8}") kv_cache_dtype="${CFG_TRT_DEFAULT_KV_CACHE_FP8}" ;;
+    *) kv_cache_dtype="${CFG_TRT_DEFAULT_KV_CACHE_INT8}" ;;
   esac
 
   # Validate GPU_SM_ARCH is set (should be exported by gpu_init_detection)
@@ -190,11 +192,11 @@ EOF
   cat >"${meta_file}" <<EOF
 {
   "model_id": "${CHAT_MODEL:-unknown}",
-  "dtype": "${TRT_DTYPE:-float16}",
-  "quant_method": "${TRT_QFORMAT:-int4_awq}",
-  "max_batch_size": ${TRT_MAX_BATCH_SIZE:-16},
-  "max_input_len": ${TRT_MAX_INPUT_LEN:-8192},
-  "max_output_len": ${TRT_MAX_OUTPUT_LEN:-4096},
+  "dtype": "${TRT_DTYPE:-${CFG_TRT_DEFAULT_DTYPE}}",
+  "quant_method": "${TRT_QFORMAT:-${CFG_TRT_DEFAULT_QFORMAT}}",
+  "max_batch_size": ${TRT_MAX_BATCH_SIZE:-${CFG_TRT_BUILD_FALLBACK_MAX_BATCH_SIZE}},
+  "max_input_len": ${TRT_MAX_INPUT_LEN:-${CFG_TRT_BUILD_FALLBACK_MAX_INPUT_LEN}},
+  "max_output_len": ${TRT_MAX_OUTPUT_LEN:-${CFG_TRT_BUILD_FALLBACK_MAX_OUTPUT_LEN}},
   "quantization": ${quant_info},
   "tensorrt_llm_version": "${trtllm_ver}",
   "cuda_toolkit": "${cuda_ver}",
@@ -203,9 +205,9 @@ EOF
   "gpu_vram_gb": ${gpu_vram},
   "nvidia_driver": "${nvidia_driver}",
   "kv_cache_dtype": "${kv_cache_dtype}",
-  "awq_block_size": ${TRT_AWQ_BLOCK_SIZE:-128},
-  "calib_size": ${TRT_CALIB_SIZE:-256},
-  "calib_batch_size": ${TRT_CALIB_BATCH_SIZE:-16},
+  "awq_block_size": ${TRT_AWQ_BLOCK_SIZE:-${CFG_TRT_DEFAULT_AWQ_BLOCK_SIZE}},
+  "calib_size": ${TRT_CALIB_SIZE:-${CFG_TRT_BUILD_FALLBACK_CALIB_SIZE}},
+  "calib_batch_size": ${TRT_CALIB_BATCH_SIZE:-${CFG_TRT_BUILD_FALLBACK_CALIB_BATCH_SIZE}},
   "built_at": "$(date -Iseconds)"
 }
 EOF

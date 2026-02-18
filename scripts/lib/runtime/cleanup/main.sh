@@ -9,6 +9,7 @@ _CLEANUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_CLEANUP_DIR}/../../noise/python.sh"
 source "${_CLEANUP_DIR}/../../common/log.sh"
 source "${_CLEANUP_DIR}/../../deps/venv/main.sh"
+source "${_CLEANUP_DIR}/../../../config/values/runtime.sh"
 
 # Remove directories silently.
 # Usage: _cleanup_remove_dirs <dir1> [dir2] ...

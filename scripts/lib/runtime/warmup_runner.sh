@@ -8,6 +8,8 @@
 _WARMUP_RUNNER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../config/values/core.sh
 source "${_WARMUP_RUNNER_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/runtime.sh
+source "${_WARMUP_RUNNER_DIR}/../../config/values/runtime.sh"
 
 # =============================================================================
 # PERSONA VARIANT HANDLING
@@ -80,8 +82,8 @@ warmup_detect_persona_variants() {
   fi
 
   if [ "${#WARMUP_PERSONA_VARIANTS[@]}" -eq 0 ]; then
-    warmup_add_persona_variant "female" ""
-    warmup_add_persona_variant "male" ""
+    warmup_add_persona_variant "${CFG_WARMUP_DEFAULT_PERSONA_PRIMARY}" ""
+    warmup_add_persona_variant "${CFG_WARMUP_DEFAULT_PERSONA_SECONDARY}" ""
   fi
 }
 
@@ -131,7 +133,7 @@ warmup_run_with_retries() {
   local label="${1:-}"
   local log_prefix="${2:-run}"
   local py_bin="${3:-python}"
-  local log_dir="${4:-./logs}"
+  local log_dir="${4:-./${CFG_RUNTIME_LOG_DIR}}"
   local retries="${5:-1}"
   shift 5
   local -a cmd=("$@")
@@ -184,7 +186,7 @@ warmup_log_phase_result() {
   else
     echo "${line}" >&2
   fi
-  local server_log="${ROOT_DIR:-}/server.log"
+  local server_log="${ROOT_DIR:-}/${CFG_RUNTIME_SERVER_LOG_FILE}"
   if [ -n "${ROOT_DIR:-}" ]; then
     echo "${line}" >>"${server_log}"
   fi

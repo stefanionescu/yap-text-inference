@@ -8,6 +8,7 @@
 readonly CFG_PATTERN_NON_NEGATIVE_INT='^[0-9]+$'
 readonly CFG_PATTERN_POSITIVE_INT='^[1-9][0-9]*$'
 readonly CFG_PATTERN_BINARY_FLAG='^[01]$'
+readonly CFG_PATTERN_QWEN_MOE_SUFFIX='-a[0-9]+b'
 
 # shellcheck disable=SC2034
 readonly CFG_DEPLOY_MODE_BOTH="both"

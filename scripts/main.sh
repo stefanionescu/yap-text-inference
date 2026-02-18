@@ -22,8 +22,8 @@ source "${SCRIPT_DIR}/config/patterns.sh"
 source "${SCRIPT_DIR}/config/messages/main.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
-source "${SCRIPT_DIR}/lib/common/model_detect.sh"
-source "${SCRIPT_DIR}/lib/common/model_validate.sh"
+source "${SCRIPT_DIR}/lib/common/model/detect.sh"
+source "${SCRIPT_DIR}/lib/common/model/validate.sh"
 source "${SCRIPT_DIR}/lib/common/gpu_detect.sh"
 source "${SCRIPT_DIR}/engines/trt/detect.sh"
 source "${SCRIPT_DIR}/lib/common/cuda.sh"
@@ -32,7 +32,7 @@ source "${SCRIPT_DIR}/lib/deps/venv/main.sh"
 source "${SCRIPT_DIR}/lib/common/pytorch_guard.sh"
 
 # Runtime management
-source "${SCRIPT_DIR}/lib/runtime/restart_guard.sh"
+source "${SCRIPT_DIR}/lib/runtime/restart/main.sh"
 source "${SCRIPT_DIR}/lib/runtime/pipeline.sh"
 
 # Main script modules

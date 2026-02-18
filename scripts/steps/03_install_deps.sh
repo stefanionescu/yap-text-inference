@@ -79,7 +79,7 @@ if [ "${ENGINE_LOWER}" = "trt" ]; then
   # TRT requires CUDA 13.x validation and specific env vars
   source "${LIB_DIR}/env/trt.sh"
   source "${LIB_DIR}/deps/trt.sh"
-  source "${LIB_DIR}/deps/check.sh"
+  source "${LIB_DIR}/deps/check/main.sh"
   source "${SCRIPT_DIR}/../engines/trt/detect.sh"
   source "${SCRIPT_DIR}/../lib/trt/install.sh"
 

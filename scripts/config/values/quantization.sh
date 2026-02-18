@@ -6,8 +6,13 @@
 
 # shellcheck disable=SC2034
 readonly CFG_QUANT_MODE_8BIT_PLACEHOLDER="8bit"
+readonly CFG_QUANT_MODE_4BIT_PLACEHOLDER="4bit"
+readonly CFG_QUANT_MODE_AUTO="auto"
+readonly CFG_QUANT_MODE_TOOL_ONLY="tool-only"
 readonly CFG_QUANT_MODE_8BIT_BACKEND="fp8"
+readonly CFG_QUANT_MODE_FP8_BACKEND="fp8"
 readonly CFG_QUANT_MODE_4BIT_BACKEND="awq"
+readonly CFG_QUANT_MODE_GPTQ_ALIAS="gptq"
 readonly CFG_QUANT_MODE_GPTQ_BACKEND="gptq_marlin"
 
 # shellcheck disable=SC2034

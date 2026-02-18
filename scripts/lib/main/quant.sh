@@ -10,6 +10,8 @@ _MAIN_QUANT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_MAIN_QUANT_DIR}/../../config/values/core.sh"
 # shellcheck source=../../config/values/quantization.sh
 source "${_MAIN_QUANT_DIR}/../../config/values/quantization.sh"
+# shellcheck source=../../config/values/model.sh
+source "${_MAIN_QUANT_DIR}/../../config/values/model.sh"
 # shellcheck source=../../config/patterns.sh
 source "${_MAIN_QUANT_DIR}/../../config/patterns.sh"
 
@@ -26,8 +28,8 @@ resolve_4bit_backend() {
   local classification
   classification="$(classify_prequant "${chat_model}")"
   case "${classification}" in
-    gptq) echo "${CFG_QUANT_MODE_GPTQ_BACKEND}" ;;
-    awq) echo "${CFG_QUANT_MODE_4BIT_BACKEND}" ;;
+    "${CFG_MODEL_TOKEN_GPTQ}") echo "${CFG_QUANT_MODE_GPTQ_BACKEND}" ;;
+    "${CFG_MODEL_TOKEN_AWQ}") echo "${CFG_QUANT_MODE_4BIT_BACKEND}" ;;
     *) echo "${CFG_QUANT_MODE_4BIT_BACKEND}" ;;
   esac
 }
@@ -38,12 +40,12 @@ resolve_4bit_backend() {
 quant_resolve_settings() {
   local deploy_mode="$1"
   local chat_model="$2"
-  local forced_mode="${3:-auto}"
+  local forced_mode="${3:-${CFG_QUANT_MODE_AUTO}}"
   local chat_hint="${4:-}"
   local current_chat_quant="${5:-}"
 
   if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
-    QUANT_MODE="tool-only"
+    QUANT_MODE="${CFG_QUANT_MODE_TOOL_ONLY}"
     unset CHAT_QUANTIZATION
     export QUANT_MODE
     return
@@ -58,20 +60,20 @@ quant_resolve_settings() {
 
   if [ -z "${resolved_backend}" ]; then
     case "${forced_mode}" in
-      4bit)
-        resolved_mode="4bit"
+      "${CFG_QUANT_MODE_4BIT_PLACEHOLDER}")
+        resolved_mode="${CFG_QUANT_MODE_4BIT_PLACEHOLDER}"
         resolved_backend="$(resolve_4bit_backend "${chat_model}")"
         ;;
-      8bit)
-        resolved_mode="8bit"
+      "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}")
+        resolved_mode="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
         resolved_backend="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
         ;;
-      auto | "")
+      "${CFG_QUANT_MODE_AUTO}" | "")
         if [ -n "${chat_hint}" ]; then
-          resolved_mode="4bit"
+          resolved_mode="${CFG_QUANT_MODE_4BIT_PLACEHOLDER}"
           resolved_backend="${chat_hint}"
         else
-          resolved_mode="8bit"
+          resolved_mode="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
           resolved_backend="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
         fi
         ;;
@@ -85,17 +87,17 @@ quant_resolve_settings() {
     local prequant_kind
     prequant_kind="$(classify_prequant "${chat_model}")"
     case "${prequant_kind}" in
-      awq)
+      "${CFG_MODEL_TOKEN_AWQ}")
         if [ "${resolved_backend}" != "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
           log_warn "[quant] ⚠ Chat model '${chat_model}' is already 4-bit (AWQ/W4A16); overriding to 4bit runtime."
-          resolved_mode="4bit"
+          resolved_mode="${CFG_QUANT_MODE_4BIT_PLACEHOLDER}"
           resolved_backend="${CFG_QUANT_MODE_4BIT_BACKEND}"
         fi
         ;;
-      gptq)
+      "${CFG_MODEL_TOKEN_GPTQ}")
         if [ "${resolved_backend}" != "${CFG_QUANT_MODE_GPTQ_BACKEND}" ]; then
           log_warn "[quant] ⚠ Chat model '${chat_model}' is GPTQ; overriding to 4bit GPTQ runtime."
-          resolved_mode="4bit"
+          resolved_mode="${CFG_QUANT_MODE_4BIT_PLACEHOLDER}"
           resolved_backend="${CFG_QUANT_MODE_GPTQ_BACKEND}"
         fi
         ;;
@@ -108,11 +110,11 @@ quant_resolve_settings() {
 
   if [ -z "${resolved_mode}" ]; then
     case "${resolved_backend}" in
-      "${CFG_QUANT_MODE_4BIT_BACKEND}" | gptq | "${CFG_QUANT_MODE_GPTQ_BACKEND}" | 4bit)
-        resolved_mode="4bit"
+      "${CFG_QUANT_MODE_4BIT_BACKEND}" | "${CFG_QUANT_MODE_GPTQ_ALIAS}" | "${CFG_QUANT_MODE_GPTQ_BACKEND}" | "${CFG_QUANT_MODE_4BIT_PLACEHOLDER}")
+        resolved_mode="${CFG_QUANT_MODE_4BIT_PLACEHOLDER}"
         ;;
       *)
-        resolved_mode="8bit"
+        resolved_mode="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
         ;;
     esac
   fi
@@ -128,7 +130,7 @@ apply_quantization() {
   quant_resolve_settings \
     "${DEPLOY_MODE:-}" \
     "${CHAT_MODEL_NAME:-}" \
-    "${1:-auto}" \
+    "${1:-${CFG_QUANT_MODE_AUTO}}" \
     "${2:-}" \
     "${CHAT_QUANTIZATION:-}"
 }

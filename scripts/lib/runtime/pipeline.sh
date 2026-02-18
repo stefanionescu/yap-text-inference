@@ -11,13 +11,15 @@ _RUNTIME_PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_RUNTIME_PIPELINE_DIR}/../noise/logging.sh"
 # shellcheck source=../../config/values/core.sh
 source "${_RUNTIME_PIPELINE_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/runtime.sh
+source "${_RUNTIME_PIPELINE_DIR}/../../config/values/runtime.sh"
 
 # Prepare server.log for a new run, trimming oversized files and ensuring the
 # .run directory exists so downstream helpers can rely on pid/log state.
 prepare_log() {
   local root_dir="${1:-${ROOT_DIR:-}}"
-  local server_log="${root_dir}/server.log"
-  mkdir -p "${root_dir}/.run"
+  local server_log="${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}"
+  mkdir -p "${root_dir}/${CFG_RUNTIME_RUN_DIR}"
 
   if [ -f "${server_log}" ]; then
     local max_keep_bytes="${CFG_MAX_SERVER_LOG_BYTES}"
@@ -25,7 +27,7 @@ prepare_log() {
     size=$(wc -c <"${server_log}" 2>/dev/null || echo 0)
     if [ "${size}" -gt "${max_keep_bytes}" ]; then
       local offset=$((size - max_keep_bytes))
-      local tmp_file="${root_dir}/.server.log.trim"
+      local tmp_file="${root_dir}/${CFG_RUNTIME_SERVER_LOG_TRIM_FILE}"
       if tail -c "${max_keep_bytes}" "${server_log}" >"${tmp_file}" 2>/dev/null; then
         mv "${tmp_file}" "${server_log}" 2>/dev/null || true
         local size_mb=$((max_keep_bytes / 1024 / 1024))
@@ -58,7 +60,7 @@ run_background() {
 
   setsid nohup bash -lc "${command_string}" </dev/null >"${server_log}" 2>&1 &
   local bg_pid=$!
-  echo "${bg_pid}" >"${root_dir}/.run/deployment.pid"
+  echo "${bg_pid}" >"${root_dir}/${CFG_RUNTIME_DEPLOYMENT_PID_FILE}"
 
   log_info "[main] Deployment started (PID: ${bg_pid})"
   log_info "[main] To stop: bash scripts/stop.sh"
@@ -66,8 +68,8 @@ run_background() {
   if [ "${follow_logs}" = "1" ]; then
     log_blank
     touch "${server_log}" || true
-    local warmup_lock="${root_dir}/.run/warmup.lock"
-    local warmup_capture="${root_dir}/logs/warmup.server.log"
+    local warmup_lock="${root_dir}/${CFG_RUNTIME_WARMUP_LOCK_FILE}"
+    local warmup_capture="${root_dir}/${CFG_RUNTIME_WARMUP_CAPTURE_FILE}"
     noise_follow_server_logs "${server_log}" "${warmup_lock}" "${warmup_capture}"
     return $?
   fi

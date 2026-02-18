@@ -8,12 +8,13 @@
 RESTART_RECONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${RESTART_RECONFIG_DIR}/helpers.sh"
 source "${RESTART_RECONFIG_DIR}/../../../config/values/core.sh"
+source "${RESTART_RECONFIG_DIR}/../../../config/values/runtime.sh"
 source "${RESTART_RECONFIG_DIR}/../../../config/patterns.sh"
 source "${RESTART_RECONFIG_DIR}/../../../config/messages/restart.sh"
 
 clear_model_artifacts() {
   # Clear stale TRT engine path reference
-  rm -f "${ROOT_DIR}/.run/trt_engine_dir.env" 2>/dev/null || true
+  rm -f "${ROOT_DIR}/${CFG_RUNTIME_TRT_ENGINE_ENV_FILE}" 2>/dev/null || true
 
   # Model-specific artifacts (always clear on model switch)
   local model_paths=(
@@ -186,7 +187,7 @@ reconfigure_models() {
   if [ "${HF_ENGINE_PUSH:-0}" = "1" ] && [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ] && [ "${USING_PREBUILT_ENGINE:-0}" != "1" ]; then
     # Load engine dir from saved env if not already set
     if [ -z "${TRT_ENGINE_DIR:-}" ]; then
-      local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
+      local trt_env_file="${ROOT_DIR}/${CFG_RUNTIME_TRT_ENGINE_ENV_FILE}"
       if [ -f "${trt_env_file}" ]; then
         # shellcheck disable=SC1090
         source "${trt_env_file}"

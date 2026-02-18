@@ -9,6 +9,7 @@ if [ -z "${ROOT_DIR:-}" ]; then
   ROOT_DIR="$(cd "${_TRT_PIPELINE_DIR}/../../.." && pwd)"
 fi
 source "${_TRT_PIPELINE_DIR}/../../config/values/core.sh"
+source "${_TRT_PIPELINE_DIR}/../../config/values/runtime.sh"
 source "${_TRT_PIPELINE_DIR}/../../config/patterns.sh"
 
 trt_export_quant_env() {
@@ -181,8 +182,8 @@ trt_pipeline_prepare_engine() {
     return 1
   fi
 
-  mkdir -p "${ROOT_DIR}/.run"
-  echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" >"${ROOT_DIR}/.run/trt_engine_dir.env"
+  mkdir -p "${ROOT_DIR}/${CFG_RUNTIME_RUN_DIR}"
+  echo "export TRT_ENGINE_DIR='${TRT_ENGINE_DIR}'" >"${ROOT_DIR}/${CFG_RUNTIME_TRT_ENGINE_ENV_FILE}"
   return 0
 }
 
