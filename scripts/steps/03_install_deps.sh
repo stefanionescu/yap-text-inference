@@ -79,7 +79,7 @@ if [ "${ENGINE_LOWER}" = "trt" ]; then
   source "${LIB_DIR}/deps/trt.sh"
   source "${LIB_DIR}/deps/check.sh"
   source "${SCRIPT_DIR}/../engines/trt/detect.sh"
-  source "${SCRIPT_DIR}/../engines/trt/install.sh"
+  source "${SCRIPT_DIR}/../lib/trt/install.sh"
 
   export_env
 

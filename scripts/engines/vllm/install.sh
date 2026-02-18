@@ -8,7 +8,7 @@
 _VLLM_INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_VLLM_INSTALL_DIR}/detect.sh"
 source "${_VLLM_INSTALL_DIR}/../../lib/env/flashinfer.sh"
-source "${_VLLM_INSTALL_DIR}/../../lib/deps/venv.sh"
+source "${_VLLM_INSTALL_DIR}/../../lib/deps/venv/main.sh"
 
 # Validate vLLM installation
 vllm_validate_installation() {

@@ -17,7 +17,7 @@ source "${SCRIPT_DIR}/lib/noise/python.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/common/log.sh"
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/deps/venv.sh"
+source "${SCRIPT_DIR}/lib/deps/venv/main.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/env/runtime.sh"
 

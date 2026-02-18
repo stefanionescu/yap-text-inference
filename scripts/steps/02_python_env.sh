@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "${SCRIPT_DIR}/../lib/noise/python.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
-source "${SCRIPT_DIR}/../lib/deps/venv.sh"
+source "${SCRIPT_DIR}/../lib/deps/venv/main.sh"
 
 ENGINE="${INFERENCE_ENGINE:-vllm}"
 ENGINE_UPPER="$(echo "${ENGINE}" | tr '[:lower:]' '[:upper:]')"

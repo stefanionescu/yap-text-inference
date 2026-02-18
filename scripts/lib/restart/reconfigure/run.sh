@@ -3,7 +3,10 @@
 # =============================================================================
 # Restart Reconfiguration Actions
 # =============================================================================
-# Sourced by scripts/lib/restart/reconfigure.sh after helper functions are defined.
+# Orchestrates reconfigure flow and requires helpers from helpers.sh.
+
+RESTART_RECONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${RESTART_RECONFIG_DIR}/helpers.sh"
 
 clear_model_artifacts() {
   # Clear stale TRT engine path reference
