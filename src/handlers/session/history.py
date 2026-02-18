@@ -5,7 +5,7 @@ This module handles the transformation between structured conversation history
 
 1. Rendering: Converting structured turns to text format for prompt building
 2. Trimming: Keeping history within token budgets for both chat and tool models
-3. Extraction: Getting user-only texts for classifier/tool routing
+3. Extraction: Getting user-only texts for tool routing
 
 For parsing functions (text/JSON to HistoryTurn), see the parsing module.
 
@@ -74,7 +74,7 @@ def trim_history(
     Supplying a lower trigger (e.g., TRIMMED_HISTORY_LENGTH) forces eager
     trimming, which is useful when importing client-provided history.
 
-    When classifier-only, no trimming is done here - the classifier adapter
+    When tool-only, no trimming is done here - the tool adapter
     handles its own trimming using its own tokenizer.
     """
     if not state.history_turns:
@@ -122,7 +122,7 @@ def _trim_history_tool(state: SessionState, *, max_tokens: int | None = None) ->
     """Trim history turns so user-only tokens stay within TOOL_HISTORY_TOKENS.
 
     In tool-only deployments, the chat trimming path is skipped.
-    This keeps the in-memory turn list bounded to what the classifier
+    This keeps the in-memory turn list bounded to what the tool model
     can actually consume.
     """
     if not state.history_turns:
@@ -161,7 +161,7 @@ def _count_user_tokens_tool(user_texts: list[str]) -> int:
 
 
 def render_tool_history_text(turns: list[HistoryTurn], *, max_tokens: int | None = None) -> str:
-    """Render user-only history trimmed for the classifier/tool model."""
+    """Render user-only history trimmed for the tool model."""
     if not DEPLOY_TOOL:
         return ""
     user_texts = get_user_texts(turns)
@@ -178,7 +178,7 @@ def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
     """Extract raw user texts from history turns.
 
     Returns list of user utterances (most recent last).
-    Trimming is handled by the classifier adapter using its own tokenizer.
+    Trimming is handled by the tool adapter using its own tokenizer.
     """
     if not turns:
         return []
@@ -216,7 +216,7 @@ class HistoryController:
         return get_user_texts(state.history_turns)
 
     def get_tool_history_text(self, state: SessionState, *, max_tokens: int | None = None) -> str:
-        """Get trimmed user-only history for the classifier/tool model."""
+        """Get trimmed user-only history for the tool model."""
         trim_history(state, tool_history_tokens=max_tokens)
         return render_tool_history_text(state.history_turns, max_tokens=max_tokens)
 

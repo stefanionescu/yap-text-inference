@@ -10,7 +10,7 @@ ensure_cuda_ready_for_engine() {
   local engine="${INFERENCE_ENGINE:-trt}"
   local deploy_mode="${DEPLOY_MODE:-both}"
 
-  # Tool-only mode uses plain PyTorch classifier, no TRT/vLLM engine needed
+  # Tool-only mode uses plain PyTorch tool model, no TRT/vLLM engine needed
   if [ "${deploy_mode}" = "tool" ]; then
     return 0
   fi

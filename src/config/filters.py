@@ -143,14 +143,14 @@ VLLM_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 
 # ============================================================================
-# TOOL CLASSIFIER LOG NOISE PATTERNS
+# TOOL LOG NOISE PATTERNS
 # ============================================================================
 
-# Patterns for suppressing tool classifier warmup and dependency install noise.
-# These match pip output and classifier initialization logs during tool deployment.
+# Patterns for suppressing tool model warmup and dependency install noise.
+# These match pip output and tool initialization logs during tool deployment.
 TOOL_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
-    # Classifier ready logs from src.classifier.adapter
-    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.classifier\.adapter:\d+\]"),
+    # Tool ready logs from src.tool.adapter
+    re.compile(r"^INFO\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[src\.tool\.adapter:\d+\]"),
     # pip install output lines
     re.compile(
         r"^(?:Requirement already satisfied|Collecting|Downloading"
@@ -301,7 +301,7 @@ __all__ = [
     "TRTLLM_NOISE_PATTERNS",
     # vLLM log noise patterns
     "VLLM_NOISE_PATTERNS",
-    # Tool classifier log noise patterns
+    # Tool log noise patterns
     "TOOL_NOISE_PATTERNS",
     # LLMCompressor log noise patterns
     "LLMCOMPRESSOR_NOISE_PATTERNS",

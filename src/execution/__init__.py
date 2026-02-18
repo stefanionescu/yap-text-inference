@@ -14,13 +14,12 @@ chat/:
     - controller.py: Stream buffering, cancellation, timeout handling
 
 tool/:
-    Tool/classifier integration:
-    - runner.py: Tool call execution with language filter + classifier
-    - parser.py: Parse tool results from classifier
-    - language.py: English detection filter
+    Tool integration:
+    - runner.py: Tool call execution with tool model
+    - parser.py: Parse tool results from tool model
 
 Workflow Overview:
-    User Message -> Language Filter -> Tool Classifier -> Chat Model -> Response
+    User Message -> Tool Model -> Chat Model -> Response
 
     If tool detects screenshot request:
         Prefix user message with "CHECK SCREEN" and run chat

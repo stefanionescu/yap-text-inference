@@ -29,7 +29,7 @@ DEPLOY_MODE="${DEPLOY_MODE:-both}"
 # =============================================================================
 # TOOL-ONLY MODE (LIGHTWEIGHT)
 # =============================================================================
-# Tool-only deployments use a PyTorch classifier (no TRT-LLM or vLLM needed).
+# Tool-only deployments use a PyTorch tool model (no TRT-LLM or vLLM needed).
 # Skip heavy engine dependencies and use minimal requirements.
 
 if [ "${DEPLOY_MODE}" = "tool" ]; then

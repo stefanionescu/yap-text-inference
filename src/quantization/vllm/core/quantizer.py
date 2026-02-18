@@ -21,12 +21,12 @@ CHAT_TOTAL_POLICY = TotalLengthPolicy(
 )
 
 
-def _is_classifier_model_path(model_path: str) -> bool:
-    """Check if model path refers to a classifier model."""
+def _is_tool_model_path(model_path: str) -> bool:
+    """Check if model path refers to a tool model."""
     # Import here to avoid circular imports
-    from src.helpers.models import is_classifier_model  # noqa: PLC0415
+    from src.helpers.models import is_tool_model  # noqa: PLC0415
 
-    return is_classifier_model(model_path)
+    return is_tool_model(model_path)
 
 
 def compute_chat_calibration_seqlen(requested: int) -> int:
@@ -48,13 +48,13 @@ class AWQQuantizer:
     ) -> bool:
         """Quantize a model to 4-bit AWQ using llmcompressor.
 
-        Raises ValueError if model is a classifier (not supported).
+        Raises ValueError if model is a tool model (not supported).
         """
-        # Block classifier models from quantization
-        if _is_classifier_model_path(model_path):
+        # Block tool models from quantization
+        if _is_tool_model_path(model_path):
             raise ValueError(
-                f"Cannot quantize classifier model '{model_path}'. "
-                "Classifier models use transformers AutoModelForSequenceClassification, "
+                f"Cannot quantize tool model '{model_path}'. "
+                "Tool models use transformers AutoModelForSequenceClassification, "
                 "not autoregressive LLMs. They don't support AWQ quantization."
             )
 

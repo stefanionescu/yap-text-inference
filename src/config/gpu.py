@@ -1,7 +1,7 @@
 """GPU memory and architecture configuration.
 
 This module manages GPU resource allocation between the chat engine and
-tool classifier. When both are deployed on the same GPU, memory is
+tool model. When both are deployed on the same GPU, memory is
 partitioned to prevent OOM errors.
 
 Memory Allocation Strategy:
@@ -16,7 +16,7 @@ The remaining memory is reserved for:
 
 Environment Variables:
     CHAT_GPU_FRAC: Fraction of GPU memory for chat engine (0.0-1.0)
-    TOOL_GPU_FRAC: Fraction of GPU memory for classifier (0.0-1.0)
+    TOOL_GPU_FRAC: Fraction of GPU memory for tool model (0.0-1.0)
     KV_DTYPE: KV cache data type ('auto', 'fp8', 'int8')
     GPU_SM_ARCH: GPU SM architecture for FP8 support detection
 """
@@ -31,9 +31,9 @@ from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
 # ============================================================================
 # GPU Memory Allocation
 # ============================================================================
-# Partition GPU memory between chat engine and classifier to prevent OOM.
+# Partition GPU memory between chat engine and tool model to prevent OOM.
 # The chat engine (vLLM/TRT) needs most of the memory for model weights
-# and KV cache. The classifier is much smaller but still needs some space.
+# and KV cache. The tool model is much smaller but still needs some space.
 
 CHAT_GPU_FRAC, TOOL_GPU_FRAC = resolve_gpu_fracs(DEPLOY_CHAT, DEPLOY_TOOL)
 

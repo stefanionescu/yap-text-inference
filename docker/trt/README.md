@@ -41,7 +41,7 @@ docker run -d --gpus all --name yap-server \
 | `CHAT_MODEL` | If chat/both | HF repo for tokenizer/checkpoint |
 | `TRT_ENGINE_REPO` | No | HF repo with pre-built engines (defaults to `CHAT_MODEL`) |
 | `TRT_ENGINE_LABEL` | If chat/both | Engine directory (e.g., `sm90_trt-llm-0.17.0_cuda12.8`) |
-| `TOOL_MODEL` | If tool/both | Tool classifier HF repo |
+| `TOOL_MODEL` | If tool/both | Tool model HF repo |
 | `TAG` | Yes | Image tag (must start with `trt-`) |
 | `HF_TOKEN` | If private | HuggingFace token |
 

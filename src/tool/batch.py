@@ -1,4 +1,4 @@
-"""Micro-batching primitives for classifier inference.
+"""Micro-batching primitives for tool inference.
 
 This module provides infrastructure for accumulating individual classification
 requests into batches for efficient GPU inference. Key components:

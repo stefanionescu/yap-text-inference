@@ -6,14 +6,14 @@ This module orchestrates log filtering across multiple libraries:
 - TensorRT-LLM: Noise suppression via stream filters
 - vLLM: Engine initialization and worker process output
 - LLMCompressor/AutoAWQ: Calibration progress bars
-- Tool classifier: Warmup logs and pip install output
+- Tool: Warmup logs and pip install output
 
 Controlled by environment variables:
 - SHOW_HF_LOGS: Enable HuggingFace progress bars (default: False)
 - SHOW_TRT_LOGS: Enable TensorRT-LLM verbose output (default: False)
 - SHOW_VLLM_LOGS: Enable vLLM engine initialization output (default: False)
 - SHOW_LLMCOMPRESSOR_LOGS: Enable LLMCompressor/AutoAWQ calibration output (default: False)
-- SHOW_TOOL_LOGS: Enable tool classifier warmup and install output (default: False)
+- SHOW_TOOL_LOGS: Enable tool warmup and install output (default: False)
 
 Usage:
     # Call configure() early, before other libraries are imported
@@ -74,7 +74,7 @@ def configure_llmcompressor_logging() -> None:
 
 
 def configure_tool_logging() -> None:
-    """Configure tool classifier logging."""
+    """Configure tool logging."""
     tool_filters.configure_tool_logging()
 
 
@@ -123,7 +123,7 @@ def configure() -> None:
     else:
         logger.debug("LLMCompressor logs enabled via SHOW_LLMCOMPRESSOR_LOGS")
 
-    # Tool classifier noise suppression
+    # Tool noise suppression
     if not show_tool_logs:
         configure_tool_logging()
     else:

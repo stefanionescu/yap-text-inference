@@ -15,7 +15,7 @@ Pre-Quantized Models:
     - ALLOWED_TRT_QUANT_CHAT_MODELS: AWQ/FP8 models built for TRT-LLM
 
 Tool Models (ALLOWED_TOOL_MODELS):
-    Classifier models for screenshot intent detection. These use
+    Tool models for screenshot intent detection. These use
     transformers AutoModelForSequenceClassification, not vLLM.
 
 Adding New Models:

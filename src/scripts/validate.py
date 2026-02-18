@@ -67,7 +67,7 @@ def validate_models(
         if not tool_model:
             errors.append("TOOL_MODEL is required when DEPLOY_MODE='both' or 'tool'")
         elif tool_model not in ALLOWED_TOOL_MODELS and not os.path.exists(tool_model):
-            errors.append(f"TOOL_MODEL must be one of classifier models {ALLOWED_TOOL_MODELS}, got: {tool_model}")
+            errors.append(f"TOOL_MODEL must be one of tool models {ALLOWED_TOOL_MODELS}, got: {tool_model}")
 
     # AWQ + GPTQ conflict check
     if (

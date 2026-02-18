@@ -67,12 +67,8 @@ async def dispatch_execution(
 
 async def _run_sequential(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
     """Run sequential tool-then-chat execution."""
-    if (
-        runtime_deps.chat_engine is None
-        or runtime_deps.classifier_adapter is None
-        or runtime_deps.chat_tokenizer is None
-    ):
-        raise RuntimeError("Sequential execution requires chat engine, chat tokenizer, and classifier adapter")
+    if runtime_deps.chat_engine is None or runtime_deps.tool_adapter is None or runtime_deps.chat_tokenizer is None:
+        raise RuntimeError("Sequential execution requires chat engine, chat tokenizer, and tool adapter")
     logger.info("handle_start: sequential execution session_id=%s", plan.session_id)
     await run_execution(
         ws,
@@ -87,8 +83,7 @@ async def _run_sequential(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeD
         session_handler=runtime_deps.session_handler,
         chat_engine=runtime_deps.chat_engine,
         chat_tokenizer=runtime_deps.chat_tokenizer,
-        classifier_adapter=runtime_deps.classifier_adapter,
-        language_detector=runtime_deps.tool_language_detector,
+        tool_adapter=runtime_deps.tool_adapter,
     )
 
 
@@ -123,8 +118,8 @@ async def _run_chat_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
 
 async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
     """Run tool-only classification execution."""
-    if runtime_deps.classifier_adapter is None:
-        raise RuntimeError("Tool-only execution requires classifier adapter")
+    if runtime_deps.tool_adapter is None:
+        raise RuntimeError("Tool-only execution requires tool adapter")
     logger.info("handle_start: tool-only routing session_id=%s", plan.session_id)
     try:
         tool_res = await asyncio.wait_for(
@@ -132,8 +127,7 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
                 plan.session_id,
                 plan.user_utt,
                 session_handler=runtime_deps.session_handler,
-                classifier_adapter=runtime_deps.classifier_adapter,
-                language_detector=runtime_deps.tool_language_detector,
+                tool_adapter=runtime_deps.tool_adapter,
                 mark_active=False,
             ),
             timeout=TOOL_TIMEOUT_S,

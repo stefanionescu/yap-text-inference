@@ -11,7 +11,7 @@ import sys
 import argparse
 
 from src.state import CalibrationConfig
-from src.helpers.models import is_classifier_model
+from src.helpers.models import is_tool_model
 from src.quantization.vllm.core import AWQQuantizer
 
 
@@ -45,10 +45,10 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    # Block classifier models from quantization
-    if is_classifier_model(args.model):
-        print(f"[awq] ERROR: Cannot quantize classifier model '{args.model}'")
-        print("[awq] Classifier models use transformers AutoModelForSequenceClassification,")
+    # Block tool models from quantization
+    if is_tool_model(args.model):
+        print(f"[awq] ERROR: Cannot quantize tool model '{args.model}'")
+        print("[awq] Tool models use transformers AutoModelForSequenceClassification,")
         print("[awq] not autoregressive LLMs. They don't support AWQ quantization.")
         return 1
 

@@ -6,7 +6,7 @@ This module re-exports configuration constants from smaller modules:
 - engine: inference engine selection
 - trt: TensorRT-LLM specific settings
 - chat: chat behavior settings
-- tool: tool classifier settings
+- tool: tool model settings
 - models: allowlists
 - limits: token and concurrency limits
 - secrets: secrets like API_KEY
@@ -18,20 +18,13 @@ from .gpu import KV_DTYPE, GPU_SM_ARCH, CHAT_GPU_FRAC, TOOL_GPU_FRAC
 from .deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_MODE, DEPLOY_TOOL, HF_REPO_PATTERN
 from .quantization import TRT_FP8_SM_ARCHS, SUPPORTED_ENGINES, VLLM_QUANTIZATIONS, QUANT_CONFIG_FILENAMES
 from .telemetry import SENTRY_DSN, AXIOM_DATASET, CLOUD_PLATFORM, AXIOM_API_TOKEN, OTEL_SERVICE_NAME, classify_error
+from .tool import TOOL_COMPILE, TOOL_MAX_LENGTH, TOOL_HISTORY_TOKENS, TOOL_DECISION_THRESHOLD, TOOL_MODEL_BATCH_CONFIG
 from .engine import (
     INFERENCE_ENGINE,
     CHAT_QUANTIZATION,
     AWQ_METADATA_FILENAME,
     DEFAULT_MAX_BATCHED_TOKENS,
     UNSUPPORTED_QUANT_DTYPE_FIELDS,
-)
-from .tool import (
-    TOOL_COMPILE,
-    TOOL_MAX_LENGTH,
-    TOOL_HISTORY_TOKENS,
-    TOOL_LANGUAGE_FILTER,
-    TOOL_DECISION_THRESHOLD,
-    TOOL_MODEL_BATCH_CONFIG,
 )
 from .models import (
     ALLOWED_TOOL_MODELS,
@@ -147,7 +140,6 @@ __all__ = [
     "CACHE_RESET_INTERVAL_SECONDS",
     "CACHE_RESET_MIN_SESSION_SECONDS",
     # tool
-    "TOOL_LANGUAGE_FILTER",
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",

@@ -82,7 +82,7 @@ usage() {
   echo "  TRT_ENGINE_LABEL    - Engine directory name in the repo (required for chat/both)"
   echo "                        Format: sm{arch}_trt-llm-{version}_cuda{version}"
   echo "                        Example: sm90_trt-llm-0.17.0_cuda12.8"
-  echo "  TOOL_MODEL          - Tool classifier model HF repo (required for tool/both)"
+  echo "  TOOL_MODEL          - Tool model HF repo (required for tool/both)"
   echo "  TAG                 - Image tag (MUST start with 'trt-')"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (for private repos)"

@@ -93,7 +93,7 @@ log_server_config() {
   esac
 
   if [ "${deploy_mode}" = "tool" ]; then
-    log_info "[server]   QUANT_MODE=tool-only (classifier-only)"
+    log_info "[server]   QUANT_MODE=tool-only"
   else
     log_info "[server]   QUANT_MODE=${QUANT_MODE:-auto}"
     log_info "[server]   CHAT_QUANTIZATION=${CHAT_QUANTIZATION:-auto}"

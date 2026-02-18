@@ -9,7 +9,7 @@ import os
 # Chat/text generation hard timeout in seconds
 GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "60"))
 
-# Tool router (classifier) timeout in seconds
+# Tool router timeout in seconds
 TOOL_TIMEOUT_S = float(os.getenv("TOOL_TIMEOUT_S", "10"))
 
 # Sessions are evicted after this many seconds of inactivity

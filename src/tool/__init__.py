@@ -1,16 +1,16 @@
-"""Classifier package for screenshot intent detection.
+"""Tool package for screenshot intent detection.
 
-This package provides a lightweight classifier for detecting when users
+This package provides a lightweight tool model for detecting when users
 want to take a screenshot. Supports BERT-style and Longformer models.
 
 Architecture:
-    ClassifierToolAdapter:
+    ToolAdapter:
         High-level interface that handles:
         - Input formatting (combining history + current utterance)
         - Threshold-based decision (probability -> yes/no)
         - GPU memory limit enforcement
 
-    TorchClassifierBackend:
+    TorchToolBackend:
         PyTorch inference backend supporting:
         - BERT-style models (DistilBERT, RoBERTa, etc.)
         - Longformer models (for longer context)
@@ -32,20 +32,20 @@ Micro-batching parameters (batch size, delay) are hardcoded per model
 in src.config.models.TOOL_MODEL_BATCH_CONFIG.
 
 Usage:
-    from src.classifier import get_classifier_adapter
+    from src.tool import get_tool_adapter
 
-    adapter = get_classifier_adapter()  # configured during runtime bootstrap
+    adapter = get_tool_adapter()  # configured during runtime bootstrap
     user_history = session_handler.get_user_history_text(session_id)
     result = adapter.run_tool_inference(user_utt, user_history)
 """
 
 from __future__ import annotations
 
-from .adapter import ClassifierToolAdapter
-from .registry import get_classifier_adapter, reset_classifier_adapter
+from .adapter import ToolAdapter
+from .registry import get_tool_adapter, reset_tool_adapter
 
 __all__ = [
-    "ClassifierToolAdapter",
-    "get_classifier_adapter",
-    "reset_classifier_adapter",
+    "ToolAdapter",
+    "get_tool_adapter",
+    "reset_tool_adapter",
 ]

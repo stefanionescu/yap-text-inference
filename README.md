@@ -7,7 +7,7 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
 - Either chat/tool independently or both together
 - FastAPI + WebSocket streaming
 
-> **How tool calls work:** The tool model is a small classifier (`AutoModelForSequenceClassification`) that decides if the client should capture a screenshot.
+> **How tool calls work:** The tool model is a small sequence classification model (`AutoModelForSequenceClassification`) that decides if the client should capture a screenshot.
 
 ## Contents
 
@@ -66,11 +66,11 @@ Default GPU allocation:
 
 Tool model default: `yapwithai/yap-longformer-screenshot-intent`. Override with `TOOL_MODEL` (must be compatible with `AutoModelForSequenceClassification`).
 
-Tool classifier token budgets are model-aware when not explicitly configured:
-- Longformer-based tool models default to a `1536` token classifier window.
-- BERT/ModernBERT-based tool models default to a `512` token classifier window.
+Tool model token budgets are model-aware when not explicitly configured:
+- Longformer-based tool models default to a `1536` token context window.
+- BERT/ModernBERT-based tool models default to a `512` token context window.
 - Set `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS` to override defaults.
-- If `TOOL_HISTORY_TOKENS` is higher than the classifier window, it is clamped to fit.
+- If `TOOL_HISTORY_TOKENS` is higher than the tool model's context window, it is clamped to fit.
 - If the newest user message alone exceeds the tool history budget, the server keeps the latest tail that fits instead of dropping the message.
 
 Examples:

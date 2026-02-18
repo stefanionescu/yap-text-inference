@@ -4,7 +4,7 @@ This module implements the main execution workflow that processes user messages
 through a sequential tool-then-chat pipeline:
 
 1. Tool Router Phase:
-   - Launch tool classifier request in parallel
+   - Launch tool request in parallel
    - Detect user intent (screenshot request, control function, or none)
    - Timeout handling with graceful fallback
 
@@ -19,7 +19,7 @@ through a sequential tool-then-chat pipeline:
    - Record turn in session history
 
 The executor coordinates between:
-- Tool classifier (fast intent detection)
+- Tool model (fast intent detection)
 - Session handler (history, persona, request tracking)
 - Chat engine (streaming text generation)
 - WebSocket helpers (response streaming)
@@ -31,11 +31,11 @@ import logging
 from fastapi import WebSocket
 
 from src.engines.base import BaseEngine
+from src.tool.adapter import ToolAdapter
 from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.sentry import add_breadcrumb
 from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
-from src.classifier.adapter import ClassifierToolAdapter
 
 from .chat import run_chat_generation
 from .tool.parser import parse_tool_result
@@ -51,15 +51,13 @@ async def _await_tool_decision(
     user_utt: str,
     *,
     session_handler: SessionHandler,
-    classifier_adapter: ClassifierToolAdapter,
-    language_detector: object | None,
+    tool_adapter: ToolAdapter,
 ) -> tuple[str, bool]:
     tool_req_id, tool_task = launch_tool_request(
         session_id,
         user_utt,
         session_handler=session_handler,
-        classifier_adapter=classifier_adapter,
-        language_detector=language_detector,
+        tool_adapter=tool_adapter,
     )
     logger.info("sequential_exec: tool start req_id=%s", tool_req_id)
     try:
@@ -121,13 +119,12 @@ async def run_execution(
     session_handler: SessionHandler,
     chat_engine: BaseEngine,
     chat_tokenizer: FastTokenizer,
-    classifier_adapter: ClassifierToolAdapter,
-    language_detector: object | None,
+    tool_adapter: ToolAdapter,
 ) -> None:
     """Execute sequential tool-then-chat workflow.
 
     This is the main entry point for processing a user message. It:
-    1. Launches tool classifier to detect intent
+    1. Launches tool model to detect intent
     2. Waits for tool result (with timeout)
     3. Sends toolcall status to client
     4. Either returns hard-coded response or streams chat generation
@@ -146,8 +143,7 @@ async def run_execution(
         session_id,
         user_utt,
         session_handler=session_handler,
-        classifier_adapter=classifier_adapter,
-        language_detector=language_detector,
+        tool_adapter=tool_adapter,
     )
     await _send_toolcall_status(ws, session_id, request_id, raw_field, is_tool)
 

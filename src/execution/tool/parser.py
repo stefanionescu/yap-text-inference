@@ -1,7 +1,7 @@
 """Tool result parsing utilities.
 
-This module parses the JSON output from the tool classifier into structured
-results for the execution pipeline. The classifier returns JSON arrays like:
+This module parses the JSON output from the tool model into structured
+results for the execution pipeline. The tool model returns JSON arrays like:
 
     '[{"name": "take_screenshot"}]'  -> Tool call requested
     '[]'                              -> No tool call

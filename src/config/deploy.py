@@ -2,7 +2,7 @@
 
 This module determines which components of the inference stack are deployed:
 - Chat: Main LLM for conversational AI (vLLM or TRT-LLM)
-- Tool: Screenshot intent classifier (PyTorch)
+- Tool: Screenshot intent tool model (PyTorch)
 
 The deployment mode affects:
 - Which models are loaded at startup
@@ -11,14 +11,14 @@ The deployment mode affects:
 
 Environment Variables:
     DEPLOY_MODE: Deployment mode (default: 'both')
-        - 'both': Deploy chat LLM and tool classifier
+        - 'both': Deploy chat LLM and tool model
         - 'chat': Deploy only the chat LLM
-        - 'tool': Deploy only the tool classifier
+        - 'tool': Deploy only the tool model
 
     CHAT_MODEL: HuggingFace model ID or local path for chat
         Example: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
 
-    TOOL_MODEL: HuggingFace model ID or local path for classifier
+    TOOL_MODEL: HuggingFace model ID or local path for tool model
         Example: "yapwithai/yap-modernbert-screenshot-intent"
 """
 
@@ -40,7 +40,7 @@ HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$")
 
 DEPLOY_MODE = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
 DEPLOY_CHAT = DEPLOY_MODE in ("both", "chat")  # Enable chat LLM
-DEPLOY_TOOL = DEPLOY_MODE in ("both", "tool")  # Enable tool classifier
+DEPLOY_TOOL = DEPLOY_MODE in ("both", "tool")  # Enable tool model
 
 # ============================================================================
 # Model Selections

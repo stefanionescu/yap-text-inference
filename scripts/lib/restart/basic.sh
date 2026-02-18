@@ -121,7 +121,7 @@ run_basic_restart() {
   fi
 
   if [ "${DEPLOY_MODE}" = "tool" ]; then
-    log_info "[restart] Quick restart: tool-only classifier deployment"
+    log_info "[restart] Quick restart: tool-only deployment"
   else
     log_info "[restart] Quick restart: reusing cached models (deploy=${DEPLOY_MODE})"
   fi
@@ -155,7 +155,7 @@ run_basic_restart() {
   local SERVER_LOG_PATH="${ROOT_DIR}/server.log"
   touch "${SERVER_LOG_PATH}"
   if [ "${DEPLOY_MODE}" = "tool" ]; then
-    log_info "[restart] Starting server directly with existing models (tool-only classifier deployment)..."
+    log_info "[restart] Starting server directly with existing models (tool-only deployment)..."
   else
     log_info "[restart] Starting server directly with existing models (quant=${CHAT_QUANTIZATION:-auto})..."
   fi

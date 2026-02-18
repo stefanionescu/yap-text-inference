@@ -20,7 +20,7 @@ usage() {
   echo "Optional Environment Variables:"
   echo "  HF_TOKEN                        - HuggingFace token (for private models)"
   echo "  CHAT_GPU_FRAC                   - GPU memory fraction for chat model"
-  echo "  TOOL_GPU_FRAC                   - GPU memory fraction for tool classifier"
+  echo "  TOOL_GPU_FRAC                   - GPU memory fraction for tool model"
   echo ""
   echo "Note: CHAT_MODEL and TOOL_MODEL are configured at build time."
   echo "      You don't need to specify them when running the container."
