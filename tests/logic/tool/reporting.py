@@ -77,6 +77,35 @@ def print_case_results(results: Sequence[CaseResult], *, include_successes: bool
         print(line)
 
 
+def _step_level_stats(
+    results: Sequence[CaseResult],
+) -> tuple[int, int, int, int, int]:
+    """Compute step-level pass/fail/FP/FN counts from case results.
+
+    Returns (evaluated, passed, failed, false_pos, false_neg).
+    Only counts steps that have an expectation (expect_tool is not None).
+    """
+    evaluated = 0
+    failed = 0
+    false_pos = 0
+    false_neg = 0
+    for result in results:
+        if not result.case.steps:
+            continue
+        case_evaluated = sum(1 for s in result.case.steps if s.expect_tool is not None)
+        # Connection-level failures: no steps were actually run.
+        if result.responses is None:
+            continue
+        evaluated += case_evaluated
+        for f in result.failures or []:
+            failed += 1
+            if f.expected is False and f.actual is True:
+                false_pos += 1
+            elif f.expected is True and f.actual is False:
+                false_neg += 1
+    return evaluated, evaluated - failed, failed, false_pos, false_neg
+
+
 def _summary_lines(results: Sequence[CaseResult]) -> list[str]:
     """Build the summary lines shared by printers and formatters."""
     total = len(results)
@@ -84,13 +113,37 @@ def _summary_lines(results: Sequence[CaseResult]) -> list[str]:
     failed = total - passed
     accuracy = (passed / total * 100.0) if total else 0.0
 
+    # Step-level stats
+    step_eval, step_pass, step_fail, fp, fn = _step_level_stats(results)
+    step_accuracy = (step_pass / step_eval * 100.0) if step_eval else 0.0
+
     lines = [
         "\n=== Summary ===",
-        f"Total test cases: {total}",
-        f"Passed: {passed}",
-        f"Failed: {failed}",
-        f"Accuracy: {accuracy:.1f}%",
+        f"Total steps evaluated: {step_eval}",
+        f"Steps passed: {step_pass}",
+        f"Steps failed: {step_fail}",
+        f"Step-level accuracy: {step_accuracy:.1f}%",
     ]
+
+    if step_fail:
+        fp_pct = fp / step_fail * 100.0
+        fn_pct = fn / step_fail * 100.0
+        other = step_fail - fp - fn
+        lines.append(f"  False positives: {fp} ({fp_pct:.1f}% of errors)")
+        lines.append(f"  False negatives: {fn} ({fn_pct:.1f}% of errors)")
+        if other:
+            other_pct = other / step_fail * 100.0
+            lines.append(f"  Other errors: {other} ({other_pct:.1f}% of errors)")
+
+    lines.append("")
+    lines.extend(
+        [
+            f"Total test cases: {total}",
+            f"Case-level passed: {passed}",
+            f"Case-level failed: {failed}",
+            f"Case-level accuracy: {accuracy:.1f}%",
+        ]
+    )
 
     if failed:
         counter = Counter(r.reason or "unknown" for r in results if not r.success)
