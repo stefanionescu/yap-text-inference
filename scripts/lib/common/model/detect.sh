@@ -9,10 +9,10 @@
 _MODEL_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../string.sh
 source "${_MODEL_LIB_DIR}/../string.sh"
-# shellcheck source=../../../../config/values/model.sh
-source "${_MODEL_LIB_DIR}/../../../../config/values/model.sh"
-# shellcheck source=../../../../config/patterns.sh
-source "${_MODEL_LIB_DIR}/../../../../config/patterns.sh"
+# shellcheck source=../../../config/values/model.sh
+source "${_MODEL_LIB_DIR}/../../../config/values/model.sh"
+# shellcheck source=../../../config/patterns.sh
+source "${_MODEL_LIB_DIR}/../../../config/patterns.sh"
 
 is_gptq_name() {
   local value="${1:-}"
