@@ -12,14 +12,22 @@ import asyncio
 import logging
 import contextlib
 from typing import Any
+from dataclasses import field, dataclass
 
 import websockets
 
 from tests.helpers.metrics import round_ms
-from tests.helpers.fmt import dim, cyan, format_metrics_inline
-from tests.state import LiveSession, StreamState, StreamResult, _StreamContext
+from tests.state import LiveSession, StreamState, StreamResult
+from tests.helpers.fmt import dim, cyan, magenta, format_metrics_inline
 from tests.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError
-from tests.helpers.websocket import iter_messages, create_tracker, record_toolcall, send_client_end, finalize_metrics
+from tests.helpers.websocket import (
+    record_token,
+    iter_messages,
+    create_tracker,
+    record_toolcall,
+    send_client_end,
+    finalize_metrics,
+)
 
 logger = logging.getLogger("live")
 
@@ -27,6 +35,42 @@ logger = logging.getLogger("live")
 # ============================================================================
 # Internal Helpers
 # ============================================================================
+
+
+@dataclass
+class _StreamPrinter:
+    """Helper for printing streaming tokens to stdout."""
+
+    printed_header: bool = False
+
+    def write_chunk(self, chunk: str) -> None:
+        if not chunk:
+            return
+        if not self.printed_header:
+            print(f"\n{magenta('ASST')} ", end="", flush=True)
+            self.printed_header = True
+        print(chunk, end="", flush=True)
+
+    def finish(self) -> None:
+        if self.printed_header:
+            print()
+            print()
+
+
+@dataclass
+class _StreamContext:
+    """Track state during response streaming."""
+
+    state: StreamState
+    printer: _StreamPrinter = field(default_factory=_StreamPrinter)
+    pending_chat_ttfb: float | None = None
+
+    def handle_token(self, chunk: str) -> None:
+        metrics = record_token(self.state, chunk)
+        self.printer.write_chunk(chunk)
+        chat_ttfb = metrics.get("chat_ttfb_ms")
+        if chat_ttfb is not None and self.pending_chat_ttfb is None:
+            self.pending_chat_ttfb = chat_ttfb
 
 
 def _log_server_error(msg: dict[str, Any]) -> None:
