@@ -6,19 +6,12 @@ import os
 from typing import Any
 
 from src.state import CalibrationConfig
-from src.helpers.calibration import TotalLengthPolicy, resolve_total_len
-from src.config.limits import CHAT_MAX_LEN, CHAT_MAX_OUT, MOE_CALIBRATION_SAMPLES_LIMIT
+from src.config.limits import MOE_CALIBRATION_SAMPLES_LIMIT
+from src.helpers.calibration import CHAT_TOTAL_POLICY, resolve_total_len
 
 from .llmcompressor import quantize
 from ..utils import is_awq_dir, resolve_calibration_seqlen
 from ..utils.model import is_moe_model, prefetch_model, load_model_config
-
-CHAT_TOTAL_POLICY = TotalLengthPolicy(
-    kind="chat",
-    default_total=CHAT_MAX_LEN + CHAT_MAX_OUT,
-    len_env="CHAT_MAX_LEN",
-    out_env="CHAT_MAX_OUT",
-)
 
 
 def _is_tool_model_path(model_path: str) -> bool:

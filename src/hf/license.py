@@ -12,9 +12,9 @@ Key Functions:
 
 from __future__ import annotations
 
-import os
 import logging
 
+from src.config.timeouts import HF_LICENSE_FETCH_TIMEOUT_S as _HF_LICENSE_FETCH_TIMEOUT_S
 from src.config.templates import (
     QWEN_LICENSE,
     CHAT_TEMPLATE_NAME,
@@ -24,12 +24,6 @@ from src.config.templates import (
 )
 
 logger = logging.getLogger(__name__)
-
-try:
-    _HF_LICENSE_FETCH_TIMEOUT_S = max(1.0, float(os.getenv("HF_LICENSE_FETCH_TIMEOUT", "5")))
-except ValueError:
-    _HF_LICENSE_FETCH_TIMEOUT_S = 5.0
-
 
 # ============================================================================
 # Public API

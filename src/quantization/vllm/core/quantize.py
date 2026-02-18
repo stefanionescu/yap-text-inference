@@ -13,6 +13,7 @@ import argparse
 from src.state import CalibrationConfig
 from src.helpers.models import is_tool_model
 from src.quantization.vllm.core import AWQQuantizer
+from src.config.calibration import CALIB_DEFAULT_DATASET
 
 
 def main() -> int:
@@ -27,7 +28,7 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="Re-quantize even if output looks already quantized")
     parser.add_argument(
         "--calib-dataset",
-        default=os.environ.get("AWQ_CALIB_DATASET", "open_platypus"),
+        default=os.environ.get("AWQ_CALIB_DATASET", CALIB_DEFAULT_DATASET),
         help="Calibration dataset handled by llmcompressor (e.g., open_platypus, wikitext)",
     )
     parser.add_argument(

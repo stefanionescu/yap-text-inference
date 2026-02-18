@@ -6,9 +6,9 @@ import logging
 
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.secrets import TEXT_API_KEY
-from src.config.quantization import SUPPORTED_ENGINES
 from src.tokens.validation import validate_model_tokenizer
 from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
+from src.config.quantization import SUPPORTED_ENGINES, VALID_QUANT_FORMATS
 from src.config.deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 from src.config.limits import HISTORY_MAX_TOKENS, TRIMMED_HISTORY_LENGTH, MAX_CONCURRENT_CONNECTIONS
 
@@ -43,10 +43,6 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
         model,
     )
     return True
-
-
-# Valid quantization formats (internal use - users just need pre-quantized models)
-_VALID_QUANT_FORMATS = {"awq", "gptq", "gptq_marlin", "fp8", "int8", "int8_sq", "int4_awq"}
 
 
 def validate_env() -> None:
@@ -95,10 +91,10 @@ def validate_env() -> None:
                 "Ensure the model directory contains a config.json with quantization_config.quant_method, "
                 "or set CHAT_QUANTIZATION manually."
             )
-        elif CHAT_QUANTIZATION.lower() not in _VALID_QUANT_FORMATS:
+        elif CHAT_QUANTIZATION.lower() not in VALID_QUANT_FORMATS:
             errors.append(
                 f"Invalid CHAT_QUANTIZATION='{CHAT_QUANTIZATION}'. "
-                f"Valid formats: {', '.join(sorted(_VALID_QUANT_FORMATS))}"
+                f"Valid formats: {', '.join(sorted(VALID_QUANT_FORMATS))}"
             )
 
     # Validate tokenizers exist locally for configured models
