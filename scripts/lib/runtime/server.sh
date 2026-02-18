@@ -5,6 +5,12 @@
 # Functions for starting, stopping, and managing the uvicorn server process.
 # Handles PID file management, health checks, and uvicorn binary resolution.
 
+_RUNTIME_SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_RUNTIME_SERVER_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_RUNTIME_SERVER_DIR}/../../config/patterns.sh"
+
 # =============================================================================
 # PID FILE MANAGEMENT
 # =============================================================================
@@ -77,22 +83,22 @@ _read_trt_kv_dtype() {
 # Log current deployment configuration.
 # Usage: log_server_config
 log_server_config() {
-  local deploy_mode="${DEPLOY_MODE:-both}"
+  local deploy_mode="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 
   case "${deploy_mode}" in
-    both)
+    "${CFG_DEPLOY_MODE_BOTH}")
       log_info "[server]   CHAT=${CHAT_MODEL:-}"
       log_info "[server]   TOOL=${TOOL_MODEL:-}"
       ;;
-    chat)
+    "${CFG_DEPLOY_MODE_CHAT}")
       log_info "[server]   MODEL=${CHAT_MODEL:-}"
       ;;
-    tool)
+    "${CFG_DEPLOY_MODE_TOOL}")
       log_info "[server]   MODEL=${TOOL_MODEL:-}"
       ;;
   esac
 
-  if [ "${deploy_mode}" = "tool" ]; then
+  if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
     log_info "[server]   QUANT_MODE=tool-only"
   else
     log_info "[server]   QUANT_MODE=${QUANT_MODE:-auto}"
@@ -103,7 +109,7 @@ log_server_config() {
     local kv_dtype_display="${KV_DTYPE:-}"
     local kv_dtype_source=""
 
-    if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ] && [ -n "${TRT_ENGINE_DIR:-}" ]; then
+    if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ] && [ -n "${TRT_ENGINE_DIR:-}" ]; then
       local engine_kv_dtype
       engine_kv_dtype="$(_read_trt_kv_dtype "${TRT_ENGINE_DIR}")"
       if [ -n "${engine_kv_dtype}" ]; then

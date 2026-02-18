@@ -18,6 +18,8 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/deps/venv/main.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/noise/python.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/common/log.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/config/values/core.sh" 2>/dev/null || true
+source "${SCRIPT_DIR}/config/patterns.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/common/string.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/env/runtime.sh" 2>/dev/null || true
 source "${SCRIPT_DIR}/lib/env/server.sh" 2>/dev/null || true
@@ -80,7 +82,7 @@ warmup_log_internal "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark 
 
 warmup_all_passed=1
 
-if [ "${DEPLOY_MODE:-both}" = "tool" ]; then
+if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
   log_info "[warmup] Tool-only deployment; skipping chat warmup."
   exit 0
 fi

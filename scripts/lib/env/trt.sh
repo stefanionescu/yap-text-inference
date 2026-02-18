@@ -5,34 +5,46 @@
 # Derives TRT parameters from existing config (limits.py, env.py).
 # Does NOT define new defaults - reuses MAX_CONCURRENT_CONNECTIONS, CHAT_MAX_LEN, etc.
 
+_TRT_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_TRT_ENV_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/trt.sh
+source "${_TRT_ENV_DIR}/../../config/values/trt.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_TRT_ENV_DIR}/../../config/patterns.sh"
+
 # =============================================================================
 # TRT-LLM VERSION AND INSTALLATION
 # =============================================================================
 
-TRT_VERSION="${TRT_VERSION:-1.2.0rc5}"
-TRT_PIP_SPEC="${TRT_PIP_SPEC:-tensorrt_llm==${TRT_VERSION}}"
-TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-https://pypi.nvidia.com}"
+TRT_VERSION="${TRT_VERSION:-${CFG_TRT_VERSION}}"
+TRT_PIP_SPEC="${TRT_PIP_SPEC:-${CFG_TRT_PIP_PACKAGE}==${TRT_VERSION}}"
+TRT_EXTRA_INDEX_URL="${TRT_EXTRA_INDEX_URL:-${CFG_TRT_EXTRA_INDEX_URL}}"
 
 # PyTorch version matching TRT-LLM requirements
 # TensorRT-LLM 1.2.0rc5 requires torch<=2.9.0
-TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-2.9.0+cu130}"
-TRT_TORCHVISION_VERSION="${TRT_TORCHVISION_VERSION:-0.24.0+cu130}"
-TRT_TORCHAUDIO_VERSION="${TRT_TORCHAUDIO_VERSION:-2.9.0+cu130}"
-TRT_PYTORCH_INDEX_URL="${TRT_PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
-TRT_TORCH_CONSTRAINTS_FILE="${TRT_TORCH_CONSTRAINTS_FILE:-${ROOT_DIR:-.}/.run/trt_torch_constraints.txt}"
+TRT_PYTORCH_VERSION="${TRT_PYTORCH_VERSION:-${CFG_TRT_PYTORCH_VERSION}}"
+TRT_TORCHVISION_VERSION="${TRT_TORCHVISION_VERSION:-${CFG_TRT_TORCHVISION_VERSION}}"
+TRT_TORCHAUDIO_VERSION="${TRT_TORCHAUDIO_VERSION:-${CFG_TRT_TORCHAUDIO_VERSION}}"
+TRT_PYTORCH_INDEX_URL="${TRT_PYTORCH_INDEX_URL:-${CFG_TRT_PYTORCH_INDEX_URL}}"
+TRT_TORCH_CONSTRAINTS_FILE="${TRT_TORCH_CONSTRAINTS_FILE:-${ROOT_DIR:-.}/${CFG_TRT_TORCH_CONSTRAINTS_REL}}"
 
 # MPI runtime pin for TRT-LLM (runtime-only, prevents CUDA downgrade)
-MPI_VERSION_PIN="${MPI_VERSION_PIN:-4.1.6-7ubuntu2}"
+MPI_VERSION_PIN="${MPI_VERSION_PIN:-${CFG_MPI_VERSION_PIN}}"
 
 # MPI is required for TRT-LLM multi-GPU inference and quantization workflows
-NEED_MPI="${NEED_MPI:-1}"
+NEED_MPI="${NEED_MPI:-${CFG_TRT_NEED_MPI}}"
 
 # TensorRT-LLM repository for quantization scripts
 # IMPORTANT: We always clone a specific tag matching TRT_VERSION, not main branch.
 # The tag contains the correct quantization/requirements.txt for that version.
-TRT_REPO_URL="${TRT_REPO_URL:-https://github.com/Yap-With-AI/TensorRT-LLM.git}"
+TRT_REPO_URL="${TRT_REPO_URL:-${CFG_TRT_REPO_URL}}"
 TRT_REPO_TAG="${TRT_REPO_TAG:-v${TRT_VERSION}}"
-TRT_REPO_DIR="${TRT_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
+TRT_REPO_DIR="${TRT_REPO_DIR:-${ROOT_DIR:-.}/${CFG_TRT_REPO_DIR_REL}}"
+TRT_CLONE_DEPTH="${TRT_CLONE_DEPTH:-${CFG_TRT_CLONE_DEPTH}}"
+TRT_CLONE_FILTER="${TRT_CLONE_FILTER:-${CFG_TRT_CLONE_FILTER}}"
+TRT_CLONE_ATTEMPTS="${TRT_CLONE_ATTEMPTS:-${CFG_TRT_CLONE_ATTEMPTS}}"
+TRT_CLONE_BACKOFF_SECONDS="${TRT_CLONE_BACKOFF_SECONDS:-${CFG_TRT_CLONE_BACKOFF_SECONDS}}"
 
 # =============================================================================
 # GPU ARCHITECTURE
@@ -43,7 +55,7 @@ TRT_REPO_DIR="${TRT_REPO_DIR:-${ROOT_DIR:-.}/.trtllm-repo}"
 GPU_SM_ARCH="${GPU_SM_ARCH:-}"
 
 # GPUs that support native FP8 (Hopper, Ada Lovelace)
-TRT_FP8_SM_ARCHS="sm89 sm90"
+TRT_FP8_SM_ARCHS="${TRT_FP8_SM_ARCHS:-${CFG_TRT_FP8_SM_ARCHS}}"
 
 # =============================================================================
 # ENGINE BUILD PARAMETERS (derived from existing config)
@@ -62,27 +74,27 @@ TRT_MAX_BATCH_SIZE="${TRT_MAX_BATCH_SIZE:-}"
 # Input length = CHAT_MAX_LEN (default 5025 from limits.py)
 # This is the total context window: persona + history + user input
 if [ -z "${TRT_MAX_INPUT_LEN:-}" ]; then
-  TRT_MAX_INPUT_LEN="${CHAT_MAX_LEN:-5025}"
+  TRT_MAX_INPUT_LEN="${CHAT_MAX_LEN:-${CFG_TRT_DEFAULT_INPUT_LEN}}"
 fi
 
 # Output length = CHAT_MAX_OUT (default 150 from limits.py)
 if [ -z "${TRT_MAX_OUTPUT_LEN:-}" ]; then
-  TRT_MAX_OUTPUT_LEN="${CHAT_MAX_OUT:-150}"
+  TRT_MAX_OUTPUT_LEN="${CHAT_MAX_OUT:-${CFG_TRT_DEFAULT_OUTPUT_LEN}}"
 fi
 
 # Data type for compute
-TRT_DTYPE="${TRT_DTYPE:-float16}"
+TRT_DTYPE="${TRT_DTYPE:-${CFG_TRT_DEFAULT_DTYPE}}"
 
 # =============================================================================
 # QUANTIZATION PARAMETERS (aligned with vLLM AWQ defaults from calibration.py)
 # =============================================================================
 
 # AWQ block size (q_group_size): 128 matches vLLM AWQ
-TRT_AWQ_BLOCK_SIZE="${TRT_AWQ_BLOCK_SIZE:-128}"
+TRT_AWQ_BLOCK_SIZE="${TRT_AWQ_BLOCK_SIZE:-${CFG_TRT_DEFAULT_AWQ_BLOCK_SIZE}}"
 
 # Calibration samples: 64 matches vLLM AWQ nsamples default
 # For larger models or those needing more calibration data, increase
-TRT_CALIB_SIZE="${TRT_CALIB_SIZE:-64}"
+TRT_CALIB_SIZE="${TRT_CALIB_SIZE:-${CFG_TRT_DEFAULT_CALIB_SIZE}}"
 
 # Calibration batch size: dynamically set based on model profile.
 # Gemma/heavy models: smaller batch (8), standard models: 16.
@@ -93,8 +105,8 @@ TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-}"
 # Calibration sequence length: derived from CHAT_MAX_LEN + CHAT_MAX_OUT
 # vLLM default is 2048, but we use our actual context window
 if [ -z "${TRT_CALIB_SEQLEN:-}" ]; then
-  _chat_max_len="${CHAT_MAX_LEN:-5025}"
-  _chat_max_out="${CHAT_MAX_OUT:-150}"
+  _chat_max_len="${CHAT_MAX_LEN:-${CFG_TRT_DEFAULT_INPUT_LEN}}"
+  _chat_max_out="${CHAT_MAX_OUT:-${CFG_TRT_DEFAULT_OUTPUT_LEN}}"
   TRT_CALIB_SEQLEN=$((_chat_max_len + _chat_max_out))
 fi
 
@@ -124,7 +136,7 @@ TRT_MODELS_DIR="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}"
 # Heavy models (Gemma, large MoE) need smaller batch sizes to avoid OOM
 resolve_calib_batch_size() {
   local model_id="${1:-}"
-  local default_batch="${2:-16}"
+  local default_batch="${2:-${CFG_TRT_DEFAULT_CALIB_BATCH_SIZE}}"
 
   # If explicitly set, use that
   if [ -n "${TRT_CALIB_BATCH_SIZE:-}" ]; then
@@ -138,7 +150,7 @@ resolve_calib_batch_size() {
   # Heavy models that need smaller calibration batch
   case "${model_lower}" in
     *gemma* | *mixtral* | *qwen3-next* | *moonlight* | *deepseek*)
-      echo "8"
+      echo "${CFG_TRT_HEAVY_CALIB_BATCH_SIZE}"
       ;;
     *)
       echo "${default_batch}"
@@ -170,7 +182,7 @@ resolve_qformat() {
 
   case "${quant_mode}" in
     4bit | awq | int4_awq)
-      echo "int4_awq"
+      echo "${CFG_TRT_DEFAULT_QFORMAT}"
       ;;
     8bit)
       if gpu_supports_fp8 "${sm_arch}"; then
@@ -186,22 +198,22 @@ resolve_qformat() {
       echo "int8_sq"
       ;;
     *)
-      echo "int4_awq"
+      echo "${CFG_TRT_DEFAULT_QFORMAT}"
       ;;
   esac
 }
 
 # Get KV cache dtype based on qformat
 resolve_kv_cache_dtype() {
-  local qformat="${1:-int4_awq}"
+  local qformat="${1:-${CFG_TRT_DEFAULT_QFORMAT}}"
 
   case "${qformat}" in
     fp8)
       # FP8 KV cache for fp8 quantization
-      echo "fp8"
+      echo "${CFG_TRT_DEFAULT_KV_CACHE_FP8}"
       ;;
     *)
-      echo "int8"
+      echo "${CFG_TRT_DEFAULT_KV_CACHE_INT8}"
       ;;
   esac
 }
@@ -234,11 +246,11 @@ validate_batch_size() {
 # Export all TRT environment variables
 export_env() {
   export TRT_VERSION TRT_PIP_SPEC TRT_EXTRA_INDEX_URL
-  export TRT_PYTORCH_VERSION TRT_TORCHVISION_VERSION TRT_PYTORCH_INDEX_URL
+  export TRT_PYTORCH_VERSION TRT_TORCHVISION_VERSION TRT_TORCHAUDIO_VERSION TRT_PYTORCH_INDEX_URL
   export MPI_VERSION_PIN NEED_MPI
-  export TRT_REPO_URL TRT_REPO_TAG TRT_REPO_DIR
+  export TRT_REPO_URL TRT_REPO_TAG TRT_REPO_DIR TRT_CLONE_DEPTH TRT_CLONE_FILTER TRT_CLONE_ATTEMPTS TRT_CLONE_BACKOFF_SECONDS
   export GPU_SM_ARCH TRT_FP8_SM_ARCHS
   export TRT_MAX_BATCH_SIZE TRT_MAX_INPUT_LEN TRT_MAX_OUTPUT_LEN TRT_DTYPE
   export TRT_AWQ_BLOCK_SIZE TRT_CALIB_SIZE TRT_CALIB_BATCH_SIZE TRT_CALIB_SEQLEN
-  export TRT_CHECKPOINT_DIR TRT_ENGINE_DIR TRT_CACHE_DIR TRT_MODELS_DIR
+  export TRT_TORCH_CONSTRAINTS_FILE TRT_CHECKPOINT_DIR TRT_ENGINE_DIR TRT_CACHE_DIR TRT_MODELS_DIR
 }

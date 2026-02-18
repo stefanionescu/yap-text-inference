@@ -5,11 +5,17 @@
 # Helpers for selecting and installing requirements files based on the
 # inference engine (vLLM or TRT-LLM) and tracking installation state.
 
+_REQS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_REQS_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_REQS_DIR}/../../config/patterns.sh"
+
 # Get the correct requirements file based on inference engine
 get_requirements_file() {
-  local engine="${INFERENCE_ENGINE:-vllm}"
+  local engine="${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}"
   case "${engine}" in
-    trt | TRT)
+    "${CFG_ENGINE_TRT}" | TRT)
       echo "${ROOT_DIR}/requirements-trt.txt"
       ;;
     *)
@@ -19,9 +25,9 @@ get_requirements_file() {
 }
 
 get_quant_requirements_file() {
-  local engine="${INFERENCE_ENGINE:-vllm}"
+  local engine="${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}"
   case "${engine}" in
-    vllm | VLLM)
+    "${CFG_ENGINE_VLLM}" | VLLM)
       echo "${ROOT_DIR}/requirements-llmcompressor.txt"
       ;;
     *)

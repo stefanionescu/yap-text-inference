@@ -5,14 +5,20 @@
 # Provides utility functions for normalizing engine names and validating
 # deploy modes from command-line arguments.
 
+_CLI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_CLI_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_CLI_DIR}/../../config/patterns.sh"
+
 cli_normalize_engine() {
-  local engine="${1:-trt}"
+  local engine="${1:-${CFG_DEFAULT_ENGINE}}"
   case "${engine}" in
-    vllm | VLLM)
-      echo "vllm"
+    "${CFG_ENGINE_VLLM}" | VLLM)
+      echo "${CFG_ENGINE_VLLM}"
       ;;
-    trt | TRT | tensorrt | TENSORRT | trtllm | TRTLLM)
-      echo "trt"
+    "${CFG_ENGINE_TRT}" | TRT | tensorrt | TENSORRT | trtllm | TRTLLM)
+      echo "${CFG_ENGINE_TRT}"
       ;;
     *)
       return 1
@@ -21,9 +27,9 @@ cli_normalize_engine() {
 }
 
 cli_validate_deploy_mode() {
-  local mode="${1:-both}"
+  local mode="${1:-${CFG_DEFAULT_DEPLOY_MODE}}"
   case "${mode}" in
-    both | chat | tool)
+    "${CFG_DEPLOY_MODE_BOTH}" | "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}")
       echo "${mode}"
       ;;
     *)

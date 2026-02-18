@@ -9,12 +9,16 @@
 _MAIN_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/args.sh
 source "${_MAIN_ARGS_DIR}/../common/args.sh"
+# shellcheck source=../../config/values/core.sh
+source "${_MAIN_ARGS_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_MAIN_ARGS_DIR}/../../config/patterns.sh"
 
 parse_cli() {
   init_common_state
 
   local quant_type="auto"
-  local deploy_mode="${DEPLOY_MODE:-both}"
+  local deploy_mode="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
   local deploy_explicit=0
   local -a positional_args=()
 
@@ -56,7 +60,7 @@ parse_cli() {
         log_err "[main] ✗ '${1}' flag has been removed. Use '4bit' or '8bit' explicitly."
         return 1
         ;;
-      chat | tool | both)
+      "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}" | "${CFG_DEPLOY_MODE_BOTH}")
         if [ ${#positional_args[@]} -eq 0 ] && [ "${deploy_explicit}" -eq 0 ]; then
           deploy_mode="$1"
           deploy_explicit=1
@@ -79,7 +83,7 @@ parse_cli() {
     local last_index=$((${#positional_args[@]} - 1))
     local maybe_mode="${positional_args[$last_index]}"
     case "${maybe_mode}" in
-      chat | tool | both)
+      "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}" | "${CFG_DEPLOY_MODE_BOTH}")
         deploy_mode="${maybe_mode}"
         unset "positional_args[$last_index]"
         ;;
@@ -107,7 +111,7 @@ parse_cli() {
   local tool_model=""
 
   case "${deploy_mode}" in
-    both)
+    "${CFG_DEPLOY_MODE_BOTH}")
       if [ ${#positional_args[@]} -lt 2 ]; then
         log_warn "[main] ⚠ both mode requires <chat_model> <tool_model>"
         return 1
@@ -119,7 +123,7 @@ parse_cli() {
         return 1
       fi
       ;;
-    chat)
+    "${CFG_DEPLOY_MODE_CHAT}")
       if [ ${#positional_args[@]} -lt 1 ]; then
         log_warn "[main] ⚠ chat-only mode requires <chat_model>"
         return 1
@@ -130,7 +134,7 @@ parse_cli() {
         return 1
       fi
       ;;
-    tool)
+    "${CFG_DEPLOY_MODE_TOOL}")
       if [ ${#positional_args[@]} -lt 1 ]; then
         log_warn "[main] ⚠ tool-only mode requires <tool_model>"
         return 1
@@ -142,11 +146,11 @@ parse_cli() {
       ;;
   esac
 
-  if [ "${deploy_mode}" != "tool" ] && [ -z "${chat_model}" ]; then
+  if [ "${deploy_mode}" != "${CFG_DEPLOY_MODE_TOOL}" ] && [ -z "${chat_model}" ]; then
     log_warn "[main] ⚠ CHAT_MODEL is required for deploy mode '${deploy_mode}'"
     return 1
   fi
-  if [ "${deploy_mode}" != "chat" ] && [ -z "${tool_model}" ]; then
+  if [ "${deploy_mode}" != "${CFG_DEPLOY_MODE_CHAT}" ] && [ -z "${tool_model}" ]; then
     log_warn "[main] ⚠ TOOL_MODEL is required for deploy mode '${deploy_mode}'"
     return 1
   fi
@@ -170,10 +174,10 @@ parse_cli() {
 
 # Export models to environment variables
 export_models() {
-  if [ "${DEPLOY_MODE:-}" = "both" ] || [ "${DEPLOY_MODE:-}" = "chat" ]; then
+  if [ "${DEPLOY_MODE:-}" = "${CFG_DEPLOY_MODE_BOTH}" ] || [ "${DEPLOY_MODE:-}" = "${CFG_DEPLOY_MODE_CHAT}" ]; then
     export CHAT_MODEL="${CHAT_MODEL_NAME:-}"
   fi
-  if [ "${DEPLOY_MODE:-}" = "both" ] || [ "${DEPLOY_MODE:-}" = "tool" ]; then
+  if [ "${DEPLOY_MODE:-}" = "${CFG_DEPLOY_MODE_BOTH}" ] || [ "${DEPLOY_MODE:-}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
     export TOOL_MODEL="${TOOL_MODEL_NAME:-}"
   fi
 }

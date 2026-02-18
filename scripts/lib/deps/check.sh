@@ -9,8 +9,12 @@
 # Usage: source "scripts/lib/deps/check.sh"
 # =============================================================================
 
+_DEPS_CHECK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/trt.sh
+source "${_DEPS_CHECK_DIR}/../../config/values/trt.sh"
+
 # Load shared FlashInfer helper
-source "${BASH_SOURCE[0]%/*}/../env/flashinfer.sh"
+source "${_DEPS_CHECK_DIR}/../env/flashinfer.sh"
 
 # =============================================================================
 # Helper Functions
@@ -83,7 +87,7 @@ log_trt_dep_status() {
 # Check if PyTorch is installed with correct version (exact match, including CUDA suffix)
 # Returns: 0 if correct, 1 if missing, 2 if wrong version
 check_pytorch_installed() {
-  local required_version="${1:-2.9.0}"
+  local required_version="${1:-${CFG_TRT_PYTORCH_VERSION}}"
   local py_exe="${2:-python}"
 
   local installed_ver
@@ -104,7 +108,7 @@ check_pytorch_installed() {
 # Check if TorchVision is installed with correct version (exact match)
 # Returns: 0 if correct, 1 if missing, 2 if wrong version
 check_torchvision_installed() {
-  local required_version="${1:-0.24.0}"
+  local required_version="${1:-${CFG_TRT_TORCHVISION_VERSION}}"
   local py_exe="${2:-python}"
 
   local installed_ver
@@ -125,7 +129,7 @@ check_torchvision_installed() {
 # Check if TensorRT-LLM is installed with correct version
 # Returns: 0 if correct, 1 if missing, 2 if wrong version
 check_trtllm_installed() {
-  local required_version="${1:-1.2.0rc5}"
+  local required_version="${1:-${CFG_TRT_VERSION}}"
   local py_exe="${2:-python}"
 
   local installed_ver
@@ -285,9 +289,9 @@ uninstall_pip_pkg_if_wrong_version() {
 # Returns: 0 if all satisfied, 1 if any missing
 check_trt_deps_status() {
   local venv_dir="${1:-${VENV_DIR:-${ROOT_DIR}/.venv}}"
-  local pytorch_ver="${2:-2.9.0}"
-  local torchvision_ver="${3:-0.24.0}"
-  local trtllm_ver="${4:-1.2.0rc5}"
+  local pytorch_ver="${2:-${CFG_TRT_PYTORCH_VERSION}}"
+  local torchvision_ver="${3:-${CFG_TRT_TORCHVISION_VERSION}}"
+  local trtllm_ver="${4:-${CFG_TRT_VERSION}}"
   local req_file="${5:-requirements-trt.txt}"
 
   NEEDS_PYTORCH=1

@@ -5,6 +5,12 @@
 # Validates required environment variables and push flag configurations.
 # Ensures TEXT_API_KEY, HF_TOKEN, and MAX_CONCURRENT_CONNECTIONS are set.
 
+_PARAMS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_PARAMS_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_PARAMS_DIR}/../../config/patterns.sh"
+
 ensure_required_env_vars() {
   local has_errors=0
 
@@ -24,7 +30,7 @@ ensure_required_env_vars() {
     log_err "[env] ✗ MAX_CONCURRENT_CONNECTIONS environment variable must be explicitly set."
     log_err "[env] ✗ Choose a capacity that matches your deployment and run: export MAX_CONCURRENT_CONNECTIONS=<number>"
     has_errors=1
-  elif ! [[ ${MAX_CONCURRENT_CONNECTIONS} =~ ^[0-9]+$ ]]; then
+  elif ! [[ ${MAX_CONCURRENT_CONNECTIONS} =~ ${CFG_PATTERN_NON_NEGATIVE_INT} ]]; then
     log_err "[env] ✗ MAX_CONCURRENT_CONNECTIONS must be an integer but was '${MAX_CONCURRENT_CONNECTIONS}'."
     has_errors=1
   fi
@@ -149,7 +155,7 @@ validate_push_quant_prereqs() {
 # Sets HF_ENGINE_PUSH to 1 only when requested AND using TRT engine.
 # Otherwise HF_ENGINE_PUSH is forced to 0 and a skip message is logged.
 push_engine_apply_policy() {
-  local engine="${1:-${INFERENCE_ENGINE:-trt}}"
+  local engine="${1:-${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}}"
   local context="${2:-push}"
   local requested="${HF_ENGINE_PUSH_REQUESTED:-${HF_ENGINE_PUSH:-0}}"
 
@@ -160,7 +166,7 @@ push_engine_apply_policy() {
   fi
 
   # Only TRT engine supports engine-only push
-  if [ "${engine}" != "trt" ]; then
+  if [ "${engine}" != "${CFG_ENGINE_TRT}" ]; then
     HF_ENGINE_PUSH=0
     export HF_ENGINE_PUSH
     log_info "[${context}] --push-engine is only supported for TensorRT engine; ignoring for vLLM."

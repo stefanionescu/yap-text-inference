@@ -8,6 +8,8 @@ _TRT_PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -z "${ROOT_DIR:-}" ]; then
   ROOT_DIR="$(cd "${_TRT_PIPELINE_DIR}/../../.." && pwd)"
 fi
+source "${_TRT_PIPELINE_DIR}/../../config/values/core.sh"
+source "${_TRT_PIPELINE_DIR}/../../config/patterns.sh"
 
 trt_export_quant_env() {
   local qformat="${1:-}"
@@ -21,7 +23,7 @@ trt_export_quant_env() {
 }
 
 trt_pipeline_should_run() {
-  if [ "${DEPLOY_CHAT:-0}" = "1" ] && [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+  if [ "${DEPLOY_CHAT:-0}" = "1" ] && [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
     return 0
   fi
   return 1

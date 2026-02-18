@@ -14,6 +14,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/noise/python.sh"
 source "${SCRIPT_DIR}/lib/common/log.sh"
+source "${SCRIPT_DIR}/config/values/core.sh"
+source "${SCRIPT_DIR}/config/messages/stop.sh"
 source "${SCRIPT_DIR}/lib/runtime/cleanup/main.sh"
 source "${SCRIPT_DIR}/lib/env/stop.sh"
 
@@ -26,58 +28,58 @@ stop_init_flags
 # FULL_CLEANUP=1: Full stop - wipe EVERYTHING: venv, caches, models, all of it
 # =============================================================================
 if [ "${FULL_CLEANUP}" = "0" ]; then
-  log_info "[stop] Light stop: preserving venv, caches, and models..."
+  log_info "${CFG_STOP_MSG_LIGHT_STOP}"
 else
-  log_info "[stop] Full stop: wiping venv, caches, models..."
+  log_info "${CFG_STOP_MSG_FULL_STOP}"
 fi
 
-log_info "[stop] Stopping uvicorn server session and clearing server.pid..."
+log_info "${CFG_STOP_MSG_STOPPING_SERVER}"
 cleanup_stop_server_session "${ROOT_DIR}"
-log_info "[stop] Killing lingering engine helper processes..."
+log_info "${CFG_STOP_MSG_KILLING_HELPERS}"
 cleanup_kill_engine_processes
 sleep 1
 
 # 4) Remove repo-local caches (models and compiled artifacts under the repo)
 if [ "${FULL_CLEANUP}" != "0" ]; then
-  log_info "[stop] Deleting repo caches, compiled artifacts, and checked-out models..."
+  log_info "${CFG_STOP_MSG_DELETE_REPO_CACHES}"
   cleanup_repo_caches "${ROOT_DIR}"
-  log_info "[stop] Removing Python virtual environments..."
+  log_info "${CFG_STOP_MSG_REMOVE_VENVS}"
   cleanup_venvs "${ROOT_DIR}"
 fi
 
-log_info "[stop] Cleaning GPU processes (hard reset=${HARD_RESET})..."
+log_infof "${CFG_STOP_MSG_CLEAN_GPU}" "${HARD_RESET}"
 cleanup_gpu_processes "${HARD_RESET}"
 
 if [ "${FULL_CLEANUP}" != "0" ]; then
-  log_info "[stop] Deleting Hugging Face caches and configs..."
+  log_info "${CFG_STOP_MSG_DELETE_HF}"
   cleanup_hf_caches
 fi
 
-log_info "[stop] Deleting system/compiler runtime caches..."
+log_info "${CFG_STOP_MSG_DELETE_MISC}"
 cleanup_misc_caches
 
 if [ "${FULL_CLEANUP}" != "0" ]; then
-  log_info "[stop] Purging pip caches..."
+  log_info "${CFG_STOP_MSG_PURGE_PIP}"
   cleanup_pip_caches
 fi
 
-log_info "[stop] Removing Python build/test artifacts..."
+log_info "${CFG_STOP_MSG_REMOVE_ARTIFACTS}"
 cleanup_python_artifacts "${ROOT_DIR}"
-log_info "[stop] Clearing /tmp and /dev/shm scratch directories..."
+log_info "${CFG_STOP_MSG_CLEAR_TMP}"
 cleanup_tmp_dirs
 
 if [ "${FULL_CLEANUP}" != "0" ]; then
-  log_info "[stop] Removing runtime state tracking..."
+  log_info "${CFG_STOP_MSG_REMOVE_RUNTIME_STATE}"
   cleanup_runtime_state "${ROOT_DIR}"
-  log_info "[stop] Deleting home cache roots..."
+  log_info "${CFG_STOP_MSG_DELETE_HOME_CACHE}"
   cleanup_home_cache_roots
 fi
 
-log_info "[stop] Removing server log artifacts..."
+log_info "${CFG_STOP_MSG_REMOVE_SERVER_ARTIFACTS}"
 cleanup_server_artifacts "${ROOT_DIR}"
 
 if [ "${FULL_CLEANUP}" = "0" ]; then
-  log_info "[stop] Done. Repo preserved. Jupyter/console/container remain running."
+  log_info "${CFG_STOP_MSG_DONE_LIGHT}"
 else
-  log_info "[stop] Done. Full cleanup complete. Restart to resume work."
+  log_info "${CFG_STOP_MSG_DONE_FULL}"
 fi

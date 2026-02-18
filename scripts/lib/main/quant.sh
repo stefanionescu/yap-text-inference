@@ -5,22 +5,30 @@
 # Functions to determine the appropriate quantization backend based on
 # model type, user flags, and pre-quantized model detection.
 
+_MAIN_QUANT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_MAIN_QUANT_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/quantization.sh
+source "${_MAIN_QUANT_DIR}/../../config/values/quantization.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_MAIN_QUANT_DIR}/../../config/patterns.sh"
+
 # Resolve the 4-bit backend based on model classification
 # Usage: resolve_4bit_backend <chat_model>
 # Returns: "awq" or "gptq_marlin"
 resolve_4bit_backend() {
   local chat_model="$1"
   if [ -z "${chat_model}" ]; then
-    echo "awq"
+    echo "${CFG_QUANT_MODE_4BIT_BACKEND}"
     return
   fi
 
   local classification
   classification="$(classify_prequant "${chat_model}")"
   case "${classification}" in
-    gptq) echo "gptq_marlin" ;;
-    awq) echo "awq" ;;
-    *) echo "awq" ;;
+    gptq) echo "${CFG_QUANT_MODE_GPTQ_BACKEND}" ;;
+    awq) echo "${CFG_QUANT_MODE_4BIT_BACKEND}" ;;
+    *) echo "${CFG_QUANT_MODE_4BIT_BACKEND}" ;;
   esac
 }
 
@@ -34,7 +42,7 @@ quant_resolve_settings() {
   local chat_hint="${4:-}"
   local current_chat_quant="${5:-}"
 
-  if [ "${deploy_mode}" = "tool" ]; then
+  if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
     QUANT_MODE="tool-only"
     unset CHAT_QUANTIZATION
     export QUANT_MODE
@@ -56,7 +64,7 @@ quant_resolve_settings() {
         ;;
       8bit)
         resolved_mode="8bit"
-        resolved_backend="8bit"
+        resolved_backend="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
         ;;
       auto | "")
         if [ -n "${chat_hint}" ]; then
@@ -64,7 +72,7 @@ quant_resolve_settings() {
           resolved_backend="${chat_hint}"
         else
           resolved_mode="8bit"
-          resolved_backend="8bit"
+          resolved_backend="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
         fi
         ;;
       *)
@@ -78,29 +86,29 @@ quant_resolve_settings() {
     prequant_kind="$(classify_prequant "${chat_model}")"
     case "${prequant_kind}" in
       awq)
-        if [ "${resolved_backend}" != "awq" ]; then
+        if [ "${resolved_backend}" != "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
           log_warn "[quant] ⚠ Chat model '${chat_model}' is already 4-bit (AWQ/W4A16); overriding to 4bit runtime."
           resolved_mode="4bit"
-          resolved_backend="awq"
+          resolved_backend="${CFG_QUANT_MODE_4BIT_BACKEND}"
         fi
         ;;
       gptq)
-        if [ "${resolved_backend}" != "gptq_marlin" ]; then
+        if [ "${resolved_backend}" != "${CFG_QUANT_MODE_GPTQ_BACKEND}" ]; then
           log_warn "[quant] ⚠ Chat model '${chat_model}' is GPTQ; overriding to 4bit GPTQ runtime."
           resolved_mode="4bit"
-          resolved_backend="gptq_marlin"
+          resolved_backend="${CFG_QUANT_MODE_GPTQ_BACKEND}"
         fi
         ;;
     esac
   fi
 
   if [ -z "${resolved_backend}" ]; then
-    resolved_backend="8bit"
+    resolved_backend="${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
   fi
 
   if [ -z "${resolved_mode}" ]; then
     case "${resolved_backend}" in
-      awq | gptq | gptq_marlin | 4bit)
+      "${CFG_QUANT_MODE_4BIT_BACKEND}" | gptq | "${CFG_QUANT_MODE_GPTQ_BACKEND}" | 4bit)
         resolved_mode="4bit"
         ;;
       *)
@@ -129,7 +137,7 @@ apply_quantization() {
 # Usage: get_quant_hint
 # Returns: quantization hint or empty string
 get_quant_hint() {
-  if [ "${DEPLOY_MODE:-}" != "tool" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
+  if [ "${DEPLOY_MODE:-}" != "${CFG_DEPLOY_MODE_TOOL}" ] && [ -z "${CHAT_QUANTIZATION:-}" ]; then
     get_quantization_hint "${CHAT_MODEL_NAME:-}"
   fi
 }

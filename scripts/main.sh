@@ -17,6 +17,9 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Core utilities
 source "${SCRIPT_DIR}/lib/noise/python.sh"
 source "${SCRIPT_DIR}/lib/common/log.sh"
+source "${SCRIPT_DIR}/config/values/core.sh"
+source "${SCRIPT_DIR}/config/patterns.sh"
+source "${SCRIPT_DIR}/config/messages/main.sh"
 source "${SCRIPT_DIR}/lib/common/params.sh"
 source "${SCRIPT_DIR}/lib/common/warmup.sh"
 source "${SCRIPT_DIR}/lib/common/model_detect.sh"
@@ -51,7 +54,7 @@ stop_existing_warmup_processes "${ROOT_DIR}"
 
 # Parse command line arguments
 if [ $# -lt 1 ]; then
-  log_warn "[main] ⚠ Not enough arguments"
+  log_warn "${CFG_MAIN_MSG_INVALID_ARGS}"
   show_usage
 fi
 
@@ -87,18 +90,18 @@ apply_quantization "${QUANT_TYPE}" "${CHAT_QUANT_HINT}"
 
 # Enable/disable push based on quantization (only allow 4-bit exports)
 push_quant_apply_policy "${CHAT_QUANTIZATION:-}" "main"
-validate_push_quant_prereqs "${DEPLOY_MODE:-both}"
+validate_push_quant_prereqs "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 
 # Enable/disable engine push based on engine type (only TRT)
-push_engine_apply_policy "${INFERENCE_ENGINE:-trt}" "main"
+push_engine_apply_policy "${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}" "main"
 validate_push_engine_prereqs
 
 # Snapshot desired config for smart restart detection
-DESIRED_DEPLOY_MODE="${DEPLOY_MODE:-both}"
+DESIRED_DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 DESIRED_CHAT_MODEL="${CHAT_MODEL:-}"
 DESIRED_TOOL_MODEL="${TOOL_MODEL:-}"
 DESIRED_CHAT_QUANT="${CHAT_QUANTIZATION:-}"
-DESIRED_ENGINE="${INFERENCE_ENGINE:-trt}"
+DESIRED_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}"
 
 # If the server is already running, decide whether to keep caches or reset.
 # NOTE: Engine switch (vllm <-> trt) triggers FULL environment wipe automatically.

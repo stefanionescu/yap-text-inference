@@ -5,15 +5,19 @@
 # Initializes server host, port, and health check URL defaults. Configures
 # both client-facing and internal bind addresses.
 
+_SERVER_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_SERVER_ENV_DIR}/../../config/values/core.sh"
+
 init_network_defaults() {
   local default_client_host
   local default_bind_host
   local health_urls_override
 
-  default_client_host="${HOST:-127.0.0.1}"
-  default_bind_host="${BIND_HOST:-0.0.0.0}"
+  default_client_host="${HOST:-${CFG_SERVER_DEFAULT_CLIENT_HOST}}"
+  default_bind_host="${BIND_HOST:-${CFG_SERVER_DEFAULT_BIND_HOST}}"
 
-  export SERVER_PORT="${SERVER_PORT:-${PORT:-8000}}"
+  export SERVER_PORT="${SERVER_PORT:-${PORT:-${CFG_SERVER_DEFAULT_PORT}}}"
   export SERVER_HOST="${SERVER_HOST:-${default_client_host}}"
   export SERVER_BIND_HOST="${SERVER_BIND_HOST:-${default_bind_host}}"
   export SERVER_ADDR="${SERVER_ADDR:-${SERVER_HOST}:${SERVER_PORT}}"

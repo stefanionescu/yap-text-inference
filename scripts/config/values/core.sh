@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Core Script Configuration Values
+# =============================================================================
+# Canonical defaults shared across shell scripts.
+
+# shellcheck disable=SC2034
+readonly CFG_DEFAULT_DEPLOY_MODE="both"
+readonly CFG_DEFAULT_ENGINE="trt"
+readonly CFG_DEFAULT_RUNTIME_ENGINE="vllm"
+
+# shellcheck disable=SC2034
+readonly CFG_MAX_SERVER_LOG_BYTES=$((100 * 1024 * 1024))
+readonly CFG_WARMUP_DEFAULT_CONN_FALLBACK="8"
+readonly CFG_WARMUP_TIMEOUT_SECS_DEFAULT="300"
+readonly CFG_WARMUP_RETRIES_DEFAULT="1"
+readonly CFG_WARMUP_HEALTH_POLL_INTERVAL_SECS_DEFAULT="2"
+readonly CFG_WARMUP_RUN_DELAY_SECS_DEFAULT="1"
+
+# shellcheck disable=SC2034
+readonly CFG_SERVER_DEFAULT_CLIENT_HOST="127.0.0.1"
+readonly CFG_SERVER_DEFAULT_BIND_HOST="0.0.0.0"
+readonly CFG_SERVER_DEFAULT_PORT="8000"
+
+# shellcheck disable=SC2034
+readonly CFG_STOP_DEFAULT_FULL_CLEANUP="1"
+readonly CFG_STOP_DEFAULT_HARD_RESET="0"

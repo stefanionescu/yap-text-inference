@@ -7,7 +7,7 @@
 
 validate_models_early() {
   # shellcheck disable=SC1091
-  source "${ROOT_DIR}/scripts/config/validate.sh"
+  source "${ROOT_DIR}/scripts/config/values/core.sh"
 
   # Find Python - prefer venv if available
   local python_cmd="python3"
@@ -18,11 +18,11 @@ validate_models_early() {
   # Run lightweight validation via Python module
   # Environment variables are read directly by the Python script
   if ! PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" \
-    DEPLOY_MODE="${DEPLOY_MODE:-${VALIDATE_DEFAULT_DEPLOY_MODE}}" \
+    DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" \
     CHAT_MODEL="${CHAT_MODEL:-}" \
     TOOL_MODEL="${TOOL_MODEL:-}" \
     CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}" \
-    INFERENCE_ENGINE="${INFERENCE_ENGINE:-${VALIDATE_DEFAULT_ENGINE}}" \
+    INFERENCE_ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_ENGINE}}" \
     "${python_cmd}" -m src.scripts.validate; then
     log_err "[validate] ✗ Model validation failed - check model names and allowlists"
     return 1

@@ -9,8 +9,8 @@
 _RUNTIME_PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../noise/logging.sh
 source "${_RUNTIME_PIPELINE_DIR}/../noise/logging.sh"
-# shellcheck source=../common/constants.sh
-source "${_RUNTIME_PIPELINE_DIR}/../common/constants.sh"
+# shellcheck source=../../config/values/core.sh
+source "${_RUNTIME_PIPELINE_DIR}/../../config/values/core.sh"
 
 # Prepare server.log for a new run, trimming oversized files and ensuring the
 # .run directory exists so downstream helpers can rely on pid/log state.
@@ -20,7 +20,7 @@ prepare_log() {
   mkdir -p "${root_dir}/.run"
 
   if [ -f "${server_log}" ]; then
-    local max_keep_bytes="${SCRIPTS_MAX_SERVER_LOG_BYTES}"
+    local max_keep_bytes="${CFG_MAX_SERVER_LOG_BYTES}"
     local size
     size=$(wc -c <"${server_log}" 2>/dev/null || echo 0)
     if [ "${size}" -gt "${max_keep_bytes}" ]; then

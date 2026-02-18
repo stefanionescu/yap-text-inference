@@ -14,25 +14,27 @@ export ROOT_DIR
 LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/noise/python.sh"
 source "${LIB_DIR}/common/log.sh"
+source "${SCRIPT_DIR}/../config/values/core.sh"
+source "${SCRIPT_DIR}/../config/patterns.sh"
 
 # Common deps
 source "${LIB_DIR}/deps/certs.sh"
 source "${LIB_DIR}/deps/pip.sh"
-source "${LIB_DIR}/deps/venv.sh"
+source "${LIB_DIR}/deps/venv/main.sh"
 source "${LIB_DIR}/env/torch.sh"
 
 # Engine and deploy mode detection
-ENGINE="${INFERENCE_ENGINE:-vllm}"
+ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}"
 ENGINE_LOWER="$(echo "${ENGINE}" | tr '[:upper:]' '[:lower:]')"
-DEPLOY_MODE="${DEPLOY_MODE:-both}"
+DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 
 # =============================================================================
-# TOOL-ONLY MODE (LIGHTWEIGHT)
+# TOOL-ONLY MODE
 # =============================================================================
 # Tool-only deployments use a PyTorch tool model (no TRT-LLM or vLLM needed).
 # Skip heavy engine dependencies and use minimal requirements.
 
-if [ "${DEPLOY_MODE}" = "tool" ]; then
+if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
   export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
 
   deps_export_pip

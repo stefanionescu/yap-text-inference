@@ -9,6 +9,10 @@
 _RESTART_ARGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../common/args.sh
 source "${_RESTART_ARGS_DIR}/../common/args.sh"
+# shellcheck source=../../config/values/core.sh
+source "${_RESTART_ARGS_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_RESTART_ARGS_DIR}/../../config/patterns.sh"
 
 parse_args() {
   init_common_state
@@ -29,7 +33,7 @@ parse_args() {
     fi
 
     case "$1" in
-      both | chat | tool)
+      "${CFG_DEPLOY_MODE_BOTH}" | "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}")
         if [ -z "${DEPLOY_MODE}" ]; then DEPLOY_MODE="$1"; fi
         if [ -z "${RECONFIG_DEPLOY_MODE}" ]; then RECONFIG_DEPLOY_MODE="$1"; fi
         shift
@@ -119,7 +123,7 @@ parse_args() {
   fi
 
   # Inherit from --deploy-mode flag if DEPLOY_MODE wasn't set as positional
-  if ! DEPLOY_MODE="$(cli_validate_deploy_mode "${DEPLOY_MODE:-${RECONFIG_DEPLOY_MODE}}")"; then
+  if ! DEPLOY_MODE="$(cli_validate_deploy_mode "${DEPLOY_MODE:-${RECONFIG_DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}}")"; then
     log_err "[restart] ✗ Invalid deploy mode '${DEPLOY_MODE}'. Expected both|chat|tool."
     return 1
   fi

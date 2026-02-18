@@ -12,9 +12,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "${SCRIPT_DIR}/../lib/noise/python.sh"
 source "${SCRIPT_DIR}/../lib/common/log.sh"
+source "${SCRIPT_DIR}/../config/values/core.sh"
 source "${SCRIPT_DIR}/../lib/deps/venv/main.sh"
 
-ENGINE="${INFERENCE_ENGINE:-vllm}"
+ENGINE="${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}"
 ENGINE_UPPER="$(echo "${ENGINE}" | tr '[:lower:]' '[:upper:]')"
 log_info "[python] Verifying interpreter requirements for ${ENGINE_UPPER} engine..."
 ensure_python_runtime_for_engine "${ENGINE}"

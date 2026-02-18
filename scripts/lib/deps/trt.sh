@@ -4,13 +4,21 @@
 # =============================================================================
 # System dependencies and pip packages for TensorRT-LLM.
 
+_TRT_DEPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_TRT_DEPS_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/values/trt.sh
+source "${_TRT_DEPS_DIR}/../../config/values/trt.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_TRT_DEPS_DIR}/../../config/patterns.sh"
+
 # Install system dependencies required for TensorRT-LLM
 # This includes OpenMPI development libraries needed for mpi4py compilation
 ensure_trt_system_deps() {
-  local engine="${INFERENCE_ENGINE:-vllm}"
+  local engine="${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}"
 
   # Only needed for TRT engine
-  if [ "${engine}" != "trt" ] && [ "${engine}" != "TRT" ]; then
+  if [ "${engine}" != "${CFG_ENGINE_TRT}" ] && [ "${engine}" != "TRT" ]; then
     return 0
   fi
 
@@ -51,9 +59,9 @@ ensure_trt_system_deps() {
 
 trt_determine_dependency_status() {
   local venv_dir="$1"
-  local pytorch_ver="${2:-${TRT_PYTORCH_VERSION:-2.9.0+cu130}}"
-  local torchvision_ver="${3:-${TRT_TORCHVISION_VERSION:-0.24.0+cu130}}"
-  local trtllm_ver="${4:-${TRT_VERSION:-1.2.0rc5}}"
+  local pytorch_ver="${2:-${TRT_PYTORCH_VERSION:-${CFG_TRT_PYTORCH_VERSION}}}"
+  local torchvision_ver="${3:-${TRT_TORCHVISION_VERSION:-${CFG_TRT_TORCHVISION_VERSION}}}"
+  local trtllm_ver="${4:-${TRT_VERSION:-${CFG_TRT_VERSION}}}"
   local req_file="${5:-requirements-trt.txt}"
 
   if check_trt_deps_status "${venv_dir}" "${pytorch_ver}" "${torchvision_ver}" "${trtllm_ver}" "${req_file}"; then
@@ -249,7 +257,7 @@ trt_install_deps() {
   trt_determine_dependency_status "${venv_dir}" \
     "${TRT_PYTORCH_VERSION}" \
     "${TRT_TORCHVISION_VERSION}" \
-    "${TRT_VERSION:-1.2.0rc5}" \
+    "${TRT_VERSION:-${CFG_TRT_VERSION}}" \
     "requirements-trt.txt" || true
 
   # Install missing components

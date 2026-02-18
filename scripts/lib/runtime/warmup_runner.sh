@@ -5,6 +5,10 @@
 # Provides reusable functions for running warmup and benchmark tests with
 # retries, logging, and persona variant handling.
 
+_WARMUP_RUNNER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_WARMUP_RUNNER_DIR}/../../config/values/core.sh"
+
 # =============================================================================
 # PERSONA VARIANT HANDLING
 # =============================================================================
@@ -273,7 +277,7 @@ warmup_detect_prompt_mode() {
 warmup_detect_max_conn() {
   local py_bin="${1:-python}"
   local root_dir="${2:-.}"
-  local default_fallback="${3:-8}"
+  local default_fallback="${3:-${CFG_WARMUP_DEFAULT_CONN_FALLBACK}}"
 
   if [[ -n ${MAX_CONCURRENT_CONNECTIONS:-} ]]; then
     echo "${MAX_CONCURRENT_CONNECTIONS}"

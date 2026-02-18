@@ -4,20 +4,26 @@
 # =============================================================================
 # Functions to log configuration and execute the deployment step sequence.
 
+_MAIN_DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../config/values/core.sh
+source "${_MAIN_DEPLOY_DIR}/../../config/values/core.sh"
+# shellcheck source=../../config/patterns.sh
+source "${_MAIN_DEPLOY_DIR}/../../config/patterns.sh"
+
 # Log current configuration
 log_deploy_config() {
   log_blank
-  case "${DEPLOY_MODE:-both}" in
-    tool)
+  case "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" in
+    "${CFG_DEPLOY_MODE_TOOL}")
       log_info "[main] Configuration: mode=tool, precision=float16"
       log_info "[main] Tool model: ${TOOL_MODEL_NAME:-}"
       ;;
-    chat)
-      log_info "[main] Configuration: mode=chat, engine=${INFERENCE_ENGINE:-vllm}, quantization=${QUANT_MODE:-auto}"
+    "${CFG_DEPLOY_MODE_CHAT}")
+      log_info "[main] Configuration: mode=chat, engine=${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}, quantization=${QUANT_MODE:-auto}"
       log_info "[main] Chat model: ${CHAT_MODEL_NAME:-}"
       ;;
     *)
-      log_info "[main] Configuration: mode=both, engine=${INFERENCE_ENGINE:-vllm}, quantization=${QUANT_MODE:-auto}"
+      log_info "[main] Configuration: mode=both, engine=${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}, quantization=${QUANT_MODE:-auto}"
       log_info "[main] Chat model: ${CHAT_MODEL_NAME:-}"
       log_info "[main] Tool model: ${TOOL_MODEL_NAME:-}"
       ;;
@@ -31,13 +37,13 @@ build_deploy_cmd() {
   local script_dir="$1"
   local quantizer="quantization/vllm_quantizer.sh"
   local engine_label="vLLM"
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
     quantizer="quantization/trt_quantizer.sh"
     engine_label="TRT"
   fi
 
   # Tool-only mode: skip Python env verification and quantization (no chat engine needed)
-  if [ "${DEPLOY_MODE:-both}" = "tool" ]; then
+  if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
     cat <<CMD
       bash '${script_dir}/steps/01_check_gpu.sh' && \\
       bash '${script_dir}/steps/03_install_deps.sh' && \\

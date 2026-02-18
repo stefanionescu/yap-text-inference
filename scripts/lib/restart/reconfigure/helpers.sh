@@ -10,12 +10,15 @@
 RESTART_RECONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${RESTART_RECONFIG_DIR}/../../common/model_detect.sh"
 source "${RESTART_RECONFIG_DIR}/../../main/quant.sh"
+source "${RESTART_RECONFIG_DIR}/../../../config/values/core.sh"
+source "${RESTART_RECONFIG_DIR}/../../../config/values/quantization.sh"
+source "${RESTART_RECONFIG_DIR}/../../../config/patterns.sh"
 
 _restart_resolve_deploy_mode() {
-  local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-both}}"
+  local candidate="${RECONFIG_DEPLOY_MODE:-${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}}"
   candidate="${candidate,,}"
   case "${candidate}" in
-    both | chat | tool)
+    "${CFG_DEPLOY_MODE_BOTH}" | "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}")
       echo "${candidate}"
       ;;
     *)
@@ -51,7 +54,7 @@ _restart_autodetect_quantization() {
   fi
 
   # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
-  echo "8bit"
+  echo "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
 }
 
 _restart_normalize_quantization_flag() {
@@ -64,11 +67,11 @@ _restart_normalize_quantization_flag() {
   case "${lowered}" in
     4bit)
       # 4-bit always maps to AWQ runtime
-      echo "awq"
+      echo "${CFG_QUANT_MODE_4BIT_BACKEND}"
       ;;
     8bit)
       # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
-      echo "8bit"
+      echo "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
       ;;
     *)
       echo "${value}"
@@ -79,7 +82,7 @@ _restart_normalize_quantization_flag() {
 _restart_validate_quantization() {
   local value="$1"
   case "${value}" in
-    8bit | fp8 | awq | gptq | gptq_marlin)
+    "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}" | fp8 | "${CFG_QUANT_MODE_4BIT_BACKEND}" | gptq | "${CFG_QUANT_MODE_GPTQ_BACKEND}")
       return 0
       ;;
     *)
@@ -90,7 +93,7 @@ _restart_validate_quantization() {
 }
 
 _restart_needs_awq_pipeline() {
-  if [ "${CHAT_QUANTIZATION:-}" = "awq" ]; then
+  if [ "${CHAT_QUANTIZATION:-}" = "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
     return 0
   fi
   return 1
@@ -98,7 +101,7 @@ _restart_needs_awq_pipeline() {
 
 # TRT engine always requires a build step (AWQ, FP8, INT8 - all need compiled engines)
 _restart_needs_trt_engine_build() {
-  if [ "${INFERENCE_ENGINE:-vllm}" = "trt" ]; then
+  if [ "${INFERENCE_ENGINE:-${CFG_DEFAULT_RUNTIME_ENGINE}}" = "${CFG_ENGINE_TRT}" ]; then
     # Check if engine directory exists and is valid
     local trt_env_file="${ROOT_DIR}/.run/trt_engine_dir.env"
     if [ -f "${trt_env_file}" ]; then
@@ -160,15 +163,15 @@ _restart_load_previous_config() {
   PREV_CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
   PREV_DEPLOY_MODE="${DEPLOY_MODE:-}"
   case "${PREV_DEPLOY_MODE}" in
-    both)
+    "${CFG_DEPLOY_MODE_BOTH}")
       PREV_DEPLOY_CHAT=1
       PREV_DEPLOY_TOOL=1
       ;;
-    chat)
+    "${CFG_DEPLOY_MODE_CHAT}")
       PREV_DEPLOY_CHAT=1
       PREV_DEPLOY_TOOL=0
       ;;
-    tool)
+    "${CFG_DEPLOY_MODE_TOOL}")
       PREV_DEPLOY_CHAT=0
       PREV_DEPLOY_TOOL=1
       ;;

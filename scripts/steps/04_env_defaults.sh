@@ -13,6 +13,8 @@ THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${ROOT_DIR:-$(cd "${THIS_SCRIPT_DIR}/../.." && pwd)}"
 source "${THIS_SCRIPT_DIR}/../lib/noise/python.sh"
 source "${THIS_SCRIPT_DIR}/../lib/common/log.sh"
+source "${THIS_SCRIPT_DIR}/../config/values/core.sh"
+source "${THIS_SCRIPT_DIR}/../config/patterns.sh"
 
 # Shared library functions
 LIB_DIR="${THIS_SCRIPT_DIR}/../lib"
@@ -30,7 +32,7 @@ ensure_cuda_ready_for_engine "env" || exit 1
 log_info "[env] Setting environment defaults..."
 
 # Detect FlashInfer availability for runtime tuning (optional, skip for tool-only)
-if [ "${DEPLOY_MODE:-both}" != "tool" ]; then
+if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" != "${CFG_DEPLOY_MODE_TOOL}" ]; then
   detect_flashinfer
 else
   export HAS_FLASHINFER=0
