@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034,SC2016
 # =============================================================================
 # Main Script Message Configuration
 # =============================================================================
 # Canonical user-facing messages for scripts/main.sh.
-# shellcheck disable=SC2016
+[[ -n ${_CFG_MSG_MAIN_LOADED:-} ]] && return 0
+_CFG_MSG_MAIN_LOADED=1
 
-# shellcheck disable=SC2034
 readonly -a CFG_MAIN_USAGE_LINES=(
   "Usage:"
   '  $0 [--vllm|--trt] [4bit|8bit] <chat_model> <tool_model>'
@@ -103,5 +104,4 @@ readonly -a CFG_MAIN_USAGE_LINES=(
   "  --show-llmcompressor-logs   Show LLMCompressor/AutoAWQ calibration progress"
 )
 
-# shellcheck disable=SC2034
 readonly CFG_MAIN_MSG_INVALID_ARGS="[main] Not enough arguments"

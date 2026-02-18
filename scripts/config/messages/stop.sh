@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 # =============================================================================
 # Stop Script Message Configuration
 # =============================================================================
 # Canonical user-facing messages for scripts/stop.sh.
+[[ -n ${_CFG_MSG_STOP_LOADED:-} ]] && return 0
+_CFG_MSG_STOP_LOADED=1
 
-# shellcheck disable=SC2034
 readonly CFG_STOP_MSG_LIGHT_STOP="[stop] Light stop: preserving venv, caches, and models..."
 readonly CFG_STOP_MSG_FULL_STOP="[stop] Full stop: wiping venv, caches, models..."
 readonly CFG_STOP_MSG_STOPPING_SERVER="[stop] Stopping uvicorn server session and clearing server.pid..."
