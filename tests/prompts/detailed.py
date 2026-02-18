@@ -1,6 +1,6 @@
 """Detailed persona prompt definitions with multiple personality variants."""
 
-from .detailed_anna_prompts import (
+from .characters.anna import (
     ANNA_EX,
     ANNA_KPOP,
     ANNA_WARM,
@@ -16,7 +16,7 @@ from .detailed_anna_prompts import (
     ANNA_SPIRITUAL,
     ANNA_SHOPAHOLIC,
 )
-from .detailed_mark_prompts import (
+from .characters.mark import (
     MARK_EX,
     MARK_KPOP,
     MARK_WARM,
