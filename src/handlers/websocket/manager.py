@@ -20,6 +20,7 @@ from .message_loop import run_message_loop
 from ...telemetry.traces import session_span
 from ..limits import SlidingWindowRateLimiter
 from ...config.telemetry import classify_error
+from .disconnects import is_expected_disconnect
 from ...telemetry.instruments import get_metrics
 from .errors import send_error, reject_connection
 from ...logging import set_log_context, reset_log_context
@@ -40,6 +41,12 @@ from ...config import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _is_expected_disconnect_exception(exc: BaseException, lifecycle: WebSocketLifecycle) -> bool:
+    """Return True when connection teardown is expected and non-actionable."""
+
+    return lifecycle.idle_timed_out() or is_expected_disconnect(exc)
 
 
 async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
@@ -191,17 +198,19 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
         except WebSocketDisconnect:
             pass
         except Exception as exc:  # noqa: BLE001
-            capture_error(exc)
-            m.errors_total.add(1, {"error.type": classify_error(exc)})
-            logger.exception("WebSocket error")
-            if not lifecycle.should_close():
+            if _is_expected_disconnect_exception(exc, lifecycle):
+                logger.info("WebSocket disconnected (%s)", exc.__class__.__name__)
+            else:
+                capture_error(exc)
+                m.errors_total.add(1, {"error.type": classify_error(exc)})
+                logger.exception("WebSocket error")
                 with contextlib.suppress(Exception):
                     await send_error(
                         ws,
                         session_id=session_id,
                         request_id=None,
                         error_code=WS_ERROR_INTERNAL,
-                        message=str(exc),
+                        message="An unexpected server error occurred.",
                         reason_code="internal_exception",
                     )
         finally:

@@ -17,6 +17,7 @@ import websockets
 
 from tests.helpers.websocket import send_client_end, connect_with_retries
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON
 from tests.helpers.fmt import (
     dim,
     section_header,
@@ -103,6 +104,15 @@ async def _test_idle_watchdog(
                     f"server did not close within {total_wait:.0f}s " f"(expected idle timeout: {expect_seconds:.0f}s)"
                 ) from None
             except websockets.ConnectionClosed as exc:
+                if exc.code != WS_IDLE_CLOSE_CODE:
+                    raise RuntimeError(
+                        f"expected idle close code {WS_IDLE_CLOSE_CODE}, got {exc.code} (reason={exc.reason!r})"
+                    ) from exc
+                close_reason = exc.reason or ""
+                if close_reason and WS_IDLE_CLOSE_REASON.lower() not in close_reason.lower():
+                    raise RuntimeError(
+                        "expected idle close reason to include " f"{WS_IDLE_CLOSE_REASON!r}, got {exc.reason!r}"
+                    ) from exc
                 print(connection_status("idle", f"server closed (code={exc.code} reason={exc.reason})"))
                 break
 
