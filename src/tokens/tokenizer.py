@@ -91,7 +91,7 @@ class FastTokenizer:
             if self.tok is not None:
                 enc = self.tok.encode(text)
                 try:
-                    return enc.n_tokens  # type: ignore[attr-defined]
+                    return enc.n_tokens
                 except AttributeError:
                     return len(enc.ids)
             # transformers fallback (fast or slow)
@@ -100,10 +100,10 @@ class FastTokenizer:
                 raise RuntimeError("Transformers tokenizer not loaded.")
             try:
                 # Avoid adding special tokens to mirror Tokenizer behavior
-                ids = hf_tok.encode(text, add_special_tokens=False)  # type: ignore[attr-defined]
+                ids = hf_tok.encode(text, add_special_tokens=False)
             except AttributeError:
                 # Some tokenizers prefer the __call__ API
-                enc = hf_tok(  # type: ignore[call-arg]
+                enc = hf_tok(
                     text,
                     add_special_tokens=False,
                     return_attention_mask=False,
@@ -139,9 +139,9 @@ class FastTokenizer:
             if hf_tok is None:
                 raise RuntimeError("Transformers tokenizer not loaded.")
             try:
-                ids = hf_tok.encode(text, add_special_tokens=False)  # type: ignore[attr-defined]
+                ids = hf_tok.encode(text, add_special_tokens=False)
             except AttributeError:
-                enc = hf_tok(  # type: ignore[call-arg]
+                enc = hf_tok(
                     text,
                     add_special_tokens=False,
                     return_attention_mask=False,
@@ -153,7 +153,7 @@ class FastTokenizer:
                 return text
             kept = ids[:max_tokens] if keep == "start" else ids[-max_tokens:]
             # Decode without injecting special tokens or cleaning spaces
-            return hf_tok.decode(  # type: ignore[attr-defined]
+            return hf_tok.decode(
                 kept,
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
@@ -177,9 +177,9 @@ class FastTokenizer:
             if hf_tok is None:
                 raise RuntimeError("Transformers tokenizer not loaded.")
             try:
-                ids = hf_tok.encode(text, add_special_tokens=False)  # type: ignore[attr-defined]
+                ids = hf_tok.encode(text, add_special_tokens=False)
             except AttributeError:
-                enc = hf_tok(  # type: ignore[call-arg]
+                enc = hf_tok(
                     text,
                     add_special_tokens=False,
                     return_attention_mask=False,

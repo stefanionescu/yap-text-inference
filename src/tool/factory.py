@@ -34,7 +34,8 @@ def create_tool_adapter() -> ToolAdapter:
     if not TOOL_MODEL:
         raise ValueError("TOOL_MODEL must be set to initialize the tool adapter.")
     batch_cfg = TOOL_MODEL_BATCH_CONFIG.get(TOOL_MODEL, {})
-    max_length = TOOL_MAX_LENGTH if TOOL_MAX_LENGTH_CONFIGURED else batch_cfg.get("max_length")
+    max_length_raw = TOOL_MAX_LENGTH if TOOL_MAX_LENGTH_CONFIGURED else batch_cfg.get("max_length")
+    max_length = int(max_length_raw) if max_length_raw is not None else None
     history_max_tokens = TOOL_HISTORY_TOKENS if TOOL_HISTORY_TOKENS_CONFIGURED else None
     return ToolAdapter(
         model_path=TOOL_MODEL,

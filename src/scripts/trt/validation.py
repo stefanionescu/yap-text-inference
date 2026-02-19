@@ -62,7 +62,7 @@ def validate_cuda_runtime() -> bool:
             if major >= CUDA_BINDINGS_MIN_MAJOR:
                 from cuda.bindings import runtime as cudart  # noqa: PLC0415
             else:
-                from cuda import cudart  # type: ignore[import-not-found,no-redef]  # noqa: PLC0415
+                from cuda import cudart  # noqa: PLC0415
         except Exception as exc:
             print(f"IMPORT_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
             return False

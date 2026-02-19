@@ -1,7 +1,7 @@
 """Follow-up handler to continue answer after external screen analysis.
 
 Bypasses tool routing and directly invokes the chat model with a synthetic
-with a screenshot analysis with a configurable prefix.
+user utterance built from the screenshot analysis and a configurable prefix.
 """
 
 from __future__ import annotations
@@ -149,6 +149,8 @@ async def _stream_followup_response(
     session_handler: SessionHandler,
     runtime_deps: RuntimeDeps,
 ) -> None:
+    assert runtime_deps.chat_engine is not None  # noqa: S101
+    assert runtime_deps.chat_tokenizer is not None  # noqa: S101
     await stream_chat_response(
         ws,
         run_chat_generation(

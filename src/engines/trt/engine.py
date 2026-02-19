@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from collections.abc import AsyncGenerator
 
 if TYPE_CHECKING:
-    from tensorrt_llm.executor import GenerationResult  # type: ignore
+    from tensorrt_llm.executor import GenerationResult
 else:
     GenerationResult = Any  # Actual import happens lazily inside SuppressedFDContext
 

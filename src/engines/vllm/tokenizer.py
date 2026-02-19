@@ -114,8 +114,8 @@ def _install_fix_mistral_regex_patch(markers: set[str]) -> bool:
             kwargs.setdefault("fix_mistral_regex", True)
         return original(cls, pretrained_model_name_or_path, *args, **kwargs)
 
-    AutoTokenizer._yap_original_from_pretrained = original  # type: ignore[attr-defined]
-    AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)  # type: ignore[method-assign,assignment]
+    AutoTokenizer._yap_original_from_pretrained = original
+    AutoTokenizer.from_pretrained = classmethod(_patched_from_pretrained)
     _STATE["installed"] = True
     logger.info(
         "[config] Applied AutoTokenizer monkeypatch for fix_mistral_regex (markers: %s)",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import contextlib
-from typing import Any
+from typing import Any, cast
 from collections.abc import Callable
 
 from fastapi import WebSocket
@@ -213,6 +213,7 @@ async def _dispatch_session_message(
         )
     if not await _ensure_active_session(ws, active_session_id, msg_session_id, msg_request_id):
         return active_session_id
+    active_session_id = cast(str, active_session_id)
     if msg_type == "message":
         await _handle_message_command(
             ws,

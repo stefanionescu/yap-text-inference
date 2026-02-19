@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import logging
 
-import torch  # type: ignore[import]
+import torch
 
 from src.state import ToolModelInfo
 from src.config.tool import (
