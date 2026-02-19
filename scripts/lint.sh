@@ -130,6 +130,10 @@ run_python() {
   run_quiet "no-config-functions" python "$ROOT_DIR/linting/no_config_functions.py"
   run_quiet "function-order" python "$ROOT_DIR/linting/function_order.py"
   run_quiet "no-config-cross-imports" python "$ROOT_DIR/linting/no_config_cross_imports.py"
+  run_quiet "no-test-file-prefix" python "$ROOT_DIR/linting/no_test_file_prefix.py"
+  run_quiet "test-function-placement" python "$ROOT_DIR/linting/test_function_placement.py"
+  run_quiet "unit-test-domain-folders" python "$ROOT_DIR/linting/unit_test_domain_folders.py"
+  run_quiet "no-conftest-in-subfolders" python "$ROOT_DIR/linting/no_conftest_in_subfolders.py"
 }
 
 run_shell() {
