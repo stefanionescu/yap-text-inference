@@ -18,8 +18,8 @@ from .helpers import safe_send_envelope
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
 from ..limits import SlidingWindowRateLimiter
-from .disconnects import is_expected_disconnect
 from ...telemetry.instruments import get_metrics
+from .disconnects import is_expected_ws_disconnect
 from ...messages.cancel import handle_cancel_message
 from ...messages.message import handle_message_message
 from ...messages.followup import handle_followup_message
@@ -266,7 +266,7 @@ async def run_message_loop(
         try:
             raw_msg = await ws.receive_text()
         except Exception as exc:  # noqa: BLE001 - narrowed by classification helper
-            if lifecycle.idle_timed_out() or is_expected_disconnect(exc):
+            if lifecycle.idle_timed_out() or is_expected_ws_disconnect(exc):
                 break
             raise
 

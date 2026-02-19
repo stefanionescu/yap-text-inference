@@ -2,8 +2,6 @@
 
 import os
 
-from ..errors import RateLimitError, ValidationError, EngineNotReadyError, EngineShutdownError, StreamCancelledError
-
 # ---------------------------------------------------------------------------
 # Env Parsing Helpers
 # ---------------------------------------------------------------------------
@@ -137,28 +135,6 @@ SENTRY_TAG_SESSION_ID = "session_id"
 SENTRY_TAG_REQUEST_ID = "request_id"
 SENTRY_TAG_CLIENT_ID = "client_id"
 
-# ---------------------------------------------------------------------------
-# Error classification mapping
-# ---------------------------------------------------------------------------
-_ERROR_CATEGORIES: tuple[tuple[type, str], ...] = (
-    (ValidationError, "validation"),
-    (RateLimitError, "rate_limit"),
-    (StreamCancelledError, "cancelled"),
-    (EngineNotReadyError, "engine_not_ready"),
-    (EngineShutdownError, "engine_shutdown"),
-    (TimeoutError, "timeout"),
-    (ConnectionError, "connection"),
-)
-
-
-def classify_error(exc: BaseException) -> str:
-    """Map an exception to a metric-friendly category label."""
-    for cls, label in _ERROR_CATEGORIES:
-        if isinstance(exc, cls):
-            return label
-    return "unknown"
-
-
 __all__ = [
     # Sentry env
     "SENTRY_DSN",
@@ -218,7 +194,4 @@ __all__ = [
     "SENTRY_TAG_SESSION_ID",
     "SENTRY_TAG_REQUEST_ID",
     "SENTRY_TAG_CLIENT_ID",
-    # Error classification
-    "_ERROR_CATEGORIES",
-    "classify_error",
 ]
