@@ -1,11 +1,15 @@
 #
-# Lightweight dependency set for running the WebSocket test clients locally
+# Lightweight dependency set for local test clients and unit tests
 # (e.g., macOS or CPU-only machines). Install via:
 #   python3 -m venv .venv-local && source .venv-local/bin/activate
 #   pip install -r requirements-local.txt
 #
 
+fastapi==0.121.3
 websockets==12.0
 httpx==0.27.2
 orjson==3.10.7
 phonenumbers==9.0.3
+opentelemetry-api==1.33.0
+opentelemetry-sdk==1.33.0
+opentelemetry-exporter-otlp-proto-http==1.33.0
