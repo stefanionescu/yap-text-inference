@@ -11,8 +11,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-TESTS_DIR = ROOT / "tests"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import TESTS_DIR, rel, report  # noqa: E402
+
 ALLOWED = TESTS_DIR / "conftest.py"
 
 
@@ -24,15 +26,9 @@ def main() -> int:
 
     for conftest in sorted(TESTS_DIR.rglob("conftest.py")):
         if conftest != ALLOWED:
-            rel = conftest.relative_to(ROOT)
-            violations.append(f"  {rel}: conftest.py only allowed at tests/conftest.py")
+            violations.append(f"  {rel(conftest)}: conftest.py only allowed at tests/conftest.py")
 
-    if violations:
-        print("No-conftest-in-subfolders violations:", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("No-conftest-in-subfolders violations", violations)
 
 
 if __name__ == "__main__":

@@ -105,8 +105,8 @@ run_python() {
     run_quiet "import-linter" lint-imports
   fi
 
-  run_quiet "import-cycles" python "$ROOT_DIR/linting/import_cycles.py"
-  run_quiet "all-at-bottom" python "$ROOT_DIR/linting/all_at_bottom.py"
+  run_quiet "import-cycles" python "$ROOT_DIR/linting/imports/import_cycles.py"
+  run_quiet "all-at-bottom" python "$ROOT_DIR/linting/structure/all_at_bottom.py"
 
   if python -m src.scripts.validation.package mypy; then
     PY_DIRS=()
@@ -117,23 +117,23 @@ run_python() {
     fi
   fi
 
-  run_quiet "file-length" python "$ROOT_DIR/linting/file_length.py"
-  run_quiet "function-length" python "$ROOT_DIR/linting/function_length.py"
-  run_quiet "one-class-per-file" python "$ROOT_DIR/linting/one_class_per_file.py"
-  run_quiet "no-runtime-singletons" python "$ROOT_DIR/linting/no_runtime_singletons.py"
-  run_quiet "no-lazy-module-loading" python "$ROOT_DIR/linting/no_lazy_module_loading.py"
-  run_quiet "no-legacy-markers" python "$ROOT_DIR/linting/no_legacy_markers.py"
-  run_quiet "dockerignore-policy" python "$ROOT_DIR/linting/dockerignore_policy.py"
-  run_quiet "single-file-folders" python "$ROOT_DIR/linting/single_file_folders.py"
-  run_quiet "prefix-collisions" python "$ROOT_DIR/linting/prefix_collisions.py"
-  run_quiet "no-inline-python" python "$ROOT_DIR/linting/no_inline_python.py"
-  run_quiet "no-config-functions" python "$ROOT_DIR/linting/no_config_functions.py"
-  run_quiet "function-order" python "$ROOT_DIR/linting/function_order.py"
-  run_quiet "no-config-cross-imports" python "$ROOT_DIR/linting/no_config_cross_imports.py"
-  run_quiet "no-test-file-prefix" python "$ROOT_DIR/linting/no_test_file_prefix.py"
-  run_quiet "test-function-placement" python "$ROOT_DIR/linting/test_function_placement.py"
-  run_quiet "unit-test-domain-folders" python "$ROOT_DIR/linting/unit_test_domain_folders.py"
-  run_quiet "no-conftest-in-subfolders" python "$ROOT_DIR/linting/no_conftest_in_subfolders.py"
+  run_quiet "file-length" python "$ROOT_DIR/linting/structure/file_length.py"
+  run_quiet "function-length" python "$ROOT_DIR/linting/structure/function_length.py"
+  run_quiet "one-class-per-file" python "$ROOT_DIR/linting/structure/one_class_per_file.py"
+  run_quiet "no-runtime-singletons" python "$ROOT_DIR/linting/runtime/no_runtime_singletons.py"
+  run_quiet "no-lazy-module-loading" python "$ROOT_DIR/linting/imports/no_lazy_module_loading.py"
+  run_quiet "no-legacy-markers" python "$ROOT_DIR/linting/runtime/no_legacy_markers.py"
+  run_quiet "dockerignore-policy" python "$ROOT_DIR/linting/infra/dockerignore_policy.py"
+  run_quiet "single-file-folders" python "$ROOT_DIR/linting/structure/single_file_folders.py"
+  run_quiet "prefix-collisions" python "$ROOT_DIR/linting/structure/prefix_collisions.py"
+  run_quiet "no-inline-python" python "$ROOT_DIR/linting/runtime/no_inline_python.py"
+  run_quiet "no-config-functions" python "$ROOT_DIR/linting/modules/no_config_functions.py"
+  run_quiet "function-order" python "$ROOT_DIR/linting/structure/function_order.py"
+  run_quiet "no-config-cross-imports" python "$ROOT_DIR/linting/modules/no_config_cross_imports.py"
+  run_quiet "no-test-file-prefix" python "$ROOT_DIR/linting/testing/no_test_file_prefix.py"
+  run_quiet "test-function-placement" python "$ROOT_DIR/linting/testing/test_function_placement.py"
+  run_quiet "unit-test-domain-folders" python "$ROOT_DIR/linting/testing/unit_test_domain_folders.py"
+  run_quiet "no-conftest-in-subfolders" python "$ROOT_DIR/linting/testing/no_conftest_in_subfolders.py"
 }
 
 run_shell() {

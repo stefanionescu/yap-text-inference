@@ -5,3 +5,14 @@ forbidden_files = [".dockerignore"]
 allowed_extra_files = []
 allow_only_listed = true
 first_effective_rule = "**"
+
+[limits]
+src_file_lines = 300
+shell_file_lines = 300
+function_lines = 60
+min_prefix_collision = 2
+
+[paths]
+src = "src"
+tests = "tests"
+config = "src/config"

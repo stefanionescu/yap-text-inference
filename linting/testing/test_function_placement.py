@@ -12,52 +12,40 @@ import ast
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-TESTS_DIR = ROOT / "tests"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import TESTS_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
+
 ALLOWED_DIRS = {"unit", "integration"}
 
 
 def main() -> int:
     violations: list[str] = []
 
-    if not TESTS_DIR.is_dir():
-        return 0
-
-    for py_file in sorted(TESTS_DIR.rglob("*.py")):
+    for py_file in iter_python_files(TESTS_DIR):
         if py_file.name == "__init__.py":
             continue
 
         # Determine the top-level subdirectory under tests/
-        rel = py_file.relative_to(TESTS_DIR)
-        top_dir = rel.parts[0] if len(rel.parts) > 1 else None
+        rel_to_tests = py_file.relative_to(TESTS_DIR)
+        top_dir = rel_to_tests.parts[0] if len(rel_to_tests.parts) > 1 else None
 
         if top_dir in ALLOWED_DIRS:
             continue
 
-        try:
-            source = py_file.read_text()
-        except (OSError, UnicodeDecodeError):
+        result = parse_source(py_file)
+        if result is None:
             continue
-
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            continue
+        _source, tree = result
 
         for node in tree.body:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name.startswith("test_"):
-                rel_from_root = py_file.relative_to(ROOT)
                 violations.append(
-                    f"  {rel_from_root}: def {node.name}() (line {node.lineno}) — "
+                    f"  {rel(py_file)}: def {node.name}() (line {node.lineno}) — "
                     f"test functions belong in tests/unit/ or tests/integration/"
                 )
 
-    if violations:
-        print("Test-function-placement violations:", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("Test-function-placement violations", violations)
 
 
 if __name__ == "__main__":

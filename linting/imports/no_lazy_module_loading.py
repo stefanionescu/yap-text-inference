@@ -7,29 +7,25 @@ import ast
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
 
 FORBIDDEN_EXPORT_HOOKS = {"__getattr__", "__dir__", "__getattribute__"}
 
 
 def _collect_violations(path: Path) -> list[str]:
-    try:
-        source = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    result = parse_source(path)
+    if result is None:
         return []
+    _source, tree = result
 
-    try:
-        tree = ast.parse(source, filename=str(path))
-    except SyntaxError:
-        return []
-
-    rel = path.relative_to(ROOT)
+    r = rel(path)
     violations: list[str] = []
 
     for node in tree.body:
         if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_EXPORT_HOOKS:
-            violations.append(f"  {rel}:{node.lineno} forbidden lazy export hook `{node.name}`")
+            violations.append(f"  {r}:{node.lineno} forbidden lazy export hook `{node.name}`")
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -41,9 +37,9 @@ def _collect_violations(path: Path) -> list[str]:
             and func.value.id == "importlib"
             and func.attr == "import_module"
         ):
-            violations.append(f"  {rel}:{node.lineno} forbidden dynamic import via importlib.import_module")
+            violations.append(f"  {r}:{node.lineno} forbidden dynamic import via importlib.import_module")
         if isinstance(func, ast.Name) and func.id == "import_module":
-            violations.append(f"  {rel}:{node.lineno} forbidden dynamic import via import_module")
+            violations.append(f"  {r}:{node.lineno} forbidden dynamic import via import_module")
 
     if path.name == "__init__.py":
         for parent in ast.walk(tree):
@@ -51,7 +47,7 @@ def _collect_violations(path: Path) -> list[str]:
                 continue
             for node in ast.walk(parent):
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
-                    violations.append(f"  {rel}:{node.lineno} local import in __init__.py is forbidden")
+                    violations.append(f"  {r}:{node.lineno} local import in __init__.py is forbidden")
     return violations
 
 
@@ -61,19 +57,11 @@ def main() -> int:
         return 1
 
     violations: list[str] = []
-    for py_file in sorted(SRC_DIR.rglob("*.py")):
-        if "__pycache__" in py_file.parts:
-            continue
+    for py_file in iter_python_files(SRC_DIR):
         violations.extend(_collect_violations(py_file))
 
-    if not violations:
-        return 0
-
-    print("Lazy module loading/export violations:", file=sys.stderr)
-    for violation in violations:
-        print(violation, file=sys.stderr)
-    return 1
+    return report("Lazy module loading/export violations", violations)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

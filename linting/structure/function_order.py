@@ -12,20 +12,16 @@ import ast
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
 
 
 def _check_file(filepath: Path) -> str | None:
-    try:
-        source = filepath.read_text()
-    except (OSError, UnicodeDecodeError):
+    result = parse_source(filepath)
+    if result is None:
         return None
-
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return None
+    _source, tree = result
 
     last_public_line: int | None = None
     last_public_name: str | None = None
@@ -36,9 +32,8 @@ def _check_file(filepath: Path) -> str | None:
 
         if node.name.startswith("_"):
             if last_public_line is not None:
-                rel = filepath.relative_to(ROOT)
                 return (
-                    f"  {rel}: private {node.name}() at line {node.lineno} "
+                    f"  {rel(filepath)}: private {node.name}() at line {node.lineno} "
                     f"appears after public {last_public_name}() at line {last_public_line}"
                 )
         else:
@@ -51,18 +46,12 @@ def _check_file(filepath: Path) -> str | None:
 def main() -> int:
     violations: list[str] = []
 
-    if SRC_DIR.is_dir():
-        for py_file in sorted(SRC_DIR.rglob("*.py")):
-            violation = _check_file(py_file)
-            if violation:
-                violations.append(violation)
+    for py_file in iter_python_files(SRC_DIR):
+        violation = _check_file(py_file)
+        if violation:
+            violations.append(violation)
 
-    if violations:
-        print("Function-order violations (private before public):", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("Function-order violations (private before public)", violations)
 
 
 if __name__ == "__main__":

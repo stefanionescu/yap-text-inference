@@ -7,8 +7,9 @@ import ast
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
 
 
 def _is_dataclass_decorator(decorator: ast.expr) -> bool:
@@ -25,15 +26,10 @@ def _is_dataclass_class(node: ast.ClassDef) -> bool:
 
 
 def _collect_top_level_classes(filepath: Path) -> list[str]:
-    try:
-        source = filepath.read_text()
-    except (OSError, UnicodeDecodeError):
+    result = parse_source(filepath)
+    if result is None:
         return []
-
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return []
+    _source, tree = result
 
     classes: list[str] = []
     for node in tree.body:
@@ -48,20 +44,13 @@ def _collect_top_level_classes(filepath: Path) -> list[str]:
 def main() -> int:
     violations: list[str] = []
 
-    if SRC_DIR.is_dir():
-        for py_file in sorted(SRC_DIR.rglob("*.py")):
-            classes = _collect_top_level_classes(py_file)
-            if len(classes) > 1:
-                rel = py_file.relative_to(ROOT)
-                class_names = ", ".join(classes)
-                violations.append(f"  {rel}: {len(classes)} classes ({class_names})")
+    for py_file in iter_python_files(SRC_DIR):
+        classes = _collect_top_level_classes(py_file)
+        if len(classes) > 1:
+            class_names = ", ".join(classes)
+            violations.append(f"  {rel(py_file)}: {len(classes)} classes ({class_names})")
 
-    if violations:
-        print("One non-dataclass-class-per-file violations:", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("One non-dataclass-class-per-file violations", violations)
 
 
 if __name__ == "__main__":

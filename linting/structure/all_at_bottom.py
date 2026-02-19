@@ -16,6 +16,10 @@ import sys
 import argparse
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import report  # noqa: E402
+
 
 def _is_name(node: ast.AST, name: str) -> bool:
     return isinstance(node, ast.Name) and node.id == name
@@ -165,13 +169,8 @@ def main() -> int:
                 continue
             violations.extend(_collect_violations(py_file, root))
 
-    if violations:
-        print("__all__ placement violations:", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("__all__ placement violations", violations)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

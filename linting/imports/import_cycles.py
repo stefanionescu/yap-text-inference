@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Detect Python import cycles inside the src package.
 
 This script performs static import analysis over repository modules and fails
@@ -14,7 +14,10 @@ from pathlib import Path
 from dataclasses import dataclass
 from collections import defaultdict
 
-SRC_DIR = Path("src")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import SRC_DIR, iter_python_files  # noqa: E402
+
 INTERNAL_ROOT = "src"
 
 
@@ -26,13 +29,11 @@ class ModuleFile:
     module: str
 
 
-def _collect_modules(root_dir: Path) -> list[ModuleFile]:
-    """Collect module names for all Python files under root_dir."""
+def _collect_modules() -> list[ModuleFile]:
+    """Collect module names for all Python files under src/."""
     modules: list[ModuleFile] = []
-    for path in sorted(root_dir.rglob("*.py")):
-        if "__pycache__" in path.parts:
-            continue
-        rel = path.relative_to(root_dir).with_suffix("")
+    for path in iter_python_files(SRC_DIR):
+        rel = path.relative_to(SRC_DIR).with_suffix("")
         parts = list(rel.parts)
         if parts and parts[-1] == "__init__":
             parts = parts[:-1]
@@ -161,7 +162,7 @@ def main() -> int:
         print(f"[import-cycles] Missing source directory: {SRC_DIR}", file=sys.stderr)
         return 1
 
-    module_files = _collect_modules(SRC_DIR)
+    module_files = _collect_modules()
     known_modules = _build_known_modules(module_files)
     graph_edges = _parse_import_edges(module_files, known_modules)
     module_names = {entry.module for entry in module_files}
@@ -189,4 +190,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

@@ -12,19 +12,16 @@ import ast
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-CONFIG_DIR = ROOT / "src" / "config"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import CONFIG_DIR, rel, report, parse_source  # noqa: E402
 
 
 def _config_module_names() -> set[str]:
     """Return the stem names of all config modules (excluding __init__)."""
     if not CONFIG_DIR.is_dir():
         return set()
-    return {
-        p.stem
-        for p in CONFIG_DIR.glob("*.py")
-        if p.name != "__init__.py"
-    }
+    return {p.stem for p in CONFIG_DIR.glob("*.py") if p.name != "__init__.py"}
 
 
 def main() -> int:
@@ -35,15 +32,10 @@ def main() -> int:
         if py_file.name == "__init__.py":
             continue
 
-        try:
-            source = py_file.read_text()
-        except (OSError, UnicodeDecodeError):
+        result = parse_source(py_file)
+        if result is None:
             continue
-
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            continue
+        _source, tree = result
 
         for node in tree.body:
             if not isinstance(node, ast.ImportFrom):
@@ -53,17 +45,9 @@ def main() -> int:
 
             # Relative import from sibling: from .deploy import ...
             if node.level == 1 and module in sibling_names:
-                rel = py_file.relative_to(ROOT)
-                violations.append(
-                    f"  {rel}: from .{module} import ... (line {node.lineno})"
-                )
+                violations.append(f"  {rel(py_file)}: from .{module} import ... (line {node.lineno})")
 
-    if violations:
-        print("No-config-cross-imports violations (config/ must not import siblings):", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("No-config-cross-imports violations (config/ must not import siblings)", violations)
 
 
 if __name__ == "__main__":

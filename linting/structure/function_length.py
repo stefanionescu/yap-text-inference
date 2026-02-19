@@ -9,13 +9,11 @@ from __future__ import annotations
 
 import ast
 import sys
-import tokenize
 from pathlib import Path
 
-FUNCTION_LIMIT = 60
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+from shared import SRC_DIR, FUNCTION_LINES, rel, report, comment_lines, docstring_lines, iter_python_files  # noqa: E402
 
 
 class _FunctionCollector(ast.NodeVisitor):
@@ -42,37 +40,6 @@ class _FunctionCollector(ast.NodeVisitor):
         self._scope.pop()
 
 
-def _comment_lines(filepath: Path) -> set[int]:
-    comments: set[int] = set()
-    try:
-        with filepath.open("rb") as f:
-            for tok in tokenize.tokenize(f.readline):
-                if tok.type == tokenize.COMMENT:
-                    comments.add(tok.start[0])
-    except tokenize.TokenError:
-        pass
-    return comments
-
-
-def _docstring_lines(tree: ast.AST) -> set[int]:
-    lines: set[int] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            continue
-        if not getattr(node, "body", None):
-            continue
-        first = node.body[0]
-        if not isinstance(first, ast.Expr):
-            continue
-        if not isinstance(first.value, ast.Constant):
-            continue
-        if not isinstance(first.value.value, str):
-            continue
-        for line_no in range(first.lineno, first.end_lineno + 1):
-            lines.add(line_no)
-    return lines
-
-
 def _count_function_lines(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     raw_lines: list[str],
@@ -92,7 +59,7 @@ def _count_function_lines(
 
 def _collect_violations(filepath: Path) -> list[str]:
     try:
-        source = filepath.read_text()
+        source = filepath.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return []
 
@@ -101,8 +68,8 @@ def _collect_violations(filepath: Path) -> list[str]:
     except SyntaxError:
         return []
 
-    comments = _comment_lines(filepath)
-    docstrings = _docstring_lines(tree)
+    comments = comment_lines(filepath)
+    docstrings_set = docstring_lines(tree)
     raw_lines = source.splitlines()
 
     collector = _FunctionCollector()
@@ -110,25 +77,20 @@ def _collect_violations(filepath: Path) -> list[str]:
 
     violations: list[str] = []
     for qualified, node in collector.functions:
-        size = _count_function_lines(node, raw_lines, comments, docstrings)
-        if size > FUNCTION_LIMIT:
-            rel = filepath.relative_to(ROOT)
-            violations.append(f"  {rel}:{node.lineno} {qualified} -> {size} code lines (limit {FUNCTION_LIMIT})")
+        size = _count_function_lines(node, raw_lines, comments, docstrings_set)
+        if size > FUNCTION_LINES:
+            violations.append(
+                f"  {rel(filepath)}:{node.lineno} {qualified} -> {size} code lines (limit {FUNCTION_LINES})"
+            )
     return violations
 
 
 def main() -> int:
     violations: list[str] = []
-    if SRC_DIR.is_dir():
-        for py_file in sorted(SRC_DIR.rglob("*.py")):
-            violations.extend(_collect_violations(py_file))
+    for py_file in iter_python_files(SRC_DIR):
+        violations.extend(_collect_violations(py_file))
 
-    if violations:
-        print("Function length violations:", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("Function length violations", violations)
 
 
 if __name__ == "__main__":

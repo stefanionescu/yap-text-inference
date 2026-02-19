@@ -10,8 +10,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import SRC_DIR, rel, report  # noqa: E402
 
 
 def _is_single_file_package(pkg_dir: Path) -> str | None:
@@ -37,6 +38,8 @@ def main() -> int:
     for pkg_dir in sorted(SRC_DIR.rglob("*")):
         if not pkg_dir.is_dir():
             continue
+        if "__pycache__" in pkg_dir.parts:
+            continue
         if not (pkg_dir / "__init__.py").exists():
             continue
         # Skip the src root itself
@@ -45,15 +48,9 @@ def main() -> int:
 
         lone_module = _is_single_file_package(pkg_dir)
         if lone_module:
-            rel = pkg_dir.relative_to(ROOT)
-            violations.append(f"  {rel}/ has only {lone_module} — flatten to a single module")
+            violations.append(f"  {rel(pkg_dir)}/ has only {lone_module} — flatten to a single module")
 
-    if violations:
-        print("Single-file folder violations:", file=sys.stderr)
-        for v in violations:
-            print(v, file=sys.stderr)
-        return 1
-    return 0
+    return report("Single-file folder violations", violations)
 
 
 if __name__ == "__main__":

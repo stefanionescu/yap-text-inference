@@ -7,8 +7,9 @@ import ast
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
 
 SINGLETON_CLASS_SUFFIX = "Singleton"
 SINGLETON_FN_NAMES = {"get_instance", "reset_instance"}
@@ -51,29 +52,24 @@ def _is_lazy_singleton_state(node: ast.Assign | ast.AnnAssign) -> bool:
 
 
 def _collect_violations(filepath: Path) -> list[str]:
-    try:
-        source = filepath.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    result = parse_source(filepath)
+    if result is None:
         return []
-
-    try:
-        tree = ast.parse(source, filename=str(filepath))
-    except SyntaxError:
-        return []
+    _source, tree = result
 
     violations: list[str] = []
-    rel = filepath.relative_to(ROOT)
+    r = rel(filepath)
 
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name.endswith(SINGLETON_CLASS_SUFFIX):
-            violations.append(f"  {rel}:{node.lineno} class `{node.name}` uses singleton naming")
+            violations.append(f"  {r}:{node.lineno} class `{node.name}` uses singleton naming")
             continue
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in SINGLETON_FN_NAMES:
-            violations.append(f"  {rel}:{node.lineno} function `{node.name}` suggests singleton lifecycle")
+            violations.append(f"  {r}:{node.lineno} function `{node.name}` suggests singleton lifecycle")
             continue
         if isinstance(node, (ast.Assign, ast.AnnAssign)) and _is_lazy_singleton_state(node):
             names = ", ".join(_top_level_targets(node))
-            violations.append(f"  {rel}:{node.lineno} lazy singleton module state assignment: {names}")
+            violations.append(f"  {r}:{node.lineno} lazy singleton module state assignment: {names}")
 
     return violations
 
@@ -84,19 +80,11 @@ def main() -> int:
         return 1
 
     violations: list[str] = []
-    for py_file in sorted(SRC_DIR.rglob("*.py")):
-        if "__pycache__" in py_file.parts:
-            continue
+    for py_file in iter_python_files(SRC_DIR):
         violations.extend(_collect_violations(py_file))
 
-    if not violations:
-        return 0
-
-    print("Runtime singleton pattern violations:", file=sys.stderr)
-    for violation in violations:
-        print(violation, file=sys.stderr)
-    return 1
+    return report("Runtime singleton pattern violations", violations)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

@@ -7,7 +7,9 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import ROOT, rel, report  # noqa: E402
 
 TARGETS = [
     ROOT / "src" / "runtime",
@@ -30,14 +32,16 @@ PATTERNS = [
 ]
 
 
-def _iter_python_files() -> list[Path]:
+def _iter_target_files() -> list[Path]:
     files: list[Path] = []
     for target in TARGETS:
         if target.is_file():
             files.append(target)
             continue
         if target.is_dir():
-            files.extend(sorted(target.rglob("*.py")))
+            for py in sorted(target.rglob("*.py")):
+                if "__pycache__" not in py.parts:
+                    files.append(py)
     return files
 
 
@@ -46,30 +50,22 @@ def _collect_violations(path: Path) -> list[str]:
         return []
     text = path.read_text(encoding="utf-8")
     violations: list[str] = []
-    lines = text.splitlines()
-    rel = path.relative_to(ROOT)
-    for idx, line in enumerate(lines, start=1):
+    r = rel(path)
+    for idx, line in enumerate(text.splitlines(), start=1):
         for pattern in PATTERNS:
             if pattern.search(line):
-                violations.append(f"  {rel}:{idx} contains prohibited marker `{pattern.pattern}`")
+                violations.append(f"  {r}:{idx} contains prohibited marker `{pattern.pattern}`")
                 break
     return violations
 
 
 def main() -> int:
     violations: list[str] = []
-    for py_file in _iter_python_files():
-        if "__pycache__" in py_file.parts:
-            continue
+    for py_file in _iter_target_files():
         violations.extend(_collect_violations(py_file))
 
-    if violations:
-        print("Legacy/compatibility marker violations:", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("Legacy/compatibility marker violations", violations)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
