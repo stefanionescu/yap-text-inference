@@ -281,12 +281,12 @@ For CPU-only unit validation (no server or GPU required):
 ```bash
 python -m pytest -q \
   tests/integration/sanitizer.py \
-  tests/unit/start_history.py \
-  tests/unit/history_accounting.py \
-  tests/unit/token_accounting.py \
-  tests/unit/history_parsing.py \
-  tests/unit/prefix_accounting.py \
-  tests/unit/ws_helpers.py
+  tests/unit/history/start_history.py \
+  tests/unit/history/history_accounting.py \
+  tests/unit/tokens/token_accounting.py \
+  tests/unit/history/history_parsing.py \
+  tests/unit/tokens/prefix_accounting.py \
+  tests/unit/websocket/ws_helpers.py
 ```
 
 ## Stopping and Restarting

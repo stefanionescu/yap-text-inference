@@ -3,9 +3,9 @@
 from .limits import RateLimitError
 from .validation import ValidationError
 from .stream import StreamCancelledError
+from .shutdown import EngineShutdownError
+from .not_ready import EngineNotReadyError
 from .quantization import EngineLabelError
-from .shutdown_error import EngineShutdownError
-from .not_ready_error import EngineNotReadyError
 
 __all__ = [
     # Engine errors

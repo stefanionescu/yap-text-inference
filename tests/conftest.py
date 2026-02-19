@@ -10,7 +10,7 @@ import pytest
 def _is_collectable_test_module(path: Path) -> bool:
     if path.suffix != ".py" or path.name == "__init__.py":
         return False
-    if path.parent.name == "unit":
+    if "unit" in path.parts:
         return True
     return path.parent.name == "integration" and path.name == "sanitizer.py"
 
