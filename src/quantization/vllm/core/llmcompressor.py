@@ -82,65 +82,6 @@ def _run_quantization_and_cleanup(
     return True
 
 
-def quantize(
-    *,
-    calibration_config: CalibrationConfig,
-    model_path: str,
-    resolved_model_path: str,
-    output_dir: str,
-    quant_config: dict[str, Any],
-    target_seqlen: int,
-    hf_model_type: str,
-    calibration_kind: str,
-) -> bool:
-    """Quantize a model with the llmcompressor backend."""
-
-    compressor = _import_compressor()
-    if compressor is None:
-        return False
-    llmcompressor, oneshot = compressor
-
-    compressor_version = getattr(llmcompressor, "__version__", "unknown")
-    dataset_info = _resolve_dataset(calibration_config)
-    recipe = _build_recipe(quant_config)
-
-    auto_model_cls = _import_auto_model_cls()
-    if auto_model_cls is None:
-        return False
-
-    model = _load_model(auto_model_cls, resolved_model_path)
-    if model is None:
-        return False
-
-    if not _run_quantization_and_cleanup(
-        oneshot=oneshot,
-        recipe=recipe,
-        dataset_info=dataset_info,
-        calibration_config=calibration_config,
-        output_dir=output_dir,
-        target_seqlen=target_seqlen,
-        model=model,
-    ):
-        return False
-
-    _persist_metadata(
-        model_path=model_path,
-        quant_config=quant_config,
-        compressor_version=compressor_version,
-        dataset_info=dataset_info,
-        target_seqlen=target_seqlen,
-        calibration_config=calibration_config,
-        hf_model_type=hf_model_type,
-        calibration_kind=calibration_kind,
-        output_dir=output_dir,
-    )
-
-    apply_post_quantization_fixes(output_dir, model_path)
-    print("[awq] ✓ llmcompressor quantization done")
-    print()
-    return True
-
-
 def _resolve_dataset(config: CalibrationConfig) -> _DatasetInfo:
     requested = config.dataset or CALIB_DEFAULT_DATASET
     canonical = canonicalize_dataset_name(requested)
@@ -256,6 +197,65 @@ def _persist_metadata(
 
 def _is_dataset_registration_error(exc: Exception) -> bool:
     return "Unable to find" in str(exc) and "TextGenerationDataset" in str(exc)
+
+
+def quantize(
+    *,
+    calibration_config: CalibrationConfig,
+    model_path: str,
+    resolved_model_path: str,
+    output_dir: str,
+    quant_config: dict[str, Any],
+    target_seqlen: int,
+    hf_model_type: str,
+    calibration_kind: str,
+) -> bool:
+    """Quantize a model with the llmcompressor backend."""
+
+    compressor = _import_compressor()
+    if compressor is None:
+        return False
+    llmcompressor, oneshot = compressor
+
+    compressor_version = getattr(llmcompressor, "__version__", "unknown")
+    dataset_info = _resolve_dataset(calibration_config)
+    recipe = _build_recipe(quant_config)
+
+    auto_model_cls = _import_auto_model_cls()
+    if auto_model_cls is None:
+        return False
+
+    model = _load_model(auto_model_cls, resolved_model_path)
+    if model is None:
+        return False
+
+    if not _run_quantization_and_cleanup(
+        oneshot=oneshot,
+        recipe=recipe,
+        dataset_info=dataset_info,
+        calibration_config=calibration_config,
+        output_dir=output_dir,
+        target_seqlen=target_seqlen,
+        model=model,
+    ):
+        return False
+
+    _persist_metadata(
+        model_path=model_path,
+        quant_config=quant_config,
+        compressor_version=compressor_version,
+        dataset_info=dataset_info,
+        target_seqlen=target_seqlen,
+        calibration_config=calibration_config,
+        hf_model_type=hf_model_type,
+        calibration_kind=calibration_kind,
+        output_dir=output_dir,
+    )
+
+    apply_post_quantization_fixes(output_dir, model_path)
+    print("[awq] ✓ llmcompressor quantization done")
+    print()
+    return True
 
 
 __all__ = ["quantize"]

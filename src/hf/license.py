@@ -26,6 +26,31 @@ from src.config.templates import (
 logger = logging.getLogger(__name__)
 
 # ============================================================================
+# Internal Helpers
+# ============================================================================
+
+
+def _is_mistral_research_model(model_path: str) -> bool:
+    normalized = (model_path or "").strip()
+    if not normalized:
+        return False
+    return any(normalized == target or normalized.endswith(target) for target in MISTRAL_RESEARCH_MODELS)
+
+
+def _license_link_for(model_path: str, is_hf_model: bool) -> str:
+    if not is_hf_model:
+        return "LICENSE"
+    return f"https://huggingface.co/{model_path}"
+
+
+def _is_qwen_license_model(model_path: str) -> bool:
+    normalized = (model_path or "").strip()
+    if not normalized:
+        return False
+    return any(normalized == target or normalized.endswith(target) for target in QWEN_LICENSE_MODELS)
+
+
+# ============================================================================
 # Public API
 # ============================================================================
 
@@ -117,31 +142,6 @@ def compute_license_info(model_path: str, is_tool: bool, is_hf_model: bool) -> d
         "license_name": "other",
         "license_link": _license_link_for(model_path, is_hf_model),
     }
-
-
-# ============================================================================
-# Internal Helpers
-# ============================================================================
-
-
-def _is_mistral_research_model(model_path: str) -> bool:
-    normalized = (model_path or "").strip()
-    if not normalized:
-        return False
-    return any(normalized == target or normalized.endswith(target) for target in MISTRAL_RESEARCH_MODELS)
-
-
-def _license_link_for(model_path: str, is_hf_model: bool) -> str:
-    if not is_hf_model:
-        return "LICENSE"
-    return f"https://huggingface.co/{model_path}"
-
-
-def _is_qwen_license_model(model_path: str) -> bool:
-    normalized = (model_path or "").strip()
-    if not normalized:
-        return False
-    return any(normalized == target or normalized.endswith(target) for target in QWEN_LICENSE_MODELS)
 
 
 __all__ = [

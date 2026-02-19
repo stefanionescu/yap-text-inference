@@ -77,17 +77,6 @@ class LLMCompressorNoiseFilterStream:
         return getattr(self._stream, name)
 
 
-def is_llmcompressor_noise(
-    text: str,
-    patterns: tuple[re.Pattern[str], ...] = LLMCOMPRESSOR_NOISE_PATTERNS,
-) -> bool:
-    """Check if text matches known llmcompressor/AutoAWQ noise patterns."""
-    normalized = text.strip()
-    if not normalized:
-        return False
-    return any(pattern.search(normalized) for pattern in patterns)
-
-
 def _install_stream_filters() -> None:
     """Install stdout/stderr wrappers that drop llmcompressor noise."""
     if _STATE["streams_patched"]:
@@ -126,6 +115,17 @@ def _suppress_llmcompressor_loggers() -> None:
 def _suppress_llmcompressor_tqdm() -> None:
     """Suppress tqdm progress bars used by llmcompressor."""
     os.environ.setdefault("TQDM_DISABLE", "1")
+
+
+def is_llmcompressor_noise(
+    text: str,
+    patterns: tuple[re.Pattern[str], ...] = LLMCOMPRESSOR_NOISE_PATTERNS,
+) -> bool:
+    """Check if text matches known llmcompressor/AutoAWQ noise patterns."""
+    normalized = text.strip()
+    if not normalized:
+        return False
+    return any(pattern.search(normalized) for pattern in patterns)
 
 
 def configure_llmcompressor_logging() -> None:

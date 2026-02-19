@@ -57,10 +57,10 @@ configure_log_filters()
 from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
+from .logging import configure_logging  # noqa: E402
 from .runtime import build_runtime_deps  # noqa: E402
 from .telemetry.sentry import capture_error  # noqa: E402
 from .helpers.validation import validate_env  # noqa: E402
-from .config.logging import configure_logging  # noqa: E402
 from .runtime.bootstrap import clear_runtime_registries  # noqa: E402
 from .handlers.websocket import handle_websocket_connection  # noqa: E402
 from .telemetry.setup import init_telemetry, shutdown_telemetry  # noqa: E402

@@ -36,7 +36,7 @@ All values can be overridden via environment variables or per-request.
 
 import os
 
-from ..helpers.env import load_logit_bias_from_file
+from ..helpers.resolvers import load_logit_bias_from_file
 
 # ============================================================================
 # Default Sampling Parameters
@@ -107,8 +107,8 @@ INFERENCE_STOP = [
     "[EOS]",
     "[EOT]",
     # DeepSeek V2/V3 format (uses fullwidth vertical bars)
-    "<｜end▁of▁sentence｜>",
-    "<｜begin▁of▁sentence｜>",
+    "<\uff5cend\u2581of\u2581sentence\uff5c>",
+    "<\uff5cbegin\u2581of\u2581sentence\uff5c>",
     "User:",  # DeepSeek uses "User:" prefix
     # Mistral format
     "[INST]",

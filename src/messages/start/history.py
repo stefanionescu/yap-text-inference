@@ -11,6 +11,16 @@ from ...handlers.session.parsing import parse_history_messages
 from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
 
 
+def _count_history_tokens(rendered: str) -> int:
+    if not rendered:
+        return 0
+    if DEPLOY_CHAT:
+        return count_tokens_chat(rendered)
+    if DEPLOY_TOOL:
+        return count_tokens_tool(rendered)
+    return 0
+
+
 def resolve_history(
     session_handler: SessionHandler,
     session_id: str,
@@ -53,16 +63,6 @@ def trim_user_utterance(session_handler: SessionHandler, session_id: str, user_u
     if DEPLOY_TOOL:
         return trim_text_to_token_limit_tool(user_utt, max_tokens=effective_max, keep="start")
     return user_utt or ""
-
-
-def _count_history_tokens(rendered: str) -> int:
-    if not rendered:
-        return 0
-    if DEPLOY_CHAT:
-        return count_tokens_chat(rendered)
-    if DEPLOY_TOOL:
-        return count_tokens_tool(rendered)
-    return 0
 
 
 __all__ = [

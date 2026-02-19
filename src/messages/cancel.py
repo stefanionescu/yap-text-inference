@@ -9,7 +9,7 @@ clients to abort ongoing generation requests. The handler:
 4. Sends a 'cancelled' acknowledgement
 
 Cancellation is cooperative - the generation stream checks for
-cancellation periodically and terminates gracefully.
+cancellation on each engine-yielded chunk and terminates gracefully.
 """
 
 from fastapi import WebSocket

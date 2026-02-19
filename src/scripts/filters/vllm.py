@@ -77,17 +77,6 @@ class VLLMNoiseFilterStream:
         return getattr(self._stream, name)
 
 
-def is_vllm_noise(
-    text: str,
-    patterns: tuple[re.Pattern[str], ...] = VLLM_NOISE_PATTERNS,
-) -> bool:
-    """Check if text matches known vLLM noise patterns."""
-    normalized = text.strip()
-    if not normalized:
-        return False
-    return any(pattern.search(normalized) for pattern in patterns)
-
-
 def _install_stream_filters() -> None:
     """Install stdout/stderr wrappers that drop vLLM noise."""
     if _STATE["streams_patched"]:
@@ -122,6 +111,17 @@ def _suppress_vllm_loggers() -> None:
         "vllm.model_executor",
     ):
         logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+
+def is_vllm_noise(
+    text: str,
+    patterns: tuple[re.Pattern[str], ...] = VLLM_NOISE_PATTERNS,
+) -> bool:
+    """Check if text matches known vLLM noise patterns."""
+    normalized = text.strip()
+    if not normalized:
+        return False
+    return any(pattern.search(normalized) for pattern in patterns)
 
 
 def configure_vllm_logging() -> None:

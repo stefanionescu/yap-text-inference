@@ -28,6 +28,48 @@ from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_
 from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 
 
+def _trim_history_tool(state: SessionState, *, max_tokens: int | None = None) -> None:
+    """Trim history turns so user-only tokens stay within TOOL_HISTORY_TOKENS.
+
+    In tool-only deployments, the chat trimming path is skipped.
+    This keeps the in-memory turn list bounded to what the tool model
+    can actually consume.
+    """
+    if not state.history_turns:
+        return
+    budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS))
+    user_texts = get_user_texts(state.history_turns)
+    if not user_texts:
+        state.history_turns = []
+        return
+    tokens = _count_user_tokens_tool(user_texts)
+    if tokens <= budget:
+        return
+    # Drop oldest turns until user-only tokens fit
+    while len(state.history_turns) > 1:
+        state.history_turns.pop(0)
+        user_texts = get_user_texts(state.history_turns)
+        tokens = _count_user_tokens_tool(user_texts)
+        if tokens <= budget:
+            break
+
+    if not state.history_turns:
+        return
+
+    latest_turn = state.history_turns[-1]
+    latest_user = (latest_turn.user or "").strip()
+    if latest_user and count_tokens_tool(latest_user) > budget:
+        # Keep the newest tail so single-message overflows remain usable.
+        latest_turn.user = trim_text_to_token_limit_tool(latest_user, max_tokens=budget, keep="end")
+
+
+def _count_user_tokens_tool(user_texts: list[str]) -> int:
+    """Count tool-model tokens for a list of user texts (newline-joined)."""
+    if not user_texts:
+        return 0
+    return count_tokens_tool("\n".join(user_texts))
+
+
 def render_history(turns: list[HistoryTurn]) -> str:
     """Render history turns to text format for prompt building.
 
@@ -116,48 +158,6 @@ def trim_history(
         state.history_turns.pop(0)
         rendered = render_history(state.history_turns)
         tokens = count_tokens_chat(rendered) if rendered else 0
-
-
-def _trim_history_tool(state: SessionState, *, max_tokens: int | None = None) -> None:
-    """Trim history turns so user-only tokens stay within TOOL_HISTORY_TOKENS.
-
-    In tool-only deployments, the chat trimming path is skipped.
-    This keeps the in-memory turn list bounded to what the tool model
-    can actually consume.
-    """
-    if not state.history_turns:
-        return
-    budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS))
-    user_texts = get_user_texts(state.history_turns)
-    if not user_texts:
-        state.history_turns = []
-        return
-    tokens = _count_user_tokens_tool(user_texts)
-    if tokens <= budget:
-        return
-    # Drop oldest turns until user-only tokens fit
-    while len(state.history_turns) > 1:
-        state.history_turns.pop(0)
-        user_texts = get_user_texts(state.history_turns)
-        tokens = _count_user_tokens_tool(user_texts)
-        if tokens <= budget:
-            break
-
-    if not state.history_turns:
-        return
-
-    latest_turn = state.history_turns[-1]
-    latest_user = (latest_turn.user or "").strip()
-    if latest_user and count_tokens_tool(latest_user) > budget:
-        # Keep the newest tail so single-message overflows remain usable.
-        latest_turn.user = trim_text_to_token_limit_tool(latest_user, max_tokens=budget, keep="end")
-
-
-def _count_user_tokens_tool(user_texts: list[str]) -> int:
-    """Count tool-model tokens for a list of user texts (newline-joined)."""
-    if not user_texts:
-        return 0
-    return count_tokens_tool("\n".join(user_texts))
 
 
 def render_tool_history_text(turns: list[HistoryTurn], *, max_tokens: int | None = None) -> str:

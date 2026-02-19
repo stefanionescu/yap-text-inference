@@ -127,6 +127,9 @@ run_python() {
   run_quiet "single-file-folders" python "$ROOT_DIR/linting/single_file_folders.py"
   run_quiet "prefix-collisions" python "$ROOT_DIR/linting/prefix_collisions.py"
   run_quiet "no-inline-python" python "$ROOT_DIR/linting/no_inline_python.py"
+  run_quiet "no-config-functions" python "$ROOT_DIR/linting/no_config_functions.py"
+  run_quiet "function-order" python "$ROOT_DIR/linting/function_order.py"
+  run_quiet "no-config-cross-imports" python "$ROOT_DIR/linting/no_config_cross_imports.py"
 }
 
 run_shell() {

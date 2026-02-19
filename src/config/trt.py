@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 
-from .gpu import CHAT_GPU_FRAC
+from ..helpers.resolvers import resolve_gpu_fracs
 
 # Directory paths
 TRT_ENGINE_DIR = os.getenv("TRT_ENGINE_DIR", "")
@@ -46,13 +46,12 @@ TRT_MAX_OUTPUT_LEN = int(_trt_output_env) if _trt_output_env else int(os.getenv(
 TRT_DTYPE = os.getenv("TRT_DTYPE", "float16")
 
 # KV cache memory management - uses CHAT_GPU_FRAC
-TRT_KV_FREE_GPU_FRAC = float(os.getenv("TRT_KV_FREE_GPU_FRAC", str(CHAT_GPU_FRAC)))
-
-# AWQ quantization parameters (aligned with vLLM AWQ defaults from calibration.py)
-# q_group_size/block_size: 128 matches vLLM AWQ
-TRT_AWQ_BLOCK_SIZE = int(os.getenv("TRT_AWQ_BLOCK_SIZE", "128"))
-# nsamples
-TRT_CALIB_SIZE = int(os.getenv("TRT_CALIB_SIZE", "64"))
+_deploy_mode = (os.getenv("DEPLOY_MODE", "chat") or "chat").lower()
+_chat_gpu_frac, _ = resolve_gpu_fracs(
+    _deploy_mode in ("both", "chat"),
+    _deploy_mode in ("both", "tool"),
+)
+TRT_KV_FREE_GPU_FRAC = float(os.getenv("TRT_KV_FREE_GPU_FRAC", str(_chat_gpu_frac)))
 
 # Calibration sequence length: derived from context window
 _trt_calib_seqlen_env = os.getenv("TRT_CALIB_SEQLEN")
@@ -63,10 +62,6 @@ else:
     _ctx_len = int(os.getenv("CHAT_MAX_LEN", "5025"))
     _ctx_out = int(os.getenv("CHAT_MAX_OUT", "150"))
     TRT_CALIB_SEQLEN = _ctx_len + _ctx_out
-
-# Calibration batch size defaults to 16 unless explicitly overridden.
-_trt_calib_batch_env = os.getenv("TRT_CALIB_BATCH_SIZE", "").strip()
-TRT_CALIB_BATCH_SIZE = int(_trt_calib_batch_env) if _trt_calib_batch_env else 16
 
 # Engine metadata filenames
 TRT_ENGINE_CONFIG_FILE = "config.json"
@@ -81,6 +76,11 @@ TRT_HF_CHECKPOINTS_PATH = "trt-llm/checkpoints"
 TRT_HF_ENGINES_PATH_FMT = "trt-llm/engines/{engine_label}"
 
 
+# Calibration constants
+TRT_AWQ_BLOCK_SIZE = 128
+TRT_CALIB_SIZE = 64
+TRT_CALIB_BATCH_SIZE = 16
+
 __all__ = [
     "TRT_ENGINE_DIR",
     "TRT_CHECKPOINT_DIR",
@@ -91,9 +91,6 @@ __all__ = [
     "TRT_MAX_OUTPUT_LEN",
     "TRT_DTYPE",
     "TRT_KV_FREE_GPU_FRAC",
-    "TRT_AWQ_BLOCK_SIZE",
-    "TRT_CALIB_SIZE",
-    "TRT_CALIB_BATCH_SIZE",
     "TRT_CALIB_SEQLEN",
     "TRT_ENGINE_CONFIG_FILE",
     "TRT_BUILD_METADATA_FILE",
@@ -101,4 +98,7 @@ __all__ = [
     "TRT_CHECKPOINT_SUFFIXES",
     "TRT_HF_CHECKPOINTS_PATH",
     "TRT_HF_ENGINES_PATH_FMT",
+    "TRT_AWQ_BLOCK_SIZE",
+    "TRT_CALIB_SIZE",
+    "TRT_CALIB_BATCH_SIZE",
 ]

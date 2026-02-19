@@ -36,14 +36,16 @@ from __future__ import annotations
 
 import os
 
-from .deploy import DEPLOY_CHAT
 from ..helpers.quantization import normalize_engine, detect_chat_quantization
 
 # ============================================================================
 # Engine Selection
 # ============================================================================
 
-if DEPLOY_CHAT:
+_deploy_mode = (os.getenv("DEPLOY_MODE", "chat") or "chat").lower()
+_deploy_chat = _deploy_mode in ("both", "chat")
+
+if _deploy_chat:
     INFERENCE_ENGINE: str | None = normalize_engine(os.getenv("INFERENCE_ENGINE", "trt"))
 else:
     # Tool-only deployments do not use chat inference engines.

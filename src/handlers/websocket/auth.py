@@ -16,18 +16,6 @@ api_key_query = APIKeyQuery(name="api_key", auto_error=False)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-def validate_api_key(provided_key: str) -> bool:
-    """Validate provided API key against configured key.
-
-    Args:
-        provided_key: The API key to validate
-
-    Returns:
-        True if valid, False otherwise
-    """
-    return provided_key == TEXT_API_KEY
-
-
 def _select_api_key(*candidates: str | None) -> str | None:
     """Return the first non-empty API key candidate from the provided values."""
     for candidate in candidates:
@@ -45,6 +33,18 @@ def _validate_candidate(provided_key: str | None, *, context: str) -> tuple[bool
         logger.warning("%s invalid API key", context)
         return False, None, "invalid"
     return True, provided_key, None
+
+
+def validate_api_key(provided_key: str) -> bool:
+    """Validate provided API key against configured key.
+
+    Args:
+        provided_key: The API key to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    return provided_key == TEXT_API_KEY
 
 
 async def get_api_key(

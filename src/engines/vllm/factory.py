@@ -15,6 +15,19 @@ from .setup import configure_runtime_env
 logger = logging.getLogger(__name__)
 
 
+def _create_raw_engine(engine_args: object) -> object:
+    """Create the vLLM AsyncLLMEngine with optional log suppression."""
+    show_vllm_logs = env_flag("SHOW_VLLM_LOGS", False)
+
+    if show_vllm_logs:
+        return create_engine(engine_args)
+
+    from src.scripts.filters.vllm import SuppressedFDContext  # noqa: PLC0415
+
+    with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
+        return create_engine(engine_args)
+
+
 async def create_vllm_engine() -> VLLMEngine:
     """Create and validate the vLLM chat engine eagerly."""
     if not DEPLOY_CHAT:
@@ -30,19 +43,6 @@ async def create_vllm_engine() -> VLLMEngine:
     engine = VLLMEngine(raw_engine)
     logger.info("vLLM: chat engine ready")
     return engine
-
-
-def _create_raw_engine(engine_args: object) -> object:
-    """Create the vLLM AsyncLLMEngine with optional log suppression."""
-    show_vllm_logs = env_flag("SHOW_VLLM_LOGS", False)
-
-    if show_vllm_logs:
-        return create_engine(engine_args)
-
-    from src.scripts.filters.vllm import SuppressedFDContext  # noqa: PLC0415
-
-    with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
-        return create_engine(engine_args)
 
 
 __all__ = ["create_vllm_engine"]

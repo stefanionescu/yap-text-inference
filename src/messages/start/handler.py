@@ -213,6 +213,68 @@ def _log_start_request(payload: dict[str, Any], session_id: str) -> None:
     )
 
 
+def _validate_persona(msg: dict[str, Any]) -> tuple[str | None, str | None]:
+    if not DEPLOY_CHAT:
+        gender = normalize_gender(msg.get("gender"))
+        personality = normalize_personality(msg.get("personality"))
+        return gender, personality
+    gender = validate_required_gender(msg.get("gender"))
+    personality = validate_required_personality(msg.get("personality"))
+    return gender, personality
+
+
+def _extract_chat_prompt(msg: dict[str, Any]) -> str | None:
+    raw_chat_prompt = msg.get("chat_prompt")
+    if not DEPLOY_CHAT:
+        return None
+    required_chat_prompt = require_prompt(
+        raw_chat_prompt,
+        error_code="missing_chat_prompt",
+        message="chat_prompt is required",
+    )
+    return sanitize_prompt_with_limit(
+        required_chat_prompt,
+        field_label="chat_prompt",
+        invalid_error_code="invalid_chat_prompt",
+        too_long_error_code="chat_prompt_too_long",
+        max_tokens=CHAT_PROMPT_MAX_TOKENS,
+        count_tokens_fn=count_tokens_chat,
+    )
+
+
+def _extract_screen_prefixes(msg: dict[str, Any]) -> tuple[str | None, str | None]:
+    check_prefix = validate_optional_prefix(
+        msg.get("check_screen_prefix"),
+        field_label="check_screen_prefix",
+        invalid_error_code="invalid_check_screen_prefix",
+    )
+    screen_checked_prefix = validate_optional_prefix(
+        msg.get("screen_checked_prefix"),
+        field_label="screen_checked_prefix",
+        invalid_error_code="invalid_screen_checked_prefix",
+    )
+    return check_prefix, screen_checked_prefix
+
+
+def _build_ack_payload(
+    session_id: str,
+    base_config: dict[str, Any],
+    updated_config: dict[str, Any],
+    history_info: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "for": "start",
+        "ok": True,
+        "now": base_config.get("now_str"),
+        "gender": updated_config.get("chat_gender"),
+        "personality": updated_config.get("chat_personality"),
+        "chat_prompt": bool(updated_config.get("chat_prompt")),
+    }
+    if history_info is not None:
+        payload["history"] = history_info
+    return payload
+
+
 async def handle_start_message(
     ws: WebSocket,
     payload: dict[str, Any],
@@ -294,68 +356,6 @@ async def handle_start_message(
     )
 
     _schedule_execution_task(ws, plan, runtime_deps, session_handler)
-
-
-def _validate_persona(msg: dict[str, Any]) -> tuple[str | None, str | None]:
-    if not DEPLOY_CHAT:
-        gender = normalize_gender(msg.get("gender"))
-        personality = normalize_personality(msg.get("personality"))
-        return gender, personality
-    gender = validate_required_gender(msg.get("gender"))
-    personality = validate_required_personality(msg.get("personality"))
-    return gender, personality
-
-
-def _extract_chat_prompt(msg: dict[str, Any]) -> str | None:
-    raw_chat_prompt = msg.get("chat_prompt")
-    if not DEPLOY_CHAT:
-        return None
-    required_chat_prompt = require_prompt(
-        raw_chat_prompt,
-        error_code="missing_chat_prompt",
-        message="chat_prompt is required",
-    )
-    return sanitize_prompt_with_limit(
-        required_chat_prompt,
-        field_label="chat_prompt",
-        invalid_error_code="invalid_chat_prompt",
-        too_long_error_code="chat_prompt_too_long",
-        max_tokens=CHAT_PROMPT_MAX_TOKENS,
-        count_tokens_fn=count_tokens_chat,
-    )
-
-
-def _extract_screen_prefixes(msg: dict[str, Any]) -> tuple[str | None, str | None]:
-    check_prefix = validate_optional_prefix(
-        msg.get("check_screen_prefix"),
-        field_label="check_screen_prefix",
-        invalid_error_code="invalid_check_screen_prefix",
-    )
-    screen_checked_prefix = validate_optional_prefix(
-        msg.get("screen_checked_prefix"),
-        field_label="screen_checked_prefix",
-        invalid_error_code="invalid_screen_checked_prefix",
-    )
-    return check_prefix, screen_checked_prefix
-
-
-def _build_ack_payload(
-    session_id: str,
-    base_config: dict[str, Any],
-    updated_config: dict[str, Any],
-    history_info: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    payload = {
-        "for": "start",
-        "ok": True,
-        "now": base_config.get("now_str"),
-        "gender": updated_config.get("chat_gender"),
-        "personality": updated_config.get("chat_personality"),
-        "chat_prompt": bool(updated_config.get("chat_prompt")),
-    }
-    if history_info is not None:
-        payload["history"] = history_info
-    return payload
 
 
 __all__ = ["handle_start_message"]

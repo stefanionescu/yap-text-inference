@@ -18,6 +18,48 @@ from src.state import TRTPushJob
 from src.hf import get_hf_api, verify_repo_exists
 from src.quantization.trt.label import get_engine_label
 
+# ============================================================================
+# CLI
+# ============================================================================
+
+
+def _add_common_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--repo-id", required=True, help="HuggingFace repo ID (owner/name)")
+    parser.add_argument("--token", required=True, help="HuggingFace API token")
+    parser.add_argument("--branch", default="main", help="Branch to push to")
+
+
+def _add_full_push_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--checkpoint-dir", required=True, help="Path to TRT-LLM checkpoints")
+    parser.add_argument("--engine-dir", default="", help="Path to TRT-LLM engines (optional)")
+    parser.add_argument("--base-model", default="", help="Base model ID (auto-detected)")
+    parser.add_argument("--quant-method", default="int4_awq", help="Quantization method")
+    parser.add_argument("--private", action="store_true", help="Create private repo")
+
+
+def _run_full_push(args: argparse.Namespace) -> int:
+    success = push_checkpoint_to_hf(
+        checkpoint_dir=args.checkpoint_dir,
+        engine_dir=args.engine_dir or "",
+        repo_id=args.repo_id,
+        token=args.token,
+        branch=args.branch,
+        base_model=args.base_model or None,
+        quant_method=args.quant_method,
+        private=args.private,
+    )
+    return 0 if success else 1
+
+
+def _run_engine_push(args: argparse.Namespace) -> int:
+    success = push_engine_to_hf(
+        engine_dir=args.engine_dir,
+        repo_id=args.repo_id,
+        token=args.token,
+        branch=args.branch,
+    )
+    return 0 if success else 1
+
 
 def push_checkpoint_to_hf(
     checkpoint_dir: str,
@@ -100,49 +142,6 @@ def push_engine_to_hf(
         return True
 
     return False
-
-
-# ============================================================================
-# CLI
-# ============================================================================
-
-
-def _add_common_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--repo-id", required=True, help="HuggingFace repo ID (owner/name)")
-    parser.add_argument("--token", required=True, help="HuggingFace API token")
-    parser.add_argument("--branch", default="main", help="Branch to push to")
-
-
-def _add_full_push_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--checkpoint-dir", required=True, help="Path to TRT-LLM checkpoints")
-    parser.add_argument("--engine-dir", default="", help="Path to TRT-LLM engines (optional)")
-    parser.add_argument("--base-model", default="", help="Base model ID (auto-detected)")
-    parser.add_argument("--quant-method", default="int4_awq", help="Quantization method")
-    parser.add_argument("--private", action="store_true", help="Create private repo")
-
-
-def _run_full_push(args: argparse.Namespace) -> int:
-    success = push_checkpoint_to_hf(
-        checkpoint_dir=args.checkpoint_dir,
-        engine_dir=args.engine_dir or "",
-        repo_id=args.repo_id,
-        token=args.token,
-        branch=args.branch,
-        base_model=args.base_model or None,
-        quant_method=args.quant_method,
-        private=args.private,
-    )
-    return 0 if success else 1
-
-
-def _run_engine_push(args: argparse.Namespace) -> int:
-    success = push_engine_to_hf(
-        engine_dir=args.engine_dir,
-        repo_id=args.repo_id,
-        token=args.token,
-        branch=args.branch,
-    )
-    return 0 if success else 1
 
 
 def main() -> int:

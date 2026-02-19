@@ -28,40 +28,8 @@ from src.config import AWQ_METADATA_FILENAME, QUANT_CONFIG_FILENAMES, UNSUPPORTE
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# Sanitization - Remove unsupported fields from quant configs
+# Private helpers
 # ============================================================================
-
-
-def sanitize_quant_metadata(model_path: str) -> None:
-    """Remove unsupported dtype keys from local or cached remote config files."""
-    if not model_path:
-        return
-    if is_local_model_path(model_path):
-        _sanitize_local_configs(model_path)
-        return
-    if "/" not in model_path:
-        return
-    _sanitize_remote_configs(model_path)
-
-
-def strip_unsupported_fields(payload: Any) -> bool:
-    """Recursively delete unsupported dtype keys from a JSON-compatible object."""
-
-    def _strip(obj: Any) -> bool:
-        removed = False
-        if isinstance(obj, dict):
-            for key in list(obj.keys()):
-                if key in UNSUPPORTED_QUANT_DTYPE_FIELDS:
-                    obj.pop(key, None)
-                    removed = True
-            for value in obj.values():
-                removed |= _strip(value)
-        elif isinstance(obj, list):
-            for item in obj:
-                removed |= _strip(item)
-        return removed
-
-    return _strip(payload)
 
 
 def _sanitize_local_configs(model_path: str) -> None:
@@ -141,55 +109,6 @@ def _get_hf_download_fn() -> Callable[[str, str], str | None] | None:
             return None
 
     return download
-
-
-# ============================================================================
-# Detection - Find and parse quantization metadata
-# ============================================================================
-
-
-def detect_quant_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
-    """Detect quantization backend from local or remote model configs.
-
-    Attempts local detection first, then remote HuggingFace if needed.
-    Also sanitizes any unsupported dtype fields found.
-    """
-    sanitize_quant_metadata(model_path)
-    method, payload = _detect_local(model_path)
-    if method:
-        return method, payload
-    return _detect_remote(model_path)
-
-
-def log_quant_detection(model_path: str, method: str, payload: dict[str, Any]) -> None:
-    """Log a concise description of the detected quantization metadata."""
-    quant_cfg = _extract_quant_config(payload)
-    w_bit = quant_cfg.get("w_bit")
-    q_group = quant_cfg.get("q_group_size")
-    scheme = quant_cfg.get("scheme")
-    zero_point = quant_cfg.get("zero_point")
-    version = quant_cfg.get("version")
-
-    details = []
-    if scheme:
-        details.append(f"scheme={scheme}")
-    if w_bit is not None:
-        details.append(f"w_bit={w_bit}")
-    if q_group is not None:
-        details.append(f"q_group_size={q_group}")
-    if zero_point is not None:
-        zero_status = "enabled" if bool(zero_point) else "disabled"
-        details.append(f"zero_point={zero_status}")
-    if version:
-        details.append(f"awq_version={version}")
-
-    detail_str = ", ".join(details) if details else "no metadata found"
-    logger.info("[config] Detected %s quantization for %s: %s", method, model_path, detail_str)
-
-
-# ============================================================================
-# Resolution - Resolve model origins and normalize quant names
-# ============================================================================
 
 
 def _detect_from_configs(
@@ -280,6 +199,92 @@ def _normalize_quant_name(name: str | None) -> str | None:
         return None
     normalized = name.strip().lower().replace("_", "-")
     return QUANT_NAME_MAPPING.get(normalized)
+
+
+# ============================================================================
+# Sanitization - Remove unsupported fields from quant configs
+# ============================================================================
+
+
+def sanitize_quant_metadata(model_path: str) -> None:
+    """Remove unsupported dtype keys from local or cached remote config files."""
+    if not model_path:
+        return
+    if is_local_model_path(model_path):
+        _sanitize_local_configs(model_path)
+        return
+    if "/" not in model_path:
+        return
+    _sanitize_remote_configs(model_path)
+
+
+def strip_unsupported_fields(payload: Any) -> bool:
+    """Recursively delete unsupported dtype keys from a JSON-compatible object."""
+
+    def _strip(obj: Any) -> bool:
+        removed = False
+        if isinstance(obj, dict):
+            for key in list(obj.keys()):
+                if key in UNSUPPORTED_QUANT_DTYPE_FIELDS:
+                    obj.pop(key, None)
+                    removed = True
+            for value in obj.values():
+                removed |= _strip(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                removed |= _strip(item)
+        return removed
+
+    return _strip(payload)
+
+
+# ============================================================================
+# Detection - Find and parse quantization metadata
+# ============================================================================
+
+
+def detect_quant_backend(model_path: str) -> tuple[str | None, dict[str, Any]]:
+    """Detect quantization backend from local or remote model configs.
+
+    Attempts local detection first, then remote HuggingFace if needed.
+    Also sanitizes any unsupported dtype fields found.
+    """
+    sanitize_quant_metadata(model_path)
+    method, payload = _detect_local(model_path)
+    if method:
+        return method, payload
+    return _detect_remote(model_path)
+
+
+def log_quant_detection(model_path: str, method: str, payload: dict[str, Any]) -> None:
+    """Log a concise description of the detected quantization metadata."""
+    quant_cfg = _extract_quant_config(payload)
+    w_bit = quant_cfg.get("w_bit")
+    q_group = quant_cfg.get("q_group_size")
+    scheme = quant_cfg.get("scheme")
+    zero_point = quant_cfg.get("zero_point")
+    version = quant_cfg.get("version")
+
+    details = []
+    if scheme:
+        details.append(f"scheme={scheme}")
+    if w_bit is not None:
+        details.append(f"w_bit={w_bit}")
+    if q_group is not None:
+        details.append(f"q_group_size={q_group}")
+    if zero_point is not None:
+        zero_status = "enabled" if bool(zero_point) else "disabled"
+        details.append(f"zero_point={zero_status}")
+    if version:
+        details.append(f"awq_version={version}")
+
+    detail_str = ", ".join(details) if details else "no metadata found"
+    logger.info("[config] Detected %s quantization for %s: %s", method, model_path, detail_str)
+
+
+# ============================================================================
+# Resolution - Resolve model origins and normalize quant names
+# ============================================================================
 
 
 def resolve_model_origin(model_path: str) -> str:

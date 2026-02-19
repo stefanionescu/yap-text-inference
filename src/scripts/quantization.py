@@ -47,6 +47,26 @@ def _enable_hf_progress() -> None:
         print(f"[model] Could not enable HF progress bars: {e}", file=sys.stderr)
 
 
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Quantization CLI utilities")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    dl = sub.add_parser("download-model", help="Download a Hugging Face model snapshot")
+    dl.add_argument("--model-id", required=True)
+    dl.add_argument("--target-dir", required=True)
+
+    dl_pre = sub.add_parser("download-prequantized", help="Download pre-quantized checkpoint assets")
+    dl_pre.add_argument("--model-id", required=True)
+    dl_pre.add_argument("--target-dir", required=True)
+
+    rq = sub.add_parser("run-quant", help="Run quantization script with patches applied")
+    rq.add_argument("--patch-script", default=None, help="Path to transformers patch script")
+    rq.add_argument("script", help="Path to quantization script to execute")
+    rq.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments forwarded to the script")
+
+    return parser.parse_args(argv)
+
+
 # ============================================================================
 # Model Download
 # ============================================================================
@@ -136,26 +156,6 @@ def run_quantization(
 # ============================================================================
 # CLI
 # ============================================================================
-
-
-def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Quantization CLI utilities")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    dl = sub.add_parser("download-model", help="Download a Hugging Face model snapshot")
-    dl.add_argument("--model-id", required=True)
-    dl.add_argument("--target-dir", required=True)
-
-    dl_pre = sub.add_parser("download-prequantized", help="Download pre-quantized checkpoint assets")
-    dl_pre.add_argument("--model-id", required=True)
-    dl_pre.add_argument("--target-dir", required=True)
-
-    rq = sub.add_parser("run-quant", help="Run quantization script with patches applied")
-    rq.add_argument("--patch-script", default=None, help="Path to transformers patch script")
-    rq.add_argument("script", help="Path to quantization script to execute")
-    rq.add_argument("script_args", nargs=argparse.REMAINDER, help="Arguments forwarded to the script")
-
-    return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

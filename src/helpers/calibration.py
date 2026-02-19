@@ -22,11 +22,6 @@ CHAT_TOTAL_POLICY = TotalLengthPolicy(
 )
 
 
-def resolve_total_len(requested: int, policy: TotalLengthPolicy) -> int:
-    """Convenience wrapper exposing TotalLengthPolicy.resolve()."""
-    return policy.resolve(requested)
-
-
 # ============================================================================
 # Dataset helpers
 # ============================================================================
@@ -50,6 +45,11 @@ def _dataset_key(name: str | None) -> str:
     if not raw:
         return CALIB_DEFAULT_DATASET
     return raw.lower().replace("-", "_").replace(" ", "_")
+
+
+def resolve_total_len(requested: int, policy: TotalLengthPolicy) -> int:
+    """Convenience wrapper exposing TotalLengthPolicy.resolve()."""
+    return policy.resolve(requested)
 
 
 def dataset_key(name: str | None) -> str:

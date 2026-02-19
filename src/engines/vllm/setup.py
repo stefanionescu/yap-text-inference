@@ -21,7 +21,24 @@ from __future__ import annotations
 import os
 from typing import Final
 
-from src.helpers.env import env_flag, configure_vllm_fp8_kv_cache
+from src.helpers.env import env_flag
+
+
+def _configure_vllm_fp8_kv_cache(kv_dtype: str | None) -> None:
+    """Set VLLM_FP8_KV_CACHE_ENABLE for V1 engine when using FP8 KV cache.
+
+    Should be called during engine initialization, not at import time.
+    Only applies when VLLM_USE_V1 is enabled (default True).
+
+    Args:
+        kv_dtype: KV cache data type from config.
+    """
+    if not env_flag("VLLM_USE_V1", True):
+        return
+    kv_lower = (kv_dtype or "").strip().lower()
+    if kv_lower.startswith("fp8"):
+        os.environ.setdefault("VLLM_FP8_KV_CACHE_ENABLE", "1")
+
 
 _AUTO_CONFIG_FLAG: Final[str] = "YAP_AUTO_CONFIGURE_ENV"
 _SKIP_AUTOCONFIG_FLAG: Final[str] = "YAP_SKIP_ENV_AUTOCONFIG"
@@ -88,7 +105,7 @@ def configure_runtime_env(*, force: bool = False) -> None:
     _apply_env_defaults()
     _select_attention_backend()
     # Configure FP8 KV cache for V1 engine if needed
-    configure_vllm_fp8_kv_cache(os.getenv("KV_DTYPE"))
+    _configure_vllm_fp8_kv_cache(os.getenv("KV_DTYPE"))
     _STATE["env_configured"] = True
 
 

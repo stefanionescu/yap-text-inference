@@ -19,34 +19,10 @@ from datetime import datetime, timezone
 from src.state import EnvironmentInfo
 from src.config import trt as trt_config
 from src.hf.license import compute_license_info
+from src.helpers.env import env_str, env_flag, env_int_or_none
 
 from .detection import get_compute_capability_info
-from .label import EngineLabelError, _env_int, _env_str, get_engine_label
-
-# ============================================================================
-# Base Model Detection
-# ============================================================================
-
-
-def detect_base_model(checkpoint_path: Path) -> str:
-    """Detect base model from checkpoint config.
-
-    Args:
-        checkpoint_path: Path to TRT-LLM checkpoint directory.
-
-    Returns:
-        Base model ID or "unknown".
-    """
-    config_path = checkpoint_path / "config.json"
-    if config_path.is_file():
-        with contextlib.suppress(Exception):
-            config = json.loads(config_path.read_text(encoding="utf-8"))
-            # TRT-LLM config may have pretrained_config with model info
-            pretrained = config.get("pretrained_config", {})
-            if "model_name" in pretrained:
-                return pretrained["model_name"]
-    return "unknown"
-
+from .label import EngineLabelError, get_engine_label
 
 # ============================================================================
 # Metadata Inference
@@ -72,13 +48,6 @@ def _infer_weight_bits(quant_method: str) -> str:
     if "fp8" in quant_method:
         return "8 (FP8)"
     return "unknown"
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() not in {"0", "false", "off", "no"}
 
 
 # ============================================================================
@@ -130,7 +99,7 @@ def _collect_env_metadata(
     """Collect metadata from environment variables and runtime detection."""
     env_info = EnvironmentInfo.from_env()
     kv_cache_type = os.getenv("TRT_KV_CACHE_TYPE", "paged")
-    kv_cache_reuse_enabled = _env_flag("TRT_KV_CACHE_REUSE", kv_cache_type == "paged")
+    kv_cache_reuse_enabled = env_flag("TRT_KV_CACHE_REUSE", kv_cache_type == "paged")
 
     return {
         "sm_arch": env_info.sm_arch,
@@ -140,19 +109,19 @@ def _collect_env_metadata(
         "kv_cache_dtype": _infer_kv_cache_dtype(quant_method),
         "kv_cache_type": kv_cache_type,
         "kv_cache_reuse": "enabled" if kv_cache_reuse_enabled else "disabled",
-        "awq_block_size": _env_int("TRT_AWQ_BLOCK_SIZE", trt_config.TRT_AWQ_BLOCK_SIZE),
-        "calib_size": _env_int("TRT_CALIB_SIZE", trt_config.TRT_CALIB_SIZE),
-        "calib_seqlen": _env_int("TRT_CALIB_SEQLEN", trt_config.TRT_CALIB_SEQLEN),
-        "calib_batch_size": _env_int("TRT_CALIB_BATCH_SIZE", trt_config.TRT_CALIB_BATCH_SIZE),
-        "max_batch_size": _env_str(
+        "awq_block_size": env_int_or_none("TRT_AWQ_BLOCK_SIZE", trt_config.TRT_AWQ_BLOCK_SIZE),
+        "calib_size": env_int_or_none("TRT_CALIB_SIZE", trt_config.TRT_CALIB_SIZE),
+        "calib_seqlen": env_int_or_none("TRT_CALIB_SEQLEN", trt_config.TRT_CALIB_SEQLEN),
+        "calib_batch_size": env_int_or_none("TRT_CALIB_BATCH_SIZE", trt_config.TRT_CALIB_BATCH_SIZE),
+        "max_batch_size": env_str(
             "TRT_MAX_BATCH_SIZE",
             str(checkpoint_limits.get("max_batch_size", trt_config.TRT_MAX_BATCH_SIZE or "N/A")),
         ),
-        "max_input_len": _env_str(
+        "max_input_len": env_str(
             "TRT_MAX_INPUT_LEN",
             str(checkpoint_limits.get("max_input_len", trt_config.TRT_MAX_INPUT_LEN)),
         ),
-        "max_output_len": _env_str(
+        "max_output_len": env_str(
             "TRT_MAX_OUTPUT_LEN",
             str(checkpoint_limits.get("max_output_len", trt_config.TRT_MAX_OUTPUT_LEN)),
         ),
@@ -201,6 +170,31 @@ def _apply_build_metadata_overrides(
     # Update compute capability info if sm_arch changed
     if "sm_arch" in build_meta:
         metadata.update(get_compute_capability_info(metadata["sm_arch"]))
+
+
+# ============================================================================
+# Base Model Detection
+# ============================================================================
+
+
+def detect_base_model(checkpoint_path: Path) -> str:
+    """Detect base model from checkpoint config.
+
+    Args:
+        checkpoint_path: Path to TRT-LLM checkpoint directory.
+
+    Returns:
+        Base model ID or "unknown".
+    """
+    config_path = checkpoint_path / "config.json"
+    if config_path.is_file():
+        with contextlib.suppress(Exception):
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            # TRT-LLM config may have pretrained_config with model info
+            pretrained = config.get("pretrained_config", {})
+            if "model_name" in pretrained:
+                return pretrained["model_name"]
+    return "unknown"
 
 
 # ============================================================================
