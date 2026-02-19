@@ -45,12 +45,13 @@ try:
 except ImportError:  # Python < 3.11
     from async_timeout import timeout as async_timeout
 
+from src.errors import StreamCancelledError
 from src.telemetry.sentry import capture_error
+from src.telemetry.errors import get_error_type
 from src.config.logging import CHAT_STREAM_LABEL
 from src.telemetry.traces import generation_span
 from src.telemetry.instruments import get_metrics
 from src.state import CancelCheck, ChatStreamConfig
-from src.errors import StreamCancelledError, classify_error
 
 from ...engines.base import BaseEngine
 
@@ -188,7 +189,7 @@ class ChatStreamController:
             raise
         except Exception as exc:
             capture_error(exc)
-            m.errors_total.add(1, {"error.type": classify_error(exc)})
+            m.errors_total.add(1, {"error.type": get_error_type(exc)})
             raise
         finally:
             m.active_generations.add(-1)

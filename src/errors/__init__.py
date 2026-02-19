@@ -1,23 +1,11 @@
-"""Centralized exception classes for the inference server.
-
-This module re-exports all domain-specific exceptions from their respective
-modules, providing a single import point for error handling.
-
-Organization:
-    - engine.py: Engine lifecycle errors (not ready, shutdown)
-    - limits.py: Rate limiting errors with retry info
-    - stream.py: Streaming/cancellation errors
-    - validation.py: Input validation errors with error codes
-    - quantization.py: Quantization/engine label errors
-    - classify.py: Exception-to-telemetry label mapping
-"""
+"""Centralized custom exception definitions for the inference server."""
 
 from .limits import RateLimitError
-from .classify import classify_error
 from .validation import ValidationError
 from .stream import StreamCancelledError
 from .quantization import EngineLabelError
-from .engine import EngineNotReadyError, EngineShutdownError
+from .shutdown_error import EngineShutdownError
+from .not_ready_error import EngineNotReadyError
 
 __all__ = [
     # Engine errors
@@ -31,6 +19,4 @@ __all__ = [
     "ValidationError",
     # Quantization
     "EngineLabelError",
-    # Classification
-    "classify_error",
 ]
