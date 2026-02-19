@@ -31,44 +31,6 @@ from .registry import get_chat_tokenizer, get_tool_tokenizer
 logger = logging.getLogger(__name__)
 
 
-def count_tokens_chat(text: str) -> int:
-    """Return token count using the chat model tokenizer."""
-    n = get_chat_tokenizer().count(text)
-    logger.debug("tokens.chat.count: len_chars=%s tokens=%s", len(text), n)
-    return n
-
-
-def count_tokens_tool(text: str) -> int:
-    """Return token count using the tool model tokenizer."""
-    n = get_tool_tokenizer().count(text)
-    logger.debug("tokens.tool.count: len_chars=%s tokens=%s", len(text), n)
-    return n
-
-
-def trim_text_to_token_limit_chat(text: str, max_tokens: int, keep: str = "end") -> str:
-    """Trim text using the chat model tokenizer (exact)."""
-    out = get_chat_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
-    logger.debug(
-        "tokens.chat.trim_text: out_len=%s max_tokens=%s keep=%s",
-        len(out),
-        max_tokens,
-        keep,
-    )
-    return out
-
-
-def trim_text_to_token_limit_tool(text: str, max_tokens: int, keep: str = "end") -> str:
-    """Trim text using the tool model tokenizer (exact)."""
-    out = get_tool_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
-    logger.debug(
-        "tokens.tool.trim_text: out_len=%s max_tokens=%s keep=%s",
-        len(out),
-        max_tokens,
-        keep,
-    )
-    return out
-
-
 def _trim_history_preserve_messages_with(
     history_text: str,
     max_tokens: int,
@@ -123,6 +85,53 @@ def _trim_history_preserve_messages_with(
     return out
 
 
+_NEWLINE_TOKEN_CACHE: list[int] = []
+
+
+def _get_newline_tokens() -> int:
+    if not _NEWLINE_TOKEN_CACHE:
+        _NEWLINE_TOKEN_CACHE.append(count_tokens_tool("\n"))
+    return _NEWLINE_TOKEN_CACHE[0]
+
+
+def count_tokens_chat(text: str) -> int:
+    """Return token count using the chat model tokenizer."""
+    n = get_chat_tokenizer().count(text)
+    logger.debug("tokens.chat.count: len_chars=%s tokens=%s", len(text), n)
+    return n
+
+
+def count_tokens_tool(text: str) -> int:
+    """Return token count using the tool model tokenizer."""
+    n = get_tool_tokenizer().count(text)
+    logger.debug("tokens.tool.count: len_chars=%s tokens=%s", len(text), n)
+    return n
+
+
+def trim_text_to_token_limit_chat(text: str, max_tokens: int, keep: str = "end") -> str:
+    """Trim text using the chat model tokenizer (exact)."""
+    out = get_chat_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
+    logger.debug(
+        "tokens.chat.trim_text: out_len=%s max_tokens=%s keep=%s",
+        len(out),
+        max_tokens,
+        keep,
+    )
+    return out
+
+
+def trim_text_to_token_limit_tool(text: str, max_tokens: int, keep: str = "end") -> str:
+    """Trim text using the tool model tokenizer (exact)."""
+    out = get_tool_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
+    logger.debug(
+        "tokens.tool.trim_text: out_len=%s max_tokens=%s keep=%s",
+        len(out),
+        max_tokens,
+        keep,
+    )
+    return out
+
+
 def trim_history_preserve_messages_chat(history_text: str, max_tokens: int) -> str:
     out = _trim_history_preserve_messages_with(
         history_text,
@@ -153,15 +162,6 @@ def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> s
         max_tokens,
     )
     return out
-
-
-_NEWLINE_TOKEN_CACHE: list[int] = []
-
-
-def _get_newline_tokens() -> int:
-    if not _NEWLINE_TOKEN_CACHE:
-        _NEWLINE_TOKEN_CACHE.append(count_tokens_tool("\n"))
-    return _NEWLINE_TOKEN_CACHE[0]
 
 
 def build_user_history_for_tool(

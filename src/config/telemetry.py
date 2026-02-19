@@ -2,30 +2,7 @@
 
 import os
 
-# ---------------------------------------------------------------------------
-# Env Parsing Helpers
-# ---------------------------------------------------------------------------
-
-
-def _int_env(name: str, default: int) -> int:
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    try:
-        return int(raw)
-    except (TypeError, ValueError):
-        return default
-
-
-def _float_env(name: str, default: float) -> float:
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    try:
-        return float(raw)
-    except (TypeError, ValueError):
-        return default
-
+from ..helpers.env import env_int, env_float
 
 # ---------------------------------------------------------------------------
 # Sentry
@@ -33,7 +10,7 @@ def _float_env(name: str, default: float) -> float:
 SENTRY_DSN: str = os.environ.get("SENTRY_DSN", "")
 SENTRY_ENVIRONMENT: str = os.environ.get("SENTRY_ENVIRONMENT", "production")
 SENTRY_RELEASE: str = os.environ.get("SENTRY_RELEASE", "")
-SENTRY_SAMPLE_RATE: float = min(1.0, max(0.0, _float_env("SENTRY_SAMPLE_RATE", 1.0)))
+SENTRY_SAMPLE_RATE: float = min(1.0, max(0.0, env_float("SENTRY_SAMPLE_RATE", 1.0)))
 
 # ---------------------------------------------------------------------------
 # Axiom / OTel
@@ -41,16 +18,15 @@ SENTRY_SAMPLE_RATE: float = min(1.0, max(0.0, _float_env("SENTRY_SAMPLE_RATE", 1
 AXIOM_API_TOKEN: str = os.environ.get("AXIOM_API_TOKEN", "")
 AXIOM_DATASET: str = os.environ.get("AXIOM_DATASET", "text-inference-api")
 AXIOM_ENVIRONMENT: str = os.environ.get("AXIOM_ENVIRONMENT", "production")
-AXIOM_TRACES_ENDPOINT: str = os.environ.get("AXIOM_TRACES_ENDPOINT", "https://api.axiom.co/v1/traces")
-AXIOM_METRICS_ENDPOINT: str = os.environ.get("AXIOM_METRICS_ENDPOINT", "https://api.axiom.co/v1/metrics")
-
+AXIOM_TRACES_ENDPOINT: str = "https://api.axiom.co/v1/traces"
+AXIOM_METRICS_ENDPOINT: str = "https://api.axiom.co/v1/metrics"
 # ---------------------------------------------------------------------------
 # OTel tuning
 # ---------------------------------------------------------------------------
 OTEL_SERVICE_NAME: str = os.environ.get("OTEL_SERVICE_NAME", "yap-text-inference-api")
-OTEL_TRACES_EXPORT_INTERVAL_MS: int = max(1000, _int_env("OTEL_TRACES_EXPORT_INTERVAL_MS", 5000))
-OTEL_METRICS_EXPORT_INTERVAL_MS: int = max(1000, _int_env("OTEL_METRICS_EXPORT_INTERVAL_MS", 15000))
-OTEL_TRACES_BATCH_SIZE: int = max(1, _int_env("OTEL_TRACES_BATCH_SIZE", 512))
+OTEL_TRACES_EXPORT_INTERVAL_MS: int = max(1000, env_int("OTEL_TRACES_EXPORT_INTERVAL_MS", 5000))
+OTEL_METRICS_EXPORT_INTERVAL_MS: int = max(1000, env_int("OTEL_METRICS_EXPORT_INTERVAL_MS", 15000))
+OTEL_TRACES_BATCH_SIZE: int = max(1, env_int("OTEL_TRACES_BATCH_SIZE", 512))
 
 # ---------------------------------------------------------------------------
 # Deployment

@@ -76,17 +76,6 @@ class ToolNoiseFilterStream:
         return getattr(self._stream, name)
 
 
-def is_tool_noise(
-    text: str,
-    patterns: tuple[re.Pattern[str], ...] = TOOL_NOISE_PATTERNS,
-) -> bool:
-    """Check if text matches known tool noise patterns."""
-    normalized = text.strip()
-    if not normalized:
-        return False
-    return any(pattern.search(normalized) for pattern in patterns)
-
-
 def _install_stream_filters() -> None:
     """Install stdout/stderr wrappers that drop tool noise."""
     if _STATE["streams_patched"]:
@@ -121,6 +110,26 @@ def _suppress_tool_loggers() -> None:
         logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 
+def _filter_stdin() -> int:
+    """Filter stdin lines, dropping tool noise, and echo the rest."""
+    for line in sys.stdin:
+        if not is_tool_noise(line):
+            sys.stdout.write(line)
+            sys.stdout.flush()
+    return 0
+
+
+def is_tool_noise(
+    text: str,
+    patterns: tuple[re.Pattern[str], ...] = TOOL_NOISE_PATTERNS,
+) -> bool:
+    """Check if text matches known tool noise patterns."""
+    normalized = text.strip()
+    if not normalized:
+        return False
+    return any(pattern.search(normalized) for pattern in patterns)
+
+
 def configure_tool_logging() -> None:
     """Suppress tool log noise during deployment.
 
@@ -130,15 +139,6 @@ def configure_tool_logging() -> None:
     """
     _suppress_tool_loggers()
     _install_stream_filters()
-
-
-def _filter_stdin() -> int:
-    """Filter stdin lines, dropping tool noise, and echo the rest."""
-    for line in sys.stdin:
-        if not is_tool_noise(line):
-            sys.stdout.write(line)
-            sys.stdout.flush()
-    return 0
 
 
 def main() -> int:

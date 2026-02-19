@@ -38,27 +38,6 @@ def _resolve_tokenizer_kwarg_key() -> str | None:
 _TOKENIZER_KWARG_KEY = _resolve_tokenizer_kwarg_key()
 
 
-def inject_tokenizer_kwargs(
-    target: dict[str, Any],
-    tok_kwargs: dict[str, Any],
-    model_identifier: str | None,
-) -> None:
-    """Attach tokenizer kwargs if the installed vLLM supports them."""
-    if not tok_kwargs:
-        return
-    if _TOKENIZER_KWARG_KEY:
-        target[_TOKENIZER_KWARG_KEY] = tok_kwargs
-        return
-    if _patch_tokenizer(model_identifier, tok_kwargs):
-        return
-
-    keys = ", ".join(sorted(tok_kwargs.keys()))
-    warn_once(
-        "tokenizer_kwargs_unsupported",
-        f"vLLM does not expose tokenizer kwargs; skipping tokenizer overrides ({keys or 'unknown keys'}).",
-    )
-
-
 def _patch_tokenizer(model_identifier: str | None, tok_kwargs: dict[str, Any]) -> bool:
     """Best-effort tokenizer monkeypatch for engines lacking tokenizer kwargs."""
     if not tok_kwargs:
@@ -136,6 +115,27 @@ def _normalize_tokenizer_identifier(candidate: Any) -> str:
         return normalize_model_id(name_or_path)
 
     return normalize_model_id(str(candidate))
+
+
+def inject_tokenizer_kwargs(
+    target: dict[str, Any],
+    tok_kwargs: dict[str, Any],
+    model_identifier: str | None,
+) -> None:
+    """Attach tokenizer kwargs if the installed vLLM supports them."""
+    if not tok_kwargs:
+        return
+    if _TOKENIZER_KWARG_KEY:
+        target[_TOKENIZER_KWARG_KEY] = tok_kwargs
+        return
+    if _patch_tokenizer(model_identifier, tok_kwargs):
+        return
+
+    keys = ", ".join(sorted(tok_kwargs.keys()))
+    warn_once(
+        "tokenizer_kwargs_unsupported",
+        f"vLLM does not expose tokenizer kwargs; skipping tokenizer overrides ({keys or 'unknown keys'}).",
+    )
 
 
 __all__ = ["inject_tokenizer_kwargs"]

@@ -7,21 +7,16 @@ import json
 import contextlib
 from typing import Any
 
+from src.helpers.env import env_flag
+
 from ..utils.template import generate_readme
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() not in {"0", "false", "off", "no"}
 
 
 def _gather_runtime_metadata() -> dict[str, Any]:
     kv_dtype = os.getenv("KV_DTYPE", "auto")
-    use_v1 = _env_flag("VLLM_USE_V1", True)
-    paged_attention = _env_flag("VLLM_PAGED_ATTENTION", True)
-    kv_reuse = _env_flag("VLLM_KV_CACHE_REUSE", bool(use_v1))
+    use_v1 = env_flag("VLLM_USE_V1", True)
+    paged_attention = env_flag("VLLM_PAGED_ATTENTION", True)
+    kv_reuse = env_flag("VLLM_KV_CACHE_REUSE", bool(use_v1))
     return {
         "kv_cache_dtype": kv_dtype,
         "vllm_use_v1": use_v1,

@@ -41,11 +41,11 @@ WS_HANDSHAKE_ACQUIRE_TIMEOUT_S = float(os.getenv("WS_HANDSHAKE_ACQUIRE_TIMEOUT_S
 # ============================================================================
 # These follow RFC 6455 conventions where possible.
 
-WS_CLOSE_UNAUTHORIZED_CODE = int(os.getenv("WS_CLOSE_UNAUTHORIZED_CODE", "1008"))  # Policy violation
-WS_CLOSE_BUSY_CODE = int(os.getenv("WS_CLOSE_BUSY_CODE", "1013"))  # Try again later
-WS_CLOSE_IDLE_CODE = int(os.getenv("WS_CLOSE_IDLE_CODE", "4000"))  # Application-defined
-WS_CLOSE_IDLE_REASON = os.getenv("WS_CLOSE_IDLE_REASON", "idle_timeout")
-WS_CLOSE_CLIENT_REQUEST_CODE = int(os.getenv("WS_CLOSE_CLIENT_REQUEST_CODE", "1000"))  # Normal
+WS_CLOSE_UNAUTHORIZED_CODE = 1008  # Policy violation
+WS_CLOSE_BUSY_CODE = 1013  # Try again later
+WS_CLOSE_IDLE_CODE = 4000  # Application-defined
+WS_CLOSE_IDLE_REASON = "idle_timeout"
+WS_CLOSE_CLIENT_REQUEST_CODE = 1000  # Normal
 
 # Runtime fallback for framework-specific receive-after-disconnect edge cases.
 WS_EXPECTED_DISCONNECT_RUNTIME_FRAGMENTS: tuple[str, ...] = (

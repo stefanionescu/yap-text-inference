@@ -27,38 +27,6 @@ _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKIN
 
 
 # ============================================================================
-# Public API
-# ============================================================================
-
-
-def build_chat_prompt_with_prefix(
-    static_prefix: str,
-    runtime_text: str,
-    history_text: str,
-    user_utt: str,
-    chat_tokenizer: FastTokenizer,
-) -> str:
-    """Build the chat prompt using the tokenizer's native chat template."""
-    history_turns = parse_history_as_tuples(history_text)
-    system_prompt = _compose_system_prompt(static_prefix, runtime_text)
-    messages = _build_messages(system_prompt, history_turns, user_utt)
-    return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
-
-
-def build_chat_warm_prompt(
-    static_prefix: str,
-    runtime_text: str,
-    history_text: str,
-    chat_tokenizer: FastTokenizer,
-) -> str:
-    """Build a prompt that primes persona + history without a fresh user query."""
-    history_turns = parse_history_as_tuples(history_text)
-    system_prompt = _compose_system_prompt(static_prefix, runtime_text)
-    messages = _build_messages(system_prompt, history_turns, user_utt=None)
-    return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
-
-
-# ============================================================================
 # Internal Helpers
 # ============================================================================
 
@@ -141,6 +109,38 @@ def _build_chatml_prompt_from_messages(
 def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
     parts = [segment.strip() for segment in (static_prefix, runtime_text) if segment and segment.strip()]
     return "\n\n".join(parts)
+
+
+# ============================================================================
+# Public API
+# ============================================================================
+
+
+def build_chat_prompt_with_prefix(
+    static_prefix: str,
+    runtime_text: str,
+    history_text: str,
+    user_utt: str,
+    chat_tokenizer: FastTokenizer,
+) -> str:
+    """Build the chat prompt using the tokenizer's native chat template."""
+    history_turns = parse_history_as_tuples(history_text)
+    system_prompt = _compose_system_prompt(static_prefix, runtime_text)
+    messages = _build_messages(system_prompt, history_turns, user_utt)
+    return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
+
+
+def build_chat_warm_prompt(
+    static_prefix: str,
+    runtime_text: str,
+    history_text: str,
+    chat_tokenizer: FastTokenizer,
+) -> str:
+    """Build a prompt that primes persona + history without a fresh user query."""
+    history_turns = parse_history_as_tuples(history_text)
+    system_prompt = _compose_system_prompt(static_prefix, runtime_text)
+    messages = _build_messages(system_prompt, history_turns, user_utt=None)
+    return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 
 __all__ = [

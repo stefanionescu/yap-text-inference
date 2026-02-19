@@ -10,35 +10,12 @@ Example: sm90_trt-llm-0.17.0_cuda12.8
 
 from __future__ import annotations
 
-import os
 import json
 import contextlib
 from pathlib import Path
 
 from src.state import EnvironmentInfo
 from src.errors import EngineLabelError
-
-# ============================================================================
-# Environment Helpers
-# ============================================================================
-
-
-def _env_int(name: str, default: int | None) -> int | None:
-    """Get int from env var, handling empty strings."""
-    val = os.getenv(name, "")
-    if not val:
-        return default
-    try:
-        return int(val)
-    except ValueError:
-        return default
-
-
-def _env_str(name: str, default: str) -> str:
-    """Get string from env var, handling empty strings."""
-    val = os.getenv(name, "")
-    return val if val else default
-
 
 # ============================================================================
 # Engine Label
@@ -77,6 +54,4 @@ def get_engine_label(engine_path: Path) -> str:
 __all__ = [
     "EngineLabelError",
     "get_engine_label",
-    "_env_int",
-    "_env_str",
 ]

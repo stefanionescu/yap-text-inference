@@ -79,6 +79,45 @@ _SAMPLING_FIELDS: tuple[tuple[str, type, float | int, float | int, str, str], ..
 )
 
 
+def _coerce_sampling_value(value: Any, caster: type) -> float | int:
+    """Coerce a raw value to the target sampling type."""
+    if caster is int:
+        return _coerce_int(value)
+    return _coerce_float(value)
+
+
+def _coerce_float(value: Any) -> float:
+    """Coerce a value to float, rejecting bools and invalid types."""
+    if isinstance(value, bool):
+        raise TypeError("bool not allowed")
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("empty string")
+        return float(stripped)
+    raise TypeError("unsupported type")
+
+
+def _coerce_int(value: Any) -> int:
+    """Coerce a value to int, rejecting bools and non-integer floats."""
+    if isinstance(value, bool):
+        raise TypeError("bool not allowed")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError("non-integer float")
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("empty string")
+        return int(stripped)
+    raise TypeError("unsupported type")
+
+
 def extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int | bool]:
     """Extract and validate sampling parameter overrides from a message.
 
@@ -133,45 +172,6 @@ def extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int | b
         overrides["sanitize_output"] = sanitize_raw
 
     return overrides
-
-
-def _coerce_sampling_value(value: Any, caster: type) -> float | int:
-    """Coerce a raw value to the target sampling type."""
-    if caster is int:
-        return _coerce_int(value)
-    return _coerce_float(value)
-
-
-def _coerce_float(value: Any) -> float:
-    """Coerce a value to float, rejecting bools and invalid types."""
-    if isinstance(value, bool):
-        raise TypeError("bool not allowed")
-    if isinstance(value, int | float):
-        return float(value)
-    if isinstance(value, str):
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("empty string")
-        return float(stripped)
-    raise TypeError("unsupported type")
-
-
-def _coerce_int(value: Any) -> int:
-    """Coerce a value to int, rejecting bools and non-integer floats."""
-    if isinstance(value, bool):
-        raise TypeError("bool not allowed")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        if not value.is_integer():
-            raise ValueError("non-integer float")
-        return int(value)
-    if isinstance(value, str):
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("empty string")
-        return int(stripped)
-    raise TypeError("unsupported type")
 
 
 __all__ = ["extract_sampling_overrides"]

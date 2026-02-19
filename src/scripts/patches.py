@@ -95,7 +95,7 @@ def patch_attn_implementation_eager() -> bool:
         return original_from_pretrained.__func__(cls, pretrained_model_name_or_path, *args, **kwargs)
 
     AutoModelForCausalLM.from_pretrained = patched_from_pretrained
-    AutoModelForCausalLM._patched_eager_attn = True
+    AutoModelForCausalLM._patched_eager_attn = True  # type: ignore[attr-defined, unused-ignore]
 
     return True
 

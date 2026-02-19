@@ -41,30 +41,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def dispatch_execution(
-    ws: WebSocket,
-    plan: StartPlan,
-    runtime_deps: RuntimeDeps,
-) -> None:
-    """Dispatch execution based on deployment configuration.
-
-    Routes to the appropriate execution path:
-    - Sequential tool+chat if both deployed
-    - Chat-only streaming if only chat deployed
-    - Tool-only classification if only tool deployed
-
-    Args:
-        ws: WebSocket connection for responses.
-        plan: Validated execution plan with all parameters.
-    """
-    if DEPLOY_CHAT and DEPLOY_TOOL:
-        await _run_sequential(ws, plan, runtime_deps)
-    elif DEPLOY_CHAT and not DEPLOY_TOOL:
-        await _run_chat_only(ws, plan, runtime_deps)
-    elif DEPLOY_TOOL and not DEPLOY_CHAT:
-        await _run_tool_only(ws, plan, runtime_deps)
-
-
 async def _run_sequential(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
     """Run sequential tool-then-chat execution."""
     if runtime_deps.chat_engine is None or runtime_deps.tool_adapter is None or runtime_deps.chat_tokenizer is None:
@@ -163,6 +139,30 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
         payload={"usage": {}},
     )
     logger.info("handle_start: tool-only done session_id=%s is_tool=%s", plan.session_id, is_tool)
+
+
+async def dispatch_execution(
+    ws: WebSocket,
+    plan: StartPlan,
+    runtime_deps: RuntimeDeps,
+) -> None:
+    """Dispatch execution based on deployment configuration.
+
+    Routes to the appropriate execution path:
+    - Sequential tool+chat if both deployed
+    - Chat-only streaming if only chat deployed
+    - Tool-only classification if only tool deployed
+
+    Args:
+        ws: WebSocket connection for responses.
+        plan: Validated execution plan with all parameters.
+    """
+    if DEPLOY_CHAT and DEPLOY_TOOL:
+        await _run_sequential(ws, plan, runtime_deps)
+    elif DEPLOY_CHAT and not DEPLOY_TOOL:
+        await _run_chat_only(ws, plan, runtime_deps)
+    elif DEPLOY_TOOL and not DEPLOY_CHAT:
+        await _run_tool_only(ws, plan, runtime_deps)
 
 
 __all__ = ["dispatch_execution"]

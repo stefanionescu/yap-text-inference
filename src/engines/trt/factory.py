@@ -16,6 +16,25 @@ from .setup import build_kv_cache_config, read_checkpoint_model_type, validate_r
 logger = logging.getLogger(__name__)
 
 
+async def _create_llm_instance(kwargs: dict[str, Any]) -> Any:
+    """Create the TRT-LLM LLM instance with optional log suppression."""
+    show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
+
+    from src.scripts.filters.trt import SuppressedFDContext, configure_trt_logger  # noqa: PLC0415
+
+    if show_trt_logs:
+        configure_trt_logger()
+        from tensorrt_llm._tensorrt_engine import LLM  # noqa: PLC0415
+
+        return await asyncio.to_thread(LLM, **kwargs)
+
+    with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
+        configure_trt_logger()
+        from tensorrt_llm._tensorrt_engine import LLM  # noqa: PLC0415
+
+        return await asyncio.to_thread(LLM, **kwargs)
+
+
 async def create_trt_engine() -> TRTEngine:
     """Create and validate the TRT chat engine eagerly."""
     if not DEPLOY_CHAT:
@@ -49,25 +68,6 @@ async def create_trt_engine() -> TRTEngine:
     engine = TRTEngine(llm, CHAT_MODEL)
     logger.info("TRT-LLM: chat engine ready")
     return engine
-
-
-async def _create_llm_instance(kwargs: dict[str, Any]) -> Any:
-    """Create the TRT-LLM LLM instance with optional log suppression."""
-    show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
-
-    from src.scripts.filters.trt import SuppressedFDContext, configure_trt_logger  # noqa: PLC0415
-
-    if show_trt_logs:
-        configure_trt_logger()
-        from tensorrt_llm._tensorrt_engine import LLM  # noqa: PLC0415
-
-        return await asyncio.to_thread(LLM, **kwargs)
-
-    with SuppressedFDContext(suppress_stdout=True, suppress_stderr=True):
-        configure_trt_logger()
-        from tensorrt_llm._tensorrt_engine import LLM  # noqa: PLC0415
-
-        return await asyncio.to_thread(LLM, **kwargs)
 
 
 __all__ = ["create_trt_engine"]

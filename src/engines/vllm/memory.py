@@ -8,6 +8,7 @@ from typing import Any
 
 from src.helpers.dedupe import warn_once
 from src.config.limits import (
+    GPU_BASELINE_TIERS,
     BATCH_SCALE_MIN_SEQS,
     BATCH_SCALE_MIN_RATIO,
     MAX_NUM_SEQS_BASELINE,
@@ -15,28 +16,22 @@ from src.config.limits import (
     MAX_NUM_SEQS_MIN_FLOOR,
     BATCH_SCALE_GPU_FRAC_CAP,
     MAX_NUM_SEQS_MAX_RESOLVED,
-    MAX_NUM_SEQS_BASELINE_LARGE,
-    MAX_NUM_SEQS_BASELINE_SMALL,
-    MAX_NUM_SEQS_BASELINE_MEDIUM,
     MAX_NUM_SEQS_BASELINE_XLARGE,
-    MAX_NUM_SEQS_GPU_THRESHOLD_LARGE,
-    MAX_NUM_SEQS_GPU_THRESHOLD_SMALL,
     MAX_NUM_SEQS_MEMORY_OPT_BASELINE,
     MAX_NUM_SEQS_ALLOCATION_RATIO_MAX,
     MAX_NUM_SEQS_ALLOCATION_RATIO_MIN,
-    MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM,
     MAX_NUM_SEQS_ALLOCATION_RATIO_DIVISOR,
 )
 
 logger = logging.getLogger(__name__)
 
-# GPU memory thresholds -> baseline mappings (threshold_gib, baseline_value)
-# Ordered from smallest to largest threshold; first match wins
-_GPU_BASELINE_TIERS: list[tuple[float, int]] = [
-    (MAX_NUM_SEQS_GPU_THRESHOLD_SMALL, MAX_NUM_SEQS_BASELINE_SMALL),
-    (MAX_NUM_SEQS_GPU_THRESHOLD_MEDIUM, MAX_NUM_SEQS_BASELINE_MEDIUM),
-    (MAX_NUM_SEQS_GPU_THRESHOLD_LARGE, MAX_NUM_SEQS_BASELINE_LARGE),
-]
+
+def _resolve_baseline_for_gpu_memory(total_gib: float, current_baseline: int) -> int:
+    """Select the appropriate baseline based on GPU memory size."""
+    for threshold, tier_baseline in GPU_BASELINE_TIERS:
+        if total_gib < threshold:
+            return min(current_baseline, tier_baseline)
+    return min(current_baseline, MAX_NUM_SEQS_BASELINE_XLARGE)
 
 
 def read_cuda_memory_snapshot() -> tuple[int, int] | None:
@@ -91,14 +86,6 @@ def scale_batching_limits(
         target_bytes / (1024**3),
     )
     return scaled_tokens, scaled_seqs
-
-
-def _resolve_baseline_for_gpu_memory(total_gib: float, current_baseline: int) -> int:
-    """Select the appropriate baseline based on GPU memory size."""
-    for threshold, tier_baseline in _GPU_BASELINE_TIERS:
-        if total_gib < threshold:
-            return min(current_baseline, tier_baseline)
-    return min(current_baseline, MAX_NUM_SEQS_BASELINE_XLARGE)
 
 
 def auto_max_num_seqs(gpu_frac: float, needs_memory_opt: bool) -> int:

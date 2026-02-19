@@ -81,17 +81,6 @@ class NoiseFilterStream:
         return getattr(self._stream, name)
 
 
-def is_trt_noise(
-    text: str,
-    patterns: tuple[re.Pattern[str], ...] = TRTLLM_NOISE_PATTERNS,
-) -> bool:
-    """Check if text matches known TRT-LLM noise patterns."""
-    normalized = text.strip()
-    if not normalized:
-        return False
-    return any(pattern.search(normalized) for pattern in patterns)
-
-
 def _install_stream_filters() -> None:
     """Install stdout/stderr wrappers that drop common TRT-LLM noise."""
     if _STATE["streams_patched"]:
@@ -145,6 +134,17 @@ def _suppress_datasets_progress() -> None:
         from datasets import disable_progress_bars as datasets_disable_progress  # noqa: PLC0415
 
         datasets_disable_progress()
+
+
+def is_trt_noise(
+    text: str,
+    patterns: tuple[re.Pattern[str], ...] = TRTLLM_NOISE_PATTERNS,
+) -> bool:
+    """Check if text matches known TRT-LLM noise patterns."""
+    normalized = text.strip()
+    if not normalized:
+        return False
+    return any(pattern.search(normalized) for pattern in patterns)
 
 
 def configure_trt_logging() -> None:

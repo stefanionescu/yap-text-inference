@@ -40,6 +40,103 @@ from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, 
 logger = logging.getLogger(__name__)
 
 
+async def _send_initial_text(
+    ws: WebSocket,
+    initial_text: str,
+    initial_text_already_sent: bool,
+    state: _ChatStreamState,
+) -> None:
+    if not initial_text or initial_text_already_sent:
+        return
+    sent = await safe_send_envelope(
+        ws,
+        msg_type="token",
+        session_id=state.session_id,
+        request_id=state.request_id,
+        payload={"text": initial_text},
+    )
+    if sent:
+        state.text_visible = True
+    else:
+        state.interrupted = True
+
+
+async def _forward_stream_chunks(
+    ws: WebSocket,
+    stream: AsyncIterator[str],
+    state: _ChatStreamState,
+) -> None:
+    async for chunk in stream:
+        sent = await safe_send_envelope(
+            ws,
+            msg_type="token",
+            session_id=state.session_id,
+            request_id=state.request_id,
+            payload={"text": chunk},
+        )
+        if not sent:
+            state.interrupted = True
+            break
+        state.final_text += chunk
+        state.text_visible = True
+
+
+async def _send_completion_frames(ws: WebSocket, state: _ChatStreamState) -> None:
+    sent_final = await safe_send_envelope(
+        ws,
+        msg_type="final",
+        session_id=state.session_id,
+        request_id=state.request_id,
+        payload={"normalized_text": state.final_text},
+    )
+    if not sent_final:
+        state.interrupted = True
+        return
+    sent_done = await safe_send_envelope(
+        ws,
+        msg_type="done",
+        session_id=state.session_id,
+        request_id=state.request_id,
+        payload={"usage": {}},
+    )
+    if not sent_done:
+        state.interrupted = True
+
+
+def _append_history(
+    session_handler: SessionHandler,
+    session_id: str,
+    history_user: str,
+    final_text: str,
+    history_turn_id: str | None,
+) -> None:
+    session_handler.append_history_turn(
+        session_id,
+        history_user,
+        final_text,
+        turn_id=history_turn_id,
+    )
+
+
+async def _handle_empty_output(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+) -> None:
+    logger.warning("empty model output: session_id=%s request_id=%s", session_id, request_id)
+    await safe_send_envelope(
+        ws,
+        msg_type="error",
+        session_id=session_id,
+        request_id=request_id,
+        payload={
+            "code": "internal_error",
+            "message": "Model produced no output",
+            "details": {"reason_code": "empty_model_output"},
+        },
+    )
+
+
 async def safe_send_text(ws: WebSocket, text: str) -> bool:
     """Send text to the client, returning False if the socket is gone.
 
@@ -143,103 +240,6 @@ async def cancel_task(task: asyncio.Task | None) -> None:
     with contextlib.suppress(Exception):
         await task
     logger.info("executor: cancelled task %s", repr(task))
-
-
-async def _send_initial_text(
-    ws: WebSocket,
-    initial_text: str,
-    initial_text_already_sent: bool,
-    state: _ChatStreamState,
-) -> None:
-    if not initial_text or initial_text_already_sent:
-        return
-    sent = await safe_send_envelope(
-        ws,
-        msg_type="token",
-        session_id=state.session_id,
-        request_id=state.request_id,
-        payload={"text": initial_text},
-    )
-    if sent:
-        state.text_visible = True
-    else:
-        state.interrupted = True
-
-
-async def _forward_stream_chunks(
-    ws: WebSocket,
-    stream: AsyncIterator[str],
-    state: _ChatStreamState,
-) -> None:
-    async for chunk in stream:
-        sent = await safe_send_envelope(
-            ws,
-            msg_type="token",
-            session_id=state.session_id,
-            request_id=state.request_id,
-            payload={"text": chunk},
-        )
-        if not sent:
-            state.interrupted = True
-            break
-        state.final_text += chunk
-        state.text_visible = True
-
-
-async def _send_completion_frames(ws: WebSocket, state: _ChatStreamState) -> None:
-    sent_final = await safe_send_envelope(
-        ws,
-        msg_type="final",
-        session_id=state.session_id,
-        request_id=state.request_id,
-        payload={"normalized_text": state.final_text},
-    )
-    if not sent_final:
-        state.interrupted = True
-        return
-    sent_done = await safe_send_envelope(
-        ws,
-        msg_type="done",
-        session_id=state.session_id,
-        request_id=state.request_id,
-        payload={"usage": {}},
-    )
-    if not sent_done:
-        state.interrupted = True
-
-
-def _append_history(
-    session_handler: SessionHandler,
-    session_id: str,
-    history_user: str,
-    final_text: str,
-    history_turn_id: str | None,
-) -> None:
-    session_handler.append_history_turn(
-        session_id,
-        history_user,
-        final_text,
-        turn_id=history_turn_id,
-    )
-
-
-async def _handle_empty_output(
-    ws: WebSocket,
-    session_id: str,
-    request_id: str,
-) -> None:
-    logger.warning("empty model output: session_id=%s request_id=%s", session_id, request_id)
-    await safe_send_envelope(
-        ws,
-        msg_type="error",
-        session_id=session_id,
-        request_id=request_id,
-        payload={
-            "code": "internal_error",
-            "message": "Model produced no output",
-            "details": {"reason_code": "empty_model_output"},
-        },
-    )
 
 
 async def stream_chat_response(
