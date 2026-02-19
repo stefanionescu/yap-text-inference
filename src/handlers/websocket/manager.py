@@ -194,15 +194,16 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
             capture_error(exc)
             m.errors_total.add(1, {"error.type": classify_error(exc)})
             logger.exception("WebSocket error")
-            with contextlib.suppress(Exception):
-                await send_error(
-                    ws,
-                    session_id=session_id,
-                    request_id=None,
-                    error_code=WS_ERROR_INTERNAL,
-                    message=str(exc),
-                    reason_code="internal_exception",
-                )
+            if not lifecycle.should_close():
+                with contextlib.suppress(Exception):
+                    await send_error(
+                        ws,
+                        session_id=session_id,
+                        request_id=None,
+                        error_code=WS_ERROR_INTERNAL,
+                        message=str(exc),
+                        reason_code="internal_exception",
+                    )
         finally:
             await _finalize_connection(ws, runtime_deps, lifecycle, session_id, admitted)
     finally:
