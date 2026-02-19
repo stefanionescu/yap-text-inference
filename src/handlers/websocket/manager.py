@@ -14,12 +14,12 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from src.runtime.dependencies import RuntimeDeps
 
-from ...errors import classify_error
 from .auth import authenticate_websocket
 from .lifecycle import WebSocketLifecycle
 from .message_loop import run_message_loop
 from ...telemetry.traces import session_span
 from ..limits import SlidingWindowRateLimiter
+from ...telemetry.errors import get_error_type
 from ...telemetry.instruments import get_metrics
 from .errors import send_error, reject_connection
 from .disconnects import is_expected_ws_disconnect
@@ -202,7 +202,7 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
                 logger.info("WebSocket disconnected (%s)", exc.__class__.__name__)
             else:
                 capture_error(exc)
-                m.errors_total.add(1, {"error.type": classify_error(exc)})
+                m.errors_total.add(1, {"error.type": get_error_type(exc)})
                 logger.exception("WebSocket error")
                 with contextlib.suppress(Exception):
                     await send_error(
