@@ -14,15 +14,15 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from src.runtime.dependencies import RuntimeDeps
 
+from ...errors import classify_error
 from .auth import authenticate_websocket
 from .lifecycle import WebSocketLifecycle
 from .message_loop import run_message_loop
 from ...telemetry.traces import session_span
 from ..limits import SlidingWindowRateLimiter
-from ...config.telemetry import classify_error
-from .disconnects import is_expected_disconnect
 from ...telemetry.instruments import get_metrics
 from .errors import send_error, reject_connection
+from .disconnects import is_expected_ws_disconnect
 from ...logging import set_log_context, reset_log_context
 from ...telemetry.sentry import capture_error, add_breadcrumb
 from ...config.websocket import (
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 def _is_expected_disconnect_exception(exc: BaseException, lifecycle: WebSocketLifecycle) -> bool:
     """Return True when connection teardown is expected and non-actionable."""
 
-    return lifecycle.idle_timed_out() or is_expected_disconnect(exc)
+    return lifecycle.idle_timed_out() or is_expected_ws_disconnect(exc)
 
 
 async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:

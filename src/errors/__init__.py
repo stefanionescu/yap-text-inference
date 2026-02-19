@@ -9,9 +9,11 @@ Organization:
     - stream.py: Streaming/cancellation errors
     - validation.py: Input validation errors with error codes
     - quantization.py: Quantization/engine label errors
+    - classify.py: Exception-to-telemetry label mapping
 """
 
 from .limits import RateLimitError
+from .classify import classify_error
 from .validation import ValidationError
 from .stream import StreamCancelledError
 from .quantization import EngineLabelError
@@ -29,4 +31,6 @@ __all__ = [
     "ValidationError",
     # Quantization
     "EngineLabelError",
+    # Classification
+    "classify_error",
 ]

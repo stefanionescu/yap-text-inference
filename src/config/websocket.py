@@ -47,6 +47,12 @@ WS_CLOSE_IDLE_CODE = int(os.getenv("WS_CLOSE_IDLE_CODE", "4000"))  # Application
 WS_CLOSE_IDLE_REASON = os.getenv("WS_CLOSE_IDLE_REASON", "idle_timeout")
 WS_CLOSE_CLIENT_REQUEST_CODE = int(os.getenv("WS_CLOSE_CLIENT_REQUEST_CODE", "1000"))  # Normal
 
+# Runtime fallback for framework-specific receive-after-disconnect edge cases.
+WS_EXPECTED_DISCONNECT_RUNTIME_FRAGMENTS: tuple[str, ...] = (
+    "websocket is not connected",
+    "disconnect message has been received",
+)
+
 # ============================================================================
 # Message Envelope Keys (all WebSocket JSON messages)
 # ============================================================================
@@ -104,6 +110,7 @@ __all__ = [
     "WS_CLOSE_IDLE_CODE",
     "WS_CLOSE_IDLE_REASON",
     "WS_CLOSE_CLIENT_REQUEST_CODE",
+    "WS_EXPECTED_DISCONNECT_RUNTIME_FRAGMENTS",
     "WS_KEY_TYPE",
     "WS_KEY_SESSION_ID",
     "WS_KEY_REQUEST_ID",
