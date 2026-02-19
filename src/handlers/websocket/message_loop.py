@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import contextlib
 from typing import Any
@@ -19,18 +18,14 @@ from .helpers import safe_send_envelope
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
 from ..limits import SlidingWindowRateLimiter
+from .disconnects import is_expected_disconnect
 from ...telemetry.instruments import get_metrics
 from ...messages.cancel import handle_cancel_message
 from ...messages.message import handle_message_message
 from ...messages.followup import handle_followup_message
 from .limits import consume_limiter, select_rate_limiter
 from ...messages.start.handler import handle_start_message
-from ...config.websocket import (
-    WS_WATCHDOG_TICK_S,
-    WS_ERROR_INVALID_MESSAGE,
-    WS_ERROR_INVALID_PAYLOAD,
-    WS_CLOSE_CLIENT_REQUEST_CODE,
-)
+from ...config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_CLOSE_CLIENT_REQUEST_CODE
 
 logger = logging.getLogger(__name__)
 
@@ -72,17 +67,6 @@ async def _handle_control_message(
             await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
         return True
     return False
-
-
-async def _recv_text_with_watchdog(ws: WebSocket, lifecycle: WebSocketLifecycle) -> tuple[str | None, bool]:
-    try:
-        message = await asyncio.wait_for(
-            ws.receive_text(),
-            timeout=WS_WATCHDOG_TICK_S * 2,
-        )
-        return message, False
-    except TimeoutError:
-        return None, lifecycle.should_close()
 
 
 async def _parse_incoming(ws: WebSocket, raw_msg: str) -> tuple[str, str, str, dict[str, Any]] | None:
@@ -279,11 +263,12 @@ async def run_message_loop(
     session_handler = runtime_deps.session_handler
 
     while True:
-        raw_msg, should_close = await _recv_text_with_watchdog(ws, lifecycle)
-        if raw_msg is None:
-            if should_close:
+        try:
+            raw_msg = await ws.receive_text()
+        except Exception as exc:  # noqa: BLE001 - narrowed by classification helper
+            if lifecycle.idle_timed_out() or is_expected_disconnect(exc):
                 break
-            continue
+            raise
 
         result = await _parse_incoming(ws, raw_msg)
         if result is None:

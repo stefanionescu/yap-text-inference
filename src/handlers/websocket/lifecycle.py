@@ -75,6 +75,7 @@ class WebSocketLifecycle:
         self._idle_close_reason = WS_CLOSE_IDLE_REASON
         self._last_activity = time.monotonic()
         self._stop_event = asyncio.Event()  # Signals watchdog to stop
+        self._idle_timeout_event = asyncio.Event()
         self._task: asyncio.Task | None = None  # Watchdog task reference
 
     def touch(self) -> None:
@@ -82,10 +83,10 @@ class WebSocketLifecycle:
 
         self._last_activity = time.monotonic()
 
-    def should_close(self) -> bool:
-        """Check if the connection should be closed (idle timeout fired)."""
+    def idle_timed_out(self) -> bool:
+        """Check whether the watchdog has fired an idle timeout close."""
 
-        return self._stop_event.is_set()
+        return self._idle_timeout_event.is_set()
 
     def start(self) -> asyncio.Task:
         """Start the watchdog task (idempotent)."""
@@ -121,6 +122,7 @@ class WebSocketLifecycle:
                     get_metrics().timeout_disconnects_total.add(1)
                     add_breadcrumb("Idle timeout", category="lifecycle")
                     logger.info("WebSocket idle timeout reached; closing connection")
+                    self._idle_timeout_event.set()
                     self._stop_event.set()  # Signal handler to exit
                     await self._close_ws()
                     break
