@@ -9,7 +9,7 @@ _CFG_MSG_MAIN_LOADED=1
 
 readonly -a CFG_MAIN_USAGE_LINES=(
   "Usage:"
-  '  $0 [--vllm|--trt] [4bit|8bit] <chat_model> <tool_model>'
+  '  $0 [--vllm|--trt] [4bit|8bit] <chat_model>'
   '  $0 [--vllm|--trt] [4bit|8bit] chat <chat_model>'
   '  $0 [--vllm|--trt] [4bit|8bit] both <chat_model> <tool_model>'
   '  $0 tool <tool_model>'
@@ -62,30 +62,32 @@ readonly -a CFG_MAIN_USAGE_LINES=(
   "  MAX_CONCURRENT_CONNECTIONS=<int>  - Capacity guard limit"
   ""
   "Environment options:"
-  "  DEPLOY_MODE=both|chat|tool    - Which models to deploy (default: both)"
+  "  DEPLOY_MODE=both|chat|tool    - Which models to deploy (default: chat)"
   "  --deploy-mode=both|chat|tool  - CLI override for DEPLOY_MODE"
   "  INFERENCE_ENGINE=trt|vllm     - Inference engine for chat/both deployments"
   "  GPU_SM_ARCH=sm80|sm89|sm90    - GPU architecture (auto-detected)"
   ""
   "Examples:"
-  "  # Standard TensorRT-LLM deployment (default, 4-bit AWQ)"
-  '  $0 4bit Qwen/Qwen3-30B-A3B-Instruct-2507 yapwithai/yap-longformer-screenshot-intent'
+  "  # Chat-only TensorRT-LLM deployment (default mode, 4-bit AWQ)"
+  '  $0 4bit Qwen/Qwen3-30B-A3B-Instruct-2507'
+  ""
+  "  # Chat + tool (explicit both)"
+  '  $0 both 4bit Qwen/Qwen3-30B-A3B-Instruct-2507 yapwithai/yap-longformer-screenshot-intent'
   ""
   "  # TensorRT-LLM with 8-bit on L40S (FP8)"
-  '  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent'
+  '  $0 8bit SicariusSicariiStuff/Impish_Nemo_12B'
   ""
   "  # TensorRT-LLM with 8-bit on A100 (INT8-SQ)"
-  '  GPU_SM_ARCH=sm80 $0 8bit SicariusSicariiStuff/Impish_Nemo_12B tool_model'
+  '  GPU_SM_ARCH=sm80 $0 8bit SicariusSicariiStuff/Impish_Nemo_12B'
   ""
   "  # vLLM deployment (alternative engine)"
-  '  $0 --vllm SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent'
+  '  $0 --vllm SicariusSicariiStuff/Impish_Nemo_12B'
   ""
-  "  # 4-bit AWQ for chat (tool model stays float)"
-  '  $0 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent'
+  "  # vLLM chat + tool (explicit both)"
+  '  $0 --vllm both 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent'
   ""
-  "  # Chat-only deployment"
+  "  # Explicit chat-only deployment"
   '  $0 chat SicariusSicariiStuff/Impish_Nemo_12B'
-  '  DEPLOY_MODE=chat $0 SicariusSicariiStuff/Impish_Nemo_12B'
   ""
   "  # Tool-only deployment"
   '  $0 tool yapwithai/yap-longformer-screenshot-intent'

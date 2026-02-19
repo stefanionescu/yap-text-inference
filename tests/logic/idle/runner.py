@@ -94,14 +94,14 @@ async def _test_idle_watchdog(
             remaining = deadline - asyncio.get_event_loop().time()
             if remaining <= 0:
                 raise RuntimeError(
-                    f"server did not close within {total_wait:.0f}s " f"(expected idle timeout: {expect_seconds:.0f}s)"
+                    f"server did not close within {total_wait:.0f}s (expected idle timeout: {expect_seconds:.0f}s)"
                 )
             try:
                 data = await asyncio.wait_for(ws.recv(), timeout=remaining)
                 print(connection_status("idle", f"ignoring pre-close message: {data[:80]}"))
             except TimeoutError:
                 raise RuntimeError(
-                    f"server did not close within {total_wait:.0f}s " f"(expected idle timeout: {expect_seconds:.0f}s)"
+                    f"server did not close within {total_wait:.0f}s (expected idle timeout: {expect_seconds:.0f}s)"
                 ) from None
             except websockets.ConnectionClosed as exc:
                 if exc.code != WS_IDLE_CLOSE_CODE:
@@ -111,7 +111,7 @@ async def _test_idle_watchdog(
                 close_reason = exc.reason or ""
                 if close_reason and WS_IDLE_CLOSE_REASON.lower() not in close_reason.lower():
                     raise RuntimeError(
-                        "expected idle close reason to include " f"{WS_IDLE_CLOSE_REASON!r}, got {exc.reason!r}"
+                        f"expected idle close reason to include {WS_IDLE_CLOSE_REASON!r}, got {exc.reason!r}"
                     ) from exc
                 print(connection_status("idle", f"server closed (code={exc.code} reason={exc.reason})"))
                 break

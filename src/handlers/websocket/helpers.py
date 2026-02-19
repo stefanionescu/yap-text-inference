@@ -223,6 +223,25 @@ def _append_history(
     )
 
 
+async def _handle_empty_output(
+    ws: WebSocket,
+    session_id: str,
+    request_id: str,
+) -> None:
+    logger.warning("empty model output: session_id=%s request_id=%s", session_id, request_id)
+    await safe_send_envelope(
+        ws,
+        msg_type="error",
+        session_id=session_id,
+        request_id=request_id,
+        payload={
+            "code": "internal_error",
+            "message": "Model produced no output",
+            "details": {"reason_code": "empty_model_output"},
+        },
+    )
+
+
 async def stream_chat_response(
     ws: WebSocket,
     stream: AsyncIterator[str],
@@ -273,6 +292,9 @@ async def stream_chat_response(
         if not state.interrupted:
             await _forward_stream_chunks(ws, stream, state)
         if not state.interrupted:
+            if not state.final_text:
+                await _handle_empty_output(ws, session_id, request_id)
+                return state.final_text
             await _send_completion_frames(ws, state)
     except asyncio.CancelledError:
         if state.text_visible:
