@@ -61,7 +61,7 @@ def section_header(title: str, width: int = 60) -> str:
     return bold(f"{'─' * left}[ {title} ]{'─' * right}")
 
 
-def test_header(name: str) -> str:
+def case_header(name: str) -> str:
     """Create a test case header."""
     return f"\n{section_header(name)}"
 
@@ -214,7 +214,7 @@ __all__ = [
     "magenta",
     # Separators
     "section_header",
-    "test_header",
+    "case_header",
     "exchange_header",
     "exchange_footer",
     # Messages
