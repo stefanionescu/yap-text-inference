@@ -41,7 +41,7 @@ from typing import Any
 from collections.abc import AsyncGenerator
 
 try:
-    from asyncio import timeout as async_timeout
+    from asyncio import timeout as async_timeout  # type: ignore[attr-defined]
 except ImportError:  # Python < 3.11
     from async_timeout import timeout as async_timeout
 

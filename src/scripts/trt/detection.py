@@ -99,7 +99,7 @@ def get_cuda_driver_version() -> str | None:
         try:
             from cuda.bindings import runtime as cudart  # noqa: PLC0415
         except Exception:
-            from cuda import cudart  # type: ignore[import-not-found,no-redef]  # noqa: PLC0415
+            from cuda import cudart  # noqa: PLC0415
 
         err, ver = cudart.cudaDriverGetVersion()
         if err == 0:

@@ -54,7 +54,7 @@ def _select_attention_backend() -> None:
     backend_hint = os.getenv("VLLM_ATTENTION_BACKEND")
 
     try:
-        import flashinfer  # type: ignore[import]  # noqa: F401, PLC0415
+        import flashinfer  # noqa: F401, PLC0415
 
         has_flashinfer = True
     except Exception:

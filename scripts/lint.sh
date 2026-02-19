@@ -110,7 +110,7 @@ run_python() {
 
   if python -m src.scripts.validation.package mypy; then
     PY_DIRS=()
-    [[ -d "$ROOT_DIR/server" ]] && PY_DIRS+=("$ROOT_DIR/server")
+    [[ -d "$ROOT_DIR/src" ]] && PY_DIRS+=("$ROOT_DIR/src")
     [[ -d "$ROOT_DIR/tests" ]] && PY_DIRS+=("$ROOT_DIR/tests")
     if [[ ${#PY_DIRS[@]} -gt 0 ]]; then
       run_quiet "mypy" python -m mypy --follow-imports=skip "${PY_DIRS[@]}"

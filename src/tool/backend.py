@@ -28,8 +28,8 @@ from __future__ import annotations
 
 import logging
 
-import torch  # type: ignore[import]
-from transformers import AutoTokenizer, AutoModelForSequenceClassification  # type: ignore[import]
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 from src.state import ToolModelInfo
 
@@ -87,7 +87,7 @@ class TorchToolBackend:
 
         if compile_model and hasattr(torch, "compile"):
             try:
-                self._model = torch.compile(self._model)  # type: ignore[arg-type]
+                self._model = torch.compile(self._model)
                 logger.info("tool: enabled torch.compile for %s", info.model_id)
             except Exception as exc:  # noqa: BLE001
                 logger.warning(

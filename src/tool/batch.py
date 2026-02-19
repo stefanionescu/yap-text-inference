@@ -30,7 +30,7 @@ import threading
 from queue import Empty, Queue
 from collections.abc import Callable
 
-import torch  # type: ignore[import]
+import torch
 
 from src.state import RequestItem
 

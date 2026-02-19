@@ -7,7 +7,7 @@ This module inspects HuggingFace config metadata to determine:
 
 from __future__ import annotations
 
-from transformers import AutoConfig  # type: ignore[import]
+from transformers import AutoConfig
 
 from src.state import ToolModelInfo
 

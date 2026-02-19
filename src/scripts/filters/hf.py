@@ -48,12 +48,12 @@ def label_hf_snapshot_progress(group: str) -> None:
                 kwargs.setdefault("name", group)
             super().__init__(*args, **kwargs)
 
-    tqdm_module.tqdm = SnapshotQuietTqdm  # type: ignore[attr-defined]
-    utils_module.tqdm = SnapshotQuietTqdm  # type: ignore[attr-defined]
+    tqdm_module.tqdm = SnapshotQuietTqdm
+    utils_module.tqdm = SnapshotQuietTqdm
 
     # Snapshot download stores a direct reference when imported, so update it too
     if hasattr(snapshot_module, "hf_tqdm"):
-        snapshot_module.hf_tqdm = SnapshotQuietTqdm  # type: ignore[attr-defined]
+        snapshot_module.hf_tqdm = SnapshotQuietTqdm
 
 
 def disable_hf_progress(groups: Iterable[str]) -> None:

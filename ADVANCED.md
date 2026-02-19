@@ -34,7 +34,6 @@ This document covers advanced operations, configuration, and deep-dive details f
   - [Tool Regression Test](#tool-regression-test)
   - [Benchmark Client](#benchmark-client)
   - [History Recall Test](#history-recall-test)
-  - [Connection Lifecycle Test](#connection-lifecycle-test)
   - [Latency Metrics in Multi-Turn Tests](#latency-metrics-in-multi-turn-tests)
 - [Persona and History Behavior](#persona-and-history-behavior)
 - [GPU Memory Fractions](#gpu-memory-fractions)
@@ -304,6 +303,10 @@ bash scripts/lint.sh
   - no lazy module loading/export patterns (`src/**/*.py`; no `__getattr__` lazy exports or `importlib.import_module` indirection)
   - no legacy/backward-compatibility markers in runtime orchestration modules
   - Docker ignore policy from `linting/policy.toml` (engine-local mode: only `docker/vllm/.dockerignore` and `docker/trt/.dockerignore` are allowed)
+  - `__all__` must appear at module bottom (`src/**/*.py`)
+  - no single-file folders in `src/` (promotes flat module layout)
+  - no module-name prefix collisions (`src/**/*.py`)
+  - no inline Python in shell scripts (`scripts/**/*.sh`, `docker/**/*.sh`)
 - ShellCheck (and shfmt checks when available)
 
 ## API — WebSocket `/ws`
@@ -415,6 +418,39 @@ Keep the connection warm during long pauses
   "payload": {}
 }
 ```
+
+Continue an existing session (no history/persona re-send):
+
+```json
+{
+  "type": "message",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per turn>",
+  "payload": {
+    "user_utterance": "what about after that?",
+    "sampling": { "temperature": 0.9 }
+  }
+}
+```
+
+- Requires a prior `start` for the same `session_id` — persona, history, and chat prompt are reused from the session.
+- `sampling` is optional and overrides the session's chat sampling parameters.
+
+Continue after external screen analysis (bypasses tool routing):
+
+```json
+{
+  "type": "followup",
+  "session_id": "<stable-per-user uuid>",
+  "request_id": "<uuid per turn>",
+  "payload": {
+    "analysis_text": "The screen shows a Spotify queue with three tracks..."
+  }
+}
+```
+
+- Requires a prior `start` with `chat_prompt` set and a chat-model deployment.
+- The server prepends a configurable prefix to the analysis text, appends it to history, and streams a chat-only response.
 
 - Server replies with `{"type":"pong", ...}` (same envelope, empty payload) and resets the idle timer (default idle timeout: 150s, set via `WS_IDLE_TIMEOUT_S`).
 - Incoming `{"type":"pong"}` frames are treated as no-ops so clients can mirror the heartbeat without extra logic.
@@ -711,7 +747,7 @@ TEXT_API_KEY=your_api_key python3 tests/e2e/tool.py \
 # run inside the scripts/activate.sh environment
 python3 tests/e2e/bench.py -n 32 -c 8
 python3 tests/e2e/bench.py --gender female --personality flirty "who was Columbus?"
-python3 tests/e2e/bench.py --url ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+python3 tests/e2e/bench.py --server ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
 Reports p50/p95 latencies under concurrent load.

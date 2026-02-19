@@ -59,8 +59,8 @@ def patch_transformers_auto_docstring() -> bool:
                 return "Any", True
             raise
 
-    ad._process_parameter_type = patched_process_parameter_type
-    ad._patched_for_union_type = True
+    ad._process_parameter_type = patched_process_parameter_type  # type: ignore[attr-defined]
+    ad._patched_for_union_type = True  # type: ignore[attr-defined]
 
     return True
 
@@ -86,7 +86,7 @@ def patch_attn_implementation_eager() -> bool:
 
     original_from_pretrained = AutoModelForCausalLM.from_pretrained
 
-    @classmethod
+    @classmethod  # type: ignore[misc]
     def patched_from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
         """Force eager attention to avoid flash attention loading issues."""
         # Only force eager if not explicitly set by caller

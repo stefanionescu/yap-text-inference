@@ -228,7 +228,7 @@ async def handle_start_message(
 
     Args:
         ws: WebSocket connection for responses.
-        msg: Parsed message dict containing:
+        payload: Parsed message dict containing:
             - gender: Required, "male" or "female"
             - personality: Required, personality identifier
             - chat_prompt: Required if DEPLOY_CHAT, the system prompt

@@ -145,7 +145,7 @@ def load_model_config(model_path: str) -> Any | None:
     """Best-effort load of model config for seqlen validation."""
 
     try:
-        from transformers import AutoConfig  # type: ignore[import]  # noqa: PLC0415
+        from transformers import AutoConfig  # noqa: PLC0415
     except Exception:
         return None
 

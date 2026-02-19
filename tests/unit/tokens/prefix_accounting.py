@@ -25,8 +25,8 @@ def test_get_effective_user_utt_max_tokens_uses_state_and_clamps(monkeypatch: py
         screen_checked_prefix_tokens=2,
     )
 
-    assert token_prefix.get_effective_user_utt_max_tokens(state, for_followup=False) == 1
-    assert token_prefix.get_effective_user_utt_max_tokens(state, for_followup=True) == 3
+    assert token_prefix.get_effective_user_utt_max_tokens(state, for_followup=False) == 1  # type: ignore[arg-type]
+    assert token_prefix.get_effective_user_utt_max_tokens(state, for_followup=True) == 3  # type: ignore[arg-type]
 
 
 def test_get_effective_user_utt_max_tokens_without_state_uses_defaults(

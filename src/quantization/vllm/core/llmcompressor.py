@@ -33,7 +33,7 @@ def _import_compressor() -> tuple[Any, Any] | None:
 
 def _import_auto_model_cls() -> Any | None:
     try:
-        from transformers import AutoModelForCausalLM  # type: ignore[import]  # noqa: PLC0415
+        from transformers import AutoModelForCausalLM  # noqa: PLC0415
     except Exception as exc:  # noqa: BLE001
         print(f"[awq] Failed to import transformers: {exc}")
         return None
@@ -151,7 +151,7 @@ def _resolve_dataset(config: CalibrationConfig) -> _DatasetInfo:
 
 def _build_recipe(quant_config: dict[str, Any]) -> list[Any]:
     return [
-        _awq_modifier()(  # type: ignore[misc]
+        _awq_modifier()(
             scheme=quant_config["scheme"],
             targets=quant_config["targets"],
             ignore=quant_config["ignore"],
