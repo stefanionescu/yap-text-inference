@@ -50,11 +50,13 @@ export TRT_MAX_BATCH_SIZE=64                 # Required for TRT: max sequences p
 Then you can run:
 
 ```bash
-# Chat + tool (default) - auto-detached deployment with log tailing
-bash scripts/main.sh [--trt|--vllm] [4bit|8bit] <chat_model> <tool_model>
+# Chat-only (default) - auto-detached deployment with log tailing
+bash scripts/main.sh [--trt|--vllm] [4bit|8bit] <chat_model>
 
-# Chat-only / tool-only helpers (host scripts)
-bash scripts/main.sh [--trt|--vllm] [4bit|8bit] chat <chat_model>
+# Explicit chat + tool (requires both models)
+bash scripts/main.sh [--trt|--vllm] [4bit|8bit] both <chat_model> <tool_model>
+
+# Tool-only
 bash scripts/main.sh tool <tool_model>
 
 # Tool-only mode is engine-agnostic:
@@ -67,7 +69,7 @@ Default GPU allocation:
 - Chat + tool: 70% for chat, 20% for tool (override with `CHAT_GPU_FRAC` / `TOOL_GPU_FRAC`)
 - Chat-only or tool-only: 90%
 
-Tool model default: `yapwithai/yap-longformer-screenshot-intent`. Override with `TOOL_MODEL` (must be compatible with `AutoModelForSequenceClassification`).
+Tool model: set `TOOL_MODEL` to a compatible `AutoModelForSequenceClassification` repo/path. Required when `DEPLOY_MODE` is `both` or `tool`.
 
 Tool model token budgets are model-aware when not explicitly configured:
 - Longformer-based tool models default to a `1536` token context window.
@@ -78,14 +80,17 @@ Tool model token budgets are model-aware when not explicitly configured:
 
 Examples:
 ```bash
-# TRT-LLM with INT4-AWQ quantization (default engine)
-bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+# Chat-only with INT4-AWQ quantization (default engine, default mode)
+bash scripts/main.sh 4bit SicariusSicariiStuff/Impish_Nemo_12B
 
-# vLLM with FP8 quantization
-bash scripts/main.sh --vllm 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+# Chat + tool (explicit both)
+bash scripts/main.sh both 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
-# vLLM with pre-quantized GPTQ model
-bash scripts/main.sh --vllm SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64 yapwithai/yap-longformer-screenshot-intent
+# vLLM chat + tool
+bash scripts/main.sh --vllm both 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+
+# vLLM with pre-quantized GPTQ model (chat-only)
+bash scripts/main.sh --vllm SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
 ```
 
 This will:
@@ -163,11 +168,14 @@ Pass `4bit` or `8bit` to the host scripts. The logs will spell out the actual ba
 vLLM uses [llmcompressor](https://github.com/vllm-project/llm-compressor) for AWQ/W4A16 quantization:
 
 ```bash
-# AWQ 4-bit quantization
-bash scripts/main.sh --vllm 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+# AWQ 4-bit quantization (chat-only)
+bash scripts/main.sh --vllm 4bit SicariusSicariiStuff/Impish_Nemo_12B
+
+# Chat + tool with 4-bit AWQ (explicit both)
+bash scripts/main.sh --vllm both 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
 # FP8 8-bit quantization (L40S/H100) or INT8 (A100)
-bash scripts/main.sh --vllm 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+bash scripts/main.sh --vllm 8bit SicariusSicariiStuff/Impish_Nemo_12B
 ```
 
 Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibration recipe (default dataset: `open_platypus`).
@@ -177,13 +185,17 @@ Override `AWQ_CALIB_DATASET`, `AWQ_NSAMPLES`, or `AWQ_SEQLEN` to tune the calibr
 TRT-LLM uses NVIDIA's quantization pipeline with GPU-aware format selection:
 
 ```bash
-# 4-bit quantization (all models): INT4-AWQ
+# 4-bit quantization (chat-only): INT4-AWQ
 export TRT_MAX_BATCH_SIZE=32
-bash scripts/main.sh --trt 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+bash scripts/main.sh --trt 4bit SicariusSicariiStuff/Impish_Nemo_12B
+
+# Chat + tool with 4-bit AWQ (explicit both)
+export TRT_MAX_BATCH_SIZE=32
+bash scripts/main.sh --trt both 4bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
 
 # 8-bit: FP8 on L40S/H100 (sm89/sm90), INT8-SQ on A100 (sm80)
 export TRT_MAX_BATCH_SIZE=16
-bash scripts/main.sh --trt 8bit SicariusSicariiStuff/Impish_Nemo_12B yapwithai/yap-longformer-screenshot-intent
+bash scripts/main.sh --trt 8bit SicariusSicariiStuff/Impish_Nemo_12B
 ```
 
 TRT-LLM quantization creates a checkpoint, then builds a compiled `.engine` file. The engine is GPU-architecture specific (e.g., H100 engines won't run on A100).
@@ -201,15 +213,18 @@ Both engines auto-detect pre-quantized repos whose names include common markers:
 - `trt` + `fp8` / `8bit` / `8-bit` / `int8` / `int-8` (TRT-LLM fp8/int8 checkpoints)
 
 ```bash
-# Pre-quantized AWQ chat + tool (vLLM)
-bash scripts/main.sh --vllm yapwithai/impish-12b-awq yapwithai/yap-longformer-screenshot-intent
+# Pre-quantized AWQ chat-only (vLLM)
+bash scripts/main.sh --vllm yapwithai/impish-12b-awq
+
+# Pre-quantized AWQ chat + tool (vLLM, explicit both)
+bash scripts/main.sh --vllm both yapwithai/impish-12b-awq yapwithai/yap-longformer-screenshot-intent
 
 # Pre-quantized TRT-AWQ (TensorRT-LLM) - still needs TRT_MAX_BATCH_SIZE for engine build
 export TRT_MAX_BATCH_SIZE=32
-bash scripts/main.sh --trt yapwithai/impish-12b-trt-awq yapwithai/yap-longformer-screenshot-intent
+bash scripts/main.sh --trt yapwithai/impish-12b-trt-awq
 
-# GPTQ-only chat deployment (vLLM)
-bash scripts/main.sh --vllm chat SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
+# GPTQ chat-only deployment (vLLM)
+bash scripts/main.sh --vllm SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32
 ```
 
 > **Note:** The code inspects `quantization_config.json` (and `awq_metadata.json` when present) to pick the correct backend. Set `HF_TOKEN` for private repos—no re-quantization step is needed.
@@ -233,16 +248,19 @@ The server supports two inference backends:
 Select the engine with CLI flags or environment variable (chat/both deployments only):
 
 ```bash
-# TensorRT-LLM (default)
-bash scripts/main.sh 4bit <chat_model> <tool_model>
-bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
+# TensorRT-LLM (default engine, chat-only)
+bash scripts/main.sh 4bit <chat_model>
+bash scripts/main.sh --trt 4bit <chat_model>
+
+# Chat + tool (explicit both)
+bash scripts/main.sh both 4bit <chat_model> <tool_model>
 
 # vLLM
-bash scripts/main.sh --vllm 4bit <chat_model> <tool_model>
+bash scripts/main.sh --vllm 4bit <chat_model>
 
 # Or via environment variable
 export INFERENCE_ENGINE=vllm
-bash scripts/main.sh 4bit <chat_model> <tool_model>
+bash scripts/main.sh 4bit <chat_model>
 ```
 
 Tool-only deployments do not accept engine flags and ignore `INFERENCE_ENGINE`.

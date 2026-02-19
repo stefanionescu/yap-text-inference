@@ -262,8 +262,9 @@ class HistoryController:
 
         if turn_id:
             target = next((t for t in state.history_turns if t.turn_id == turn_id), None)
-            if target and assistant:
-                target.assistant = assistant
+            if target is not None:
+                if assistant:
+                    target.assistant = assistant
                 trim_history(state)
                 return render_history(state.history_turns)
 

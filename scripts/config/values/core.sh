@@ -7,7 +7,7 @@
 [[ -n ${_CFG_CORE_LOADED:-} ]] && return 0
 _CFG_CORE_LOADED=1
 
-readonly CFG_DEFAULT_DEPLOY_MODE="both"
+readonly CFG_DEFAULT_DEPLOY_MODE="chat"
 readonly CFG_DEFAULT_ENGINE="trt"
 readonly CFG_DEFAULT_RUNTIME_ENGINE="trt"
 

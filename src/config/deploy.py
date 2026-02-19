@@ -10,9 +10,9 @@ The deployment mode affects:
 - Available WebSocket message handlers
 
 Environment Variables:
-    DEPLOY_MODE: Deployment mode (default: 'both')
-        - 'both': Deploy chat LLM and tool model
+    DEPLOY_MODE: Deployment mode (default: 'chat')
         - 'chat': Deploy only the chat LLM
+        - 'both': Deploy chat LLM and tool model
         - 'tool': Deploy only the tool model
 
     CHAT_MODEL: HuggingFace model ID or local path for chat
@@ -38,7 +38,7 @@ HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$")
 # Controls which inference components are loaded. This affects memory usage
 # and available features.
 
-DEPLOY_MODE = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
+DEPLOY_MODE = (os.getenv("DEPLOY_MODE", "chat") or "chat").lower()
 DEPLOY_CHAT = DEPLOY_MODE in ("both", "chat")  # Enable chat LLM
 DEPLOY_TOOL = DEPLOY_MODE in ("both", "tool")  # Enable tool model
 

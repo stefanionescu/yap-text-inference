@@ -73,7 +73,7 @@ def validate_tool_model(model: str, allowed_tool_models: list[str]) -> tuple[boo
 
     if model not in allowed_tool_models:
         return False, (
-            f"TOOL_MODEL '{model}' is not in the allowed list. " "Use an allowlisted tool model or a local model path."
+            f"TOOL_MODEL '{model}' is not in the allowed list. Use an allowlisted tool model or a local model path."
         )
 
     return True, f"✓ TOOL_MODEL: {model}"
@@ -105,7 +105,7 @@ def validate_trt_engine_label(label: str) -> tuple[bool, str]:
     pattern = r"^sm\d+_trt-llm-[\d.]+.*_cuda[\d.]+$"
     if not re.match(pattern, label):
         return False, (
-            f"✗ TRT_ENGINE_LABEL '{label}' has invalid format. " "Expected: sm{arch}_trt-llm-{version}_cuda{version}"
+            f"✗ TRT_ENGINE_LABEL '{label}' has invalid format. Expected: sm{{arch}}_trt-llm-{{version}}_cuda{{version}}"
         )
 
     return True, f"✓ TRT_ENGINE_LABEL: {label}"
