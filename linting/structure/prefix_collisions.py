@@ -11,10 +11,10 @@ import sys
 from pathlib import Path
 from collections import defaultdict
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-MIN_COLLISION = 2
+from shared import SRC_DIR, MIN_PREFIX_COLLISION, rel, report, iter_python_files  # noqa: E402
+
 MIN_PREFIX_PARTS = 2
 
 
@@ -36,12 +36,12 @@ def main() -> int:
         return 0
 
     dirs_seen: set[Path] = set()
-    for py_file in sorted(SRC_DIR.rglob("*.py")):
+    for py_file in iter_python_files(SRC_DIR):
         dirs_seen.add(py_file.parent)
 
     for directory in sorted(dirs_seen):
         py_files = [f.name for f in directory.iterdir() if f.suffix == ".py" and f.name != "__init__.py"]
-        if len(py_files) < MIN_COLLISION:
+        if len(py_files) < MIN_PREFIX_COLLISION:
             continue
 
         prefix_groups: dict[str, list[str]] = defaultdict(list)
@@ -51,17 +51,11 @@ def main() -> int:
                 prefix_groups[prefix].append(name)
 
         for prefix, files in sorted(prefix_groups.items()):
-            if len(files) >= MIN_COLLISION:
-                rel = directory.relative_to(ROOT)
+            if len(files) >= MIN_PREFIX_COLLISION:
                 file_list = ", ".join(sorted(files))
-                violations.append(f"  {rel}/: prefix '{prefix}' shared by {file_list}")
+                violations.append(f"  {rel(directory)}/: prefix '{prefix}' shared by {file_list}")
 
-    if violations:
-        print("Prefix collision violations:", file=sys.stderr)
-        for v in violations:
-            print(v, file=sys.stderr)
-        return 1
-    return 0
+    return report("Prefix collision violations", violations)
 
 
 if __name__ == "__main__":

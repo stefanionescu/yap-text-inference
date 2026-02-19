@@ -11,7 +11,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import ROOT, rel, report  # noqa: E402
+
 UNIT_DIR = ROOT / "tests" / "unit"
 
 
@@ -23,15 +26,9 @@ def main() -> int:
 
     for child in sorted(UNIT_DIR.iterdir()):
         if child.is_file() and child.suffix == ".py" and child.name != "__init__.py":
-            rel = child.relative_to(ROOT)
-            violations.append(f"  {rel}: must be inside a domain subfolder (tests/unit/<domain>/)")
+            violations.append(f"  {rel(child)}: must be inside a domain subfolder (tests/unit/<domain>/)")
 
-    if violations:
-        print("Unit-test-domain-folders violations:", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("Unit-test-domain-folders violations", violations)
 
 
 if __name__ == "__main__":

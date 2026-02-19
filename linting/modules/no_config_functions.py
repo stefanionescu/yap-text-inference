@@ -11,8 +11,9 @@ import ast
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-CONFIG_DIR = ROOT / "src" / "config"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import CONFIG_DIR, rel, report, parse_source  # noqa: E402
 
 
 def main() -> int:
@@ -25,27 +26,16 @@ def main() -> int:
         if py_file.name == "__init__.py":
             continue
 
-        try:
-            source = py_file.read_text()
-        except (OSError, UnicodeDecodeError):
+        result = parse_source(py_file)
+        if result is None:
             continue
-
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            continue
+        _source, tree = result
 
         for node in tree.body:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                rel = py_file.relative_to(ROOT)
-                violations.append(f"  {rel}: def {node.name}() (line {node.lineno})")
+                violations.append(f"  {rel(py_file)}: def {node.name}() (line {node.lineno})")
 
-    if violations:
-        print("No-config-functions violations (config/ must be declarative):", file=sys.stderr)
-        for violation in violations:
-            print(violation, file=sys.stderr)
-        return 1
-    return 0
+    return report("No-config-functions violations (config/ must be declarative)", violations)
 
 
 if __name__ == "__main__":

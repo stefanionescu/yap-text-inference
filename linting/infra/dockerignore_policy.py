@@ -7,12 +7,15 @@ import sys
 from typing import Any
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
     import tomli as tomllib  # type: ignore[no-redef]
 
-ROOT = Path(__file__).resolve().parents[1]
+from shared import ROOT, rel  # noqa: E402
+
 POLICY_PATH = ROOT / "linting" / "policy.toml"
 
 
@@ -23,13 +26,6 @@ def _first_effective_line(path: Path) -> str | None:
             continue
         return line
     return None
-
-
-def _rel(path: Path) -> str:
-    try:
-        return str(path.relative_to(ROOT))
-    except ValueError:
-        return str(path)
 
 
 def _repo_path(value: Any, *, field: str, violations: list[str]) -> Path | None:
@@ -122,22 +118,22 @@ def main() -> int:
 
     for path in sorted(forbidden):
         if path.exists():
-            violations.append(f"  {_rel(path)}: forbidden .dockerignore path for this repository policy")
+            violations.append(f"  {rel(path)}: forbidden .dockerignore path for this repository policy")
 
     for path in sorted(required):
         if not path.exists():
-            violations.append(f"  {_rel(path)}: missing required .dockerignore path")
+            violations.append(f"  {rel(path)}: missing required .dockerignore path")
             continue
         first_line = _first_effective_line(path)
         if first_line != first_effective_rule:
             violations.append(
-                f"  {_rel(path)}: first effective rule must be `{first_effective_rule}` (deny-all default)"
+                f"  {rel(path)}: first effective rule must be `{first_effective_rule}` (deny-all default)"
             )
 
     if allow_only_listed:
         extras = discovered - required - forbidden - allowed_extra
         for path in sorted(extras):
-            violations.append(f"  {_rel(path)}: unexpected .dockerignore path for this repository policy")
+            violations.append(f"  {rel(path)}: unexpected .dockerignore path for this repository policy")
 
     if violations:
         header = "Docker ignore policy violations"
@@ -151,4 +147,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

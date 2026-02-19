@@ -12,7 +12,9 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from shared import ROOT, rel, report  # noqa: E402
 
 # Patterns that indicate inline Python in bash (applied to stripped, non-comment lines)
 INLINE_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -42,16 +44,10 @@ def main() -> int:
                 continue
             for pattern in INLINE_PATTERNS:
                 if pattern.search(line):
-                    rel = sh_file.relative_to(ROOT)
-                    violations.append(f"  {rel}:{lineno}: {line.strip()}")
+                    violations.append(f"  {rel(sh_file)}:{lineno}: {line.strip()}")
                     break  # one match per line is enough
 
-    if violations:
-        print("Inline Python in shell scripts (use python -m instead):", file=sys.stderr)
-        for v in violations:
-            print(v, file=sys.stderr)
-        return 1
-    return 0
+    return report("Inline Python in shell scripts (use python -m instead)", violations)
 
 
 if __name__ == "__main__":
