@@ -38,18 +38,6 @@ def _open_connection(ws_url: str):
     )
 
 
-def _open_idle_connection(ws_url: str):
-    """Open a connection with no auto-pings for true idle testing."""
-    return connect_with_retries(
-        lambda: websockets.connect(
-            ws_url,
-            max_queue=None,
-            ping_interval=None,
-            ping_timeout=None,
-        )
-    )
-
-
 async def _test_normal_connection(ws_url: str, wait_seconds: float) -> None:
     async with _open_connection(ws_url) as ws:
         session_id = f"idle-{uuid.uuid4()}"
@@ -98,7 +86,7 @@ async def _test_idle_watchdog(
     if total_wait == 0:
         raise RuntimeError("idle wait is zero; use --idle-expect-seconds")
 
-    async with _open_idle_connection(ws_url) as ws:
+    async with _open_connection(ws_url) as ws:
         print(connection_status("idle", f"waiting up to {total_wait:.0f}s for server timeout..."))
         deadline = asyncio.get_event_loop().time() + total_wait
         while True:
