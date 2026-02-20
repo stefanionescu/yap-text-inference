@@ -64,6 +64,7 @@ usage() {
   echo "  TAG                 - Image tag (MUST start with 'tool-'; default: tool-only)"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (for private repos)"
+  echo "  NO_CACHE            - Build without Docker cache (default: 0)"
   echo ""
   echo "Options:"
   echo "  --help              - Show this help message"

@@ -12,4 +12,7 @@ init_build_args() {
     --tag "${FULL_IMAGE_NAME}"
     --platform "${PLATFORM}"
   )
+  if [ "${NO_CACHE:-0}" = "1" ]; then
+    BUILD_ARGS+=(--no-cache)
+  fi
 }
