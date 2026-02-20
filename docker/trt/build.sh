@@ -93,6 +93,7 @@ usage() {
   echo "  TAG                 - Image tag (MUST start with 'trt-')"
   echo "  PLATFORM            - Target platform (default: linux/amd64)"
   echo "  HF_TOKEN            - HuggingFace token (for private repos)"
+  echo "  NO_CACHE            - Build without Docker cache (default: 0)"
   echo ""
   echo "  Note: For tool-only images, use docker/tool/build.sh"
   echo ""

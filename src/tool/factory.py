@@ -6,6 +6,10 @@ The singleton management is handled by the registry module.
 
 from __future__ import annotations
 
+import logging
+
+from transformers import AutoConfig
+
 from src.config.timeouts import TOOL_TIMEOUT_S
 from src.config import TOOL_MODEL, TOOL_COMPILE, TOOL_GPU_FRAC, TOOL_DECISION_THRESHOLD, TOOL_MODEL_BATCH_CONFIG
 from src.config.tool import (
@@ -34,9 +38,20 @@ def create_tool_adapter() -> ToolAdapter:
     if not TOOL_MODEL:
         raise ValueError("TOOL_MODEL must be set to initialize the tool adapter.")
     batch_cfg = TOOL_MODEL_BATCH_CONFIG.get(TOOL_MODEL, {})
+
+    if not batch_cfg and TOOL_MODEL:
+        try:
+            cfg = AutoConfig.from_pretrained(TOOL_MODEL, trust_remote_code=True)
+            alt_name = getattr(cfg, "_name_or_path", "")
+            if alt_name:
+                batch_cfg = TOOL_MODEL_BATCH_CONFIG.get(alt_name, {})
+        except Exception:
+            logging.getLogger(__name__).debug("Batch config fallback lookup failed", exc_info=True)
+
     max_length_raw = TOOL_MAX_LENGTH if TOOL_MAX_LENGTH_CONFIGURED else batch_cfg.get("max_length")
     max_length = int(max_length_raw) if max_length_raw is not None else None
     history_max_tokens = TOOL_HISTORY_TOKENS if TOOL_HISTORY_TOKENS_CONFIGURED else None
+
     return ToolAdapter(
         model_path=TOOL_MODEL,
         threshold=TOOL_DECISION_THRESHOLD,
