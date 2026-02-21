@@ -77,6 +77,8 @@ Tool model token budgets are model-aware when not explicitly configured:
 - Set `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS` to override defaults.
 - If `TOOL_HISTORY_TOKENS` is higher than the tool model's context window, it is clamped to fit.
 - If the newest user message alone exceeds the tool history budget, the server keeps the latest tail that fits instead of dropping the message.
+- Token counting/trimming uses each deployed model's own `transformers.AutoTokenizer` (chat uses `CHAT_MODEL`, tool uses `TOOL_MODEL`).
+- For local model paths, startup fails fast if tokenizer files are missing (`tokenizer.json` or `tokenizer_config.json`).
 
 Examples:
 ```bash

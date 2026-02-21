@@ -833,6 +833,8 @@ This separation ensures the reported percentiles reflect real conversational lat
 ## Persona and History Behavior
 
 - Chat prompts are rendered using each model's tokenizer
+- Token accounting and trimming are computed with each deployed model's own `transformers.AutoTokenizer` (chat=`CHAT_MODEL`, tool=`TOOL_MODEL`)
+- For local model paths, startup fails if tokenizer files are missing (`tokenizer.json` or `tokenizer_config.json`)
 - **vLLM:** Prefix caching reuses repeated prompts automatically. Swapping the system prompt keeps history KV hot.
 - **TensorRT-LLM:** Block reuse handles KV cache automatically.
 - **Tool model context windows are model-aware by default:**
