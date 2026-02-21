@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 import src.messages.start.history as start_history
 import src.handlers.session.history as session_history
 from src.handlers.session.manager import SessionHandler

@@ -6,10 +6,8 @@ import os
 import inspect
 import logging
 from typing import Any, TypedDict
-
-from vllm.engine.arg_utils import AsyncEngineArgs
-
 from src.helpers.dedupe import warn_once
+from vllm.engine.arg_utils import AsyncEngineArgs
 from src.helpers.profiles import get_model_profile, normalize_model_id
 
 logger = logging.getLogger(__name__)

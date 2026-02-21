@@ -171,7 +171,6 @@ def download_prebuilt_engine(
         Path to the downloaded engine directory, or None on failure.
     """
     import os  # noqa: PLC0415
-
     from src.helpers.env import env_flag  # noqa: PLC0415
 
     # Configure HF progress bars based on SHOW_HF_LOGS

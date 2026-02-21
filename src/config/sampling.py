@@ -35,7 +35,6 @@ All values can be overridden via environment variables or per-request.
 """
 
 import os
-
 from ..helpers.resolvers import load_logit_bias_from_file
 
 # ============================================================================

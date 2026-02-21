@@ -35,7 +35,6 @@ Note:
 from __future__ import annotations
 
 import os
-
 from ..helpers.quantization import normalize_engine, detect_chat_quantization
 
 # ============================================================================

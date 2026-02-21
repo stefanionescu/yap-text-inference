@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-
 from .otel import init_otel, shutdown_otel
 from .sentry import init_sentry, shutdown_sentry
 from ..config.telemetry import SENTRY_DSN, AXIOM_API_TOKEN

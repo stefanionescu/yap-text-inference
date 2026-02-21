@@ -7,7 +7,6 @@ remains a pure dataclass package without websocket helper dependencies.
 from __future__ import annotations
 
 from typing import Any
-
 from tests.state.live import LiveSession
 from tests.state.metrics import SessionContext
 from tests.helpers.websocket.payloads import (

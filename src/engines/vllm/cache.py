@@ -20,7 +20,6 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 from collections.abc import Callable, Awaitable
-
 from src.config import CACHE_RESET_INTERVAL_SECONDS
 
 if TYPE_CHECKING:

@@ -10,10 +10,8 @@ from __future__ import annotations
 import os
 import json
 import uuid
-from typing import Any
-
 import websockets
-
+from typing import Any
 from tests.helpers.errors import ServerError
 from tests.helpers.selection import choose_message
 from tests.helpers.prompt import select_chat_prompt

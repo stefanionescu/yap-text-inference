@@ -3,22 +3,20 @@
 from __future__ import annotations
 
 import os
+import torch
 import traceback
 import contextlib
 from typing import Any
 
-import torch
-
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
+from .fixes import apply_post_quantization_fixes
+from .metadata import save_quantization_metadata
 from src.helpers.profiles import get_model_profile
 from src.state import CalibrationConfig, _DatasetInfo
 from src.config.calibration import CALIB_DEFAULT_DATASET
 from src.helpers.calibration import dataset_key, dataset_fallback, canonicalize_dataset_name
-
-from .fixes import apply_post_quantization_fixes
-from .metadata import save_quantization_metadata
 
 
 def _import_compressor() -> tuple[Any, Any] | None:

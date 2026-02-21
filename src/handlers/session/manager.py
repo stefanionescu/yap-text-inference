@@ -7,9 +7,12 @@ import time
 import asyncio
 import contextlib
 from typing import TYPE_CHECKING, Any
-
+from .history import HistoryController
+from .time import format_session_timestamp
 from src.state.session import HistoryTurn, SessionState
 from src.config.timeouts import SESSION_IDLE_TTL_SECONDS
+from .config import resolve_screen_prefix, update_session_config as _update_config
+from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 from src.config import (
     CHAT_MODEL,
     TOOL_MODEL,
@@ -18,11 +21,6 @@ from src.config import (
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
-
-from .history import HistoryController
-from .time import format_session_timestamp
-from .config import resolve_screen_prefix, update_session_config as _update_config
-from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 from .requests import (
     CANCELLED_SENTINEL,
     has_running_task as _has_running,

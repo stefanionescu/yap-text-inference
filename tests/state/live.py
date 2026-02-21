@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import field, dataclass
-
 from tests.helpers.errors import ServerError, RateLimitError
 
 

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import time
 from typing import Any
-
 from tests.state import StreamState
 from tests.helpers.websocket import finalize_metrics
 

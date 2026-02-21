@@ -31,9 +31,7 @@ Example:
 import time
 import asyncio
 import logging
-
 from fastapi import WebSocket
-
 from ..config import MAX_CONCURRENT_CONNECTIONS
 from ..telemetry.instruments import get_metrics
 from ..config.websocket import WS_HANDSHAKE_ACQUIRE_TIMEOUT_S

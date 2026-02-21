@@ -13,9 +13,7 @@ cancellation on each engine-yielded chunk and terminates gracefully.
 """
 
 from fastapi import WebSocket
-
 from src.handlers.session.manager import SessionHandler
-
 from ..handlers.websocket.helpers import safe_send_envelope
 
 

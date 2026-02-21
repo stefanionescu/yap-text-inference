@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import uuid
 from typing import Any
-
 from tests.state.metrics import SessionContext
 
 

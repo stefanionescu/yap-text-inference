@@ -10,13 +10,13 @@ from __future__ import annotations
 import json
 import uuid
 import asyncio
-from typing import Any
-from collections.abc import Callable, Sequence
-
 import websockets
-
+from typing import Any
 from tests.helpers.metrics import secs_to_ms
+from .drain import DrainConfig, drain_response
+from collections.abc import Callable, Sequence
 from tests.helpers.rate import SlidingWindowPacer
+from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
 from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
 from tests.helpers.websocket import send_client_end, build_start_payload, connect_with_retries, build_message_payload
 from tests.state import (
@@ -29,9 +29,6 @@ from tests.state import (
     FailureRecord,
     SessionContext,
 )
-
-from .drain import DrainConfig, drain_response
-from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
 
 STEP_WINDOW_SECONDS = max(0.0, float(TOOL_WS_MESSAGE_WINDOW_SECONDS))
 STEP_MAX_PER_WINDOW = max(0, int(TOOL_WS_MAX_MESSAGES_PER_WINDOW))

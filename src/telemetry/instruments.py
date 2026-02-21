@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import logging
-
 from opentelemetry import metrics
-
 from .gpu import register_gpu_observables
 from ..config.telemetry import (
     METRIC_TTFT,

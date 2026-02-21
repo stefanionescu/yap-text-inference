@@ -16,7 +16,6 @@ import uuid
 import asyncio
 import logging
 from typing import Any
-
 from src.tool.adapter import ToolAdapter
 from src.telemetry.sentry import add_breadcrumb
 from src.telemetry.instruments import get_metrics

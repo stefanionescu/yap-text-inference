@@ -5,23 +5,20 @@ from __future__ import annotations
 import logging
 import contextlib
 from typing import Any, cast
-from collections.abc import Callable
-
 from fastapi import WebSocket
-
-from src.runtime.dependencies import RuntimeDeps
-from src.handlers.session.manager import SessionHandler
-
 from .errors import send_error
 from ...logging import log_context
+from collections.abc import Callable
 from .helpers import safe_send_envelope
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
 from ..limits import SlidingWindowRateLimiter
 from ...telemetry.instruments import get_metrics
+from src.runtime.dependencies import RuntimeDeps
 from .disconnects import is_expected_ws_disconnect
 from ...messages.cancel import handle_cancel_message
 from ...messages.message import handle_message_message
+from src.handlers.session.manager import SessionHandler
 from ...messages.followup import handle_followup_message
 from .limits import consume_limiter, select_rate_limiter
 from ...messages.start.handler import handle_start_message

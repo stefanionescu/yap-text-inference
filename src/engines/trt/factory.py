@@ -6,11 +6,9 @@ import os
 import asyncio
 import logging
 from typing import Any
-
+from .engine import TRTEngine
 from src.helpers.env import env_flag
 from src.config import CHAT_MODEL, DEPLOY_CHAT, TRT_ENGINE_DIR
-
-from .engine import TRTEngine
 from .setup import build_kv_cache_config, read_checkpoint_model_type, validate_runtime_batch_size
 
 logger = logging.getLogger(__name__)

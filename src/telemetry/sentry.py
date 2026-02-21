@@ -5,7 +5,6 @@ from __future__ import annotations
 import time
 import logging
 from typing import Any
-
 from ..logging import _CLIENT_ID, _REQUEST_ID, _SESSION_ID
 from ..config.telemetry import (
     SENTRY_DSN,

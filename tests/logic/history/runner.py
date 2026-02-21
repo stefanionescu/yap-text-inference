@@ -9,10 +9,8 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any
-
 import websockets
-
+from typing import Any
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.errors import ServerError, StreamError
 from tests.state import StreamState, TTFBSamples, SessionContext

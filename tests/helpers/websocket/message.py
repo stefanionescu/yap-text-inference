@@ -10,11 +10,9 @@ from __future__ import annotations
 import json
 import inspect
 from typing import Any
-from collections.abc import Mapping, Callable, Awaitable
-
-from tests.helpers.errors import MessageParseError
-
 from .ws import recv_raw
+from tests.helpers.errors import MessageParseError
+from collections.abc import Mapping, Callable, Awaitable
 
 
 def parse_message(raw: str) -> dict[str, Any]:

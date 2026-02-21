@@ -8,9 +8,7 @@ if provided to ensure the watchdog test aligns with the deployment.
 from __future__ import annotations
 
 import os
-
 from tests.helpers.env import get_float_env
-
 from .defaults import IDLE_GRACE_DEFAULT, IDLE_EXPECT_DEFAULT, IDLE_NORMAL_WAIT_DEFAULT
 
 # Resolve idle expect fallback: prefer WS_IDLE_TIMEOUT_S if set, else use default

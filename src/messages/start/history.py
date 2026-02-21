@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from typing import Any
-
-from src.handlers.session.manager import SessionHandler
-
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL
+from src.handlers.session.manager import SessionHandler
 from ...handlers.session.parsing import parse_history_messages
 from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
 

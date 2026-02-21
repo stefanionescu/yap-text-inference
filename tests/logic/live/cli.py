@@ -7,14 +7,12 @@ import signal
 import asyncio
 import logging
 import contextlib
-from dataclasses import dataclass
-
-from tests.helpers.fmt import cyan, yellow
-from tests.helpers.errors import TestClientError, IdleTimeoutError, InputClosedError, ConnectionClosedError
-
 from .client import LiveClient
+from dataclasses import dataclass
 from .personas import PersonaRegistry
+from tests.helpers.fmt import cyan, yellow
 from .commands import print_help, dispatch_command
+from tests.helpers.errors import TestClientError, IdleTimeoutError, InputClosedError, ConnectionClosedError
 
 logger = logging.getLogger("live")
 

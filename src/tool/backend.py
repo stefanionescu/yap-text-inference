@@ -26,12 +26,10 @@ tool adapter. It handles:
 
 from __future__ import annotations
 
-import logging
-
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
+import logging
 from src.state import ToolModelInfo
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 logger = logging.getLogger(__name__)
 

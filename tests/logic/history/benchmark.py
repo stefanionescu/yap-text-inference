@@ -9,14 +9,12 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-
 from tests.state import HistoryBenchConfig
+from .connection import execute_history_connection
 from tests.helpers.prompt import select_chat_prompt
 from tests.logic.benchmark.reporting import print_report
 from tests.messages.history import HISTORY_RECALL_MESSAGES
 from tests.helpers.concurrency import distribute_requests, sanitize_concurrency
-
-from .connection import execute_history_connection
 
 
 def _build_config(

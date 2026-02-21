@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from fastapi import WebSocketDisconnect
-
 from src.handlers.websocket.disconnects import is_expected_ws_disconnect
 
 

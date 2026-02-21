@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import math
 from typing import Any
-from collections.abc import Mapping, Callable, Sequence
-
 from tests.state.metrics import TTFBSamples
+from collections.abc import Mapping, Callable, Sequence
 from tests.helpers.fmt import dim, bold, section_header
 
 # ============================================================================

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import re
 import html
-
 from .common import _strip_escaped_quotes
 from .suffix import compute_stable_and_tail_lengths
 from .verbalize import verbalize_emails, verbalize_phone_numbers

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-
 from src.config.websocket import WS_CLOSE_IDLE_REASON
 from src.handlers.websocket.lifecycle import WebSocketLifecycle
 

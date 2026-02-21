@@ -11,13 +11,12 @@ import json
 import asyncio
 import logging
 import contextlib
+import websockets
 from typing import Any
 from dataclasses import field, dataclass
-
-import websockets
-
 from tests.helpers.metrics import round_ms
 from tests.state import LiveSession, StreamState, StreamResult
+from .session import build_start_payload, build_message_payload
 from tests.helpers.fmt import dim, cyan, magenta, format_metrics_inline
 from tests.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError
 from tests.helpers.websocket import (
@@ -28,8 +27,6 @@ from tests.helpers.websocket import (
     send_client_end,
     finalize_metrics,
 )
-
-from .session import build_start_payload, build_message_payload
 
 logger = logging.getLogger("live")
 

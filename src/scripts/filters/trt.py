@@ -14,11 +14,9 @@ import logging
 import warnings
 import contextlib
 from typing import cast
-from collections.abc import Iterable
-
-from src.config.filters import TRTLLM_NOISE_PATTERNS
-
 from .fd import SuppressedFDContext
+from collections.abc import Iterable
+from src.config.filters import TRTLLM_NOISE_PATTERNS
 
 logger = logging.getLogger("log_filter")
 

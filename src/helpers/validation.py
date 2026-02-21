@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import logging
-
+from .models import is_tool_model
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.secrets import TEXT_API_KEY
+from .quantization import classify_prequantized_model
 from src.tokens.validation import validate_model_tokenizer
 from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
 from src.config.quantization import SUPPORTED_ENGINES, VALID_QUANT_FORMATS
 from src.config.deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
 from src.config.limits import HISTORY_MAX_TOKENS, TRIMMED_HISTORY_LENGTH, MAX_CONCURRENT_CONNECTIONS
-
-from .models import is_tool_model
-from .quantization import classify_prequantized_model
 
 logger = logging.getLogger(__name__)
 

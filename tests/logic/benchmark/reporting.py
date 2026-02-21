@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 from typing import Any
 from collections.abc import Iterable
-
 from tests.helpers.fmt import dim, red, bold, green, section_header
 
 PHASE_FIRST = 1

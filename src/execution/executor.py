@@ -27,20 +27,17 @@ The executor coordinates between:
 
 import asyncio
 import logging
-
 from fastapi import WebSocket
-
+from .chat import run_chat_generation
 from src.engines.base import BaseEngine
 from src.tool.adapter import ToolAdapter
+from .tool.parser import parse_tool_result
+from ..config.timeouts import TOOL_TIMEOUT_S
+from .tool.runner import launch_tool_request
 from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.sentry import add_breadcrumb
 from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
-
-from .chat import run_chat_generation
-from .tool.parser import parse_tool_result
-from ..config.timeouts import TOOL_TIMEOUT_S
-from .tool.runner import launch_tool_request
 from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)

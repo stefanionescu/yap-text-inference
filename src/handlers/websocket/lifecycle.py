@@ -30,9 +30,7 @@ import time
 import asyncio
 import logging
 import contextlib
-
 from fastapi import WebSocket
-
 from ...telemetry.sentry import add_breadcrumb
 from ...telemetry.instruments import get_metrics
 from ...config.websocket import WS_IDLE_TIMEOUT_S, WS_CLOSE_IDLE_CODE, WS_WATCHDOG_TICK_S, WS_CLOSE_IDLE_REASON

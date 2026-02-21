@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from typing import Any
+from opentelemetry import trace
 from collections.abc import Iterator
 from contextlib import contextmanager
-
-from opentelemetry import trace
-
 from ..config.telemetry import SPAN_REQUEST, SPAN_SESSION, SPAN_GENERATION, OTEL_SERVICE_NAME
 
 

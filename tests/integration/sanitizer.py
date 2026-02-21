@@ -7,10 +7,8 @@ streamed in chunks or processed in a single pass.
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
-
 import pytest
-
+from collections.abc import Sequence
 from tests.helpers.setup import setup_repo_path
 from tests.messages import STREAMING_SANITIZER_CASES
 

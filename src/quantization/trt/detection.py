@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-
 from src.config.gpu import SM_COMPUTE_CAPABILITY, DEFAULT_COMPUTE_CAPABILITY
 
 

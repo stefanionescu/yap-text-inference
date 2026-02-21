@@ -74,9 +74,8 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def download_model(model_id: str, target_dir: str) -> None:
     """Download a Hugging Face model snapshot into target_dir."""
-    from huggingface_hub import snapshot_download  # noqa: PLC0415
-
     from src.helpers.env import env_flag  # noqa: PLC0415
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
 
     print("[model] Fetching repository metadata...", file=sys.stderr)
 
@@ -99,10 +98,8 @@ def download_model(model_id: str, target_dir: str) -> None:
 def download_prequantized(model_id: str, target_dir: str) -> None:
     """Download pre-quantized checkpoint assets from Hugging Face."""
     import time  # noqa: PLC0415
-
-    from huggingface_hub import snapshot_download  # noqa: PLC0415
-
     from src.helpers.env import env_flag  # noqa: PLC0415
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
 
     print("[model] Fetching repository metadata...", file=sys.stderr)
 

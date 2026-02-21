@@ -11,10 +11,9 @@ import os
 import json
 import asyncio
 import contextlib
+from tests.config import DEFAULT_WS_PATH
 from collections.abc import Callable, Awaitable
 from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
-
-from tests.config import DEFAULT_WS_PATH
 
 _HTTP_TO_WS = {"http": "ws", "https": "wss"}
 

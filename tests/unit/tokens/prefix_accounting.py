@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
-
+from types import SimpleNamespace
 from src.tokens import prefix as token_prefix
 from tests.helpers.tokenizer import use_local_tokenizers
 

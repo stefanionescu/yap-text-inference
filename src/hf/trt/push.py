@@ -6,7 +6,6 @@ from __future__ import annotations
 import sys
 import argparse
 from pathlib import Path
-
 from src.helpers.env import env_flag
 
 if not env_flag("SHOW_HF_LOGS", False):

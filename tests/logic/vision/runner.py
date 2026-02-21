@@ -9,9 +9,7 @@ from __future__ import annotations
 
 import json
 import uuid
-
 import websockets
-
 from tests.state import StreamState, SessionContext
 from tests.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL

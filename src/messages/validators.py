@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-
 from src.errors import ValidationError
-from src.config.limits import PERSONALITY_MAX_LEN, SCREEN_PREFIX_MAX_CHARS
-
 from .sanitize.prompt import sanitize_prompt
+from src.config.limits import PERSONALITY_MAX_LEN, SCREEN_PREFIX_MAX_CHARS
 from .input import normalize_gender, normalize_personality, is_gender_empty_or_null, is_personality_empty_or_null
 
 

@@ -9,7 +9,6 @@ Usage:
 import os
 import sys
 import argparse
-
 from src.state import CalibrationConfig
 from src.helpers.models import is_tool_model
 from src.quantization.vllm.core import AWQQuantizer

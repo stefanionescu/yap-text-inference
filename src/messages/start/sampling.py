@@ -19,7 +19,6 @@ type-checked before being included in the overrides dict.
 from __future__ import annotations
 
 from typing import Any
-
 from ..validators import ValidationError
 from ...config import (
     DEPLOY_CHAT,

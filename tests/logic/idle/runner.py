@@ -11,10 +11,8 @@ from __future__ import annotations
 import json
 import uuid
 import asyncio
-from collections.abc import Callable, Awaitable
-
 import websockets
-
+from collections.abc import Callable, Awaitable
 from tests.helpers.websocket import send_client_end, connect_with_retries
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON

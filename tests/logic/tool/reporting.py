@@ -10,9 +10,8 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
-from collections.abc import Iterator, Sequence
-
 from tests.state import CaseResult
+from collections.abc import Iterator, Sequence
 
 
 def _format_case_summary(result: CaseResult) -> str:

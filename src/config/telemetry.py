@@ -1,7 +1,6 @@
 """Telemetry configuration: env vars, metric specs, span names, Sentry constants."""
 
 import os
-
 from ..helpers.env import env_int, env_float
 
 # ---------------------------------------------------------------------------

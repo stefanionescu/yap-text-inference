@@ -13,7 +13,6 @@ from __future__ import annotations
 import math
 import secrets
 from typing import TYPE_CHECKING, Any
-
 from .errors import build_error_payload
 from .helpers import safe_send_envelope
 from ...telemetry.instruments import get_metrics

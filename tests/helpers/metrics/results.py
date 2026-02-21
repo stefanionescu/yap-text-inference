@@ -7,7 +7,6 @@ dictionaries across all test scripts. Uses BenchmarkResultData from tests.state.
 from __future__ import annotations
 
 from typing import Any
-
 from tests.state.metrics import BenchmarkResultData
 
 

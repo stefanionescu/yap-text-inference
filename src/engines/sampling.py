@@ -22,7 +22,6 @@ interface for callers regardless of the backend engine.
 from __future__ import annotations
 
 from typing import Any
-
 from src.config import INFERENCE_ENGINE
 
 
