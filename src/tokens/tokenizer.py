@@ -1,80 +1,49 @@
-"""Fast tokenizer wrapper for token counting and trimming.
+"""Tokenizer wrapper for token counting and trimming.
 
-This module provides the FastTokenizer class that wraps either:
-1. A local tokenizer.json file (fastest, using the tokenizers library)
-2. A HuggingFace transformers tokenizer (AutoTokenizer, slower but more compatible)
-
-FastTokenizer provides a unified interface for token counting, trimming, and
-encoding. Runtime-configured accessors for chat and tool tokenizers are in
-the registry module (src/tokens/registry.py).
-
-Environment Variables:
-    TOKENIZERS_PARALLELISM=false: Set automatically to avoid fork warnings
+This module provides the FastTokenizer class as a thin wrapper around
+``transformers.AutoTokenizer`` only. Runtime-configured accessors for chat and
+tool tokenizers are in the registry module (src/tokens/registry.py).
 """
 
 from __future__ import annotations
 
 import os
-import logging
 from typing import Any
 from threading import Lock
 
-# Disable tokenizers parallelism before importing tokenizers (prevents fork warnings)
+# Disable tokenizers parallelism before importing transformers/tokenizers.
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from tokenizers import Tokenizer
-
-from .source import inspect_source, resolve_transformers_target
-from .loaders import load_local_tokenizer, load_transformers_with_fallback
-
-logger = logging.getLogger(__name__)
+from transformers import AutoTokenizer
 
 
 class FastTokenizer:
-    """High-performance tokenizer wrapper for counting and trimming.
+    """Thread-safe wrapper around a single transformers tokenizer instance."""
 
-    This class provides a unified interface over different tokenizer
-    backends (tokenizers library vs transformers). It prefers the
-    faster tokenizers library when tokenizer.json is available.
-
-    Thread-safe via internal Lock for all public methods.
-
-    Attributes:
-        tok: The tokenizers.Tokenizer instance (if loaded).
-        _hf_tok: The transformers tokenizer instance (if loaded).
-    """
-
-    def __init__(self, path_or_repo: str, *, load_transformers_tok: bool = True):
-        """Create a tokenizer optimized for counting/trimming.
-
-        Args:
-            path_or_repo: Local directory or HuggingFace repo id.
-            load_transformers_tok: Whether to also load a transformers tokenizer.
-        """
+    def __init__(self, path_or_repo: str):
+        """Create a tokenizer for counting/trimming from local path or HF repo."""
         self._lock = Lock()
-        self.tok: Tokenizer | None = None
-        self._hf_tok = None
-
-        source = inspect_source(path_or_repo)
-        local_tok = load_local_tokenizer(source)
-        if local_tok:
-            self.tok = local_tok
-
-        if not load_transformers_tok:
-            if self.tok is None:
-                raise RuntimeError(
-                    "FastTokenizer requires load_transformers_tok=True when tokenizer.json "
-                    f"is missing at {path_or_repo}"
-                )
-            return
-
-        target = resolve_transformers_target(path_or_repo, source)
-        self._hf_tok = load_transformers_with_fallback(
-            target=target,
-            original_path=path_or_repo,
-            source=source,
-            have_local=self.tok is not None,
+        self._hf_tok = AutoTokenizer.from_pretrained(
+            path_or_repo,
+            trust_remote_code=True,
+            local_files_only=os.path.exists(path_or_repo),
         )
+
+    def _encode_ids_locked(self, text: str) -> list[int]:
+        """Encode text without special tokens.
+
+        Must be called while holding ``self._lock``.
+        """
+        enc = self._hf_tok(
+            text,
+            add_special_tokens=False,
+            return_attention_mask=False,
+            return_token_type_ids=False,
+        )
+        input_ids = enc["input_ids"] if isinstance(enc, dict) else enc.input_ids
+        if input_ids and isinstance(input_ids[0], list):
+            input_ids = input_ids[0]
+        return list(input_ids)
 
     def count(self, text: str) -> int:
         """Count the number of tokens in the text.
@@ -88,29 +57,7 @@ class FastTokenizer:
         if not text:
             return 0
         with self._lock:
-            if self.tok is not None:
-                enc = self.tok.encode(text)
-                try:
-                    return enc.n_tokens
-                except AttributeError:
-                    return len(enc.ids)
-            # transformers fallback (fast or slow)
-            hf_tok = self._hf_tok
-            if hf_tok is None:
-                raise RuntimeError("Transformers tokenizer not loaded.")
-            try:
-                # Avoid adding special tokens to mirror Tokenizer behavior
-                ids = hf_tok.encode(text, add_special_tokens=False)
-            except AttributeError:
-                # Some tokenizers prefer the __call__ API
-                enc = hf_tok(
-                    text,
-                    add_special_tokens=False,
-                    return_attention_mask=False,
-                    return_token_type_ids=False,
-                )
-                ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
-            return len(ids)
+            return len(self._encode_ids_locked(text))
 
     def trim(self, text: str, max_tokens: int, keep: str = "end") -> str:
         """Trim text to fit within max_tokens.
@@ -126,34 +73,11 @@ class FastTokenizer:
         if max_tokens <= 0 or not text:
             return ""
         with self._lock:
-            if self.tok is not None:
-                enc = self.tok.encode(text)
-                ids = enc.ids
-                if len(ids) <= max_tokens:
-                    return text
-                kept = ids[:max_tokens] if keep == "start" else ids[-max_tokens:]
-                return self.tok.decode(kept)
-
-            # transformers fallback (fast or slow)
-            hf_tok = self._hf_tok
-            if hf_tok is None:
-                raise RuntimeError("Transformers tokenizer not loaded.")
-            try:
-                ids = hf_tok.encode(text, add_special_tokens=False)
-            except AttributeError:
-                enc = hf_tok(
-                    text,
-                    add_special_tokens=False,
-                    return_attention_mask=False,
-                    return_token_type_ids=False,
-                )
-                ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
-
+            ids = self._encode_ids_locked(text)
             if len(ids) <= max_tokens:
                 return text
             kept = ids[:max_tokens] if keep == "start" else ids[-max_tokens:]
-            # Decode without injecting special tokens or cleaning spaces
-            return hf_tok.decode(
+            return self._hf_tok.decode(
                 kept,
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
@@ -171,25 +95,10 @@ class FastTokenizer:
         if not text:
             return []
         with self._lock:
-            if self.tok is not None:
-                return self.tok.encode(text).ids
-            hf_tok = self._hf_tok
-            if hf_tok is None:
-                raise RuntimeError("Transformers tokenizer not loaded.")
-            try:
-                ids = hf_tok.encode(text, add_special_tokens=False)
-            except AttributeError:
-                enc = hf_tok(
-                    text,
-                    add_special_tokens=False,
-                    return_attention_mask=False,
-                    return_token_type_ids=False,
-                )
-                ids = enc["input_ids"] if isinstance(enc, dict) else enc[0]["input_ids"]
-            return list(ids)
+            return self._encode_ids_locked(text)
 
     def get_transformers_tokenizer(self) -> Any:
-        """Return the underlying transformers tokenizer if available, None otherwise."""
+        """Return the underlying transformers tokenizer."""
         with self._lock:
             return self._hf_tok
 
@@ -211,13 +120,9 @@ class FastTokenizer:
             Formatted prompt string ready for generation.
 
         Raises:
-            RuntimeError: If no transformers tokenizer is available or no chat template.
+            RuntimeError: If tokenizer has no chat template support.
         """
         with self._lock:
-            if self._hf_tok is None:
-                raise RuntimeError(
-                    "apply_chat_template requires a transformers tokenizer, but only tokenizer.json was loaded"
-                )
             if not hasattr(self._hf_tok, "apply_chat_template"):
                 raise RuntimeError("Tokenizer does not have apply_chat_template method")
             return self._hf_tok.apply_chat_template(
