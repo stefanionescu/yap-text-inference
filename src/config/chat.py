@@ -7,7 +7,6 @@ and canned response messages.
 from __future__ import annotations
 
 import os
-
 from ..helpers.env import env_flag
 
 # ============================================================================

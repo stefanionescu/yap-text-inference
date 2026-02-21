@@ -5,7 +5,6 @@ from __future__ import annotations
 from fastapi import WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
 from anyio import EndOfStream, BrokenResourceError, ClosedResourceError
-
 from ...config.websocket import WS_EXPECTED_DISCONNECT_RUNTIME_FRAGMENTS
 
 WS_EXPECTED_DISCONNECT_EXC_TYPES: tuple[type[BaseException], ...] = (

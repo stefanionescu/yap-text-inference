@@ -6,6 +6,7 @@ import point for test configuration so that CLI scripts and test runners can
 import everything they need from `tests.config`.
 """
 
+from .idle import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
 from tests.messages import (
     SCREEN_ANALYSIS_TEXT,
     TOOL_DEFAULT_MESSAGES,
@@ -13,8 +14,6 @@ from tests.messages import (
     SCREEN_ANALYSIS_USER_REPLY,
     CONVERSATION_HISTORY_MESSAGES,
 )
-
-from .idle import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
 from .env import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,

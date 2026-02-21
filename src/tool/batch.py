@@ -26,15 +26,12 @@ handling many small classification requests concurrently.
 from __future__ import annotations
 
 import time
+import torch
 import threading
 from queue import Empty, Queue
-from collections.abc import Callable
-
-import torch
-
-from src.state import RequestItem
-
 from .future import BatchFuture
+from src.state import RequestItem
+from collections.abc import Callable
 
 
 class BatchExecutor:

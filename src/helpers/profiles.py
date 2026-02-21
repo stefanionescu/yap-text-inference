@@ -7,7 +7,6 @@ model identifiers. Used across engines and quantization modules.
 from __future__ import annotations
 
 from typing import Any
-
 from src.state.profiles import MODEL_PROFILES, ModelProfile
 
 

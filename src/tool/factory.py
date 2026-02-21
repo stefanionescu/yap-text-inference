@@ -7,9 +7,8 @@ The singleton management is handled by the registry module.
 from __future__ import annotations
 
 import logging
-
+from .adapter import ToolAdapter
 from transformers import AutoConfig
-
 from src.config.timeouts import TOOL_TIMEOUT_S
 from src.config import TOOL_MODEL, TOOL_COMPILE, TOOL_GPU_FRAC, TOOL_DECISION_THRESHOLD, TOOL_MODEL_BATCH_CONFIG
 from src.config.tool import (
@@ -18,8 +17,6 @@ from src.config.tool import (
     TOOL_MAX_LENGTH_CONFIGURED,
     TOOL_HISTORY_TOKENS_CONFIGURED,
 )
-
-from .adapter import ToolAdapter
 
 
 def create_tool_adapter() -> ToolAdapter:

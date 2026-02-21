@@ -16,10 +16,8 @@ import logging
 import contextlib
 from typing import Any
 from collections.abc import AsyncGenerator
-
-from vllm.engine.async_llm_engine import AsyncLLMEngine
-
 from ..base import BaseEngine, EngineOutput
+from vllm.engine.async_llm_engine import AsyncLLMEngine
 from ...telemetry.sentry import capture_error, add_breadcrumb
 
 logger = logging.getLogger(__name__)

@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import json
 import asyncio
-from typing import Any
-
 import websockets
-
+from typing import Any
 from tests.helpers.fmt import dim
+from .handlers import build_recovery_handlers
+from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.state import (
     SessionContext,
@@ -33,9 +33,6 @@ from tests.helpers.websocket import (
     build_start_payload,
     connect_with_retries,
 )
-
-from .handlers import build_recovery_handlers
-from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
 
 
 async def run_normal_client(

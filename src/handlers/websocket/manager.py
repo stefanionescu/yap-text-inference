@@ -9,11 +9,6 @@ from __future__ import annotations
 
 import logging
 import contextlib
-
-from fastapi import WebSocket, WebSocketDisconnect
-
-from src.runtime.dependencies import RuntimeDeps
-
 from .auth import authenticate_websocket
 from .lifecycle import WebSocketLifecycle
 from .message_loop import run_message_loop
@@ -21,8 +16,10 @@ from ...telemetry.traces import session_span
 from ..limits import SlidingWindowRateLimiter
 from ...telemetry.errors import get_error_type
 from ...telemetry.instruments import get_metrics
+from src.runtime.dependencies import RuntimeDeps
 from .errors import send_error, reject_connection
 from .disconnects import is_expected_ws_disconnect
+from fastapi import WebSocket, WebSocketDisconnect
 from ...logging import set_log_context, reset_log_context
 from ...telemetry.sentry import capture_error, add_breadcrumb
 from ...config.websocket import (

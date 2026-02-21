@@ -5,7 +5,6 @@ methods from model names, engine normalization, and GPU compatibility checks.
 """
 
 import os
-
 from src.helpers.io import read_json_file
 from src.config.quantization import (
     TRT_FP8_SM_ARCHS,

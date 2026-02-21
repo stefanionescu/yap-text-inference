@@ -24,7 +24,6 @@ Environment Variables:
 from __future__ import annotations
 
 import os
-
 from ..helpers.resolvers import resolve_gpu_fracs
 
 # ============================================================================

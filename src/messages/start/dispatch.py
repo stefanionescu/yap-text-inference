@@ -21,14 +21,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
-
 from src.state import StartPlan
-from src.runtime.dependencies import RuntimeDeps
-
+from typing import TYPE_CHECKING
 from ...config.timeouts import TOOL_TIMEOUT_S
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL
 from ...execution.executor import run_execution
+from src.runtime.dependencies import RuntimeDeps
 from ...execution.tool.runner import run_toolcall
 from ...execution.tool.parser import parse_tool_result
 from ...execution.chat.runner import run_chat_generation

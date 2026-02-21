@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from src.tokens import count_tokens_tool
 import src.handlers.session.history as session_history
 from src.handlers.session.manager import SessionHandler

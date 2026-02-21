@@ -15,10 +15,8 @@ HuggingFace repo IDs are validated at tokenizer load time instead.
 from __future__ import annotations
 
 import os
-
-from src.state import TokenizerValidationResult
-
 from ..config.deploy import HF_REPO_PATTERN
+from src.state import TokenizerValidationResult
 
 
 def _invalid_result(model_path: str, error_message: str) -> TokenizerValidationResult:

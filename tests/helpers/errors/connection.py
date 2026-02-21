@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from tests.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON
-
 from .server import ServerError
 from .base import TestClientError
+from tests.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON
 
 
 class ConnectionError(TestClientError):

@@ -8,13 +8,12 @@ TTFB, chat TTFB, time to first sentence, and time to first 3 words.
 
 from __future__ import annotations
 
+from .reporting import print_report
 from tests.state import BenchmarkConfig
 from tests.helpers.selection import choose_message
 from tests.config import BENCHMARK_FALLBACK_MESSAGE
 from tests.helpers.prompt import select_chat_prompt
 from tests.helpers.concurrency import sanitize_concurrency
-
-from .reporting import print_report
 from .workers import run_instant_benchmark, run_windowed_benchmark
 
 

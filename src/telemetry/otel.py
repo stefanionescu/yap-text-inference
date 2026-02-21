@@ -5,7 +5,6 @@ from __future__ import annotations
 import socket
 import logging
 import uuid as _uuid
-
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -14,7 +13,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-
 from ..config.telemetry import (
     AXIOM_DATASET,
     CLOUD_PLATFORM,

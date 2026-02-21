@@ -7,7 +7,6 @@ TRT params are derived from existing limits when not explicitly set.
 from __future__ import annotations
 
 import os
-
 from ..helpers.resolvers import resolve_gpu_fracs
 
 # Directory paths

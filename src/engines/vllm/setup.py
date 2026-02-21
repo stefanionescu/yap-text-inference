@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import os
 from typing import Final
-
 from src.helpers.env import env_flag
 
 

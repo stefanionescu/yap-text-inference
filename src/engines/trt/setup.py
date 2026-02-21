@@ -12,7 +12,6 @@ import logging
 import contextlib
 from typing import Any
 from pathlib import Path
-
 from src.helpers.io import read_json_file
 from src.config import TRT_KV_FREE_GPU_FRAC, TRT_RUNTIME_BATCH_SIZE
 from src.config.trt import TRT_ENGINE_CONFIG_FILE, TRT_BUILD_METADATA_FILE

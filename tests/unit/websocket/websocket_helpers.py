@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
 import asyncio
 import contextlib
 from urllib.parse import parse_qs, urlsplit
-
-import pytest
-
 from tests.helpers.websocket import ws as ws_helpers
 
 

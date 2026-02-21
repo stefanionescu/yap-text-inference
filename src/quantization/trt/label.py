@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import contextlib
 from pathlib import Path
-
 from src.state import EnvironmentInfo
 from src.errors import EngineLabelError
 

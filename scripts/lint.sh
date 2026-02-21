@@ -106,6 +106,7 @@ run_python() {
   fi
 
   run_quiet "import-cycles" python "$ROOT_DIR/linting/imports/import_cycles.py"
+  run_quiet "single-line-imports-first" python "$ROOT_DIR/linting/imports/single_line_imports_first.py"
   run_quiet "all-at-bottom" python "$ROOT_DIR/linting/structure/all_at_bottom.py"
 
   if python -m src.scripts.validation.package mypy; then

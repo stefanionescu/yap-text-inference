@@ -4,7 +4,6 @@ from __future__ import annotations
 
 CHAT_TEMPLATE_NAME = "awq_chat_template.md"
 
-
 MISTRAL_RESEARCH_MODELS: frozenset[str] = frozenset(
     {
         "knifeayumu/Cydonia-v1.3-Magnum-v4-22B",

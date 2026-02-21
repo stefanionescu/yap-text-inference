@@ -12,11 +12,10 @@ import json
 import time
 import asyncio
 import logging
-from typing import Any
-
 import websockets
-
+from typing import Any
 from tests.helpers.fmt import dim
+from .handlers import build_cancel_handlers, build_recovery_handlers
 from tests.state import SessionContext, DrainPhaseResult, CancelPhaseResult, RecoveryPhaseResult
 from tests.helpers.websocket import (
     iter_messages,
@@ -27,8 +26,6 @@ from tests.helpers.websocket import (
     build_cancel_payload,
     build_message_payload,
 )
-
-from .handlers import build_cancel_handlers, build_recovery_handlers
 
 logger = logging.getLogger(__name__)
 

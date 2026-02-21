@@ -7,9 +7,8 @@ This module inspects HuggingFace config metadata to determine:
 
 from __future__ import annotations
 
-from transformers import AutoConfig
-
 from src.state import ToolModelInfo
+from transformers import AutoConfig
 
 
 def resolve_history_token_limit(*, max_length: int, history_tokens: int | None) -> int:

@@ -25,10 +25,9 @@ backend without engine-specific code paths.
 from __future__ import annotations
 
 from typing import Any
+from src.state import EngineOutput
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
-
-from src.state import EngineOutput
 from src.errors import EngineNotReadyError, EngineShutdownError
 
 

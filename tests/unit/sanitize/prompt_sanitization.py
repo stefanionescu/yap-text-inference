@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from src.messages.sanitize.prompt import PromptSanitizer, sanitize_prompt
 
 

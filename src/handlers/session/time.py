@@ -14,9 +14,8 @@ e.g., "Good morning" vs "Good evening" in system prompts.
 
 from __future__ import annotations
 
-from datetime import tzinfo, datetime, timezone
-
 from src.state import SessionTimestamp
+from datetime import tzinfo, datetime, timezone
 
 HOUR_MIDNIGHT = 0
 NIGHT_START = 1

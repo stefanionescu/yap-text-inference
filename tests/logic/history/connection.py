@@ -9,16 +9,14 @@ from __future__ import annotations
 import json
 import uuid
 import asyncio
-from typing import Any
-
 import websockets
-from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
-
+from typing import Any
 from tests.config import WS_MAX_QUEUE
 from tests.helpers.errors import StreamError
 from tests.helpers.metrics import error_result
 from tests.state import StreamState, SessionContext, HistoryBenchConfig
 from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
+from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from tests.helpers.websocket import (
     with_api_key,
     iter_messages,

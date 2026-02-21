@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-
+from .quantization import is_prequantized_model
 from src.config.models import (
     ALLOWED_TOOL_MODELS,
     ALLOWED_BASE_CHAT_MODELS,
@@ -12,8 +12,6 @@ from src.config.models import (
     ALLOWED_TRT_QUANT_CHAT_MODELS,
     ALLOWED_VLLM_QUANT_CHAT_MODELS,
 )
-
-from .quantization import is_prequantized_model
 
 
 def is_local_model_path(value: str | None) -> bool:

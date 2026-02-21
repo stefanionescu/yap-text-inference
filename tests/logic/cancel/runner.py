@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import uuid
 import asyncio
-
 from tests.helpers.prompt import select_chat_prompt
+from .clients import run_normal_client, run_canceling_client
 from tests.helpers.fmt import dim, red, bold, green, section_header
 from tests.state import SessionContext, CancelClientResult, NormalClientResult
+from .output import CANCEL_TEST_MESSAGE, print_cancel_client_result, print_normal_client_results
 from tests.config import (
     CANCEL_POST_WAIT_DEFAULT,
     CANCEL_NUM_CLIENTS_DEFAULT,
@@ -25,9 +26,6 @@ from tests.config import (
     CANCEL_DRAIN_TIMEOUT_DEFAULT,
     CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
 )
-
-from .clients import run_normal_client, run_canceling_client
-from .output import CANCEL_TEST_MESSAGE, print_cancel_client_result, print_normal_client_results
 
 
 async def run_cancel_suite(

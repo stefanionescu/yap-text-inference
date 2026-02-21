@@ -20,12 +20,10 @@ history operations, ensuring proper trimming occurs on access.
 from __future__ import annotations
 
 import uuid
-
 from src.state.session import HistoryTurn, SessionState
+from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
 from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool, trim_text_to_token_limit_tool
-
-from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
 
 
 def _trim_history_tool(state: SessionState, *, max_tokens: int | None = None) -> None:

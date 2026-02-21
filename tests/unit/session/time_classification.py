@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-
 from src.handlers.session.time import get_time_classification, format_session_timestamp
 
 # --- get_time_classification ---

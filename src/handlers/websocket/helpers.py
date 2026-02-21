@@ -28,13 +28,10 @@ import asyncio
 import logging
 import contextlib
 from typing import Any
-from collections.abc import AsyncIterator
-
-from fastapi import WebSocket, WebSocketDisconnect
-
 from src.state import _ChatStreamState
+from collections.abc import AsyncIterator
+from fastapi import WebSocket, WebSocketDisconnect
 from src.handlers.session.manager import SessionHandler
-
 from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
 
 logger = logging.getLogger(__name__)

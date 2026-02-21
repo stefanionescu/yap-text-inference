@@ -14,11 +14,12 @@ The adapter is the main entry point for tool/screenshot classification.
 from __future__ import annotations
 
 import json
-import logging
-
 import torch
-
+import logging
+from .batch import BatchExecutor
 from src.state import ToolModelInfo
+from .backend import TorchToolBackend
+from .info import build_model_info, resolve_history_token_limit
 from src.config.tool import (
     TOOL_MAX_GPU_FRAC,
     TOOL_MIN_GPU_FRAC,
@@ -27,10 +28,6 @@ from src.config.tool import (
     TOOL_POSITIVE_RESULT,
     TOOL_POSITIVE_LABEL_INDEX,
 )
-
-from .batch import BatchExecutor
-from .backend import TorchToolBackend
-from .info import build_model_info, resolve_history_token_limit
 
 logger = logging.getLogger(__name__)
 

@@ -23,9 +23,7 @@ Common error codes used in the application:
 from __future__ import annotations
 
 from typing import Any
-
 from fastapi import WebSocket
-
 from .helpers import safe_send_envelope
 from ...config.websocket import WS_UNKNOWN_REQUEST_ID, WS_UNKNOWN_SESSION_ID
 

@@ -45,6 +45,7 @@ try:
 except ImportError:  # Python < 3.11
     from async_timeout import timeout as async_timeout
 
+from ...engines.base import BaseEngine
 from src.errors import StreamCancelledError
 from src.telemetry.sentry import capture_error
 from src.telemetry.errors import get_error_type
@@ -52,8 +53,6 @@ from src.config.logging import CHAT_STREAM_LABEL
 from src.telemetry.traces import generation_span
 from src.telemetry.instruments import get_metrics
 from src.state import CancelCheck, ChatStreamConfig
-
-from ...engines.base import BaseEngine
 
 logger = logging.getLogger(__name__)
 

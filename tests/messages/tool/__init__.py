@@ -1,7 +1,6 @@
 """Default tool regression prompts and expected outcomes."""
 
 from typing import TypeAlias
-
 from .apps import DATA as APPS_MESSAGES
 from .life import DATA as LIFE_MESSAGES
 from .edge_cases import DATA as EDGE_CASES_MESSAGES

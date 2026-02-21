@@ -8,16 +8,13 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-
 from fastapi import WebSocket
-
-from src.runtime.dependencies import RuntimeDeps
-from src.handlers.session.manager import SessionHandler
-
 from ..config import DEPLOY_CHAT
+from src.runtime.dependencies import RuntimeDeps
 from ..handlers.websocket.errors import send_error
 from ..tokens import trim_text_to_token_limit_chat
 from ..execution.chat.runner import run_chat_generation
+from src.handlers.session.manager import SessionHandler
 from ..handlers.websocket.helpers import stream_chat_response
 from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 import src.handlers.websocket.auth as auth_mod
 from src.handlers.websocket.auth import _select_api_key, validate_api_key, _validate_candidate
 

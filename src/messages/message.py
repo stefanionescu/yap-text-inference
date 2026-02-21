@@ -13,18 +13,15 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
-
 from fastapi import WebSocket
-
 from src.state import StartPlan
-from src.runtime.dependencies import RuntimeDeps
-from src.handlers.session.manager import SessionHandler
-
 from .validators import ValidationError
 from .start.dispatch import dispatch_execution
 from .start.history import trim_user_utterance
+from src.runtime.dependencies import RuntimeDeps
 from ..handlers.websocket.errors import send_error
 from .start.sampling import extract_sampling_overrides
+from src.handlers.session.manager import SessionHandler
 from ..handlers.websocket.helpers import safe_send_envelope
 from ..config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD
 

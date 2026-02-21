@@ -10,7 +10,6 @@ import logging
 import contextlib
 from typing import cast
 from collections.abc import Iterable
-
 from src.config.filters import HF_ALL_GROUPS, HF_UPLOAD_GROUPS, HF_DOWNLOAD_GROUPS
 
 logger = logging.getLogger("log_filter")

@@ -16,7 +16,6 @@ boundary-sensitive patterns across chunk boundaries.
 from __future__ import annotations
 
 import re
-
 from ...config.filters import EMAIL_PATTERN, TRAILING_STREAM_UNSTABLE_CHARS
 
 

@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import logging
-
+from ...config import TEXT_API_KEY
 from fastapi import Security, WebSocket, HTTPException
 from fastapi.security.api_key import APIKeyQuery, APIKeyHeader
-
-from ...config import TEXT_API_KEY
 
 logger = logging.getLogger(__name__)
 

@@ -13,9 +13,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-
 from src.tokens.tokenizer import FastTokenizer
-
 from ..config.chat import CHAT_TEMPLATE_ENABLE_THINKING
 from ..handlers.session.history import parse_history_as_tuples
 

@@ -14,15 +14,13 @@ import json
 import contextlib
 from typing import Any
 from pathlib import Path
-from datetime import datetime, timezone
-
 from src.state import EnvironmentInfo
+from datetime import datetime, timezone
 from src.config import trt as trt_config
 from src.hf.license import compute_license_info
-from src.helpers.env import env_str, env_flag, env_int_or_none
-
 from .detection import get_compute_capability_info
 from .label import EngineLabelError, get_engine_label
+from src.helpers.env import env_str, env_flag, env_int_or_none
 
 # ============================================================================
 # Metadata Inference

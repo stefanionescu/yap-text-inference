@@ -14,7 +14,6 @@ import sys
 import logging
 from typing import cast
 from collections.abc import Iterable
-
 from src.config.filters import LLMCOMPRESSOR_NOISE_PATTERNS
 
 logger = logging.getLogger("log_filter")

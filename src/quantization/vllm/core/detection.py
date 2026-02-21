@@ -19,7 +19,6 @@ import logging
 import contextlib
 from typing import Any
 from collections.abc import Callable
-
 from src.helpers.models import is_local_model_path
 from src.config.quantization import QUANT_NAME_MAPPING
 from src.helpers.io import read_json_file, write_json_file

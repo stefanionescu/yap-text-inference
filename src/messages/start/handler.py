@@ -13,18 +13,15 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
-
 from fastapi import WebSocket
-
 from src.state import StartPlan
-from src.telemetry.sentry import capture_error
-from src.runtime.dependencies import RuntimeDeps
-from src.handlers.session.manager import SessionHandler
-
 from ...tokens import count_tokens_chat
 from .dispatch import dispatch_execution
+from src.telemetry.sentry import capture_error
 from .sampling import extract_sampling_overrides
+from src.runtime.dependencies import RuntimeDeps
 from ...handlers.websocket.errors import send_error
+from src.handlers.session.manager import SessionHandler
 from ...config import DEPLOY_CHAT, CHAT_PROMPT_MAX_TOKENS
 from .history import resolve_history, trim_user_utterance
 from ..input import normalize_gender, normalize_personality

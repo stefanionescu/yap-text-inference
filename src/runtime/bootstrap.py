@@ -8,7 +8,7 @@ lazy singleton initialization at request time.
 from __future__ import annotations
 
 import asyncio
-
+from .dependencies import RuntimeDeps
 from src.tokens.tokenizer import FastTokenizer
 from src.tool.factory import create_tool_adapter
 from src.tokens.registry import configure_tokenizers
@@ -17,8 +17,6 @@ from src.handlers.connections import ConnectionHandler
 from src.handlers.session.manager import SessionHandler
 from src.engines.registry import clear_engine_runtime, configure_engine_runtime
 from src.config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL, INFERENCE_ENGINE
-
-from .dependencies import RuntimeDeps
 
 
 async def _build_chat_engine():

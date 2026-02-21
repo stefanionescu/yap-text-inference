@@ -17,6 +17,8 @@ structure/          Code-shape and file-organization rules
 
 imports/            Import graph and dependency rules
     import_cycles.py            No import cycles between internal modules.
+    single_line_imports_first.py Top-level imports: future first, then
+                                 contiguous single-line imports, then multiline.
     no_lazy_module_loading.py   No lazy/dynamic import patterns at runtime.
 
 runtime/            Runtime module hygiene rules

@@ -9,11 +9,9 @@ from __future__ import annotations
 import time
 import asyncio
 from typing import Any
-
 from tests.state import BenchmarkConfig
-from tests.helpers.concurrency import distribute_requests
-
 from .connection import execute_connection
+from tests.helpers.concurrency import distribute_requests
 
 
 async def run_worker(count: int, cfg: BenchmarkConfig) -> list[dict[str, Any]]:

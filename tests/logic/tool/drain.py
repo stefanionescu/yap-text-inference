@@ -12,7 +12,6 @@ import time
 import asyncio
 import contextlib
 from typing import Any
-
 from tests.helpers.websocket import iter_messages
 from tests.state import DrainState, TurnResult, DrainConfig
 
