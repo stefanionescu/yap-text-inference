@@ -64,18 +64,3 @@ def test_render_tool_history_text_respects_explicit_budget(monkeypatch: pytest.M
         rendered = session_history.render_tool_history_text(turns, max_tokens=3)
         assert rendered == "three four five"
         assert count_tokens_tool(rendered) <= 3
-
-
-def test_trim_history_tool_trims_single_remaining_oversized_turn(monkeypatch: pytest.MonkeyPatch) -> None:
-    with use_local_tokenizers():
-        monkeypatch.setattr(session_history, "TOOL_HISTORY_TOKENS", 3)
-        state = SessionState(
-            meta={},
-            history_turns=[HistoryTurn(turn_id="t1", user="one two three four five", assistant="")],
-        )
-
-        session_history._trim_history_tool(state)
-
-        assert len(state.history_turns) == 1
-        assert state.history_turns[0].user == "three four five"
-        assert count_tokens_tool(state.history_turns[0].user) <= 3

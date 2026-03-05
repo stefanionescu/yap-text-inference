@@ -1,7 +1,7 @@
 """Token utilities built on top of the model-specific tokenizers.
 
-This module provides exact token counting, trimming, and history-aware
-trimming for chat and tool models separately, ensuring KV cache accounting
+This module provides exact token counting, trimming, and history formatting
+for chat and tool models separately, ensuring KV cache accounting
 matches the deployed model tokenizers.
 
 Key Functions:
@@ -11,10 +11,6 @@ count_tokens_*(): Return exact token count using the model's tokenizer.
 
 trim_text_to_token_limit_*(): Trim text to fit within a token budget.
     Supports keeping "start" (prefix) or "end" (suffix) of text.
-
-trim_history_preserve_messages_*(): Trim conversation history while
-    preserving complete message boundaries. Detects User:/Assistant:
-    markers and paragraph breaks to avoid cutting mid-message.
 
 build_user_history_for_tool(): Format user-only messages (no assistant)
     for the tool model, trimmed to fit token budget.
@@ -28,60 +24,6 @@ import logging
 from .registry import get_chat_tokenizer, get_tool_tokenizer
 
 logger = logging.getLogger(__name__)
-
-
-def _trim_history_preserve_messages_with(
-    history_text: str,
-    max_tokens: int,
-    count_fn,
-    trim_fn,
-) -> str:
-    if not history_text.strip():
-        return ""
-
-    boundary_patterns = [
-        "\nUser: ",
-        "\nAssistant: ",
-        "\n\nUser: ",
-        "\n\nAssistant: ",
-        "\n\n",
-        "\n",
-    ]
-
-    chosen_pattern = None
-    for pattern in boundary_patterns:
-        if pattern in history_text:
-            chosen_pattern = pattern
-            break
-
-    if not chosen_pattern:
-        return trim_fn(history_text, max_tokens, keep="end")
-
-    parts = history_text.split(chosen_pattern)
-    if len(parts) <= 1:
-        return trim_fn(history_text, max_tokens, keep="end")
-
-    result_parts: list[str] = []
-    current_tokens = 0
-
-    for i in range(len(parts) - 1, -1, -1):
-        part = parts[i]
-        test_part = part if i == len(parts) - 1 else chosen_pattern + part
-        part_tokens = count_fn(test_part)
-        if current_tokens + part_tokens > max_tokens:
-            break
-        result_parts.insert(0, part)
-        current_tokens += part_tokens
-
-    if not result_parts:
-        return ""
-
-    result = result_parts[0]
-    for part in result_parts[1:]:
-        result += chosen_pattern + part
-
-    out = result.strip()
-    return out
 
 
 _NEWLINE_TOKEN_CACHE: list[int] = []
@@ -127,38 +69,6 @@ def trim_text_to_token_limit_tool(text: str, max_tokens: int, keep: str = "end")
         len(out),
         max_tokens,
         keep,
-    )
-    return out
-
-
-def trim_history_preserve_messages_chat(history_text: str, max_tokens: int) -> str:
-    out = _trim_history_preserve_messages_with(
-        history_text,
-        max_tokens,
-        count_fn=count_tokens_chat,
-        trim_fn=trim_text_to_token_limit_chat,
-    )
-    logger.debug(
-        "tokens.chat.trim_history_preserve: in_len=%s out_len=%s max_tokens=%s",
-        len(history_text),
-        len(out),
-        max_tokens,
-    )
-    return out
-
-
-def trim_history_preserve_messages_tool(history_text: str, max_tokens: int) -> str:
-    out = _trim_history_preserve_messages_with(
-        history_text,
-        max_tokens,
-        count_fn=count_tokens_tool,
-        trim_fn=trim_text_to_token_limit_tool,
-    )
-    logger.debug(
-        "tokens.tool.trim_history_preserve: in_len=%s out_len=%s max_tokens=%s",
-        len(history_text),
-        len(out),
-        max_tokens,
     )
     return out
 
@@ -214,10 +124,8 @@ __all__ = [
     # Chat
     "count_tokens_chat",
     "trim_text_to_token_limit_chat",
-    "trim_history_preserve_messages_chat",
     # Tool
     "count_tokens_tool",
     "trim_text_to_token_limit_tool",
-    "trim_history_preserve_messages_tool",
     "build_user_history_for_tool",
 ]

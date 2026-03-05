@@ -7,9 +7,7 @@ This module handles the tracking of active requests and asyncio tasks:
    - CANCELLED_SENTINEL: Special value marking cancelled sessions
 
 2. Task Management:
-   - track_task: Register an asyncio.Task for a session
    - has_running_task: Check if a session has active work
-   - Done callbacks to auto-clear completed tasks
 
 3. Cancellation:
    - is_request_cancelled: Check if a request was superseded
@@ -22,8 +20,6 @@ and proper cleanup when connections close.
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Callable
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
@@ -34,11 +30,6 @@ if TYPE_CHECKING:
 CANCELLED_SENTINEL = "__CANCELLED__"
 
 
-def set_active_request(state: SessionState, request_id: str) -> None:
-    """Set the active chat request ID for the session."""
-    state.active_request_id = request_id
-
-
 def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
     """Check if a request has been cancelled or superseded.
 
@@ -46,13 +37,6 @@ def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
     - The session doesn't exist
     - The session's active_request_id is CANCELLED_SENTINEL
     - The session's active_request_id differs from the given request_id
-
-    Args:
-        state: The session state, or None if session doesn't exist.
-        request_id: The request ID to check.
-
-    Returns:
-        True if the request should be considered cancelled.
     """
     if not state:
         return True
@@ -62,33 +46,6 @@ def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
     if not active:
         return False
     return active != request_id
-
-
-def track_task(
-    state: SessionState,
-    task: asyncio.Task,
-    get_state_callback: Callable[[], SessionState | None],
-) -> None:
-    """Register an asyncio.Task for the session with auto-cleanup.
-
-    When the task completes (success, error, or cancel), the callback
-    clears the task reference if it's still the current task.
-
-    Args:
-        state: The session state to track the task on.
-        task: The asyncio.Task to track.
-        get_state_callback: A callback that returns the current state for
-            the session (used in the done callback to handle potential
-            session recreation).
-    """
-    state.task = task
-
-    def _clear_task(completed: asyncio.Task) -> None:
-        current = get_state_callback()
-        if current and current.task is completed:
-            current.task = None
-
-    task.add_done_callback(_clear_task)
 
 
 def has_running_task(state: SessionState | None) -> bool:
@@ -118,9 +75,7 @@ def cleanup_session_requests(state: SessionState | None) -> dict[str, str]:
 
 __all__ = [
     "CANCELLED_SENTINEL",
-    "set_active_request",
     "is_request_cancelled",
-    "track_task",
     "has_running_task",
     "cancel_session_requests",
     "cleanup_session_requests",

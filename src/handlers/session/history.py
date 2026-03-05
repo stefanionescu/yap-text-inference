@@ -4,14 +4,17 @@ This module handles the transformation between structured conversation history
 (HistoryTurn objects) and text representations. It supports:
 
 1. Rendering: Converting structured turns to text format for prompt building
-2. Trimming: Keeping history within token budgets for both chat and tool models
+2. Trimming: Keeping history within token budgets for the chat model
 3. Extraction: Getting user-only texts for tool routing
 
 For parsing functions (text/JSON to HistoryTurn), see the parsing module.
 
-Two separate trimming strategies are used:
-- Chat model: Triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
-- Tool model: Uses TOOL_HISTORY_TOKENS and only considers user messages
+Chat trimming uses a two-threshold (hysteresis) approach:
+- Triggers when tokens exceed HISTORY_MAX_TOKENS
+- Trims down to TRIMMED_HISTORY_LENGTH
+
+Tool model trimming happens at render time in render_tool_history_text,
+using the adapter's per-model token limit.
 
 The HistoryController class provides a clean interface for session-scoped
 history operations, ensuring proper trimming occurs on access.
@@ -22,50 +25,8 @@ from __future__ import annotations
 import uuid
 from src.state.session import HistoryTurn, SessionState
 from .parsing import parse_history_text, parse_history_as_tuples
+from src.tokens import count_tokens_chat, build_user_history_for_tool
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
-from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool, trim_text_to_token_limit_tool
-
-
-def _trim_history_tool(state: SessionState, *, max_tokens: int | None = None) -> None:
-    """Trim history turns so user-only tokens stay within TOOL_HISTORY_TOKENS.
-
-    In tool-only deployments, the chat trimming path is skipped.
-    This keeps the in-memory turn list bounded to what the tool model
-    can actually consume.
-    """
-    if not state.history_turns:
-        return
-    budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS))
-    user_texts = get_user_texts(state.history_turns)
-    if not user_texts:
-        state.history_turns = []
-        return
-    tokens = _count_user_tokens_tool(user_texts)
-    if tokens <= budget:
-        return
-    # Drop oldest turns until user-only tokens fit
-    while len(state.history_turns) > 1:
-        state.history_turns.pop(0)
-        user_texts = get_user_texts(state.history_turns)
-        tokens = _count_user_tokens_tool(user_texts)
-        if tokens <= budget:
-            break
-
-    if not state.history_turns:
-        return
-
-    latest_turn = state.history_turns[-1]
-    latest_user = (latest_turn.user or "").strip()
-    if latest_user and count_tokens_tool(latest_user) > budget:
-        # Keep the newest tail so single-message overflows remain usable.
-        latest_turn.user = trim_text_to_token_limit_tool(latest_user, max_tokens=budget, keep="end")
-
-
-def _count_user_tokens_tool(user_texts: list[str]) -> int:
-    """Count tool-model tokens for a list of user texts (newline-joined)."""
-    if not user_texts:
-        return 0
-    return count_tokens_tool("\n".join(user_texts))
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
@@ -103,7 +64,6 @@ def trim_history(
     *,
     trigger_tokens: int | None = None,
     target_tokens: int | None = None,
-    tool_history_tokens: int | None = None,
 ) -> None:
     """Trim history when it exceeds the configured trigger.
 
@@ -214,7 +174,7 @@ class HistoryController:
 
     def get_tool_history_text(self, state: SessionState, *, max_tokens: int | None = None) -> str:
         """Get trimmed user-only history for the tool model."""
-        trim_history(state, tool_history_tokens=max_tokens)
+        trim_history(state)
         return render_tool_history_text(state.history_turns, max_tokens=max_tokens)
 
     def set_text(self, state: SessionState, history_text: str) -> str:

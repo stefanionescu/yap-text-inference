@@ -46,5 +46,3 @@ def test_sanitize_prompt_strips_bidi_chars() -> None:
 def test_sanitize_prompt_strips_escaped_quotes() -> None:
     result = sanitize_prompt('say \\"hello\\"')
     assert '\\"' not in result
-
-

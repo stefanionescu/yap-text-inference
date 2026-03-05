@@ -29,10 +29,3 @@ def test_build_user_history_for_tool_trims_single_oversized_latest_message() -> 
         )
         assert history == "four five six"
         assert token_utils.count_tokens_tool(history) == 3
-
-
-def test_trim_history_preserve_messages_keeps_latest_chunks() -> None:
-    with use_local_tokenizers():
-        history = "one two three\n\nfour five six\n\nseven eight"
-        trimmed = token_utils.trim_history_preserve_messages_chat(history, max_tokens=4)
-        assert trimmed == "seven eight"

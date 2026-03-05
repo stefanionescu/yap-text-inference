@@ -12,6 +12,13 @@ from .time import format_session_timestamp
 from src.state.session import HistoryTurn, SessionState
 from .config import resolve_screen_prefix, update_session_config as _update_config
 from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
+from .requests import (
+    CANCELLED_SENTINEL,
+    has_running_task,
+    is_request_cancelled,
+    cancel_session_requests,
+    cleanup_session_requests,
+)
 from src.config import (
     CHAT_MODEL,
     TOOL_MODEL,
@@ -19,13 +26,6 @@ from src.config import (
     DEPLOY_TOOL,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
-)
-from .requests import (
-    CANCELLED_SENTINEL,
-    has_running_task as _has_running,
-    is_request_cancelled as _is_cancelled,
-    cancel_session_requests as _cancel_requests,
-    cleanup_session_requests as _cleanup_requests,
 )
 
 if TYPE_CHECKING:
@@ -167,7 +167,7 @@ class SessionHandler:
         state.active_request_id = request_id
 
     def is_request_cancelled(self, state: SessionState, request_id: str) -> bool:
-        return _is_cancelled(state, request_id)
+        return is_request_cancelled(state, request_id)
 
     def track_task(self, state: SessionState, task: asyncio.Task) -> None:
         state.task = task
@@ -179,13 +179,13 @@ class SessionHandler:
         task.add_done_callback(_clear_task)
 
     def has_running_task(self, state: SessionState) -> bool:
-        return _has_running(state)
+        return has_running_task(state)
 
     def cancel_session_requests(self, state: SessionState) -> None:
-        _cancel_requests(state)
+        cancel_session_requests(state)
 
     def cleanup_session_requests(self, state: SessionState) -> dict[str, str]:
-        return _cleanup_requests(state)
+        return cleanup_session_requests(state)
 
     async def abort_session_requests(
         self,

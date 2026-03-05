@@ -6,15 +6,15 @@ import logging
 from .models import is_tool_model
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.secrets import TEXT_API_KEY
+from src.config.websocket import WS_IDLE_TIMEOUT_S
+from src.config.tool import TOOL_DECISION_THRESHOLD
 from .quantization import classify_prequantized_model
+from src.config.gpu import CHAT_GPU_FRAC, TOOL_GPU_FRAC
 from src.tokens.validation import validate_model_tokenizer
+from src.config.timeouts import GEN_TIMEOUT_S, TOOL_TIMEOUT_S
 from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
 from src.config.quantization import SUPPORTED_ENGINES, VALID_QUANT_FORMATS
 from src.config.deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
-from src.config.gpu import CHAT_GPU_FRAC, TOOL_GPU_FRAC
-from src.config.tool import TOOL_DECISION_THRESHOLD
-from src.config.timeouts import GEN_TIMEOUT_S, TOOL_TIMEOUT_S
-from src.config.websocket import WS_IDLE_TIMEOUT_S
 from src.config.sampling import (
     CHAT_MIN_P,
     CHAT_TOP_K,
@@ -27,26 +27,26 @@ from src.config.sampling import (
 from src.config.limits import (
     CHAT_MAX_LEN,
     CHAT_MAX_OUT,
-    HISTORY_MAX_TOKENS,
-    HISTORY_RETENTION_PCT,
-    USER_UTT_MAX_TOKENS,
-    TRIMMED_HISTORY_LENGTH,
-    CHAT_PROMPT_MAX_TOKENS,
-    MAX_CONCURRENT_CONNECTIONS,
-    CHAT_TOP_K_MIN,
-    CHAT_TOP_K_MAX,
-    CHAT_TOP_P_MIN,
-    CHAT_TOP_P_MAX,
-    CHAT_MIN_P_MIN,
     CHAT_MIN_P_MAX,
-    CHAT_TEMPERATURE_MIN,
+    CHAT_MIN_P_MIN,
+    CHAT_TOP_K_MAX,
+    CHAT_TOP_K_MIN,
+    CHAT_TOP_P_MAX,
+    CHAT_TOP_P_MIN,
+    HISTORY_MAX_TOKENS,
+    USER_UTT_MAX_TOKENS,
     CHAT_TEMPERATURE_MAX,
-    CHAT_PRESENCE_PENALTY_MIN,
+    CHAT_TEMPERATURE_MIN,
+    HISTORY_RETENTION_PCT,
+    CHAT_PROMPT_MAX_TOKENS,
+    TRIMMED_HISTORY_LENGTH,
     CHAT_PRESENCE_PENALTY_MAX,
-    CHAT_FREQUENCY_PENALTY_MIN,
+    CHAT_PRESENCE_PENALTY_MIN,
     CHAT_FREQUENCY_PENALTY_MAX,
-    CHAT_REPETITION_PENALTY_MIN,
+    CHAT_FREQUENCY_PENALTY_MIN,
+    MAX_CONCURRENT_CONNECTIONS,
     CHAT_REPETITION_PENALTY_MAX,
+    CHAT_REPETITION_PENALTY_MIN,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,6 +77,46 @@ def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
         model,
     )
     return True
+
+
+def _validate_numeric_bounds() -> list[str]:
+    """Check numeric config values are within valid ranges."""
+    errors: list[str] = []
+
+    bounds: tuple[tuple[str, float | int, float | int, float | int], ...] = (
+        ("HISTORY_RETENTION_PCT", HISTORY_RETENTION_PCT, 30, 90),
+        ("CHAT_TEMPERATURE", CHAT_TEMPERATURE, CHAT_TEMPERATURE_MIN, CHAT_TEMPERATURE_MAX),
+        ("CHAT_TOP_P", CHAT_TOP_P, CHAT_TOP_P_MIN, CHAT_TOP_P_MAX),
+        ("CHAT_TOP_K", CHAT_TOP_K, CHAT_TOP_K_MIN, CHAT_TOP_K_MAX),
+        ("CHAT_MIN_P", CHAT_MIN_P, CHAT_MIN_P_MIN, CHAT_MIN_P_MAX),
+        ("CHAT_REPETITION_PENALTY", CHAT_REPETITION_PENALTY, CHAT_REPETITION_PENALTY_MIN, CHAT_REPETITION_PENALTY_MAX),
+        ("CHAT_PRESENCE_PENALTY", CHAT_PRESENCE_PENALTY, CHAT_PRESENCE_PENALTY_MIN, CHAT_PRESENCE_PENALTY_MAX),
+        ("CHAT_FREQUENCY_PENALTY", CHAT_FREQUENCY_PENALTY, CHAT_FREQUENCY_PENALTY_MIN, CHAT_FREQUENCY_PENALTY_MAX),
+        ("TOOL_DECISION_THRESHOLD", TOOL_DECISION_THRESHOLD, 0.0, 1.0),
+        ("WS_IDLE_TIMEOUT_S", WS_IDLE_TIMEOUT_S, 1.0, 86400.0),
+        ("GEN_TIMEOUT_S", GEN_TIMEOUT_S, 1.0, 600.0),
+        ("TOOL_TIMEOUT_S", TOOL_TIMEOUT_S, 0.1, 120.0),
+        ("CHAT_GPU_FRAC", CHAT_GPU_FRAC, 0.01, 1.0),
+        ("TOOL_GPU_FRAC", TOOL_GPU_FRAC, 0.01, 1.0),
+    )
+
+    for name, value, lo, hi in bounds:
+        if not (lo <= value <= hi):
+            errors.append(f"{name} must be {lo}-{hi}, got {value}")
+
+    positive_ints: tuple[tuple[str, int], ...] = (
+        ("CHAT_PROMPT_MAX_TOKENS", CHAT_PROMPT_MAX_TOKENS),
+        ("HISTORY_MAX_TOKENS", HISTORY_MAX_TOKENS),
+        ("USER_UTT_MAX_TOKENS", USER_UTT_MAX_TOKENS),
+        ("CHAT_MAX_LEN", CHAT_MAX_LEN),
+        ("CHAT_MAX_OUT", CHAT_MAX_OUT),
+    )
+
+    for name, value in positive_ints:
+        if value <= 0:
+            errors.append(f"{name} must be positive, got {value}")
+
+    return errors
 
 
 def validate_env() -> None:
@@ -140,40 +180,7 @@ def validate_env() -> None:
     if tool_tok_error:
         errors.append(tool_tok_error)
 
-    # Numeric bounds validation
-    _NUMERIC_BOUNDS: tuple[tuple[str, float | int, float | int, float | int], ...] = (
-        ("HISTORY_RETENTION_PCT", HISTORY_RETENTION_PCT, 30, 90),
-        ("CHAT_TEMPERATURE", CHAT_TEMPERATURE, CHAT_TEMPERATURE_MIN, CHAT_TEMPERATURE_MAX),
-        ("CHAT_TOP_P", CHAT_TOP_P, CHAT_TOP_P_MIN, CHAT_TOP_P_MAX),
-        ("CHAT_TOP_K", CHAT_TOP_K, CHAT_TOP_K_MIN, CHAT_TOP_K_MAX),
-        ("CHAT_MIN_P", CHAT_MIN_P, CHAT_MIN_P_MIN, CHAT_MIN_P_MAX),
-        ("CHAT_REPETITION_PENALTY", CHAT_REPETITION_PENALTY, CHAT_REPETITION_PENALTY_MIN, CHAT_REPETITION_PENALTY_MAX),
-        ("CHAT_PRESENCE_PENALTY", CHAT_PRESENCE_PENALTY, CHAT_PRESENCE_PENALTY_MIN, CHAT_PRESENCE_PENALTY_MAX),
-        ("CHAT_FREQUENCY_PENALTY", CHAT_FREQUENCY_PENALTY, CHAT_FREQUENCY_PENALTY_MIN, CHAT_FREQUENCY_PENALTY_MAX),
-        ("TOOL_DECISION_THRESHOLD", TOOL_DECISION_THRESHOLD, 0.0, 1.0),
-        ("WS_IDLE_TIMEOUT_S", WS_IDLE_TIMEOUT_S, 1.0, 86400.0),
-        ("GEN_TIMEOUT_S", GEN_TIMEOUT_S, 1.0, 600.0),
-        ("TOOL_TIMEOUT_S", TOOL_TIMEOUT_S, 0.1, 120.0),
-        ("CHAT_GPU_FRAC", CHAT_GPU_FRAC, 0.01, 1.0),
-        ("TOOL_GPU_FRAC", TOOL_GPU_FRAC, 0.01, 1.0),
-    )
-
-    for name, value, lo, hi in _NUMERIC_BOUNDS:
-        if not (lo <= value <= hi):
-            errors.append(f"{name} must be {lo}-{hi}, got {value}")
-
-    # Positive-value checks
-    _POSITIVE_INTS: tuple[tuple[str, int], ...] = (
-        ("CHAT_PROMPT_MAX_TOKENS", CHAT_PROMPT_MAX_TOKENS),
-        ("HISTORY_MAX_TOKENS", HISTORY_MAX_TOKENS),
-        ("USER_UTT_MAX_TOKENS", USER_UTT_MAX_TOKENS),
-        ("CHAT_MAX_LEN", CHAT_MAX_LEN),
-        ("CHAT_MAX_OUT", CHAT_MAX_OUT),
-    )
-
-    for name, value in _POSITIVE_INTS:
-        if value <= 0:
-            errors.append(f"{name} must be positive, got {value}")
+    errors.extend(_validate_numeric_bounds())
 
     if errors:
         raise ValueError("; ".join(errors))
