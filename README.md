@@ -71,9 +71,9 @@ Default GPU allocation:
 
 Tool model: set `TOOL_MODEL` to a compatible `AutoModelForSequenceClassification` repo/path. Required when `DEPLOY_MODE` is `both` or `tool`.
 
-Tool model token budgets are model-aware when not explicitly configured:
-- Longformer-based tool models default to a `1536` token context window.
-- BERT/ModernBERT-based tool models default to a `512` token context window.
+Tool model token budgets are per-model when not explicitly configured:
+- Known tool models have per-model defaults in `TOOL_MODEL_BATCH_CONFIG` (e.g., `1536` for `yap-longformer-screenshot-intent`, `512` for `yap-modernbert-screenshot-intent`).
+- Unknown models default to `512` tokens.
 - Set `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS` to override defaults.
 - If `TOOL_HISTORY_TOKENS` is higher than the tool model's context window, it is clamped to fit.
 - If the newest user message alone exceeds the tool history budget, the server keeps the latest tail that fits instead of dropping the message.
@@ -306,7 +306,7 @@ python -m pytest -q \
   tests/unit/tokens/token_accounting.py \
   tests/unit/history/history_parsing.py \
   tests/unit/tokens/prefix_accounting.py \
-  tests/unit/websocket/ws_helpers.py
+  tests/unit/websocket/websocket_helpers.py
 ```
 
 ## Stopping and Restarting

@@ -585,7 +585,7 @@ python -m pytest -q \
   tests/unit/tokens/token_accounting.py \
   tests/unit/history/history_parsing.py \
   tests/unit/tokens/prefix_accounting.py \
-  tests/unit/websocket/ws_helpers.py
+  tests/unit/websocket/websocket_helpers.py
 ```
 
 ### Warmup Test Client
@@ -759,9 +759,9 @@ This separation ensures the reported percentiles reflect real conversational lat
 - For local model paths, startup fails if tokenizer files are missing (`tokenizer.json` or `tokenizer_config.json`)
 - **vLLM:** Prefix caching reuses repeated prompts automatically. Swapping the system prompt keeps history KV hot.
 - **TensorRT-LLM:** Block reuse handles KV cache automatically.
-- **Tool model context windows are model-aware by default:**
-  - Longformer-based tool models: `1536` tokens
-  - BERT/ModernBERT-based tool models: `512` tokens
+- **Tool model context windows are per-model by default:**
+  - Known models have per-model defaults in `TOOL_MODEL_BATCH_CONFIG` (e.g., `1536` for `yap-longformer`, `512` for `yap-modernbert`).
+  - Unknown models default to `512` tokens.
   - You can override with `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS`.
   - Effective tool history budget is clamped to the tool model's effective max sequence length.
 - **Oversized latest user messages for tool routing are tail-truncated (keep end)** so the most recent part still reaches the tool model.

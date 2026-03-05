@@ -90,13 +90,13 @@ stop_server_if_needed() {
     "${desired_engine}" \
     "${root_dir}"; then
     log_info "[server] Existing server matches requested config; stopping without clearing caches."
-    if ! FULL_CLEANUP=0 bash "${script_dir}/stop.sh"; then
+    if ! NUKE_ALL=0 bash "${script_dir}/stop.sh"; then
       log_err "[server] ✗ stop.sh failed during light stop"
       return 1
     fi
   else
     log_info "[server] Requested configuration differs; performing full reset before redeploy."
-    if ! FULL_CLEANUP=1 bash "${script_dir}/stop.sh"; then
+    if ! NUKE_ALL=1 bash "${script_dir}/stop.sh"; then
       log_err "[server] ✗ stop.sh failed during full reset"
       return 1
     fi

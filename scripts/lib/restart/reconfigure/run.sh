@@ -152,7 +152,7 @@ reconfigure_models() {
   log_section "[restart] Reconfiguring models..."
 
   local resolved_venv="${VENV_DIR:-$(get_venv_dir)}"
-  FULL_CLEANUP=0 "${SCRIPT_DIR}/stop.sh"
+  NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
   if [ "${preserve_cache}" != "1" ]; then
     clear_model_artifacts

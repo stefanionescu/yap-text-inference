@@ -108,7 +108,7 @@ restart_stage_awq_cached_flow() {
   fi
 
   log_section "[restart] Stopping server..."
-  FULL_CLEANUP=0 "${SCRIPT_DIR}/stop.sh"
+  NUKE_ALL=0 "${SCRIPT_DIR}/stop.sh"
 
   local venv_dir
   venv_dir="${VENV_DIR:-$(get_venv_dir)}"

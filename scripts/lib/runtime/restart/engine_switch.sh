@@ -42,7 +42,7 @@ _force_engine_wipe() {
   fi
 
   # Force full cleanup (engine switch requires fresh deps).
-  if ! FULL_CLEANUP=1 bash "${script_dir}/stop.sh"; then
+  if ! NUKE_ALL=1 bash "${script_dir}/stop.sh"; then
     log_err "[server] ✗ stop.sh failed during engine wipe"
     return 1
   fi
