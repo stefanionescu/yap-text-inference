@@ -75,7 +75,8 @@ def install_log_context() -> None:
 
 def configure_logging() -> None:
     """Initialize root logging configuration once per process."""
-    from src.config.logging import APP_LOG_LEVEL, APP_LOG_FORMAT, APP_LOG_DATEFMT  # noqa: PLC0415
+    from src.config.logging import APP_LOG_LEVEL  # noqa: PLC0415
+    from src.config.logging import APP_LOG_FORMAT, APP_LOG_DATEFMT
 
     install_log_context()
     root_logger = logging.getLogger()

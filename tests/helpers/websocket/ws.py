@@ -67,16 +67,10 @@ def with_api_key(
     return urlunsplit((scheme, netloc, path, encoded_query, fragment))
 
 
-async def send_client_end(ws, session_id: str, request_id: str | None = None) -> None:
-    """Best-effort end signal to gracefully close sessions."""
+async def send_client_end(ws) -> None:
+    """Best-effort end signal to gracefully close the connection."""
     with contextlib.suppress(Exception):
-        payload = {
-            "type": "end",
-            "session_id": session_id,
-            "request_id": request_id or f"end-{os.urandom(4).hex()}",
-            "payload": {},
-        }
-        await ws.send(json.dumps(payload))
+        await ws.send(json.dumps({"type": "end"}))
 
 
 def _resolve_recv(ws) -> Callable[[], Awaitable[str]]:

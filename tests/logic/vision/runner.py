@@ -29,12 +29,12 @@ from tests.helpers.websocket import (
     record_token,
     with_api_key,
     iter_messages,
-    build_envelope,
     create_tracker,
     record_toolcall,
     send_client_end,
     finalize_metrics,
     build_start_payload,
+    build_message_payload,
 )
 
 # ============================================================================
@@ -48,10 +48,7 @@ async def _consume_initial_response(ws, state: StreamState) -> tuple[bool, str]:
     async for msg in iter_messages(ws):
         t = msg.get("type")
 
-        if t == "ack":
-            state.ack_seen = True
-            continue
-        if t == "toolcall":
+        if t == "tool":
             status = (msg.get("status") or "").lower()
             record_toolcall(state)
             if status == "yes":
@@ -147,12 +144,7 @@ async def run_once(
             print(exchange_header(idx=2, persona="FOLLOWUP"))
             print(f"  {dim('(sending vision text...)')}")
 
-            followup_payload = build_envelope(
-                "followup",
-                session_id,
-                f"req-{uuid.uuid4()}",
-                {"analysis_text": SCREEN_ANALYSIS_TEXT},
-            )
+            followup_payload = build_message_payload(SCREEN_ANALYSIS_TEXT)
             state2 = create_tracker()
             await ws.send(json.dumps(followup_payload))
             final_followup = await _consume_followup(ws, state2)
@@ -165,7 +157,7 @@ async def run_once(
             print(f"\n  {green('✓ PASS')} Vision flow completed successfully")
 
         finally:
-            await send_client_end(ws, session_id)
+            await send_client_end(ws)
 
 
 __all__ = ["run_once"]

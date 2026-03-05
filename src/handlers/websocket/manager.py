@@ -12,6 +12,7 @@ import contextlib
 from .auth import authenticate_websocket
 from .lifecycle import WebSocketLifecycle
 from .message_loop import run_message_loop
+from src.state.session import SessionState
 from ...telemetry.traces import session_span
 from ..limits import SlidingWindowRateLimiter
 from ...telemetry.errors import get_error_type
@@ -42,7 +43,6 @@ logger = logging.getLogger(__name__)
 
 def _is_expected_disconnect_exception(exc: BaseException, lifecycle: WebSocketLifecycle) -> bool:
     """Return True when connection teardown is expected and non-actionable."""
-
     return lifecycle.idle_timed_out() or is_expected_ws_disconnect(exc)
 
 
@@ -52,7 +52,7 @@ async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
     if not await authenticate_websocket(ws):
         await reject_connection(
             ws,
-            error_code=WS_ERROR_AUTH_FAILED,
+            code=WS_ERROR_AUTH_FAILED,
             message=(
                 "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header."
             ),
@@ -63,7 +63,7 @@ async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
     if not await connections.connect(ws):
         await reject_connection(
             ws,
-            error_code=WS_ERROR_SERVER_BUSY,
+            code=WS_ERROR_SERVER_BUSY,
             message="Server cannot accept new connections. Please try again later.",
             close_code=WS_CLOSE_BUSY_CODE,
         )
@@ -78,13 +78,11 @@ async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
     return True
 
 
-async def _cleanup_session(runtime_deps: RuntimeDeps, session_id: str | None) -> float:
+async def _cleanup_session(runtime_deps: RuntimeDeps, state: SessionState) -> float:
     """Clean up session resources on disconnect and return duration."""
     session_handler = runtime_deps.session_handler
-    duration = 0.0
-    if session_id:
-        duration = session_handler.get_session_duration(session_id)
-    await session_handler.abort_session_requests(session_id, clear_state=True)
+    duration = session_handler.get_session_duration(state)
+    await session_handler.abort_session_requests(state)
     return duration
 
 
@@ -105,7 +103,7 @@ async def _finalize_connection(
     ws: WebSocket,
     runtime_deps: RuntimeDeps,
     lifecycle: WebSocketLifecycle | None,
-    session_id: str | None,
+    state: SessionState | None,
     admitted: bool,
     generation_count: int = 0,
 ) -> None:
@@ -117,12 +115,13 @@ async def _finalize_connection(
             await lifecycle.stop()
 
     session_duration = 0.0
-    try:
-        session_duration = await _cleanup_session(runtime_deps, session_id)
-    except Exception as exc:  # noqa: BLE001
-        capture_error(exc)
-        m.errors_total.add(1, {"error.type": "cleanup_failed"})
-        logger.exception("WebSocket cleanup failed")
+    if state is not None:
+        try:
+            session_duration = await _cleanup_session(runtime_deps, state)
+        except Exception as exc:  # noqa: BLE001
+            capture_error(exc)
+            m.errors_total.add(1, {"error.type": "cleanup_failed"})
+            logger.exception("WebSocket cleanup failed")
 
     if not admitted:
         return
@@ -139,18 +138,14 @@ async def _finalize_connection(
     remaining = connections.get_connection_count()
     logger.info("WebSocket connection closed. Active: %s", remaining)
 
-    should_reset = session_id is not None and session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
+    should_reset = state is not None and session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
     if should_reset:
         with contextlib.suppress(Exception):
             triggered = await runtime_deps.reset_engine_caches("long_session", force=True)
             if triggered:
                 m.cache_resets_total.add(1)
                 add_breadcrumb("Cache reset", category="engine")
-                logger.info(
-                    "cache reset after long session_id=%s duration=%.1fs",
-                    session_id,
-                    session_duration,
-                )
+                logger.info("cache reset after long session duration=%.1fs", session_duration)
 
     if remaining == 0:
         with contextlib.suppress(Exception):
@@ -166,6 +161,7 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
     try:
         lifecycle: WebSocketLifecycle | None = None
         admitted = False
+        state: SessionState | None = None
 
         if not await _prepare_connection(ws, runtime_deps):
             return
@@ -173,7 +169,6 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
         admitted = True
         m.active_connections.add(1)
         add_breadcrumb("Connection accepted", category="server")
-        session_id: str | None = None
         message_limiter, cancel_limiter = _create_rate_limiters()
         lifecycle = WebSocketLifecycle(ws)
         lifecycle.start()
@@ -184,8 +179,8 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
         )
 
         try:
-            with session_span(session_id=session_id or "", client_id=client_id):
-                session_id = await run_message_loop(
+            with session_span(client_id=client_id):
+                state = await run_message_loop(
                     ws,
                     lifecycle,
                     message_limiter,
@@ -204,14 +199,11 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
                 with contextlib.suppress(Exception):
                     await send_error(
                         ws,
-                        session_id=session_id,
-                        request_id=None,
-                        error_code=WS_ERROR_INTERNAL,
+                        code=WS_ERROR_INTERNAL,
                         message="An unexpected server error occurred.",
-                        reason_code="internal_exception",
                     )
         finally:
-            await _finalize_connection(ws, runtime_deps, lifecycle, session_id, admitted)
+            await _finalize_connection(ws, runtime_deps, lifecycle, state, admitted)
     finally:
         reset_log_context(tokens)
 

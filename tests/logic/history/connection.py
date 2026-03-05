@@ -19,7 +19,6 @@ from tests.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from tests.helpers.websocket import (
     with_api_key,
-    iter_messages,
     consume_stream,
     create_tracker,
     send_client_end,
@@ -28,15 +27,6 @@ from tests.helpers.websocket import (
     connect_with_retries,
     build_message_payload,
 )
-
-
-async def _wait_for_ack(ws) -> None:
-    """Wait for ack message, discarding history info."""
-    async for msg in iter_messages(ws):
-        if msg.get("type") == "ack":
-            return
-        if msg.get("type") == "error":
-            raise RuntimeError(f"Server error: {msg}")
 
 
 async def _consume_stream_wrapper(ws, state: StreamState) -> str:
@@ -90,11 +80,10 @@ async def _send_and_stream(
             build_start_payload(ctx, user_text, history=history) if history else build_start_payload(ctx, user_text)
         )
     else:
-        payload = build_message_payload(session_id, user_text, sampling=cfg.sampling)
+        payload = build_message_payload(user_text, sampling=cfg.sampling)
     state = create_tracker()
 
     await ws.send(json.dumps(payload))
-    await _wait_for_ack(ws)
     reply = await _consume_stream_wrapper(ws, state)
 
     metrics = finalize_metrics(state)
@@ -133,7 +122,7 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
                     if not result.get("ok"):
                         break
             finally:
-                await send_client_end(ws, session_id)
+                await send_client_end(ws)
     except (ConnectionClosedOK, ConnectionClosedError) as exc:
         if not results:
             return [error_result(f"connection_closed: {exc}", phase=1)]

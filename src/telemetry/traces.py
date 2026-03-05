@@ -14,11 +14,11 @@ def _tracer() -> trace.Tracer:
 
 
 @contextmanager
-def session_span(*, session_id: str, client_id: str) -> Iterator[trace.Span]:
+def session_span(*, client_id: str) -> Iterator[trace.Span]:
     """Outermost span wrapping the entire WebSocket connection."""
     with _tracer().start_as_current_span(
         SPAN_SESSION,
-        attributes={"session.id": session_id, "client.id": client_id},
+        attributes={"client.id": client_id},
     ) as span:
         yield span
 

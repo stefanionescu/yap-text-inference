@@ -1,20 +1,20 @@
 """Client payload parsing for the WebSocket handler.
 
-All client messages must be JSON objects with the envelope:
-    {"type": "...", "session_id": "...", "request_id": "...", "payload": {...}}
+All client messages must be JSON objects with at minimum:
+    {"type": "..."}
+All other fields are at the top level (flat format, no envelope wrapper).
 
 Raises ValueError on:
 - Empty messages
 - Invalid JSON
 - Non-object JSON values
-- Missing or invalid envelope fields
+- Missing or invalid type field
 """
 
 from __future__ import annotations
 
 import json
 from typing import Any
-from ...config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
 
 
 def parse_client_message(raw: str) -> dict[str, Any]:
@@ -24,10 +24,10 @@ def parse_client_message(raw: str) -> dict[str, Any]:
         raw: Raw message string from WebSocket.
 
     Returns:
-        Normalized message dict with envelope keys.
+        Normalized message dict with 'type' lowercased.
 
     Raises:
-        ValueError: If message is empty, invalid JSON, or missing envelope keys.
+        ValueError: If message is empty, invalid JSON, or missing type.
     """
     text = (raw or "").strip()
     if not text:
@@ -41,25 +41,9 @@ def parse_client_message(raw: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("Message must be a JSON object.")
 
-    msg_type = data.get(WS_KEY_TYPE)
-    session_id = data.get(WS_KEY_SESSION_ID)
-    request_id = data.get(WS_KEY_REQUEST_ID)
-    payload = data.get(WS_KEY_PAYLOAD)
-
+    msg_type = data.get("type")
     if not msg_type:
         raise ValueError("Missing 'type' in message.")
-    if not session_id:
-        raise ValueError("Missing 'session_id' in message.")
-    if not request_id:
-        raise ValueError("Missing 'request_id' in message.")
-    if payload is None:
-        raise ValueError("Missing 'payload' in message.")
-    if not isinstance(payload, dict):
-        raise ValueError("'payload' must be a JSON object.")
 
-    return {
-        WS_KEY_TYPE: str(msg_type).strip().lower(),
-        WS_KEY_SESSION_ID: str(session_id),
-        WS_KEY_REQUEST_ID: str(request_id),
-        WS_KEY_PAYLOAD: payload,
-    }
+    data["type"] = str(msg_type).strip().lower()
+    return data

@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from dataclasses import dataclass
+
+if TYPE_CHECKING:
+    from .session import SessionState
 
 
 @dataclass(slots=True)
 class StartPlan:
     """Validated plan for executing a start message."""
 
-    session_id: str
+    state: SessionState
     request_id: str
     static_prefix: str
     runtime_text: str

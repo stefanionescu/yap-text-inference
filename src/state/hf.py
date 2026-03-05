@@ -25,12 +25,8 @@ class AWQPushJob:
 
     def run(self) -> bool:
         from src.hf import create_repo_if_needed  # noqa: PLC0415
-        from src.hf.vllm.job import (  # noqa: PLC0415
-            _IGNORE_PATTERNS,
-            load_metadata,
-            regenerate_readme,
-            classify_prequantized_source,
-        )
+        from src.hf.vllm.job import _IGNORE_PATTERNS  # noqa: PLC0415
+        from src.hf.vllm.job import load_metadata, regenerate_readme, classify_prequantized_source
 
         metadata = load_metadata(self.src_dir)
         source_model = (metadata.get("source_model") or "").strip() or "unknown"

@@ -142,7 +142,7 @@ class LiveClient:
             return
         self._closed = True
         try:
-            await send_client_end(self.ws, self.session.session_id)
+            await send_client_end(self.ws)
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -163,10 +163,7 @@ class LiveClient:
         try:
             async for msg in iter_messages(self.ws, timeout=self.recv_timeout):
                 msg_type = msg.get("type")
-                if msg_type == "ack":
-                    state.ack_seen = True
-                    continue
-                if msg_type == "toolcall":
+                if msg_type == "tool":
                     self._handle_toolcall_frame(msg, state)
                     continue
                 if msg_type == "token":
@@ -176,8 +173,6 @@ class LiveClient:
                     if normalized := msg.get("normalized_text"):
                         state.final_text = normalized
                     continue
-                if msg_type == "session_end":
-                    return self._handle_connection_closed(msg, state)
                 if msg_type == "done":
                     return self._handle_done_frame(msg, ctx, print_user_prompt=print_user_prompt)
                 if msg_type == "cancelled":

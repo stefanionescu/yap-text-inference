@@ -18,6 +18,8 @@ from src.config.tool import (
     TOOL_HISTORY_TOKENS_CONFIGURED,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def create_tool_adapter() -> ToolAdapter:
     """Create a new ToolAdapter instance using config values.
@@ -48,6 +50,14 @@ def create_tool_adapter() -> ToolAdapter:
     max_length_raw = TOOL_MAX_LENGTH if TOOL_MAX_LENGTH_CONFIGURED else batch_cfg.get("max_length")
     max_length = int(max_length_raw) if max_length_raw is not None else None
     history_max_tokens = TOOL_HISTORY_TOKENS if TOOL_HISTORY_TOKENS_CONFIGURED else None
+
+    if max_length is not None and max_length < TOOL_HISTORY_TOKENS:
+        logger.warning(
+            "TOOL_HISTORY_TOKENS (%d) exceeds model max_length (%d); adapter will clamp to %d",
+            TOOL_HISTORY_TOKENS,
+            max_length,
+            max_length,
+        )
 
     return ToolAdapter(
         model_path=TOOL_MODEL,

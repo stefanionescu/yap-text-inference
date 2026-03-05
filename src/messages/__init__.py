@@ -16,11 +16,6 @@ message.py:
     and dispatches execution. Does not accept history or persona
     changes — those are locked at session creation via 'start'.
 
-followup.py:
-    Handles follow-up messages within an existing session after
-    external screen analysis. Validates continuation state and
-    routes to execution.
-
 cancel.py:
     Handles request cancellation during streaming. Aborts the
     active generation request and cleans up state.

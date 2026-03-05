@@ -4,7 +4,6 @@ This module handles the tracking of active requests and asyncio tasks:
 
 1. Request ID Tracking:
    - active_request_id: The current chat generation request
-   - tool_request_id: The current tool request
    - CANCELLED_SENTINEL: Special value marking cancelled sessions
 
 2. Task Management:
@@ -38,21 +37,6 @@ CANCELLED_SENTINEL = "__CANCELLED__"
 def set_active_request(state: SessionState, request_id: str) -> None:
     """Set the active chat request ID for the session."""
     state.active_request_id = request_id
-
-
-def set_tool_request(state: SessionState, request_id: str) -> None:
-    """Set the active tool request ID for the session."""
-    state.tool_request_id = request_id
-
-
-def get_tool_request_id(state: SessionState | None) -> str:
-    """Get the current tool request ID, or empty string if none."""
-    return state.tool_request_id or "" if state else ""
-
-
-def clear_tool_request_id(state: SessionState) -> None:
-    """Clear the tool request ID."""
-    state.tool_request_id = None
 
 
 def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
@@ -103,7 +87,6 @@ def track_task(
         current = get_state_callback()
         if current and current.task is completed:
             current.task = None
-            current.touch()
 
     task.add_done_callback(_clear_task)
 
@@ -125,30 +108,17 @@ def cancel_session_requests(state: SessionState) -> None:
 
 
 def cleanup_session_requests(state: SessionState | None) -> dict[str, str]:
-    """Extract and clear request IDs from the session.
-
-    Used during cleanup to capture what requests were active before
-    clearing them.
-
-    Returns:
-        Dict with 'active' and 'tool' keys containing the request IDs
-        (empty strings if none were set).
-    """
+    """Extract and clear request IDs from the session."""
     if not state:
-        return {"active": "", "tool": ""}
+        return {"active": ""}
     active_req = "" if state.active_request_id in (None, CANCELLED_SENTINEL) else cast(str, state.active_request_id)
-    tool_req = state.tool_request_id or ""
     state.active_request_id = None
-    state.tool_request_id = None
-    return {"active": active_req, "tool": tool_req}
+    return {"active": active_req}
 
 
 __all__ = [
     "CANCELLED_SENTINEL",
     "set_active_request",
-    "set_tool_request",
-    "get_tool_request_id",
-    "clear_tool_request_id",
     "is_request_cancelled",
     "track_task",
     "has_running_task",

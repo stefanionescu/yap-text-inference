@@ -11,8 +11,6 @@ class _ChatStreamState:
 
     final_text: str
     text_visible: bool
-    session_id: str
-    request_id: str
     interrupted: bool = False
 
 

@@ -44,7 +44,7 @@ async def run_cancel_phase(
         ctx: Session context for building payloads.
         user_msg: User message to send.
         recv_timeout: Timeout for receiving messages.
-        cancel_delay: Seconds to wait after ACK before sending cancel.
+        cancel_delay: Seconds to wait before sending cancel.
 
     Returns:
         Result of the cancel phase.
@@ -53,16 +53,13 @@ async def run_cancel_phase(
     handlers = build_cancel_handlers(state)
 
     start_payload = build_start_payload(ctx, user_msg)
-    start_request_id = start_payload.get("request_id")
-    if not isinstance(start_request_id, str):
-        raise RuntimeError("start payload missing request_id")
     await ws.send(json.dumps(start_payload))
     print(dim("  [cancel] sent start message..."))
 
     cancel_sent = False
     cancelled = False
     error: str | None = None
-    ack_time: float | None = None
+    start_time = time.perf_counter()
 
     try:
         async for msg in iter_messages(ws, timeout=recv_timeout):
@@ -72,15 +69,11 @@ async def run_cancel_phase(
                 default=lambda m: True,
             )
 
-            if state.ack_seen and ack_time is None:
-                ack_time = time.perf_counter()
-                print(dim("  [cancel] received ACK, waiting before cancel..."))
-
-            # Send cancel after delay from ACK
-            if ack_time is not None and not cancel_sent:
-                elapsed = time.perf_counter() - ack_time
+            # Send cancel after delay from start
+            if not cancel_sent:
+                elapsed = time.perf_counter() - start_time
                 if elapsed >= cancel_delay:
-                    cancel_payload = build_cancel_payload(ctx.session_id, start_request_id)
+                    cancel_payload = build_cancel_payload()
                     await ws.send(json.dumps(cancel_payload))
                     cancel_sent = True
                     print(dim(f"  [cancel] sent cancel after {elapsed:.1f}s"))
@@ -109,7 +102,6 @@ async def run_cancel_phase(
         cancelled=cancelled,
         tokens_received=state.chunks,
         chars_received=len(state.final_text),
-        ack_seen=state.ack_seen,
         error=error,
     )
 
@@ -189,7 +181,7 @@ async def run_recovery_phase(
     state = create_tracker()
     handlers = build_recovery_handlers(state)
 
-    recovery_payload = build_message_payload(ctx.session_id, user_msg, sampling=ctx.sampling)
+    recovery_payload = build_message_payload(user_msg, sampling=ctx.sampling)
     await ws.send(json.dumps(recovery_payload))
     print(dim("  [recovery] sent message..."))
 

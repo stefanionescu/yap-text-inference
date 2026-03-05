@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any
 from .history import HistoryController
 from .time import format_session_timestamp
 from src.state.session import HistoryTurn, SessionState
-from src.config.timeouts import SESSION_IDLE_TTL_SECONDS
 from .config import resolve_screen_prefix, update_session_config as _update_config
 from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
 from src.config import (
@@ -34,18 +33,10 @@ if TYPE_CHECKING:
 
 
 class SessionHandler:
-    """Handles session metadata, request tracking, and lifecycle.
+    """Stateless helper for session metadata, request tracking, and lifecycle.
 
-    This is the central coordinator for per-connection session state.
-    It maintains an in-memory dictionary of SessionState objects keyed
-    by session_id (typically a WebSocket connection identifier).
-
-    Thread Safety:
-        All operations are designed for single-threaded async code.
-        The handler is not thread-safe for concurrent access.
-
-    Attributes:
-        CANCELLED_SENTINEL: Special value indicating a cancelled session.
+    Methods operate on a SessionState passed by the caller (per-connection).
+    No internal session dict or eviction logic — the connection IS the session.
     """
 
     CANCELLED_SENTINEL = CANCELLED_SENTINEL
@@ -54,72 +45,42 @@ class SessionHandler:
         self,
         *,
         chat_engine: BaseEngine | None = None,
-        idle_ttl_seconds: int = SESSION_IDLE_TTL_SECONDS,
     ):
-        """Initialize the session handler.
-
-        Args:
-            chat_engine: Eagerly initialized chat engine for abort handling.
-            idle_ttl_seconds: Time in seconds before idle sessions are evicted.
-                Defaults to SESSION_IDLE_TTL_SECONDS from environment.
-        """
-        self._sessions: dict[str, SessionState] = {}  # session_id -> state
         self._chat_engine = chat_engine
-        self._idle_ttl_seconds = idle_ttl_seconds
-        self._history = HistoryController()  # Shared history helper
-
-    def _get_state(self, session_id: str) -> SessionState | None:
-        """Get session state if it exists (without touching)."""
-        return self._sessions.get(session_id)
-
-    def _ensure_state(self, session_id: str) -> SessionState:
-        """Get or create session state, marking it as accessed."""
-        state = self._sessions.get(session_id)
-        if state is None:
-            self.initialize_session(session_id)
-            state = self._sessions[session_id]
-        else:
-            state.touch()
-        return state
+        self._history = HistoryController()
 
     # ============================================================================
     # Session metadata / lifecycle
     # ============================================================================
 
-    def initialize_session(self, session_id: str) -> dict[str, Any]:
-        """Ensure a session state exists and return its metadata."""
-        self._evict_idle_sessions()
-        state = self._sessions.get(session_id)
-        if state:
-            state.touch()
-            return state.meta
-
+    def initialize_session(self, state: SessionState) -> dict[str, Any]:
+        """Populate a fresh session state with default metadata."""
         timestamp = format_session_timestamp()
-        meta = {
-            "now_iso": timestamp.iso,
-            "now_str": timestamp.display,
-            "now_classification": timestamp.classification,
-            "now_tz": timestamp.tz,
-            "chat_gender": None,
-            "chat_personality": None,
-            "chat_prompt": None,
-            "chat_sampling": None,
-            "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
-            "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
-            "check_screen_prefix": None,
-            "screen_checked_prefix": None,
-        }
-        new_state = SessionState(session_id=session_id, meta=meta)
+        meta = state.meta
+        meta.update(
+            {
+                "now_iso": timestamp.iso,
+                "now_str": timestamp.display,
+                "now_classification": timestamp.classification,
+                "now_tz": timestamp.tz,
+                "chat_gender": None,
+                "chat_personality": None,
+                "chat_prompt": None,
+                "chat_sampling": None,
+                "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
+                "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
+                "check_screen_prefix": None,
+                "screen_checked_prefix": None,
+            }
+        )
         # Cache default prefix token counts
-        new_state.check_screen_prefix_tokens = count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
-        new_state.screen_checked_prefix_tokens = count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
-        self._sessions[session_id] = new_state
-        new_state.touch()
+        state.check_screen_prefix_tokens = count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
+        state.screen_checked_prefix_tokens = count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
         return meta
 
     def update_session_config(
         self,
-        session_id: str,
+        state: SessionState,
         chat_gender: str | None = None,
         chat_personality: str | None = None,
         chat_prompt: str | None = None,
@@ -128,7 +89,6 @@ class SessionHandler:
         screen_checked_prefix: str | None = None,
     ) -> dict[str, Any]:
         """Update mutable persona configuration for a session."""
-        state = self._ensure_state(session_id)
         return _update_config(
             state,
             chat_gender=chat_gender,
@@ -139,179 +99,109 @@ class SessionHandler:
             screen_checked_prefix=screen_checked_prefix,
         )
 
-    def get_session_config(self, session_id: str) -> dict[str, Any]:
+    def get_session_config(self, state: SessionState) -> dict[str, Any]:
         """Return a copy of the current session configuration."""
-        state = self._get_state(session_id)
-        if not state:
-            return {}
-        state.touch()
         return copy.deepcopy(state.meta)
 
-    def get_check_screen_prefix(self, session_id: str | None) -> str:
+    def get_check_screen_prefix(self, state: SessionState | None) -> str:
         """Resolve the check-screen prefix for the given session."""
-        state = self._get_state(session_id) if session_id else None
         return resolve_screen_prefix(state, DEFAULT_CHECK_SCREEN_PREFIX, is_checked=False)
 
-    def get_screen_checked_prefix(self, session_id: str | None) -> str:
+    def get_screen_checked_prefix(self, state: SessionState | None) -> str:
         """Resolve the screen-checked prefix for the given session."""
-        state = self._get_state(session_id) if session_id else None
         return resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
 
-    def clear_session_state(self, session_id: str) -> None:
-        """Drop all in-memory data for a session."""
-        state = self._sessions.pop(session_id, None)
-        if state and state.task and not state.task.done():
-            state.task.cancel()
-
-    def get_session_duration(self, session_id: str) -> float:
+    def get_session_duration(self, state: SessionState) -> float:
         """Return the elapsed time since the session was created."""
-        state = self._get_state(session_id)
-        return max(0.0, time.monotonic() - state.created_at) if state else 0.0
+        return max(0.0, time.monotonic() - state.created_at)
 
     # ============================================================================
     # History helpers
     # ============================================================================
 
-    def get_history_text(self, session_id: str) -> str:
-        state = self._get_state(session_id)
-        if not state:
-            return ""
-        state.touch()
+    def get_history_text(self, state: SessionState) -> str:
         return self._history.get_text(state)
 
-    def get_user_texts(self, session_id: str) -> list[str]:
+    def get_user_texts(self, state: SessionState) -> list[str]:
         """Get raw user texts (untrimmed)."""
-        state = self._get_state(session_id)
-        if not state:
-            return []
-        state.touch()
         return self._history.get_user_texts(state)
 
-    def get_tool_history_text(self, session_id: str, *, max_tokens: int | None = None) -> str:
+    def get_tool_history_text(self, state: SessionState, *, max_tokens: int | None = None) -> str:
         """Get trimmed history tailored for the tool model."""
-        state = self._get_state(session_id)
-        if not state:
-            return ""
-        state.touch()
         return self._history.get_tool_history_text(state, max_tokens=max_tokens)
 
-    def set_history_text(self, session_id: str, history_text: str) -> str:
-        state = self._ensure_state(session_id)
-        rendered = self._history.set_text(state, history_text)
-        state.touch()
-        return rendered
+    def set_history_text(self, state: SessionState, history_text: str) -> str:
+        return self._history.set_text(state, history_text)
 
-    def set_history_messages(self, session_id: str, messages: list[dict]) -> str:
-        """Set history from JSON message array [{role, content}, ...].
-
-        Parses messages into turns, trims to fit token budget.
-        """
-        state = self._ensure_state(session_id)
-        rendered = self._history.set_messages(state, messages)
-        state.touch()
-        return rendered
-
-    def set_history_turns(self, session_id: str, turns: list[HistoryTurn]) -> str:
+    def set_history_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
         """Set history from pre-parsed turns and apply import-time trimming."""
-        state = self._ensure_state(session_id)
-        rendered = self._history.set_turns(state, turns)
-        state.touch()
-        return rendered
+        return self._history.set_turns(state, turns)
 
-    def get_history_turn_count(self, session_id: str) -> int:
-        """Get the number of history turns currently stored for a session."""
-        state = self._get_state(session_id)
-        return len(state.history_turns) if state else 0
+    def get_history_turn_count(self, state: SessionState) -> int:
+        """Get the number of history turns currently stored."""
+        return len(state.history_turns)
 
-    def append_user_utterance(self, session_id: str, user_utt: str) -> str | None:
-        state = self._ensure_state(session_id)
+    def append_user_utterance(self, state: SessionState, user_utt: str) -> str | None:
         normalized_user = strip_screen_prefix(
             user_utt or "",
-            self.get_check_screen_prefix(session_id),
-            self.get_screen_checked_prefix(session_id),
+            self.get_check_screen_prefix(state),
+            self.get_screen_checked_prefix(state),
         )
-        turn_id = self._history.append_user_turn(state, normalized_user)
-        state.touch()
-        return turn_id
+        return self._history.append_user_turn(state, normalized_user)
 
     def append_history_turn(
-        self, session_id: str, user_utt: str, assistant_text: str, *, turn_id: str | None = None
+        self, state: SessionState, user_utt: str, assistant_text: str, *, turn_id: str | None = None
     ) -> str:
-        state = self._ensure_state(session_id)
         normalized_user = strip_screen_prefix(
             user_utt or "",
-            self.get_check_screen_prefix(session_id),
-            self.get_screen_checked_prefix(session_id),
+            self.get_check_screen_prefix(state),
+            self.get_screen_checked_prefix(state),
         )
-        rendered = self._history.append_turn(state, normalized_user, assistant_text, turn_id=turn_id)
-        state.touch()
-        return rendered
+        return self._history.append_turn(state, normalized_user, assistant_text, turn_id=turn_id)
 
     # ============================================================================
     # Request/task tracking
     # ============================================================================
 
-    def set_active_request(self, session_id: str, request_id: str) -> None:
-        self._ensure_state(session_id).active_request_id = request_id
+    def set_active_request(self, state: SessionState, request_id: str) -> None:
+        state.active_request_id = request_id
 
-    def set_tool_request(self, session_id: str, request_id: str) -> None:
-        self._ensure_state(session_id).tool_request_id = request_id
+    def is_request_cancelled(self, state: SessionState, request_id: str) -> bool:
+        return _is_cancelled(state, request_id)
 
-    def get_tool_request_id(self, session_id: str) -> str:
-        state = self._get_state(session_id)
-        return state.tool_request_id or "" if state else ""
-
-    def clear_tool_request_id(self, session_id: str) -> None:
-        state = self._get_state(session_id)
-        if state:
-            state.tool_request_id = None
-
-    def is_request_cancelled(self, session_id: str, request_id: str) -> bool:
-        return _is_cancelled(self._get_state(session_id), request_id)
-
-    def track_task(self, session_id: str, task: asyncio.Task) -> None:
-        state = self._ensure_state(session_id)
+    def track_task(self, state: SessionState, task: asyncio.Task) -> None:
         state.task = task
 
         def _clear_task(completed: asyncio.Task) -> None:
-            current = self._get_state(session_id)
-            if current and current.task is completed:
-                current.task = None
-                current.touch()
+            if state.task is completed:
+                state.task = None
 
         task.add_done_callback(_clear_task)
 
-    def has_running_task(self, session_id: str) -> bool:
-        return _has_running(self._get_state(session_id))
+    def has_running_task(self, state: SessionState) -> bool:
+        return _has_running(state)
 
-    def cancel_session_requests(self, session_id: str) -> None:
-        state = self._get_state(session_id)
-        if state:
-            _cancel_requests(state)
+    def cancel_session_requests(self, state: SessionState) -> None:
+        _cancel_requests(state)
 
-    def cleanup_session_requests(self, session_id: str) -> dict[str, str]:
-        return _cleanup_requests(self._get_state(session_id))
+    def cleanup_session_requests(self, state: SessionState) -> dict[str, str]:
+        return _cleanup_requests(state)
 
     async def abort_session_requests(
         self,
-        session_id: str | None,
-        *,
-        clear_state: bool = False,
+        state: SessionState | None,
     ) -> dict[str, str]:
         """Cancel tracked requests and best-effort abort active engine work."""
-        if not session_id:
-            return {"active": "", "tool": ""}
+        if not state:
+            return {"active": ""}
 
-        self.cancel_session_requests(session_id)
-        request_info = self.cleanup_session_requests(session_id)
+        self.cancel_session_requests(state)
+        request_info = self.cleanup_session_requests(state)
 
         active_request_id = request_info.get("active")
         if DEPLOY_CHAT and active_request_id and self._chat_engine is not None:
             with contextlib.suppress(Exception):
                 await self._chat_engine.abort(active_request_id)
-
-        if clear_state:
-            self.clear_session_state(session_id)
 
         return request_info
 
@@ -319,26 +209,9 @@ class SessionHandler:
     # Token budget helpers
     # ============================================================================
 
-    def get_effective_user_utt_max_tokens(self, session_id: str | None, *, for_followup: bool = False) -> int:
+    def get_effective_user_utt_max_tokens(self, state: SessionState | None, *, for_followup: bool = False) -> int:
         """Get the effective max tokens for user utterance after accounting for prefix."""
-        state = self._get_state(session_id) if session_id else None
         return get_effective_user_utt_max_tokens(state, for_followup=for_followup)
-
-    # ============================================================================
-    # Internal helpers
-    # ============================================================================
-
-    def _evict_idle_sessions(self) -> None:
-        if self._idle_ttl_seconds <= 0:
-            return
-        cutoff = time.monotonic() - self._idle_ttl_seconds
-        expired = [
-            session_id
-            for session_id, state in self._sessions.items()
-            if state.last_access < cutoff and (not state.task or state.task.done())
-        ]
-        for session_id in expired:
-            self.clear_session_state(session_id)
 
 
 __all__ = ["SessionHandler"]

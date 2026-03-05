@@ -54,37 +54,21 @@ WS_EXPECTED_DISCONNECT_RUNTIME_FRAGMENTS: tuple[str, ...] = (
 )
 
 # ============================================================================
-# Message Envelope Keys (all WebSocket JSON messages)
-# ============================================================================
-
-WS_KEY_TYPE = "type"
-WS_KEY_SESSION_ID = "session_id"
-WS_KEY_REQUEST_ID = "request_id"
-WS_KEY_PAYLOAD = "payload"
-
-WS_UNKNOWN_SESSION_ID = "unknown"
-WS_UNKNOWN_REQUEST_ID = "unknown"
-
-# ============================================================================
 # Message Types
 # ============================================================================
 
 WS_TYPE_START = "start"
 WS_TYPE_CANCEL = "cancel"
 WS_TYPE_MESSAGE = "message"
-WS_TYPE_FOLLOWUP = "followup"
 WS_TYPE_PING = "ping"
 WS_TYPE_PONG = "pong"
 WS_TYPE_END = "end"
-WS_TYPE_ACK = "ack"
 WS_TYPE_ERROR = "error"
 WS_TYPE_TOKEN = "token"  # noqa: S105
 WS_TYPE_FINAL = "final"
 WS_TYPE_DONE = "done"
-WS_TYPE_STATUS = "status"
-WS_TYPE_TOOLCALL = "toolcall"
+WS_TYPE_TOOL = "tool"
 WS_TYPE_CANCELLED = "cancelled"
-WS_TYPE_SESSION_END = "session_end"
 
 # ============================================================================
 # Error Codes (payload "code" values)
@@ -101,6 +85,31 @@ WS_ERROR_TEXT_TOO_LONG = "text_too_long"
 WS_ERROR_INVALID_VOICE = "invalid_voice"
 WS_ERROR_INTERNAL = "internal_error"
 
+# ============================================================================
+# HTTP-Style Status Codes
+# ============================================================================
+
+WS_STATUS_OK = 200
+WS_STATUS_BAD_REQUEST = 400
+WS_STATUS_UNAUTHORIZED = 401
+WS_STATUS_RATE_LIMITED = 429
+WS_STATUS_INTERNAL = 500
+WS_STATUS_UNAVAILABLE = 503
+
+# Mapping from error string codes to numeric status
+ERROR_CODE_TO_STATUS: dict[str, int] = {
+    WS_ERROR_AUTH_FAILED: WS_STATUS_UNAUTHORIZED,
+    WS_ERROR_SERVER_BUSY: WS_STATUS_UNAVAILABLE,
+    WS_ERROR_INVALID_MESSAGE: WS_STATUS_BAD_REQUEST,
+    WS_ERROR_INVALID_PAYLOAD: WS_STATUS_BAD_REQUEST,
+    WS_ERROR_INVALID_SETTINGS: WS_STATUS_BAD_REQUEST,
+    WS_ERROR_RATE_LIMITED: WS_STATUS_RATE_LIMITED,
+    WS_ERROR_QUEUE_FULL: WS_STATUS_UNAVAILABLE,
+    WS_ERROR_TEXT_TOO_LONG: WS_STATUS_BAD_REQUEST,
+    WS_ERROR_INVALID_VOICE: WS_STATUS_BAD_REQUEST,
+    WS_ERROR_INTERNAL: WS_STATUS_INTERNAL,
+}
+
 __all__ = [
     "WS_IDLE_TIMEOUT_S",
     "WS_WATCHDOG_TICK_S",
@@ -111,28 +120,18 @@ __all__ = [
     "WS_CLOSE_IDLE_REASON",
     "WS_CLOSE_CLIENT_REQUEST_CODE",
     "WS_EXPECTED_DISCONNECT_RUNTIME_FRAGMENTS",
-    "WS_KEY_TYPE",
-    "WS_KEY_SESSION_ID",
-    "WS_KEY_REQUEST_ID",
-    "WS_KEY_PAYLOAD",
-    "WS_UNKNOWN_SESSION_ID",
-    "WS_UNKNOWN_REQUEST_ID",
     "WS_TYPE_START",
     "WS_TYPE_CANCEL",
     "WS_TYPE_MESSAGE",
-    "WS_TYPE_FOLLOWUP",
     "WS_TYPE_PING",
     "WS_TYPE_PONG",
     "WS_TYPE_END",
-    "WS_TYPE_ACK",
     "WS_TYPE_ERROR",
     "WS_TYPE_TOKEN",
     "WS_TYPE_FINAL",
     "WS_TYPE_DONE",
-    "WS_TYPE_STATUS",
-    "WS_TYPE_TOOLCALL",
+    "WS_TYPE_TOOL",
     "WS_TYPE_CANCELLED",
-    "WS_TYPE_SESSION_END",
     "WS_ERROR_AUTH_FAILED",
     "WS_ERROR_SERVER_BUSY",
     "WS_ERROR_INVALID_MESSAGE",
@@ -143,4 +142,11 @@ __all__ = [
     "WS_ERROR_TEXT_TOO_LONG",
     "WS_ERROR_INVALID_VOICE",
     "WS_ERROR_INTERNAL",
+    "WS_STATUS_OK",
+    "WS_STATUS_BAD_REQUEST",
+    "WS_STATUS_UNAUTHORIZED",
+    "WS_STATUS_RATE_LIMITED",
+    "WS_STATUS_INTERNAL",
+    "WS_STATUS_UNAVAILABLE",
+    "ERROR_CODE_TO_STATUS",
 ]

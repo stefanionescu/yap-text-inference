@@ -100,11 +100,10 @@ async def consume_stream(ws, state: StreamState) -> str:
     async for msg in iter_messages(ws):
         msg_type = msg.get("type")
 
-        if msg_type == "toolcall":
+        if msg_type == "tool":
             record_toolcall(state)
-            # Capture toolcall result for tool-only mode display
-            state.toolcall_status = msg.get("status")
-            state.toolcall_raw = msg.get("raw")
+            state.toolcall_status = "yes" if msg.get("tools") else "no"
+            state.toolcall_raw = msg.get("tools")
             continue
 
         if msg_type == "token":
@@ -112,9 +111,9 @@ async def consume_stream(ws, state: StreamState) -> str:
             continue
 
         if msg_type == "final":
-            normalized = msg.get("normalized_text")
-            if normalized:
-                state.final_text = normalized
+            final_text = msg.get("text")
+            if final_text:
+                state.final_text = final_text
             continue
 
         if msg_type == "done":

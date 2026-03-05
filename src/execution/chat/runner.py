@@ -3,22 +3,10 @@
 This module provides the main interface for streaming chat generation,
 handling:
 
-1. Sampling Parameter Resolution:
-   - Merge default config with per-request overrides
-   - Build engine-specific SamplingParams
-   - Logit bias token ID mapping
-
-2. Prompt Building:
-   - Combine static prefix + runtime context + history + user message
-   - Apply chat template via tokenizer
-
-3. Stream Processing:
-   - Delegate to ChatStreamController for buffering/timeout
-   - Apply streaming sanitization (Unicode normalization, etc.)
-   - Handle cancellation checks
-
-The runner abstracts away engine differences - callers get a simple
-async generator of text chunks regardless of vLLM vs TRT-LLM backend.
+1. Sampling Parameter Resolution
+2. Prompt Building
+3. Stream Processing with optional sanitization
+4. Cancellation checks
 """
 
 from __future__ import annotations
@@ -27,6 +15,7 @@ import uuid
 from typing import Any
 from src.engines.base import BaseEngine
 from collections.abc import AsyncGenerator
+from src.state.session import SessionState
 from ...config.timeouts import GEN_TIMEOUT_S
 from ...engines import create_sampling_params
 from src.tokens.tokenizer import FastTokenizer
@@ -65,18 +54,7 @@ def _resolve_sampling_overrides(
 
 
 def _build_logit_bias_map(chat_tokenizer: FastTokenizer) -> dict[int, float]:
-    """Build logit bias map from text tokens to token IDs.
-
-    The CHAT_LOGIT_BIAS config maps text strings to bias values.
-    This function converts those to token ID -> bias mappings
-    that the engine can use.
-
-    Uses @functools.cache for memoization - computed once on first call.
-
-    Returns:
-        Dict mapping token IDs to logit bias values.
-        Empty dict if no bias configured or tokenizer unavailable.
-    """
+    """Build logit bias map from text tokens to token IDs."""
     if not CHAT_LOGIT_BIAS:
         return {}
 
@@ -112,7 +90,7 @@ def _build_sampling_params(overrides: dict[str, float | int | bool], chat_tokeni
 
 def _build_stream(
     *,
-    session_id: str,
+    state: SessionState,
     request_id: str,
     prompt: str,
     sampling_params: Any,
@@ -121,14 +99,14 @@ def _build_stream(
 ) -> ChatStreamController:
     return ChatStreamController(
         ChatStreamConfig(
-            session_id=session_id,
+            session_id=request_id,
             request_id=request_id,
             prompt=prompt,
             sampling_params=sampling_params,
             engine=engine,
             timeout_s=float(GEN_TIMEOUT_S),
             flush_ms=float(STREAM_FLUSH_MS),
-            cancel_check=lambda: session_handler.is_request_cancelled(session_id, request_id),
+            cancel_check=lambda: session_handler.is_request_cancelled(state, request_id),
         )
     )
 
@@ -154,7 +132,7 @@ async def _stream_with_optional_sanitizer(
 
 
 async def run_chat_generation(
-    session_id: str,
+    state: SessionState,
     static_prefix: str,
     runtime_text: str,
     history_text: str,
@@ -166,31 +144,9 @@ async def run_chat_generation(
     request_id: str | None = None,
     sampling_overrides: dict[str, float | int | bool] | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Stream chat generation with optional micro-coalescing.
-
-    This is the primary interface for generating chat responses. It:
-    1. Resolves sampling parameters (defaults + overrides)
-    2. Builds the full prompt with persona and history
-    3. Streams generation through ChatStreamController
-    4. Applies streaming sanitization (optional)
-
-    Args:
-        session_id: Session for request tracking and cancellation.
-        static_prefix: Static persona system prompt.
-        runtime_text: Runtime context (time, metadata).
-        history_text: Conversation history.
-        user_utt: User message to respond to.
-        request_id: Optional request ID (auto-generated if None).
-        sampling_overrides: Override default sampling parameters.
-            Supported: temperature, top_p, top_k, min_p,
-            repetition_penalty, presence_penalty, frequency_penalty,
-            sanitize_output (bool).
-
-    Yields:
-        Text chunks as they're generated, sanitized and buffered.
-    """
+    """Stream chat generation with optional micro-coalescing."""
     req_id = request_id or f"chat-{uuid.uuid4()}"
-    session_handler.set_active_request(session_id, req_id)
+    session_handler.set_active_request(state, req_id)
 
     overrides = _resolve_sampling_overrides(sampling_overrides or {})
     params = _build_sampling_params(overrides, chat_tokenizer)
@@ -208,7 +164,7 @@ async def run_chat_generation(
     m.prompt_tokens_total.add(prompt_token_count)
 
     stream = _build_stream(
-        session_id=session_id,
+        state=state,
         request_id=req_id,
         prompt=prompt,
         sampling_params=params,

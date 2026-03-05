@@ -21,13 +21,8 @@ def parse_message(raw: str) -> dict[str, Any]:
         msg = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise MessageParseError(f"Invalid JSON frame: {raw!r}") from exc
-    if isinstance(msg, dict):
-        payload = msg.get("payload")
-        if isinstance(payload, dict):
-            # Flatten payload for test convenience while preserving envelope keys.
-            merged = dict(msg)
-            merged.update(payload)
-            return merged
+    if not isinstance(msg, dict):
+        return msg
     return msg
 
 

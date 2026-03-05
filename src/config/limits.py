@@ -28,22 +28,30 @@ from ..helpers.resolvers import resolve_batch_scale_gpu_frac_cap
 # These define the maximum token budget for different components.
 # Total budget breakdown: 1500 persona + 3000 history + 500 user + 25 buffer
 
-CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", "5025"))  # Total context window
-CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))  # Max generation tokens
-PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
-
 # Max tokens allowed for incoming prompts (provided by clients)
 CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1500"))
 
-# Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5-15ms
-STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
-
 # History and user limits (token counts from active tokenizer path)
 # HISTORY_MAX_TOKENS: threshold that triggers trimming
-# TRIMMED_HISTORY_LENGTH: target length after trimming (must be < HISTORY_MAX_TOKENS)
 HISTORY_MAX_TOKENS = int(os.getenv("HISTORY_MAX_TOKENS", "3000"))
-TRIMMED_HISTORY_LENGTH = int(os.getenv("TRIMMED_HISTORY_LENGTH", "2000"))
 USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "500"))
+
+# Percentage of HISTORY_MAX_TOKENS to retain after trimming
+HISTORY_RETENTION_PCT = int(os.getenv("HISTORY_RETENTION_PCT", "66"))
+
+CONTEXT_BUFFER = 25
+
+_CHAT_MAX_LEN_DERIVED = CHAT_PROMPT_MAX_TOKENS + HISTORY_MAX_TOKENS + USER_UTT_MAX_TOKENS + CONTEXT_BUFFER
+CHAT_MAX_LEN = int(os.getenv("CHAT_MAX_LEN", str(_CHAT_MAX_LEN_DERIVED)))
+CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))  # Max generation tokens
+PROMPT_SANITIZE_MAX_CHARS = int(os.getenv("PROMPT_SANITIZE_MAX_CHARS", str(CHAT_MAX_LEN * 6)))
+
+# TRIMMED_HISTORY_LENGTH: target length after trimming (must be < HISTORY_MAX_TOKENS)
+_TRIMMED_HISTORY_DERIVED = HISTORY_MAX_TOKENS * HISTORY_RETENTION_PCT // 100
+TRIMMED_HISTORY_LENGTH = int(os.getenv("TRIMMED_HISTORY_LENGTH", str(_TRIMMED_HISTORY_DERIVED)))
+
+# Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5-15ms
+STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
 
 # WebSocket message/cancel rate limits (rolling window)
 WS_MESSAGE_WINDOW_SECONDS = float(os.getenv("WS_MESSAGE_WINDOW_SECONDS", "60"))
@@ -141,6 +149,8 @@ __all__ = [
     "HISTORY_MAX_TOKENS",
     "TRIMMED_HISTORY_LENGTH",
     "USER_UTT_MAX_TOKENS",
+    "HISTORY_RETENTION_PCT",
+    "CONTEXT_BUFFER",
     "WS_MESSAGE_WINDOW_SECONDS",
     "WS_MAX_MESSAGES_PER_WINDOW",
     "WS_CANCEL_WINDOW_SECONDS",

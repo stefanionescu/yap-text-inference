@@ -98,7 +98,7 @@ async def run_conversation(
             print()
             if has_ttfb_samples(ttfb_samples):
                 emit_ttfb_summary(ttfb_samples, print)
-            await send_client_end(ws, session.session_id)
+            await send_client_end(ws)
 
 
 __all__ = ["run_conversation"]

@@ -15,7 +15,7 @@ Architecture Overview:
     - engines/: Inference engine abstractions (vLLM, TRT-LLM)
     - execution/: Request execution pipeline (chat, tool routing)
     - handlers/: WebSocket and session management
-    - messages/: Message type handlers (start, followup, cancel)
+    - messages/: Message type handlers (start, message, cancel)
     - tool/: Lightweight screenshot intent tool model
     - tokens/: Tokenization utilities
     - helpers/: Shared utility functions

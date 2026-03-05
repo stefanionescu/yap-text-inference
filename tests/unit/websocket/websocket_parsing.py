@@ -10,9 +10,8 @@ from src.handlers.websocket.parser import parse_client_message
 def _valid_msg(**overrides: str | dict[str, str]) -> str:
     base: dict[str, str | dict[str, str]] = {
         "type": "start",
-        "session_id": "s1",
-        "request_id": "r1",
-        "payload": {"prompt": "hello"},
+        "gender": "female",
+        "user_utterance": "hello",
     }
     base.update(overrides)
     return json.dumps(base)
@@ -45,27 +44,7 @@ def test_non_object_array_raises() -> None:
 
 def test_missing_type_raises() -> None:
     with pytest.raises(ValueError, match="Missing 'type'"):
-        parse_client_message(json.dumps({"session_id": "s", "request_id": "r", "payload": {}}))
-
-
-def test_missing_session_id_raises() -> None:
-    with pytest.raises(ValueError, match="Missing 'session_id'"):
-        parse_client_message(json.dumps({"type": "start", "request_id": "r", "payload": {}}))
-
-
-def test_missing_request_id_raises() -> None:
-    with pytest.raises(ValueError, match="Missing 'request_id'"):
-        parse_client_message(json.dumps({"type": "start", "session_id": "s", "payload": {}}))
-
-
-def test_missing_payload_raises() -> None:
-    with pytest.raises(ValueError, match="Missing 'payload'"):
-        parse_client_message(json.dumps({"type": "start", "session_id": "s", "request_id": "r"}))
-
-
-def test_non_dict_payload_raises() -> None:
-    with pytest.raises(ValueError, match="'payload' must be a JSON object"):
-        parse_client_message(json.dumps({"type": "start", "session_id": "s", "request_id": "r", "payload": "text"}))
+        parse_client_message(json.dumps({"gender": "female", "user_utterance": "hi"}))
 
 
 def test_valid_message_normalizes_type() -> None:
@@ -73,9 +52,21 @@ def test_valid_message_normalizes_type() -> None:
     assert result["type"] == "start"
 
 
-def test_valid_message_returns_all_keys() -> None:
+def test_valid_message_returns_all_fields() -> None:
     result = parse_client_message(_valid_msg())
     assert result["type"] == "start"
-    assert result["session_id"] == "s1"
-    assert result["request_id"] == "r1"
-    assert result["payload"] == {"prompt": "hello"}
+    assert result["gender"] == "female"
+    assert result["user_utterance"] == "hello"
+
+
+def test_extra_fields_pass_through() -> None:
+    result = parse_client_message(
+        json.dumps(
+            {
+                "type": "start",
+                "gender": "male",
+                "custom_field": "value",
+            }
+        )
+    )
+    assert result["custom_field"] == "value"

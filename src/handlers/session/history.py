@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import uuid
 from src.state.session import HistoryTurn, SessionState
-from .parsing import parse_history_text, parse_history_messages, parse_history_as_tuples
+from .parsing import parse_history_text, parse_history_as_tuples
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
 from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool, trim_text_to_token_limit_tool
 
@@ -121,8 +121,7 @@ def trim_history(
         return
 
     if not DEPLOY_CHAT:
-        if DEPLOY_TOOL:
-            _trim_history_tool(state, max_tokens=tool_history_tokens)
+        # Tool-only: trimming happens at render time in render_tool_history_text.
         return
 
     effective_trigger = trigger_tokens or HISTORY_MAX_TOKENS
@@ -223,15 +222,6 @@ class HistoryController:
         trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
         return render_history(state.history_turns)
 
-    def set_messages(self, state: SessionState, messages: list[dict]) -> str:
-        """Set history from JSON message array [{role, content}, ...].
-
-        Parses messages, trims to fit token budget, returns rendered history.
-        """
-        state.history_turns = parse_history_messages(messages)
-        trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
-        return render_history(state.history_turns)
-
     def set_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
         """Set history from pre-parsed turns and apply import-time trimming."""
         state.history_turns = turns
@@ -287,6 +277,5 @@ __all__ = [
     "get_user_texts",
     "HistoryController",
     "parse_history_text",
-    "parse_history_messages",
     "parse_history_as_tuples",
 ]

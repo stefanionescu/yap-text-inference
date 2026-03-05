@@ -137,7 +137,7 @@ def _build_step_payload(
             chat_prompt=cfg.chat_prompt,
         )
         return build_start_payload(ctx, user_text)
-    return build_message_payload(session_id, user_text)
+    return build_message_payload(user_text)
 
 
 def _check_step_result(
@@ -230,7 +230,7 @@ async def _run_case(case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
             try:
                 return await _execute_case(ws, session_id, case, cfg)
             finally:
-                await send_client_end(ws, session_id)
+                await send_client_end(ws)
     except Exception as exc:  # noqa: BLE001
         return CaseResult(
             case=case,

@@ -58,8 +58,9 @@ def _handle_toolcall(msg: dict[str, Any], state: DrainState, cfg: DrainConfig) -
         state.first_tool_frame_s = elapsed
     state.last_tool_frame_s = elapsed
     state.tool_decision_received = True
-    state.tool_status = str(msg.get("status") or "").strip().lower()
-    state.tool_raw = msg.get("raw")
+    tools = msg.get("tools")
+    state.tool_raw = tools
+    state.tool_status = "yes" if tools else "no"
 
 
 def _process_message(msg: dict[str, Any], state: DrainState, cfg: DrainConfig) -> bool:
@@ -71,7 +72,7 @@ def _process_message(msg: dict[str, Any], state: DrainState, cfg: DrainConfig) -
 
     should_stop = False
 
-    if msg_type == "toolcall":
+    if msg_type == "tool":
         _handle_toolcall(msg, state, cfg)
     elif msg_type in {"token", "final"}:
         state.chat_seen = True

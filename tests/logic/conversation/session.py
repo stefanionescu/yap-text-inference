@@ -34,7 +34,6 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
 def build_message_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:
     """Build the message payload for subsequent conversation turns."""
     return build_ws_message_payload(
-        session.session_id,
         user_text,
         sampling=session.sampling,
     )

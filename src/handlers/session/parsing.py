@@ -11,7 +11,26 @@ into structured HistoryTurn objects. It supports:
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from src.state.session import HistoryTurn
+
+
+def _validate_message_item(item: object) -> tuple[str, str] | None:
+    """Validate a single history message item.
+
+    Returns (role, content) if valid, None otherwise.
+    """
+    if not isinstance(item, dict):
+        return None
+    role = item.get("role")
+    content = item.get("content")
+    if not isinstance(role, str) or not isinstance(content, str):
+        return None
+    role = role.strip().lower()
+    content = content.strip()
+    if not role or not content:
+        return None
+    return role, content
 
 
 def parse_history_text(history_text: str) -> list[HistoryTurn]:
@@ -67,53 +86,102 @@ def parse_history_text(history_text: str) -> list[HistoryTurn]:
     return turns
 
 
-def parse_history_messages(messages: list[dict]) -> list[HistoryTurn]:
-    """Parse JSON message array into structured HistoryTurn objects.
+def parse_history_for_tool(messages: Sequence[object]) -> list[HistoryTurn]:
+    """Parse history for the tool model: each user message becomes a separate turn.
 
-    Accepts the standard chat format: [{role: "user", content: "..."}, ...]
-    Groups consecutive user/assistant messages into turns.
+    Non-user roles are dropped. Assistant text is set to empty string.
+    Each item is validated: must be dict with string role and string content.
 
     Args:
-        messages: List of {role, content} dicts. Role must be "user" or "assistant".
+        messages: List of message dicts (or invalid items to be skipped).
 
     Returns:
-        List of HistoryTurn objects with generated UUIDs.
+        List of HistoryTurn objects, one per valid user message.
     """
     if not messages:
         return []
 
     turns: list[HistoryTurn] = []
-    current_user: list[str] = []
-    current_assistant: list[str] = []
-
-    def _flush() -> None:
-        nonlocal current_user, current_assistant
-        if not current_user and not current_assistant:
-            return
+    for item in messages:
+        validated = _validate_message_item(item)
+        if validated is None:
+            continue
+        role, content = validated
+        if role != "user":
+            continue
         turns.append(
             HistoryTurn(
                 turn_id=uuid.uuid4().hex,
-                user="\n\n".join(current_user).strip(),
-                assistant="\n\n".join(current_assistant).strip(),
+                user=content,
+                assistant="",
             )
         )
-        current_user, current_assistant = [], []
+    return turns
 
-    for msg in messages:
-        role = msg.get("role", "").lower().strip()
-        content = (msg.get("content") or "").strip()
-        if not content:
+
+def parse_history_for_chat(messages: Sequence[object]) -> list[HistoryTurn]:
+    """Parse history for the chat model.
+
+    - Consecutive user messages are combined into one turn.
+    - Consecutive assistant messages are NOT combined; each gets its own turn
+      with an empty user string.
+    - Non-user/assistant roles are dropped.
+    - Each item is validated: must be dict with string role and string content.
+
+    Args:
+        messages: List of message dicts (or invalid items to be skipped).
+
+    Returns:
+        List of HistoryTurn objects.
+    """
+    if not messages:
+        return []
+
+    turns: list[HistoryTurn] = []
+    current_user_parts: list[str] = []
+
+    def _flush_user() -> None:
+        nonlocal current_user_parts
+        if current_user_parts:
+            turns.append(
+                HistoryTurn(
+                    turn_id=uuid.uuid4().hex,
+                    user="\n\n".join(current_user_parts),
+                    assistant="",
+                )
+            )
+            current_user_parts = []
+
+    for item in messages:
+        validated = _validate_message_item(item)
+        if validated is None:
             continue
-
+        role, content = validated
         if role == "user":
-            # If we have assistant content, flush the turn before starting new user
-            if current_assistant:
-                _flush()
-            current_user.append(content)
+            current_user_parts.append(content)
         elif role == "assistant":
-            current_assistant.append(content)
+            # If there are accumulated user parts, create a turn with this assistant response
+            if current_user_parts:
+                turns.append(
+                    HistoryTurn(
+                        turn_id=uuid.uuid4().hex,
+                        user="\n\n".join(current_user_parts),
+                        assistant=content,
+                    )
+                )
+                current_user_parts = []
+            else:
+                # Consecutive assistant: own turn with empty user
+                turns.append(
+                    HistoryTurn(
+                        turn_id=uuid.uuid4().hex,
+                        user="",
+                        assistant=content,
+                    )
+                )
 
-    _flush()
+    # Flush any remaining user parts
+    _flush_user()
     return turns
 
 
@@ -135,6 +203,7 @@ def parse_history_as_tuples(history_text: str) -> list[tuple[str, str]]:
 
 __all__ = [
     "parse_history_text",
-    "parse_history_messages",
+    "parse_history_for_tool",
+    "parse_history_for_chat",
     "parse_history_as_tuples",
 ]

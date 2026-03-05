@@ -18,7 +18,8 @@ async def _create_llm_instance(kwargs: dict[str, Any]) -> Any:
     """Create the TRT-LLM LLM instance with optional log suppression."""
     show_trt_logs = env_flag("SHOW_TRT_LOGS", False)
 
-    from src.scripts.filters.trt import SuppressedFDContext, configure_trt_logger  # noqa: PLC0415
+    from src.scripts.filters.trt import configure_trt_logger
+    from src.scripts.filters.trt import SuppressedFDContext  # noqa: PLC0415
 
     if show_trt_logs:
         configure_trt_logger()

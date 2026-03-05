@@ -19,8 +19,6 @@ from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
 from tests.helpers.fmt import (
     dim,
-    green,
-    yellow,
     format_user,
     section_header,
     exchange_footer,
@@ -30,7 +28,6 @@ from tests.helpers.fmt import (
 )
 from tests.helpers.websocket import (
     with_api_key,
-    iter_messages,
     consume_stream,
     create_tracker,
     send_client_end,
@@ -42,16 +39,6 @@ from tests.helpers.websocket import (
 # ============================================================================
 # Internal Helpers
 # ============================================================================
-
-
-async def _wait_for_ack(ws) -> dict[str, Any] | None:
-    """Wait for ack message and return history info if present."""
-    async for msg in iter_messages(ws):
-        if msg.get("type") == "ack":
-            return msg.get("history")
-        if msg.get("type") == "error":
-            raise ServerError.from_message(msg)
-    return None
 
 
 async def _collect_response(ws, state: StreamState) -> str:
@@ -84,11 +71,10 @@ async def _send_message_request(
     idx: int,
 ) -> tuple[str, dict[str, Any]]:
     """Send a message request and collect the response with metrics tracking."""
-    payload = build_message_payload(ctx.session_id, user_text, sampling=ctx.sampling)
+    payload = build_message_payload(user_text, sampling=ctx.sampling)
 
     state = create_tracker()
     await ws.send(json.dumps(payload))
-    await _wait_for_ack(ws)
     reply = await _collect_response(ws, state)
     metrics = finalize_metrics(state)
 
@@ -97,30 +83,13 @@ async def _send_message_request(
     return reply, metrics
 
 
-def _format_history_kept(history_info: dict[str, Any]) -> str:
-    """Format the 'history kept' line for display."""
-    retained = history_info.get("retained_turns", 0)
-    tokens = history_info.get("history_tokens", 0)
-    trimmed = history_info.get("trimmed", False)
-
-    status = yellow("trimmed") if trimmed else green("retained")
-    return f"{retained} turns, {tokens} tokens ({status})"
-
-
 def _print_header(
     personality: str,
     gender: str,
-    history_info: dict[str, Any] | None,
 ) -> None:
-    """Print the test header with history info."""
+    """Print the test header."""
     print(f"\n{section_header('HISTORY RECALL TEST')}")
-    if history_info:
-        input_msgs = history_info.get("input_messages", 0)
-        retained = history_info.get("retained_turns", 0)
-        print(dim(f"  history in:   {input_msgs} msgs → {retained} turns"))
-        print(dim(f"  history kept: {_format_history_kept(history_info)}"))
-    else:
-        print(dim(f"  warm history: {len(WARM_HISTORY)} messages"))
+    print(dim(f"  warm history: {len(WARM_HISTORY)} messages"))
     print(dim(f"  recall tests: {len(HISTORY_RECALL_MESSAGES)} messages"))
     print(dim(f"  persona: {personality}/{gender}\n"))
 
@@ -149,9 +118,8 @@ async def _run_history_sequence(
 
     state = create_tracker()
     await ws.send(json.dumps(payload))
-    history_info = await _wait_for_ack(ws)
 
-    _print_header(personality, gender, history_info)
+    _print_header(personality, gender)
 
     reply = await _collect_response(ws, state)
     metrics = finalize_metrics(state)
@@ -202,7 +170,7 @@ async def run_test(
                 ttfb_samples,
             )
         finally:
-            await send_client_end(ws, session_id)
+            await send_client_end(ws)
 
     print()
     if has_ttfb_samples(ttfb_samples):

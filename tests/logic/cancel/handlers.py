@@ -26,13 +26,10 @@ def build_cancel_handlers(state: StreamState) -> dict[str, Any]:
         Dict mapping message types to handler functions.
     """
 
-    def handle_ack(msg: dict[str, Any]) -> bool:
-        state.ack_seen = True
-        return True
-
     def handle_toolcall(msg: dict[str, Any]) -> bool:
-        state.toolcall_status = msg.get("status")
-        state.toolcall_raw = msg.get("raw")
+        tools = msg.get("tools")
+        state.toolcall_status = "yes" if tools else "no"
+        state.toolcall_raw = tools
         return True
 
     def handle_token(msg: dict[str, Any]) -> bool:
@@ -58,8 +55,7 @@ def build_cancel_handlers(state: StreamState) -> dict[str, Any]:
         return {"_done": True, "error": msg.get("message", "unknown error")}
 
     return {
-        "ack": handle_ack,
-        "toolcall": handle_toolcall,
+        "tool": handle_toolcall,
         "token": handle_token,
         "final": handle_final,
         "done": handle_done,
@@ -81,13 +77,10 @@ def build_recovery_handlers(state: StreamState) -> dict[str, Any]:
         Dict mapping message types to handler functions.
     """
 
-    def handle_ack(msg: dict[str, Any]) -> bool:
-        state.ack_seen = True
-        return True
-
     def handle_toolcall(msg: dict[str, Any]) -> bool:
-        state.toolcall_status = msg.get("status")
-        state.toolcall_raw = msg.get("raw")
+        tools = msg.get("tools")
+        state.toolcall_status = "yes" if tools else "no"
+        state.toolcall_raw = tools
         return True
 
     def handle_token(msg: dict[str, Any]) -> bool:
@@ -117,8 +110,7 @@ def build_recovery_handlers(state: StreamState) -> dict[str, Any]:
         return {"_done": True, "error": msg.get("message", "unknown error")}
 
     return {
-        "ack": handle_ack,
-        "toolcall": handle_toolcall,
+        "tool": handle_toolcall,
         "token": handle_token,
         "final": handle_final,
         "done": handle_done,

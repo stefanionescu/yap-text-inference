@@ -68,7 +68,6 @@ async def _stream_exchange(
     exchange_idx: int,
 ) -> tuple[str, dict[str, Any]]:
     """Consume a single exchange, returning assistant text and metrics."""
-    suppress_ack_warning = False
     try:
         assistant_text, metrics = await stream_exchange(
             ws,
@@ -78,16 +77,12 @@ async def _stream_exchange(
         )
         return assistant_text, metrics
     except ServerError as error:
-        suppress_ack_warning = True
         _print_server_error_hint(error, api_key)
         raise
     except (websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
         print(dim("  connection closed by server"))
     except TimeoutError:
         print(f"  {red('TIMEOUT')} after {recv_timeout:.1f}s")
-    finally:
-        if not suppress_ack_warning and not state.ack_seen:
-            print(dim("  warning: no ACK received"))
 
     return state.final_text, finalize_metrics(state, cancelled=True)
 
@@ -183,7 +178,7 @@ async def run_once(args) -> None:
                 if idx == 0:
                     payload = build_start_payload(ctx, user_msg)
                 else:
-                    payload = build_message_payload(session_id, user_msg, sampling=sampling_overrides)
+                    payload = build_message_payload(user_msg, sampling=sampling_overrides)
 
                 await ws.send(json.dumps(payload))
                 assistant_text, metrics = await _stream_exchange(
@@ -196,7 +191,7 @@ async def run_once(args) -> None:
                 _print_transaction_result(phase_label, user_msg, assistant_text, metrics, state)
         finally:
             if session_id:
-                await send_client_end(ws, session_id)
+                await send_client_end(ws)
 
 
 __all__ = ["run_once"]

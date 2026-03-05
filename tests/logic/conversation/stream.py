@@ -25,16 +25,11 @@ def _log_unknown_exchange_message(msg: dict[str, Any], exchange_idx: int) -> boo
     return True
 
 
-def _handle_ack(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> bool:
-    state.ack_seen = True
-    return True
-
-
 def _handle_toolcall(msg: dict[str, Any], state: StreamState, exchange_idx: int) -> bool:
     record_toolcall(state)
-    # Capture toolcall result for tool-only mode display
-    state.toolcall_status = msg.get("status")
-    state.toolcall_raw = msg.get("raw")
+    tools = msg.get("tools")
+    state.toolcall_status = "yes" if tools else "no"
+    state.toolcall_raw = tools
     return True
 
 
@@ -66,8 +61,7 @@ def _handle_error(msg: dict[str, Any]) -> None:
 
 def _build_exchange_handlers(state: StreamState, exchange_idx: int) -> dict[str, _Handler]:
     return {
-        "ack": lambda msg: _handle_ack(msg, state, exchange_idx),
-        "toolcall": lambda msg: _handle_toolcall(msg, state, exchange_idx),
+        "tool": lambda msg: _handle_toolcall(msg, state, exchange_idx),
         "token": lambda msg: _handle_token(msg, state, exchange_idx),
         "final": lambda msg: _handle_final(msg, state),
         "done": lambda msg: _handle_done(msg, state, exchange_idx),

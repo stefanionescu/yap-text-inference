@@ -3,59 +3,43 @@
 from __future__ import annotations
 
 from typing import Any
+from src.state.session import SessionState
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL
 from src.handlers.session.manager import SessionHandler
-from ...handlers.session.parsing import parse_history_messages
-from ...tokens import count_tokens_chat, count_tokens_tool, trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
-
-
-def _count_history_tokens(rendered: str) -> int:
-    if not rendered:
-        return 0
-    if DEPLOY_CHAT:
-        return count_tokens_chat(rendered)
-    if DEPLOY_TOOL:
-        return count_tokens_tool(rendered)
-    return 0
+from ...tokens import trim_text_to_token_limit_chat, trim_text_to_token_limit_tool
+from ...handlers.session.parsing import parse_history_for_chat, parse_history_for_tool
 
 
 def resolve_history(
     session_handler: SessionHandler,
-    session_id: str,
-    payload: dict[str, Any],
-) -> tuple[str, dict[str, Any] | None]:
-    """Resolve and trim history payload into runtime text plus metadata.
+    state: SessionState,
+    msg: dict[str, Any],
+) -> str:
+    """Resolve and trim history payload into runtime text.
 
-    History is only accepted when the session has no turns yet.  Since
-    'start' is restricted to once per connection, this guard is normally
-    not hit — it serves as a safety net against unexpected session reuse.
+    History is only accepted when the session has no turns yet.
+    Uses mode-specific parsing: parse_history_for_tool for tool-only,
+    parse_history_for_chat otherwise.
     """
-    if session_handler.get_history_turn_count(session_id) > 0:
-        return session_handler.get_history_text(session_id), None
+    if session_handler.get_history_turn_count(state) > 0:
+        return session_handler.get_history_text(state)
 
-    history_messages = payload.get("history")
+    history_messages = msg.get("history")
     if not isinstance(history_messages, list):
-        return session_handler.get_history_text(session_id), None
+        return session_handler.get_history_text(state)
 
-    input_count = len(history_messages)
-    parsed_turns = parse_history_messages(history_messages)
-    input_turn_count = len(parsed_turns)
-    rendered = session_handler.set_history_turns(session_id, parsed_turns)
-    retained_count = session_handler.get_history_turn_count(session_id)
-    history_tokens = _count_history_tokens(rendered)
-    history_info = {
-        "input_messages": input_count,
-        "input_turns": input_turn_count,
-        "retained_turns": retained_count,
-        "trimmed": retained_count < input_turn_count,
-        "history_tokens": history_tokens,
-    }
-    return rendered, history_info
+    if DEPLOY_TOOL and not DEPLOY_CHAT:
+        parsed_turns = parse_history_for_tool(history_messages)
+    else:
+        parsed_turns = parse_history_for_chat(history_messages)
+
+    session_handler.set_history_turns(state, parsed_turns)
+    return session_handler.get_history_text(state)
 
 
-def trim_user_utterance(session_handler: SessionHandler, session_id: str, user_utt: str) -> str:
+def trim_user_utterance(session_handler: SessionHandler, state: SessionState, user_utt: str) -> str:
     """Trim user utterance to token limit based on active deploy mode."""
-    effective_max = session_handler.get_effective_user_utt_max_tokens(session_id, for_followup=False)
+    effective_max = session_handler.get_effective_user_utt_max_tokens(state, for_followup=False)
     if DEPLOY_CHAT:
         return trim_text_to_token_limit_chat(user_utt, max_tokens=effective_max, keep="start")
     if DEPLOY_TOOL:

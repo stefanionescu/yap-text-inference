@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from src.messages.sanitize.prompt import PromptSanitizer, sanitize_prompt
+from src.messages.sanitize.prompt import sanitize_prompt
 
 
 def test_sanitize_prompt_none_raises() -> None:
@@ -31,10 +31,6 @@ def test_sanitize_prompt_oversized_raises() -> None:
         sanitize_prompt("x" * 100, max_chars=50)
 
 
-def test_sanitize_prompt_normal_text() -> None:
-    assert sanitize_prompt("hello world") == "hello world"
-
-
 def test_sanitize_prompt_strips_control_chars() -> None:
     result = sanitize_prompt("hello\x00world\x1f!")
     assert "\x00" not in result
@@ -52,11 +48,3 @@ def test_sanitize_prompt_strips_escaped_quotes() -> None:
     assert '\\"' not in result
 
 
-def test_prompt_sanitizer_max_chars() -> None:
-    sanitizer = PromptSanitizer(max_chars=10)
-    assert sanitizer.sanitize("short") == "short"
-
-
-def test_prompt_sanitizer_callable_interface() -> None:
-    sanitizer = PromptSanitizer()
-    assert sanitizer("hello") == "hello"

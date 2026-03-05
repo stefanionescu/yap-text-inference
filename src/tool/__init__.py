@@ -35,7 +35,7 @@ Usage:
     from src.tool import get_tool_adapter
 
     adapter = get_tool_adapter()  # configured during runtime bootstrap
-    user_history = session_handler.get_user_history_text(session_id)
+    user_history = session_handler.get_tool_history_text(state)
     result = adapter.run_tool_inference(user_utt, user_history)
 """
 

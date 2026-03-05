@@ -14,7 +14,6 @@ class CancelPhaseResult:
     cancelled: bool
     tokens_received: int
     chars_received: int
-    ack_seen: bool
     error: str | None = None
 
 

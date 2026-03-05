@@ -6,18 +6,11 @@ from . import ws
 from .message import iter_messages, parse_message, dispatch_message
 from .ws import recv_raw, with_api_key, send_client_end, connect_with_retries
 from .stream import record_token, consume_stream, create_tracker, record_toolcall, finalize_metrics
-from .payloads import (
-    build_envelope,
-    build_end_payload,
-    build_start_payload,
-    build_cancel_payload,
-    build_message_payload,
-)
+from .payloads import build_end_payload, build_start_payload, build_cancel_payload, build_message_payload
 
 __all__ = [
     "build_cancel_payload",
     "build_end_payload",
-    "build_envelope",
     "build_message_payload",
     "build_start_payload",
     "connect_with_retries",

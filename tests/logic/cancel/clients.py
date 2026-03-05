@@ -111,7 +111,7 @@ async def run_normal_client(
             # Wait for the canceling client to complete recovery
             await wait_for_recovery.wait()
 
-            await send_client_end(ws, ctx.session_id)
+            await send_client_end(ws)
 
             return NormalClientResult(
                 client_id=client_id,
@@ -157,7 +157,7 @@ async def run_canceling_client(
         Combined result of cancel, drain, and recovery phases.
     """
     cancel_result = CancelPhaseResult(
-        passed=False, cancelled=False, tokens_received=0, chars_received=0, ack_seen=False, error="connection failed"
+        passed=False, cancelled=False, tokens_received=0, chars_received=0, error="connection failed"
     )
     drain_result = DrainPhaseResult(passed=False, spurious_messages=0, error="skipped")
     recovery_result = RecoveryPhaseResult(passed=False, response_text="", metrics={}, error="skipped")
@@ -193,7 +193,7 @@ async def run_canceling_client(
             # Signal completion so normal clients can disconnect
             recovery_done.set()
 
-            await send_client_end(ws, ctx.session_id)
+            await send_client_end(ws)
 
     except Exception as exc:  # noqa: BLE001
         cancel_result = CancelPhaseResult(
@@ -201,7 +201,6 @@ async def run_canceling_client(
             cancelled=False,
             tokens_received=0,
             chars_received=0,
-            ack_seen=False,
             error=f"connection failed: {exc}",
         )
         recovery_done.set()

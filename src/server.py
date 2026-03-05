@@ -12,7 +12,7 @@ TensorRT-LLM backends. It provides:
 Server Lifecycle:
     1. On startup: Preload configured engines (chat and/or tool)
     2. Accept WebSocket connections on /ws
-    3. Route messages through handlers (start, followup, cancel, etc.)
+    3. Route messages through handlers (start, message, cancel, etc.)
     4. Periodically reset vLLM caches (timer-based or on long session end)
     5. On shutdown: Clean up engine resources
 
@@ -54,16 +54,19 @@ from src.scripts.filters import configure as configure_log_filters  # noqa: E402
 
 configure_log_filters()
 
+from fastapi import FastAPI  # noqa: E402
+from fastapi import WebSocket  # noqa: E402
 from .logging import configure_logging  # noqa: E402
-from fastapi import FastAPI, WebSocket  # noqa: E402
 from .runtime import build_runtime_deps  # noqa: E402
 from .telemetry.sentry import capture_error  # noqa: E402
+from .telemetry.setup import init_telemetry  # noqa: E402
 from .helpers.validation import validate_env  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
+from .telemetry.instruments import get_metrics  # noqa: E402
+from .telemetry.setup import shutdown_telemetry  # noqa: E402
+from .telemetry.instruments import initialize_metrics  # noqa: E402
 from .runtime.bootstrap import clear_runtime_registries  # noqa: E402
 from .handlers.websocket import handle_websocket_connection  # noqa: E402
-from .telemetry.setup import init_telemetry, shutdown_telemetry  # noqa: E402
-from .telemetry.instruments import get_metrics, initialize_metrics  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

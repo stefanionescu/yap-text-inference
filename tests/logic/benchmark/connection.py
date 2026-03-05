@@ -67,7 +67,7 @@ async def _send_and_stream(
         )
         payload = build_start_payload(ctx, cfg.message)
     else:
-        payload = build_message_payload(session_id, cfg.message, sampling=cfg.sampling)
+        payload = build_message_payload(cfg.message, sampling=cfg.sampling)
     state = create_tracker()
 
     await ws.send(json.dumps(payload))
@@ -84,11 +84,11 @@ async def _consume_stream(
         async for msg in iter_messages(ws):
             msg_type = msg.get("type")
 
-            if msg_type == "toolcall":
+            if msg_type == "tool":
                 record_toolcall(state)
-                # Capture toolcall result for tool-only mode
-                state.toolcall_status = msg.get("status")
-                state.toolcall_raw = msg.get("raw")
+                tools = msg.get("tools")
+                state.toolcall_status = "yes" if tools else "no"
+                state.toolcall_raw = tools
                 continue
 
             if msg_type == "token":
@@ -162,7 +162,7 @@ async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
                     if not result.get("ok"):
                         break
             finally:
-                await send_client_end(ws, session_id)
+                await send_client_end(ws)
     except (ConnectionClosedOK, ConnectionClosedError) as exc:
         if not results:
             return [error_result(f"connection_closed: {exc}", phase=1)]

@@ -12,8 +12,7 @@ SessionState:
     Container for all per-session mutable data including:
     - Metadata (timestamps, model info, persona config)
     - Conversation history
-    - Request tracking (active request IDs, asyncio.Task)
-    - Rate limiting state
+    - Request tracking (active request ID, asyncio.Task)
     - Token budget caches
 """
 
@@ -40,52 +39,27 @@ class SessionState:
 
     This dataclass holds everything needed to manage a single user session,
     from conversation history to request tracking to rate limiting.
+    Created per-connection; the connection IS the session identity.
 
     Attributes:
-        session_id: Unique identifier for this session. Typically the WebSocket
-            connection ID, used for logging and session lookup.
         meta: Extensible metadata dictionary containing session configuration.
-            Common keys include 'model', 'persona', 'temperature', and timestamps.
         history_turns: Chronologically ordered list of conversation exchanges.
-            Each turn pairs a user message with the assistant's response.
         task: Reference to the currently running asyncio.Task for this session.
-            Used to cancel in-flight generation when a new request arrives or
-            the connection closes. None when no generation is active.
         active_request_id: Tracks the current chat/generation request. Used to
             detect stale streaming responses when a newer request supersedes
             an older one. None when idle.
-        tool_request_id: Tracks the current tool request separately
-            from chat requests. Allows concurrent tool classification while
-            chat generation is in progress. None when no tool request is active.
-        created_at: Monotonic timestamp (from time.monotonic) when the session
-            was first created. Used for session age metrics and debugging.
-        last_access: Monotonic timestamp of the most recent activity on this
-            session. Updated via touch() on each request. Used by the session
-            manager to evict idle sessions after TTL expiry.
-        check_screen_prefix_tokens: Cached token count for the "check_screen"
-            system prefix. Computed once when the prefix is set to avoid
-            repeated tokenization during context budget calculations.
-        screen_checked_prefix_tokens: Cached token count for the "screen_checked"
-            followup prefix. Computed once when set, similar to check_screen.
+        created_at: Monotonic timestamp when the session was first created.
+        check_screen_prefix_tokens: Cached token count for the "check_screen" prefix.
+        screen_checked_prefix_tokens: Cached token count for the "screen_checked" prefix.
     """
 
-    session_id: str
     meta: dict[str, Any]
     history_turns: list[HistoryTurn] = field(default_factory=list)
     task: asyncio.Task | None = None
     active_request_id: str | None = None
-    tool_request_id: str | None = None
     created_at: float = field(default_factory=time.monotonic)
-    last_access: float = field(default_factory=time.monotonic)
     check_screen_prefix_tokens: int = 0
     screen_checked_prefix_tokens: int = 0
-
-    def touch(self) -> None:
-        """Mark the session as active.
-
-        Updates last_access timestamp to prevent idle eviction.
-        """
-        self.last_access = time.monotonic()
 
 
 __all__ = ["HistoryTurn", "SessionState"]

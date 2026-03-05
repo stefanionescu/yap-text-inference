@@ -23,7 +23,6 @@ class StreamState:
 
     sent_ts: float = field(default_factory=time.perf_counter)
     final_text: str = ""
-    ack_seen: bool = False
     first_token_ts: float | None = None
     first_sentence_ts: float | None = None
     first_3_words_ts: float | None = None
