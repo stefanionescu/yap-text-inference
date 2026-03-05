@@ -33,8 +33,7 @@ def resolve_history(
     else:
         parsed_turns = parse_history_for_chat(history_messages)
 
-    session_handler.set_history_turns(state, parsed_turns)
-    return session_handler.get_history_text(state)
+    return session_handler.set_history_turns(state, parsed_turns)
 
 
 def trim_user_utterance(session_handler: SessionHandler, state: SessionState, user_utt: str) -> str:

@@ -4,17 +4,17 @@ This module handles the transformation between structured conversation history
 (HistoryTurn objects) and text representations. It supports:
 
 1. Rendering: Converting structured turns to text format for prompt building
-2. Trimming: Keeping history within token budgets for the chat model
+2. Trimming: Keeping history within token budgets for both chat and tool modes
 3. Extraction: Getting user-only texts for tool routing
 
 For parsing functions (text/JSON to HistoryTurn), see the parsing module.
 
-Chat trimming uses a two-threshold (hysteresis) approach:
-- Triggers when tokens exceed HISTORY_MAX_TOKENS
-- Trims down to TRIMMED_HISTORY_LENGTH
+Both modes use a two-threshold (hysteresis) approach:
+- Chat: triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
+- Tool-only: triggers at TOOL_HISTORY_TOKENS, trims to TRIMMED_TOOL_HISTORY_LENGTH
 
-Tool model trimming happens at render time in render_tool_history_text,
-using the adapter's per-model token limit.
+History is cropped eagerly at import time (set_turns / set_text) using the
+retention-adjusted trigger, then maintained on each access via the full budget.
 
 The HistoryController class provides a clean interface for session-scoped
 history operations, ensuring proper trimming occurs on access.
@@ -25,8 +25,20 @@ from __future__ import annotations
 import uuid
 from src.state.session import HistoryTurn, SessionState
 from .parsing import parse_history_text, parse_history_as_tuples
-from src.tokens import count_tokens_chat, build_user_history_for_tool
-from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TOOL_HISTORY_TOKENS, TRIMMED_HISTORY_LENGTH
+from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool, trim_text_to_token_limit_tool
+from src.config import (
+    DEPLOY_CHAT,
+    DEPLOY_TOOL,
+    HISTORY_MAX_TOKENS,
+    TOOL_HISTORY_TOKENS,
+    TRIMMED_HISTORY_LENGTH,
+    TRIMMED_TOOL_HISTORY_LENGTH,
+)
+
+
+def _eager_trigger() -> int:
+    """Return the import-time trigger threshold for the active deploy mode."""
+    return TRIMMED_HISTORY_LENGTH if DEPLOY_CHAT else TRIMMED_TOOL_HISTORY_LENGTH
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
@@ -67,34 +79,36 @@ def trim_history(
 ) -> None:
     """Trim history when it exceeds the configured trigger.
 
-    Uses a two-threshold (hysteresis) approach by default:
-    - Triggers when tokens exceed HISTORY_MAX_TOKENS
-    - Trims down to TRIMMED_HISTORY_LENGTH
+    Uses a two-threshold (hysteresis) approach:
+    - Chat: triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
+    - Tool-only: triggers at TOOL_HISTORY_TOKENS, trims to TRIMMED_TOOL_HISTORY_LENGTH
 
-    Supplying a lower trigger (e.g., TRIMMED_HISTORY_LENGTH) forces eager
-    trimming, which is useful when importing client-provided history.
-
-    When tool-only, no trimming is done here - the tool adapter
-    handles its own trimming using its own tokenizer.
+    Supplying a lower trigger (e.g., the retention-adjusted target) forces
+    eager trimming, which is useful when importing client-provided history.
     """
     if not state.history_turns:
         return
 
-    if not DEPLOY_CHAT:
-        # Tool-only: trimming happens at render time in render_tool_history_text.
-        return
+    if DEPLOY_CHAT:
+        default_trigger = HISTORY_MAX_TOKENS
+        default_target = TRIMMED_HISTORY_LENGTH
 
-    effective_trigger = trigger_tokens or HISTORY_MAX_TOKENS
-    effective_target = target_tokens or TRIMMED_HISTORY_LENGTH
+        def _count() -> int:
+            rendered = render_history(state.history_turns)
+            return count_tokens_chat(rendered) if rendered else 0
+    else:
+        default_trigger = TOOL_HISTORY_TOKENS
+        default_target = TRIMMED_TOOL_HISTORY_LENGTH
+
+        def _count() -> int:
+            texts = get_user_texts(state.history_turns)
+            return count_tokens_tool("\n".join(texts)) if texts else 0
+
+    effective_trigger = trigger_tokens or default_trigger
+    effective_target = target_tokens or default_target
     effective_target = min(effective_target, effective_trigger)
 
-    rendered = render_history(state.history_turns)
-    if not rendered:
-        state.history_turns = []
-        return
-
-    tokens = count_tokens_chat(rendered)
-    # Only start trimming if we exceed the trigger threshold
+    tokens = _count()
     if tokens <= effective_trigger:
         return
 
@@ -108,13 +122,22 @@ def trim_history(
     if drops > 0:
         state.history_turns = state.history_turns[drops:]
 
-    # Verify and adjust if still over target (usually 0-1 more iterations)
-    rendered = render_history(state.history_turns)
-    tokens = count_tokens_chat(rendered) if rendered else 0
-    while state.history_turns and tokens > effective_target:
+    # Verify and adjust if still over target (never drop the very last turn)
+    tokens = _count()
+    while len(state.history_turns) > 1 and tokens > effective_target:
         state.history_turns.pop(0)
-        rendered = render_history(state.history_turns)
-        tokens = count_tokens_chat(rendered) if rendered else 0
+        tokens = _count()
+
+    # Tool-only: clip an oversized last turn in-place
+    if not DEPLOY_CHAT and state.history_turns and tokens > effective_target:
+        turn = state.history_turns[-1]
+        user_text = (turn.user or "").strip()
+        if user_text:
+            turn.user = trim_text_to_token_limit_tool(
+                user_text,
+                max_tokens=effective_target,
+                keep="end",
+            )
 
 
 def render_tool_history_text(turns: list[HistoryTurn], *, max_tokens: int | None = None) -> str:
@@ -139,7 +162,7 @@ def get_user_texts(turns: list[HistoryTurn]) -> list[str]:
     """
     if not turns:
         return []
-    return [turn.user.strip() for turn in turns if turn.user and turn.user.strip()]
+    return [s for turn in turns if turn.user and (s := turn.user.strip())]
 
 
 class HistoryController:
@@ -179,13 +202,13 @@ class HistoryController:
 
     def set_text(self, state: SessionState, history_text: str) -> str:
         state.history_turns = parse_history_text(history_text)
-        trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
+        trim_history(state, trigger_tokens=_eager_trigger())
         return render_history(state.history_turns)
 
     def set_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
         """Set history from pre-parsed turns and apply import-time trimming."""
         state.history_turns = turns
-        trim_history(state, trigger_tokens=TRIMMED_HISTORY_LENGTH)
+        trim_history(state, trigger_tokens=_eager_trigger())
         return render_history(state.history_turns)
 
     def append_user_turn(self, state: SessionState, user_utt: str) -> str | None:

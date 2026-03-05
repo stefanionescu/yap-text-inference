@@ -146,3 +146,32 @@ def test_resolve_history_ignores_history_after_first_request(monkeypatch: pytest
         # Guard should return early and preserve accumulated history.
         assert "OVERWRITE ATTEMPT" not in rendered_2
         assert "first hello" in rendered_2
+
+
+def test_resolve_history_tool_only_trims_at_import(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tool-only mode trims history eagerly at import time."""
+    with use_local_tokenizers():
+        monkeypatch.setattr(session_history, "DEPLOY_CHAT", False)
+        monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
+        monkeypatch.setattr(session_history, "TOOL_HISTORY_TOKENS", 10)
+        monkeypatch.setattr(session_history, "TRIMMED_TOOL_HISTORY_LENGTH", 6)
+        monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
+        monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
+        monkeypatch.setattr(start_history, "DEPLOY_CHAT", False)
+        monkeypatch.setattr(start_history, "DEPLOY_TOOL", True)
+
+        handler = SessionHandler(chat_engine=None)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        # Build enough messages to exceed budget of 10 tokens.
+        messages: list[dict[str, str]] = []
+        for i in range(10):
+            messages.append({"role": "user", "content": f"word{i} extra{i} more{i}"})
+
+        msg = {"history": messages}
+        start_history.resolve_history(handler, state, msg)
+
+        # Turns should have been trimmed (not all 10 kept)
+        assert len(state.history_turns) < 10
+        assert len(state.history_turns) >= 1
