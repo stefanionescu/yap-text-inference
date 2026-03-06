@@ -50,6 +50,12 @@ async def _close_with_validation_error(
     logger.info("turn_validation: error=%s; connection closed", err.error_code)
 
 
+async def _send_turn_error(ws: WebSocket, *, code: str, message: str, close: bool = False) -> None:
+    await send_error(ws, code=code, message=message)
+    if close:
+        await ws.close(code=1008)
+
+
 def _validate_persona(msg: dict[str, Any]) -> tuple[str | None, str | None]:
     if not DEPLOY_CHAT:
         gender = normalize_gender(msg.get("gender"))
@@ -125,6 +131,7 @@ def _build_turn_plan(
     user_utt: str,
     history_turn_id: str | None,
     sampling_overrides: dict[str, float | int | bool] | None,
+    apply_screen_checked_prefix: bool = False,
 ) -> TurnPlan:
     return TurnPlan(
         state=state,
@@ -135,6 +142,7 @@ def _build_turn_plan(
         user_utt=user_utt,
         history_turn_id=history_turn_id,
         sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
+        apply_screen_checked_prefix=apply_screen_checked_prefix,
     )
 
 
@@ -191,6 +199,7 @@ async def _plan_start_turn(
             user_utt=user_utt,
             history_turn_id=history_turn_id,
             sampling_overrides=sampling_overrides,
+            apply_screen_checked_prefix=False,
         )
     finally:
         record_phase_latency("validate", time.perf_counter() - t0)
@@ -208,40 +217,33 @@ async def _plan_message_turn(
         user_utt = (msg.get("user_utterance") or "").strip()
         if not user_utt:
             record_phase_error("validate", "missing_user_utterance")
-            await send_error(
-                ws,
-                code=WS_ERROR_INVALID_PAYLOAD,
-                message="user_utterance is required",
-            )
+            await _send_turn_error(ws, code=WS_ERROR_INVALID_PAYLOAD, message="user_utterance is required")
             return None
 
         cfg = session_handler.get_session_config(state)
         if not cfg:
             record_phase_error("validate", "missing_session")
-            await send_error(
-                ws,
-                code=WS_ERROR_INVALID_MESSAGE,
-                message="no active session; send 'start' first",
-            )
+            await _send_turn_error(ws, code=WS_ERROR_INVALID_MESSAGE, message="no active session; send 'start' first")
             return None
 
         try:
             sampling_overrides = extract_sampling_overrides(msg)
         except ValidationError as err:
             record_phase_error("validate", "invalid_sampling")
-            await send_error(
-                ws,
-                code=WS_ERROR_INVALID_PAYLOAD,
-                message=err.message,
-            )
-            await ws.close(code=1008)
+            await _send_turn_error(ws, code=WS_ERROR_INVALID_PAYLOAD, message=err.message, close=True)
             return None
 
         if sampling_overrides:
             session_handler.update_session_config(state, chat_sampling=sampling_overrides)
 
+        apply_screen_checked_prefix = session_handler.has_screen_followup_pending(state)
         history_turns = session_handler.get_history_turns(state)
-        trimmed_utt = trim_user_utterance(session_handler, state, user_utt)
+        trimmed_utt = trim_user_utterance(
+            session_handler,
+            state,
+            user_utt,
+            for_followup=apply_screen_checked_prefix,
+        )
         history_turn_id = session_handler.append_user_utterance(state, trimmed_utt)
         static_prefix = cfg.get("chat_prompt") or ""
         return _build_turn_plan(
@@ -252,6 +254,7 @@ async def _plan_message_turn(
             user_utt=trimmed_utt,
             history_turn_id=history_turn_id,
             sampling_overrides=sampling_overrides,
+            apply_screen_checked_prefix=apply_screen_checked_prefix,
         )
     finally:
         record_phase_latency("validate", time.perf_counter() - t0)

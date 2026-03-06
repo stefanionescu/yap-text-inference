@@ -33,7 +33,7 @@ import os
 # ============================================================================
 
 WS_IDLE_TIMEOUT_S = float(os.getenv("WS_IDLE_TIMEOUT_S", "150"))  # 2.5 minutes
-WS_WATCHDOG_TICK_S = float(os.getenv("WS_WATCHDOG_TICK_S", "5"))  # Check every 5s
+WS_WATCHDOG_TICK_S = float(os.getenv("WS_WATCHDOG_TICK_S", "10"))  # Check every 10s
 WS_HANDSHAKE_ACQUIRE_TIMEOUT_S = float(os.getenv("WS_HANDSHAKE_ACQUIRE_TIMEOUT_S", "0.5"))
 WS_PROTOCOL_VERSION = int(os.getenv("WS_PROTOCOL_VERSION", "1"))
 WS_MAX_MESSAGE_BYTES = int(os.getenv("WS_MAX_MESSAGE_BYTES", "65536"))

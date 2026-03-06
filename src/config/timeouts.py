@@ -10,7 +10,7 @@ import os
 GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "60"))
 
 # Tool router timeout in seconds
-TOOL_TIMEOUT_S = float(os.getenv("TOOL_TIMEOUT_S", "10"))
+TOOL_TIMEOUT_S = float(os.getenv("TOOL_TIMEOUT_S", "3"))
 
 # Timeout for fetching license info from HuggingFace API
 try:

@@ -21,6 +21,7 @@ class TurnPlan:
     user_utt: str
     history_turn_id: str | None = None
     sampling_overrides: dict[str, float | int] | None = None
+    apply_screen_checked_prefix: bool = False
 
 
 __all__ = ["TurnPlan"]

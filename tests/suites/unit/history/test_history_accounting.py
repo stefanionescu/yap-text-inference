@@ -11,7 +11,7 @@ from tests.support.helpers.tokenizer import use_local_tokenizers
 
 
 def _build_session_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:
-    monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
+    monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 1000)
     monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
     return SessionHandler(chat_engine=None)
 
@@ -65,15 +65,70 @@ def test_render_tool_history_text_respects_explicit_budget(monkeypatch: pytest.M
         assert count_tokens_tool(rendered) <= 3
 
 
+def test_render_tool_history_text_uses_raw_user_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+    with use_local_tokenizers():
+        monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
+        turns = [
+            HistoryTurn(turn_id="t1", user="first line", assistant="assistant one"),
+            HistoryTurn(turn_id="t2", user="second line", assistant="assistant two"),
+        ]
+        rendered = session_history.render_tool_history_text(turns, max_tokens=20)
+        assert rendered == "first line\nsecond line"
+        assert "User:" not in rendered
+        assert "Assistant:" not in rendered
+
+
 def _build_tool_only_handler(
     monkeypatch: pytest.MonkeyPatch,
     tool_budget: int = 10,
 ) -> SessionHandler:
     monkeypatch.setattr(session_history, "DEPLOY_CHAT", False)
     monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
-    monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
+    monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 1000)
     monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
     return SessionHandler(chat_engine=None, tool_history_budget=tool_budget)
+
+
+def _build_chat_only_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:
+    monkeypatch.setattr(session_history, "DEPLOY_CHAT", True)
+    monkeypatch.setattr(session_history, "DEPLOY_TOOL", False)
+    monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 1000)
+    monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
+    return SessionHandler(chat_engine=None)
+
+
+def test_tool_only_mode_keeps_chat_history_inactive(monkeypatch: pytest.MonkeyPatch) -> None:
+    with use_local_tokenizers():
+        handler = _build_tool_only_handler(monkeypatch, tool_budget=20)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        assert state.history_turns is None
+        assert state.tool_history_turns == []
+
+        turn_id = handler.append_user_utterance(state, "show me this")
+        assert turn_id is not None
+        assert state.history_turns is None
+        assert state.tool_history_turns is not None
+        assert len(state.tool_history_turns) == 1
+        assert handler.get_history_turn_count(state) == 1
+
+
+def test_chat_only_mode_keeps_tool_history_inactive(monkeypatch: pytest.MonkeyPatch) -> None:
+    with use_local_tokenizers():
+        handler = _build_chat_only_handler(monkeypatch)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        assert state.history_turns == []
+        assert state.tool_history_turns is None
+
+        turn_id = handler.append_user_utterance(state, "hello")
+        assert turn_id is not None
+        assert state.history_turns is not None
+        assert len(state.history_turns) == 1
+        assert state.tool_history_turns is None
+        assert handler.get_history_turn_count(state) == 1
 
 
 def test_trim_history_tool_only_drops_old_turns(monkeypatch: pytest.MonkeyPatch) -> None:

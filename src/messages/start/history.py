@@ -36,9 +36,15 @@ def resolve_history(
     return session_handler.get_history_turns(state)
 
 
-def trim_user_utterance(session_handler: SessionHandler, state: SessionState, user_utt: str) -> str:
+def trim_user_utterance(
+    session_handler: SessionHandler,
+    state: SessionState,
+    user_utt: str,
+    *,
+    for_followup: bool = False,
+) -> str:
     """Trim user utterance to token limit based on active deploy mode."""
-    effective_max = session_handler.get_effective_user_utt_max_tokens(state, for_followup=False)
+    effective_max = session_handler.get_effective_user_utt_max_tokens(state, for_followup=for_followup)
     if DEPLOY_CHAT or DEPLOY_TOOL:
         return session_handler.trim_user_utterance(user_utt, max_tokens=effective_max)
     return user_utt or ""

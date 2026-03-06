@@ -43,6 +43,7 @@ async def _run_sequential(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDe
         plan.user_utt,
         history_turn_id=plan.history_turn_id,
         sampling_overrides=plan.sampling_overrides,
+        apply_screen_checked_prefix=plan.apply_screen_checked_prefix,
         session_handler=runtime_deps.session_handler,
         chat_engine=runtime_deps.chat_engine,
         chat_tokenizer=runtime_deps.chat_tokenizer,

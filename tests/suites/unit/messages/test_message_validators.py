@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from src.errors import ValidationError
+from src.config.limits import SCREEN_PREFIX_MAX_CHARS
 from src.messages.validators import validate_optional_prefix, sanitize_prompt_with_limit
 
 # --- sanitize_prompt_with_limit ---
@@ -65,3 +66,12 @@ def test_validate_optional_prefix_valid() -> None:
 def test_validate_optional_prefix_non_string() -> None:
     with pytest.raises(ValidationError, match="must be a string"):
         validate_optional_prefix(123, field_label="prefix", invalid_error_code="bad_prefix")  # type: ignore[arg-type]
+
+
+def test_validate_optional_prefix_too_long() -> None:
+    with pytest.raises(ValidationError, match="prompt too large"):
+        validate_optional_prefix(
+            "x" * (SCREEN_PREFIX_MAX_CHARS + 1),
+            field_label="prefix",
+            invalid_error_code="bad_prefix",
+        )

@@ -11,9 +11,10 @@ HistoryTurn:
 SessionState:
     Container for all per-session mutable data including:
     - Metadata (timestamps, model info, persona config)
-    - Conversation history
+    - Mode-aware conversation history (chat/tool/both)
     - Request tracking (active request ID, asyncio.Task)
     - Token budget caches
+    - Screenshot follow-up prefix state
 """
 
 from __future__ import annotations
@@ -45,7 +46,10 @@ class SessionState:
     Attributes:
         meta: Extensible metadata dictionary containing session configuration.
         session_id: Stable server-generated ID for this websocket session.
-        history_turns: Chronologically ordered list of conversation exchanges.
+        history_turns: Chat history store (User+Assistant turns), active only
+            when chat deployment is enabled.
+        tool_history_turns: Tool history store (user-only turns), active only
+            when tool deployment is enabled.
         active_request_task: Reference to the currently running asyncio.Task
             for this session.
         active_request_id: Tracks the current chat/generation request. Used
@@ -58,12 +62,14 @@ class SessionState:
         created_at: Monotonic timestamp when the session was first created.
         check_screen_prefix_tokens: Cached token count for the "check_screen" prefix.
         screen_checked_prefix_tokens: Cached token count for the "screen_checked" prefix.
+        screen_followup_pending: Whether the next client message should be
+            prefixed with screen_checked_prefix for chat generation.
     """
 
     meta: dict[str, Any]
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    history_turns: list[HistoryTurn] = field(default_factory=list)
-    tool_history_turns: list[HistoryTurn] = field(default_factory=list)
+    history_turns: list[HistoryTurn] | None = None
+    tool_history_turns: list[HistoryTurn] | None = None
     active_request_task: asyncio.Task | None = None
     active_request_id: str | None = None
     lifecycle_state: Literal["idle", "running", "cancelling", "closed"] = "idle"
@@ -72,6 +78,7 @@ class SessionState:
     created_at: float = field(default_factory=time.monotonic)
     check_screen_prefix_tokens: int = 0
     screen_checked_prefix_tokens: int = 0
+    screen_followup_pending: bool = False
 
 
 __all__ = ["HistoryTurn", "SessionState"]

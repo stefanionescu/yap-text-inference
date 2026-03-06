@@ -31,6 +31,11 @@ def test_sanitize_prompt_oversized_raises() -> None:
         sanitize_prompt("x" * 100, max_chars=50)
 
 
+def test_sanitize_prompt_no_default_char_cap() -> None:
+    result = sanitize_prompt("x" * 5000)
+    assert len(result) == 5000
+
+
 def test_sanitize_prompt_strips_control_chars() -> None:
     result = sanitize_prompt("hello\x00world\x1f!")
     assert "\x00" not in result

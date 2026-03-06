@@ -77,13 +77,21 @@ def _resolve_user_utterance_for_chat(
     state: SessionState,
     user_utt: str,
     is_tool: bool,
+    apply_screen_checked_prefix: bool,
     *,
     session_handler: SessionHandler,
 ) -> str:
-    if not is_tool:
-        return user_utt
-    prefix = session_handler.get_check_screen_prefix(state)
-    return f"{prefix} {user_utt}".strip()
+    if is_tool:
+        session_handler.set_screen_followup_pending(state, True)
+        prefix = session_handler.get_check_screen_prefix(state)
+        return f"{prefix} {user_utt}".strip()
+
+    if apply_screen_checked_prefix:
+        session_handler.set_screen_followup_pending(state, False)
+        prefix = session_handler.get_screen_checked_prefix(state)
+        return f"{prefix} {user_utt}".strip()
+
+    return user_utt
 
 
 async def run_execution(
@@ -97,6 +105,7 @@ async def run_execution(
     *,
     history_turn_id: str | None = None,
     sampling_overrides: dict[str, float | int] | None = None,
+    apply_screen_checked_prefix: bool = False,
     session_handler: SessionHandler,
     chat_engine: BaseEngine,
     chat_tokenizer: FastTokenizer,
@@ -115,6 +124,7 @@ async def run_execution(
         state,
         user_utt,
         is_tool,
+        apply_screen_checked_prefix=apply_screen_checked_prefix,
         session_handler=session_handler,
     )
 

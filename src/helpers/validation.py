@@ -33,13 +33,13 @@ from src.config.limits import (
     CHAT_TOP_K_MIN,
     CHAT_TOP_P_MAX,
     CHAT_TOP_P_MIN,
-    HISTORY_MAX_TOKENS,
     USER_UTT_MAX_TOKENS,
     CHAT_TEMPERATURE_MAX,
     CHAT_TEMPERATURE_MIN,
     HISTORY_RETENTION_PCT,
     CHAT_PROMPT_MAX_TOKENS,
     TRIMMED_HISTORY_LENGTH,
+    CHAT_HISTORY_MAX_TOKENS,
     CHAT_PRESENCE_PENALTY_MAX,
     CHAT_PRESENCE_PENALTY_MIN,
     CHAT_FREQUENCY_PENALTY_MAX,
@@ -106,7 +106,7 @@ def _validate_numeric_bounds() -> list[str]:
 
     positive_ints: tuple[tuple[str, int], ...] = (
         ("CHAT_PROMPT_MAX_TOKENS", CHAT_PROMPT_MAX_TOKENS),
-        ("HISTORY_MAX_TOKENS", HISTORY_MAX_TOKENS),
+        ("CHAT_HISTORY_MAX_TOKENS", CHAT_HISTORY_MAX_TOKENS),
         ("USER_UTT_MAX_TOKENS", USER_UTT_MAX_TOKENS),
         ("CHAT_MAX_LEN", CHAT_MAX_LEN),
         ("CHAT_MAX_OUT", CHAT_MAX_OUT),
@@ -134,10 +134,10 @@ def validate_env() -> None:
         errors.append("MAX_CONCURRENT_CONNECTIONS must be a positive integer (>= 1)")
 
     # History trimming configuration
-    if TRIMMED_HISTORY_LENGTH >= HISTORY_MAX_TOKENS:
+    if TRIMMED_HISTORY_LENGTH >= CHAT_HISTORY_MAX_TOKENS:
         errors.append(
             f"TRIMMED_HISTORY_LENGTH ({TRIMMED_HISTORY_LENGTH}) must be less than "
-            f"HISTORY_MAX_TOKENS ({HISTORY_MAX_TOKENS})"
+            f"CHAT_HISTORY_MAX_TOKENS ({CHAT_HISTORY_MAX_TOKENS})"
         )
 
     # Model configuration

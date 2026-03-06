@@ -66,6 +66,7 @@ class SessionHandler:
 
     def initialize_session(self, state: SessionState) -> dict[str, Any]:
         """Populate a fresh session state with default metadata."""
+        self._history.initialize_mode_state(state)
         timestamp = format_session_timestamp()
         meta = state.meta
         meta.update(
@@ -87,6 +88,7 @@ class SessionHandler:
         # Cache default prefix token counts
         state.check_screen_prefix_tokens = self._count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
         state.screen_checked_prefix_tokens = self._count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
+        state.screen_followup_pending = False
         return meta
 
     def update_session_config(
@@ -127,6 +129,16 @@ class SessionHandler:
         """Return the elapsed time since the session was created."""
         return max(0.0, time.monotonic() - state.created_at)
 
+    def has_screen_followup_pending(self, state: SessionState | None) -> bool:
+        """Return whether next turn should use the screen-checked prefix."""
+        return bool(state and state.screen_followup_pending)
+
+    def set_screen_followup_pending(self, state: SessionState | None, pending: bool) -> None:
+        """Mark whether the next message turn should use screen_checked_prefix."""
+        if state is None:
+            return
+        state.screen_followup_pending = bool(pending)
+
     # ============================================================================
     # History helpers
     # ============================================================================
@@ -155,7 +167,11 @@ class SessionHandler:
 
     def get_history_turn_count(self, state: SessionState) -> int:
         """Get the number of history turns currently stored."""
-        return len(state.history_turns)
+        if state.history_turns is not None:
+            return len(state.history_turns)
+        if state.tool_history_turns is not None:
+            return len(state.tool_history_turns)
+        return 0
 
     def append_user_utterance(self, state: SessionState, user_utt: str) -> str | None:
         normalized_user = strip_screen_prefix(

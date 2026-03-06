@@ -5,14 +5,13 @@ This module performs a one-shot cleanup of inbound prompts:
     - Unicode normalization (NFKC) and mojibake repair
     - Control and bidi character stripping
     - Escaped quote stripping
-    - Size limiting
+    - Optional size limiting (for bounded fields)
 """
 
 from __future__ import annotations
 
 import unicodedata
 from .common import _strip_escaped_quotes
-from ...config.limits import PROMPT_SANITIZE_MAX_CHARS
 from ...config.filters import BIDI_CHAR_PATTERN, CTRL_CHAR_PATTERN
 
 try:
@@ -24,8 +23,13 @@ except Exception:  # pragma: no cover - ftfy is declared in requirements
         return text
 
 
-def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS) -> str:
-    """Sanitize user-provided prompt text."""
+def sanitize_prompt(raw: str | None, *, max_chars: int | None = None) -> str:
+    """Sanitize user-provided prompt text.
+
+    Args:
+        raw: Input prompt value.
+        max_chars: Optional post-sanitization character limit.
+    """
     if raw is None:
         raise ValueError("prompt is required")
     if not isinstance(raw, str):
@@ -43,7 +47,7 @@ def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS)
     text = text.strip()
     if not text:
         raise ValueError("prompt is empty after sanitization")
-    if len(text) > max_chars:
+    if max_chars is not None and len(text) > max_chars:
         raise ValueError("prompt too large")
     return text
 
@@ -51,7 +55,7 @@ def sanitize_prompt(raw: str | None, max_chars: int = PROMPT_SANITIZE_MAX_CHARS)
 class PromptSanitizer:
     """One-shot prompt sanitizer kept stateful for API symmetry with streaming."""
 
-    def __init__(self, max_chars: int = PROMPT_SANITIZE_MAX_CHARS) -> None:
+    def __init__(self, max_chars: int | None = None) -> None:
         self.max_chars = max_chars
 
     def sanitize(self, raw: str | None) -> str:
