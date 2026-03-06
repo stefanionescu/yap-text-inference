@@ -762,7 +762,7 @@ This separation ensures the reported percentiles reflect real conversational lat
 - **Tool model context windows are per-model by default:**
   - Known models have per-model defaults in `TOOL_MODEL_BATCH_CONFIG` (e.g., `1536` for `yap-longformer`, `512` for `yap-modernbert`).
   - Unknown models default to `512` tokens.
-  - You can override with `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS`.
+  - You can override with `TOOL_HISTORY_TOKENS`.
   - Effective tool history budget is clamped to the tool model's effective max sequence length.
 - **Oversized latest user messages for tool routing are tail-truncated (keep end)** so the most recent part still reaches the tool model.
 

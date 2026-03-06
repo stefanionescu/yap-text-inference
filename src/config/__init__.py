@@ -32,7 +32,6 @@ from .engine import (
 )
 from .tool import (
     TOOL_COMPILE,
-    TOOL_MAX_LENGTH,
     TOOL_HISTORY_TOKENS,
     TOOL_DECISION_THRESHOLD,
     TOOL_MODEL_BATCH_CONFIG,
@@ -189,7 +188,6 @@ __all__ = [
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",
-    "TOOL_MAX_LENGTH",
     "TOOL_MODEL_BATCH_CONFIG",
     # models
     "ALLOWED_BASE_CHAT_MODELS",

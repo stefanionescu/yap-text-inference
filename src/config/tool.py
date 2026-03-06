@@ -17,7 +17,6 @@ Environment Variables:
     TOOL_DECISION_THRESHOLD: Probability threshold for screenshot detection
     TOOL_COMPILE: Enable torch.compile optimization
     TOOL_HISTORY_TOKENS: Max tokens of history context
-    TOOL_MAX_LENGTH: Max total input length
 
 Note: Micro-batching parameters (batch size, delay) are hardcoded per model
 in src.config.models.TOOL_MODEL_BATCH_CONFIG.
@@ -50,12 +49,8 @@ TOOL_COMPILE = env_flag("TOOL_COMPILE", False)
 # Tool model uses recent conversation history for context. These limits
 # prevent OOM and keep latency low.
 
-_tool_history_tokens_raw = os.getenv("TOOL_HISTORY_TOKENS")
-TOOL_HISTORY_TOKENS_CONFIGURED = _tool_history_tokens_raw is not None
-TOOL_HISTORY_TOKENS = int(_tool_history_tokens_raw) if _tool_history_tokens_raw is not None else 1536
-_tool_max_length_raw = os.getenv("TOOL_MAX_LENGTH")
-TOOL_MAX_LENGTH_CONFIGURED = _tool_max_length_raw is not None
-TOOL_MAX_LENGTH = int(_tool_max_length_raw) if _tool_max_length_raw is not None else 1536
+_tool_history_tokens_env = os.getenv("TOOL_HISTORY_TOKENS")
+TOOL_HISTORY_TOKENS: int | None = int(_tool_history_tokens_env) if _tool_history_tokens_env else None
 
 # ============================================================================
 # Per-model micro-batching
@@ -98,9 +93,6 @@ __all__ = [
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",
-    "TOOL_HISTORY_TOKENS_CONFIGURED",
-    "TOOL_MAX_LENGTH",
-    "TOOL_MAX_LENGTH_CONFIGURED",
     "TOOL_MIN_TIMEOUT_S",
     "TOOL_MIN_GPU_FRAC",
     "TOOL_MAX_GPU_FRAC",

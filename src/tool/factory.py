@@ -11,12 +11,7 @@ from .adapter import ToolAdapter
 from transformers import AutoConfig
 from src.config.timeouts import TOOL_TIMEOUT_S
 from src.config import TOOL_MODEL, TOOL_COMPILE, TOOL_GPU_FRAC, TOOL_DECISION_THRESHOLD, TOOL_MODEL_BATCH_CONFIG
-from src.config.tool import (
-    TOOL_MAX_LENGTH,
-    TOOL_HISTORY_TOKENS,
-    TOOL_MAX_LENGTH_CONFIGURED,
-    TOOL_HISTORY_TOKENS_CONFIGURED,
-)
+from src.config.tool import TOOL_HISTORY_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +42,9 @@ def create_tool_adapter() -> ToolAdapter:
         except Exception:
             logging.getLogger(__name__).debug("Batch config fallback lookup failed", exc_info=True)
 
-    max_length_raw = TOOL_MAX_LENGTH if TOOL_MAX_LENGTH_CONFIGURED else batch_cfg.get("max_length")
-    max_length = int(max_length_raw) if max_length_raw is not None else None
-    history_max_tokens = TOOL_HISTORY_TOKENS if TOOL_HISTORY_TOKENS_CONFIGURED else None
+    max_length = batch_cfg.get("max_length")
 
-    if max_length is not None and max_length < TOOL_HISTORY_TOKENS:
+    if max_length is not None and TOOL_HISTORY_TOKENS is not None and max_length < TOOL_HISTORY_TOKENS:
         logger.warning(
             "TOOL_HISTORY_TOKENS (%d) exceeds model max_length (%d); adapter will clamp to %d",
             TOOL_HISTORY_TOKENS,
@@ -64,7 +57,7 @@ def create_tool_adapter() -> ToolAdapter:
         threshold=TOOL_DECISION_THRESHOLD,
         compile_model=TOOL_COMPILE,
         max_length=max_length,
-        history_max_tokens=history_max_tokens,
+        history_max_tokens=TOOL_HISTORY_TOKENS,
         batch_max_size=int(batch_cfg.get("batch_max_size", 3)),
         batch_max_delay_ms=float(batch_cfg.get("batch_max_delay_ms", 10.0)),
         request_timeout_s=TOOL_TIMEOUT_S,

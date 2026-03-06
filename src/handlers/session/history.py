@@ -161,8 +161,8 @@ def render_tool_history_text(turns: list[HistoryTurn], *, max_tokens: int | None
     user_texts = get_user_texts(turns)
     if not user_texts:
         return ""
-    from src.config import TOOL_HISTORY_TOKENS
-    budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS))
+    from src.config.tool import TOOL_HISTORY_TOKENS
+    budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS or 1536))
     return build_user_history_for_tool(
         user_texts,
         budget,

@@ -74,7 +74,7 @@ Tool model: set `TOOL_MODEL` to a compatible `AutoModelForSequenceClassification
 Tool model token budgets are per-model when not explicitly configured:
 - Known tool models have per-model defaults in `TOOL_MODEL_BATCH_CONFIG` (e.g., `1536` for `yap-longformer-screenshot-intent`, `512` for `yap-modernbert-screenshot-intent`).
 - Unknown models default to `512` tokens.
-- Set `TOOL_MAX_LENGTH` and `TOOL_HISTORY_TOKENS` to override defaults.
+- Set `TOOL_HISTORY_TOKENS` to override the default tool history budget.
 - If `TOOL_HISTORY_TOKENS` is higher than the tool model's context window, it is clamped to fit.
 - If the newest user message alone exceeds the tool history budget, the server keeps the latest tail that fits instead of dropping the message.
 - Token counting/trimming uses each deployed model's own `transformers.AutoTokenizer` (chat uses `CHAT_MODEL`, tool uses `TOOL_MODEL`).

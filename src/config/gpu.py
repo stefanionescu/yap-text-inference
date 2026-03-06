@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import os
 from ..helpers.resolvers import resolve_gpu_fracs
+from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
 
 # ============================================================================
 # GPU Memory Allocation
@@ -33,11 +34,7 @@ from ..helpers.resolvers import resolve_gpu_fracs
 # The chat engine (vLLM/TRT) needs most of the memory for model weights
 # and KV cache. The tool model is much smaller but still needs some space.
 
-_deploy_mode = (os.getenv("DEPLOY_MODE", "chat") or "chat").lower()
-_deploy_chat = _deploy_mode in ("both", "chat")
-_deploy_tool = _deploy_mode in ("both", "tool")
-
-CHAT_GPU_FRAC, TOOL_GPU_FRAC = resolve_gpu_fracs(_deploy_chat, _deploy_tool)
+CHAT_GPU_FRAC, TOOL_GPU_FRAC = resolve_gpu_fracs(DEPLOY_CHAT, DEPLOY_TOOL)
 
 # ============================================================================
 # KV Cache Configuration

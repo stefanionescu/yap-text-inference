@@ -21,6 +21,7 @@ All values can be overridden via environment variables.
 import os
 from ..helpers.env import env_flag
 from ..helpers.resolvers import resolve_batch_scale_gpu_frac_cap
+from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
 
 # ============================================================================
 # Context Window Limits
@@ -74,10 +75,7 @@ MAX_CONCURRENT_CONNECTIONS: int | None = int(_max_concurrent_raw) if _max_concur
 
 # GPU fraction cap for batching: matches CHAT_GPU_FRAC based on deployment mode.
 # Prevents pushing memory allocation beyond the configured GPU fraction.
-_deploy_models = (os.getenv("DEPLOY_MODE", "both") or "both").lower()
-_deploy_chat = _deploy_models in ("both", "chat")
-_deploy_tool = _deploy_models in ("both", "tool")
-BATCH_SCALE_GPU_FRAC_CAP = resolve_batch_scale_gpu_frac_cap(_deploy_chat, _deploy_tool)
+BATCH_SCALE_GPU_FRAC_CAP = resolve_batch_scale_gpu_frac_cap(DEPLOY_CHAT, DEPLOY_TOOL)
 
 # ============================================================================
 # Sampling Clamps
