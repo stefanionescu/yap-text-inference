@@ -25,13 +25,13 @@ from .chat import run_chat_generation
 from src.engines.base import BaseEngine
 from src.tool.adapter import ToolAdapter
 from .tool.parser import parse_tool_result
-from src.state.session import HistoryTurn, SessionState
 from ..config.timeouts import TOOL_TIMEOUT_S
 from .tool.runner import launch_tool_request
 from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.sentry import add_breadcrumb
 from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
+from src.state.session import HistoryTurn, SessionState
 from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
 
 logger = logging.getLogger(__name__)
@@ -111,7 +111,6 @@ async def run_execution(
     )
     await _send_toolcall_status(ws, raw_field, is_tool)
 
-    session_handler.set_active_request(state, request_id)
     user_utt_for_chat = _resolve_user_utterance_for_chat(
         state,
         user_utt,

@@ -16,7 +16,7 @@ from tests.support.logic.idle import run_idle_suite
 from tests.support.helpers.setup import setup_repo_path
 from tests.support.helpers.websocket import with_api_key
 from tests.support.helpers.cli import add_connection_args
-from tests.support.config import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
+from tests.config import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
 
 
 def _parse_args() -> argparse.Namespace:
@@ -72,6 +72,7 @@ def main() -> None:
     ok = asyncio.run(
         run_idle_suite(
             ws_url,
+            api_key=args.api_key,
             normal_wait_s=args.normal_wait,
             idle_expect_s=args.idle_expect_seconds,
             idle_grace_s=args.idle_grace_seconds,

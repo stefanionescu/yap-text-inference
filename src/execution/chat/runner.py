@@ -11,18 +11,21 @@ handling:
 
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Any
+from opentelemetry import trace
 from src.engines.base import BaseEngine
 from collections.abc import AsyncGenerator
-from src.state.session import HistoryTurn, SessionState
 from ...config.timeouts import GEN_TIMEOUT_S
 from ...engines import create_sampling_params
 from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.instruments import get_metrics
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...messages.sanitize import StreamingSanitizer
+from src.telemetry.phases import record_phase_latency
 from src.handlers.session.manager import SessionHandler
+from src.state.session import HistoryTurn, SessionState
 from ...messages.chat import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
 from ...config.sampling import (
@@ -95,11 +98,12 @@ def _build_stream(
     prompt: str,
     sampling_params: Any,
     engine: BaseEngine,
+    chat_tokenizer: FastTokenizer,
     session_handler: SessionHandler,
 ) -> ChatStreamController:
     return ChatStreamController(
         ChatStreamConfig(
-            session_id=request_id,
+            session_id=state.session_id,
             request_id=request_id,
             prompt=prompt,
             sampling_params=sampling_params,
@@ -107,6 +111,7 @@ def _build_stream(
             timeout_s=float(GEN_TIMEOUT_S),
             flush_ms=float(STREAM_FLUSH_MS),
             cancel_check=lambda: session_handler.is_request_cancelled(state, request_id),
+            count_completion_tokens=chat_tokenizer.count,
         )
     )
 
@@ -146,11 +151,11 @@ async def run_chat_generation(
 ) -> AsyncGenerator[str, None]:
     """Stream chat generation with optional micro-coalescing."""
     req_id = request_id or f"chat-{uuid.uuid4()}"
-    session_handler.set_active_request(state, req_id)
 
     overrides = _resolve_sampling_overrides(sampling_overrides or {})
     params = _build_sampling_params(overrides, chat_tokenizer)
 
+    t0_prompt = time.perf_counter()
     prompt = build_chat_prompt_with_prefix(
         static_prefix,
         runtime_text,
@@ -158,10 +163,14 @@ async def run_chat_generation(
         user_utt,
         chat_tokenizer,
     )
+    record_phase_latency("prompt_build", time.perf_counter() - t0_prompt)
     prompt_token_count = len(chat_tokenizer.encode_ids(prompt))
     m = get_metrics()
     m.prompt_tokens.record(prompt_token_count)
     m.prompt_tokens_total.add(prompt_token_count)
+    span = trace.get_current_span()
+    if span.is_recording():
+        span.set_attribute("prompt_tokens", prompt_token_count)
 
     stream = _build_stream(
         state=state,
@@ -169,6 +178,7 @@ async def run_chat_generation(
         prompt=prompt,
         sampling_params=params,
         engine=engine,
+        chat_tokenizer=chat_tokenizer,
         session_handler=session_handler,
     )
     async for chunk in _stream_with_optional_sanitizer(stream, sanitize_output=bool(overrides["sanitize_output"])):

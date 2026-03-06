@@ -1,5 +1,7 @@
-"""Start message handling package.
+"""Shared start/message turn planning helpers.
 
-Import handlers from concrete modules:
-    from src.messages.start.handler import handle_start_message
+This package hosts sub-components reused by the unified turn handler:
+- dispatch
+- history
+- sampling
 """

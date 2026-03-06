@@ -7,6 +7,7 @@ message-loop dispatch, and cleanup on disconnect.
 
 from __future__ import annotations
 
+import time
 import logging
 import contextlib
 from .auth import authenticate_websocket
@@ -23,6 +24,7 @@ from .disconnects import is_expected_ws_disconnect
 from fastapi import WebSocket, WebSocketDisconnect
 from ...logging import set_log_context, reset_log_context
 from ...telemetry.sentry import capture_error, add_breadcrumb
+from ...telemetry.phases import record_phase_error, record_phase_latency
 from ...config.websocket import (
     WS_ERROR_INTERNAL,
     WS_CLOSE_BUSY_CODE,
@@ -54,7 +56,8 @@ async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
             ws,
             code=WS_ERROR_AUTH_FAILED,
             message=(
-                "Authentication required. Provide valid API key via 'api_key' query parameter or 'X-API-Key' header."
+                "Authentication required. Provide valid API key via "
+                "'X-API-Key' header or 'Authorization: Bearer <key>'."
             ),
             close_code=WS_CLOSE_UNAUTHORIZED_CODE,
         )
@@ -80,9 +83,12 @@ async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
 
 async def _cleanup_session(runtime_deps: RuntimeDeps, state: SessionState) -> float:
     """Clean up session resources on disconnect and return duration."""
+    t0 = time.perf_counter()
     session_handler = runtime_deps.session_handler
     duration = session_handler.get_session_duration(state)
     await session_handler.abort_session_requests(state)
+    await session_handler.mark_session_closed(state)
+    record_phase_latency("cleanup", time.perf_counter() - t0)
     return duration
 
 
@@ -121,6 +127,7 @@ async def _finalize_connection(
         except Exception as exc:  # noqa: BLE001
             capture_error(exc)
             m.errors_total.add(1, {"error.type": "cleanup_failed"})
+            record_phase_error("cleanup", "cleanup_failed")
             logger.exception("WebSocket cleanup failed")
 
     if not admitted:

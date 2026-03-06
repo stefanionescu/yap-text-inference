@@ -14,14 +14,14 @@ from typing import Any
 from .client import LiveClient
 from .commands import print_help
 from .cli import interactive_loop
-from tests.support.state import LiveSession
+from tests.state import LiveSession
 from .personas import PersonaRegistry
+from tests.config.defaults import WS_IDLE_CLOSE_CODE
 from tests.support.helpers.fmt import dim, section_header
-from tests.support.config.defaults import WS_IDLE_CLOSE_CODE
-from tests.support.helpers.websocket import with_api_key, connect_with_retries
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
-from tests.support.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.helpers.errors import ServerError, IdleTimeoutError, ConnectionClosedError
+from tests.support.helpers.websocket import with_api_key, connect_with_retries, build_api_key_headers
 
 logger = logging.getLogger("live")
 
@@ -62,6 +62,7 @@ def _print_banner(server_url: str, persona: Any, warm: bool, initial_history: li
 
 async def _run_session(
     ws_url: str,
+    ws_headers: dict[str, str],
     session: LiveSession,
     timeout: float,
     registry: PersonaRegistry,
@@ -70,6 +71,7 @@ async def _run_session(
     async with connect_with_retries(
         lambda: websockets.connect(
             ws_url,
+            additional_headers=ws_headers,
             max_queue=None,
             ping_interval=DEFAULT_WS_PING_INTERVAL,
             ping_timeout=DEFAULT_WS_PING_TIMEOUT,
@@ -130,8 +132,9 @@ async def run(
     _print_banner(server_url, persona, warm, initial_history)
 
     ws_url = with_api_key(server_url, api_key=api_key)
+    ws_headers = build_api_key_headers(api_key=api_key)
     try:
-        await _run_session(ws_url, session, timeout, registry, initial_message)
+        await _run_session(ws_url, ws_headers, session, timeout, registry, initial_message)
     except TimeoutError:
         logger.error("Timed out while connecting to %s", server_url)
         raise SystemExit(1) from None

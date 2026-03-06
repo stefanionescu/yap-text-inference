@@ -27,12 +27,18 @@ def session_span(*, client_id: str) -> Iterator[trace.Span]:
 def request_span(
     *,
     request_id: str,
+    session_id: str = "",
+    client_id: str = "",
     model: str = "",
     prompt_tokens: int = 0,
     temperature: float = 0.0,
 ) -> Iterator[trace.Span]:
     """Per-message/turn span."""
     attrs: dict[str, Any] = {"request.id": request_id}
+    if session_id:
+        attrs["session.id"] = session_id
+    if client_id:
+        attrs["client.id"] = client_id
     if model:
         attrs["model"] = model
     if prompt_tokens:

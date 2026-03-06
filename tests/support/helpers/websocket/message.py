@@ -11,8 +11,8 @@ import json
 import inspect
 from typing import Any
 from .ws import recv_raw
-from tests.support.helpers.errors import MessageParseError
 from collections.abc import Mapping, Callable, Awaitable
+from tests.support.helpers.errors import MessageParseError
 
 
 def parse_message(raw: str) -> dict[str, Any]:

@@ -3,7 +3,7 @@
 This module re-exports all configuration constants, defaults, and test messages
 from the config submodules and tests/support/messages package. It serves as the single
 import point for test configuration so that CLI scripts and test runners can
-import everything they need from `tests.support.config`.
+import everything they need from `tests.config`.
 """
 
 from .idle import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS

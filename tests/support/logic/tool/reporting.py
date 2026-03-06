@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
-from tests.support.state import CaseResult
+from tests.state import CaseResult
 from collections.abc import Iterator, Sequence
 
 

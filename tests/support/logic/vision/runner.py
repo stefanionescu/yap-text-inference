@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 import uuid
 import websockets
-from tests.support.state import StreamState, SessionContext
+from tests.state import StreamState, SessionContext
 from tests.support.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
-from tests.support.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.helpers.fmt import (
     dim,
     red,
@@ -34,6 +34,7 @@ from tests.support.helpers.websocket import (
     send_client_end,
     finalize_metrics,
     build_start_payload,
+    build_api_key_headers,
     build_message_payload,
 )
 
@@ -102,6 +103,7 @@ async def run_once(
 ) -> None:
     """Execute the vision flow test."""
     ws_url = with_api_key(server, api_key=api_key)
+    ws_headers = build_api_key_headers(api_key=api_key)
     session_id = str(uuid.uuid4())
     ctx = SessionContext(
         session_id=session_id,
@@ -118,6 +120,7 @@ async def run_once(
 
     async with websockets.connect(
         ws_url,
+        additional_headers=ws_headers,
         max_queue=None,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,

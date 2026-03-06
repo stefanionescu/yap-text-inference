@@ -20,7 +20,7 @@ from tests.support.logic.tool.runner import run_suite  # noqa: E402
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
 from tests.support.helpers.websocket import with_api_key  # noqa: E402
 from tests.support.helpers.cli import add_connection_args  # noqa: E402
-from tests.support.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW  # noqa: E402
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW  # noqa: E402
 
 setup_repo_path()
 
@@ -86,6 +86,7 @@ def main() -> None:
         results = asyncio.run(
             run_suite(
                 ws_url=ws_url,
+                api_key=args.api_key,
                 gender=args.gender or DEFAULT_GENDER,
                 personality=args.personality or DEFAULT_PERSONALITY,
                 timeout_s=max(0.1, args.timeout),

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from src.engines.base import BaseEngine
 
 CancelCheck = Callable[[], bool | Awaitable[bool]] | None
+CompletionCounter = Callable[[str], int] | None
 
 
 @dataclass(slots=True)
@@ -24,6 +25,7 @@ class ChatStreamConfig:
     timeout_s: float
     flush_ms: float = 0.0
     cancel_check: CancelCheck = None
+    count_completion_tokens: CompletionCounter = None
 
 
-__all__ = ["ChatStreamConfig", "CancelCheck"]
+__all__ = ["ChatStreamConfig", "CancelCheck", "CompletionCounter"]

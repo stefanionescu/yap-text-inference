@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Enforce test_ prefix on runnable test filenames.
 
-All runnable tests live under ``tests/specs/`` and must follow standard pytest
+All runnable tests live under ``tests/suites/`` and must follow standard pytest
 discovery naming (``test_*.py``).
 """
 
@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from shared import TESTS_DIR, rel, report, iter_python_files  # noqa: E402
 
-SCAN_DIRS = [TESTS_DIR / "specs"]
+SCAN_DIRS = [TESTS_DIR / "suites"]
 
 
 def main() -> int:
@@ -26,7 +26,7 @@ def main() -> int:
         if not py_file.name.startswith("test_"):
             violations.append(f"  {rel(py_file)}: filename must use test_ prefix")
 
-    return report("Test-file-prefix violations (tests/specs must use test_*)", violations)
+    return report("Test-file-prefix violations (tests/suites must use test_*)", violations)
 
 
 if __name__ == "__main__":

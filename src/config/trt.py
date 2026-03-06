@@ -7,9 +7,9 @@ TRT params are derived from existing limits when not explicitly set.
 from __future__ import annotations
 
 import os
-from ..helpers.resolvers import resolve_gpu_fracs
 from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
 from .limits import CHAT_MAX_LEN, CHAT_MAX_OUT
+from ..helpers.resolvers import resolve_gpu_fracs
 
 # Directory paths
 TRT_ENGINE_DIR = os.getenv("TRT_ENGINE_DIR", "")

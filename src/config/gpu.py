@@ -24,8 +24,8 @@ Environment Variables:
 from __future__ import annotations
 
 import os
-from ..helpers.resolvers import resolve_gpu_fracs
 from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
+from ..helpers.resolvers import resolve_gpu_fracs
 
 # ============================================================================
 # GPU Memory Allocation

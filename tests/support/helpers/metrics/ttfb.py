@@ -1,14 +1,14 @@
 """Time-to-first-byte aggregation utilities.
 
 This module provides functions for accumulating TTFB samples and computing
-summary statistics (p50, p90, p95). Uses TTFBSamples from tests.support.state for data.
+summary statistics (p50, p90, p95). Uses TTFBSamples from tests.state for data.
 """
 
 from __future__ import annotations
 
 import math
 from typing import Any
-from tests.support.state.metrics import TTFBSamples
+from tests.state.metrics import TTFBSamples
 from collections.abc import Mapping, Callable, Sequence
 from tests.support.helpers.fmt import dim, bold, section_header
 

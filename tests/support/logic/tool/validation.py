@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from tests.support.state import TurnResult
+from tests.state import TurnResult
 
 
 def _parse_tool_raw(raw: Any) -> list | None:

@@ -1,4 +1,4 @@
-"""Execution dispatch logic for start messages.
+"""Execution dispatch logic for validated turn plans.
 
 Routes to the appropriate execution path based on deployment configuration:
 1. DEPLOY_CHAT + DEPLOY_TOOL: Sequential tool-then-chat execution
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from src.state import StartPlan
+from src.state import TurnPlan
 from typing import TYPE_CHECKING
 from ...config.timeouts import TOOL_TIMEOUT_S
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def _run_sequential(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
+async def _run_sequential(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDeps) -> None:
     """Run sequential tool-then-chat execution."""
     if runtime_deps.chat_engine is None or runtime_deps.tool_adapter is None or runtime_deps.chat_tokenizer is None:
         raise RuntimeError("Sequential execution requires chat engine, chat tokenizer, and tool adapter")
@@ -50,7 +50,7 @@ async def _run_sequential(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeD
     )
 
 
-async def _run_chat_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
+async def _run_chat_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDeps) -> None:
     """Run chat-only streaming execution."""
     if runtime_deps.chat_engine is None or runtime_deps.chat_tokenizer is None:
         raise RuntimeError("Chat-only execution requires chat engine and chat tokenizer")
@@ -78,7 +78,7 @@ async def _run_chat_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
     logger.info("handle_start: chat-only done chars=%s", len(final_text))
 
 
-async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDeps) -> None:
+async def _run_tool_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDeps) -> None:
     """Run tool-only classification execution."""
     if runtime_deps.tool_adapter is None:
         raise RuntimeError("Tool-only execution requires tool adapter")
@@ -89,7 +89,6 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
                 plan.state,
                 session_handler=runtime_deps.session_handler,
                 tool_adapter=runtime_deps.tool_adapter,
-                mark_active=False,
             ),
             timeout=TOOL_TIMEOUT_S,
         )
@@ -107,7 +106,7 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
 
 async def dispatch_execution(
     ws: WebSocket,
-    plan: StartPlan,
+    plan: TurnPlan,
     runtime_deps: RuntimeDeps,
 ) -> None:
     """Dispatch execution based on deployment configuration."""

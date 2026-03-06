@@ -7,7 +7,7 @@ from functools import lru_cache
 from collections.abc import Iterator
 from contextlib import contextmanager
 from src.tokens.tokenizer import FastTokenizer
-from tests.support.config.tokenizer import TEST_TOKENIZER_VOCAB
+from tests.config.tokenizer import TEST_TOKENIZER_VOCAB
 from src.tokens.registry import reset_tokenizers, configure_tokenizers
 
 

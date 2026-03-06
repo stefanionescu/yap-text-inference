@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from tests.support.state import HistoryBenchConfig
+from tests.state import HistoryBenchConfig
 from .connection import execute_history_connection
 from tests.support.helpers.prompt import select_chat_prompt
 from tests.support.logic.benchmark.reporting import print_report

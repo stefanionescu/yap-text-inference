@@ -13,9 +13,9 @@ This test validates the cancel message handling using multiple concurrent client
 The test works with all deployment modes (tool only, chat only, or both).
 
 Usage:
-  python3 tests/specs/integration/test_cancel.py
-  python3 tests/specs/integration/test_cancel.py --server ws://localhost:8000/ws
-  python3 tests/specs/integration/test_cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
+  python3 tests/suites/integration/test_cancel.py
+  python3 tests/suites/integration/test_cancel.py --server ws://localhost:8000/ws
+  python3 tests/suites/integration/test_cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws
@@ -39,7 +39,7 @@ from tests.support.helpers.setup import setup_repo_path
 from tests.support.logic.cancel import run_cancel_suite
 from tests.support.helpers.websocket import with_api_key
 from tests.support.helpers.cli import add_connection_args
-from tests.support.config import (
+from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     CANCEL_POST_WAIT_DEFAULT,
@@ -122,6 +122,7 @@ def main() -> None:
     ok = asyncio.run(
         run_cancel_suite(
             ws_url,
+            api_key=args.api_key,
             gender=args.gender,
             personality=args.personality,
             num_clients=args.clients,

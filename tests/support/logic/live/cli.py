@@ -10,8 +10,8 @@ import contextlib
 from .client import LiveClient
 from dataclasses import dataclass
 from .personas import PersonaRegistry
-from tests.support.helpers.fmt import cyan, yellow
 from .commands import print_help, dispatch_command
+from tests.support.helpers.fmt import cyan, yellow
 from tests.support.helpers.errors import TestClientError, IdleTimeoutError, InputClosedError, ConnectionClosedError
 
 logger = logging.getLogger("live")

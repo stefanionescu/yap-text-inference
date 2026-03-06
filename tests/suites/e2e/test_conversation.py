@@ -11,8 +11,8 @@ remain stable under bounded-history constraints. Each exchange logs:
   - time to first complete sentence
 
 Usage:
-    python3 tests/specs/e2e/test_conversation.py
-    python3 tests/specs/e2e/test_conversation.py --server ws://127.0.0.1:8000/ws
+    python3 tests/suites/e2e/test_conversation.py
+    python3 tests/suites/e2e/test_conversation.py --server ws://127.0.0.1:8000/ws
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from tests.support.helpers.setup import setup_repo_path
 from tests.support.logic.conversation import run_conversation
 from tests.support.messages.conversation import CONVERSATION_HISTORY_MESSAGES
 from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
-from tests.support.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC
 
 
 def _parse_args() -> argparse.Namespace:

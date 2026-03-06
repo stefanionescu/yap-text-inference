@@ -1,13 +1,13 @@
 """Shared result factories for test utilities.
 
 This module provides factory functions for creating consistent result
-dictionaries across all test scripts. Uses BenchmarkResultData from tests.support.state.
+dictionaries across all test scripts. Uses BenchmarkResultData from tests.state.
 """
 
 from __future__ import annotations
 
 from typing import Any
-from tests.support.state.metrics import BenchmarkResultData
+from tests.state.metrics import BenchmarkResultData
 
 
 def error_result(

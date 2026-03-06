@@ -7,17 +7,18 @@ All messages use the flat format (no envelope wrapper).
 from __future__ import annotations
 
 from typing import Any
-from tests.support.state.metrics import SessionContext
+from tests.state.metrics import SessionContext
+from src.config.websocket import WS_PROTOCOL_VERSION
 
 
 def build_cancel_payload() -> dict[str, Any]:
     """Build a cancel message."""
-    return {"type": "cancel"}
+    return {"type": "cancel", "v": WS_PROTOCOL_VERSION}
 
 
 def build_end_payload() -> dict[str, Any]:
     """Build an end message."""
-    return {"type": "end"}
+    return {"type": "end", "v": WS_PROTOCOL_VERSION}
 
 
 def build_message_payload(
@@ -34,7 +35,7 @@ def build_message_payload(
     Returns:
         A dict ready to be JSON-serialized and sent over WebSocket.
     """
-    msg: dict[str, Any] = {"type": "message", "user_utterance": user_text}
+    msg: dict[str, Any] = {"type": "message", "v": WS_PROTOCOL_VERSION, "user_utterance": user_text}
     if sampling:
         msg["sampling"] = sampling
     return msg
@@ -64,6 +65,7 @@ def build_start_payload(
 
     msg: dict[str, Any] = {
         "type": "start",
+        "v": WS_PROTOCOL_VERSION,
         "gender": ctx.gender,
         "personality": ctx.personality,
         "chat_prompt": ctx.chat_prompt,

@@ -65,7 +65,6 @@ from fastapi.responses import ORJSONResponse  # noqa: E402
 from .telemetry.instruments import get_metrics  # noqa: E402
 from .telemetry.setup import shutdown_telemetry  # noqa: E402
 from .telemetry.instruments import initialize_metrics  # noqa: E402
-from .runtime.bootstrap import clear_runtime_registries  # noqa: E402
 from .handlers.websocket import handle_websocket_connection  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -107,7 +106,6 @@ async def stop_engines() -> None:
         if runtime_deps is not None:
             await runtime_deps.shutdown()
     finally:
-        clear_runtime_registries()
         shutdown_telemetry()
 
 

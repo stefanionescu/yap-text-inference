@@ -2,7 +2,7 @@
 
 Provides async helpers for exercising the `/ws` endpoint with several
 connection scenarios (normal close, rapid churn, ping/pong, and idle
-watchdog). The CLI wrapper in `tests/specs/integration/test_idle.py` parses arguments
+watchdog). The CLI wrapper in `tests/suites/integration/test_idle.py` parses arguments
 and invokes `run_idle_suite`.
 """
 
@@ -12,9 +12,10 @@ import json
 import asyncio
 import websockets
 from collections.abc import Callable, Awaitable
-from tests.support.helpers.websocket import send_client_end, connect_with_retries
-from tests.support.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
-from tests.support.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON
+from src.config.websocket import WS_PROTOCOL_VERSION
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON
+from tests.support.helpers.websocket import send_client_end, connect_with_retries, build_api_key_headers
 from tests.support.helpers.fmt import (
     dim,
     section_header,
@@ -25,10 +26,11 @@ from tests.support.helpers.fmt import (
 )
 
 
-def _open_connection(ws_url: str):
+def _open_connection(ws_url: str, ws_headers: dict[str, str]):
     return connect_with_retries(
         lambda: websockets.connect(
             ws_url,
+            additional_headers=ws_headers,
             max_queue=None,
             ping_interval=DEFAULT_WS_PING_INTERVAL,
             ping_timeout=DEFAULT_WS_PING_TIMEOUT,
@@ -36,25 +38,25 @@ def _open_connection(ws_url: str):
     )
 
 
-async def _test_normal_connection(ws_url: str, wait_seconds: float) -> None:
-    async with _open_connection(ws_url) as ws:
+async def _test_normal_connection(ws_url: str, wait_seconds: float, ws_headers: dict[str, str]) -> None:
+    async with _open_connection(ws_url, ws_headers) as ws:
         print(connection_status("normal", f"connected, sleeping {wait_seconds:.1f}s..."))
         await asyncio.sleep(max(0.0, wait_seconds))
         await send_client_end(ws)
         print(connection_status("normal", "graceful close sent"))
 
 
-async def _test_quick_connect_close(ws_url: str) -> None:
-    async with _open_connection(ws_url) as ws:
+async def _test_quick_connect_close(ws_url: str, ws_headers: dict[str, str]) -> None:
+    async with _open_connection(ws_url, ws_headers) as ws:
         print(connection_status("quick", "connected, closing immediately..."))
         await send_client_end(ws)
         print(connection_status("quick", "close frame flushed"))
 
 
-async def _test_ping_pong(ws_url: str) -> None:
-    async with _open_connection(ws_url) as ws:
+async def _test_ping_pong(ws_url: str, ws_headers: dict[str, str]) -> None:
+    async with _open_connection(ws_url, ws_headers) as ws:
         print(connection_status("ping", "sending ping frame..."))
-        await ws.send(json.dumps({"type": "ping"}))
+        await ws.send(json.dumps({"type": "ping", "v": WS_PROTOCOL_VERSION}))
         try:
             payload = await asyncio.wait_for(ws.recv(), timeout=5.0)
         except TimeoutError:
@@ -68,6 +70,7 @@ async def _test_ping_pong(ws_url: str) -> None:
 
 async def _test_idle_watchdog(
     ws_url: str,
+    ws_headers: dict[str, str],
     expect_seconds: float,
     grace_seconds: float,
 ) -> None:
@@ -75,7 +78,7 @@ async def _test_idle_watchdog(
     if total_wait == 0:
         raise RuntimeError("idle wait is zero; use --idle-expect-seconds")
 
-    async with _open_connection(ws_url) as ws:
+    async with _open_connection(ws_url, ws_headers) as ws:
         print(connection_status("idle", f"waiting up to {total_wait:.0f}s for server timeout..."))
         deadline = asyncio.get_event_loop().time() + total_wait
         while True:
@@ -108,20 +111,23 @@ async def _test_idle_watchdog(
 async def run_idle_suite(
     ws_url: str,
     *,
+    api_key: str | None,
     normal_wait_s: float,
     idle_expect_s: float,
     idle_grace_s: float,
 ) -> bool:
     """Run the idle timeout and connection lifecycle scenarios sequentially."""
+    ws_headers = build_api_key_headers(api_key=api_key)
 
     tests: list[tuple[str, Callable[[], Awaitable[None]]]] = [
-        ("normal", lambda: _test_normal_connection(ws_url, normal_wait_s)),
-        ("quick", lambda: _test_quick_connect_close(ws_url)),
-        ("ping", lambda: _test_ping_pong(ws_url)),
+        ("normal", lambda: _test_normal_connection(ws_url, normal_wait_s, ws_headers)),
+        ("quick", lambda: _test_quick_connect_close(ws_url, ws_headers)),
+        ("ping", lambda: _test_ping_pong(ws_url, ws_headers)),
         (
             "idle",
             lambda: _test_idle_watchdog(
                 ws_url,
+                ws_headers,
                 idle_expect_s,
                 idle_grace_s,
             ),

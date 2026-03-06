@@ -9,15 +9,9 @@ import contextlib
 from typing import TYPE_CHECKING, Any
 from .history import HistoryController
 from .time import format_session_timestamp
+from ...tokens.prefix import strip_screen_prefix
 from src.state.session import HistoryTurn, SessionState
 from .config import resolve_screen_prefix, update_session_config as _update_config
-from ...tokens.prefix import strip_screen_prefix
-from .requests import (
-    has_running_task,
-    is_request_cancelled,
-    cancel_session_requests,
-    cleanup_session_requests,
-)
 from src.config import (
     CHAT_MODEL,
     TOOL_MODEL,
@@ -26,6 +20,15 @@ from src.config import (
     USER_UTT_MAX_TOKENS,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
+)
+from .requests import (
+    has_running_task,
+    attach_request_task,
+    is_request_cancelled,
+    begin_session_request,
+    close_session_requests,
+    cancel_session_requests,
+    cleanup_session_requests,
 )
 
 if TYPE_CHECKING:
@@ -176,30 +179,54 @@ class SessionHandler:
     # Request/task tracking
     # ============================================================================
 
-    def set_active_request(self, state: SessionState, request_id: str) -> None:
-        state.active_request_id = request_id
-        state.cancel_requested = False
+    async def begin_request(self, state: SessionState, request_id: str) -> bool:
+        """Transition session into running state for the given request."""
+        async with state.request_lock:
+            return begin_session_request(state, request_id)
 
     def is_request_cancelled(self, state: SessionState, request_id: str) -> bool:
         return is_request_cancelled(state, request_id)
 
-    def track_task(self, state: SessionState, task: asyncio.Task) -> None:
-        state.active_request_task = task
-
-        def _clear_task(completed: asyncio.Task) -> None:
-            if state.active_request_task is completed:
-                state.active_request_task = None
-
-        task.add_done_callback(_clear_task)
+    async def track_request_task(
+        self,
+        state: SessionState,
+        *,
+        request_id: str,
+        task: asyncio.Task,
+    ) -> None:
+        """Bind a task handle to a specific active request."""
+        async with state.request_lock:
+            attach_request_task(state, request_id=request_id, task=task)
 
     def has_running_task(self, state: SessionState) -> bool:
         return has_running_task(state)
 
-    def cancel_session_requests(self, state: SessionState) -> None:
-        cancel_session_requests(state)
+    async def cancel_session_requests(self, state: SessionState) -> None:
+        async with state.request_lock:
+            cancel_session_requests(state)
 
-    def cleanup_session_requests(self, state: SessionState) -> dict[str, str]:
-        return cleanup_session_requests(state)
+    async def cleanup_session_requests(
+        self,
+        state: SessionState,
+        *,
+        request_id: str | None = None,
+        force: bool = False,
+    ) -> dict[str, str]:
+        async with state.request_lock:
+            return cleanup_session_requests(
+                state,
+                request_id=request_id,
+                force=force,
+            )
+
+    async def complete_request(self, state: SessionState, request_id: str) -> None:
+        """Finalize request lifecycle if this request is still active."""
+        await self.cleanup_session_requests(state, request_id=request_id, force=False)
+
+    async def mark_session_closed(self, state: SessionState) -> None:
+        """Mark a session as closed and clear in-flight request pointers."""
+        async with state.request_lock:
+            close_session_requests(state)
 
     async def abort_session_requests(
         self,
@@ -210,12 +237,12 @@ class SessionHandler:
             return {"active": ""}
 
         active_request_id = state.active_request_id or ""
-        self.cancel_session_requests(state)
+        await self.cancel_session_requests(state)
         if active_request_id and self._chat_engine is not None:
             with contextlib.suppress(Exception):
                 await self._chat_engine.abort(active_request_id)
 
-        return self.cleanup_session_requests(state)
+        return await self.cleanup_session_requests(state, force=True)
 
     # ============================================================================
     # Token budget helpers

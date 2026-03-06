@@ -2,19 +2,15 @@
 
 This package provides handlers for different WebSocket message types:
 
-start/:
-    Handles initial conversation start messages. Validates input,
-    extracts persona/gender/personality configuration, and initiates
-    the tool-then-chat execution flow.
-    - handler.py: Main start message handler
-    - dispatch.py: Execution path routing
-    - sampling.py: Sampling parameter extraction
+turn.py:
+    Unified turn planner/handler for both 'start' and 'message' commands.
+    It validates payloads, builds a TurnPlan, and dispatches execution.
 
-message.py:
-    Handles subsequent user messages within an existing session.
-    Validates user utterance, applies optional sampling overrides,
-    and dispatches execution. Does not accept history or persona
-    changes — those are locked at session creation via 'start'.
+start/:
+    Shared turn sub-components:
+    - dispatch.py: execution path routing
+    - history.py: history bootstrap + utterance trimming
+    - sampling.py: sampling parameter extraction
 
 cancel.py:
     Handles request cancellation during streaming. Aborts the
@@ -34,6 +30,6 @@ sanitize/:
     - common.py: Shared sanitization patterns
 
 Import from submodules directly to avoid circular imports:
-    from src.messages.start.handler import handle_start_message
+    from src.messages.turn import handle_turn_message
     from src.messages.chat import build_chat_prompt_with_prefix
 """

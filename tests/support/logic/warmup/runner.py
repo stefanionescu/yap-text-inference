@@ -12,10 +12,10 @@ import json
 import uuid
 import websockets
 from typing import Any
+from tests.state import StreamState, SessionContext
 from tests.support.helpers.errors import ServerError
 from tests.support.helpers.selection import choose_message
 from tests.support.helpers.prompt import select_chat_prompt
-from tests.support.state import StreamState, SessionContext
 from tests.support.messages.warmup import WARMUP_DEFAULT_MESSAGES
 from tests.support.logic.conversation.stream import stream_exchange
 from tests.support.helpers.fmt import (
@@ -28,16 +28,7 @@ from tests.support.helpers.fmt import (
     format_assistant,
     format_metrics_inline,
 )
-from tests.support.helpers.websocket import (
-    with_api_key,
-    create_tracker,
-    send_client_end,
-    finalize_metrics,
-    build_start_payload,
-    connect_with_retries,
-    build_message_payload,
-)
-from tests.support.config import (
+from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
@@ -45,6 +36,16 @@ from tests.support.config import (
     WARMUP_FALLBACK_MESSAGE,
     DEFAULT_RECV_TIMEOUT_SEC,
     DEFAULT_WS_PING_INTERVAL,
+)
+from tests.support.helpers.websocket import (
+    with_api_key,
+    create_tracker,
+    send_client_end,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
+    build_api_key_headers,
+    build_message_payload,
 )
 
 
@@ -140,6 +141,7 @@ async def run_once(args) -> None:
     double_ttfb = bool(getattr(args, "double_ttfb", False))
 
     ws_url_with_auth = with_api_key(server_ws_url, api_key=api_key)
+    ws_headers = build_api_key_headers(api_key=api_key)
     user_msg = choose_message(
         args.message,
         fallback=WARMUP_FALLBACK_MESSAGE,
@@ -155,6 +157,7 @@ async def run_once(args) -> None:
     async with connect_with_retries(
         lambda: websockets.connect(
             ws_url_with_auth,
+            additional_headers=ws_headers,
             max_queue=None,
             ping_interval=DEFAULT_WS_PING_INTERVAL,
             ping_timeout=DEFAULT_WS_PING_TIMEOUT,

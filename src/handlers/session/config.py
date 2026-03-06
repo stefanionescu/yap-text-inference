@@ -20,8 +20,8 @@ partial updates while preserving other configuration values.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 from src.config import DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 
 if TYPE_CHECKING:

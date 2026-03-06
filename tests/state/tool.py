@@ -31,6 +31,7 @@ class RunnerConfig:
     """Configuration for the tool test runner."""
 
     ws_url: str
+    ws_headers: dict[str, str]
     gender: str
     personality: str
     chat_prompt: str

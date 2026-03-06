@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 import asyncio
 import contextlib
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import urlsplit
 from tests.support.helpers.websocket import ws as ws_helpers
 
 
@@ -16,27 +16,30 @@ def _build_async_receiver(method_name: str, value: str):
     return type("Receiver", (), {method_name: _receiver})()
 
 
-def test_with_api_key_normalizes_scheme_path_and_query() -> None:
+def test_with_api_key_normalizes_scheme_and_path() -> None:
     url = ws_helpers.with_api_key("http://localhost:8000", api_key="abc123")
 
     parts = urlsplit(url)
-    query = parse_qs(parts.query)
     assert parts.scheme == "ws"
     assert parts.netloc == "localhost:8000"
     assert parts.path == "/ws"
-    assert query == {"api_key": ["abc123"]}
+    assert parts.query == ""
 
 
-def test_with_api_key_preserves_query_and_replaces_existing_key() -> None:
+def test_with_api_key_preserves_existing_query_unchanged() -> None:
     url = ws_helpers.with_api_key(
         "ws://localhost:8000/custom?foo=1&api_key=old",
         api_key="new",
     )
 
     parts = urlsplit(url)
-    query = parse_qs(parts.query)
     assert parts.path == "/custom"
-    assert query == {"foo": ["1"], "api_key": ["new"]}
+    assert parts.query == "foo=1&api_key=old"
+
+
+def test_build_api_key_headers_uses_x_api_key() -> None:
+    headers = ws_helpers.build_api_key_headers(api_key="abc123")
+    assert headers == {"X-API-Key": "abc123"}
 
 
 def test_with_api_key_requires_key_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:

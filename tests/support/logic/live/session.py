@@ -1,14 +1,14 @@
 """Live session payload builders.
 
-This module keeps payload construction in the logic layer so `tests.support.state`
+This module keeps payload construction in the logic layer so `tests.state`
 remains a pure dataclass package without websocket helper dependencies.
 """
 
 from __future__ import annotations
 
 from typing import Any
-from tests.support.state.live import LiveSession
-from tests.support.state.metrics import SessionContext
+from tests.state.live import LiveSession
+from tests.state.metrics import SessionContext
 from tests.support.helpers.websocket.payloads import (
     build_start_payload as build_ws_start_payload,
     build_message_payload as build_ws_message_payload,

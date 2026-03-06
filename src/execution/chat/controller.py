@@ -53,6 +53,7 @@ from src.config.logging import CHAT_STREAM_LABEL
 from src.telemetry.traces import generation_span
 from src.telemetry.instruments import get_metrics
 from src.state import CancelCheck, ChatStreamConfig
+from src.telemetry.phases import record_phase_error, record_phase_latency
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +156,12 @@ class ChatStreamController:
             elapsed_ms,
         )
 
+    def _completion_token_count(self) -> int:
+        counter = self._cfg.count_completion_tokens
+        if counter is None:
+            return max(0, len(self._full_text.split()))
+        return max(0, int(counter(self._full_text)))
+
     async def iter_text(self) -> AsyncGenerator[str, None]:
         """Main streaming loop with buffering, timeout, and cancellation.
 
@@ -177,25 +184,33 @@ class ChatStreamController:
                         m.token_latency.record(now - last_emit)
                     last_emit = now
                     yield chunk
-                gspan.set_attribute("completion_tokens", len(self._full_text))
+                gspan.set_attribute("completion_tokens", self._completion_token_count())
                 gspan.set_attribute("finish_reason", "complete")
         except StreamCancelledError:
             self._cancelled = True
+            if self._ttfb_ms is None:
+                m.cancel_pre_first_token_total.add(1)
             self._log_cancelled()
         except TimeoutError:
             m.errors_total.add(1, {"error.type": "generation_timeout"})
+            record_phase_error("chat_generation", "generation_timeout")
             self._log_timeout()
             raise
         except Exception as exc:
             capture_error(exc)
-            m.errors_total.add(1, {"error.type": get_error_type(exc)})
+            error_type = get_error_type(exc)
+            m.errors_total.add(1, {"error.type": error_type})
+            record_phase_error("chat_generation", error_type)
             raise
         finally:
             m.active_generations.add(-1)
             elapsed = time.perf_counter() - start
             m.request_latency.record(elapsed)
-            m.completion_tokens.record(len(self._full_text))
-            m.tokens_generated_total.add(max(1, len(self._full_text) // 4))
+            record_phase_latency("chat_generation", elapsed)
+            completion_tokens = self._completion_token_count()
+            m.completion_tokens.record(completion_tokens)
+            if completion_tokens > 0:
+                m.tokens_generated_total.add(completion_tokens)
             if not self._cancelled:
                 tail = self._flush_tail()
                 if tail:
@@ -291,10 +306,12 @@ async def _stream_with_timeout(
         async with async_timeout(timeout_s):
             async for out in stream:
                 if await _is_cancelled(cancel_check):
+                    get_metrics().engine_abort_retryable_total.add(1, {"reason": "cancelled"})
                     await engine.abort(request_id)
                     raise StreamCancelledError()
                 yield out
     except TimeoutError:
+        get_metrics().engine_abort_retryable_total.add(1, {"reason": "timeout"})
         await engine.abort(request_id)
         raise
 

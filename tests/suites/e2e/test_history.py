@@ -15,10 +15,10 @@ Environment Variables:
 - PERSONALITY: personality (default: flirty)
 
 Usage:
-  python3 tests/specs/e2e/test_history.py
-  python3 tests/specs/e2e/test_history.py --gender male
-  python3 tests/specs/e2e/test_history.py --temperature 0.8 --top-p 0.9
-  python3 tests/specs/e2e/test_history.py --bench -n 16 -c 8
+  python3 tests/suites/e2e/test_history.py
+  python3 tests/suites/e2e/test_history.py --gender male
+  python3 tests/suites/e2e/test_history.py --temperature 0.8 --top-p 0.9
+  python3 tests/suites/e2e/test_history.py --bench -n 16 -c 8
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ if __package__ in {None, ""}:
 from tests.support.helpers.errors import ServerError  # noqa: E402
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
 from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
-from tests.support.config import (  # noqa: E402
+from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,

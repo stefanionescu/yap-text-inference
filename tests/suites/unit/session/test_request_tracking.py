@@ -1,14 +1,12 @@
 """Unit tests for session request tracking utilities."""
 
 from __future__ import annotations
+
 import asyncio
+from typing import Any, cast
 from src.state.session import SessionState
 from src.handlers.session.manager import SessionHandler
-from src.handlers.session.requests import (
-    is_request_cancelled,
-    cancel_session_requests,
-    cleanup_session_requests,
-)
+from src.handlers.session.requests import is_request_cancelled, cancel_session_requests, cleanup_session_requests
 
 
 def _make_state(**kwargs: object) -> SessionState:
@@ -106,7 +104,7 @@ class _DummyEngine:
 
 def test_abort_session_requests_aborts_engine_with_active_id() -> None:
     engine = _DummyEngine()
-    handler = SessionHandler(chat_engine=engine)
+    handler = SessionHandler(chat_engine=cast(Any, engine))
     state = _make_state(active_request_id="req-123")
 
     asyncio.run(handler.abort_session_requests(state))

@@ -11,9 +11,10 @@ import os
 import json
 import asyncio
 import contextlib
-from tests.support.config import DEFAULT_WS_PATH
+from tests.config import DEFAULT_WS_PATH
+from urllib.parse import urlsplit, urlunsplit
 from collections.abc import Callable, Awaitable
-from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
+from src.config.websocket import WS_PROTOCOL_VERSION
 
 _HTTP_TO_WS = {"http": "ws", "https": "wss"}
 
@@ -39,6 +40,18 @@ def _ensure_path_and_scheme(url: str, default_path: str) -> tuple[str, str, str,
     return scheme, netloc, normalized_path, parts.query, parts.fragment
 
 
+def _resolve_api_key(
+    api_key_env: str = "TEXT_API_KEY",
+    default_key: str | None = None,
+    *,
+    api_key: str | None = None,
+) -> str:
+    resolved_key = api_key or os.getenv(api_key_env) or default_key
+    if not resolved_key:
+        raise ValueError(f"{api_key_env} environment variable is required and must be set")
+    return resolved_key
+
+
 def with_api_key(
     url: str,
     api_key_env: str = "TEXT_API_KEY",
@@ -47,30 +60,34 @@ def with_api_key(
     api_key: str | None = None,
     default_path: str = DEFAULT_WS_PATH,
 ) -> str:
-    """Append API key as a query parameter to the WebSocket URL.
+    """Normalize a WebSocket URL after validating API key presence.
 
-    This keeps client code consistent across tools; it normalizes the path
-    so callers can pass either the base origin or the full `/ws` endpoint.
+    Authentication is now header-only (`X-API-Key`), so this function keeps
+    backward-compatible naming but no longer mutates query parameters.
     """
-    resolved_key = api_key or os.getenv(api_key_env) or default_key
-    if not resolved_key:
-        raise ValueError(f"{api_key_env} environment variable is required and must be set")
+    _resolve_api_key(api_key_env, default_key, api_key=api_key)
 
     scheme, netloc, path, query, fragment = _ensure_path_and_scheme(url, default_path)
     if not netloc:
         raise ValueError(f"Invalid WebSocket URL '{url}'. Expected format ws(s)://host[:port][{default_path}]")
+    return urlunsplit((scheme, netloc, path, query, fragment))
 
-    query_items = [(key, value) for key, value in parse_qsl(query, keep_blank_values=True) if key.lower() != "api_key"]
-    query_items.append(("api_key", resolved_key))
-    encoded_query = urlencode(query_items, doseq=True)
 
-    return urlunsplit((scheme, netloc, path, encoded_query, fragment))
+def build_api_key_headers(
+    api_key_env: str = "TEXT_API_KEY",
+    default_key: str | None = None,
+    *,
+    api_key: str | None = None,
+) -> dict[str, str]:
+    """Build auth headers for websocket connections."""
+    resolved_key = _resolve_api_key(api_key_env, default_key, api_key=api_key)
+    return {"X-API-Key": resolved_key}
 
 
 async def send_client_end(ws) -> None:
     """Best-effort end signal to gracefully close the connection."""
     with contextlib.suppress(Exception):
-        await ws.send(json.dumps({"type": "end"}))
+        await ws.send(json.dumps({"type": "end", "v": WS_PROTOCOL_VERSION}))
 
 
 def _resolve_recv(ws) -> Callable[[], Awaitable[str]]:
@@ -125,4 +142,4 @@ async def connect_with_retries(
             attempt += 1
 
 
-__all__ = ["with_api_key", "send_client_end", "recv_raw", "connect_with_retries"]
+__all__ = ["with_api_key", "build_api_key_headers", "send_client_end", "recv_raw", "connect_with_retries"]

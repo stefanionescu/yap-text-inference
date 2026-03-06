@@ -27,7 +27,7 @@ if __package__ in {None, ""}:
 
 from tests.support.helpers.setup import setup_repo_path
 from tests.support.helpers.prompt import select_chat_prompt
-from tests.support.config import DEFAULT_GENDER, DEFAULT_SERVER_WS_URL
+from tests.config import DEFAULT_GENDER, DEFAULT_SERVER_WS_URL
 from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
 
 

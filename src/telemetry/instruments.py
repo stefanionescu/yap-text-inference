@@ -9,27 +9,34 @@ from ..config.telemetry import (
     METRIC_TTFT,
     OTEL_SERVICE_NAME,
     METRIC_ERRORS_TOTAL,
+    METRIC_PHASE_LATENCY,
     METRIC_PROMPT_TOKENS,
     METRIC_TOKEN_LATENCY,
     METRIC_REQUESTS_TOTAL,
     METRIC_REQUEST_LATENCY,
+    METRIC_WS_SEND_LATENCY,
     METRIC_STARTUP_DURATION,
     METRIC_COMPLETION_TOKENS,
     METRIC_ACTIVE_CONNECTIONS,
     METRIC_ACTIVE_GENERATIONS,
     METRIC_CACHE_RESETS_TOTAL,
     METRIC_CANCELLATION_TOTAL,
+    METRIC_PHASE_ERRORS_TOTAL,
     METRIC_CONNECTION_DURATION,
     METRIC_PROMPT_TOKENS_TOTAL,
     METRIC_SESSION_CHURN_TOTAL,
     METRIC_TOKENS_GENERATED_TOTAL,
     METRIC_GENERATIONS_PER_SESSION,
+    METRIC_EMPTY_MODEL_OUTPUT_TOTAL,
     METRIC_CONNECTION_SEMAPHORE_WAIT,
     METRIC_TIMEOUT_DISCONNECTS_TOTAL,
     METRIC_CONNECTIONS_REJECTED_TOTAL,
     METRIC_TOOL_CLASSIFICATIONS_TOTAL,
+    METRIC_DISCONNECT_MID_STREAM_TOTAL,
     METRIC_RATE_LIMIT_VIOLATIONS_TOTAL,
     METRIC_TOOL_CLASSIFICATION_LATENCY,
+    METRIC_CANCEL_PRE_FIRST_TOKEN_TOTAL,
+    METRIC_ENGINE_ABORT_RETRYABLE_TOTAL,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +71,8 @@ class MetricInstruments:
         "generations_per_session",
         "startup_duration",
         "tool_classification_latency",
+        "phase_latency",
+        "ws_send_latency",
         "requests_total",
         "tokens_generated_total",
         "prompt_tokens_total",
@@ -75,6 +84,11 @@ class MetricInstruments:
         "rate_limit_violations_total",
         "tool_classifications_total",
         "cache_resets_total",
+        "phase_errors_total",
+        "disconnect_mid_stream_total",
+        "cancel_pre_first_token_total",
+        "empty_model_output_total",
+        "engine_abort_retryable_total",
         "active_connections",
         "active_generations",
     )
@@ -91,6 +105,8 @@ class MetricInstruments:
         self.generations_per_session = _histogram(meter, METRIC_GENERATIONS_PER_SESSION)
         self.startup_duration = _histogram(meter, METRIC_STARTUP_DURATION)
         self.tool_classification_latency = _histogram(meter, METRIC_TOOL_CLASSIFICATION_LATENCY)
+        self.phase_latency = _histogram(meter, METRIC_PHASE_LATENCY)
+        self.ws_send_latency = _histogram(meter, METRIC_WS_SEND_LATENCY)
         # Counters
         self.requests_total = _counter(meter, METRIC_REQUESTS_TOTAL)
         self.tokens_generated_total = _counter(meter, METRIC_TOKENS_GENERATED_TOTAL)
@@ -103,6 +119,11 @@ class MetricInstruments:
         self.rate_limit_violations_total = _counter(meter, METRIC_RATE_LIMIT_VIOLATIONS_TOTAL)
         self.tool_classifications_total = _counter(meter, METRIC_TOOL_CLASSIFICATIONS_TOTAL)
         self.cache_resets_total = _counter(meter, METRIC_CACHE_RESETS_TOTAL)
+        self.phase_errors_total = _counter(meter, METRIC_PHASE_ERRORS_TOTAL)
+        self.disconnect_mid_stream_total = _counter(meter, METRIC_DISCONNECT_MID_STREAM_TOTAL)
+        self.cancel_pre_first_token_total = _counter(meter, METRIC_CANCEL_PRE_FIRST_TOKEN_TOTAL)
+        self.empty_model_output_total = _counter(meter, METRIC_EMPTY_MODEL_OUTPUT_TOTAL)
+        self.engine_abort_retryable_total = _counter(meter, METRIC_ENGINE_ABORT_RETRYABLE_TOTAL)
         # UpDown counters
         self.active_connections = _updown(meter, METRIC_ACTIVE_CONNECTIONS)
         self.active_generations = _updown(meter, METRIC_ACTIVE_GENERATIONS)

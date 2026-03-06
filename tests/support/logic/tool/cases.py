@@ -6,7 +6,7 @@ tests/support/messages/tool/.
 
 from __future__ import annotations
 
-from tests.support.state import CaseStep, ToolTestCase
+from tests.state import CaseStep, ToolTestCase
 from tests.support.messages.tool import TOOL_DEFAULT_MESSAGES
 
 PAIR_LEN = 2

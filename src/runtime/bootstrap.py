@@ -11,11 +11,8 @@ import asyncio
 from .dependencies import RuntimeDeps
 from src.tokens.tokenizer import FastTokenizer
 from src.tool.factory import create_tool_adapter
-from src.tokens.registry import configure_tokenizers
-from src.tool.registry import configure_tool_adapter
 from src.handlers.connections import ConnectionHandler
 from src.handlers.session.manager import SessionHandler
-from src.engines.registry import clear_engine_runtime, configure_engine_runtime
 from src.config import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL, INFERENCE_ENGINE
 
 
@@ -77,9 +74,6 @@ async def build_runtime_deps() -> RuntimeDeps:
         from src.engines.vllm.cache import CacheResetManager  # noqa: PLC0415
 
         cache_reset_manager = CacheResetManager()
-    configure_engine_runtime(chat_engine, cache_reset_manager=cache_reset_manager)
-    configure_tokenizers(chat_tokenizer=chat_tokenizer, tool_tokenizer=tool_tokenizer)
-    configure_tool_adapter(tool_adapter)
 
     return RuntimeDeps(
         connections=connections,
@@ -92,14 +86,6 @@ async def build_runtime_deps() -> RuntimeDeps:
     )
 
 
-def clear_runtime_registries() -> None:
-    """Clear configured global runtime registries (used on shutdown/tests)."""
-    clear_engine_runtime()
-    configure_tokenizers(chat_tokenizer=None, tool_tokenizer=None)
-    configure_tool_adapter(None)
-
-
 __all__ = [
     "build_runtime_deps",
-    "clear_runtime_registries",
 ]

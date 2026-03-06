@@ -12,10 +12,10 @@ import uuid
 import websockets
 from typing import Any
 from tests.support.helpers.prompt import select_chat_prompt
+from tests.state import StreamState, TTFBSamples, SessionContext
 from tests.support.helpers.errors import ServerError, StreamError
-from tests.support.state import StreamState, TTFBSamples, SessionContext
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
-from tests.support.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
 from tests.support.helpers.fmt import (
     dim,
@@ -33,6 +33,7 @@ from tests.support.helpers.websocket import (
     send_client_end,
     finalize_metrics,
     build_start_payload,
+    build_api_key_headers,
     build_message_payload,
 )
 
@@ -150,12 +151,14 @@ async def run_test(
 ) -> None:
     """Run the history recall test."""
     url = with_api_key(ws_url, api_key=api_key)
+    ws_headers = build_api_key_headers(api_key=api_key)
     ttfb_samples = create_ttfb_aggregator()
     session_id = f"history-{uuid.uuid4()}"
     chat_prompt = select_chat_prompt(gender)
 
     async with websockets.connect(
         url,
+        additional_headers=ws_headers,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
     ) as ws:

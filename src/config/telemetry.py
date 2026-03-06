@@ -55,6 +55,8 @@ METRIC_TOOL_CLASSIFICATION_LATENCY = (
     "s",
     "Tool model inference time",
 )
+METRIC_PHASE_LATENCY = ("text_inference.phase_latency", "s", "Latency by execution phase")
+METRIC_WS_SEND_LATENCY = ("text_inference.ws_send_latency", "s", "WebSocket frame send latency")
 
 # Counters
 METRIC_REQUESTS_TOTAL = ("text_inference.requests_total", "{request}", "Total requests")
@@ -84,6 +86,27 @@ METRIC_TOOL_CLASSIFICATIONS_TOTAL = (
     "Tool model calls",
 )
 METRIC_CACHE_RESETS_TOTAL = ("text_inference.cache_resets_total", "{reset}", "vLLM cache resets")
+METRIC_PHASE_ERRORS_TOTAL = ("text_inference.phase_errors_total", "{error}", "Errors grouped by execution phase")
+METRIC_DISCONNECT_MID_STREAM_TOTAL = (
+    "text_inference.disconnect_mid_stream_total",
+    "{disconnect}",
+    "Client disconnects during server send",
+)
+METRIC_CANCEL_PRE_FIRST_TOKEN_TOTAL = (
+    "text_inference.cancel_pre_first_token_total",
+    "{cancel}",
+    "Cancelled generations before first token",
+)
+METRIC_EMPTY_MODEL_OUTPUT_TOTAL = (
+    "text_inference.empty_model_output_total",
+    "{output}",
+    "Generations that produced no output",
+)
+METRIC_ENGINE_ABORT_RETRYABLE_TOTAL = (
+    "text_inference.engine_abort_retryable_total",
+    "{abort}",
+    "Retryable abort calls issued to engine",
+)
 
 # UpDown counters
 METRIC_ACTIVE_CONNECTIONS = ("text_inference.active_connections", "{connection}", "Current WebSocket connections")
@@ -140,6 +163,8 @@ __all__ = [
     "METRIC_GENERATIONS_PER_SESSION",
     "METRIC_STARTUP_DURATION",
     "METRIC_TOOL_CLASSIFICATION_LATENCY",
+    "METRIC_PHASE_LATENCY",
+    "METRIC_WS_SEND_LATENCY",
     # Counters
     "METRIC_REQUESTS_TOTAL",
     "METRIC_TOKENS_GENERATED_TOTAL",
@@ -152,6 +177,11 @@ __all__ = [
     "METRIC_RATE_LIMIT_VIOLATIONS_TOTAL",
     "METRIC_TOOL_CLASSIFICATIONS_TOTAL",
     "METRIC_CACHE_RESETS_TOTAL",
+    "METRIC_PHASE_ERRORS_TOTAL",
+    "METRIC_DISCONNECT_MID_STREAM_TOTAL",
+    "METRIC_CANCEL_PRE_FIRST_TOKEN_TOTAL",
+    "METRIC_EMPTY_MODEL_OUTPUT_TOTAL",
+    "METRIC_ENGINE_ABORT_RETRYABLE_TOTAL",
     # UpDown counters
     "METRIC_ACTIVE_CONNECTIONS",
     "METRIC_ACTIVE_GENERATIONS",

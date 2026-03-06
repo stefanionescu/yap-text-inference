@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from typing import Any
-from src.state.session import HistoryTurn, SessionState
 from ...config import DEPLOY_CHAT, DEPLOY_TOOL
 from src.handlers.session.manager import SessionHandler
+from src.state.session import HistoryTurn, SessionState
 from ...handlers.session.parsing import parse_history_for_chat, parse_history_for_tool
 
 

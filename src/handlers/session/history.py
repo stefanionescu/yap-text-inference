@@ -26,18 +26,26 @@ from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING
+from src.config.tool import TOOL_HISTORY_TOKENS
 from src.state.session import HistoryTurn, SessionState
 from .parsing import parse_history_text, parse_history_as_tuples
-from src.tokens import count_tokens_chat, count_tokens_tool, build_user_history_for_tool, trim_text_to_token_limit_tool
-from src.config import (
-    DEPLOY_CHAT,
-    DEPLOY_TOOL,
-    HISTORY_MAX_TOKENS,
-    TRIMMED_HISTORY_LENGTH,
-)
+from src.config import DEPLOY_CHAT, DEPLOY_TOOL, HISTORY_MAX_TOKENS, TRIMMED_HISTORY_LENGTH
 
 if TYPE_CHECKING:
     from src.tokens.tokenizer import FastTokenizer
+
+
+def _fallback_count_tokens(text: str) -> int:
+    return len(text.split())
+
+
+def _fallback_trim_end(text: str, max_tokens: int) -> str:
+    if max_tokens <= 0:
+        return ""
+    tokens = text.split()
+    if len(tokens) <= max_tokens:
+        return text
+    return " ".join(tokens[-max_tokens:])
 
 
 def _eager_trigger() -> int:
@@ -50,7 +58,7 @@ def _count_chat_tokens(text: str, chat_tokenizer: FastTokenizer | None) -> int:
         return 0
     if chat_tokenizer is not None:
         return chat_tokenizer.count(text)
-    return count_tokens_chat(text)
+    return _fallback_count_tokens(text)
 
 
 def _count_tool_tokens(text: str, tool_tokenizer: FastTokenizer | None) -> int:
@@ -58,13 +66,13 @@ def _count_tool_tokens(text: str, tool_tokenizer: FastTokenizer | None) -> int:
         return 0
     if tool_tokenizer is not None:
         return tool_tokenizer.count(text)
-    return count_tokens_tool(text)
+    return _fallback_count_tokens(text)
 
 
 def _trim_tool_text(text: str, max_tokens: int, tool_tokenizer: FastTokenizer | None) -> str:
     if tool_tokenizer is not None:
         return tool_tokenizer.trim(text, max_tokens=max_tokens, keep="end")
-    return trim_text_to_token_limit_tool(text, max_tokens=max_tokens, keep="end")
+    return _fallback_trim_end(text, max_tokens)
 
 
 def _build_tool_history(
@@ -73,10 +81,27 @@ def _build_tool_history(
     tool_tokenizer: FastTokenizer | None,
 ) -> str:
     if tool_tokenizer is None:
-        return build_user_history_for_tool(user_texts, budget)
+        selected: list[str] = []
+        total_tokens = 0
+        for text in reversed(user_texts):
+            stripped = text.strip()
+            if not stripped:
+                continue
+            line_tokens = _fallback_count_tokens(stripped)
+            if not selected and line_tokens > budget:
+                clipped = _fallback_trim_end(stripped, budget).strip()
+                if clipped:
+                    selected.insert(0, clipped)
+                break
+            additional = line_tokens + (1 if selected else 0)
+            if total_tokens + additional > budget:
+                break
+            selected.insert(0, stripped)
+            total_tokens += additional
+        return "\n".join(selected)
 
     newline_tokens = tool_tokenizer.count("\n")
-    selected: list[str] = []
+    selected_lines: list[str] = []
     total_tokens = 0
 
     for text in reversed(user_texts):
@@ -84,18 +109,18 @@ def _build_tool_history(
         if not stripped:
             continue
         line_tokens = tool_tokenizer.count(stripped)
-        if not selected and line_tokens > budget:
+        if not selected_lines and line_tokens > budget:
             clipped = tool_tokenizer.trim(stripped, max_tokens=budget, keep="end").strip()
             if clipped:
-                selected.insert(0, clipped)
+                selected_lines.insert(0, clipped)
             break
-        additional = line_tokens + (newline_tokens if selected else 0)
+        additional = line_tokens + (newline_tokens if selected_lines else 0)
         if total_tokens + additional > budget:
             break
-        selected.insert(0, stripped)
+        selected_lines.insert(0, stripped)
         total_tokens += additional
 
-    return "\n".join(selected)
+    return "\n".join(selected_lines)
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
@@ -229,7 +254,7 @@ def render_tool_history_text(
     user_texts = get_user_texts(turns)
     if not user_texts:
         return ""
-    from src.config.tool import TOOL_HISTORY_TOKENS
+
     budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS or 1536))
     return _build_tool_history(
         user_texts,
@@ -324,7 +349,8 @@ class HistoryController:
         if DEPLOY_TOOL and self._tool_budget:
             state.tool_history_turns = [
                 HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="")
-                for t in state.history_turns if (t.user or "").strip()
+                for t in state.history_turns
+                if (t.user or "").strip()
             ]
             trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
         return render_history(state.history_turns)
@@ -336,8 +362,7 @@ class HistoryController:
             trim_history(state, chat_tokenizer=self._chat_tokenizer, trigger_tokens=_eager_trigger())
         if DEPLOY_TOOL and self._tool_budget:
             state.tool_history_turns = [
-                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="")
-                for t in turns if (t.user or "").strip()
+                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="") for t in turns if (t.user or "").strip()
             ]
             trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
         return render_history(state.history_turns)

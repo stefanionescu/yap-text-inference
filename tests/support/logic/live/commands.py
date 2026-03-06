@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
-from tests.support.helpers.fmt import dim, bold
 from collections.abc import Callable, Awaitable
+from tests.support.helpers.fmt import dim, bold
 
 if TYPE_CHECKING:
     from .client import LiveClient

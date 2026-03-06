@@ -15,6 +15,7 @@ from src.tool.adapter import ToolAdapter
 from src.state.session import SessionState
 from src.telemetry.sentry import add_breadcrumb
 from src.telemetry.instruments import get_metrics
+from src.telemetry.phases import record_phase_latency
 from src.handlers.session.manager import SessionHandler
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ async def _run_tool_call(
     m = get_metrics()
     m.tool_classification_latency.record(dt_ms / 1000.0)
     m.tool_classifications_total.add(1)
+    record_phase_latency("tool", dt_ms / 1000.0)
     add_breadcrumb("Tool classified", category="tool", data={"result": text, "ms": dt_ms})
     logger.info("tool_runner: done req_id=%s result=%s ms=%.1f", req_id, text, dt_ms)
 
@@ -56,13 +58,9 @@ async def run_toolcall(
     session_handler: SessionHandler,
     tool_adapter: ToolAdapter,
     request_id: str | None = None,
-    mark_active: bool = True,
 ) -> dict[str, Any]:
     """Execute tool classification pipeline."""
     req_id = request_id or f"tool-{uuid.uuid4()}"
-
-    if mark_active:
-        session_handler.set_active_request(state, req_id)
 
     return await _run_tool_call(
         state,
@@ -86,7 +84,6 @@ def launch_tool_request(
             session_handler=session_handler,
             tool_adapter=tool_adapter,
             request_id=tool_req_id,
-            mark_active=False,
         )
     )
     return tool_req_id, tool_task

@@ -311,32 +311,33 @@ bash scripts/lint.sh
 
 ## API — WebSocket `/ws`
 
-The server uses persistent WebSocket connections. One connection = one session. All messages use a flat JSON format with a `type` field — no envelope wrapper, no client-provided `session_id` or `request_id`.
+The server uses persistent WebSocket connections. One connection = one session. Client payloads are flat JSON with required `type` and `v` fields (no envelope wrapper, no client-provided `session_id` or `request_id`).
 
 ### WebSocket Protocol Highlights
 
-All messages (client and server) are flat JSON objects with a `type` field:
+All client messages must include `type` and protocol version `v` (default `1`, configurable via `WS_PROTOCOL_VERSION`):
 
 ```json
-{"type": "start", "gender": "female", "user_utterance": "hello", ...}
+{"type": "start", "v": 1, "gender": "female", "user_utterance": "hello", "...": "..."}
 {"type": "token", "text": "Hi there"}
 {"type": "done", "status": 200}
 ```
 
 - **Start**: `type:"start"` begins a turn. Sending a new `message` while one is running silently cancels the previous turn (barge-in).
 - **Sampling overrides (optional)**: Include a `sampling` object in the `start` or `message` to override chat decoding knobs, for example:
-  `{"type":"start", ..., "sampling":{"temperature":0.8,"top_p":0.85}}`. Supported keys are `temperature`, `top_p`, `top_k`, `min_p`, `repetition_penalty`, `presence_penalty`, `frequency_penalty`, and `sanitize_output` (boolean, default `true`). Any omitted key falls back to the server defaults in `src/config/sampling.py`.
-- **Cancel**: `type:"cancel"` immediately stops both chat and tool engines. The server replies with `{"type":"cancelled"}`.
-- **Client end**: `type:"end"` requests a clean shutdown. The server responds with `{"type":"done","status":200}` then closes with code `1000`.
-- **Heartbeat**: `type:"ping"` keeps the socket active. The server answers with `{"type":"pong"}`. Every message resets the idle timer.
+  `{"type":"start","v":1,...,"sampling":{"temperature":0.8,"top_p":0.85}}`. Supported keys are `temperature`, `top_p`, `top_k`, `min_p`, `repetition_penalty`, `presence_penalty`, `frequency_penalty`, and `sanitize_output` (boolean, default `true`). Any omitted key falls back to the server defaults in `src/config/sampling.py`.
+- **Cancel**: `{"type":"cancel","v":1}` immediately stops both chat and tool engines. The server replies with `{"type":"cancelled"}`.
+- **Client end**: `{"type":"end","v":1}` requests a clean shutdown. The server responds with `{"type":"done","status":200}` then closes with code `1000`.
+- **Heartbeat**: `{"type":"ping","v":1}` keeps the socket active. The server answers with `{"type":"pong"}`. Every message resets the idle timer.
 - **Idle timeout**: Connections with no activity for 150 s (configurable via `WS_IDLE_TIMEOUT_S`) are closed with code `4000`. Send periodic pings to stay connected.
 - **Rate limits**: Rolling-window quotas for messages and cancels per connection. Tune via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS` (see `src/config/limits.py`).
+- **Auth throttling**: Failed auth attempts are throttled per client host (`WS_AUTH_WINDOW_SECONDS`, `WS_MAX_AUTH_FAILURES_PER_WINDOW`).
 - **Connection limit**: Capped by `MAX_CONCURRENT_CONNECTIONS`. Excess connections get `server_at_capacity` and are closed.
 - **Done frame**: Every successful turn ends with `{"type":"done","status":200}`. Cancelled turns return `{"type":"cancelled"}`.
 - **Error format**: `{"type":"error","status":429,"code":"rate_limited","message":"..."}` — status codes follow HTTP conventions (400, 401, 429, 500, 503).
 
 ### Connection Lifecycle
-1. Client connects to `ws://server:8000/ws?api_key=your_key`
+1. Client connects to `ws://server:8000/ws` with auth header (`X-API-Key` or `Authorization: Bearer ...`)
 2. Client sends `start` message with persona and first utterance
 3. Connection stays open for multiple requests via `message` type
 4. Session state (persona, history) persists for the connection lifetime
@@ -344,14 +345,18 @@ All messages (client and server) are flat JSON objects with a `type` field:
 
 ### Authentication Methods
 ```javascript
-// Via query parameter (recommended for WebSocket)
-const ws = new WebSocket('ws://server:8000/ws?api_key=your_api_key');
-
-// Via header (if supported by client)
-const ws = new WebSocket('ws://server:8000/ws', [], {
+// Node ws client: X-API-Key header
+const ws = new WebSocket('ws://server:8000/ws', {
   headers: { 'X-API-Key': 'your_api_key' }
 });
+
+// Node ws client: Authorization bearer header
+const wsBearer = new WebSocket('ws://server:8000/ws', {
+  headers: { Authorization: 'Bearer your_api_key' }
+});
 ```
+
+Query-parameter authentication is not supported.
 
 ### Connection Limit Handling
 - If at capacity, connection is rejected with `server_at_capacity`
@@ -364,6 +369,7 @@ Start a turn:
 ```json
 {
   "type": "start",
+  "v": 1,
   "chat_prompt": "...full system prompt for the assistant...",
   "personality": "savage|flirty|...",
   "gender": "female|male",
@@ -378,13 +384,13 @@ Start a turn:
 Cancel a turn:
 
 ```json
-{"type": "cancel"}
+{"type": "cancel", "v": 1}
 ```
 
 Gracefully end a session:
 
 ```json
-{"type": "end"}
+{"type": "end", "v": 1}
 ```
 
 - The server responds with `{"type":"done","status":200}` and closes the socket with code `1000`.
@@ -392,7 +398,7 @@ Gracefully end a session:
 Keep the connection warm during long pauses:
 
 ```json
-{"type": "ping"}
+{"type": "ping", "v": 1}
 ```
 
 - Server replies with `{"type":"pong"}` and resets the idle timer (default 150s, set via `WS_IDLE_TIMEOUT_S`).
@@ -402,6 +408,7 @@ Continue an existing session (no history/persona re-send):
 ```json
 {
   "type": "message",
+  "v": 1,
   "user_utterance": "what about after that?",
   "sampling": { "temperature": 0.9 }
 }
@@ -415,7 +422,7 @@ Continue an existing session (no history/persona re-send):
 Authentication errors:
 
 ```json
-{"type": "error", "status": 401, "code": "authentication_failed", "message": "Authentication required."}
+{"type": "error", "status": 401, "code": "authentication_failed", "message": "Authentication required. Provide valid API key via 'X-API-Key' header or 'Authorization: Bearer <key>'."}
 ```
 
 Capacity errors:
@@ -445,14 +452,14 @@ Streaming tokens, final text, and done:
 Explicit cancellation:
 
 ```json
-{"type": "cancel"}
+{"type": "cancel", "v": 1}
 ```
 - The server immediately aborts both chat and tool engines, stops streaming, and sends `{"type":"cancelled"}`.
 
 Implicit barge-in (recommended):
 
 ```json
-{"type": "message", "user_utterance": "new message"}
+{"type": "message", "v": 1, "user_utterance": "new message"}
 ```
 
 - Sending `message` while a previous response is streaming silently aborts the old task and starts the new one — no `cancelled` frame is sent.
@@ -569,7 +576,7 @@ The pipeline writes metadata (`awq_metadata.json` or `build_metadata.json`) and 
 
 ## Test Clients
 
-All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/specs/e2e/test_warmup.py`) or source `.venv-local/bin/activate` for unit testing.
+All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/suites/e2e/test_warmup.py`) or source `.venv-local/bin/activate` for unit testing.
 
 > **Note:** Test clients always send a chat prompt. In tool-only deployments, the server ignores it automatically.
 
@@ -579,22 +586,22 @@ Run deterministic CPU-only unit tests for sanitizer behavior, token accounting, 
 
 ```bash
 python -m pytest -q \
-  tests/specs/integration/test_sanitizer.py \
-  tests/specs/unit/history/test_start_history.py \
-  tests/specs/unit/history/test_history_accounting.py \
-  tests/specs/unit/tokens/test_token_accounting.py \
-  tests/specs/unit/history/test_history_parsing.py \
-  tests/specs/unit/tokens/test_prefix_accounting.py \
-  tests/specs/unit/websocket/test_websocket_helpers.py
+  tests/suites/integration/test_sanitizer.py \
+  tests/suites/unit/history/test_start_history.py \
+  tests/suites/unit/history/test_history_accounting.py \
+  tests/suites/unit/tokens/test_token_accounting.py \
+  tests/suites/unit/history/test_history_parsing.py \
+  tests/suites/unit/tokens/test_prefix_accounting.py \
+  tests/suites/unit/websocket/test_websocket_helpers.py
 ```
 
 ### Warmup Test Client
 
 ```bash
 # run these after entering the venv via 'bash scripts/activate.sh'
-python3 tests/specs/e2e/test_warmup.py
-python3 tests/specs/e2e/test_warmup.py "who was Columbus?"
-python3 tests/specs/e2e/test_warmup.py --gender male --personality flirty "hello there"
+python3 tests/suites/e2e/test_warmup.py
+python3 tests/suites/e2e/test_warmup.py "who was Columbus?"
+python3 tests/suites/e2e/test_warmup.py --gender male --personality flirty "hello there"
 ```
 
 
@@ -609,7 +616,7 @@ Example:
 ```bash
 SERVER_WS_URL=ws://127.0.0.1:8000/ws \
 RECV_TIMEOUT_SEC=120 \
-python3 tests/specs/e2e/test_warmup.py --gender female --personality savage "hey there"
+python3 tests/suites/e2e/test_warmup.py --gender female --personality savage "hey there"
 ```
 
 Append `--double-ttfb` to send two identical requests back-to-back and compare cold vs warm latency.
@@ -618,7 +625,7 @@ Append `--double-ttfb` to send two identical requests back-to-back and compare c
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_live.py \
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_live.py \
   --server ws://127.0.0.1:8000 \
   --persona default_live_persona
 ```
@@ -635,7 +642,7 @@ Flags:
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_conversation.py --server ws://127.0.0.1:8000
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_conversation.py --server ws://127.0.0.1:8000
 ```
 
 Streams a 10-turn script to test history eviction and KV-cache reuse.
@@ -643,7 +650,7 @@ Streams a 10-turn script to test history eviction and KV-cache reuse.
 ### Vision / Toolcall Test
 
 ```bash
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_vision.py
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_vision.py
 ```
 
 Tests that toolcall decisions fire before chat streaming.
@@ -651,7 +658,7 @@ Tests that toolcall decisions fire before chat streaming.
 ### Tool Regression Test
 
 ```bash
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_tool.py \
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_tool.py \
   --server ws://127.0.0.1:8000/ws \
   --timeout 5 \
   --concurrency 4 \
@@ -667,9 +674,9 @@ TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_tool.py \
 
 ```bash
 # run inside the scripts/activate.sh environment
-python3 tests/specs/e2e/test_bench.py -n 32 -c 8
-python3 tests/specs/e2e/test_bench.py --gender female --personality flirty "who was Columbus?"
-python3 tests/specs/e2e/test_bench.py --server ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+python3 tests/suites/e2e/test_bench.py -n 32 -c 8
+python3 tests/suites/e2e/test_bench.py --gender female --personality flirty "who was Columbus?"
+python3 tests/suites/e2e/test_bench.py --server ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
 Reports p50/p95 latencies under concurrent load.
@@ -680,9 +687,9 @@ Pass `--double-ttfb` to run two sequential transactions per connection and compa
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --gender male --personality flirty
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --temperature 0.8 --top_p 0.9
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_history.py
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_history.py --gender male --personality flirty
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_history.py --temperature 0.8 --top_p 0.9
 ```
 
 Connects with a pre-built conversation history, then sends follow-up messages to test the assistant's recall of earlier exchanges. Tracks TTFB for each response and prints summary statistics (p50, p90, p95). Useful for validating prefix caching and KV cache reuse.
@@ -691,13 +698,13 @@ Connects with a pre-built conversation history, then sends follow-up messages to
 
 ```bash
 # 8 connections, 4 concurrent (defaults)
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --bench
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_history.py --bench
 
 # Custom load: 16 connections, 8 concurrent
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --bench -n 16 -c 8
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_history.py --bench -n 16 -c 8
 
 # With custom timeout
-TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --bench -n 32 -c 16 --timeout 300
+TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_history.py --bench -n 32 -c 16 --timeout 300
 ```
 
 Each connection starts with the full warm history and cycles through all recall messages. Output matches the benchmark client format with p50/p95 latencies.
@@ -706,8 +713,8 @@ Each connection starts with the full warm history and cycles through all recall 
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_cancel.py
-TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
+TEXT_API_KEY=your_api_key python3 tests/suites/integration/test_cancel.py
+TEXT_API_KEY=your_api_key python3 tests/suites/integration/test_cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
 ```
 
 Validates cancel behavior and recovery:
@@ -719,8 +726,8 @@ Validates cancel behavior and recovery:
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_idle.py
-TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_idle.py --normal-wait 5 --idle-expect-seconds 150
+TEXT_API_KEY=your_api_key python3 tests/suites/integration/test_idle.py
+TEXT_API_KEY=your_api_key python3 tests/suites/integration/test_idle.py --normal-wait 5 --idle-expect-seconds 150
 ```
 
 Tests WebSocket idle timeout and connection lifecycle:

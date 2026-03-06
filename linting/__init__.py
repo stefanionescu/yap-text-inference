@@ -33,7 +33,7 @@ modules/            Config-module purity rules
 testing/            Test file placement and naming rules
     test_function_placement.py  Test functions only in unit/ and integration/.
     unit_test_domain_folders.py Unit tests must live in domain subfolders.
-    no_test_file_prefix.py      Test filenames must not use the test_ prefix.
+    test_file_prefix.py         Test filenames must use the test_ prefix.
     no_conftest_in_subfolders.py Only one conftest.py allowed (tests root).
 
 infra/              Build and deploy policy rules

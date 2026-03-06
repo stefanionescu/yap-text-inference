@@ -12,19 +12,19 @@ import uuid
 import asyncio
 import websockets
 from typing import Any
-from tests.support.helpers.metrics import secs_to_ms
 from .drain import DrainConfig, drain_response
 from collections.abc import Callable, Sequence
+from tests.support.helpers.metrics import secs_to_ms
 from tests.support.helpers.rate import SlidingWindowPacer
 from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
-from tests.support.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
+from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
 from tests.support.helpers.websocket import (
     send_client_end,
     build_start_payload,
-    build_message_payload,
     connect_with_retries,
+    build_message_payload,
 )
-from tests.support.state import (
+from tests.state import (
     CaseStep,
     CaseResult,
     StepTiming,
@@ -227,6 +227,7 @@ async def _run_case(case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
         async with connect_with_retries(
             lambda: websockets.connect(
                 cfg.ws_url,
+                additional_headers=cfg.ws_headers,
                 max_queue=None,
                 ping_interval=cfg.ping_interval,
                 ping_timeout=cfg.ping_timeout,

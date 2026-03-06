@@ -11,7 +11,7 @@ import os
 from typing import Any
 from collections.abc import Mapping
 from argparse import Namespace, ArgumentParser
-from tests.support.config import (
+from tests.config import (
     CHAT_TOP_K_DEFAULT,
     CHAT_TOP_P_DEFAULT,
     DEFAULT_SERVER_WS_URL,

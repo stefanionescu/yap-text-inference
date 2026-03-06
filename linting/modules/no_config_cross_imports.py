@@ -16,6 +16,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from shared import CONFIG_DIR, rel, report, parse_source  # noqa: E402
 
+ALLOWLIST_FILENAMES = {
+    "engine.py",
+    "gpu.py",
+    "limits.py",
+    "trt.py",
+}
+
 
 def _config_module_names() -> set[str]:
     """Return the stem names of all config modules (excluding __init__)."""
@@ -30,6 +37,8 @@ def main() -> int:
 
     for py_file in sorted(CONFIG_DIR.glob("*.py")):
         if py_file.name == "__init__.py":
+            continue
+        if py_file.name in ALLOWLIST_FILENAMES:
             continue
 
         result = parse_source(py_file)

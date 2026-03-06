@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import importlib
 from typing import Any
-from tests.support.state import PersonaDefinition
+from tests.state import PersonaDefinition
 from tests.support.helpers.prompt import normalize_gender
-from tests.support.config import PERSONA_MODULE, DEFAULT_PERSONA_NAME
+from tests.config import PERSONA_MODULE, DEFAULT_PERSONA_NAME
 
 # ============================================================================
 # Data Structures

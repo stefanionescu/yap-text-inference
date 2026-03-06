@@ -4,7 +4,7 @@ This module re-exports all state definitions from their respective modules,
 providing a single import point for state types.
 """
 
-from .start import StartPlan
+from .turn import TurnPlan
 from .engines import EngineOutput
 from .profiles import ModelProfile
 from .time import SessionTimestamp
@@ -14,7 +14,7 @@ from .calibration import TotalLengthPolicy
 from .tool import RequestItem, ToolModelInfo
 from .tokens import TokenizerValidationResult
 from .session import HistoryTurn, SessionState
-from .execution import CancelCheck, ChatStreamConfig
+from .execution import CancelCheck, ChatStreamConfig, CompletionCounter
 from .quantization import EnvironmentInfo, CalibrationConfig, _DatasetInfo
 
 __all__ = [
@@ -29,10 +29,11 @@ __all__ = [
     "RequestItem",
     "SessionState",
     "SessionTimestamp",
-    "StartPlan",
+    "TurnPlan",
     "TokenizerValidationResult",
     "TotalLengthPolicy",
     "TRTPushJob",
+    "CompletionCounter",
     "_ChatStreamState",
     "_DatasetInfo",
     "ChatStreamConfig",

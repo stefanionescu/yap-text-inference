@@ -10,8 +10,8 @@ from __future__ import annotations
 import time
 from typing import Any
 from .message import iter_messages
+from tests.state.metrics import StreamState
 from tests.support.helpers.metrics import round_ms
-from tests.support.state.metrics import StreamState
 from tests.support.helpers.errors import StreamError
 from tests.support.helpers.regex import word_count_at_least, contains_complete_sentence
 

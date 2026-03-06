@@ -16,10 +16,11 @@ import uuid
 import asyncio
 from tests.support.helpers.prompt import select_chat_prompt
 from .clients import run_normal_client, run_canceling_client
+from tests.support.helpers.websocket import build_api_key_headers
 from tests.support.helpers.fmt import dim, red, bold, green, section_header
-from tests.support.state import SessionContext, CancelClientResult, NormalClientResult
+from tests.state import SessionContext, CancelClientResult, NormalClientResult
 from .output import CANCEL_TEST_MESSAGE, print_cancel_client_result, print_normal_client_results
-from tests.support.config import (
+from tests.config import (
     CANCEL_POST_WAIT_DEFAULT,
     CANCEL_NUM_CLIENTS_DEFAULT,
     CANCEL_RECV_TIMEOUT_DEFAULT,
@@ -31,6 +32,7 @@ from tests.support.config import (
 async def run_cancel_suite(
     ws_url: str,
     *,
+    api_key: str | None,
     gender: str,
     personality: str,
     num_clients: int = CANCEL_NUM_CLIENTS_DEFAULT,
@@ -69,6 +71,8 @@ async def run_cancel_suite(
 
     chat_prompt = select_chat_prompt(gender)
 
+    ws_headers = build_api_key_headers(api_key=api_key)
+
     # Event for coordinating normal clients
     recovery_done = asyncio.Event()
 
@@ -86,6 +90,7 @@ async def run_cancel_suite(
     cancel_task: asyncio.Task[CancelClientResult] = asyncio.create_task(
         run_canceling_client(
             ws_url,
+            ws_headers,
             cancel_ctx,
             CANCEL_TEST_MESSAGE,
             cancel_delay_s,
@@ -107,6 +112,7 @@ async def run_cancel_suite(
         task = asyncio.create_task(
             run_normal_client(
                 ws_url,
+                ws_headers,
                 normal_ctx,
                 client_id=i + 1,
                 user_msg=CANCEL_TEST_MESSAGE,

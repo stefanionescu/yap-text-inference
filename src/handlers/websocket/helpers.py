@@ -23,6 +23,7 @@ Message Protocol:
 from __future__ import annotations
 
 import json
+import time
 import asyncio
 import logging
 import contextlib
@@ -31,8 +32,10 @@ from src.state import _ChatStreamState
 from collections.abc import AsyncIterator
 from src.state.session import SessionState
 from ...config.websocket import WS_STATUS_OK
+from src.telemetry.instruments import get_metrics
 from fastapi import WebSocket, WebSocketDisconnect
 from src.handlers.session.manager import SessionHandler
+from src.telemetry.phases import record_phase_error, record_phase_latency
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +101,7 @@ def _append_history(
 
 async def _handle_empty_output(ws: WebSocket) -> None:
     logger.warning("empty model output")
+    get_metrics().empty_model_output_total.add(1)
     await safe_send_flat(
         ws,
         "error",
@@ -128,6 +132,8 @@ async def safe_send_text(ws: WebSocket, text: str) -> bool:
     try:
         await ws.send_text(text)
     except WebSocketDisconnect:
+        get_metrics().disconnect_mid_stream_total.add(1)
+        record_phase_error("send", "client_disconnect")
         logger.info("WebSocket disconnected while sending %s bytes", len(text))
         return False
     return True
@@ -135,7 +141,12 @@ async def safe_send_text(ws: WebSocket, text: str) -> bool:
 
 async def safe_send_json(ws: WebSocket, payload: dict[str, Any]) -> bool:
     """Send a JSON payload, swallowing client disconnects."""
-    return await safe_send_text(ws, json.dumps(payload))
+    t0 = time.perf_counter()
+    sent = await safe_send_text(ws, json.dumps(payload))
+    elapsed = time.perf_counter() - t0
+    record_phase_latency("send", elapsed)
+    get_metrics().ws_send_latency.record(elapsed)
+    return sent
 
 
 async def safe_send_flat(ws: WebSocket, msg_type: str, *, status: int | None = None, **fields: Any) -> bool:

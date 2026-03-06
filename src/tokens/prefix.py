@@ -20,7 +20,6 @@ This module handles the screen prefix logic for chat sessions:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from .utils import count_tokens_chat
 from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS, DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 
 if TYPE_CHECKING:
@@ -45,6 +44,8 @@ def count_prefix_tokens(prefix: str | None) -> int:
     # Screen prefixes only apply when chat model is deployed
     if not DEPLOY_CHAT:
         return 0
+    from .utils import count_tokens_chat  # noqa: PLC0415
+
     return count_tokens_chat(f"{prefix.strip()} ")
 
 

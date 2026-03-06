@@ -13,14 +13,14 @@ import logging
 import websockets
 from .stream import stream_exchange
 from collections.abc import Sequence
-from tests.support.state import ConversationSession
+from tests.state import ConversationSession
 from tests.support.helpers.rate import SlidingWindowPacer
 from tests.support.helpers.prompt import select_chat_prompt
-from tests.support.helpers.env import get_int_env, get_float_env
 from .session import build_start_payload, build_message_payload
-from tests.support.helpers.websocket import with_api_key, create_tracker, send_client_end
+from tests.support.helpers.env import get_int_env, get_float_env
+from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.support.helpers.websocket import with_api_key, create_tracker, send_client_end, build_api_key_headers
 from tests.support.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
-from tests.support.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.helpers.fmt import (
     dim,
     format_user,
@@ -54,6 +54,7 @@ async def run_conversation(
     personality = personality or DEFAULT_PERSONALITY
 
     ws_url_with_auth = with_api_key(ws_url, api_key=api_key)
+    ws_headers = build_api_key_headers(api_key=api_key)
     chat_prompt = select_chat_prompt(gender)
     session = ConversationSession(
         session_id=f"sess-{uuid.uuid4()}",
@@ -72,6 +73,7 @@ async def run_conversation(
 
     async with websockets.connect(
         ws_url_with_auth,
+        additional_headers=ws_headers,
         max_queue=None,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,

@@ -15,8 +15,8 @@ from typing import Any
 from tests.support.helpers.fmt import dim
 from .handlers import build_recovery_handlers
 from .phases import run_drain_phase, run_cancel_phase, run_recovery_phase
-from tests.support.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
-from tests.support.state import (
+from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.state import (
     SessionContext,
     DrainPhaseResult,
     CancelPhaseResult,
@@ -37,6 +37,7 @@ from tests.support.helpers.websocket import (
 
 async def run_normal_client(
     ws_url: str,
+    ws_headers: dict[str, str],
     ctx: SessionContext,
     client_id: int,
     user_msg: str,
@@ -62,6 +63,7 @@ async def run_normal_client(
         async with connect_with_retries(
             lambda: websockets.connect(
                 ws_url,
+                additional_headers=ws_headers,
                 max_queue=None,
                 ping_interval=DEFAULT_WS_PING_INTERVAL,
                 ping_timeout=DEFAULT_WS_PING_TIMEOUT,
@@ -133,6 +135,7 @@ async def run_normal_client(
 
 async def run_canceling_client(
     ws_url: str,
+    ws_headers: dict[str, str],
     ctx: SessionContext,
     user_msg: str,
     cancel_delay: float,
@@ -166,6 +169,7 @@ async def run_canceling_client(
         async with connect_with_retries(
             lambda: websockets.connect(
                 ws_url,
+                additional_headers=ws_headers,
                 max_queue=None,
                 ping_interval=DEFAULT_WS_PING_INTERVAL,
                 ping_timeout=DEFAULT_WS_PING_TIMEOUT,

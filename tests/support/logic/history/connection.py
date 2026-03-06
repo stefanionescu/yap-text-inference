@@ -11,12 +11,12 @@ import uuid
 import asyncio
 import websockets
 from typing import Any
-from tests.support.config import WS_MAX_QUEUE
+from tests.config import WS_MAX_QUEUE
 from tests.support.helpers.errors import StreamError
 from tests.support.helpers.metrics import error_result
-from tests.support.state import StreamState, SessionContext, HistoryBenchConfig
-from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
+from tests.state import StreamState, SessionContext, HistoryBenchConfig
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.support.helpers.websocket import (
     with_api_key,
     consume_stream,
@@ -25,6 +25,7 @@ from tests.support.helpers.websocket import (
     finalize_metrics,
     build_start_payload,
     connect_with_retries,
+    build_api_key_headers,
     build_message_payload,
 )
 
@@ -102,10 +103,17 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
     """Execute multiple transactions over a single WebSocket connection."""
     results: list[dict[str, Any]] = []
     auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
+    ws_headers = build_api_key_headers(api_key=cfg.api_key)
     session_id = f"history-bench-{uuid.uuid4()}"
 
     try:
-        async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)) as ws:
+        async with connect_with_retries(
+            lambda: websockets.connect(
+                auth_url,
+                additional_headers=ws_headers,
+                max_queue=WS_MAX_QUEUE,
+            )
+        ) as ws:
             try:
                 for phase, user_text in enumerate(HISTORY_RECALL_MESSAGES, 1):
                     hist = list(WARM_HISTORY) if phase == 1 else None

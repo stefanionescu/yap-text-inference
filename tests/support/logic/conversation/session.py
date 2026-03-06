@@ -8,7 +8,7 @@ each exchange. It maintains conversation history across multiple turns.
 from __future__ import annotations
 
 from typing import Any
-from tests.support.state import SessionContext, ConversationSession
+from tests.state import SessionContext, ConversationSession
 from tests.support.helpers.websocket import (
     build_start_payload as build_ws_start_payload,
     build_message_payload as build_ws_message_payload,

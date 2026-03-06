@@ -12,9 +12,9 @@ Metrics reported:
 - first_3_words_ms: time from request send to first three words
 
 Usage:
-  python3 tests/specs/e2e/test_warmup.py
-  python3 tests/specs/e2e/test_warmup.py "your custom message"
-  python3 tests/specs/e2e/test_warmup.py --gender male --personality playful "hello there"
+  python3 tests/suites/e2e/test_warmup.py
+  python3 tests/suites/e2e/test_warmup.py "your custom message"
+  python3 tests/suites/e2e/test_warmup.py --gender male --personality playful "hello there"
 
 Env:
   SERVER_WS_URL=ws://127.0.0.1:8000/ws

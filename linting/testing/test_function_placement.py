@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Enforce that test functions only live in tests/specs/*.
+"""Enforce that test functions only live in tests/suites/*.
 
 Files under tests/support/ are support modules (fixtures, payloads, runners)
 and must not contain ``def test_*`` functions.
@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from shared import TESTS_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
 
-ALLOWED_SPEC_DIRS = {"unit", "integration", "e2e"}
+ALLOWED_SUITE_DIRS = {"unit", "integration", "e2e"}
 
 
 def main() -> int:
@@ -29,7 +29,7 @@ def main() -> int:
         rel_to_tests = py_file.relative_to(TESTS_DIR)
         top_dir = rel_to_tests.parts[0] if len(rel_to_tests.parts) > 1 else None
 
-        if top_dir == "specs" and len(rel_to_tests.parts) > 2 and rel_to_tests.parts[1] in ALLOWED_SPEC_DIRS:
+        if top_dir == "suites" and len(rel_to_tests.parts) > 2 and rel_to_tests.parts[1] in ALLOWED_SUITE_DIRS:
             continue
 
         result = parse_source(py_file)
@@ -41,7 +41,7 @@ def main() -> int:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name.startswith("test_"):
                 violations.append(
                     f"  {rel(py_file)}: def {node.name}() (line {node.lineno}) — "
-                    f"test functions belong in tests/specs/"
+                    f"test functions belong in tests/suites/"
                 )
 
     return report("Test-function-placement violations", violations)

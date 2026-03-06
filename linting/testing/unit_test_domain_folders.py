@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Enforce that unit test files live inside domain subfolders.
 
-Tests must be at ``tests/specs/unit/<domain>/test_foo.py``, never directly at
-``tests/specs/unit/test_foo.py``.  This keeps tests organized by domain and prevents
+Tests must be at ``tests/suites/unit/<domain>/test_foo.py``, never directly at
+``tests/suites/unit/test_foo.py``.  This keeps tests organized by domain and prevents
 flat file accumulation.
 """
 
@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from shared import ROOT, rel, report  # noqa: E402
 
-UNIT_DIR = ROOT / "tests" / "specs" / "unit"
+UNIT_DIR = ROOT / "tests" / "suites" / "unit"
 
 
 def main() -> int:
@@ -26,7 +26,7 @@ def main() -> int:
 
     for child in sorted(UNIT_DIR.iterdir()):
         if child.is_file() and child.suffix == ".py" and child.name != "__init__.py":
-            violations.append(f"  {rel(child)}: must be inside a domain subfolder (tests/specs/unit/<domain>/)")
+            violations.append(f"  {rel(child)}: must be inside a domain subfolder (tests/suites/unit/<domain>/)")
 
     return report("Unit-test-domain-folders violations", violations)
 

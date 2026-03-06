@@ -15,7 +15,7 @@ import websockets
 from typing import Any
 from dataclasses import field, dataclass
 from tests.support.helpers.metrics import round_ms
-from tests.support.state import LiveSession, StreamState, StreamResult
+from tests.state import LiveSession, StreamState, StreamResult
 from .session import build_start_payload, build_message_payload
 from tests.support.helpers.fmt import dim, cyan, magenta, format_metrics_inline
 from tests.support.helpers.errors import ServerError, TestClientError, IdleTimeoutError, ConnectionClosedError

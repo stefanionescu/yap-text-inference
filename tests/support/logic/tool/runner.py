@@ -11,9 +11,10 @@ from .cases import build_cases
 from .executor import run_all_cases
 from collections.abc import Callable
 from tests.support.helpers.prompt import select_chat_prompt
-from tests.support.state import CaseResult, RunnerConfig, ToolTestCase
+from tests.state import CaseResult, RunnerConfig, ToolTestCase
+from tests.support.helpers.websocket import build_api_key_headers
 from .reporting import save_logs, print_summary, print_case_results
-from tests.support.config import PROGRESS_BAR_WIDTH, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
+from tests.config import PROGRESS_BAR_WIDTH, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 
 # ============================================================================
 # Internal Helpers
@@ -67,6 +68,7 @@ def _make_progress_renderer() -> Callable[[int, int], None]:
 async def run_suite(
     *,
     ws_url: str,
+    api_key: str | None,
     gender: str,
     personality: str,
     timeout_s: float,
@@ -79,7 +81,8 @@ async def run_suite(
     Execute the tool-call regression suite and print per-case + summary output.
 
     Args:
-        ws_url: WebSocket URL with API key included.
+        ws_url: WebSocket URL.
+        api_key: API key used for websocket auth headers.
         gender: Assistant gender for persona selection.
         personality: Assistant personality.
         timeout_s: Per-turn timeout in seconds.
@@ -121,6 +124,7 @@ async def run_suite(
 
     cfg = RunnerConfig(
         ws_url=ws_url,
+        ws_headers=build_api_key_headers(api_key=api_key),
         gender=gender,
         personality=personality,
         chat_prompt=chat_prompt,

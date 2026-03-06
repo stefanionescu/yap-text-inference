@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 import asyncio
 from typing import Any
-from tests.support.state import BenchmarkConfig
+from tests.state import BenchmarkConfig
 from .connection import execute_connection
 from tests.support.helpers.concurrency import distribute_requests
 

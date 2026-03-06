@@ -6,7 +6,7 @@
     - Supports hot-reloading persona definitions from `tests/support/prompts/detailed.py`
 - Lets you select personas from `tests/support/prompts/detailed.py` via the `--persona` flag
 - Prints streaming tokens, metrics, and structured error information
-- Sends a graceful `{"type": "end"}` message on /stop, Ctrl+C, or server close
+- Sends a graceful `{"type": "end", "v": 1}` message on /stop, Ctrl+C, or server close
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ if __package__ in {None, ""}:
 
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
 from tests.support.logic.live.personas import DEFAULT_PERSONA_NAME  # noqa: E402
-from tests.support.config import DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC  # noqa: E402
+from tests.config import DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC  # noqa: E402
 from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
 
 setup_repo_path()

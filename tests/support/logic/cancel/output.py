@@ -6,7 +6,7 @@ to the console using the standard test output formatting helpers.
 
 from __future__ import annotations
 
-from tests.support.state import CancelClientResult, NormalClientResult
+from tests.state import CancelClientResult, NormalClientResult
 from tests.support.helpers.fmt import (
     red,
     green,

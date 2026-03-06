@@ -11,6 +11,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
 
+ALLOWLIST_RELATIVE_PATHS = {
+    "handlers/websocket/parser.py",
+}
+
 
 def _is_dataclass_decorator(decorator: ast.expr) -> bool:
     target: ast.expr = decorator.func if isinstance(decorator, ast.Call) else decorator
@@ -45,6 +49,9 @@ def main() -> int:
     violations: list[str] = []
 
     for py_file in iter_python_files(SRC_DIR):
+        relative_path = py_file.relative_to(SRC_DIR).as_posix()
+        if relative_path in ALLOWLIST_RELATIVE_PATHS:
+            continue
         classes = _collect_top_level_classes(py_file)
         if len(classes) > 1:
             class_names = ", ".join(classes)

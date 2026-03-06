@@ -12,9 +12,9 @@ import uuid
 import asyncio
 import websockets
 from typing import Any
-from tests.support.config import WS_MAX_QUEUE
+from tests.config import WS_MAX_QUEUE
 from tests.support.helpers.metrics import error_result
-from tests.support.state import StreamState, SessionContext, BenchmarkConfig
+from tests.state import StreamState, SessionContext, BenchmarkConfig
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from tests.support.helpers.websocket import (
     record_token,
@@ -26,6 +26,7 @@ from tests.support.helpers.websocket import (
     finalize_metrics,
     build_start_payload,
     connect_with_retries,
+    build_api_key_headers,
     build_message_payload,
 )
 
@@ -151,10 +152,17 @@ async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
     phases = 2 if cfg.double_ttfb else 1
     results: list[dict[str, Any]] = []
     auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
+    ws_headers = build_api_key_headers(api_key=cfg.api_key)
 
     session_id = f"bench-{uuid.uuid4()}"
     try:
-        async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)) as ws:
+        async with connect_with_retries(
+            lambda: websockets.connect(
+                auth_url,
+                additional_headers=ws_headers,
+                max_queue=WS_MAX_QUEUE,
+            )
+        ) as ws:
             try:
                 for phase in range(1, phases + 1):
                     result = await _execute_phase(ws, cfg, phase, session_id)

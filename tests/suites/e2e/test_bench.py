@@ -38,7 +38,7 @@ if __package__ in {None, ""}:
 
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
 from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
-from tests.support.config import (  # noqa: E402
+from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
     DEFAULT_SERVER_WS_URL,
