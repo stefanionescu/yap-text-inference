@@ -18,7 +18,8 @@ class TurnPlan:
     static_prefix: str
     runtime_text: str
     history_turns: list[HistoryTurn]
-    user_utt: str
+    chat_user_utt: str | None = None
+    tool_user_utt: str | None = None
     history_turn_id: str | None = None
     sampling_overrides: dict[str, float | int] | None = None
     apply_screen_checked_prefix: bool = False

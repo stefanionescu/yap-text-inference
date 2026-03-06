@@ -54,6 +54,7 @@ class SessionHandler:
         self._chat_engine = chat_engine
         self._chat_tokenizer = chat_tokenizer
         self._tool_tokenizer = tool_tokenizer
+        self._tool_history_budget = tool_history_budget
         self._history = HistoryController(
             tool_history_budget=tool_history_budget,
             chat_tokenizer=chat_tokenizer,
@@ -151,12 +152,18 @@ class SessionHandler:
         return self._history.get_turns(state)
 
     def get_user_texts(self, state: SessionState) -> list[str]:
-        """Get raw user texts (untrimmed)."""
+        """Get user texts from the active history store."""
         return self._history.get_user_texts(state)
 
-    def get_tool_history_text(self, state: SessionState, *, max_tokens: int | None = None) -> str:
+    def get_tool_history_text(
+        self,
+        state: SessionState,
+        *,
+        max_tokens: int | None = None,
+        include_latest: bool = True,
+    ) -> str:
         """Get trimmed history tailored for the tool model."""
-        return self._history.get_tool_history_text(state, max_tokens=max_tokens)
+        return self._history.get_tool_history_text(state, max_tokens=max_tokens, include_latest=include_latest)
 
     def set_history_text(self, state: SessionState, history_text: str) -> str:
         return self._history.set_text(state, history_text)
@@ -164,6 +171,16 @@ class SessionHandler:
     def set_history_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
         """Set history from pre-parsed turns and apply import-time trimming."""
         return self._history.set_turns(state, turns)
+
+    def set_history_mode_turns(
+        self,
+        state: SessionState,
+        *,
+        chat_turns: list[HistoryTurn] | None = None,
+        tool_turns: list[HistoryTurn] | None = None,
+    ) -> str:
+        """Set chat/tool histories independently and apply import-time trimming."""
+        return self._history.set_mode_turns(state, chat_turns=chat_turns, tool_turns=tool_turns)
 
     def get_history_turn_count(self, state: SessionState) -> int:
         """Get the number of history turns currently stored."""
@@ -173,19 +190,34 @@ class SessionHandler:
             return len(state.tool_history_turns)
         return 0
 
-    def append_user_utterance(self, state: SessionState, user_utt: str) -> str | None:
+    def append_user_utterance(
+        self,
+        state: SessionState,
+        chat_user_utt: str,
+        *,
+        tool_user_utt: str | None = None,
+    ) -> str | None:
         normalized_user = strip_screen_prefix(
-            user_utt or "",
+            chat_user_utt or "",
             self.get_check_screen_prefix(state),
             self.get_screen_checked_prefix(state),
         )
-        return self._history.append_user_turn(state, normalized_user)
+        normalized_tool_user = (
+            strip_screen_prefix(
+                tool_user_utt or "",
+                self.get_check_screen_prefix(state),
+                self.get_screen_checked_prefix(state),
+            )
+            if tool_user_utt is not None
+            else None
+        )
+        return self._history.append_user_turn(state, normalized_user, tool_user_utt=normalized_tool_user)
 
     def append_history_turn(
-        self, state: SessionState, user_utt: str, assistant_text: str, *, turn_id: str | None = None
+        self, state: SessionState, chat_user_utt: str, assistant_text: str, *, turn_id: str | None = None
     ) -> str:
         normalized_user = strip_screen_prefix(
-            user_utt or "",
+            chat_user_utt or "",
             self.get_check_screen_prefix(state),
             self.get_screen_checked_prefix(state),
         )
@@ -264,23 +296,38 @@ class SessionHandler:
     # Token budget helpers
     # ============================================================================
 
-    def get_effective_user_utt_max_tokens(self, state: SessionState | None, *, for_followup: bool = False) -> int:
-        """Get the effective max tokens for user utterance after accounting for prefix."""
+    def get_effective_chat_user_utt_max_tokens(self, state: SessionState | None, *, for_followup: bool = False) -> int:
+        """Get the effective max tokens for chat user utterance after accounting for prefix."""
         if state is None:
             prefix = DEFAULT_SCREEN_CHECKED_PREFIX if for_followup else DEFAULT_CHECK_SCREEN_PREFIX
             return max(1, USER_UTT_MAX_TOKENS - self._count_prefix_tokens(prefix))
         prefix_tokens = state.screen_checked_prefix_tokens if for_followup else state.check_screen_prefix_tokens
         return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
 
-    def trim_user_utterance(self, user_utt: str, max_tokens: int) -> str:
-        """Trim a user utterance using the active deployment tokenizer."""
-        text = user_utt or ""
+    def trim_chat_user_utterance(self, chat_user_utt: str, max_tokens: int) -> str:
+        """Trim a chat user utterance using chat-side tokenizer semantics."""
+        text = chat_user_utt or ""
         if max_tokens <= 0 or not text:
             return ""
         if DEPLOY_CHAT and self._chat_tokenizer is not None:
             return self._chat_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
         if DEPLOY_TOOL and self._tool_tokenizer is not None:
             return self._tool_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
+        return text
+
+    def get_effective_tool_user_utt_max_tokens(self) -> int:
+        """Get max tokens allowed for tool-side user utterance trimming."""
+        if self._tool_history_budget is not None:
+            return max(1, int(self._tool_history_budget))
+        return max(1, USER_UTT_MAX_TOKENS)
+
+    def trim_tool_user_utterance(self, tool_user_utt: str, max_tokens: int) -> str:
+        """Trim a user utterance using the tool tokenizer semantics."""
+        text = tool_user_utt or ""
+        if max_tokens <= 0 or not text:
+            return ""
+        if self._tool_tokenizer is not None:
+            return self._tool_tokenizer.trim(text, max_tokens=max_tokens, keep="end")
         return text
 
     def count_chat_tokens(self, text: str) -> int:

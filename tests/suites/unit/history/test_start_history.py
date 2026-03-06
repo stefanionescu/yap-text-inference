@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from src.tokens import count_tokens_chat
+from src.tokens import count_tokens_chat, count_tokens_tool
 from src.state.session import SessionState
 import src.messages.start.history as start_history
 import src.handlers.session.history as session_history
@@ -74,7 +74,7 @@ def test_resolve_history_trims_when_over_budget(
         assert isinstance(turns, list)
 
 
-def test_trim_user_utterance_uses_effective_budget(
+def test_trim_chat_user_utterance_uses_effective_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     with use_local_tokenizers():
@@ -85,11 +85,11 @@ def test_trim_user_utterance_uses_effective_budget(
         monkeypatch.setattr(start_history, "DEPLOY_TOOL", False)
         monkeypatch.setattr(
             handler,
-            "get_effective_user_utt_max_tokens",
+            "get_effective_chat_user_utt_max_tokens",
             lambda _state, *, for_followup=False: 5,
         )
 
-        trimmed = start_history.trim_user_utterance(handler, state, "alpha bravo charlie")
+        trimmed = start_history.trim_chat_user_utterance(handler, state, "alpha bravo charlie")
         assert count_tokens_chat(trimmed) <= 5
 
 
@@ -175,3 +175,56 @@ def test_resolve_history_tool_only_trims_at_import(monkeypatch: pytest.MonkeyPat
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) < 10
         assert len(state.tool_history_turns) >= 1
+
+
+def test_resolve_history_tool_only_clips_single_oversized_seed_turn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tool-only seed history clips a single oversized user turn to budget."""
+    with use_local_tokenizers():
+        monkeypatch.setattr(session_history, "DEPLOY_CHAT", False)
+        monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
+        monkeypatch.setattr(start_history, "DEPLOY_CHAT", False)
+        monkeypatch.setattr(start_history, "DEPLOY_TOOL", True)
+
+        handler = SessionHandler(chat_engine=None, tool_history_budget=3)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        msg = {
+            "history": [
+                {"role": "user", "content": "alpha bravo charlie delta echo foxtrot"},
+            ]
+        }
+        start_history.resolve_history(handler, state, msg)
+
+        assert state.tool_history_turns is not None
+        assert len(state.tool_history_turns) == 1
+        clipped = state.tool_history_turns[0].user
+        assert count_tokens_tool(clipped) <= 3
+
+
+def test_resolve_history_both_modes_stores_chat_and_tool_separately(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Both mode keeps assistant turns in chat store and user-only turns in tool store."""
+    with use_local_tokenizers():
+        monkeypatch.setattr(session_history, "DEPLOY_CHAT", True)
+        monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
+        monkeypatch.setattr(start_history, "DEPLOY_CHAT", True)
+        monkeypatch.setattr(start_history, "DEPLOY_TOOL", True)
+
+        handler = SessionHandler(chat_engine=None, tool_history_budget=8)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        msg = {
+            "history": [
+                {"role": "user", "content": "hello one"},
+                {"role": "assistant", "content": "hi"},
+                {"role": "user", "content": "show this please"},
+                {"role": "assistant", "content": "ok"},
+            ]
+        }
+        start_history.resolve_history(handler, state, msg)
+
+        assert state.history_turns is not None
+        assert state.tool_history_turns is not None
+        assert any((turn.assistant or "").strip() for turn in state.history_turns)
+        assert all((turn.assistant or "") == "" for turn in state.tool_history_turns)

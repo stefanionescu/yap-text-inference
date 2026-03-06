@@ -153,27 +153,27 @@ class ToolAdapter:
         except Exception as exc:  # noqa: BLE001
             logger.warning("tool: failed to set GPU memory fraction: %s", exc)
 
-    def _format_input(self, user_utt: str, user_history: str = "") -> str:
+    def _format_input(self, tool_user_utt: str, tool_user_history: str = "") -> str:
         """Combine history and current utterance into tool model input."""
-        parts = [p for p in [(user_history or "").strip(), user_utt.strip()] if p]
+        parts = [p for p in [(tool_user_history or "").strip(), tool_user_utt.strip()] if p]
         return "\n".join(parts)
 
     # ============================================================================
     # Public API
     # ============================================================================
-    def classify(self, user_utt: str, user_history: str = "") -> tuple[bool, float]:
+    def classify(self, tool_user_utt: str, tool_user_history: str = "") -> tuple[bool, float]:
         """Classify whether a screenshot should be taken.
 
         Args:
-            user_utt: Current user utterance to classify.
-            user_history: Previous user messages for context.
+            tool_user_utt: Current user utterance to classify.
+            tool_user_history: Previous user messages for context.
 
         Returns:
             Tuple of (should_take_screenshot, probability):
             - should_take_screenshot: True if probability >= threshold
             - probability: Raw model probability for "take screenshot"
         """
-        text = self._format_input(user_utt, user_history)
+        text = self._format_input(tool_user_utt, tool_user_history)
         probs = self._batch.classify(text, timeout_s=self.request_timeout_s)
 
         # Binary classification: index 1 is the positive class probability
@@ -181,25 +181,25 @@ class ToolAdapter:
         should_take = p_yes >= self.threshold
         return should_take, p_yes
 
-    def run_tool_inference(self, user_utt: str, user_history: str = "") -> str:
+    def run_tool_inference(self, tool_user_utt: str, tool_user_history: str = "") -> str:
         """Run tool inference and return a JSON result string.
 
         This is the main entry point for the tool execution pipeline.
 
         Args:
-            user_utt: Current user utterance.
-            user_history: Previous user messages for context.
+            tool_user_utt: Current user utterance.
+            tool_user_history: Previous user messages for context.
 
         Returns:
             JSON string: '[{"name": "take_screenshot"}]' if positive,
             or '[]' if negative.
         """
-        should_take, p_yes = self.classify(user_utt, user_history)
+        should_take, p_yes = self.classify(tool_user_utt, tool_user_history)
         logger.debug(
             "tool: result=%s prob=%.3f user=%r",
             should_take,
             p_yes,
-            user_utt[:80],
+            tool_user_utt[:80],
         )
         return _POSITIVE_JSON if should_take else _NEGATIVE_JSON
 

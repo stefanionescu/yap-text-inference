@@ -141,7 +141,7 @@ async def run_chat_generation(
     static_prefix: str,
     runtime_text: str,
     history_turns: list[HistoryTurn],
-    user_utt: str,
+    chat_user_utt: str,
     *,
     engine: BaseEngine,
     session_handler: SessionHandler,
@@ -160,7 +160,7 @@ async def run_chat_generation(
         static_prefix,
         runtime_text,
         history_turns,
-        user_utt,
+        chat_user_utt,
         chat_tokenizer,
     )
     record_phase_latency("prompt_build", time.perf_counter() - t0_prompt)

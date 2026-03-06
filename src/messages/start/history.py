@@ -27,30 +27,63 @@ def resolve_history(
     if not isinstance(history_messages, list):
         return session_handler.get_history_turns(state)
 
-    if DEPLOY_TOOL and not DEPLOY_CHAT:
-        parsed_turns = parse_history_for_tool(history_messages)
+    if DEPLOY_CHAT and DEPLOY_TOOL:
+        chat_turns = parse_history_for_chat(history_messages)
+        tool_turns = parse_history_for_tool(history_messages)
+        session_handler.set_history_mode_turns(state, chat_turns=chat_turns, tool_turns=tool_turns)
+    elif DEPLOY_TOOL and not DEPLOY_CHAT:
+        tool_turns = parse_history_for_tool(history_messages)
+        session_handler.set_history_mode_turns(state, tool_turns=tool_turns)
     else:
-        parsed_turns = parse_history_for_chat(history_messages)
-
-    session_handler.set_history_turns(state, parsed_turns)
+        chat_turns = parse_history_for_chat(history_messages)
+        session_handler.set_history_mode_turns(state, chat_turns=chat_turns)
     return session_handler.get_history_turns(state)
 
 
-def trim_user_utterance(
+def trim_chat_user_utterance(
     session_handler: SessionHandler,
     state: SessionState,
-    user_utt: str,
+    chat_user_utt: str,
     *,
     for_followup: bool = False,
 ) -> str:
-    """Trim user utterance to token limit based on active deploy mode."""
-    effective_max = session_handler.get_effective_user_utt_max_tokens(state, for_followup=for_followup)
-    if DEPLOY_CHAT or DEPLOY_TOOL:
-        return session_handler.trim_user_utterance(user_utt, max_tokens=effective_max)
-    return user_utt or ""
+    """Trim chat user utterance to chat-side token limit."""
+    effective_max = session_handler.get_effective_chat_user_utt_max_tokens(state, for_followup=for_followup)
+    if DEPLOY_CHAT:
+        return session_handler.trim_chat_user_utterance(chat_user_utt, max_tokens=effective_max)
+    return chat_user_utt or ""
+
+
+def trim_tool_user_utterance(
+    session_handler: SessionHandler,
+    tool_user_utt: str,
+) -> str:
+    """Trim user utterance to tool-side token limit."""
+    effective_max = session_handler.get_effective_tool_user_utt_max_tokens()
+    if DEPLOY_TOOL:
+        return session_handler.trim_tool_user_utterance(tool_user_utt, max_tokens=effective_max)
+    return tool_user_utt or ""
+
+
+def resolve_user_utterances(
+    session_handler: SessionHandler,
+    state: SessionState,
+    incoming_user_utt: str,
+    *,
+    for_followup: bool = False,
+) -> tuple[str, str]:
+    """Resolve chat/tool utterance variants with independent trimming rules."""
+    raw = incoming_user_utt or ""
+    chat_user = (
+        trim_chat_user_utterance(session_handler, state, raw, for_followup=for_followup) if DEPLOY_CHAT else raw
+    )
+    tool_user = trim_tool_user_utterance(session_handler, raw) if DEPLOY_TOOL else raw
+    return chat_user, tool_user
 
 
 __all__ = [
     "resolve_history",
-    "trim_user_utterance",
+    "trim_chat_user_utterance",
+    "trim_tool_user_utterance",
+    "resolve_user_utterances",
 ]

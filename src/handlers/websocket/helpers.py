@@ -177,7 +177,7 @@ async def stream_chat_response(
     ws: WebSocket,
     stream: AsyncIterator[str],
     conn_state: SessionState,
-    user_utt: str,
+    chat_user_utt: str,
     *,
     initial_text: str = "",
     initial_text_already_sent: bool = True,
@@ -186,7 +186,7 @@ async def stream_chat_response(
     session_handler: SessionHandler,
 ) -> str:
     """Stream chat chunks, emit final/done messages, and record history."""
-    history_user = history_user_utt if history_user_utt is not None else user_utt
+    history_user = history_user_utt if history_user_utt is not None else chat_user_utt
     state = _ChatStreamState(
         final_text=initial_text,
         text_visible=bool(initial_text) and initial_text_already_sent,

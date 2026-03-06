@@ -176,3 +176,70 @@ def test_trim_history_tool_only_noop_when_under_budget(monkeypatch: pytest.Monke
         session_history.trim_tool_history(state, 100)
 
         assert len(state.tool_history_turns) == 2
+
+
+def test_append_user_utterance_tool_only_trims_eagerly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Appending user turns eagerly keeps tool history within budget."""
+    with use_local_tokenizers():
+        handler = _build_tool_only_handler(monkeypatch, tool_budget=6)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        for i in range(6):
+            handler.append_user_utterance(state, f"word{i} extra{i} more{i}")
+
+        assert state.tool_history_turns is not None
+        assert len(state.tool_history_turns) < 6
+        rendered = handler.get_tool_history_text(state)
+        assert count_tokens_tool(rendered) <= 6
+
+
+def test_append_user_utterance_chat_only_trims_eagerly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Appending user turns eagerly keeps chat history under chat thresholds."""
+    with use_local_tokenizers():
+        handler = _build_chat_only_handler(monkeypatch)
+        monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 10)
+        monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 6)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        for i in range(8):
+            handler.append_user_utterance(state, f"turn{i} extra{i}")
+
+        assert state.history_turns is not None
+        assert len(state.history_turns) < 8
+
+
+def test_get_tool_history_text_excludes_latest_without_mutating_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    """include_latest=False returns prior context only and leaves store untouched."""
+    with use_local_tokenizers():
+        handler = _build_tool_only_handler(monkeypatch, tool_budget=30)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        handler.append_user_utterance(state, "alpha one")
+        handler.append_user_utterance(state, "bravo two")
+        handler.append_user_utterance(state, "charlie three")
+
+        with_latest = handler.get_tool_history_text(state)
+        without_latest = handler.get_tool_history_text(state, include_latest=False)
+
+        assert with_latest.endswith("charlie three")
+        assert without_latest == "alpha one\nbravo two"
+        assert handler.get_tool_history_text(state) == with_latest
+
+
+def test_append_user_utterance_tool_only_clips_single_oversized_turn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A single oversized user turn is clipped during eager append-time trim."""
+    with use_local_tokenizers():
+        handler = _build_tool_only_handler(monkeypatch, tool_budget=3)
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        handler.append_user_utterance(state, "alpha bravo charlie delta echo foxtrot")
+
+        assert state.tool_history_turns is not None
+        assert len(state.tool_history_turns) == 1
+        clipped = state.tool_history_turns[0].user
+        assert count_tokens_tool(clipped) <= 3
+        assert handler.get_tool_history_text(state) == clipped

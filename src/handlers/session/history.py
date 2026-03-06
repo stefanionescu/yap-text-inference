@@ -20,11 +20,11 @@ Storage is deployment-mode aware:
 - tool-only: state.tool_history_turns is active, state.history_turns is inactive
 - both: both stores are active
 
-History is cropped eagerly at import time (set_turns / set_text) using the
-retention-adjusted trigger, then maintained on each access via the full budget.
+History is cropped eagerly at import time (set_turns / set_text) and after
+each appended user turn. Read paths return already-trimmed stores.
 
 The HistoryController class provides a clean interface for session-scoped
-history operations, ensuring proper trimming occurs on access.
+history operations, ensuring trimming occurs at ingest-time boundaries.
 """
 
 from __future__ import annotations
@@ -194,7 +194,6 @@ def get_user_texts(turns: list[HistoryTurn] | None) -> list[str]:
     """Extract raw user texts from history turns.
 
     Returns list of user utterances (most recent last).
-    Trimming is handled by the tool adapter using its own tokenizer.
     """
     if not turns:
         return []
@@ -205,8 +204,7 @@ class HistoryController:
     """History operations for SessionState.
 
     Provides a clean interface for managing conversation history with
-    automatic trimming. All read operations trigger trimming to ensure
-    the history fits within token budgets.
+    eager trimming at ingestion points.
 
     Chat and tool histories are maintained independently when both are deployed.
     When only one mode is deployed, the inactive store is forced to None.
@@ -249,10 +247,21 @@ class HistoryController:
         turns = state.tool_history_turns
         return turns if turns is not None else []
 
+    def _trim_chat_store_eager(self, state: SessionState, *, import_mode: bool = False) -> None:
+        if not DEPLOY_CHAT:
+            return
+        if import_mode:
+            trim_history(state, chat_tokenizer=self._chat_tokenizer, trigger_tokens=_eager_trigger())
+            return
+        trim_history(state, chat_tokenizer=self._chat_tokenizer)
+
+    def _trim_tool_store_eager(self, state: SessionState) -> None:
+        if not DEPLOY_TOOL or not self._tool_budget:
+            return
+        trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
+
     def get_text(self, state: SessionState) -> str:
         """Get full rendered history (User + Assistant turns).
-
-        Triggers trimming before rendering to ensure budget compliance.
 
         Args:
             state: The session state containing history turns.
@@ -261,101 +270,115 @@ class HistoryController:
             Formatted history text.
         """
         self._sync_mode_storage(state)
-        if DEPLOY_CHAT:
-            trim_history(state, chat_tokenizer=self._chat_tokenizer)
         return render_history(self._chat_turns(state))
 
     def get_turns(self, state: SessionState) -> list[HistoryTurn]:
-        """Get a copy of chat history turns after applying trim policy."""
+        """Get a copy of chat history turns."""
         self._sync_mode_storage(state)
-        if DEPLOY_CHAT:
-            trim_history(state, chat_tokenizer=self._chat_tokenizer)
         return [HistoryTurn(turn_id=t.turn_id, user=t.user, assistant=t.assistant) for t in self._chat_turns(state)]
 
     def get_user_texts(self, state: SessionState) -> list[str]:
         """Get raw user texts for the appropriate deploy mode."""
         self._sync_mode_storage(state)
-        if DEPLOY_TOOL and self._tool_budget:
-            trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
+        if DEPLOY_TOOL:
             return get_user_texts(self._tool_turns(state))
-        if DEPLOY_CHAT:
-            trim_history(state, chat_tokenizer=self._chat_tokenizer)
         return get_user_texts(self._chat_turns(state))
 
-    def get_tool_history_text(self, state: SessionState, *, max_tokens: int | None = None) -> str:
-        """Get trimmed user-only history for the tool model."""
+    def get_tool_history_text(
+        self,
+        state: SessionState,
+        *,
+        max_tokens: int | None = None,
+        include_latest: bool = True,
+    ) -> str:
+        """Get user-only history for the tool model."""
         self._sync_mode_storage(state)
-        if DEPLOY_TOOL and self._tool_budget:
-            trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
-            return render_tool_history_text(
-                self._tool_turns(state),
-                max_tokens=max_tokens or self._tool_budget,
-                tool_tokenizer=self._tool_tokenizer,
-            )
+        if DEPLOY_TOOL:
+            tool_turns = self._tool_turns(state)
+            if not include_latest and tool_turns:
+                tool_turns = tool_turns[:-1]
+            user_texts = get_user_texts(tool_turns)
+            if not user_texts:
+                return ""
+            if max_tokens is None:
+                return "\n".join(user_texts)
+            return build_tool_history(user_texts, max(1, int(max_tokens)), self._tool_tokenizer)
+        chat_turns = self._chat_turns(state)
+        if not include_latest and chat_turns:
+            chat_turns = chat_turns[:-1]
         return render_tool_history_text(
-            self._chat_turns(state),
+            chat_turns,
             max_tokens=max_tokens,
             tool_tokenizer=self._tool_tokenizer,
         )
 
     def set_text(self, state: SessionState, history_text: str) -> str:
-        self._sync_mode_storage(state)
         parsed_turns = parse_history_text(history_text)
-        if DEPLOY_CHAT:
-            state.history_turns = parsed_turns
-        else:
-            state.history_turns = None
-        if DEPLOY_CHAT:
-            trim_history(state, chat_tokenizer=self._chat_tokenizer, trigger_tokens=_eager_trigger())
-        if DEPLOY_TOOL and self._tool_budget:
-            state.tool_history_turns = [
-                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="")
-                for t in parsed_turns
-                if (t.user or "").strip()
-            ]
-            trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
-        return render_history(self._chat_turns(state))
+        return self.set_mode_turns(state, chat_turns=parsed_turns)
 
     def set_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
         """Set history from pre-parsed turns and apply import-time trimming."""
+        return self.set_mode_turns(state, chat_turns=turns)
+
+    def set_mode_turns(
+        self,
+        state: SessionState,
+        *,
+        chat_turns: list[HistoryTurn] | None = None,
+        tool_turns: list[HistoryTurn] | None = None,
+    ) -> str:
+        """Set chat/tool histories independently and apply import-time trimming."""
         self._sync_mode_storage(state)
+        normalized_chat_turns = chat_turns or []
         if DEPLOY_CHAT:
-            state.history_turns = turns
+            state.history_turns = normalized_chat_turns
         else:
             state.history_turns = None
-        if DEPLOY_CHAT:
-            trim_history(state, chat_tokenizer=self._chat_tokenizer, trigger_tokens=_eager_trigger())
-        if DEPLOY_TOOL and self._tool_budget:
+        self._trim_chat_store_eager(state, import_mode=True)
+        if DEPLOY_TOOL:
+            source_turns = tool_turns if tool_turns is not None else normalized_chat_turns
             state.tool_history_turns = [
-                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="") for t in turns if (t.user or "").strip()
+                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="")
+                for t in source_turns
+                if (t.user or "").strip()
             ]
-            trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
+            self._trim_tool_store_eager(state)
         return render_history(self._chat_turns(state))
 
-    def append_user_turn(self, state: SessionState, user_utt: str) -> str | None:
+    def append_user_turn(
+        self,
+        state: SessionState,
+        chat_user_utt: str,
+        *,
+        tool_user_utt: str | None = None,
+    ) -> str | None:
         self._sync_mode_storage(state)
-        user = (user_utt or "").strip()
-        if not user:
+        chat_user = (chat_user_utt or "").strip()
+        tool_user = (tool_user_utt if tool_user_utt is not None else chat_user_utt or "").strip()
+        if not chat_user and not tool_user:
             return None
-        turn_id = uuid.uuid4().hex
-        if DEPLOY_CHAT:
-            self._chat_turns(state).append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
-            trim_history(state, chat_tokenizer=self._chat_tokenizer)
-        if DEPLOY_TOOL and self._tool_budget:
-            self._tool_turns(state).append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
-            trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
+        turn_id: str | None = None
+        if DEPLOY_CHAT and chat_user:
+            turn_id = uuid.uuid4().hex
+            self._chat_turns(state).append(HistoryTurn(turn_id=turn_id, user=chat_user, assistant=""))
+            self._trim_chat_store_eager(state)
+        if DEPLOY_TOOL and tool_user:
+            if turn_id is None:
+                turn_id = uuid.uuid4().hex
+            self._tool_turns(state).append(HistoryTurn(turn_id=turn_id, user=tool_user, assistant=""))
+            self._trim_tool_store_eager(state)
         return turn_id
 
     def append_turn(
         self,
         state: SessionState,
-        user_utt: str,
+        chat_user_utt: str,
         assistant_text: str,
         *,
         turn_id: str | None = None,
     ) -> str:
         self._sync_mode_storage(state)
-        user = (user_utt or "").strip()
+        user = (chat_user_utt or "").strip()
         assistant = assistant_text or ""
 
         chat_turns = self._chat_turns(state)
@@ -364,8 +387,7 @@ class HistoryController:
             if target is not None:
                 if assistant:
                     target.assistant = assistant
-                if DEPLOY_CHAT:
-                    trim_history(state, chat_tokenizer=self._chat_tokenizer)
+                self._trim_chat_store_eager(state)
                 return render_history(chat_turns)
 
         if not user and not assistant:
@@ -380,11 +402,10 @@ class HistoryController:
                     assistant=assistant,
                 )
             )
-        if DEPLOY_CHAT:
-            trim_history(state, chat_tokenizer=self._chat_tokenizer)
-        if user and DEPLOY_TOOL and self._tool_budget:
+        self._trim_chat_store_eager(state)
+        if user and DEPLOY_TOOL:
             self._tool_turns(state).append(HistoryTurn(turn_id=new_turn_id, user=user, assistant=""))
-            trim_tool_history(state, self._tool_budget, tool_tokenizer=self._tool_tokenizer)
+            self._trim_tool_store_eager(state)
         return render_history(chat_turns)
 
 

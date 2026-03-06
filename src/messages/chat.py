@@ -32,7 +32,7 @@ _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKIN
 def _build_messages(
     system_prompt: str,
     history_turns: Sequence[HistoryTurn],
-    user_utt: str | None,
+    chat_user_utt: str | None,
 ) -> list[dict[str, str]]:
     """Build a list of message dicts for the chat template.
 
@@ -65,8 +65,8 @@ def _build_messages(
             _append_message("assistant", turn.assistant)
 
     # Current user message
-    if user_utt is not None:
-        _append_message("user", user_utt)
+    if chat_user_utt is not None:
+        _append_message("user", chat_user_utt)
 
     return messages
 
@@ -118,12 +118,12 @@ def build_chat_prompt_with_prefix(
     static_prefix: str,
     runtime_text: str,
     history_turns: list[HistoryTurn],
-    user_utt: str,
+    chat_user_utt: str,
     chat_tokenizer: FastTokenizer,
 ) -> str:
     """Build the chat prompt using the tokenizer's native chat template."""
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
-    messages = _build_messages(system_prompt, history_turns, user_utt)
+    messages = _build_messages(system_prompt, history_turns, chat_user_utt)
     return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 
@@ -135,7 +135,7 @@ def build_chat_warm_prompt(
 ) -> str:
     """Build a prompt that primes persona + history without a fresh user query."""
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
-    messages = _build_messages(system_prompt, history_turns, user_utt=None)
+    messages = _build_messages(system_prompt, history_turns, chat_user_utt=None)
     return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 

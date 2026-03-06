@@ -17,8 +17,8 @@ from src.handlers.websocket.errors import send_error
 from .start.sampling import extract_sampling_overrides
 from src.handlers.session.manager import SessionHandler
 from .input import normalize_gender, normalize_personality
-from src.config import DEPLOY_CHAT, CHAT_PROMPT_MAX_TOKENS
-from .start.history import resolve_history, trim_user_utterance
+from src.config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
+from .start.history import resolve_history, resolve_user_utterances
 from src.telemetry.phases import record_phase_error, record_phase_latency
 from src.config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from .validators import (
@@ -128,7 +128,8 @@ def _build_turn_plan(
     request_id: str,
     static_prefix: str,
     history_turns,
-    user_utt: str,
+    chat_user_utt: str | None,
+    tool_user_utt: str | None,
     history_turn_id: str | None,
     sampling_overrides: dict[str, float | int | bool] | None,
     apply_screen_checked_prefix: bool = False,
@@ -139,7 +140,8 @@ def _build_turn_plan(
         static_prefix=static_prefix,
         runtime_text="",
         history_turns=history_turns,
-        user_utt=user_utt,
+        chat_user_utt=chat_user_utt,
+        tool_user_utt=tool_user_utt,
         history_turn_id=history_turn_id,
         sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
         apply_screen_checked_prefix=apply_screen_checked_prefix,
@@ -188,15 +190,25 @@ async def _plan_start_turn(
         cfg = session_handler.get_session_config(state)
 
         history_turns = resolve_history(session_handler, state, msg)
-        user_utt = trim_user_utterance(session_handler, state, msg.get("user_utterance", ""))
-        history_turn_id = session_handler.append_user_utterance(state, user_utt)
+        chat_user_utt, tool_user_utt = resolve_user_utterances(
+            session_handler,
+            state,
+            msg.get("user_utterance", ""),
+        )
+        history_turn_id = session_handler.append_user_utterance(
+            state,
+            chat_user_utt,
+            tool_user_utt=tool_user_utt,
+        )
+        plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
         static_prefix = cfg.get("chat_prompt") or ""
         return _build_turn_plan(
             state=state,
             request_id=f"start-{uuid.uuid4().hex}",
             static_prefix=static_prefix,
             history_turns=history_turns,
-            user_utt=user_utt,
+            chat_user_utt=plan_chat_user_utt,
+            tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
             history_turn_id=history_turn_id,
             sampling_overrides=sampling_overrides,
             apply_screen_checked_prefix=False,
@@ -214,8 +226,8 @@ async def _plan_message_turn(
 ) -> TurnPlan | None:
     t0 = time.perf_counter()
     try:
-        user_utt = (msg.get("user_utterance") or "").strip()
-        if not user_utt:
+        incoming_user_utt = (msg.get("user_utterance") or "").strip()
+        if not incoming_user_utt:
             record_phase_error("validate", "missing_user_utterance")
             await _send_turn_error(ws, code=WS_ERROR_INVALID_PAYLOAD, message="user_utterance is required")
             return None
@@ -238,20 +250,26 @@ async def _plan_message_turn(
 
         apply_screen_checked_prefix = session_handler.has_screen_followup_pending(state)
         history_turns = session_handler.get_history_turns(state)
-        trimmed_utt = trim_user_utterance(
+        chat_user_utt, tool_user_utt = resolve_user_utterances(
             session_handler,
             state,
-            user_utt,
+            incoming_user_utt,
             for_followup=apply_screen_checked_prefix,
         )
-        history_turn_id = session_handler.append_user_utterance(state, trimmed_utt)
+        history_turn_id = session_handler.append_user_utterance(
+            state,
+            chat_user_utt,
+            tool_user_utt=tool_user_utt,
+        )
+        plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
         static_prefix = cfg.get("chat_prompt") or ""
         return _build_turn_plan(
             state=state,
             request_id=f"msg-{uuid.uuid4().hex}",
             static_prefix=static_prefix,
             history_turns=history_turns,
-            user_utt=trimmed_utt,
+            chat_user_utt=plan_chat_user_utt,
+            tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
             history_turn_id=history_turn_id,
             sampling_overrides=sampling_overrides,
             apply_screen_checked_prefix=apply_screen_checked_prefix,

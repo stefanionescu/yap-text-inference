@@ -25,6 +25,7 @@ async def _run_tool_call(
     state: SessionState,
     req_id: str,
     *,
+    tool_user_utt: str,
     tool_adapter: ToolAdapter,
     session_handler: SessionHandler,
 ) -> dict[str, Any]:
@@ -33,11 +34,11 @@ async def _run_tool_call(
 
     tool_history = session_handler.get_tool_history_text(
         state,
-        max_tokens=tool_adapter.max_history_tokens,
+        include_latest=False,
     )
 
     def _classify_sync() -> str:
-        return tool_adapter.run_tool_inference(tool_history)
+        return tool_adapter.run_tool_inference(tool_user_utt, tool_history)
 
     loop = asyncio.get_running_loop()
     text = await loop.run_in_executor(None, _classify_sync)
@@ -57,6 +58,7 @@ async def run_toolcall(
     state: SessionState,
     session_handler: SessionHandler,
     tool_adapter: ToolAdapter,
+    tool_user_utt: str,
     request_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute tool classification pipeline."""
@@ -65,6 +67,7 @@ async def run_toolcall(
     return await _run_tool_call(
         state,
         req_id,
+        tool_user_utt=tool_user_utt,
         tool_adapter=tool_adapter,
         session_handler=session_handler,
     )
@@ -73,6 +76,7 @@ async def run_toolcall(
 def launch_tool_request(
     state: SessionState,
     *,
+    tool_user_utt: str,
     session_handler: SessionHandler,
     tool_adapter: ToolAdapter,
 ) -> tuple[str, asyncio.Task[dict[str, Any]]]:
@@ -83,6 +87,7 @@ def launch_tool_request(
             state,
             session_handler=session_handler,
             tool_adapter=tool_adapter,
+            tool_user_utt=tool_user_utt,
             request_id=tool_req_id,
         )
     )

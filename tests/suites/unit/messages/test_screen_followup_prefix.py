@@ -7,7 +7,7 @@ import src.messages.start.history as start_history
 from src.handlers.session.manager import SessionHandler
 
 
-def test_trim_user_utterance_for_followup_uses_followup_budget(monkeypatch) -> None:
+def test_trim_chat_user_utterance_for_followup_uses_followup_budget(monkeypatch) -> None:
     handler = SessionHandler(chat_engine=None)
     state = SessionState(meta={})
     handler.initialize_session(state)
@@ -18,10 +18,10 @@ def test_trim_user_utterance_for_followup_uses_followup_budget(monkeypatch) -> N
         captured["for_followup"] = for_followup
         return 64
 
-    monkeypatch.setattr(handler, "get_effective_user_utt_max_tokens", _budget_stub)
+    monkeypatch.setattr(handler, "get_effective_chat_user_utt_max_tokens", _budget_stub)
     monkeypatch.setattr(start_history, "DEPLOY_CHAT", True)
     monkeypatch.setattr(start_history, "DEPLOY_TOOL", False)
-    trimmed = start_history.trim_user_utterance(handler, state, "hello there", for_followup=True)
+    trimmed = start_history.trim_chat_user_utterance(handler, state, "hello there", for_followup=True)
     assert trimmed
     assert captured.get("for_followup") is True
 

@@ -39,13 +39,14 @@ logger = logging.getLogger(__name__)
 
 async def _await_tool_decision(
     state: SessionState,
-    user_utt: str,
+    tool_user_utt: str,
     *,
     session_handler: SessionHandler,
     tool_adapter: ToolAdapter,
 ) -> tuple[str, bool]:
     tool_req_id, tool_task = launch_tool_request(
         state,
+        tool_user_utt=tool_user_utt,
         session_handler=session_handler,
         tool_adapter=tool_adapter,
     )
@@ -75,7 +76,7 @@ async def _send_toolcall_status(
 
 def _resolve_user_utterance_for_chat(
     state: SessionState,
-    user_utt: str,
+    chat_user_utt: str,
     is_tool: bool,
     apply_screen_checked_prefix: bool,
     *,
@@ -84,14 +85,14 @@ def _resolve_user_utterance_for_chat(
     if is_tool:
         session_handler.set_screen_followup_pending(state, True)
         prefix = session_handler.get_check_screen_prefix(state)
-        return f"{prefix} {user_utt}".strip()
+        return f"{prefix} {chat_user_utt}".strip()
 
     if apply_screen_checked_prefix:
         session_handler.set_screen_followup_pending(state, False)
         prefix = session_handler.get_screen_checked_prefix(state)
-        return f"{prefix} {user_utt}".strip()
+        return f"{prefix} {chat_user_utt}".strip()
 
-    return user_utt
+    return chat_user_utt
 
 
 async def run_execution(
@@ -101,8 +102,9 @@ async def run_execution(
     static_prefix: str,
     runtime_text: str,
     history_turns: list[HistoryTurn],
-    user_utt: str,
+    chat_user_utt: str,
     *,
+    tool_user_utt: str | None = None,
     history_turn_id: str | None = None,
     sampling_overrides: dict[str, float | int] | None = None,
     apply_screen_checked_prefix: bool = False,
@@ -112,17 +114,18 @@ async def run_execution(
     tool_adapter: ToolAdapter,
 ) -> None:
     """Execute sequential tool-then-chat workflow."""
+    effective_tool_user_utt = (tool_user_utt or chat_user_utt).strip()
     raw_field, is_tool = await _await_tool_decision(
         state,
-        user_utt,
+        effective_tool_user_utt,
         session_handler=session_handler,
         tool_adapter=tool_adapter,
     )
     await _send_toolcall_status(ws, raw_field, is_tool)
 
-    user_utt_for_chat = _resolve_user_utterance_for_chat(
+    chat_user_utt_for_chat = _resolve_user_utterance_for_chat(
         state,
-        user_utt,
+        chat_user_utt,
         is_tool,
         apply_screen_checked_prefix=apply_screen_checked_prefix,
         session_handler=session_handler,
@@ -135,7 +138,7 @@ async def run_execution(
             static_prefix,
             runtime_text,
             history_turns,
-            user_utt_for_chat,
+            chat_user_utt_for_chat,
             engine=chat_engine,
             session_handler=session_handler,
             chat_tokenizer=chat_tokenizer,
@@ -143,9 +146,9 @@ async def run_execution(
             sampling_overrides=sampling_overrides,
         ),
         state,
-        user_utt_for_chat,
+        chat_user_utt_for_chat,
         history_turn_id=history_turn_id,
-        history_user_utt=user_utt,
+        history_user_utt=chat_user_utt,
         session_handler=session_handler,
     )
     logger.info("sequential_exec: done chars=%s", len(final_text))

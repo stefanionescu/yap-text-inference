@@ -32,6 +32,7 @@ async def _run_sequential(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDe
     """Run sequential tool-then-chat execution."""
     if runtime_deps.chat_engine is None or runtime_deps.tool_adapter is None or runtime_deps.chat_tokenizer is None:
         raise RuntimeError("Sequential execution requires chat engine, chat tokenizer, and tool adapter")
+    chat_user_utt = plan.chat_user_utt or ""
     logger.info("handle_start: sequential execution")
     await run_execution(
         ws,
@@ -40,7 +41,8 @@ async def _run_sequential(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDe
         plan.static_prefix,
         plan.runtime_text,
         plan.history_turns,
-        plan.user_utt,
+        chat_user_utt,
+        tool_user_utt=plan.tool_user_utt,
         history_turn_id=plan.history_turn_id,
         sampling_overrides=plan.sampling_overrides,
         apply_screen_checked_prefix=plan.apply_screen_checked_prefix,
@@ -55,6 +57,7 @@ async def _run_chat_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDep
     """Run chat-only streaming execution."""
     if runtime_deps.chat_engine is None or runtime_deps.chat_tokenizer is None:
         raise RuntimeError("Chat-only execution requires chat engine and chat tokenizer")
+    chat_user_utt = plan.chat_user_utt or ""
     logger.info("handle_start: chat-only streaming")
     final_text = await stream_chat_response(
         ws,
@@ -63,7 +66,7 @@ async def _run_chat_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDep
             plan.static_prefix,
             plan.runtime_text,
             plan.history_turns,
-            plan.user_utt,
+            chat_user_utt,
             engine=runtime_deps.chat_engine,
             session_handler=runtime_deps.session_handler,
             chat_tokenizer=runtime_deps.chat_tokenizer,
@@ -71,9 +74,9 @@ async def _run_chat_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDep
             sampling_overrides=plan.sampling_overrides,
         ),
         plan.state,
-        plan.user_utt,
+        chat_user_utt,
         history_turn_id=plan.history_turn_id,
-        history_user_utt=plan.user_utt,
+        history_user_utt=chat_user_utt,
         session_handler=runtime_deps.session_handler,
     )
     logger.info("handle_start: chat-only done chars=%s", len(final_text))
@@ -85,11 +88,13 @@ async def _run_tool_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDep
         raise RuntimeError("Tool-only execution requires tool adapter")
     logger.info("handle_start: tool-only routing")
     try:
+        tool_user_utt = plan.tool_user_utt or plan.chat_user_utt or ""
         tool_res = await asyncio.wait_for(
             run_toolcall(
                 plan.state,
                 session_handler=runtime_deps.session_handler,
                 tool_adapter=runtime_deps.tool_adapter,
+                tool_user_utt=tool_user_utt,
             ),
             timeout=TOOL_TIMEOUT_S,
         )
