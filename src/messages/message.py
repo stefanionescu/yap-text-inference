@@ -10,12 +10,13 @@ appends to history, and dispatches execution as a background task.
 
 from __future__ import annotations
 
-import asyncio
+import uuid
 import logging
 from typing import Any
 from fastapi import WebSocket
 from src.state import StartPlan
 from .validators import ValidationError
+from .tasks import spawn_session_task
 from src.state.session import SessionState
 from .start.dispatch import dispatch_execution
 from .start.history import trim_user_utterance
@@ -90,24 +91,28 @@ async def handle_message_message(
     if sampling_overrides:
         session_handler.update_session_config(state, chat_sampling=sampling_overrides)
 
-    history_text = session_handler.get_history_text(state)
+    history_turns = session_handler.get_history_turns(state)
     trimmed_utt = trim_user_utterance(session_handler, state, user_utt)
     history_turn_id = session_handler.append_user_utterance(state, trimmed_utt)
 
     static_prefix = cfg.get("chat_prompt") or ""
     plan = StartPlan(
         state=state,
-        request_id=f"msg-{id(state)}-{asyncio.get_event_loop().time():.0f}",
+        request_id=f"msg-{uuid.uuid4().hex}",
         static_prefix=static_prefix,
         runtime_text="",
-        history_text=history_text,
+        history_turns=history_turns,
         user_utt=trimmed_utt,
         history_turn_id=history_turn_id,
         sampling_overrides=sampling_overrides or None,
     )
 
-    task = asyncio.create_task(dispatch_execution(ws, plan, runtime_deps))
-    session_handler.track_task(state, task)
+    spawn_session_task(
+        ws,
+        state,
+        operation=dispatch_execution(ws, plan, runtime_deps),
+        session_handler=session_handler,
+    )
 
 
 __all__ = ["handle_message_message"]

@@ -569,7 +569,7 @@ The pipeline writes metadata (`awq_metadata.json` or `build_metadata.json`) and 
 
 ## Test Clients
 
-All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/e2e/warmup.py`) or source `.venv-local/bin/activate` for unit testing.
+All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/specs/e2e/test_warmup.py`) or source `.venv-local/bin/activate` for unit testing.
 
 > **Note:** Test clients always send a chat prompt. In tool-only deployments, the server ignores it automatically.
 
@@ -579,22 +579,22 @@ Run deterministic CPU-only unit tests for sanitizer behavior, token accounting, 
 
 ```bash
 python -m pytest -q \
-  tests/integration/sanitizer.py \
-  tests/unit/history/start_history.py \
-  tests/unit/history/history_accounting.py \
-  tests/unit/tokens/token_accounting.py \
-  tests/unit/history/history_parsing.py \
-  tests/unit/tokens/prefix_accounting.py \
-  tests/unit/websocket/websocket_helpers.py
+  tests/specs/integration/test_sanitizer.py \
+  tests/specs/unit/history/test_start_history.py \
+  tests/specs/unit/history/test_history_accounting.py \
+  tests/specs/unit/tokens/test_token_accounting.py \
+  tests/specs/unit/history/test_history_parsing.py \
+  tests/specs/unit/tokens/test_prefix_accounting.py \
+  tests/specs/unit/websocket/test_websocket_helpers.py
 ```
 
 ### Warmup Test Client
 
 ```bash
 # run these after entering the venv via 'bash scripts/activate.sh'
-python3 tests/e2e/warmup.py
-python3 tests/e2e/warmup.py "who was Columbus?"
-python3 tests/e2e/warmup.py --gender male --personality flirty "hello there"
+python3 tests/specs/e2e/test_warmup.py
+python3 tests/specs/e2e/test_warmup.py "who was Columbus?"
+python3 tests/specs/e2e/test_warmup.py --gender male --personality flirty "hello there"
 ```
 
 
@@ -609,7 +609,7 @@ Example:
 ```bash
 SERVER_WS_URL=ws://127.0.0.1:8000/ws \
 RECV_TIMEOUT_SEC=120 \
-python3 tests/e2e/warmup.py --gender female --personality savage "hey there"
+python3 tests/specs/e2e/test_warmup.py --gender female --personality savage "hey there"
 ```
 
 Append `--double-ttfb` to send two identical requests back-to-back and compare cold vs warm latency.
@@ -618,7 +618,7 @@ Append `--double-ttfb` to send two identical requests back-to-back and compare c
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/e2e/live.py \
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_live.py \
   --server ws://127.0.0.1:8000 \
   --persona default_live_persona
 ```
@@ -626,7 +626,7 @@ TEXT_API_KEY=your_api_key python3 tests/e2e/live.py \
 Flags:
 - `--server`: explicit URL (falls back to `SERVER_WS_URL`, appends `/ws` if missing)
 - `--api-key`: override `TEXT_API_KEY`
-- `--persona/-p`: persona key from `tests/prompts/detailed.py` (defaults to `anna_flirty`)
+- `--persona/-p`: persona key from `tests/support/prompts/detailed.py` (defaults to `anna_flirty`)
 - `--timeout`: receive timeout in seconds (default 60)
 - `--warm`: start with pre-built conversation history for testing recall
 - positional text: optional opener message
@@ -635,7 +635,7 @@ Flags:
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/e2e/conversation.py --server ws://127.0.0.1:8000
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_conversation.py --server ws://127.0.0.1:8000
 ```
 
 Streams a 10-turn script to test history eviction and KV-cache reuse.
@@ -643,7 +643,7 @@ Streams a 10-turn script to test history eviction and KV-cache reuse.
 ### Vision / Toolcall Test
 
 ```bash
-TEXT_API_KEY=your_api_key python3 tests/e2e/vision.py
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_vision.py
 ```
 
 Tests that toolcall decisions fire before chat streaming.
@@ -651,7 +651,7 @@ Tests that toolcall decisions fire before chat streaming.
 ### Tool Regression Test
 
 ```bash
-TEXT_API_KEY=your_api_key python3 tests/e2e/tool.py \
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_tool.py \
   --server ws://127.0.0.1:8000/ws \
   --timeout 5 \
   --concurrency 4 \
@@ -667,9 +667,9 @@ TEXT_API_KEY=your_api_key python3 tests/e2e/tool.py \
 
 ```bash
 # run inside the scripts/activate.sh environment
-python3 tests/e2e/bench.py -n 32 -c 8
-python3 tests/e2e/bench.py --gender female --personality flirty "who was Columbus?"
-python3 tests/e2e/bench.py --server ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+python3 tests/specs/e2e/test_bench.py -n 32 -c 8
+python3 tests/specs/e2e/test_bench.py --gender female --personality flirty "who was Columbus?"
+python3 tests/specs/e2e/test_bench.py --server ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
 ```
 
 Reports p50/p95 latencies under concurrent load.
@@ -680,9 +680,9 @@ Pass `--double-ttfb` to run two sequential transactions per connection and compa
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/e2e/history.py
-TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --gender male --personality flirty
-TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --temperature 0.8 --top_p 0.9
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --gender male --personality flirty
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --temperature 0.8 --top_p 0.9
 ```
 
 Connects with a pre-built conversation history, then sends follow-up messages to test the assistant's recall of earlier exchanges. Tracks TTFB for each response and prints summary statistics (p50, p90, p95). Useful for validating prefix caching and KV cache reuse.
@@ -691,13 +691,13 @@ Connects with a pre-built conversation history, then sends follow-up messages to
 
 ```bash
 # 8 connections, 4 concurrent (defaults)
-TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --bench
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --bench
 
 # Custom load: 16 connections, 8 concurrent
-TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --bench -n 16 -c 8
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --bench -n 16 -c 8
 
 # With custom timeout
-TEXT_API_KEY=your_api_key python3 tests/e2e/history.py --bench -n 32 -c 16 --timeout 300
+TEXT_API_KEY=your_api_key python3 tests/specs/e2e/test_history.py --bench -n 32 -c 16 --timeout 300
 ```
 
 Each connection starts with the full warm history and cycles through all recall messages. Output matches the benchmark client format with p50/p95 latencies.
@@ -706,8 +706,8 @@ Each connection starts with the full warm history and cycles through all recall 
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/integration/cancel.py
-TEXT_API_KEY=your_api_key python3 tests/integration/cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
+TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_cancel.py
+TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
 ```
 
 Validates cancel behavior and recovery:
@@ -719,8 +719,8 @@ Validates cancel behavior and recovery:
 
 ```bash
 # run inside the scripts/activate.sh environment
-TEXT_API_KEY=your_api_key python3 tests/integration/idle.py
-TEXT_API_KEY=your_api_key python3 tests/integration/idle.py --normal-wait 5 --idle-expect-seconds 150
+TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_idle.py
+TEXT_API_KEY=your_api_key python3 tests/specs/integration/test_idle.py --normal-wait 5 --idle-expect-seconds 150
 ```
 
 Tests WebSocket idle timeout and connection lifecycle:

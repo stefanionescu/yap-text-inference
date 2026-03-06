@@ -39,7 +39,7 @@ async def _run_sequential(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeD
         plan.request_id,
         plan.static_prefix,
         plan.runtime_text,
-        plan.history_text,
+        plan.history_turns,
         plan.user_utt,
         history_turn_id=plan.history_turn_id,
         sampling_overrides=plan.sampling_overrides,
@@ -61,7 +61,7 @@ async def _run_chat_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
             plan.state,
             plan.static_prefix,
             plan.runtime_text,
-            plan.history_text,
+            plan.history_turns,
             plan.user_utt,
             engine=runtime_deps.chat_engine,
             session_handler=runtime_deps.session_handler,
@@ -87,7 +87,6 @@ async def _run_tool_only(ws: WebSocket, plan: StartPlan, runtime_deps: RuntimeDe
         tool_res = await asyncio.wait_for(
             run_toolcall(
                 plan.state,
-                plan.user_utt,
                 session_handler=runtime_deps.session_handler,
                 tool_adapter=runtime_deps.tool_adapter,
                 mark_active=False,

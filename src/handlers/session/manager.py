@@ -11,9 +11,8 @@ from .history import HistoryController
 from .time import format_session_timestamp
 from src.state.session import HistoryTurn, SessionState
 from .config import resolve_screen_prefix, update_session_config as _update_config
-from ...tokens.prefix import count_prefix_tokens, strip_screen_prefix, get_effective_user_utt_max_tokens
+from ...tokens.prefix import strip_screen_prefix
 from .requests import (
-    CANCELLED_SENTINEL,
     has_running_task,
     is_request_cancelled,
     cancel_session_requests,
@@ -24,12 +23,14 @@ from src.config import (
     TOOL_MODEL,
     DEPLOY_CHAT,
     DEPLOY_TOOL,
+    USER_UTT_MAX_TOKENS,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
 
 if TYPE_CHECKING:
     from src.engines.base import BaseEngine
+    from src.tokens.tokenizer import FastTokenizer
 
 
 class SessionHandler:
@@ -39,16 +40,22 @@ class SessionHandler:
     No internal session dict or eviction logic — the connection IS the session.
     """
 
-    CANCELLED_SENTINEL = CANCELLED_SENTINEL
-
     def __init__(
         self,
         *,
         chat_engine: BaseEngine | None = None,
         tool_history_budget: int | None = None,
+        chat_tokenizer: FastTokenizer | None = None,
+        tool_tokenizer: FastTokenizer | None = None,
     ):
         self._chat_engine = chat_engine
-        self._history = HistoryController(tool_history_budget=tool_history_budget)
+        self._chat_tokenizer = chat_tokenizer
+        self._tool_tokenizer = tool_tokenizer
+        self._history = HistoryController(
+            tool_history_budget=tool_history_budget,
+            chat_tokenizer=chat_tokenizer,
+            tool_tokenizer=tool_tokenizer,
+        )
 
     # ============================================================================
     # Session metadata / lifecycle
@@ -75,8 +82,8 @@ class SessionHandler:
             }
         )
         # Cache default prefix token counts
-        state.check_screen_prefix_tokens = count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
-        state.screen_checked_prefix_tokens = count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
+        state.check_screen_prefix_tokens = self._count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
+        state.screen_checked_prefix_tokens = self._count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
         return meta
 
     def update_session_config(
@@ -92,6 +99,7 @@ class SessionHandler:
         """Update mutable persona configuration for a session."""
         return _update_config(
             state,
+            count_prefix_tokens_fn=self._count_prefix_tokens,
             chat_gender=chat_gender,
             chat_personality=chat_personality,
             chat_prompt=chat_prompt,
@@ -122,6 +130,10 @@ class SessionHandler:
 
     def get_history_text(self, state: SessionState) -> str:
         return self._history.get_text(state)
+
+    def get_history_turns(self, state: SessionState) -> list[HistoryTurn]:
+        """Get structured conversation turns for prompt construction."""
+        return self._history.get_turns(state)
 
     def get_user_texts(self, state: SessionState) -> list[str]:
         """Get raw user texts (untrimmed)."""
@@ -166,16 +178,17 @@ class SessionHandler:
 
     def set_active_request(self, state: SessionState, request_id: str) -> None:
         state.active_request_id = request_id
+        state.cancel_requested = False
 
     def is_request_cancelled(self, state: SessionState, request_id: str) -> bool:
         return is_request_cancelled(state, request_id)
 
     def track_task(self, state: SessionState, task: asyncio.Task) -> None:
-        state.task = task
+        state.active_request_task = task
 
         def _clear_task(completed: asyncio.Task) -> None:
-            if state.task is completed:
-                state.task = None
+            if state.active_request_task is completed:
+                state.active_request_task = None
 
         task.add_done_callback(_clear_task)
 
@@ -196,15 +209,13 @@ class SessionHandler:
         if not state:
             return {"active": ""}
 
+        active_request_id = state.active_request_id or ""
         self.cancel_session_requests(state)
-        request_info = self.cleanup_session_requests(state)
-
-        active_request_id = request_info.get("active")
-        if DEPLOY_CHAT and active_request_id and self._chat_engine is not None:
+        if active_request_id and self._chat_engine is not None:
             with contextlib.suppress(Exception):
                 await self._chat_engine.abort(active_request_id)
 
-        return request_info
+        return self.cleanup_session_requests(state)
 
     # ============================================================================
     # Token budget helpers
@@ -212,7 +223,33 @@ class SessionHandler:
 
     def get_effective_user_utt_max_tokens(self, state: SessionState | None, *, for_followup: bool = False) -> int:
         """Get the effective max tokens for user utterance after accounting for prefix."""
-        return get_effective_user_utt_max_tokens(state, for_followup=for_followup)
+        if state is None:
+            prefix = DEFAULT_SCREEN_CHECKED_PREFIX if for_followup else DEFAULT_CHECK_SCREEN_PREFIX
+            return max(1, USER_UTT_MAX_TOKENS - self._count_prefix_tokens(prefix))
+        prefix_tokens = state.screen_checked_prefix_tokens if for_followup else state.check_screen_prefix_tokens
+        return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
+
+    def trim_user_utterance(self, user_utt: str, max_tokens: int) -> str:
+        """Trim a user utterance using the active deployment tokenizer."""
+        text = user_utt or ""
+        if max_tokens <= 0 or not text:
+            return ""
+        if DEPLOY_CHAT and self._chat_tokenizer is not None:
+            return self._chat_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
+        if DEPLOY_TOOL and self._tool_tokenizer is not None:
+            return self._tool_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
+        return text
+
+    def count_chat_tokens(self, text: str) -> int:
+        """Count chat tokens using the configured runtime chat tokenizer."""
+        if self._chat_tokenizer is None:
+            raise RuntimeError("Chat tokenizer is not configured")
+        return self._chat_tokenizer.count(text)
+
+    def _count_prefix_tokens(self, prefix: str | None) -> int:
+        if not prefix or not DEPLOY_CHAT or self._chat_tokenizer is None:
+            return 0
+        return self._chat_tokenizer.count(f"{prefix.strip()} ")
 
 
 __all__ = ["SessionHandler"]

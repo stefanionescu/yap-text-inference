@@ -15,7 +15,7 @@ import uuid
 from typing import Any
 from src.engines.base import BaseEngine
 from collections.abc import AsyncGenerator
-from src.state.session import SessionState
+from src.state.session import HistoryTurn, SessionState
 from ...config.timeouts import GEN_TIMEOUT_S
 from ...engines import create_sampling_params
 from src.tokens.tokenizer import FastTokenizer
@@ -135,7 +135,7 @@ async def run_chat_generation(
     state: SessionState,
     static_prefix: str,
     runtime_text: str,
-    history_text: str,
+    history_turns: list[HistoryTurn],
     user_utt: str,
     *,
     engine: BaseEngine,
@@ -154,7 +154,7 @@ async def run_chat_generation(
     prompt = build_chat_prompt_with_prefix(
         static_prefix,
         runtime_text,
-        history_text,
+        history_turns,
         user_utt,
         chat_tokenizer,
     )

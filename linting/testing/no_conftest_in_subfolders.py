@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 """Enforce a single conftest.py at the tests/ root.
 
-This project uses one ``tests/conftest.py`` for custom collection.
-Nested conftest files create fragmented fixture scoping and confuse
-agents into duplicating setup logic.
+Nested conftest files create fragmented fixture scoping and confuse agents
+into duplicating setup logic.
 """
 
 from __future__ import annotations

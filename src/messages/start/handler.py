@@ -7,14 +7,15 @@ dispatches the appropriate execution path.
 
 from __future__ import annotations
 
-import asyncio
+import uuid
 import logging
 from typing import Any
+from collections.abc import Callable
 from fastapi import WebSocket
 from src.state import StartPlan
-from ...tokens import count_tokens_chat
 from .dispatch import dispatch_execution
-from src.state.session import SessionState
+from src.state.session import HistoryTurn, SessionState
+from ..tasks import spawn_session_task
 from src.telemetry.sentry import capture_error
 from .sampling import extract_sampling_overrides
 from src.runtime.dependencies import RuntimeDeps
@@ -55,6 +56,8 @@ async def _close_with_validation_error(
 
 def _resolve_start_inputs(
     msg: dict[str, Any],
+    *,
+    count_tokens_fn: Callable[[str], int],
 ) -> tuple[
     str | None,
     str | None,
@@ -64,7 +67,7 @@ def _resolve_start_inputs(
     str | None,
 ]:
     gender, personality = _validate_persona(msg)
-    chat_prompt = _extract_chat_prompt(msg)
+    chat_prompt = _extract_chat_prompt(msg, count_tokens_fn=count_tokens_fn)
     sampling_overrides = extract_sampling_overrides(msg)
     check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(msg)
     return gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix
@@ -101,13 +104,13 @@ def _prepare_turn_payload(
     state: SessionState,
     msg: dict[str, Any],
     updated_config: dict[str, Any],
-) -> tuple[str, str, str, str, str | None]:
+) -> tuple[str, str, list[HistoryTurn], str, str | None]:
     static_prefix = updated_config.get("chat_prompt") or ""
     runtime_text = ""
-    history_text = resolve_history(session_handler, state, msg)
+    history_turns = resolve_history(session_handler, state, msg)
     user_utt = trim_user_utterance(session_handler, state, msg.get("user_utterance", ""))
     history_turn_id = session_handler.append_user_utterance(state, user_utt)
-    return static_prefix, runtime_text, history_text, user_utt, history_turn_id
+    return static_prefix, runtime_text, history_turns, user_utt, history_turn_id
 
 
 def _build_start_plan(
@@ -116,7 +119,7 @@ def _build_start_plan(
     request_id: str,
     static_prefix: str,
     runtime_text: str,
-    history_text: str,
+    history_turns: list[HistoryTurn],
     user_utt: str,
     history_turn_id: str | None,
     sampling_overrides: dict[str, float | int | bool],
@@ -126,7 +129,7 @@ def _build_start_plan(
         request_id=request_id,
         static_prefix=static_prefix,
         runtime_text=runtime_text,
-        history_text=history_text,
+        history_turns=history_turns,
         user_utt=user_utt,
         history_turn_id=history_turn_id,
         sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
@@ -136,6 +139,8 @@ def _build_start_plan(
 async def _resolve_start_inputs_or_close(
     ws: WebSocket,
     msg: dict[str, Any],
+    *,
+    count_tokens_fn: Callable[[str], int],
 ) -> (
     tuple[
         str | None,
@@ -148,7 +153,7 @@ async def _resolve_start_inputs_or_close(
     | None
 ):
     try:
-        return _resolve_start_inputs(msg)
+        return _resolve_start_inputs(msg, count_tokens_fn=count_tokens_fn)
     except ValidationError as err:
         capture_error(err)
         await _close_with_validation_error(ws, err)
@@ -161,8 +166,12 @@ def _schedule_execution_task(
     runtime_deps: RuntimeDeps,
     session_handler: SessionHandler,
 ) -> None:
-    task = asyncio.create_task(dispatch_execution(ws, plan, runtime_deps))
-    session_handler.track_task(plan.state, task)
+    spawn_session_task(
+        ws,
+        plan.state,
+        operation=dispatch_execution(ws, plan, runtime_deps),
+        session_handler=session_handler,
+    )
 
 
 def _log_start_request(msg: dict[str, Any]) -> None:
@@ -185,7 +194,11 @@ def _validate_persona(msg: dict[str, Any]) -> tuple[str | None, str | None]:
     return gender, personality
 
 
-def _extract_chat_prompt(msg: dict[str, Any]) -> str | None:
+def _extract_chat_prompt(
+    msg: dict[str, Any],
+    *,
+    count_tokens_fn: Callable[[str], int],
+) -> str | None:
     raw_chat_prompt = msg.get("chat_prompt")
     if not DEPLOY_CHAT:
         return None
@@ -200,7 +213,7 @@ def _extract_chat_prompt(msg: dict[str, Any]) -> str | None:
         invalid_error_code="invalid_chat_prompt",
         too_long_error_code="chat_prompt_too_long",
         max_tokens=CHAT_PROMPT_MAX_TOKENS,
-        count_tokens_fn=count_tokens_chat,
+        count_tokens_fn=count_tokens_fn,
     )
 
 
@@ -230,7 +243,11 @@ async def handle_start_message(
     _log_start_request(msg)
     session_handler.initialize_session(state)
 
-    resolved_inputs = await _resolve_start_inputs_or_close(ws, msg)
+    resolved_inputs = await _resolve_start_inputs_or_close(
+        ws,
+        msg,
+        count_tokens_fn=session_handler.count_chat_tokens,
+    )
     if resolved_inputs is None:
         return
     gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix = resolved_inputs
@@ -245,20 +262,20 @@ async def handle_start_message(
         check_screen_prefix=check_screen_prefix,
         screen_checked_prefix=screen_checked_prefix,
     )
-    static_prefix, runtime_text, history_text, user_utt, history_turn_id = _prepare_turn_payload(
+    static_prefix, runtime_text, history_turns, user_utt, history_turn_id = _prepare_turn_payload(
         session_handler,
         state,
         msg,
         updated_config,
     )
 
-    request_id = f"start-{id(state)}-{asyncio.get_event_loop().time():.0f}"
+    request_id = f"start-{uuid.uuid4().hex}"
     plan = _build_start_plan(
         state=state,
         request_id=request_id,
         static_prefix=static_prefix,
         runtime_text=runtime_text,
-        history_text=history_text,
+        history_turns=history_turns,
         user_utt=user_utt,
         history_turn_id=history_turn_id,
         sampling_overrides=sampling_overrides,

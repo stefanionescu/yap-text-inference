@@ -1,7 +1,7 @@
 """Central registry for configured engine runtime dependencies.
 
 Engine instances are built eagerly during startup and registered here for
-shared access. No lazy singleton initialization is performed in this module.
+shared access.
 """
 
 from __future__ import annotations

@@ -1,0 +1,31 @@
+"""Unit tests for token counting/trimming helpers with a local tokenizer."""
+
+from __future__ import annotations
+
+from src.tokens import utils as token_utils
+from tests.support.helpers.tokenizer import use_local_tokenizers
+
+
+def test_count_and_trim_text_with_local_tokenizer() -> None:
+    with use_local_tokenizers():
+        assert token_utils.count_tokens_chat("a b c") == 3
+        assert token_utils.count_tokens_tool("x y") == 2
+        assert token_utils.trim_text_to_token_limit_chat("a b c d", max_tokens=2, keep="start") == "a b"
+        assert token_utils.trim_text_to_token_limit_tool("a b c d", max_tokens=2, keep="end") == "c d"
+
+
+def test_build_user_history_for_tool_respects_token_budget() -> None:
+    with use_local_tokenizers():
+        user_texts = ["one two", "three", "four five six"]
+        history = token_utils.build_user_history_for_tool(user_texts, max_tokens=5)
+        assert history == "three\nfour five six"
+
+
+def test_build_user_history_for_tool_trims_single_oversized_latest_message() -> None:
+    with use_local_tokenizers():
+        history = token_utils.build_user_history_for_tool(
+            ["one two three four five six"],
+            max_tokens=3,
+        )
+        assert history == "four five six"
+        assert token_utils.count_tokens_tool(history) == 3

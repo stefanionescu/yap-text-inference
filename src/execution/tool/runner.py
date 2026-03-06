@@ -53,7 +53,6 @@ async def _run_tool_call(
 
 async def run_toolcall(
     state: SessionState,
-    user_utt: str,
     session_handler: SessionHandler,
     tool_adapter: ToolAdapter,
     request_id: str | None = None,
@@ -75,7 +74,6 @@ async def run_toolcall(
 
 def launch_tool_request(
     state: SessionState,
-    user_utt: str,
     *,
     session_handler: SessionHandler,
     tool_adapter: ToolAdapter,
@@ -85,7 +83,6 @@ def launch_tool_request(
     tool_task = asyncio.create_task(
         run_toolcall(
             state,
-            user_utt,
             session_handler=session_handler,
             tool_adapter=tool_adapter,
             request_id=tool_req_id,

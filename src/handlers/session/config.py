@@ -21,7 +21,7 @@ partial updates while preserving other configuration values.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from ...tokens.prefix import count_prefix_tokens
+from collections.abc import Callable
 from src.config import DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 
 if TYPE_CHECKING:
@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 
 def update_session_config(
     state: SessionState,
+    *,
+    count_prefix_tokens_fn: Callable[[str | None], int],
     chat_gender: str | None = None,
     chat_personality: str | None = None,
     chat_prompt: str | None = None,
@@ -83,7 +85,7 @@ def update_session_config(
         changed["check_screen_prefix"] = normalized
         # Recompute token count: use custom prefix or fall back to default
         effective_prefix = normalized or DEFAULT_CHECK_SCREEN_PREFIX
-        state.check_screen_prefix_tokens = count_prefix_tokens(effective_prefix)
+        state.check_screen_prefix_tokens = count_prefix_tokens_fn(effective_prefix)
 
     if screen_checked_prefix is not None:
         normalized_checked = (screen_checked_prefix or "").strip() or None
@@ -91,7 +93,7 @@ def update_session_config(
         changed["screen_checked_prefix"] = normalized_checked
         # Recompute token count: use custom prefix or fall back to default
         effective_prefix = normalized_checked or DEFAULT_SCREEN_CHECKED_PREFIX
-        state.screen_checked_prefix_tokens = count_prefix_tokens(effective_prefix)
+        state.screen_checked_prefix_tokens = count_prefix_tokens_fn(effective_prefix)
 
     return changed
 

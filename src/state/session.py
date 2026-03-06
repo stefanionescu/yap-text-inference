@@ -44,10 +44,12 @@ class SessionState:
     Attributes:
         meta: Extensible metadata dictionary containing session configuration.
         history_turns: Chronologically ordered list of conversation exchanges.
-        task: Reference to the currently running asyncio.Task for this session.
-        active_request_id: Tracks the current chat/generation request. Used to
-            detect stale streaming responses when a newer request supersedes
+        active_request_task: Reference to the currently running asyncio.Task
+            for this session.
+        active_request_id: Tracks the current chat/generation request. Used
+            to detect stale streaming responses when a newer request supersedes
             an older one. None when idle.
+        cancel_requested: Cooperative cancellation flag for in-flight streams.
         created_at: Monotonic timestamp when the session was first created.
         check_screen_prefix_tokens: Cached token count for the "check_screen" prefix.
         screen_checked_prefix_tokens: Cached token count for the "screen_checked" prefix.
@@ -56,8 +58,9 @@ class SessionState:
     meta: dict[str, Any]
     history_turns: list[HistoryTurn] = field(default_factory=list)
     tool_history_turns: list[HistoryTurn] = field(default_factory=list)
-    task: asyncio.Task | None = None
+    active_request_task: asyncio.Task | None = None
     active_request_id: str | None = None
+    cancel_requested: bool = False
     created_at: float = field(default_factory=time.monotonic)
     check_screen_prefix_tokens: int = 0
     screen_checked_prefix_tokens: int = 0

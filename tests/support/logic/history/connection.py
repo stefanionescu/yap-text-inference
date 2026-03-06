@@ -1,0 +1,136 @@
+"""WebSocket connection handling for history benchmark transactions.
+
+This module provides transaction execution logic for history benchmarks.
+Each connection starts with warm history and cycles through recall messages.
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+import asyncio
+import websockets
+from typing import Any
+from tests.support.config import WS_MAX_QUEUE
+from tests.support.helpers.errors import StreamError
+from tests.support.helpers.metrics import error_result
+from tests.support.state import StreamState, SessionContext, HistoryBenchConfig
+from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
+from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+from tests.support.helpers.websocket import (
+    with_api_key,
+    consume_stream,
+    create_tracker,
+    send_client_end,
+    finalize_metrics,
+    build_start_payload,
+    connect_with_retries,
+    build_message_payload,
+)
+
+
+async def _consume_stream_wrapper(ws, state: StreamState) -> str:
+    """Consume streaming response until done, tracking metrics."""
+    try:
+        return await consume_stream(ws, state)
+    except StreamError as exc:
+        raise RuntimeError(f"Server error: {exc.message}") from exc
+
+
+async def _execute_transaction(
+    ws,
+    cfg: HistoryBenchConfig,
+    session_id: str,
+    user_text: str,
+    phase: int,
+    *,
+    history: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Execute a single transaction with timeout handling."""
+    try:
+        return await asyncio.wait_for(
+            _send_and_stream(ws, cfg, session_id, user_text, phase, history=history),
+            timeout=cfg.timeout_s,
+        )
+    except TimeoutError:
+        return error_result("timeout", phase=phase)
+    except Exception as exc:
+        return error_result(str(exc), phase=phase)
+
+
+async def _send_and_stream(
+    ws,
+    cfg: HistoryBenchConfig,
+    session_id: str,
+    user_text: str,
+    phase: int,
+    *,
+    history: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Send a start or message payload and stream the response."""
+    if phase == 1:
+        ctx = SessionContext(
+            session_id=session_id,
+            gender=cfg.gender,
+            personality=cfg.personality,
+            chat_prompt=cfg.chat_prompt,
+            sampling=cfg.sampling,
+        )
+        payload = (
+            build_start_payload(ctx, user_text, history=history) if history else build_start_payload(ctx, user_text)
+        )
+    else:
+        payload = build_message_payload(user_text, sampling=cfg.sampling)
+    state = create_tracker()
+
+    await ws.send(json.dumps(payload))
+    reply = await _consume_stream_wrapper(ws, state)
+
+    metrics = finalize_metrics(state)
+    return {
+        "ok": metrics.get("ok", True),
+        "phase": phase,
+        "reply": reply,
+        "ttfb_toolcall_ms": metrics.get("ttfb_toolcall_ms"),
+        "ttfb_chat_ms": metrics.get("ttfb_chat_ms"),
+        "first_sentence_ms": metrics.get("time_to_first_complete_sentence_ms"),
+        "first_3_words_ms": metrics.get("time_to_first_3_words_ms"),
+    }
+
+
+async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, Any]]:
+    """Execute multiple transactions over a single WebSocket connection."""
+    results: list[dict[str, Any]] = []
+    auth_url = with_api_key(cfg.url, api_key=cfg.api_key)
+    session_id = f"history-bench-{uuid.uuid4()}"
+
+    try:
+        async with connect_with_retries(lambda: websockets.connect(auth_url, max_queue=WS_MAX_QUEUE)) as ws:
+            try:
+                for phase, user_text in enumerate(HISTORY_RECALL_MESSAGES, 1):
+                    hist = list(WARM_HISTORY) if phase == 1 else None
+                    result = await _execute_transaction(
+                        ws,
+                        cfg,
+                        session_id,
+                        user_text,
+                        phase,
+                        history=hist,
+                    )
+                    results.append(result)
+
+                    if not result.get("ok"):
+                        break
+            finally:
+                await send_client_end(ws)
+    except (ConnectionClosedOK, ConnectionClosedError) as exc:
+        if not results:
+            return [error_result(f"connection_closed: {exc}", phase=1)]
+    except Exception as exc:
+        if not results:
+            return [error_result(f"connection_failed: {exc}", phase=1)]
+
+    return results if results else [error_result("connection_failed", phase=1)]
+
+
+__all__ = ["execute_history_connection"]

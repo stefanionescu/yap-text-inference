@@ -25,7 +25,7 @@ from .chat import run_chat_generation
 from src.engines.base import BaseEngine
 from src.tool.adapter import ToolAdapter
 from .tool.parser import parse_tool_result
-from src.state.session import SessionState
+from src.state.session import HistoryTurn, SessionState
 from ..config.timeouts import TOOL_TIMEOUT_S
 from .tool.runner import launch_tool_request
 from src.tokens.tokenizer import FastTokenizer
@@ -46,7 +46,6 @@ async def _await_tool_decision(
 ) -> tuple[str, bool]:
     tool_req_id, tool_task = launch_tool_request(
         state,
-        user_utt,
         session_handler=session_handler,
         tool_adapter=tool_adapter,
     )
@@ -93,7 +92,7 @@ async def run_execution(
     request_id: str,
     static_prefix: str,
     runtime_text: str,
-    history_text: str,
+    history_turns: list[HistoryTurn],
     user_utt: str,
     *,
     history_turn_id: str | None = None,
@@ -126,7 +125,7 @@ async def run_execution(
             state,
             static_prefix,
             runtime_text,
-            history_text,
+            history_turns,
             user_utt_for_chat,
             engine=chat_engine,
             session_handler=session_handler,

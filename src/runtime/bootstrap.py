@@ -65,7 +65,12 @@ async def build_runtime_deps() -> RuntimeDeps:
     )
 
     tool_budget = tool_adapter.max_history_tokens if tool_adapter else None
-    session_handler = SessionHandler(chat_engine=chat_engine, tool_history_budget=tool_budget)
+    session_handler = SessionHandler(
+        chat_engine=chat_engine,
+        tool_history_budget=tool_budget,
+        chat_tokenizer=chat_tokenizer,
+        tool_tokenizer=tool_tokenizer,
+    )
     connections = ConnectionHandler()
     cache_reset_manager = None
     if chat_engine is not None and chat_engine.supports_cache_reset:
