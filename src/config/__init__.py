@@ -36,7 +36,6 @@ from .tool import (
     TOOL_HISTORY_TOKENS,
     TOOL_DECISION_THRESHOLD,
     TOOL_MODEL_BATCH_CONFIG,
-    TRIMMED_TOOL_HISTORY_LENGTH,
 )
 from .telemetry import (
     SENTRY_DSN,
@@ -190,7 +189,6 @@ __all__ = [
     "TOOL_DECISION_THRESHOLD",
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",
-    "TRIMMED_TOOL_HISTORY_LENGTH",
     "TOOL_MAX_LENGTH",
     "TOOL_MODEL_BATCH_CONFIG",
     # models

@@ -55,6 +55,7 @@ class SessionState:
 
     meta: dict[str, Any]
     history_turns: list[HistoryTurn] = field(default_factory=list)
+    tool_history_turns: list[HistoryTurn] = field(default_factory=list)
     task: asyncio.Task | None = None
     active_request_id: str | None = None
     created_at: float = field(default_factory=time.monotonic)

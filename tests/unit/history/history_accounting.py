@@ -13,7 +13,6 @@ from tests.helpers.tokenizer import use_local_tokenizers
 def _build_session_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:
     monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
     monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
-    monkeypatch.setattr(session_history, "TOOL_HISTORY_TOKENS", 800)
     return SessionHandler(chat_engine=None)
 
 
@@ -69,59 +68,56 @@ def test_render_tool_history_text_respects_explicit_budget(monkeypatch: pytest.M
 def _build_tool_only_handler(
     monkeypatch: pytest.MonkeyPatch,
     tool_budget: int = 10,
-    tool_trimmed: int = 6,
 ) -> SessionHandler:
     monkeypatch.setattr(session_history, "DEPLOY_CHAT", False)
     monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
-    monkeypatch.setattr(session_history, "TOOL_HISTORY_TOKENS", tool_budget)
-    monkeypatch.setattr(session_history, "TRIMMED_TOOL_HISTORY_LENGTH", tool_trimmed)
     monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
     monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
-    return SessionHandler(chat_engine=None)
+    return SessionHandler(chat_engine=None, tool_history_budget=tool_budget)
 
 
 def test_trim_history_tool_only_drops_old_turns(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tool-only trim_history drops oldest turns to stay within budget."""
+    """Tool-only trim_tool_history drops oldest turns to stay within budget."""
     with use_local_tokenizers():
-        handler = _build_tool_only_handler(monkeypatch, tool_budget=10, tool_trimmed=6)
-        state = _make_state(handler)
+        _build_tool_only_handler(monkeypatch, tool_budget=10)
+        state = SessionState(meta={})
 
         # Each user text is ~2-3 tokens; 5 turns should exceed budget of 10.
         turns = [HistoryTurn(turn_id=f"t{i}", user=f"word{i} extra{i} more{i}", assistant="") for i in range(5)]
-        state.history_turns = turns
-        session_history.trim_history(state, trigger_tokens=6)
+        state.tool_history_turns = turns
+        session_history.trim_tool_history(state, 6)
 
-        assert len(state.history_turns) < 5
+        assert len(state.tool_history_turns) < 5
         # Most recent turn is preserved
-        assert state.history_turns[-1].turn_id == "t4"
+        assert state.tool_history_turns[-1].turn_id == "t4"
 
 
 def test_trim_history_tool_only_clips_oversized_last_turn(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tool-only trim_history clips a single oversized turn in-place."""
+    """Tool-only trim_tool_history clips a single oversized turn in-place."""
     with use_local_tokenizers():
-        handler = _build_tool_only_handler(monkeypatch, tool_budget=5, tool_trimmed=3)
-        state = _make_state(handler)
+        _build_tool_only_handler(monkeypatch, tool_budget=5)
+        state = SessionState(meta={})
 
         long_text = "alpha bravo charlie delta echo foxtrot golf hotel india"
-        state.history_turns = [HistoryTurn(turn_id="t1", user=long_text, assistant="")]
-        session_history.trim_history(state, trigger_tokens=3)
+        state.tool_history_turns = [HistoryTurn(turn_id="t1", user=long_text, assistant="")]
+        session_history.trim_tool_history(state, 3)
 
-        assert len(state.history_turns) == 1
-        clipped_text = state.history_turns[0].user
+        assert len(state.tool_history_turns) == 1
+        clipped_text = state.tool_history_turns[0].user
         assert count_tokens_tool(clipped_text) <= 3
 
 
 def test_trim_history_tool_only_noop_when_under_budget(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tool-only trim_history is a no-op when under budget."""
+    """Tool-only trim_tool_history is a no-op when under budget."""
     with use_local_tokenizers():
-        handler = _build_tool_only_handler(monkeypatch, tool_budget=100, tool_trimmed=66)
-        state = _make_state(handler)
+        _build_tool_only_handler(monkeypatch, tool_budget=100)
+        state = SessionState(meta={})
 
         turns = [
             HistoryTurn(turn_id="t1", user="hi", assistant=""),
             HistoryTurn(turn_id="t2", user="hello", assistant=""),
         ]
-        state.history_turns = turns
-        session_history.trim_history(state)
+        state.tool_history_turns = turns
+        session_history.trim_tool_history(state, 100)
 
-        assert len(state.history_turns) == 2
+        assert len(state.tool_history_turns) == 2

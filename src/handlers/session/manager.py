@@ -45,9 +45,10 @@ class SessionHandler:
         self,
         *,
         chat_engine: BaseEngine | None = None,
+        tool_history_budget: int | None = None,
     ):
         self._chat_engine = chat_engine
-        self._history = HistoryController()
+        self._history = HistoryController(tool_history_budget=tool_history_budget)
 
     # ============================================================================
     # Session metadata / lifecycle

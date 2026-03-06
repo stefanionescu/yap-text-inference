@@ -53,9 +53,6 @@ TOOL_COMPILE = env_flag("TOOL_COMPILE", False)
 _tool_history_tokens_raw = os.getenv("TOOL_HISTORY_TOKENS")
 TOOL_HISTORY_TOKENS_CONFIGURED = _tool_history_tokens_raw is not None
 TOOL_HISTORY_TOKENS = int(_tool_history_tokens_raw) if _tool_history_tokens_raw is not None else 1536
-_HISTORY_RETENTION_PCT = int(os.getenv("HISTORY_RETENTION_PCT", "66"))
-TRIMMED_TOOL_HISTORY_LENGTH = TOOL_HISTORY_TOKENS * _HISTORY_RETENTION_PCT // 100
-
 _tool_max_length_raw = os.getenv("TOOL_MAX_LENGTH")
 TOOL_MAX_LENGTH_CONFIGURED = _tool_max_length_raw is not None
 TOOL_MAX_LENGTH = int(_tool_max_length_raw) if _tool_max_length_raw is not None else 1536
@@ -102,7 +99,6 @@ __all__ = [
     "TOOL_COMPILE",
     "TOOL_HISTORY_TOKENS",
     "TOOL_HISTORY_TOKENS_CONFIGURED",
-    "TRIMMED_TOOL_HISTORY_LENGTH",
     "TOOL_MAX_LENGTH",
     "TOOL_MAX_LENGTH_CONFIGURED",
     "TOOL_MIN_TIMEOUT_S",

@@ -4,14 +4,16 @@ This module handles the transformation between structured conversation history
 (HistoryTurn objects) and text representations. It supports:
 
 1. Rendering: Converting structured turns to text format for prompt building
-2. Trimming: Keeping history within token budgets for both chat and tool modes
+2. Trimming: Keeping history within token budgets independently for chat and tool
 3. Extraction: Getting user-only texts for tool routing
 
 For parsing functions (text/JSON to HistoryTurn), see the parsing module.
 
-Both modes use a two-threshold (hysteresis) approach:
-- Chat: triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
-- Tool-only: triggers at TOOL_HISTORY_TOKENS, trims to TRIMMED_TOOL_HISTORY_LENGTH
+Chat history uses a two-threshold (hysteresis) approach:
+- Triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
+
+Tool history is maintained in a separate list (state.tool_history_turns) and
+trimmed directly to a caller-supplied budget with no hysteresis.
 
 History is cropped eagerly at import time (set_turns / set_text) using the
 retention-adjusted trigger, then maintained on each access via the full budget.
@@ -30,15 +32,13 @@ from src.config import (
     DEPLOY_CHAT,
     DEPLOY_TOOL,
     HISTORY_MAX_TOKENS,
-    TOOL_HISTORY_TOKENS,
     TRIMMED_HISTORY_LENGTH,
-    TRIMMED_TOOL_HISTORY_LENGTH,
 )
 
 
 def _eager_trigger() -> int:
     """Return the import-time trigger threshold for the active deploy mode."""
-    return TRIMMED_HISTORY_LENGTH if DEPLOY_CHAT else TRIMMED_TOOL_HISTORY_LENGTH
+    return TRIMMED_HISTORY_LENGTH
 
 
 def render_history(turns: list[HistoryTurn]) -> str:
@@ -77,11 +77,10 @@ def trim_history(
     trigger_tokens: int | None = None,
     target_tokens: int | None = None,
 ) -> None:
-    """Trim history when it exceeds the configured trigger.
+    """Trim chat history when it exceeds the configured trigger.
 
     Uses a two-threshold (hysteresis) approach:
-    - Chat: triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
-    - Tool-only: triggers at TOOL_HISTORY_TOKENS, trims to TRIMMED_TOOL_HISTORY_LENGTH
+    - Triggers at HISTORY_MAX_TOKENS, trims to TRIMMED_HISTORY_LENGTH
 
     Supplying a lower trigger (e.g., the retention-adjusted target) forces
     eager trimming, which is useful when importing client-provided history.
@@ -89,20 +88,12 @@ def trim_history(
     if not state.history_turns:
         return
 
-    if DEPLOY_CHAT:
-        default_trigger = HISTORY_MAX_TOKENS
-        default_target = TRIMMED_HISTORY_LENGTH
+    default_trigger = HISTORY_MAX_TOKENS
+    default_target = TRIMMED_HISTORY_LENGTH
 
-        def _count() -> int:
-            rendered = render_history(state.history_turns)
-            return count_tokens_chat(rendered) if rendered else 0
-    else:
-        default_trigger = TOOL_HISTORY_TOKENS
-        default_target = TRIMMED_TOOL_HISTORY_LENGTH
-
-        def _count() -> int:
-            texts = get_user_texts(state.history_turns)
-            return count_tokens_tool("\n".join(texts)) if texts else 0
+    def _count() -> int:
+        rendered = render_history(state.history_turns)
+        return count_tokens_chat(rendered) if rendered else 0
 
     effective_trigger = trigger_tokens or default_trigger
     effective_target = target_tokens or default_target
@@ -128,16 +119,39 @@ def trim_history(
         state.history_turns.pop(0)
         tokens = _count()
 
-    # Tool-only: clip an oversized last turn in-place
-    if not DEPLOY_CHAT and state.history_turns and tokens > effective_target:
-        turn = state.history_turns[-1]
+
+def trim_tool_history(state: SessionState, budget: int) -> None:
+    """Trim tool_history_turns to fit within *budget* tokens (no hysteresis)."""
+    if not state.tool_history_turns:
+        return
+
+    def _count() -> int:
+        texts = get_user_texts(state.tool_history_turns)
+        return count_tokens_tool("\n".join(texts)) if texts else 0
+
+    tokens = _count()
+    if tokens <= budget:
+        return
+
+    # Batch-drop estimated turns
+    tokens_to_remove = tokens - budget
+    avg = tokens // len(state.tool_history_turns)
+    drops = min(max(1, tokens_to_remove // max(1, avg)), len(state.tool_history_turns) - 1)
+    if drops > 0:
+        state.tool_history_turns = state.tool_history_turns[drops:]
+
+    # One-by-one verify
+    tokens = _count()
+    while len(state.tool_history_turns) > 1 and tokens > budget:
+        state.tool_history_turns.pop(0)
+        tokens = _count()
+
+    # Clip oversized last turn in-place
+    if state.tool_history_turns and _count() > budget:
+        turn = state.tool_history_turns[-1]
         user_text = (turn.user or "").strip()
         if user_text:
-            turn.user = trim_text_to_token_limit_tool(
-                user_text,
-                max_tokens=effective_target,
-                keep="end",
-            )
+            turn.user = trim_text_to_token_limit_tool(user_text, max_tokens=budget, keep="end")
 
 
 def render_tool_history_text(turns: list[HistoryTurn], *, max_tokens: int | None = None) -> str:
@@ -147,6 +161,7 @@ def render_tool_history_text(turns: list[HistoryTurn], *, max_tokens: int | None
     user_texts = get_user_texts(turns)
     if not user_texts:
         return ""
+    from src.config import TOOL_HISTORY_TOKENS
     budget = max(1, int(max_tokens if max_tokens is not None else TOOL_HISTORY_TOKENS))
     return build_user_history_for_tool(
         user_texts,
@@ -172,9 +187,13 @@ class HistoryController:
     automatic trimming. All read operations trigger trimming to ensure
     the history fits within token budgets.
 
-    This class is stateless - all state is stored in SessionState objects.
-    A single HistoryController instance is typically shared across sessions.
+    Chat and tool histories are maintained independently:
+    - state.history_turns: full User+Assistant turns for chat rendering
+    - state.tool_history_turns: user-only turns for the tool model
     """
+
+    def __init__(self, *, tool_history_budget: int | None = None):
+        self._tool_budget = tool_history_budget
 
     def get_text(self, state: SessionState) -> str:
         """Get full rendered history (User + Assistant turns).
@@ -187,28 +206,52 @@ class HistoryController:
         Returns:
             Formatted history text.
         """
-        trim_history(state)
+        if DEPLOY_CHAT:
+            trim_history(state)
         return render_history(state.history_turns)
 
     def get_user_texts(self, state: SessionState) -> list[str]:
-        """Get raw user texts (no trimming)."""
-        trim_history(state)
+        """Get raw user texts for the appropriate deploy mode."""
+        if DEPLOY_TOOL and self._tool_budget:
+            trim_tool_history(state, self._tool_budget)
+            return get_user_texts(state.tool_history_turns)
+        if DEPLOY_CHAT:
+            trim_history(state)
         return get_user_texts(state.history_turns)
 
     def get_tool_history_text(self, state: SessionState, *, max_tokens: int | None = None) -> str:
         """Get trimmed user-only history for the tool model."""
-        trim_history(state)
+        if DEPLOY_TOOL and self._tool_budget:
+            trim_tool_history(state, self._tool_budget)
+            return render_tool_history_text(
+                state.tool_history_turns,
+                max_tokens=max_tokens or self._tool_budget,
+            )
         return render_tool_history_text(state.history_turns, max_tokens=max_tokens)
 
     def set_text(self, state: SessionState, history_text: str) -> str:
         state.history_turns = parse_history_text(history_text)
-        trim_history(state, trigger_tokens=_eager_trigger())
+        if DEPLOY_CHAT:
+            trim_history(state, trigger_tokens=_eager_trigger())
+        if DEPLOY_TOOL and self._tool_budget:
+            state.tool_history_turns = [
+                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="")
+                for t in state.history_turns if (t.user or "").strip()
+            ]
+            trim_tool_history(state, self._tool_budget)
         return render_history(state.history_turns)
 
     def set_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
         """Set history from pre-parsed turns and apply import-time trimming."""
         state.history_turns = turns
-        trim_history(state, trigger_tokens=_eager_trigger())
+        if DEPLOY_CHAT:
+            trim_history(state, trigger_tokens=_eager_trigger())
+        if DEPLOY_TOOL and self._tool_budget:
+            state.tool_history_turns = [
+                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="")
+                for t in turns if (t.user or "").strip()
+            ]
+            trim_tool_history(state, self._tool_budget)
         return render_history(state.history_turns)
 
     def append_user_turn(self, state: SessionState, user_utt: str) -> str | None:
@@ -217,7 +260,11 @@ class HistoryController:
             return None
         turn_id = uuid.uuid4().hex
         state.history_turns.append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
-        trim_history(state)
+        if DEPLOY_CHAT:
+            trim_history(state)
+        if DEPLOY_TOOL and self._tool_budget:
+            state.tool_history_turns.append(HistoryTurn(turn_id=turn_id, user=user, assistant=""))
+            trim_tool_history(state, self._tool_budget)
         return turn_id
 
     def append_turn(
@@ -236,26 +283,33 @@ class HistoryController:
             if target is not None:
                 if assistant:
                     target.assistant = assistant
-                trim_history(state)
+                if DEPLOY_CHAT:
+                    trim_history(state)
                 return render_history(state.history_turns)
 
         if not user and not assistant:
             return render_history(state.history_turns)
 
+        new_turn_id = turn_id or uuid.uuid4().hex
         state.history_turns.append(
             HistoryTurn(
-                turn_id=turn_id or uuid.uuid4().hex,
+                turn_id=new_turn_id,
                 user=user,
                 assistant=assistant,
             )
         )
-        trim_history(state)
+        if DEPLOY_CHAT:
+            trim_history(state)
+        if user and DEPLOY_TOOL and self._tool_budget:
+            state.tool_history_turns.append(HistoryTurn(turn_id=new_turn_id, user=user, assistant=""))
+            trim_tool_history(state, self._tool_budget)
         return render_history(state.history_turns)
 
 
 __all__ = [
     "render_history",
     "trim_history",
+    "trim_tool_history",
     "render_tool_history_text",
     "get_user_texts",
     "HistoryController",

@@ -14,7 +14,6 @@ from tests.helpers.tokenizer import use_local_tokenizers
 def _build_session_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:
     monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
     monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
-    monkeypatch.setattr(session_history, "TOOL_HISTORY_TOKENS", 800)
     monkeypatch.setattr(session_history, "DEPLOY_CHAT", True)
     monkeypatch.setattr(session_history, "DEPLOY_TOOL", False)
     monkeypatch.setattr(start_history, "DEPLOY_CHAT", True)
@@ -149,18 +148,16 @@ def test_resolve_history_ignores_history_after_first_request(monkeypatch: pytest
 
 
 def test_resolve_history_tool_only_trims_at_import(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tool-only mode trims history eagerly at import time."""
+    """Tool-only mode trims tool_history_turns eagerly at import time."""
     with use_local_tokenizers():
         monkeypatch.setattr(session_history, "DEPLOY_CHAT", False)
         monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
-        monkeypatch.setattr(session_history, "TOOL_HISTORY_TOKENS", 10)
-        monkeypatch.setattr(session_history, "TRIMMED_TOOL_HISTORY_LENGTH", 6)
         monkeypatch.setattr(session_history, "HISTORY_MAX_TOKENS", 1000)
         monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
         monkeypatch.setattr(start_history, "DEPLOY_CHAT", False)
         monkeypatch.setattr(start_history, "DEPLOY_TOOL", True)
 
-        handler = SessionHandler(chat_engine=None)
+        handler = SessionHandler(chat_engine=None, tool_history_budget=10)
         state = SessionState(meta={})
         handler.initialize_session(state)
 
@@ -172,6 +169,6 @@ def test_resolve_history_tool_only_trims_at_import(monkeypatch: pytest.MonkeyPat
         msg = {"history": messages}
         start_history.resolve_history(handler, state, msg)
 
-        # Turns should have been trimmed (not all 10 kept)
-        assert len(state.history_turns) < 10
-        assert len(state.history_turns) >= 1
+        # Tool history turns should have been trimmed (not all 10 kept)
+        assert len(state.tool_history_turns) < 10
+        assert len(state.tool_history_turns) >= 1

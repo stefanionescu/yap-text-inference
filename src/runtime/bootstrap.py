@@ -64,7 +64,8 @@ async def build_runtime_deps() -> RuntimeDeps:
         _build_tool_adapter(),
     )
 
-    session_handler = SessionHandler(chat_engine=chat_engine)  # no idle TTL — connection IS the session
+    tool_budget = tool_adapter.max_history_tokens if tool_adapter else None
+    session_handler = SessionHandler(chat_engine=chat_engine, tool_history_budget=tool_budget)
     connections = ConnectionHandler()
     cache_reset_manager = None
     if chat_engine is not None and chat_engine.supports_cache_reset:
