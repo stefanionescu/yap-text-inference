@@ -19,9 +19,9 @@ from ...telemetry.instruments import get_metrics
 from src.runtime.dependencies import RuntimeDeps
 from .disconnects import is_expected_ws_disconnect
 from ...messages.cancel import handle_cancel_message
-from src.handlers.session.requests import has_running_task
 from src.handlers.session.manager import SessionHandler
 from .limits import consume_limiter, select_rate_limiter
+from src.handlers.session.requests import has_running_task
 from ...telemetry.phases import record_phase_error, record_phase_latency
 from ...config.websocket import WS_STATUS_OK, WS_ERROR_INVALID_MESSAGE, WS_CLOSE_CLIENT_REQUEST_CODE
 

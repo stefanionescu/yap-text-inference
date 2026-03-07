@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 import time
 import uuid
 import logging
-import copy
 from fastapi import WebSocket
 from src.state import TurnPlan
 from typing import Any, Literal
@@ -15,12 +15,12 @@ from .start.dispatch import dispatch_execution
 from src.telemetry.sentry import capture_error
 from src.runtime.dependencies import RuntimeDeps
 from src.handlers.websocket.errors import send_error
-from src.handlers.session.config import update_session_config
 from .start.sampling import extract_sampling_overrides
 from src.handlers.session.manager import SessionHandler
 from .input import normalize_gender, normalize_personality
-from src.config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
+from src.handlers.session.config import update_session_config
 from .start.history import resolve_history, resolve_user_utterances
+from src.config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
 from src.telemetry.phases import record_phase_error, record_phase_latency
 from src.config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from .validators import (
@@ -124,6 +124,41 @@ def _resolve_start_inputs(
     return gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix
 
 
+def _build_start_turn_plan(
+    state,
+    msg: dict[str, Any],
+    cfg: dict[str, Any],
+    *,
+    session_handler: SessionHandler,
+    sampling_overrides: dict[str, float | int | bool],
+) -> TurnPlan:
+    history_turns = resolve_history(session_handler, state, msg)
+    chat_user_utt, tool_user_utt = resolve_user_utterances(
+        session_handler,
+        state,
+        msg.get("user_utterance", ""),
+    )
+    history_turn_id = session_handler.append_user_utterance(
+        state,
+        chat_user_utt,
+        tool_user_utt=tool_user_utt,
+    )
+    plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
+    static_prefix = cfg.get("chat_prompt") or ""
+    return TurnPlan(
+        state=state,
+        request_id=f"start-{uuid.uuid4().hex}",
+        static_prefix=static_prefix,
+        runtime_text="",
+        history_turns=history_turns,
+        chat_user_utt=plan_chat_user_utt,
+        tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
+        history_turn_id=history_turn_id,
+        sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
+        apply_screen_checked_prefix=False,
+    )
+
+
 async def _plan_start_turn(
     ws: WebSocket,
     msg: dict[str, Any],
@@ -165,31 +200,12 @@ async def _plan_start_turn(
             screen_checked_prefix=screen_checked_prefix,
         )
         cfg = copy.deepcopy(state.meta)
-
-        history_turns = resolve_history(session_handler, state, msg)
-        chat_user_utt, tool_user_utt = resolve_user_utterances(
-            session_handler,
+        return _build_start_turn_plan(
             state,
-            msg.get("user_utterance", ""),
-        )
-        history_turn_id = session_handler.append_user_utterance(
-            state,
-            chat_user_utt,
-            tool_user_utt=tool_user_utt,
-        )
-        plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
-        static_prefix = cfg.get("chat_prompt") or ""
-        return TurnPlan(
-            state=state,
-            request_id=f"start-{uuid.uuid4().hex}",
-            static_prefix=static_prefix,
-            runtime_text="",
-            history_turns=history_turns,
-            chat_user_utt=plan_chat_user_utt,
-            tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
-            history_turn_id=history_turn_id,
-            sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
-            apply_screen_checked_prefix=False,
+            msg,
+            cfg,
+            session_handler=session_handler,
+            sampling_overrides=sampling_overrides,
         )
     finally:
         record_phase_latency("validate", time.perf_counter() - t0)

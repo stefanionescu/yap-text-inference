@@ -6,9 +6,9 @@ import os
 from typing import Any
 from .llmcompressor import quantize
 from src.state import CalibrationConfig
+from src.helpers.calibration import CHAT_TOTAL_POLICY
 from ..utils import is_awq_dir, resolve_calibration_seqlen
 from src.config.limits import MOE_CALIBRATION_SAMPLES_LIMIT
-from src.helpers.calibration import CHAT_TOTAL_POLICY
 from ..utils.model import is_moe_model, prefetch_model, load_model_config
 
 

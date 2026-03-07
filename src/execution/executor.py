@@ -24,7 +24,6 @@ from fastapi import WebSocket
 from .chat import run_chat_generation
 from src.engines.base import BaseEngine
 from src.tool.adapter import ToolAdapter
-from src.handlers.session.config import resolve_screen_prefix
 from .tool.parser import parse_tool_result
 from ..config.timeouts import TOOL_TIMEOUT_S
 from .tool.runner import launch_tool_request
@@ -33,6 +32,7 @@ from src.telemetry.sentry import add_breadcrumb
 from src.telemetry.instruments import get_metrics
 from src.handlers.session.manager import SessionHandler
 from src.state.session import HistoryTurn, SessionState
+from src.handlers.session.config import resolve_screen_prefix
 from src.config import DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 from ..handlers.websocket.helpers import cancel_task, send_toolcall, stream_chat_response
 

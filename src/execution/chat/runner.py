@@ -23,11 +23,11 @@ from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.instruments import get_metrics
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...messages.sanitize import StreamingSanitizer
-from src.handlers.session.requests import is_request_cancelled
 from src.telemetry.phases import record_phase_latency
 from src.state.session import HistoryTurn, SessionState
 from ...messages.chat import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
+from src.handlers.session.requests import is_request_cancelled
 from ...config.sampling import (
     CHAT_MIN_P,
     CHAT_TOP_K,

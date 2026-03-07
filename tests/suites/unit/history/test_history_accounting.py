@@ -2,19 +2,43 @@
 
 from __future__ import annotations
 
-import pytest
+from typing import Any, cast
 from src.tokens import count_tokens_tool
-import src.handlers.session.history as session_history
-import src.handlers.session.history_tokens as history_tokens
+import src.handlers.session.history.ops as history_ops
 from src.handlers.session.manager import SessionHandler
 from src.state.session import HistoryTurn, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
+import src.handlers.session.history.token_counting as history_tokens
+from src.handlers.session.history.settings import HistoryRuntimeConfig
 
 
-def _build_session_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:
-    monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 1000)
-    monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
-    return SessionHandler(chat_engine=None)
+def _history_config(
+    *,
+    deploy_chat: bool,
+    deploy_tool: bool,
+    chat_trigger_tokens: int = 1000,
+    chat_target_tokens: int = 800,
+    default_tool_history_tokens: int | None = None,
+) -> HistoryRuntimeConfig:
+    return HistoryRuntimeConfig(
+        deploy_chat=deploy_chat,
+        deploy_tool=deploy_tool,
+        chat_trigger_tokens=chat_trigger_tokens,
+        chat_target_tokens=chat_target_tokens,
+        default_tool_history_tokens=default_tool_history_tokens,
+    )
+
+
+def _build_session_handler() -> SessionHandler:
+    return SessionHandler(
+        chat_engine=None,
+        history_config=_history_config(
+            deploy_chat=True,
+            deploy_tool=False,
+            chat_trigger_tokens=1000,
+            chat_target_tokens=800,
+        ),
+    )
 
 
 def _make_state(handler: SessionHandler) -> SessionState:
@@ -31,9 +55,9 @@ def _history_turn_count(state: SessionState) -> int:
     return 0
 
 
-def test_append_history_turn_updates_existing_turn_when_turn_id_provided(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_append_history_turn_updates_existing_turn_when_turn_id_provided() -> None:
     with use_local_tokenizers():
-        session_handler = _build_session_handler(monkeypatch)
+        session_handler = _build_session_handler()
         state = _make_state(session_handler)
 
         turn_id = session_handler.append_user_utterance(state, "hello")
@@ -48,9 +72,9 @@ def test_append_history_turn_updates_existing_turn_when_turn_id_provided(monkeyp
         assert "Assistant: world" in rendered
 
 
-def test_set_history_turns_keeps_expected_turn_count(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_history_turns_keeps_expected_turn_count() -> None:
     with use_local_tokenizers():
-        session_handler = _build_session_handler(monkeypatch)
+        session_handler = _build_session_handler()
         state = _make_state(session_handler)
 
         turns = [
@@ -65,50 +89,60 @@ def test_set_history_turns_keeps_expected_turn_count(monkeypatch: pytest.MonkeyP
         assert _history_turn_count(state) == 2
 
 
-def test_render_tool_history_text_respects_explicit_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_render_tool_history_text_keeps_latest_line_when_single_line_exceeds_budget() -> None:
     with use_local_tokenizers():
-        monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
+        config = _history_config(deploy_chat=False, deploy_tool=True)
         turns = [HistoryTurn(turn_id="t1", user="one two three four five", assistant="")]
-        rendered = session_history.render_tool_history_text(turns, max_tokens=3)
-        assert rendered == "three four five"
-        assert count_tokens_tool(rendered) <= 3
+        rendered = history_ops.render_tool_history_text(turns, config=config, max_tokens=3)
+        assert rendered == "one two three four five"
+        assert count_tokens_tool(rendered) > 3
 
 
-def test_render_tool_history_text_uses_raw_user_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_render_tool_history_text_uses_raw_user_lines() -> None:
     with use_local_tokenizers():
-        monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
+        config = _history_config(deploy_chat=False, deploy_tool=True)
         turns = [
             HistoryTurn(turn_id="t1", user="first line", assistant="assistant one"),
             HistoryTurn(turn_id="t2", user="second line", assistant="assistant two"),
         ]
-        rendered = session_history.render_tool_history_text(turns, max_tokens=20)
+        rendered = history_ops.render_tool_history_text(turns, config=config, max_tokens=20)
         assert rendered == "first line\nsecond line"
         assert "User:" not in rendered
         assert "Assistant:" not in rendered
 
 
-def _build_tool_only_handler(
-    monkeypatch: pytest.MonkeyPatch,
-    tool_budget: int = 10,
+def _build_tool_only_handler(tool_budget: int = 10) -> SessionHandler:
+    return SessionHandler(
+        chat_engine=None,
+        tool_history_budget=tool_budget,
+        history_config=_history_config(
+            deploy_chat=False,
+            deploy_tool=True,
+            chat_trigger_tokens=1000,
+            chat_target_tokens=800,
+        ),
+    )
+
+
+def _build_chat_only_handler(
+    *,
+    chat_trigger_tokens: int = 1000,
+    chat_target_tokens: int = 800,
 ) -> SessionHandler:
-    monkeypatch.setattr(session_history, "DEPLOY_CHAT", False)
-    monkeypatch.setattr(session_history, "DEPLOY_TOOL", True)
-    monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 1000)
-    monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
-    return SessionHandler(chat_engine=None, tool_history_budget=tool_budget)
+    return SessionHandler(
+        chat_engine=None,
+        history_config=_history_config(
+            deploy_chat=True,
+            deploy_tool=False,
+            chat_trigger_tokens=chat_trigger_tokens,
+            chat_target_tokens=chat_target_tokens,
+        ),
+    )
 
 
-def _build_chat_only_handler(monkeypatch: pytest.MonkeyPatch) -> SessionHandler:
-    monkeypatch.setattr(session_history, "DEPLOY_CHAT", True)
-    monkeypatch.setattr(session_history, "DEPLOY_TOOL", False)
-    monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 1000)
-    monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 800)
-    return SessionHandler(chat_engine=None)
-
-
-def test_tool_only_mode_keeps_chat_history_inactive(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tool_only_mode_keeps_chat_history_inactive() -> None:
     with use_local_tokenizers():
-        handler = _build_tool_only_handler(monkeypatch, tool_budget=20)
+        handler = _build_tool_only_handler(tool_budget=20)
         state = SessionState(meta={})
         handler.initialize_session(state)
 
@@ -123,9 +157,9 @@ def test_tool_only_mode_keeps_chat_history_inactive(monkeypatch: pytest.MonkeyPa
         assert _history_turn_count(state) == 1
 
 
-def test_chat_only_mode_keeps_tool_history_inactive(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_only_mode_keeps_tool_history_inactive() -> None:
     with use_local_tokenizers():
-        handler = _build_chat_only_handler(monkeypatch)
+        handler = _build_chat_only_handler()
         state = SessionState(meta={})
         handler.initialize_session(state)
 
@@ -140,41 +174,38 @@ def test_chat_only_mode_keeps_tool_history_inactive(monkeypatch: pytest.MonkeyPa
         assert _history_turn_count(state) == 1
 
 
-def test_trim_history_tool_only_drops_old_turns(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trim_history_tool_only_drops_old_turns() -> None:
     """Tool-only trim_tool_history drops oldest turns to stay within budget."""
     with use_local_tokenizers():
-        _build_tool_only_handler(monkeypatch, tool_budget=10)
+        _build_tool_only_handler(tool_budget=10)
         state = SessionState(meta={})
 
-        # Each user text is ~2-3 tokens; 5 turns should exceed budget of 10.
         turns = [HistoryTurn(turn_id=f"t{i}", user=f"word{i} extra{i} more{i}", assistant="") for i in range(5)]
         state.tool_history_turns = turns
-        session_history.trim_tool_history(state, 6)
+        history_ops.trim_tool_history(state, 6)
 
         assert len(state.tool_history_turns) < 5
-        # Most recent turn is preserved
         assert state.tool_history_turns[-1].turn_id == "t4"
 
 
-def test_trim_history_tool_only_clips_oversized_last_turn(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tool-only trim_tool_history clips a single oversized turn in-place."""
+def test_trim_history_tool_only_keeps_single_oversized_last_turn() -> None:
+    """Tool-only trim_tool_history keeps a single oversized turn as-is."""
     with use_local_tokenizers():
-        _build_tool_only_handler(monkeypatch, tool_budget=5)
+        _build_tool_only_handler(tool_budget=5)
         state = SessionState(meta={})
 
         long_text = "alpha bravo charlie delta echo foxtrot golf hotel india"
         state.tool_history_turns = [HistoryTurn(turn_id="t1", user=long_text, assistant="")]
-        session_history.trim_tool_history(state, 3)
+        history_ops.trim_tool_history(state, 3)
 
         assert len(state.tool_history_turns) == 1
-        clipped_text = state.tool_history_turns[0].user
-        assert count_tokens_tool(clipped_text) <= 3
+        assert state.tool_history_turns[0].user == long_text
 
 
-def test_trim_history_tool_only_noop_when_under_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trim_history_tool_only_noop_when_under_budget() -> None:
     """Tool-only trim_tool_history is a no-op when under budget."""
     with use_local_tokenizers():
-        _build_tool_only_handler(monkeypatch, tool_budget=100)
+        _build_tool_only_handler(tool_budget=100)
         state = SessionState(meta={})
 
         turns = [
@@ -182,15 +213,15 @@ def test_trim_history_tool_only_noop_when_under_budget(monkeypatch: pytest.Monke
             HistoryTurn(turn_id="t2", user="hello", assistant=""),
         ]
         state.tool_history_turns = turns
-        session_history.trim_tool_history(state, 100)
+        history_ops.trim_tool_history(state, 100)
 
         assert len(state.tool_history_turns) == 2
 
 
-def test_append_user_utterance_tool_only_trims_eagerly(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_append_user_utterance_tool_only_trims_eagerly() -> None:
     """Appending user turns eagerly keeps tool history within budget."""
     with use_local_tokenizers():
-        handler = _build_tool_only_handler(monkeypatch, tool_budget=6)
+        handler = _build_tool_only_handler(tool_budget=6)
         state = SessionState(meta={})
         handler.initialize_session(state)
 
@@ -203,12 +234,10 @@ def test_append_user_utterance_tool_only_trims_eagerly(monkeypatch: pytest.Monke
         assert count_tokens_tool(rendered) <= 6
 
 
-def test_append_user_utterance_chat_only_trims_eagerly(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_append_user_utterance_chat_only_trims_eagerly() -> None:
     """Appending user turns eagerly keeps chat history under chat thresholds."""
     with use_local_tokenizers():
-        handler = _build_chat_only_handler(monkeypatch)
-        monkeypatch.setattr(session_history, "CHAT_HISTORY_MAX_TOKENS", 10)
-        monkeypatch.setattr(session_history, "TRIMMED_HISTORY_LENGTH", 6)
+        handler = _build_chat_only_handler(chat_trigger_tokens=10, chat_target_tokens=6)
         state = SessionState(meta={})
         handler.initialize_session(state)
 
@@ -219,10 +248,10 @@ def test_append_user_utterance_chat_only_trims_eagerly(monkeypatch: pytest.Monke
         assert len(state.history_turns) < 8
 
 
-def test_get_tool_history_text_excludes_latest_without_mutating_store(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_tool_history_text_excludes_latest_without_mutating_store() -> None:
     """include_latest=False returns prior context only and leaves store untouched."""
     with use_local_tokenizers():
-        handler = _build_tool_only_handler(monkeypatch, tool_budget=30)
+        handler = _build_tool_only_handler(tool_budget=30)
         state = SessionState(meta={})
         handler.initialize_session(state)
 
@@ -238,20 +267,21 @@ def test_get_tool_history_text_excludes_latest_without_mutating_store(monkeypatc
         assert handler._history.get_tool_history_text(state) == with_latest
 
 
-def test_append_user_utterance_tool_only_clips_single_oversized_turn(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A single oversized user turn is clipped during eager append-time trim."""
+def test_append_user_utterance_tool_only_keeps_single_oversized_turn() -> None:
+    """A single oversized user turn is retained whole during eager append-time trim."""
     with use_local_tokenizers():
-        handler = _build_tool_only_handler(monkeypatch, tool_budget=3)
+        handler = _build_tool_only_handler(tool_budget=3)
         state = SessionState(meta={})
         handler.initialize_session(state)
 
-        handler.append_user_utterance(state, "alpha bravo charlie delta echo foxtrot")
+        long_text = "alpha bravo charlie delta echo foxtrot"
+        handler.append_user_utterance(state, long_text)
 
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
-        clipped = state.tool_history_turns[0].user
-        assert count_tokens_tool(clipped) <= 3
-        assert handler._history.get_tool_history_text(state) == clipped
+        kept = state.tool_history_turns[0].user
+        assert kept == long_text
+        assert handler._history.get_tool_history_text(state) == long_text
 
 
 class _SpecialAwareTokenizer:
@@ -277,7 +307,7 @@ class _SpecialAwareTokenizer:
 
 
 def test_build_tool_history_accounts_for_special_tokens() -> None:
-    tokenizer = _SpecialAwareTokenizer()
+    tokenizer = cast(Any, _SpecialAwareTokenizer())
 
     kept = history_tokens.build_tool_history(
         ["one two", "three four"],
@@ -287,12 +317,12 @@ def test_build_tool_history_accounts_for_special_tokens() -> None:
     assert kept == "three four"
 
 
-def test_build_tool_history_clips_single_oversized_line_with_special_tokens() -> None:
-    tokenizer = _SpecialAwareTokenizer()
+def test_build_tool_history_keeps_single_oversized_line_with_special_tokens() -> None:
+    tokenizer = cast(Any, _SpecialAwareTokenizer())
 
     kept = history_tokens.build_tool_history(
         ["one two"],
         budget=3,
         tool_tokenizer=tokenizer,
     )
-    assert kept == "two"
+    assert kept == "one two"

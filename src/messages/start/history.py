@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from ...config import DEPLOY_CHAT, DEPLOY_TOOL
 from src.handlers.session.manager import SessionHandler
 from src.state.session import HistoryTurn, SessionState
 from ...handlers.session.parsing import parse_history_for_chat, parse_history_for_tool
@@ -35,11 +34,12 @@ def resolve_history(
     if not isinstance(history_messages, list):
         return session_handler._history.get_turns(state)
 
-    if DEPLOY_CHAT and DEPLOY_TOOL:
+    history_config = session_handler.history_config
+    if history_config.deploy_chat and history_config.deploy_tool:
         chat_turns = parse_history_for_chat(history_messages)
         tool_turns = parse_history_for_tool(history_messages)
         session_handler._history.set_mode_turns(state, chat_turns=chat_turns, tool_turns=tool_turns)
-    elif DEPLOY_TOOL and not DEPLOY_CHAT:
+    elif history_config.deploy_tool and not history_config.deploy_chat:
         tool_turns = parse_history_for_tool(history_messages)
         session_handler._history.set_mode_turns(state, tool_turns=tool_turns)
     else:
@@ -57,7 +57,7 @@ def trim_chat_user_utterance(
 ) -> str:
     """Trim chat user utterance to chat-side token limit."""
     effective_max = session_handler.get_effective_chat_user_utt_max_tokens(state, for_followup=for_followup)
-    if DEPLOY_CHAT:
+    if session_handler.history_config.deploy_chat:
         return session_handler.trim_chat_user_utterance(chat_user_utt, max_tokens=effective_max)
     return chat_user_utt or ""
 
@@ -68,7 +68,7 @@ def trim_tool_user_utterance(
 ) -> str:
     """Trim user utterance to tool-side token limit."""
     effective_max = session_handler.get_effective_tool_user_utt_max_tokens()
-    if DEPLOY_TOOL:
+    if session_handler.history_config.deploy_tool:
         return session_handler.trim_tool_user_utterance(tool_user_utt, max_tokens=effective_max)
     return tool_user_utt or ""
 
@@ -82,10 +82,13 @@ def resolve_user_utterances(
 ) -> tuple[str, str]:
     """Resolve chat/tool utterance variants with independent trimming rules."""
     raw = incoming_user_utt or ""
+    history_config = session_handler.history_config
     chat_user = (
-        trim_chat_user_utterance(session_handler, state, raw, for_followup=for_followup) if DEPLOY_CHAT else raw
+        trim_chat_user_utterance(session_handler, state, raw, for_followup=for_followup)
+        if history_config.deploy_chat
+        else raw
     )
-    tool_user = trim_tool_user_utterance(session_handler, raw) if DEPLOY_TOOL else raw
+    tool_user = trim_tool_user_utterance(session_handler, raw) if history_config.deploy_tool else raw
     return chat_user, tool_user
 
 

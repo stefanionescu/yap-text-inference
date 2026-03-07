@@ -5,16 +5,14 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from typing import TYPE_CHECKING, Any
-from .history import HistoryController
-from .time import format_session_timestamp
-from ...tokens.prefix import strip_screen_prefix
-from src.state.session import SessionState
 from .config import resolve_screen_prefix
+from .time import format_session_timestamp
+from src.state.session import SessionState
+from ...tokens.prefix import strip_screen_prefix
+from .history import HistoryController, HistoryRuntimeConfig, build_history_runtime_config
 from src.config import (
     CHAT_MODEL,
     TOOL_MODEL,
-    DEPLOY_CHAT,
-    DEPLOY_TOOL,
     USER_UTT_MAX_TOKENS,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
@@ -46,16 +44,24 @@ class SessionHandler:
         tool_history_budget: int | None = None,
         chat_tokenizer: FastTokenizer | None = None,
         tool_tokenizer: FastTokenizer | None = None,
+        history_config: HistoryRuntimeConfig | None = None,
     ):
         self._chat_engine = chat_engine
         self._chat_tokenizer = chat_tokenizer
         self._tool_tokenizer = tool_tokenizer
         self._tool_history_budget = tool_history_budget
+        self._history_config = history_config or build_history_runtime_config()
         self._history = HistoryController(
+            config=self._history_config,
             tool_history_budget=tool_history_budget,
             chat_tokenizer=chat_tokenizer,
             tool_tokenizer=tool_tokenizer,
         )
+
+    @property
+    def history_config(self) -> HistoryRuntimeConfig:
+        """Get the runtime history configuration used by this handler."""
+        return self._history_config
 
     # ============================================================================
     # Session metadata / lifecycle
@@ -76,8 +82,8 @@ class SessionHandler:
                 "chat_personality": None,
                 "chat_prompt": None,
                 "chat_sampling": None,
-                "chat_model": CHAT_MODEL if DEPLOY_CHAT else None,
-                "tool_model": TOOL_MODEL if DEPLOY_TOOL else None,
+                "chat_model": CHAT_MODEL if self._history_config.deploy_chat else None,
+                "tool_model": TOOL_MODEL if self._history_config.deploy_tool else None,
                 "check_screen_prefix": None,
                 "screen_checked_prefix": None,
             }
@@ -211,9 +217,9 @@ class SessionHandler:
         text = chat_user_utt or ""
         if max_tokens <= 0 or not text:
             return ""
-        if DEPLOY_CHAT and self._chat_tokenizer is not None:
+        if self._history_config.deploy_chat and self._chat_tokenizer is not None:
             return self._chat_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
-        if DEPLOY_TOOL and self._tool_tokenizer is not None:
+        if self._history_config.deploy_tool and self._tool_tokenizer is not None:
             return self._tool_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
         return text
 
@@ -239,7 +245,7 @@ class SessionHandler:
         return self._chat_tokenizer.count(text)
 
     def _count_prefix_tokens(self, prefix: str | None) -> int:
-        if not prefix or not DEPLOY_CHAT or self._chat_tokenizer is None:
+        if not prefix or not self._history_config.deploy_chat or self._chat_tokenizer is None:
             return 0
         return self._chat_tokenizer.count(f"{prefix.strip()} ")
 
