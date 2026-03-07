@@ -83,8 +83,8 @@ class WebSocketLifecycle:
 
     def idle_timed_out(self) -> bool:
         """Check whether the watchdog has fired an idle timeout close."""
-
-        return self._idle_timeout_event.is_set()
+        timed_out = self._idle_timeout_event.is_set()
+        return timed_out
 
     def start(self) -> asyncio.Task:
         """Start the watchdog task (idempotent)."""

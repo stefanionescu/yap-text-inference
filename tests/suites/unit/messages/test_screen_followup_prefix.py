@@ -30,8 +30,8 @@ def test_session_handler_tracks_screen_followup_pending_state() -> None:
     handler = SessionHandler(chat_engine=None)
     state = SessionState(meta={})
     handler.initialize_session(state)
-    assert handler.has_screen_followup_pending(state) is False
+    assert state.screen_followup_pending is False
     handler.set_screen_followup_pending(state, True)
-    assert handler.has_screen_followup_pending(state) is True
+    assert state.screen_followup_pending is True
     handler.set_screen_followup_pending(state, False)
-    assert handler.has_screen_followup_pending(state) is False
+    assert state.screen_followup_pending is False

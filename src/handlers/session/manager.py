@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import copy
-import time
 import asyncio
 import contextlib
 from typing import TYPE_CHECKING, Any
 from .history import HistoryController
 from .time import format_session_timestamp
 from ...tokens.prefix import strip_screen_prefix
-from src.state.session import HistoryTurn, SessionState
-from .config import resolve_screen_prefix, update_session_config as _update_config
+from src.state.session import SessionState
+from .config import resolve_screen_prefix
 from src.config import (
     CHAT_MODEL,
     TOOL_MODEL,
@@ -22,9 +20,7 @@ from src.config import (
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
 from .requests import (
-    has_running_task,
     attach_request_task,
-    is_request_cancelled,
     begin_session_request,
     close_session_requests,
     cancel_session_requests,
@@ -92,103 +88,11 @@ class SessionHandler:
         state.screen_followup_pending = False
         return meta
 
-    def update_session_config(
-        self,
-        state: SessionState,
-        chat_gender: str | None = None,
-        chat_personality: str | None = None,
-        chat_prompt: str | None = None,
-        chat_sampling: dict[str, Any] | None = None,
-        check_screen_prefix: str | None = None,
-        screen_checked_prefix: str | None = None,
-    ) -> dict[str, Any]:
-        """Update mutable persona configuration for a session."""
-        return _update_config(
-            state,
-            count_prefix_tokens_fn=self._count_prefix_tokens,
-            chat_gender=chat_gender,
-            chat_personality=chat_personality,
-            chat_prompt=chat_prompt,
-            chat_sampling=chat_sampling,
-            check_screen_prefix=check_screen_prefix,
-            screen_checked_prefix=screen_checked_prefix,
-        )
-
-    def get_session_config(self, state: SessionState) -> dict[str, Any]:
-        """Return a copy of the current session configuration."""
-        return copy.deepcopy(state.meta)
-
-    def get_check_screen_prefix(self, state: SessionState | None) -> str:
-        """Resolve the check-screen prefix for the given session."""
-        return resolve_screen_prefix(state, DEFAULT_CHECK_SCREEN_PREFIX, is_checked=False)
-
-    def get_screen_checked_prefix(self, state: SessionState | None) -> str:
-        """Resolve the screen-checked prefix for the given session."""
-        return resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
-
-    def get_session_duration(self, state: SessionState) -> float:
-        """Return the elapsed time since the session was created."""
-        return max(0.0, time.monotonic() - state.created_at)
-
-    def has_screen_followup_pending(self, state: SessionState | None) -> bool:
-        """Return whether next turn should use the screen-checked prefix."""
-        return bool(state and state.screen_followup_pending)
-
     def set_screen_followup_pending(self, state: SessionState | None, pending: bool) -> None:
         """Mark whether the next message turn should use screen_checked_prefix."""
         if state is None:
             return
         state.screen_followup_pending = bool(pending)
-
-    # ============================================================================
-    # History helpers
-    # ============================================================================
-
-    def get_history_text(self, state: SessionState) -> str:
-        return self._history.get_text(state)
-
-    def get_history_turns(self, state: SessionState) -> list[HistoryTurn]:
-        """Get structured conversation turns for prompt construction."""
-        return self._history.get_turns(state)
-
-    def get_user_texts(self, state: SessionState) -> list[str]:
-        """Get user texts from the active history store."""
-        return self._history.get_user_texts(state)
-
-    def get_tool_history_text(
-        self,
-        state: SessionState,
-        *,
-        max_tokens: int | None = None,
-        include_latest: bool = True,
-    ) -> str:
-        """Get trimmed history tailored for the tool model."""
-        return self._history.get_tool_history_text(state, max_tokens=max_tokens, include_latest=include_latest)
-
-    def set_history_text(self, state: SessionState, history_text: str) -> str:
-        return self._history.set_text(state, history_text)
-
-    def set_history_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
-        """Set history from pre-parsed turns and apply import-time trimming."""
-        return self._history.set_turns(state, turns)
-
-    def set_history_mode_turns(
-        self,
-        state: SessionState,
-        *,
-        chat_turns: list[HistoryTurn] | None = None,
-        tool_turns: list[HistoryTurn] | None = None,
-    ) -> str:
-        """Set chat/tool histories independently and apply import-time trimming."""
-        return self._history.set_mode_turns(state, chat_turns=chat_turns, tool_turns=tool_turns)
-
-    def get_history_turn_count(self, state: SessionState) -> int:
-        """Get the number of history turns currently stored."""
-        if state.history_turns is not None:
-            return len(state.history_turns)
-        if state.tool_history_turns is not None:
-            return len(state.tool_history_turns)
-        return 0
 
     def append_user_utterance(
         self,
@@ -197,16 +101,18 @@ class SessionHandler:
         *,
         tool_user_utt: str | None = None,
     ) -> str | None:
+        check_screen_prefix = resolve_screen_prefix(state, DEFAULT_CHECK_SCREEN_PREFIX, is_checked=False)
+        screen_checked_prefix = resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
         normalized_user = strip_screen_prefix(
             chat_user_utt or "",
-            self.get_check_screen_prefix(state),
-            self.get_screen_checked_prefix(state),
+            check_screen_prefix,
+            screen_checked_prefix,
         )
         normalized_tool_user = (
             strip_screen_prefix(
                 tool_user_utt or "",
-                self.get_check_screen_prefix(state),
-                self.get_screen_checked_prefix(state),
+                check_screen_prefix,
+                screen_checked_prefix,
             )
             if tool_user_utt is not None
             else None
@@ -216,10 +122,12 @@ class SessionHandler:
     def append_history_turn(
         self, state: SessionState, chat_user_utt: str, assistant_text: str, *, turn_id: str | None = None
     ) -> str:
+        check_screen_prefix = resolve_screen_prefix(state, DEFAULT_CHECK_SCREEN_PREFIX, is_checked=False)
+        screen_checked_prefix = resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
         normalized_user = strip_screen_prefix(
             chat_user_utt or "",
-            self.get_check_screen_prefix(state),
-            self.get_screen_checked_prefix(state),
+            check_screen_prefix,
+            screen_checked_prefix,
         )
         return self._history.append_turn(state, normalized_user, assistant_text, turn_id=turn_id)
 
@@ -232,9 +140,6 @@ class SessionHandler:
         async with state.request_lock:
             return begin_session_request(state, request_id)
 
-    def is_request_cancelled(self, state: SessionState, request_id: str) -> bool:
-        return is_request_cancelled(state, request_id)
-
     async def track_request_task(
         self,
         state: SessionState,
@@ -245,9 +150,6 @@ class SessionHandler:
         """Bind a task handle to a specific active request."""
         async with state.request_lock:
             attach_request_task(state, request_id=request_id, task=task)
-
-    def has_running_task(self, state: SessionState) -> bool:
-        return has_running_task(state)
 
     async def cancel_session_requests(self, state: SessionState) -> None:
         async with state.request_lock:

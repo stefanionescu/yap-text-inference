@@ -9,6 +9,14 @@ from src.state.session import HistoryTurn, SessionState
 from ...handlers.session.parsing import parse_history_for_chat, parse_history_for_tool
 
 
+def _history_turn_count(state: SessionState) -> int:
+    if state.history_turns is not None:
+        return len(state.history_turns)
+    if state.tool_history_turns is not None:
+        return len(state.tool_history_turns)
+    return 0
+
+
 def resolve_history(
     session_handler: SessionHandler,
     state: SessionState,
@@ -20,24 +28,24 @@ def resolve_history(
     Uses mode-specific parsing: parse_history_for_tool for tool-only,
     parse_history_for_chat otherwise.
     """
-    if session_handler.get_history_turn_count(state) > 0:
-        return session_handler.get_history_turns(state)
+    if _history_turn_count(state) > 0:
+        return session_handler._history.get_turns(state)
 
     history_messages = msg.get("history")
     if not isinstance(history_messages, list):
-        return session_handler.get_history_turns(state)
+        return session_handler._history.get_turns(state)
 
     if DEPLOY_CHAT and DEPLOY_TOOL:
         chat_turns = parse_history_for_chat(history_messages)
         tool_turns = parse_history_for_tool(history_messages)
-        session_handler.set_history_mode_turns(state, chat_turns=chat_turns, tool_turns=tool_turns)
+        session_handler._history.set_mode_turns(state, chat_turns=chat_turns, tool_turns=tool_turns)
     elif DEPLOY_TOOL and not DEPLOY_CHAT:
         tool_turns = parse_history_for_tool(history_messages)
-        session_handler.set_history_mode_turns(state, tool_turns=tool_turns)
+        session_handler._history.set_mode_turns(state, tool_turns=tool_turns)
     else:
         chat_turns = parse_history_for_chat(history_messages)
-        session_handler.set_history_mode_turns(state, chat_turns=chat_turns)
-    return session_handler.get_history_turns(state)
+        session_handler._history.set_mode_turns(state, chat_turns=chat_turns)
+    return session_handler._history.get_turns(state)
 
 
 def trim_chat_user_utterance(

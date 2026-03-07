@@ -27,6 +27,14 @@ def _make_state(handler: SessionHandler) -> SessionState:
     return state
 
 
+def _history_turn_count(state: SessionState) -> int:
+    if state.history_turns is not None:
+        return len(state.history_turns)
+    if state.tool_history_turns is not None:
+        return len(state.tool_history_turns)
+    return 0
+
+
 def test_resolve_history_renders_turns(monkeypatch: pytest.MonkeyPatch) -> None:
     with use_local_tokenizers():
         handler = _build_session_handler(monkeypatch)
@@ -99,7 +107,7 @@ def test_resolve_history_allows_seed_on_fresh_session(monkeypatch: pytest.Monkey
         handler = _build_session_handler(monkeypatch)
         state = _make_state(handler)
 
-        assert handler.get_history_turn_count(state) == 0
+        assert _history_turn_count(state) == 0
 
         msg = {
             "history": [
@@ -111,7 +119,7 @@ def test_resolve_history_allows_seed_on_fresh_session(monkeypatch: pytest.Monkey
         turns = start_history.resolve_history(handler, state, msg)
 
         assert any(turn.user == "hello" for turn in turns)
-        assert handler.get_history_turn_count(state) == 1
+        assert _history_turn_count(state) == 1
 
 
 def test_resolve_history_ignores_history_after_first_request(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -132,7 +140,7 @@ def test_resolve_history_ignores_history_after_first_request(monkeypatch: pytest
 
         # Simulate the server processing the first request — adds a turn.
         handler.append_user_utterance(state, "follow-up")
-        assert handler.get_history_turn_count(state) > 0
+        assert _history_turn_count(state) > 0
 
         # Second request sends different history — should be ignored.
         second_msg = {

@@ -49,7 +49,12 @@ def is_request_cancelled(state: SessionState | None, request_id: str) -> bool:
 
 def has_running_task(state: SessionState | None) -> bool:
     """Check if the session has a running task."""
-    return bool(state and state.active_request_task and not state.active_request_task.done())
+    if state is None:
+        return False
+    task = state.active_request_task
+    if task is None:
+        return False
+    return not task.done()
 
 
 def begin_session_request(state: SessionState, request_id: str) -> bool:

@@ -33,9 +33,8 @@ import uuid
 from typing import TYPE_CHECKING
 from src.config.tool import TOOL_HISTORY_TOKENS
 from src.state.session import HistoryTurn, SessionState
-from .parsing import parse_history_text, parse_history_as_tuples
 from src.config import DEPLOY_CHAT, DEPLOY_TOOL, TRIMMED_HISTORY_LENGTH, CHAT_HISTORY_MAX_TOKENS
-from .history_tokens import trim_tool_text, count_chat_tokens, count_tool_tokens, build_tool_history
+from .history_tokens import trim_tool_text_with_special_tokens, count_chat_tokens, count_tool_tokens, build_tool_history
 
 if TYPE_CHECKING:
     from src.tokens.tokenizer import FastTokenizer
@@ -141,7 +140,7 @@ def trim_tool_history(
 
     def _count() -> int:
         texts = get_user_texts(turns)
-        return count_tool_tokens("\n".join(texts), tool_tokenizer)
+        return count_tool_tokens("\n".join(texts), tool_tokenizer, include_special_tokens=True)
 
     tokens = _count()
     if tokens <= budget:
@@ -166,7 +165,11 @@ def trim_tool_history(
         turn = turns[-1]
         user_text = (turn.user or "").strip()
         if user_text:
-            turn.user = trim_tool_text(user_text, max_tokens=budget, tool_tokenizer=tool_tokenizer)
+            turn.user = trim_tool_text_with_special_tokens(
+                user_text,
+                max_tokens=budget,
+                tool_tokenizer=tool_tokenizer,
+            )
 
 
 def render_tool_history_text(
@@ -312,14 +315,6 @@ class HistoryController:
             tool_tokenizer=self._tool_tokenizer,
         )
 
-    def set_text(self, state: SessionState, history_text: str) -> str:
-        parsed_turns = parse_history_text(history_text)
-        return self.set_mode_turns(state, chat_turns=parsed_turns)
-
-    def set_turns(self, state: SessionState, turns: list[HistoryTurn]) -> str:
-        """Set history from pre-parsed turns and apply import-time trimming."""
-        return self.set_mode_turns(state, chat_turns=turns)
-
     def set_mode_turns(
         self,
         state: SessionState,
@@ -416,6 +411,4 @@ __all__ = [
     "render_tool_history_text",
     "get_user_texts",
     "HistoryController",
-    "parse_history_text",
-    "parse_history_as_tuples",
 ]

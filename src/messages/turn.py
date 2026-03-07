@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 import logging
+import copy
 from fastapi import WebSocket
 from src.state import TurnPlan
 from typing import Any, Literal
@@ -14,6 +15,7 @@ from .start.dispatch import dispatch_execution
 from src.telemetry.sentry import capture_error
 from src.runtime.dependencies import RuntimeDeps
 from src.handlers.websocket.errors import send_error
+from src.handlers.session.config import update_session_config
 from .start.sampling import extract_sampling_overrides
 from src.handlers.session.manager import SessionHandler
 from .input import normalize_gender, normalize_personality
@@ -122,32 +124,6 @@ def _resolve_start_inputs(
     return gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix
 
 
-def _build_turn_plan(
-    *,
-    state,
-    request_id: str,
-    static_prefix: str,
-    history_turns,
-    chat_user_utt: str | None,
-    tool_user_utt: str | None,
-    history_turn_id: str | None,
-    sampling_overrides: dict[str, float | int | bool] | None,
-    apply_screen_checked_prefix: bool = False,
-) -> TurnPlan:
-    return TurnPlan(
-        state=state,
-        request_id=request_id,
-        static_prefix=static_prefix,
-        runtime_text="",
-        history_turns=history_turns,
-        chat_user_utt=chat_user_utt,
-        tool_user_utt=tool_user_utt,
-        history_turn_id=history_turn_id,
-        sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
-        apply_screen_checked_prefix=apply_screen_checked_prefix,
-    )
-
-
 async def _plan_start_turn(
     ws: WebSocket,
     msg: dict[str, Any],
@@ -178,8 +154,9 @@ async def _plan_start_turn(
         sampling_payload = sampling_overrides if DEPLOY_CHAT else None
         if DEPLOY_CHAT and sampling_payload is None:
             sampling_payload = {}
-        session_handler.update_session_config(
+        update_session_config(
             state,
+            count_prefix_tokens_fn=session_handler._count_prefix_tokens,
             chat_gender=gender,
             chat_personality=personality,
             chat_prompt=chat_prompt,
@@ -187,7 +164,7 @@ async def _plan_start_turn(
             check_screen_prefix=check_screen_prefix,
             screen_checked_prefix=screen_checked_prefix,
         )
-        cfg = session_handler.get_session_config(state)
+        cfg = copy.deepcopy(state.meta)
 
         history_turns = resolve_history(session_handler, state, msg)
         chat_user_utt, tool_user_utt = resolve_user_utterances(
@@ -202,15 +179,16 @@ async def _plan_start_turn(
         )
         plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
         static_prefix = cfg.get("chat_prompt") or ""
-        return _build_turn_plan(
+        return TurnPlan(
             state=state,
             request_id=f"start-{uuid.uuid4().hex}",
             static_prefix=static_prefix,
+            runtime_text="",
             history_turns=history_turns,
             chat_user_utt=plan_chat_user_utt,
             tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
             history_turn_id=history_turn_id,
-            sampling_overrides=sampling_overrides,
+            sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
             apply_screen_checked_prefix=False,
         )
     finally:
@@ -232,7 +210,7 @@ async def _plan_message_turn(
             await _send_turn_error(ws, code=WS_ERROR_INVALID_PAYLOAD, message="user_utterance is required")
             return None
 
-        cfg = session_handler.get_session_config(state)
+        cfg = copy.deepcopy(state.meta)
         if not cfg:
             record_phase_error("validate", "missing_session")
             await _send_turn_error(ws, code=WS_ERROR_INVALID_MESSAGE, message="no active session; send 'start' first")
@@ -246,10 +224,14 @@ async def _plan_message_turn(
             return None
 
         if sampling_overrides:
-            session_handler.update_session_config(state, chat_sampling=sampling_overrides)
+            update_session_config(
+                state,
+                count_prefix_tokens_fn=session_handler._count_prefix_tokens,
+                chat_sampling=sampling_overrides,
+            )
 
-        apply_screen_checked_prefix = session_handler.has_screen_followup_pending(state)
-        history_turns = session_handler.get_history_turns(state)
+        apply_screen_checked_prefix = bool(state.screen_followup_pending)
+        history_turns = session_handler._history.get_turns(state)
         chat_user_utt, tool_user_utt = resolve_user_utterances(
             session_handler,
             state,
@@ -263,15 +245,16 @@ async def _plan_message_turn(
         )
         plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
         static_prefix = cfg.get("chat_prompt") or ""
-        return _build_turn_plan(
+        return TurnPlan(
             state=state,
             request_id=f"msg-{uuid.uuid4().hex}",
             static_prefix=static_prefix,
+            runtime_text="",
             history_turns=history_turns,
             chat_user_utt=plan_chat_user_utt,
             tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
             history_turn_id=history_turn_id,
-            sampling_overrides=sampling_overrides,
+            sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
             apply_screen_checked_prefix=apply_screen_checked_prefix,
         )
     finally:

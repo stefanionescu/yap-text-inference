@@ -9,14 +9,10 @@ from contextlib import contextmanager
 from ..config.telemetry import SPAN_REQUEST, SPAN_SESSION, SPAN_GENERATION, OTEL_SERVICE_NAME
 
 
-def _tracer() -> trace.Tracer:
-    return trace.get_tracer(OTEL_SERVICE_NAME)
-
-
 @contextmanager
 def session_span(*, client_id: str) -> Iterator[trace.Span]:
     """Outermost span wrapping the entire WebSocket connection."""
-    with _tracer().start_as_current_span(
+    with trace.get_tracer(OTEL_SERVICE_NAME).start_as_current_span(
         SPAN_SESSION,
         attributes={"client.id": client_id},
     ) as span:
@@ -45,7 +41,7 @@ def request_span(
         attrs["prompt_tokens"] = prompt_tokens
     if temperature:
         attrs["temperature"] = temperature
-    with _tracer().start_as_current_span(SPAN_REQUEST, attributes=attrs) as span:
+    with trace.get_tracer(OTEL_SERVICE_NAME).start_as_current_span(SPAN_REQUEST, attributes=attrs) as span:
         yield span
 
 
@@ -60,7 +56,7 @@ def generation_span(
     attrs: dict[str, Any] = {}
     if engine_type:
         attrs["engine.type"] = engine_type
-    with _tracer().start_as_current_span(SPAN_GENERATION, attributes=attrs) as span:
+    with trace.get_tracer(OTEL_SERVICE_NAME).start_as_current_span(SPAN_GENERATION, attributes=attrs) as span:
         yield span
         if completion_tokens:
             span.set_attribute("completion_tokens", completion_tokens)

@@ -48,7 +48,8 @@ class _HistoryItem(BaseModel):
     @field_validator("role", mode="before")
     @classmethod
     def _normalize_role(cls, value: Any) -> str:
-        return str(value).strip().lower()
+        normalized = str(value).strip().lower()
+        return normalized
 
     @field_validator("role")
     @classmethod

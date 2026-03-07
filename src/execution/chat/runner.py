@@ -23,8 +23,8 @@ from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.instruments import get_metrics
 from ...config import CHAT_MAX_OUT, STREAM_FLUSH_MS
 from ...messages.sanitize import StreamingSanitizer
+from src.handlers.session.requests import is_request_cancelled
 from src.telemetry.phases import record_phase_latency
-from src.handlers.session.manager import SessionHandler
 from src.state.session import HistoryTurn, SessionState
 from ...messages.chat import build_chat_prompt_with_prefix
 from .controller import ChatStreamConfig, ChatStreamController
@@ -91,31 +91,6 @@ def _build_sampling_params(overrides: dict[str, float | int | bool], chat_tokeni
     )
 
 
-def _build_stream(
-    *,
-    state: SessionState,
-    request_id: str,
-    prompt: str,
-    sampling_params: Any,
-    engine: BaseEngine,
-    chat_tokenizer: FastTokenizer,
-    session_handler: SessionHandler,
-) -> ChatStreamController:
-    return ChatStreamController(
-        ChatStreamConfig(
-            session_id=state.session_id,
-            request_id=request_id,
-            prompt=prompt,
-            sampling_params=sampling_params,
-            engine=engine,
-            timeout_s=float(GEN_TIMEOUT_S),
-            flush_ms=float(STREAM_FLUSH_MS),
-            cancel_check=lambda: session_handler.is_request_cancelled(state, request_id),
-            count_completion_tokens=chat_tokenizer.count,
-        )
-    )
-
-
 async def _stream_with_optional_sanitizer(
     stream: ChatStreamController,
     sanitize_output: bool,
@@ -144,7 +119,6 @@ async def run_chat_generation(
     chat_user_utt: str,
     *,
     engine: BaseEngine,
-    session_handler: SessionHandler,
     chat_tokenizer: FastTokenizer,
     request_id: str | None = None,
     sampling_overrides: dict[str, float | int | bool] | None = None,
@@ -172,14 +146,18 @@ async def run_chat_generation(
     if span.is_recording():
         span.set_attribute("prompt_tokens", prompt_token_count)
 
-    stream = _build_stream(
-        state=state,
-        request_id=req_id,
-        prompt=prompt,
-        sampling_params=params,
-        engine=engine,
-        chat_tokenizer=chat_tokenizer,
-        session_handler=session_handler,
+    stream = ChatStreamController(
+        ChatStreamConfig(
+            session_id=state.session_id,
+            request_id=req_id,
+            prompt=prompt,
+            sampling_params=params,
+            engine=engine,
+            timeout_s=float(GEN_TIMEOUT_S),
+            flush_ms=float(STREAM_FLUSH_MS),
+            cancel_check=lambda: is_request_cancelled(state, req_id),
+            count_completion_tokens=chat_tokenizer.count,
+        )
     )
     async for chunk in _stream_with_optional_sanitizer(stream, sanitize_output=bool(overrides["sanitize_output"])):
         yield chunk

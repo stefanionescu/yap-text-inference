@@ -52,15 +52,10 @@ from src.config.limits import (
 logger = logging.getLogger(__name__)
 
 
-def _effective_chat_quantization() -> str:
-    """Return the effective chat quantization mode."""
-    return (CHAT_QUANTIZATION or "").lower()
-
-
 def _allow_prequantized_override(model: str | None, model_type: str) -> bool:
     if model_type != "chat":
         return False
-    quant = _effective_chat_quantization()
+    quant = (CHAT_QUANTIZATION or "").lower()
     kind = classify_prequantized_model(model) if model else None
     if not model or not quant or not kind:
         return False
@@ -188,6 +183,5 @@ def validate_env() -> None:
 
 __all__ = [
     "validate_env",
-    "_effective_chat_quantization",
     "_allow_prequantized_override",
 ]

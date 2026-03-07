@@ -56,7 +56,10 @@ class CacheResetManager:
 
     def seconds_since_last_reset(self) -> float:
         """Return seconds since the last cache reset."""
-        return max(0.0, time.monotonic() - self._last_reset)
+        elapsed = time.monotonic() - self._last_reset
+        if elapsed < 0.0:
+            return 0.0
+        return elapsed
 
     async def try_reset(
         self,

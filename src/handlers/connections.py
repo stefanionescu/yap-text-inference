@@ -131,14 +131,6 @@ class ConnectionHandler:
         if should_release:
             self._semaphore.release()
 
-    def get_connection_count(self) -> int:
-        """Get current number of active connections.
-
-        Returns:
-            Number of active connections
-        """
-        return len(self.active_connections)
-
     def get_capacity_info(self) -> dict:
         """Get capacity information.
 

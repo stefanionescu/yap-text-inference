@@ -52,19 +52,4 @@ def sanitize_prompt(raw: str | None, *, max_chars: int | None = None) -> str:
     return text
 
 
-class PromptSanitizer:
-    """One-shot prompt sanitizer kept stateful for API symmetry with streaming."""
-
-    def __init__(self, max_chars: int | None = None) -> None:
-        self.max_chars = max_chars
-
-    def sanitize(self, raw: str | None) -> str:
-        """Sanitize user prompt with the configured max_chars."""
-        return sanitize_prompt(raw, max_chars=self.max_chars)
-
-    def __call__(self, raw: str | None) -> str:
-        """Allow instances to be invoked like a function."""
-        return self.sanitize(raw)
-
-
-__all__ = ["sanitize_prompt", "PromptSanitizer"]
+__all__ = ["sanitize_prompt"]

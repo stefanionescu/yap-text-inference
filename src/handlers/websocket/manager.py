@@ -85,7 +85,7 @@ async def _cleanup_session(runtime_deps: RuntimeDeps, state: SessionState) -> fl
     """Clean up session resources on disconnect and return duration."""
     t0 = time.perf_counter()
     session_handler = runtime_deps.session_handler
-    duration = session_handler.get_session_duration(state)
+    duration = max(0.0, time.monotonic() - state.created_at)
     await session_handler.abort_session_requests(state)
     await session_handler.mark_session_closed(state)
     record_phase_latency("cleanup", time.perf_counter() - t0)
@@ -142,7 +142,7 @@ async def _finalize_connection(
     with contextlib.suppress(Exception):
         await connections.disconnect(ws)
 
-    remaining = connections.get_connection_count()
+    remaining = len(connections.active_connections)
     logger.info("WebSocket connection closed. Active: %s", remaining)
 
     should_reset = state is not None and session_duration >= CACHE_RESET_MIN_SESSION_SECONDS
@@ -182,7 +182,7 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
 
         logger.info(
             "WebSocket connection accepted. Active: %s",
-            runtime_deps.connections.get_connection_count(),
+            len(runtime_deps.connections.active_connections),
         )
 
         try:

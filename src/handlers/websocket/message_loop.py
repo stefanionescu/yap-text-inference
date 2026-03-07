@@ -19,6 +19,7 @@ from ...telemetry.instruments import get_metrics
 from src.runtime.dependencies import RuntimeDeps
 from .disconnects import is_expected_ws_disconnect
 from ...messages.cancel import handle_cancel_message
+from src.handlers.session.requests import has_running_task
 from src.handlers.session.manager import SessionHandler
 from .limits import consume_limiter, select_rate_limiter
 from ...telemetry.phases import record_phase_error, record_phase_latency
@@ -114,7 +115,7 @@ async def _handle_turn_command(
         return started
 
     get_metrics().requests_total.add(1, {"status": "continued"})
-    if session_handler.has_running_task(state):
+    if has_running_task(state):
         await session_handler.abort_session_requests(state)
     await handle_turn_message(
         ws,

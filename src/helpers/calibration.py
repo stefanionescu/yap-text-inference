@@ -39,32 +39,23 @@ _DATASET_FALLBACKS: Mapping[str, str] = {
 }
 
 
-def _dataset_key(name: str | None) -> str:
+def dataset_key(name: str | None) -> str:
     raw = (name or "").strip()
     if not raw:
         return CALIB_DEFAULT_DATASET
     return raw.lower().replace("-", "_").replace(" ", "_")
 
 
-def resolve_total_len(requested: int, policy: TotalLengthPolicy) -> int:
-    """Convenience wrapper exposing TotalLengthPolicy.resolve()."""
-    return policy.resolve(requested)
-
-
-def dataset_key(name: str | None) -> str:
-    """Expose normalized dataset keys for logging or comparisons."""
-    return _dataset_key(name)
-
-
 def canonicalize_dataset_name(name: str | None) -> str:
     """Normalize dataset identifiers, respecting alias mappings."""
-    key = _dataset_key(name)
+    key = dataset_key(name)
     return _DATASET_ALIASES.get(key, key or CALIB_DEFAULT_DATASET)
 
 
 def dataset_fallback(name: str) -> str | None:
     """Return a fallback dataset when llmcompressor cannot find the requested one."""
-    return _DATASET_FALLBACKS.get(_dataset_key(name))
+    key = dataset_key(name)
+    return _DATASET_FALLBACKS.get(key)
 
 
 __all__ = [
@@ -73,5 +64,4 @@ __all__ = [
     "canonicalize_dataset_name",
     "dataset_fallback",
     "dataset_key",
-    "resolve_total_len",
 ]

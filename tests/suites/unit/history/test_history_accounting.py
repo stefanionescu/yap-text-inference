@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from src.tokens import count_tokens_tool
 import src.handlers.session.history as session_history
+import src.handlers.session.history_tokens as history_tokens
 from src.handlers.session.manager import SessionHandler
 from src.state.session import HistoryTurn, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
@@ -22,6 +23,14 @@ def _make_state(handler: SessionHandler) -> SessionState:
     return state
 
 
+def _history_turn_count(state: SessionState) -> int:
+    if state.history_turns is not None:
+        return len(state.history_turns)
+    if state.tool_history_turns is not None:
+        return len(state.tool_history_turns)
+    return 0
+
+
 def test_append_history_turn_updates_existing_turn_when_turn_id_provided(monkeypatch: pytest.MonkeyPatch) -> None:
     with use_local_tokenizers():
         session_handler = _build_session_handler(monkeypatch)
@@ -29,12 +38,12 @@ def test_append_history_turn_updates_existing_turn_when_turn_id_provided(monkeyp
 
         turn_id = session_handler.append_user_utterance(state, "hello")
         assert turn_id is not None
-        assert session_handler.get_history_turn_count(state) == 1
+        assert _history_turn_count(state) == 1
 
         session_handler.append_history_turn(state, "ignored", "world", turn_id=turn_id)
-        rendered = session_handler.get_history_text(state)
+        rendered = session_handler._history.get_text(state)
 
-        assert session_handler.get_history_turn_count(state) == 1
+        assert _history_turn_count(state) == 1
         assert "User: hello" in rendered
         assert "Assistant: world" in rendered
 
@@ -49,11 +58,11 @@ def test_set_history_turns_keeps_expected_turn_count(monkeypatch: pytest.MonkeyP
             HistoryTurn(turn_id="t2", user="u2", assistant="a2"),
         ]
 
-        rendered = session_handler.set_history_turns(state, turns)
+        rendered = session_handler._history.set_mode_turns(state, chat_turns=turns)
 
         assert "User: u1" in rendered
         assert "Assistant: a2" in rendered
-        assert session_handler.get_history_turn_count(state) == 2
+        assert _history_turn_count(state) == 2
 
 
 def test_render_tool_history_text_respects_explicit_budget(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,7 +120,7 @@ def test_tool_only_mode_keeps_chat_history_inactive(monkeypatch: pytest.MonkeyPa
         assert state.history_turns is None
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
-        assert handler.get_history_turn_count(state) == 1
+        assert _history_turn_count(state) == 1
 
 
 def test_chat_only_mode_keeps_tool_history_inactive(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -128,7 +137,7 @@ def test_chat_only_mode_keeps_tool_history_inactive(monkeypatch: pytest.MonkeyPa
         assert state.history_turns is not None
         assert len(state.history_turns) == 1
         assert state.tool_history_turns is None
-        assert handler.get_history_turn_count(state) == 1
+        assert _history_turn_count(state) == 1
 
 
 def test_trim_history_tool_only_drops_old_turns(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -190,7 +199,7 @@ def test_append_user_utterance_tool_only_trims_eagerly(monkeypatch: pytest.Monke
 
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) < 6
-        rendered = handler.get_tool_history_text(state)
+        rendered = handler._history.get_tool_history_text(state)
         assert count_tokens_tool(rendered) <= 6
 
 
@@ -221,12 +230,12 @@ def test_get_tool_history_text_excludes_latest_without_mutating_store(monkeypatc
         handler.append_user_utterance(state, "bravo two")
         handler.append_user_utterance(state, "charlie three")
 
-        with_latest = handler.get_tool_history_text(state)
-        without_latest = handler.get_tool_history_text(state, include_latest=False)
+        with_latest = handler._history.get_tool_history_text(state)
+        without_latest = handler._history.get_tool_history_text(state, include_latest=False)
 
         assert with_latest.endswith("charlie three")
         assert without_latest == "alpha one\nbravo two"
-        assert handler.get_tool_history_text(state) == with_latest
+        assert handler._history.get_tool_history_text(state) == with_latest
 
 
 def test_append_user_utterance_tool_only_clips_single_oversized_turn(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -242,4 +251,48 @@ def test_append_user_utterance_tool_only_clips_single_oversized_turn(monkeypatch
         assert len(state.tool_history_turns) == 1
         clipped = state.tool_history_turns[0].user
         assert count_tokens_tool(clipped) <= 3
-        assert handler.get_tool_history_text(state) == clipped
+        assert handler._history.get_tool_history_text(state) == clipped
+
+
+class _SpecialAwareTokenizer:
+    def count(self, text: str, *, add_special_tokens: bool = False) -> int:
+        if not text.strip():
+            return 0
+        total = len(text.split())
+        if add_special_tokens:
+            total += 2
+        return total
+
+    def trim(self, text: str, max_tokens: int, keep: str = "end") -> str:
+        tokens = text.split()
+        if max_tokens <= 0:
+            return ""
+        if len(tokens) <= max_tokens:
+            return text
+        kept = tokens[:max_tokens] if keep == "start" else tokens[-max_tokens:]
+        return " ".join(kept)
+
+    def encode_ids(self, text: str) -> list[int]:
+        return list(range(len(text.split())))
+
+
+def test_build_tool_history_accounts_for_special_tokens() -> None:
+    tokenizer = _SpecialAwareTokenizer()
+
+    kept = history_tokens.build_tool_history(
+        ["one two", "three four"],
+        budget=5,
+        tool_tokenizer=tokenizer,
+    )
+    assert kept == "three four"
+
+
+def test_build_tool_history_clips_single_oversized_line_with_special_tokens() -> None:
+    tokenizer = _SpecialAwareTokenizer()
+
+    kept = history_tokens.build_tool_history(
+        ["one two"],
+        budget=3,
+        tool_tokenizer=tokenizer,
+    )
+    assert kept == "two"

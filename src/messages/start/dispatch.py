@@ -68,7 +68,6 @@ async def _run_chat_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDep
             plan.history_turns,
             chat_user_utt,
             engine=runtime_deps.chat_engine,
-            session_handler=runtime_deps.session_handler,
             chat_tokenizer=runtime_deps.chat_tokenizer,
             request_id=plan.request_id,
             sampling_overrides=plan.sampling_overrides,

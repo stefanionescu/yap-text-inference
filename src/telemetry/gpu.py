@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from opentelemetry.metrics import CallbackOptions, Meter, Observation
+    from opentelemetry.metrics import Meter, Observation
 
 from ..config.telemetry import (
     METRIC_GPU_MEMORY_FREE,
@@ -16,22 +16,6 @@ from ..config.telemetry import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _read_gpu_memory_used(_options: CallbackOptions | None = None) -> list[Observation]:
-    return _read_gpu_metric("memory_allocated")
-
-
-def _read_gpu_memory_free(_options: CallbackOptions | None = None) -> list[Observation]:
-    return _read_gpu_metric("memory_free")
-
-
-def _read_gpu_memory_total(_options: CallbackOptions | None = None) -> list[Observation]:
-    return _read_gpu_metric("memory_total")
-
-
-def _read_gpu_utilization(_options: CallbackOptions | None = None) -> list[Observation]:
-    return _read_gpu_metric("utilization")
 
 
 def _read_gpu_metric(kind: str) -> list[Observation]:
@@ -67,16 +51,36 @@ def _read_gpu_metric(kind: str) -> list[Observation]:
 def register_gpu_observables(meter: Meter) -> None:
     """Register all GPU observable gauges on the given meter."""
     name, unit, desc = METRIC_GPU_MEMORY_USED
-    meter.create_observable_gauge(name, callbacks=[_read_gpu_memory_used], unit=unit, description=desc)
+    meter.create_observable_gauge(
+        name,
+        callbacks=[lambda _options=None: _read_gpu_metric("memory_allocated")],
+        unit=unit,
+        description=desc,
+    )
 
     name, unit, desc = METRIC_GPU_MEMORY_FREE
-    meter.create_observable_gauge(name, callbacks=[_read_gpu_memory_free], unit=unit, description=desc)
+    meter.create_observable_gauge(
+        name,
+        callbacks=[lambda _options=None: _read_gpu_metric("memory_free")],
+        unit=unit,
+        description=desc,
+    )
 
     name, unit, desc = METRIC_GPU_MEMORY_TOTAL
-    meter.create_observable_gauge(name, callbacks=[_read_gpu_memory_total], unit=unit, description=desc)
+    meter.create_observable_gauge(
+        name,
+        callbacks=[lambda _options=None: _read_gpu_metric("memory_total")],
+        unit=unit,
+        description=desc,
+    )
 
     name, unit, desc = METRIC_GPU_UTILIZATION
-    meter.create_observable_gauge(name, callbacks=[_read_gpu_utilization], unit=unit, description=desc)
+    meter.create_observable_gauge(
+        name,
+        callbacks=[lambda _options=None: _read_gpu_metric("utilization")],
+        unit=unit,
+        description=desc,
+    )
 
 
 __all__ = ["register_gpu_observables"]

@@ -32,7 +32,7 @@ async def _run_tool_call(
     """Run tool call using tool model."""
     t0 = time.perf_counter()
 
-    tool_history = session_handler.get_tool_history_text(
+    tool_history = session_handler._history.get_tool_history_text(
         state,
         include_latest=False,
     )

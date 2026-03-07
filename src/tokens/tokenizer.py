@@ -29,14 +29,14 @@ class FastTokenizer:
             local_files_only=os.path.exists(path_or_repo),
         )
 
-    def _encode_ids_locked(self, text: str) -> list[int]:
-        """Encode text without special tokens.
+    def _encode_ids_locked(self, text: str, *, add_special_tokens: bool = False) -> list[int]:
+        """Encode text with optional special tokens.
 
         Must be called while holding ``self._lock``.
         """
         enc = self._hf_tok(
             text,
-            add_special_tokens=False,
+            add_special_tokens=add_special_tokens,
             return_attention_mask=False,
             return_token_type_ids=False,
         )
@@ -45,19 +45,20 @@ class FastTokenizer:
             input_ids = input_ids[0]
         return list(input_ids)
 
-    def count(self, text: str) -> int:
+    def count(self, text: str, *, add_special_tokens: bool = False) -> int:
         """Count the number of tokens in the text.
 
         Args:
             text: Text to tokenize and count.
+            add_special_tokens: Whether to include tokenizer-added special tokens.
 
         Returns:
             Number of tokens in the text.
         """
-        if not text:
+        if not text and not add_special_tokens:
             return 0
         with self._lock:
-            return len(self._encode_ids_locked(text))
+            return len(self._encode_ids_locked(text, add_special_tokens=add_special_tokens))
 
     def trim(self, text: str, max_tokens: int, keep: str = "end") -> str:
         """Trim text to fit within max_tokens.

@@ -7,10 +7,6 @@ from src.config.quantization import TOKENIZER_FILES
 from src.config.trt import TRT_CHECKPOINT_SUFFIXES, TRT_TOKENIZER_CONFIG_FILE
 
 
-def _has_tokenizer(directory: Path) -> bool:
-    return (directory / TRT_TOKENIZER_CONFIG_FILE).exists()
-
-
 def _extract_model_stem(checkpoint_name: str) -> str:
     for suffix in TRT_CHECKPOINT_SUFFIXES:
         if checkpoint_name.endswith(suffix):
@@ -20,7 +16,7 @@ def _extract_model_stem(checkpoint_name: str) -> str:
 
 def _find_hf_dir_in_path(parent: Path, model_stem: str) -> Path | None:
     candidate = parent / f"{model_stem}-hf"
-    if candidate.is_dir() and _has_tokenizer(candidate):
+    if candidate.is_dir() and (candidate / TRT_TOKENIZER_CONFIG_FILE).exists():
         return candidate
     return None
 
@@ -36,7 +32,7 @@ def _download_tokenizer_from_hub(base_model: str) -> Path | None:
             local_dir=str(temp_dir),
             allow_patterns=list(TOKENIZER_FILES),
         )
-        if _has_tokenizer(temp_dir):
+        if (temp_dir / TRT_TOKENIZER_CONFIG_FILE).exists():
             return temp_dir
     except Exception as exc:  # noqa: BLE001
         print(f"[trt-hf] Warning: Failed to download tokenizer from {base_model}: {exc}")
@@ -45,7 +41,7 @@ def _download_tokenizer_from_hub(base_model: str) -> Path | None:
 
 def find_tokenizer_dir(checkpoint_dir: Path, base_model: str | None) -> Path | None:
     """Find tokenizer files near the checkpoint, downloading if necessary."""
-    if _has_tokenizer(checkpoint_dir):
+    if (checkpoint_dir / TRT_TOKENIZER_CONFIG_FILE).exists():
         return checkpoint_dir
 
     model_stem = _extract_model_stem(checkpoint_dir.name)
