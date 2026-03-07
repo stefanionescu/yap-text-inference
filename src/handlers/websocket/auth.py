@@ -6,7 +6,9 @@ import hmac
 import time
 import logging
 from collections import deque
+from dataclasses import dataclass
 from ...config import TEXT_API_KEY
+from collections.abc import Callable
 from fastapi.security.api_key import APIKeyHeader
 from fastapi import Request, Security, WebSocket, HTTPException
 from ...config.websocket import WS_ALLOWED_ORIGINS, WS_AUTH_WINDOW_SECONDS, WS_MAX_AUTH_FAILURES_PER_WINDOW
@@ -16,6 +18,19 @@ logger = logging.getLogger(__name__)
 # API Key can be provided via explicit header or Authorization bearer token.
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 _AUTH_FAILURES: dict[str, deque[float]] = {}
+
+
+@dataclass(frozen=True)
+class AuthRuntimeConfig:
+    """Runtime-auth settings used by HTTP and WebSocket auth flows."""
+
+    text_api_key: str | None = TEXT_API_KEY
+    allowed_origins: tuple[str, ...] = WS_ALLOWED_ORIGINS
+    auth_window_seconds: float = WS_AUTH_WINDOW_SECONDS
+    max_auth_failures_per_window: int = WS_MAX_AUTH_FAILURES_PER_WINDOW
+
+
+DEFAULT_AUTH_RUNTIME_CONFIG = AuthRuntimeConfig()
 
 
 def _extract_bearer_key(value: str | None) -> str | None:
@@ -38,12 +53,17 @@ def _select_api_key(*candidates: str | None) -> str | None:
     return None
 
 
-def _validate_candidate(provided_key: str | None, *, context: str) -> tuple[bool, str | None, str]:
+def _validate_candidate(
+    provided_key: str | None,
+    *,
+    context: str,
+    auth_config: AuthRuntimeConfig,
+) -> tuple[bool, str | None, str]:
     """Validate a candidate API key and return (is_valid, key, error_code)."""
     if not provided_key:
         logger.warning("%s missing API key", context)
         return False, None, "missing"
-    if not validate_api_key(provided_key):
+    if not validate_api_key(provided_key, configured_api_key=auth_config.text_api_key):
         logger.warning("%s invalid API key", context)
         return False, None, "invalid"
     return True, provided_key, ""
@@ -53,37 +73,55 @@ def _client_failure_key(client_host: str | None) -> str:
     return (client_host or "unknown").strip() or "unknown"
 
 
-def _prune_failures(client_key: str, now: float) -> deque[float]:
-    entries = _AUTH_FAILURES.setdefault(client_key, deque())
-    cutoff = now - WS_AUTH_WINDOW_SECONDS
+def _prune_failures(
+    client_key: str,
+    now: float,
+    *,
+    auth_config: AuthRuntimeConfig,
+    auth_failures: dict[str, deque[float]],
+) -> deque[float]:
+    entries = auth_failures.setdefault(client_key, deque())
+    cutoff = now - auth_config.auth_window_seconds
     while entries and entries[0] <= cutoff:
         entries.popleft()
     return entries
 
 
-def _is_auth_throttled(client_key: str) -> bool:
-    now = time.monotonic()
-    entries = _prune_failures(client_key, now)
-    return len(entries) >= WS_MAX_AUTH_FAILURES_PER_WINDOW
+def _is_auth_throttled(
+    client_key: str,
+    *,
+    auth_config: AuthRuntimeConfig,
+    auth_failures: dict[str, deque[float]],
+    now_fn: Callable[[], float],
+) -> bool:
+    now = now_fn()
+    entries = _prune_failures(client_key, now, auth_config=auth_config, auth_failures=auth_failures)
+    return len(entries) >= auth_config.max_auth_failures_per_window
 
 
-def _record_auth_failure(client_key: str) -> None:
-    now = time.monotonic()
-    entries = _prune_failures(client_key, now)
+def _record_auth_failure(
+    client_key: str,
+    *,
+    auth_config: AuthRuntimeConfig,
+    auth_failures: dict[str, deque[float]],
+    now_fn: Callable[[], float],
+) -> None:
+    now = now_fn()
+    entries = _prune_failures(client_key, now, auth_config=auth_config, auth_failures=auth_failures)
     entries.append(now)
 
 
-def _clear_auth_failures(client_key: str) -> None:
-    _AUTH_FAILURES.pop(client_key, None)
+def _clear_auth_failures(client_key: str, *, auth_failures: dict[str, deque[float]]) -> None:
+    auth_failures.pop(client_key, None)
 
 
-def _is_origin_allowed(origin: str | None) -> bool:
+def _is_origin_allowed(origin: str | None, *, allowed_origins: tuple[str, ...]) -> bool:
     """Allow non-browser clients (no Origin) and enforce allowlist for browser origins."""
     if origin is None:
         return True
-    if not WS_ALLOWED_ORIGINS:
+    if not allowed_origins:
         return True
-    return origin in WS_ALLOWED_ORIGINS
+    return origin in allowed_origins
 
 
 def _request_client_key(request: Request) -> str:
@@ -98,7 +136,11 @@ def _websocket_client_key(websocket: WebSocket) -> str:
     return _client_failure_key(host)
 
 
-def validate_api_key(provided_key: str) -> bool:
+def validate_api_key(
+    provided_key: str,
+    *,
+    configured_api_key: str | None = TEXT_API_KEY,
+) -> bool:
     """Validate provided API key against configured key.
 
     Args:
@@ -107,28 +149,33 @@ def validate_api_key(provided_key: str) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    if not TEXT_API_KEY:
+    if not configured_api_key:
         return False
-    return hmac.compare_digest(provided_key, TEXT_API_KEY)
+    return hmac.compare_digest(provided_key, configured_api_key)
 
 
 async def get_api_key(
     request: Request,
     api_key_header: str | None = Security(api_key_header),
+    *,
+    auth_config: AuthRuntimeConfig = DEFAULT_AUTH_RUNTIME_CONFIG,
+    auth_failures: dict[str, deque[float]] | None = None,
+    now_fn: Callable[[], float] = time.monotonic,
 ) -> str:
     """FastAPI dependency to extract and validate API key from request."""
+    failures = _AUTH_FAILURES if auth_failures is None else auth_failures
     client_key = _request_client_key(request)
-    if _is_auth_throttled(client_key):
+    if _is_auth_throttled(client_key, auth_config=auth_config, auth_failures=failures, now_fn=now_fn):
         raise HTTPException(status_code=429, detail="Too many authentication failures. Retry later.")
 
     bearer_key = _extract_bearer_key(request.headers.get("authorization"))
     provided_key = _select_api_key(api_key_header, bearer_key)
-    ok, valid_key, error = _validate_candidate(provided_key, context="HTTP request")
+    ok, valid_key, error = _validate_candidate(provided_key, context="HTTP request", auth_config=auth_config)
     if ok and valid_key:
-        _clear_auth_failures(client_key)
+        _clear_auth_failures(client_key, auth_failures=failures)
         return valid_key
 
-    _record_auth_failure(client_key)
+    _record_auth_failure(client_key, auth_config=auth_config, auth_failures=failures, now_fn=now_fn)
 
     if error == "missing":
         raise HTTPException(
@@ -138,7 +185,13 @@ async def get_api_key(
     raise HTTPException(status_code=401, detail="Invalid API key.")
 
 
-async def authenticate_websocket(websocket: WebSocket) -> bool:
+async def authenticate_websocket(
+    websocket: WebSocket,
+    *,
+    auth_config: AuthRuntimeConfig = DEFAULT_AUTH_RUNTIME_CONFIG,
+    auth_failures: dict[str, deque[float]] | None = None,
+    now_fn: Callable[[], float] = time.monotonic,
+) -> bool:
     """Authenticate WebSocket connection using API key.
 
     Args:
@@ -147,31 +200,34 @@ async def authenticate_websocket(websocket: WebSocket) -> bool:
     Returns:
         True if authenticated, False otherwise
     """
+    failures = _AUTH_FAILURES if auth_failures is None else auth_failures
     client_key = _websocket_client_key(websocket)
-    if _is_auth_throttled(client_key):
+    if _is_auth_throttled(client_key, auth_config=auth_config, auth_failures=failures, now_fn=now_fn):
         logger.warning("WebSocket auth throttled client=%s", client_key)
         return False
 
     origin = websocket.headers.get("origin")
-    if not _is_origin_allowed(origin):
+    if not _is_origin_allowed(origin, allowed_origins=auth_config.allowed_origins):
         logger.warning("WebSocket origin rejected client=%s origin=%r", client_key, origin)
-        _record_auth_failure(client_key)
+        _record_auth_failure(client_key, auth_config=auth_config, auth_failures=failures, now_fn=now_fn)
         return False
 
     provided_key = _select_api_key(
         websocket.headers.get("x-api-key"),
         _extract_bearer_key(websocket.headers.get("authorization")),
     )
-    ok, _, error = _validate_candidate(provided_key, context="WebSocket connection")
+    ok, _, error = _validate_candidate(provided_key, context="WebSocket connection", auth_config=auth_config)
     if not ok:
-        _record_auth_failure(client_key)
+        _record_auth_failure(client_key, auth_config=auth_config, auth_failures=failures, now_fn=now_fn)
         return False
-    _clear_auth_failures(client_key)
+    _clear_auth_failures(client_key, auth_failures=failures)
     logger.info("WebSocket connection authenticated successfully")
     return True
 
 
 __all__ = [
+    "AuthRuntimeConfig",
+    "DEFAULT_AUTH_RUNTIME_CONFIG",
     "validate_api_key",
     "get_api_key",
     "authenticate_websocket",

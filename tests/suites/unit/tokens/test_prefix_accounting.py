@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-from types import SimpleNamespace
+from src.state.session import SessionState
 from src.tokens import prefix as token_prefix
 from tests.support.helpers.tokenizer import use_local_tokenizers
 
@@ -16,34 +15,57 @@ def test_strip_screen_prefix_handles_case_insensitive_match() -> None:
     assert untouched == "hello there"
 
 
-def test_get_effective_user_utt_max_tokens_uses_state_and_clamps(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(token_prefix, "USER_UTT_MAX_TOKENS", 5)
-    state = SimpleNamespace(
-        check_screen_prefix_tokens=9,
-        screen_checked_prefix_tokens=2,
+def test_get_effective_user_utt_max_tokens_uses_state_and_clamps() -> None:
+    state = SessionState(meta={})
+    state.check_screen_prefix_tokens = 9
+    state.screen_checked_prefix_tokens = 2
+
+    assert (
+        token_prefix.get_effective_user_utt_max_tokens(
+            state,
+            for_followup=False,
+            user_utt_max_tokens=5,
+        )
+        == 1
+    )
+    assert (
+        token_prefix.get_effective_user_utt_max_tokens(
+            state,
+            for_followup=True,
+            user_utt_max_tokens=5,
+        )
+        == 3
     )
 
-    assert token_prefix.get_effective_user_utt_max_tokens(state, for_followup=False) == 1  # type: ignore[arg-type]
-    assert token_prefix.get_effective_user_utt_max_tokens(state, for_followup=True) == 3  # type: ignore[arg-type]
 
-
-def test_get_effective_user_utt_max_tokens_without_state_uses_defaults(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_get_effective_user_utt_max_tokens_without_state_uses_defaults() -> None:
     with use_local_tokenizers():
-        monkeypatch.setattr(token_prefix, "DEPLOY_CHAT", True)
-        monkeypatch.setattr(token_prefix, "USER_UTT_MAX_TOKENS", 8)
-        monkeypatch.setattr(token_prefix, "DEFAULT_CHECK_SCREEN_PREFIX", "check")
-        monkeypatch.setattr(token_prefix, "DEFAULT_SCREEN_CHECKED_PREFIX", "screen")
+        start_expected = max(1, 8 - token_prefix.count_prefix_tokens("check", deploy_chat=True))
+        followup_expected = max(1, 8 - token_prefix.count_prefix_tokens("screen", deploy_chat=True))
 
-        start_expected = max(1, 8 - token_prefix.count_prefix_tokens("check"))
-        followup_expected = max(1, 8 - token_prefix.count_prefix_tokens("screen"))
+        assert (
+            token_prefix.get_effective_user_utt_max_tokens(
+                None,
+                for_followup=False,
+                user_utt_max_tokens=8,
+                default_check_screen_prefix="check",
+                default_screen_checked_prefix="screen",
+                deploy_chat=True,
+            )
+            == start_expected
+        )
+        assert (
+            token_prefix.get_effective_user_utt_max_tokens(
+                None,
+                for_followup=True,
+                user_utt_max_tokens=8,
+                default_check_screen_prefix="check",
+                default_screen_checked_prefix="screen",
+                deploy_chat=True,
+            )
+            == followup_expected
+        )
 
-        assert token_prefix.get_effective_user_utt_max_tokens(None, for_followup=False) == start_expected
-        assert token_prefix.get_effective_user_utt_max_tokens(None, for_followup=True) == followup_expected
 
-
-def test_count_prefix_tokens_returns_zero_when_chat_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(token_prefix, "DEPLOY_CHAT", False)
-
-    assert token_prefix.count_prefix_tokens("check") == 0
+def test_count_prefix_tokens_returns_zero_when_chat_is_disabled() -> None:
+    assert token_prefix.count_prefix_tokens("check", deploy_chat=False) == 0

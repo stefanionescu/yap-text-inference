@@ -11,54 +11,46 @@ class _DummyConfig:
         self.num_labels = num_labels
 
 
-def test_build_model_info_uses_fallback_default_when_not_overridden(monkeypatch) -> None:
-    monkeypatch.setattr(
-        tool_info.AutoConfig,
-        "from_pretrained",
-        lambda *_args, **_kwargs: _DummyConfig("longformer", num_labels=3),
+def test_build_model_info_uses_fallback_default_when_not_overridden() -> None:
+    info = tool_info.build_model_info(
+        "dummy-model",
+        max_length=None,
+        config_loader=lambda _model_path: _DummyConfig("longformer", num_labels=3),
     )
-
-    info = tool_info.build_model_info("dummy-model", max_length=None)
 
     assert info.model_type == "longformer"
     assert info.max_length == 512
     assert info.num_labels == 3
 
 
-def test_build_model_info_uses_bert_default_when_not_overridden(monkeypatch) -> None:
-    monkeypatch.setattr(
-        tool_info.AutoConfig,
-        "from_pretrained",
-        lambda *_args, **_kwargs: _DummyConfig("modernbert", num_labels=2),
+def test_build_model_info_uses_bert_default_when_not_overridden() -> None:
+    info = tool_info.build_model_info(
+        "dummy-model",
+        max_length=None,
+        config_loader=lambda _model_path: _DummyConfig("modernbert", num_labels=2),
     )
-
-    info = tool_info.build_model_info("dummy-model", max_length=None)
 
     assert info.model_type == "bert"
     assert info.max_length == 512
 
 
-def test_build_model_info_treats_roberta_family_as_bert_path(monkeypatch) -> None:
-    monkeypatch.setattr(
-        tool_info.AutoConfig,
-        "from_pretrained",
-        lambda *_args, **_kwargs: _DummyConfig("roberta", num_labels=2),
+def test_build_model_info_treats_roberta_family_as_bert_path() -> None:
+    info = tool_info.build_model_info(
+        "dummy-model",
+        max_length=None,
+        config_loader=lambda _model_path: _DummyConfig("roberta", num_labels=2),
     )
-
-    info = tool_info.build_model_info("dummy-model", max_length=None)
 
     assert info.model_type == "bert"
     assert info.max_length == 512
 
 
-def test_build_model_info_respects_max_length_override(monkeypatch) -> None:
-    monkeypatch.setattr(
-        tool_info.AutoConfig,
-        "from_pretrained",
-        lambda *_args, **_kwargs: _DummyConfig("longformer", num_labels=2),
+def test_build_model_info_respects_max_length_override() -> None:
+    info = tool_info.build_model_info(
+        "dummy-model",
+        max_length=1024,
+        config_loader=lambda _model_path: _DummyConfig("longformer", num_labels=2),
     )
-
-    info = tool_info.build_model_info("dummy-model", max_length=1024)
 
     assert info.model_type == "longformer"
     assert info.max_length == 1024

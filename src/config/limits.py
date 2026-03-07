@@ -18,9 +18,8 @@ Rate Limits:
 Most values can be overridden via environment variables.
 """
 
-import os
 from .deploy import DEPLOY_CHAT, DEPLOY_TOOL
-from ..helpers.resolvers import resolve_batch_scale_gpu_frac_cap
+from ..helpers.resolvers import LimitValues, resolve_limit_values, resolve_batch_scale_gpu_frac_cap
 
 # ============================================================================
 # Context Window Limits
@@ -28,43 +27,40 @@ from ..helpers.resolvers import resolve_batch_scale_gpu_frac_cap
 # These define the maximum token budget for different components.
 # Total budget breakdown: 1500 persona + 3000 history + 500 user + 25 buffer
 
+_LIMIT_VALUES: LimitValues = resolve_limit_values()
+
 # Max tokens allowed for incoming prompts (provided by clients)
-CHAT_PROMPT_MAX_TOKENS = int(os.getenv("CHAT_PROMPT_MAX_TOKENS", "1500"))
+CHAT_PROMPT_MAX_TOKENS = int(_LIMIT_VALUES["CHAT_PROMPT_MAX_TOKENS"])
 
 # History and user limits (token counts from active tokenizer path)
 # CHAT_HISTORY_MAX_TOKENS: threshold that triggers trimming
-CHAT_HISTORY_MAX_TOKENS = int(os.getenv("CHAT_HISTORY_MAX_TOKENS", "3000"))
-USER_UTT_MAX_TOKENS = int(os.getenv("USER_UTT_MAX_TOKENS", "500"))
+CHAT_HISTORY_MAX_TOKENS = int(_LIMIT_VALUES["CHAT_HISTORY_MAX_TOKENS"])
+USER_UTT_MAX_TOKENS = int(_LIMIT_VALUES["USER_UTT_MAX_TOKENS"])
 
 # Percentage of CHAT_HISTORY_MAX_TOKENS to retain after trimming
-HISTORY_RETENTION_PCT = int(os.getenv("HISTORY_RETENTION_PCT", "66"))
+HISTORY_RETENTION_PCT = int(_LIMIT_VALUES["HISTORY_RETENTION_PCT"])
 
-CONTEXT_BUFFER = int(os.getenv("CONTEXT_BUFFER", "25"))
+CONTEXT_BUFFER = int(_LIMIT_VALUES["CONTEXT_BUFFER"])
 
-CHAT_MAX_LEN = CHAT_PROMPT_MAX_TOKENS + CHAT_HISTORY_MAX_TOKENS + USER_UTT_MAX_TOKENS + CONTEXT_BUFFER
-CHAT_MAX_OUT = int(os.getenv("CHAT_MAX_OUT", "150"))  # Max generation tokens
+CHAT_MAX_LEN = int(_LIMIT_VALUES["CHAT_MAX_LEN"])
+CHAT_MAX_OUT = int(_LIMIT_VALUES["CHAT_MAX_OUT"])  # Max generation tokens
 
 # TRIMMED_HISTORY_LENGTH: target length after trimming (must be < CHAT_HISTORY_MAX_TOKENS)
-TRIMMED_HISTORY_LENGTH = CHAT_HISTORY_MAX_TOKENS * HISTORY_RETENTION_PCT // 100
+TRIMMED_HISTORY_LENGTH = int(_LIMIT_VALUES["TRIMMED_HISTORY_LENGTH"])
 
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5-15ms
-STREAM_FLUSH_MS = float(os.getenv("STREAM_FLUSH_MS", "0"))
+STREAM_FLUSH_MS = float(_LIMIT_VALUES["STREAM_FLUSH_MS"])
 
 # WebSocket message/cancel rate limits (rolling window)
-WS_MESSAGE_WINDOW_SECONDS = float(os.getenv("WS_MESSAGE_WINDOW_SECONDS", "60"))
-WS_MAX_MESSAGES_PER_WINDOW = int(os.getenv("WS_MAX_MESSAGES_PER_WINDOW", "25"))
-WS_CANCEL_WINDOW_SECONDS = float(
-    os.getenv(
-        "WS_CANCEL_WINDOW_SECONDS",
-        str(WS_MESSAGE_WINDOW_SECONDS),
-    )
-)
-WS_MAX_CANCELS_PER_WINDOW = int(os.getenv("WS_MAX_CANCELS_PER_WINDOW", str(WS_MAX_MESSAGES_PER_WINDOW)))
+WS_MESSAGE_WINDOW_SECONDS = float(_LIMIT_VALUES["WS_MESSAGE_WINDOW_SECONDS"])
+WS_MAX_MESSAGES_PER_WINDOW = int(_LIMIT_VALUES["WS_MAX_MESSAGES_PER_WINDOW"])
+WS_CANCEL_WINDOW_SECONDS = float(_LIMIT_VALUES["WS_CANCEL_WINDOW_SECONDS"])
+WS_MAX_CANCELS_PER_WINDOW = int(_LIMIT_VALUES["WS_MAX_CANCELS_PER_WINDOW"])
 
 # Maximum concurrent WebSocket connections
 # Validated at runtime by helpers/validation.py
-_max_concurrent_raw = os.getenv("MAX_CONCURRENT_CONNECTIONS")
-MAX_CONCURRENT_CONNECTIONS: int | None = int(_max_concurrent_raw) if _max_concurrent_raw else None
+_max_concurrent_value = _LIMIT_VALUES["MAX_CONCURRENT_CONNECTIONS"]
+MAX_CONCURRENT_CONNECTIONS: int | None = None if _max_concurrent_value is None else int(_max_concurrent_value)
 
 # GPU fraction cap for batching: matches CHAT_GPU_FRAC based on deployment mode.
 # Prevents pushing memory allocation beyond the configured GPU fraction.

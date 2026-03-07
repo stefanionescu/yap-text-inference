@@ -117,7 +117,11 @@ def _coerce_int(value: Any) -> int:
     raise TypeError("unsupported type")
 
 
-def extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int | bool]:
+def extract_sampling_overrides(
+    msg: dict[str, Any],
+    *,
+    deploy_chat: bool = DEPLOY_CHAT,
+) -> dict[str, float | int | bool]:
     """Extract and validate sampling parameter overrides from a message.
 
     Looks for parameters in both the top-level message and a nested
@@ -125,14 +129,15 @@ def extract_sampling_overrides(msg: dict[str, Any]) -> dict[str, float | int | b
 
     Args:
         msg: The message dict to extract parameters from.
+        deploy_chat: Whether chat-mode sampling overrides should be accepted.
 
     Returns:
-        Dict of validated sampling overrides. Empty if DEPLOY_CHAT is False.
+        Dict of validated sampling overrides. Empty if deploy_chat is False.
 
     Raises:
         ValidationError: If any parameter fails type or range validation.
     """
-    if not DEPLOY_CHAT:
+    if not deploy_chat:
         return {}
 
     overrides: dict[str, float | int | bool] = {}

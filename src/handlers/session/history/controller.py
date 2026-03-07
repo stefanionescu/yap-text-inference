@@ -82,10 +82,13 @@ class HistoryController:
         self._sync_mode_storage(state)
         return render_history(self._chat_turns(state))
 
-    def get_turns(self, state: SessionState) -> list[HistoryTurn]:
+    def get_turns(self, state: SessionState, *, include_latest: bool = True) -> list[HistoryTurn]:
         """Get a copy of chat history turns."""
         self._sync_mode_storage(state)
-        return [HistoryTurn(turn_id=t.turn_id, user=t.user, assistant=t.assistant) for t in self._chat_turns(state)]
+        turns = self._chat_turns(state)
+        if not include_latest and turns:
+            turns = turns[:-1]
+        return [HistoryTurn(turn_id=t.turn_id, user=t.user, assistant=t.assistant) for t in turns]
 
     def get_user_texts(self, state: SessionState) -> list[str]:
         """Get raw user texts for the appropriate deploy mode."""

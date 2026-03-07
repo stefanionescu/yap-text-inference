@@ -52,52 +52,44 @@ def test_coerce_int_bool_raises() -> None:
 # --- extract_sampling_overrides ---
 
 
-def test_extract_empty_msg_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", True)
-    result = extract_sampling_overrides({})
+def test_extract_empty_msg_returns_empty() -> None:
+    result = extract_sampling_overrides({}, deploy_chat=True)
     assert result == {}
 
 
-def test_extract_valid_temperature(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", True)
+def test_extract_valid_temperature() -> None:
     low = sampling_mod.CHAT_TEMPERATURE_MIN
-    result = extract_sampling_overrides({"temperature": low})
+    result = extract_sampling_overrides({"temperature": low}, deploy_chat=True)
     assert "temperature" in result
     assert result["temperature"] == float(low)
 
 
-def test_extract_temperature_out_of_range(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", True)
+def test_extract_temperature_out_of_range() -> None:
     with pytest.raises(ValidationError, match="temperature must be between"):
-        extract_sampling_overrides({"temperature": 999.0})
+        extract_sampling_overrides({"temperature": 999.0}, deploy_chat=True)
 
 
-def test_extract_bool_temperature_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", True)
+def test_extract_bool_temperature_raises() -> None:
     with pytest.raises(ValidationError, match="temperature must be a valid"):
-        extract_sampling_overrides({"temperature": True})
+        extract_sampling_overrides({"temperature": True}, deploy_chat=True)
 
 
-def test_extract_nested_sampling_block(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", True)
+def test_extract_nested_sampling_block() -> None:
     low = sampling_mod.CHAT_TEMPERATURE_MIN
-    result = extract_sampling_overrides({"sampling": {"temperature": low}})
+    result = extract_sampling_overrides({"sampling": {"temperature": low}}, deploy_chat=True)
     assert result["temperature"] == float(low)
 
 
-def test_extract_sanitize_output_boolean(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", True)
-    result = extract_sampling_overrides({"sanitize_output": False})
+def test_extract_sanitize_output_boolean() -> None:
+    result = extract_sampling_overrides({"sanitize_output": False}, deploy_chat=True)
     assert result["sanitize_output"] is False
 
 
-def test_extract_non_dict_sampling_block_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", True)
+def test_extract_non_dict_sampling_block_raises() -> None:
     with pytest.raises(ValidationError, match="sampling must be an object"):
-        extract_sampling_overrides({"sampling": "not_a_dict"})
+        extract_sampling_overrides({"sampling": "not_a_dict"}, deploy_chat=True)
 
 
-def test_extract_returns_empty_when_deploy_chat_false(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sampling_mod, "DEPLOY_CHAT", False)
-    result = extract_sampling_overrides({"temperature": 0.5})
+def test_extract_returns_empty_when_deploy_chat_false() -> None:
+    result = extract_sampling_overrides({"temperature": 0.5}, deploy_chat=False)
     assert result == {}

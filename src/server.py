@@ -65,7 +65,7 @@ from fastapi.responses import ORJSONResponse  # noqa: E402
 from .telemetry.instruments import get_metrics  # noqa: E402
 from .telemetry.setup import shutdown_telemetry  # noqa: E402
 from .telemetry.instruments import initialize_metrics  # noqa: E402
-from .handlers.websocket import handle_websocket_connection  # noqa: E402
+from .handlers.websocket.manager import handle_websocket_connection  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

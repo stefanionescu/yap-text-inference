@@ -88,6 +88,7 @@ Shared engineering expectations for all work in this codebase. Use these rules a
 ## Testing
 - Ship every behavioral change with a matching automated test (unit, integration, or system) that would fail without the change.
 - Keep tests deterministic by stubbing clocks, network calls, randomness, and filesystem writes; centralize shared test data so they can be reused.
+- Prefer dependency/parameter injection with explicit fakes/stubs in tests, especially unit tests; avoid monkeypatching module globals or environment as a default strategy.
 - Add a regression test for each bug fix that previously failed to prevent repeats; reference the failure scenario in the test's docstring or comments.
 - Name test modules `test_*.py`, sample data modules `sample_*`, and doubles `fake_*`/`stub_*` so intent stays obvious.
 - Limit test modules to the smallest practical scope; extract reusable builders into helper modules or shared data modules instead of duplicating factories inline.

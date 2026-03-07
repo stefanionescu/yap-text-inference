@@ -7,8 +7,14 @@ This module inspects HuggingFace config metadata to determine:
 
 from __future__ import annotations
 
+from typing import Any
 from src.state import ToolModelInfo
 from transformers import AutoConfig
+from collections.abc import Callable
+
+
+def _load_config(model_path: str) -> Any:
+    return AutoConfig.from_pretrained(model_path, trust_remote_code=True)
 
 
 def resolve_history_token_limit(*, max_length: int, history_tokens: int | None) -> int:
@@ -18,7 +24,12 @@ def resolve_history_token_limit(*, max_length: int, history_tokens: int | None) 
     return max(1, min(int(history_tokens), int(max_length)))
 
 
-def build_model_info(model_path: str, max_length: int | None) -> ToolModelInfo:
+def build_model_info(
+    model_path: str,
+    max_length: int | None,
+    *,
+    config_loader: Callable[[str], Any] = _load_config,
+) -> ToolModelInfo:
     """Inspect the Hugging Face config and produce tool model metadata.
 
     Reads config.json from the model path/repo to determine:
@@ -28,11 +39,12 @@ def build_model_info(model_path: str, max_length: int | None) -> ToolModelInfo:
     Args:
         model_path: HuggingFace model ID or local directory path.
         max_length: Optional maximum sequence length override.
+        config_loader: Loader used to fetch model config metadata.
 
     Returns:
         ToolModelInfo with extracted/configured metadata.
     """
-    config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+    config = config_loader(model_path)
     config_type = getattr(config, "model_type", "").lower()
     model_type = "longformer" if config_type == "longformer" else "bert"
     resolved_max_length = int(max_length) if max_length is not None else 512

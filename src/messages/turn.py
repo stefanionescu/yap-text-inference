@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import copy
 import time
-import uuid
 import logging
 from fastapi import WebSocket
 from src.state import TurnPlan
 from typing import Any, Literal
 from collections.abc import Callable
 from .tasks import spawn_session_task
+from src.config import CHAT_PROMPT_MAX_TOKENS
 from .start.dispatch import dispatch_execution
 from src.telemetry.sentry import capture_error
 from src.runtime.dependencies import RuntimeDeps
@@ -19,9 +19,8 @@ from .start.sampling import extract_sampling_overrides
 from src.handlers.session.manager import SessionHandler
 from .input import normalize_gender, normalize_personality
 from src.handlers.session.config import update_session_config
-from .start.history import resolve_history, resolve_user_utterances
-from src.config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_PROMPT_MAX_TOKENS
 from src.telemetry.phases import record_phase_error, record_phase_latency
+from .plan_builders import _build_start_turn_plan, _build_message_turn_plan
 from src.config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from .validators import (
     ValidationError,
@@ -58,8 +57,8 @@ async def _send_turn_error(ws: WebSocket, *, code: str, message: str, close: boo
         await ws.close(code=1008)
 
 
-def _validate_persona(msg: dict[str, Any]) -> tuple[str | None, str | None]:
-    if not DEPLOY_CHAT:
+def _validate_persona(msg: dict[str, Any], *, deploy_chat: bool) -> tuple[str | None, str | None]:
+    if not deploy_chat:
         gender = normalize_gender(msg.get("gender"))
         personality = normalize_personality(msg.get("personality"))
         return gender, personality
@@ -72,9 +71,10 @@ def _extract_chat_prompt(
     msg: dict[str, Any],
     *,
     count_tokens_fn: Callable[[str], int],
+    deploy_chat: bool,
 ) -> str | None:
     raw_chat_prompt = msg.get("chat_prompt")
-    if not DEPLOY_CHAT:
+    if not deploy_chat:
         return None
     required_chat_prompt = require_prompt(
         raw_chat_prompt,
@@ -109,6 +109,7 @@ def _resolve_start_inputs(
     msg: dict[str, Any],
     *,
     count_tokens_fn: Callable[[str], int],
+    deploy_chat: bool,
 ) -> tuple[
     str | None,
     str | None,
@@ -117,46 +118,11 @@ def _resolve_start_inputs(
     str | None,
     str | None,
 ]:
-    gender, personality = _validate_persona(msg)
-    chat_prompt = _extract_chat_prompt(msg, count_tokens_fn=count_tokens_fn)
-    sampling_overrides = extract_sampling_overrides(msg)
+    gender, personality = _validate_persona(msg, deploy_chat=deploy_chat)
+    chat_prompt = _extract_chat_prompt(msg, count_tokens_fn=count_tokens_fn, deploy_chat=deploy_chat)
+    sampling_overrides = extract_sampling_overrides(msg, deploy_chat=deploy_chat)
     check_screen_prefix, screen_checked_prefix = _extract_screen_prefixes(msg)
     return gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix
-
-
-def _build_start_turn_plan(
-    state,
-    msg: dict[str, Any],
-    cfg: dict[str, Any],
-    *,
-    session_handler: SessionHandler,
-    sampling_overrides: dict[str, float | int | bool],
-) -> TurnPlan:
-    history_turns = resolve_history(session_handler, state, msg)
-    chat_user_utt, tool_user_utt = resolve_user_utterances(
-        session_handler,
-        state,
-        msg.get("user_utterance", ""),
-    )
-    history_turn_id = session_handler.append_user_utterance(
-        state,
-        chat_user_utt,
-        tool_user_utt=tool_user_utt,
-    )
-    plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
-    static_prefix = cfg.get("chat_prompt") or ""
-    return TurnPlan(
-        state=state,
-        request_id=f"start-{uuid.uuid4().hex}",
-        static_prefix=static_prefix,
-        runtime_text="",
-        history_turns=history_turns,
-        chat_user_utt=plan_chat_user_utt,
-        tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
-        history_turn_id=history_turn_id,
-        sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
-        apply_screen_checked_prefix=False,
-    )
 
 
 async def _plan_start_turn(
@@ -169,6 +135,7 @@ async def _plan_start_turn(
     t0 = time.perf_counter()
     try:
         session_handler.initialize_session(state)
+        deploy_chat = session_handler.history_config.deploy_chat
         logger.info(
             "WS recv: start gender=%s len(history)=%s len(user)=%s",
             msg.get("gender"),
@@ -178,7 +145,11 @@ async def _plan_start_turn(
 
         try:
             gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix = (
-                _resolve_start_inputs(msg, count_tokens_fn=session_handler.count_chat_tokens)
+                _resolve_start_inputs(
+                    msg,
+                    count_tokens_fn=session_handler.count_chat_tokens,
+                    deploy_chat=deploy_chat,
+                )
             )
         except ValidationError as err:
             capture_error(err)
@@ -186,8 +157,8 @@ async def _plan_start_turn(
             await _close_with_validation_error(ws, err)
             return None
 
-        sampling_payload = sampling_overrides if DEPLOY_CHAT else None
-        if DEPLOY_CHAT and sampling_payload is None:
+        sampling_payload = sampling_overrides if deploy_chat else None
+        if deploy_chat and sampling_payload is None:
             sampling_payload = {}
         update_session_config(
             state,
@@ -220,6 +191,8 @@ async def _plan_message_turn(
 ) -> TurnPlan | None:
     t0 = time.perf_counter()
     try:
+        deploy_chat = session_handler.history_config.deploy_chat
+        deploy_tool = session_handler.history_config.deploy_tool
         incoming_user_utt = (msg.get("user_utterance") or "").strip()
         if not incoming_user_utt:
             record_phase_error("validate", "missing_user_utterance")
@@ -233,7 +206,7 @@ async def _plan_message_turn(
             return None
 
         try:
-            sampling_overrides = extract_sampling_overrides(msg)
+            sampling_overrides = extract_sampling_overrides(msg, deploy_chat=deploy_chat)
         except ValidationError as err:
             record_phase_error("validate", "invalid_sampling")
             await _send_turn_error(ws, code=WS_ERROR_INVALID_PAYLOAD, message=err.message, close=True)
@@ -246,32 +219,14 @@ async def _plan_message_turn(
                 chat_sampling=sampling_overrides,
             )
 
-        apply_screen_checked_prefix = bool(state.screen_followup_pending)
-        history_turns = session_handler._history.get_turns(state)
-        chat_user_utt, tool_user_utt = resolve_user_utterances(
-            session_handler,
+        return _build_message_turn_plan(
             state,
+            cfg,
             incoming_user_utt,
-            for_followup=apply_screen_checked_prefix,
-        )
-        history_turn_id = session_handler.append_user_utterance(
-            state,
-            chat_user_utt,
-            tool_user_utt=tool_user_utt,
-        )
-        plan_chat_user_utt = chat_user_utt if DEPLOY_CHAT else None
-        static_prefix = cfg.get("chat_prompt") or ""
-        return TurnPlan(
-            state=state,
-            request_id=f"msg-{uuid.uuid4().hex}",
-            static_prefix=static_prefix,
-            runtime_text="",
-            history_turns=history_turns,
-            chat_user_utt=plan_chat_user_utt,
-            tool_user_utt=tool_user_utt if DEPLOY_TOOL else None,
-            history_turn_id=history_turn_id,
-            sampling_overrides=(sampling_overrides or None) if DEPLOY_CHAT else None,
-            apply_screen_checked_prefix=apply_screen_checked_prefix,
+            deploy_chat=deploy_chat,
+            deploy_tool=deploy_tool,
+            session_handler=session_handler,
+            sampling_overrides=sampling_overrides,
         )
     finally:
         record_phase_latency("validate", time.perf_counter() - t0)

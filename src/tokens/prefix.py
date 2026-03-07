@@ -20,13 +20,19 @@ This module handles the screen prefix logic for chat sessions:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from collections.abc import Callable
 from ..config import DEPLOY_CHAT, USER_UTT_MAX_TOKENS, DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 
 if TYPE_CHECKING:
     from ..state.session import SessionState
 
 
-def count_prefix_tokens(prefix: str | None) -> int:
+def count_prefix_tokens(
+    prefix: str | None,
+    *,
+    deploy_chat: bool = DEPLOY_CHAT,
+    count_tokens_chat_fn: Callable[[str], int] | None = None,
+) -> int:
     """Count tokens for a prefix string (including trailing space).
 
     The trailing space is included because when we prefix a user message
@@ -34,6 +40,8 @@ def count_prefix_tokens(prefix: str | None) -> int:
 
     Args:
         prefix: The prefix text to count tokens for.
+        deploy_chat: Whether chat mode is active for prefix accounting.
+        count_tokens_chat_fn: Optional injected tokenizer counter.
 
     Returns:
         Token count including the trailing space, or 0 if prefix is empty
@@ -42,11 +50,13 @@ def count_prefix_tokens(prefix: str | None) -> int:
     if not prefix:
         return 0
     # Screen prefixes only apply when chat model is deployed
-    if not DEPLOY_CHAT:
+    if not deploy_chat:
         return 0
-    from .utils import count_tokens_chat  # noqa: PLC0415
+    if count_tokens_chat_fn is None:
+        from .utils import count_tokens_chat  # noqa: PLC0415
 
-    return count_tokens_chat(f"{prefix.strip()} ")
+        count_tokens_chat_fn = count_tokens_chat
+    return count_tokens_chat_fn(f"{prefix.strip()} ")
 
 
 def strip_screen_prefix(
@@ -108,6 +118,11 @@ def get_effective_user_utt_max_tokens(
     state: SessionState | None,
     *,
     for_followup: bool = False,
+    user_utt_max_tokens: int = USER_UTT_MAX_TOKENS,
+    default_check_screen_prefix: str | None = DEFAULT_CHECK_SCREEN_PREFIX,
+    default_screen_checked_prefix: str | None = DEFAULT_SCREEN_CHECKED_PREFIX,
+    deploy_chat: bool = DEPLOY_CHAT,
+    count_prefix_tokens_fn: Callable[[str | None], int] | None = None,
 ) -> int:
     """Get the effective max tokens for user utterance after accounting for prefix.
 
@@ -119,22 +134,30 @@ def get_effective_user_utt_max_tokens(
             If None, uses default prefix token counts.
         for_followup: If True, account for screen_checked_prefix (followup messages).
             If False, account for check_screen_prefix (start messages).
+        user_utt_max_tokens: Token budget before prefix reservation.
+        default_check_screen_prefix: Prefix used for initial prompts when state is None.
+        default_screen_checked_prefix: Prefix used for follow-ups when state is None.
+        deploy_chat: Whether chat mode is enabled when state is None.
+        count_prefix_tokens_fn: Optional injected prefix counter.
 
     Returns:
         The adjusted max token count for user message content.
         Always returns at least 1 to prevent zero-length limits.
     """
     if state is None:
+        resolved_count_prefix_tokens_fn = count_prefix_tokens_fn or (
+            lambda prefix: count_prefix_tokens(prefix, deploy_chat=deploy_chat)
+        )
         # No session state: use defaults
         if for_followup:
-            prefix_tokens = count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
+            prefix_tokens = resolved_count_prefix_tokens_fn(default_screen_checked_prefix)
         else:
-            prefix_tokens = count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
-        return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
+            prefix_tokens = resolved_count_prefix_tokens_fn(default_check_screen_prefix)
+        return max(1, user_utt_max_tokens - prefix_tokens)
 
     prefix_tokens = state.screen_checked_prefix_tokens if for_followup else state.check_screen_prefix_tokens
 
-    return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
+    return max(1, user_utt_max_tokens - prefix_tokens)
 
 
 __all__ = [

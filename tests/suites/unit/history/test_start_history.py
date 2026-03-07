@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from src.tokens import count_tokens_chat
 from src.state.session import SessionState
 import src.messages.start.history as start_history
@@ -102,18 +101,11 @@ def test_resolve_history_trims_when_over_budget() -> None:
         assert isinstance(turns, list)
 
 
-def test_trim_chat_user_utterance_uses_effective_budget(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_trim_chat_user_utterance_uses_effective_budget() -> None:
     with use_local_tokenizers():
         handler = _build_session_handler()
         state = _make_state(handler)
-
-        monkeypatch.setattr(
-            handler,
-            "get_effective_chat_user_utt_max_tokens",
-            lambda _state, *, for_followup=False: 5,
-        )
+        state.check_screen_prefix_tokens = 495
 
         trimmed = start_history.trim_chat_user_utterance(handler, state, "alpha bravo charlie")
         assert count_tokens_chat(trimmed) <= 5

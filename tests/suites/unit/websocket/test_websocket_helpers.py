@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 import pytest
 import asyncio
 import contextlib
@@ -42,11 +43,11 @@ def test_build_api_key_headers_uses_x_api_key() -> None:
     assert headers == {"X-API-Key": "abc123"}
 
 
-def test_with_api_key_requires_key_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("TEXT_API_KEY", raising=False)
+def test_with_api_key_requires_key_when_missing() -> None:
+    missing_env_var = f"TEXT_API_KEY_TEST_ONLY_{uuid.uuid4().hex}"
 
     with pytest.raises(ValueError, match="TEXT_API_KEY"):
-        ws_helpers.with_api_key("ws://localhost:8000/ws")
+        ws_helpers.with_api_key("ws://localhost:8000/ws", api_key_env=missing_env_var)
 
 
 def test_recv_raw_uses_receive_if_available() -> None:
