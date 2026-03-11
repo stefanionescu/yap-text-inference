@@ -10,7 +10,11 @@ source "${SCRIPT_DIR}/../common.sh"
 
 cd "${REPO_ROOT}"
 
-mapfile -t requirement_files < <(
+requirement_files=()
+while IFS= read -r requirement_file; do
+  [[ -n ${requirement_file} ]] || continue
+  requirement_files+=("${requirement_file}")
+done < <(
   python - <<'PY'
 from pathlib import Path
 try:

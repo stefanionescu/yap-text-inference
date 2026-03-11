@@ -280,6 +280,8 @@ If you already use the deployment bootstrap flow, it creates the same repo-local
 
 The Bun step is only for the small root JS maintenance toolchain that `nox` and hook self-checks use for `jscpd`.
 
+Shared repo code is linted and type-checked against Python 3.10 even though some images run Python 3.12.
+
 ## Developer Commands
 
 Use `nox` as the canonical top-level maintenance entrypoint:
@@ -302,8 +304,9 @@ nox -s codeql
 ```
 
 The underlying shell entrypoints under `linting/` still exist for hook plumbing and focused debugging, but `nox` is the primary documented surface.
-The lint/security entrypoints use the repo-local `.venv` directly and fail fast if it is missing.
-`nox -s security` requires Docker because the Trivy stage includes config, filesystem, and scan-only image builds.
+The lint/security entrypoints use the repo-local `.venv` plus repo-local tool bins directly and fail fast if that bootstrap is missing.
+`nox -s security` skips Trivy by default; set `ENABLE_TRIVY=1` to include config, filesystem, and scan-only image builds.
+Set `SKIP_CODEQL=1` when you need to bypass CodeQL locally.
 `nox -s codeql` writes raw SARIF to `linting/.tools/codeql/results/`.
 
 ## Test Clients

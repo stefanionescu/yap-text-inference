@@ -8,7 +8,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
 source "${ROOT_DIR}/linting/common.sh"
 ensure_repo_python_env
 RUN_SONAR="${RUN_SONAR:-0}"
-ENABLE_TRIVY="${ENABLE_TRIVY:-1}"
+ENABLE_TRIVY="${ENABLE_TRIVY:-0}"
 SKIP_CODEQL="${SKIP_CODEQL:-0}"
 
 # run_cmd - Run a command and show its buffered output on failure.

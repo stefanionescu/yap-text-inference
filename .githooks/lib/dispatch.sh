@@ -7,6 +7,8 @@ ROOT_DIR="${ROOT_DIR:-$(git rev-parse --show-toplevel)}"
 
 # shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook runtime helper -- ticket: N/A
 source "${ROOT_DIR}/.githooks/lib/runtime.sh"
+# shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook bootstrap helper wires hooks into repo-managed tooling -- ticket: N/A
+source "${ROOT_DIR}/.githooks/lib/bootstrap.sh"
 
 # enter_repo_root - Switch to the repository root for stage execution.
 enter_repo_root() {
@@ -96,15 +98,20 @@ run_self_stage() {
       python -m linting.shell.run "${FILES[@]}"
       ;;
     format)
-      shfmt -d -i 2 -ci -s "${FILES[@]}"
+      bash linting/shfmt/run.sh -d -i 2 -ci -s "${FILES[@]}"
       ;;
     quality)
       python -m linting.python.structure.prefix_collisions .githooks
       python -m linting.python.structure.single_file_folders .githooks
-      bunx jscpd --config "${HOOK_SELF_JSCPD_CONFIG}"
+      bash linting/jscpd/run.sh --config "${HOOK_SELF_JSCPD_CONFIG}"
       ;;
     security)
-      semgrep --error --no-rewrite-rule-ids --metrics=off --disable-version-check --config "${HOOK_SELF_SEMGREP_CONFIG}" "${FILES[@]}"
+      local semgrep_args=(--config "${HOOK_SELF_SEMGREP_CONFIG}")
+      local hook_file
+      for hook_file in "${FILES[@]}"; do
+        semgrep_args+=(--target "${hook_file}")
+      done
+      bash linting/semgrep/run.sh "${semgrep_args[@]}"
       ;;
     *)
       die_hook_error "unsupported self hook stage: ${stage}"

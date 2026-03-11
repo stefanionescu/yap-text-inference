@@ -138,9 +138,9 @@ run_shell_full() {
 
   run_cmd "shellcheck" shellcheck -x -e SC1091 "${SHELL_FILES[@]}"
   if [[ ${RUN_FIX} -eq 1 ]]; then
-    run_cmd "shfmt" shfmt -w -i 2 -ci -s "${SHELL_FILES[@]}"
+    run_cmd "shfmt" bash linting/shfmt/run.sh -w -i 2 -ci -s "${SHELL_FILES[@]}"
   else
-    run_cmd "shfmt" shfmt -d -i 2 -ci -s "${SHELL_FILES[@]}"
+    run_cmd "shfmt" bash linting/shfmt/run.sh -d -i 2 -ci -s "${SHELL_FILES[@]}"
   fi
   run_cmd "no-inline-python" python -m linting.python.runtime.no_inline_python
   run_cmd "shell-custom-rules" python -m linting.shell.run
@@ -160,7 +160,7 @@ run_docs() {
 run_docker_full() {
   cd "${ROOT_DIR}"
   while IFS= read -r dockerfile; do
-    run_cmd "hadolint ${dockerfile}" hadolint --failure-threshold error "${dockerfile}"
+    run_cmd "hadolint ${dockerfile}" bash linting/hadolint/run.sh --failure-threshold error "${dockerfile}"
   done < <(find docker -name Dockerfile | sort)
   run_cmd "dockerignore-policy" python -m linting.python.infra.dockerignore_policy
 }
@@ -176,8 +176,8 @@ run_quality() {
   run_cmd "lizard" bash linting/lizard/run.sh
   run_cmd "deptry" python -m deptry --config pyproject.toml src tests
   run_cmd "vulture" python -m vulture src linting --min-confidence 100
-  run_cmd "jscpd python" bunx jscpd --config .jscpd/python.json
-  run_cmd "jscpd bash" bunx jscpd --config .jscpd/bash.json
+  run_cmd "jscpd python" bash linting/jscpd/run.sh --config .jscpd/python.json
+  run_cmd "jscpd bash" bash linting/jscpd/run.sh --config .jscpd/bash.json
 }
 
 # run_hooks - Run self-linting on the hook tree if it exists.

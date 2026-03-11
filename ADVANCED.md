@@ -322,7 +322,8 @@ bash scripts/coverage.sh
 ```
 
 If you already use the deployment bootstrap flow, it creates the same repo-local `.venv`.
-The lower-level `linting/*.sh` entrypoints use `.venv/bin/python` directly and fail fast if that environment is missing.
+The lower-level `linting/*.sh` entrypoints use the repo-local `.venv`, repo-cached lint binaries, and repo-local JS tooling directly and fail fast if that bootstrap is missing.
+Shared repo code is linted and type-checked against Python 3.10 even though some images run Python 3.12.
 
 CodeQL writes raw SARIF to `linting/.tools/codeql/results/`.
 
@@ -344,7 +345,7 @@ CodeQL writes raw SARIF to `linting/.tools/codeql/results/`.
   - no single-file folders in `src/` (promotes flat module layout)
   - no module-name prefix collisions (`src/**/*.py`)
   - no inline Python in shell scripts (`scripts/**/*.sh`, `docker/**/*.sh`)
-- ShellCheck (and shfmt checks when available)
+- ShellCheck and shfmt
 - docs lint via `linting/docs/run.sh`:
   - banned-term checks
   - `codespell`
@@ -366,11 +367,16 @@ The import and runtime rules protect architectural boundaries, and the stricter 
 - repo license audit
 - Gitleaks
 - Bearer
-- Trivy config, filesystem, and image scans
+- optional Trivy config, filesystem, and image scans when `ENABLE_TRIVY=1`
 - CodeQL
 - optional SonarQube when `RUN_SONAR=1`
 
-The Trivy image stage builds scan-only local Docker images with `TRIVY_SCAN=1` so the security gate can inspect the container layers without downloading baked-in models or TRT engines. Docker is required for the full security run.
+Useful local flags:
+- `ENABLE_TRIVY=1` to include Trivy
+- `SKIP_CODEQL=1` to skip CodeQL
+- `RUN_SONAR=1` to include SonarQube
+
+The Trivy image stage builds scan-only local Docker images with `TRIVY_SCAN=1` so the security gate can inspect the container layers without downloading baked-in models or TRT engines. Docker is only required when Trivy is enabled.
 
 Root Bun tooling is intentionally tiny. Today it is used by the `nox`/hook maintenance flow for:
 - `jscpd`
