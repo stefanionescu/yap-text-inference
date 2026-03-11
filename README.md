@@ -231,7 +231,7 @@ The server supports two inference backends:
 | **Pre-built Engines** | No (JIT) | Yes (compiled .engine) |
 | **CUDA Requirement** | 13.x | 13.0+ |
 | **PyTorch** | 2.9.x | 2.9.x |
-| **MoE Support** | Via FLA | FP8 only (other quants error) |
+| **MoE Support** | Supported; some models need extra runtime deps | Supported; follows the same TRT quantization rules as dense models |
 
 Select the engine with CLI flags or environment variable (chat/both deployments only):
 
@@ -370,7 +370,7 @@ bash scripts/restart.sh --reset-models --deploy-mode chat \
   --chat-model cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit
 
 # Full stop and restart cycle
-bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
+bash scripts/stop.sh && bash scripts/main.sh --trt both 4bit <chat_model> <tool_model>
 ```
 
 Key restart flags:

@@ -158,7 +158,7 @@ Switching engines requires a restart with environment wipe:
 bash scripts/restart.sh --vllm both
 
 # Or via main.sh
-bash scripts/main.sh --vllm 4bit <chat_model> <tool_model>
+bash scripts/main.sh --vllm both 4bit <chat_model> <tool_model>
 ```
 
 ### vLLM Configuration
@@ -594,7 +594,7 @@ TRT-LLM uses NVIDIA's quantization pipeline with a two-stage process:
 
 ```bash
 export FORCE_REBUILD=true
-bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
+bash scripts/main.sh --trt both 4bit <chat_model> <tool_model>
 ```
 
 **Pre-quantized TRT models:**
@@ -629,13 +629,13 @@ export HF_PUSH_REPO_ID="your-org/model-awq"  # repo name is arbitrary
 export HF_PUSH_PRIVATE=1  # optional, default is private
 
 # vLLM: Full deployment with HF push (AWQ/W4A16 export)
-bash scripts/main.sh --vllm 4bit <chat_model> <tool_model> --push-quant
+bash scripts/main.sh --vllm both 4bit <chat_model> <tool_model> --push-quant
 
 # TRT: Full deployment with HF push (4-bit export)
-bash scripts/main.sh --trt 4bit <chat_model> <tool_model> --push-quant
+bash scripts/main.sh --trt both 4bit <chat_model> <tool_model> --push-quant
 
 # TRT: Upload an 8-bit fp8/int8_sq export
-bash scripts/main.sh --trt 8bit <chat_model> <tool_model> --push-quant
+bash scripts/main.sh --trt both 8bit <chat_model> <tool_model> --push-quant
 
 # Restart with quantization and push (either engine)
 bash scripts/restart.sh chat --push-quant --chat-model <model> --chat-quant 4bit
@@ -679,8 +679,8 @@ python3 tests/suites/e2e/test_warmup.py --gender male --personality flirty "hell
 
 Environment overrides honored by the client:
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
-- `GENDER` (aliases `woman|man`)
-- `PERSONALITY` (default `wholesome`)
+- `GENDER` (default `female`; use `female` or `male`)
+- `PERSONALITY` (default `flirty`)
 - `RECV_TIMEOUT_SEC` (default `60`)
 
 Example:
@@ -699,7 +699,7 @@ Append `--double-ttfb` to send two identical requests back-to-back and compare c
 # run inside the scripts/activate.sh environment
 TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_live.py \
   --server ws://127.0.0.1:8000 \
-  --persona default_live_persona
+  --persona anna_flirty
 ```
 
 Flags:
@@ -890,7 +890,7 @@ Override:
 ```bash
 export CHAT_GPU_FRAC=0.60
 export TOOL_GPU_FRAC=0.25
-bash scripts/stop.sh && bash scripts/main.sh --trt 4bit <chat_model> <tool_model>
+bash scripts/stop.sh && bash scripts/main.sh --trt both 4bit <chat_model> <tool_model>
 ```
 
 **TRT-LLM:** `TRT_KV_FREE_GPU_FRAC` controls KV cache memory (defaults to `CHAT_GPU_FRAC`). Engine build uses `TRT_MAX_BATCH_SIZE` for KV cache slots.
