@@ -1,3 +1,4 @@
 "plugins.selectively_enable_rules" = true
 "plugins.yti100.enabled" = true
 "plugins.yti101.enabled" = true
+"plugins.yti102.enabled" = true

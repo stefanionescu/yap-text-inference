@@ -4,9 +4,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
-"${REPO_ROOT}/scripts/coverage.sh"
+# shellcheck source=lib/coverage.sh
+source "${SCRIPT_DIR}/lib/coverage.sh"
+
+generate_sonarqube_inputs
 "${SCRIPT_DIR}/server.sh" ensure
 "${SCRIPT_DIR}/scan.sh"
 "${SCRIPT_DIR}/collect.sh"

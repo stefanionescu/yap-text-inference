@@ -3,20 +3,13 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../common.sh
-source "${SCRIPT_DIR}/../common.sh"
-source_security_config "sonarqube"
-
-SONAR_URL="${SONAR_HOST_URL:-${SONAR_DEFAULT_HOST_URL}}"
-SONAR_TOKEN="${SONAR_TOKEN:-}"
-SONAR_LOGIN="${SONAR_LOGIN:-${SONAR_DEFAULT_LOGIN}}"
-SONAR_PASSWORD="${SONAR_PASSWORD:-${SONAR_DEFAULT_PASSWORD}}"
+# shellcheck source=lib/constants.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/constants.sh"
 
 cd "${REPO_ROOT}"
 
 SCANNER_ARGS=(
-  "-Dproject.settings=${SONAR_SETTINGS_FILE}"
+  "-Dproject.settings=${SONAR_SETTINGS_PATH}"
   "-Dsonar.qualitygate.wait=${SONAR_QUALITYGATE_WAIT}"
   "-Dsonar.qualitygate.timeout=${SONAR_QUALITYGATE_TIMEOUT}"
 )

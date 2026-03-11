@@ -27,6 +27,7 @@ cd "${ROOT_DIR}"
 run_cmd "semgrep" bash linting/semgrep/run.sh
 run_cmd "bandit" python -m bandit -c bandit.yaml -r src docker linting
 run_cmd "pip-audit" bash linting/security/pip_audit/run.sh
+run_cmd "licenses" bash linting/licenses/check.sh
 run_cmd "osv-scanner" bash linting/security/osv/run.sh
 run_cmd "gitleaks" bash linting/security/gitleaks/run.sh
 run_cmd "bearer" bash linting/security/bearer/run.sh

@@ -91,12 +91,15 @@ ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
 # NOTE: Do NOT use --upgrade - it can replace torch with a different CUDA version
 # ----------------------------------------------------------------------------
 RUN printf "torch==2.9.0+cu130\ntorchvision==0.24.0+cu130\n" > /tmp/trt-constraints.txt && \
+    mkdir -p /tmp/trt-wheelhouse && \
+    pip download --no-deps \
+      --dest /tmp/trt-wheelhouse \
+      --index-url https://pypi.nvidia.com \
+      "${TRTLLM_PIP_SPEC}" && \
     pip install --no-cache-dir \
       -c /tmp/trt-constraints.txt \
-      --index-url https://pypi.nvidia.com \
-      --extra-index-url https://pypi.org/simple \
-      "${TRTLLM_PIP_SPEC}" && \
-    rm -f /tmp/trt-constraints.txt
+      /tmp/trt-wheelhouse/* && \
+    rm -rf /tmp/trt-constraints.txt /tmp/trt-wheelhouse
 
 # ----------------------------------------------------------------------------
 # Production environment setup

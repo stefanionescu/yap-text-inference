@@ -16,7 +16,7 @@ Usage: scripts/lint.sh [--fix] [--fast] [--only code|shell|docs|docker|quality|h
 Runs repository lint stages:
   - code:    ruff, isort, mypy, import-linter, custom Python lint rules
   - shell:   shellcheck, shfmt, custom shell lint rules, inline-python guard
-  - docs:    pymarkdown, codespell, banned-term scan
+  - docs:    pymarkdown, prose rules, codespell, banned-term scan
   - docker:  hadolint and dockerignore policy
   - quality: lizard, deptry, vulture, jscpd
   - hooks:   self-lint .githooks

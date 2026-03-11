@@ -50,6 +50,7 @@ async def create_trt_engine() -> TRTEngine:
     if model_type:
         logger.info("TRT-LLM: detected model_type=%s from checkpoint config", model_type)
 
+    # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
     logger.info("TRT-LLM: building chat engine (engine_dir=%s, tokenizer=%s)", engine_dir, CHAT_MODEL)
 
     kwargs: dict[str, Any] = {

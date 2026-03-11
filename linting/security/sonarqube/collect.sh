@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# collect_sonarqube_results - Print the local SonarQube dashboard URL.
+# collect_sonarqube_results - Print the local SonarQube dashboard URL and quality gate status.
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../common.sh
-source "${SCRIPT_DIR}/../common.sh"
-source_security_config "sonarqube"
+# shellcheck source=lib/gate.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/gate.sh"
 
-echo "SonarQube dashboard: ${SONAR_HOST_URL:-${SONAR_DEFAULT_HOST_URL}}/dashboard?id=${SONAR_DASHBOARD_ID}"
+echo "SonarQube dashboard: ${SONAR_DASHBOARD_URL}"
+print_quality_gate_summary

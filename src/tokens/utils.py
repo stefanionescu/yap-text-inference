@@ -38,6 +38,7 @@ def _get_newline_tokens() -> int:
 def count_tokens_chat(text: str) -> int:
     """Return token count using the chat model tokenizer."""
     n = get_chat_tokenizer().count(text)
+    # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
     logger.debug("tokens.chat.count: len_chars=%s tokens=%s", len(text), n)
     return n
 
@@ -45,6 +46,7 @@ def count_tokens_chat(text: str) -> int:
 def count_tokens_tool(text: str) -> int:
     """Return token count using the tool model tokenizer."""
     n = get_tool_tokenizer().count(text)
+    # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
     logger.debug("tokens.tool.count: len_chars=%s tokens=%s", len(text), n)
     return n
 
@@ -52,6 +54,7 @@ def count_tokens_tool(text: str) -> int:
 def trim_text_to_token_limit_chat(text: str, max_tokens: int, keep: str = "end") -> str:
     """Trim text using the chat model tokenizer (exact)."""
     out = get_chat_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
+    # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
     logger.debug(
         "tokens.chat.trim_text: out_len=%s max_tokens=%s keep=%s",
         len(out),
@@ -64,6 +67,7 @@ def trim_text_to_token_limit_chat(text: str, max_tokens: int, keep: str = "end")
 def trim_text_to_token_limit_tool(text: str, max_tokens: int, keep: str = "end") -> str:
     """Trim text using the tool model tokenizer (exact)."""
     out = get_tool_tokenizer().trim(text, max_tokens=max_tokens, keep=keep)
+    # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
     logger.debug(
         "tokens.tool.trim_text: out_len=%s max_tokens=%s keep=%s",
         len(out),

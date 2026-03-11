@@ -52,6 +52,11 @@ def lint_security(session: nox.Session) -> None:
     _run(session, "bash", "scripts/security.sh")
 
 
+@nox.session(name="security")
+def security(session: nox.Session) -> None:
+    _run(session, "bash", "scripts/security.sh")
+
+
 @nox.session(name="hooks")
 def hooks(session: nox.Session) -> None:
     _run(session, "bash", "scripts/lint.sh", "--only", "hooks")

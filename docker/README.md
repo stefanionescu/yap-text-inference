@@ -66,7 +66,7 @@ See [TRT README](trt/README.md) for both-mode builds, engine label format, GPU c
 
 ### Tool-Only
 
-Lightweight image with only the tool model -- no chat engine included.
+Lightweight image with only the tool model — no chat engine included.
 
 ```bash
 DOCKER_USERNAME=myuser \

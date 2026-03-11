@@ -66,7 +66,7 @@ bun run setup:hooks
 Current hook model:
 
 - `pre-commit`: fast repo guards, docs checks, code lint, shell lint, Docker lint, and hook self-checks
-- `commit-msg`: conventional commit validation through `commitlint`
+- `commit-msg`: conventional commit validation through `gitlint`
 - `pre-push`: heavier quality, coverage, and security checks
 
 Use skip flags only when there is a real reason. They are escape hatches, not the normal workflow.
@@ -89,10 +89,12 @@ This repo now treats the following as standard quality and security signals:
 
 - `ruff`, `mypy`, `import-linter`, custom AST rules
 - `shellcheck`, `shfmt`, custom shell rules
-- `markdownlint`, `codespell`, banned-term checks
+- `pymarkdownlnt`, custom markdown prose rules, `codespell`, banned-term checks
 - `lizard`, `deptry`, `vulture`, `jscpd`
 - `bandit`, `pip-audit`, `osv-scanner`, `semgrep`
-- `gitleaks`, `trivy`, `bearer`, `CodeQL`, `SonarQube`
+- `gitleaks`, `trivy`, `bearer`, license audit, `CodeQL`, `SonarQube`
+
+`deptry` and `vulture` are the repo's Python equivalents to Knip-style dependency and dead-code hygiene. Keep them clean instead of treating them as advisory noise.
 
 If a tool needs a baseline or allowlist, document the reason in the baseline file. Do not hide real findings behind broad ignores.
 
@@ -135,7 +137,7 @@ JS-based lint tooling at the repo root is Bun-managed:
 - commit `bun.lock`
 - do not introduce `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`
 
-`nox` remains the canonical Python-native command hub. Bun exists here to manage the markdown, commit, and duplication tooling cleanly.
+`nox` remains the canonical Python-native command hub. Bun exists here only for the tiny remaining root JS toolchain, currently `jscpd`.
 
 ## Rule Map
 
@@ -143,6 +145,9 @@ Use the narrower rule file when the task is concentrated in one area:
 
 - [SPECIFIC.md](./SPECIFIC.md): repo layout, boundaries, and inference-specific priorities
 - [PYTHON.md](./PYTHON.md): Python module, config, state, and runtime rules
+- [RUNTIME.md](./RUNTIME.md): websocket, execution, telemetry, and runtime orchestration rules
+- [QUANTIZATION.md](./QUANTIZATION.md): quantization, metadata, licensing, and model-packaging rules
+- [OPERATIONS.md](./OPERATIONS.md): scripts, hooks, scanners, deployment-side, and ops rules
 - [SHELL.md](./SHELL.md): shell, hooks, and host-orchestration rules
 - [DOCKER.md](./DOCKER.md): Docker image, Dockerfile, and container-security rules
 - [TESTING.md](./TESTING.md): test layout, deterministic testing, and coverage rules

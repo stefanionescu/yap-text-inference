@@ -24,7 +24,8 @@ init_network_defaults() {
   export SERVER_BIND_ADDR="${SERVER_BIND_ADDR:-${SERVER_BIND_HOST}:${SERVER_PORT}}"
 
   if [ -z "${SERVER_WS_URL:-}" ]; then
-    SERVER_WS_URL="ws://${SERVER_ADDR}/ws"
+    export SERVER_WS_SCHEME="${SERVER_WS_SCHEME:-ws}"
+    SERVER_WS_URL="${SERVER_WS_SCHEME}://${SERVER_ADDR}/ws"
   fi
   export SERVER_WS_URL
 

@@ -12,6 +12,7 @@ _MIN_CLI_ARGUMENTS = 2
 PLUGIN_FILES = (
     ROOT / "linting" / "pymarkdown" / "no_banned_terms.py",
     ROOT / "linting" / "pymarkdown" / "heading_title_case.py",
+    ROOT / "linting" / "pymarkdown" / "no_double_hyphen.py",
 )
 EXCLUDE_PATTERNS = (
     "node_modules/**",
@@ -71,7 +72,7 @@ def main() -> int:
         "--disable-rules",
         "*",
         "--enable-rules",
-        "YTI100,YTI101",
+        "YTI100,YTI101,YTI102",
     ]
     for plugin_file in PLUGIN_FILES:
         command.extend(["--add-plugin", str(plugin_file)])

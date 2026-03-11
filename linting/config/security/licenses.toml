@@ -1,0 +1,40 @@
+allowed_exact = [
+    "Apache Software License",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSD License",
+    "Expat license",
+    "ISC",
+    "MIT",
+    "MIT License",
+    "MPL-2.0",
+    "Python Software Foundation License",
+    "ZPL-2.1",
+    "ZPL 2.1",
+]
+
+allowed_substrings = [
+    "Apache",
+    "BSD",
+    "Historical Permission Notice and Disclaimer",
+    "ISC",
+    "LGPL",
+    "MIT",
+    "MPL",
+    "PSF",
+    "Python Software Foundation",
+    "Unlicense",
+    "Unicode",
+    "Zope Public",
+]
+
+ignored_packages = [
+    "codespell",
+    "pip",
+    "pylint",
+    "setuptools",
+    "wheel",
+]
+
+[package_overrides]

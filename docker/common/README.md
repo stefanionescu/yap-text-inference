@@ -23,39 +23,39 @@ Docker scripting is self-contained under `docker/`:
 
 Consistent log output formatting across all build and runtime scripts.
 
-- `log_info` -- general informational output
-- `log_warn` -- non-fatal warnings
-- `log_err` -- fatal error output
-- `log_success` -- success confirmation
-- `log_section` -- blank line followed by info log (visual separator)
+- `log_info` — general informational output
+- `log_warn` — non-fatal warnings
+- `log_err` — fatal error output
+- `log_success` — success confirmation
+- `log_section` — blank line followed by info log (visual separator)
 
 ### Warmup (`scripts/warmup.sh`)
 
 Polls the server health endpoint until the inference backend is ready, used by all stacks at container startup.
 
 Environment variables:
-- `WARMUP_MAX_WAIT` (default: `300`) -- seconds before giving up
-- `WARMUP_WAIT_INTERVAL` (default: `5`) -- seconds between polls
+- `WARMUP_MAX_WAIT` (default: `300`) — seconds before giving up
+- `WARMUP_WAIT_INTERVAL` (default: `5`) — seconds between polls
 
 ### GPU Detection (`scripts/gpu.sh`)
 
 Auto-detects GPU architecture and applies engine-specific defaults at container startup.
 
-- `gpu_detect_sm_arch` -- returns `sm80`, `sm89`, `sm90`, etc. (prefers `nvidia-smi` compute_cap, falls back to name mapping)
-- `gpu_detect_name` -- returns human-readable GPU name (e.g., `NVIDIA H100`)
-- `gpu_detect_vram_gb` -- returns total VRAM in GB
-- `gpu_supports_fp8` -- returns 0 (true) for sm89/sm90 (Ada Lovelace, Hopper)
-- `gpu_init_detection` -- detects and exports `GPU_SM_ARCH` and `DETECTED_GPU_NAME`
-- `gpu_apply_env_defaults` -- sets `TORCH_CUDA_ARCH_LIST`, `PYTORCH_ALLOC_CONF`, and GPU-family optimizations
+- `gpu_detect_sm_arch` — returns `sm80`, `sm89`, `sm90`, etc. (prefers `nvidia-smi` compute_cap, falls back to name mapping)
+- `gpu_detect_name` — returns human-readable GPU name (e.g., `NVIDIA H100`)
+- `gpu_detect_vram_gb` — returns total VRAM in GB
+- `gpu_supports_fp8` — returns 0 (true) for sm89/sm90 (Ada Lovelace, Hopper)
+- `gpu_init_detection` — detects and exports `GPU_SM_ARCH` and `DETECTED_GPU_NAME`
+- `gpu_apply_env_defaults` — sets `TORCH_CUDA_ARCH_LIST`, `PYTORCH_ALLOC_CONF`, and GPU-family optimizations
 
 ### Deploy Mode (`scripts/deploy_mode.sh`)
 
 Parses and validates the deploy mode (`chat`, `tool`, `both`) and sets convenience flags consumed by bootstrap scripts.
 
-- `normalize_deploy_mode` -- validates `DEPLOY_MODE`, defaults to `both`
-- `set_deploy_flags` -- exports `DEPLOY_CHAT` and `DEPLOY_TOOL` (0 or 1)
-- `validate_deploy_models` -- fails if required model env vars are missing for the deploy mode
-- `init_deploy_mode` -- runs all three steps in order (normalize, flags, validate)
+- `normalize_deploy_mode` — validates `DEPLOY_MODE`, defaults to `both`
+- `set_deploy_flags` — exports `DEPLOY_CHAT` and `DEPLOY_TOOL` (0 or 1)
+- `validate_deploy_models` — fails if required model env vars are missing for the deploy mode
+- `init_deploy_mode` — runs all three steps in order (normalize, flags, validate)
 
 ### Lifecycle (`scripts/lifecycle.sh`)
 
@@ -65,24 +65,24 @@ Shared container main flow (`run_docker_main`) that keeps stack `main.sh` script
 - Sources the stack's `bootstrap.sh` to configure environment
 - Enforces required runtime env (`TEXT_API_KEY`)
 - Starts server in either:
-  - `direct_common` mode -- launches uvicorn via the shared server path
-  - `script` mode -- execs a stack-specific start script (used by TRT)
+  - `direct_common` mode — launches uvicorn via the shared server path
+  - `script` mode — execs a stack-specific start script (used by TRT)
 
 ### Server Startup (`scripts/server.sh`)
 
 One canonical server launch path shared by all stacks.
 
-- `resolve_uvicorn_cmd` -- finds a working uvicorn binary (direct, `python -m`, or `python3 -m`)
-- `start_server_with_warmup` -- starts uvicorn in the background, runs warmup health probe, then waits on the server process
+- `resolve_uvicorn_cmd` — finds a working uvicorn binary (direct, `python -m`, or `python3 -m`)
+- `start_server_with_warmup` — starts uvicorn in the background, runs warmup health probe, then waits on the server process
 
 ### Build Utilities (`scripts/build/`)
 
 Host-side helpers sourced by each stack's `build.sh`.
 
-- `args.sh` / `init_build_args` -- initializes the `BUILD_ARGS` array with `--file`, `--tag`, `--platform`
-- `docker.sh` / `require_docker` -- checks Docker daemon is running; `ensure_docker_login` -- logs in via `DOCKER_PASSWORD` or `DOCKER_TOKEN`
-- `context.sh` / `prepare_build_context_common` -- creates a temp directory with only the runtime assets needed by the Dockerfile
-- `validate.sh` / `validate_models_for_deploy_common` -- runs `docker/common/download/validate.py` to enforce model allowlists and engine label format
+- `args.sh` / `init_build_args` — initializes the `BUILD_ARGS` array with `--file`, `--tag`, `--platform`
+- `docker.sh` / `require_docker` — checks Docker daemon is running; `ensure_docker_login` — logs in via `DOCKER_PASSWORD` or `DOCKER_TOKEN`
+- `context.sh` / `prepare_build_context_common` — creates a temp directory with only the runtime assets needed by the Dockerfile
+- `validate.sh` / `validate_models_for_deploy_common` — runs `docker/common/download/validate.py` to enforce model allowlists and engine label format
 
 ## Download Utilities
 

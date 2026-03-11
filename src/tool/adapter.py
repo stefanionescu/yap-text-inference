@@ -117,6 +117,7 @@ class ToolAdapter:
             batch_max_size,
             batch_max_delay_ms,
         )
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         logger.info(
             "tool: token limits model=%s config_max_length=%s backend_max_length=%s history_tokens=%s",
             model_path,

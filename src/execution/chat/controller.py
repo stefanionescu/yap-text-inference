@@ -278,6 +278,7 @@ class ChatStreamController:
             self._ttfb_ms = (time.perf_counter() - self._start_time) * 1000.0
             get_metrics().ttft.record(self._ttfb_ms / 1000.0)
             cfg = self._cfg
+            # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
             logger.info(
                 "%s_stream: first token session_id=%s req_id=%s ttfb_ms=%.1f",
                 CHAT_STREAM_LABEL,

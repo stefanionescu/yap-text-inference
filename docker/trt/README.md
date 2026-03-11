@@ -19,7 +19,7 @@ For an overview of all stacks, see the [main Docker README](../README.md).
 ## How it Works
 
 1. **Build time**: The pre-built TRT engine is downloaded from HuggingFace and baked into the image along with the tokenizer/checkpoint.
-2. **Runtime**: The server starts immediately with the baked-in engine -- no compilation at startup.
+2. **Runtime**: The server starts immediately with the baked-in engine — no compilation at startup.
 
 The tool model always runs as PyTorch (not TRT). For tool-only images, use the [Tool-Only](../tool/README.md) stack.
 

@@ -6,41 +6,49 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=../security/common.sh
 source "${REPO_ROOT}/linting/security/common.sh"
-source_security_config "semgrep"
+source "${REPO_ROOT}/linting/config/semgrep.sh"
 
-# run_semgrep_local - Run Semgrep locally when the CLI is installed.
-run_semgrep_local() {
-  local args=(
-    --error
-    --no-rewrite-rule-ids
-    --metrics=off
-    --disable-version-check
-  )
+# semgrep_args - Build the configured Semgrep flags, excludes, and configs.
+semgrep_args() {
+  local args=()
   local exclude
+  local rule_file
+  local ruleset
+
+  for value in "${SEMGREP_FLAGS[@]}"; do
+    args+=("${value}")
+  done
   for exclude in "${SEMGREP_EXCLUDES[@]}"; do
     args+=(--exclude "${exclude}")
   done
+  for ruleset in "${SEMGREP_REGISTRY_RULESETS[@]}"; do
+    args+=(--config "${ruleset}")
+  done
+  for rule_file in "${SEMGREP_LOCAL_RULE_FILES[@]}"; do
+    args+=(--config "${REPO_ROOT}/${rule_file}")
+  done
 
-  semgrep \
-    "${args[@]}" \
-    --config "${REPO_ROOT}/${SEMGREP_RULES_FILE}" \
-    "${SEMGREP_TARGETS[@]}"
+  printf '%s\n' "${args[@]}"
+}
+
+# run_semgrep_local - Run Semgrep locally when the CLI is installed.
+run_semgrep_local() {
+  local args=()
+  while IFS= read -r arg; do
+    args+=("${arg}")
+  done < <(semgrep_args)
+
+  semgrep "${args[@]}" "${SEMGREP_TARGETS[@]}"
 }
 
 # run_semgrep_docker - Run Semgrep inside Docker when the CLI is unavailable.
 run_semgrep_docker() {
-  local args=(
-    --error
-    --no-rewrite-rule-ids
-    --metrics=off
-    --disable-version-check
-  )
-  local exclude
+  local args=()
   local target
   local docker_targets=()
-  for exclude in "${SEMGREP_EXCLUDES[@]}"; do
-    args+=(--exclude "${exclude}")
-  done
+  while IFS= read -r arg; do
+    args+=("${arg}")
+  done < <(semgrep_args)
   for target in "${SEMGREP_TARGETS[@]}"; do
     docker_targets+=("/src/${target}")
   done
@@ -50,7 +58,6 @@ run_semgrep_docker() {
     "${SEMGREP_IMAGE}" \
     semgrep \
     "${args[@]}" \
-    --config "/src/${SEMGREP_RULES_FILE}" \
     "${docker_targets[@]}"
 }
 

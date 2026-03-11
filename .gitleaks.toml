@@ -24,3 +24,12 @@ regexTarget = "line"
 regexes = [
   '''yap-text-api:(m?trt|trt)-qwen30b-(sm90|mount)'''
 ]
+
+[[allowlists]]
+description = "Variable-based SonarQube auth in local scanner helpers"
+paths = ['''linting/security/sonarqube/lib/api\.sh$''']
+regexTarget = "line"
+regexes = [
+  '''curl -fsS -u "\$\{SONAR_TOKEN\}:"''',
+  '''curl -fsS -u "\$\{SONAR_LOGIN\}:\$\{SONAR_PASSWORD\}"'''
+]

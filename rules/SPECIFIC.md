@@ -79,6 +79,9 @@ When the change spans multiple areas, run the full lint, test, coverage, and sec
 ## Rule Map
 
 - [PYTHON.md](./PYTHON.md) for `src/` and Python under `docker/` or `linting/`
+- [RUNTIME.md](./RUNTIME.md) for websocket/session/runtime/execution/telemetry work
+- [QUANTIZATION.md](./QUANTIZATION.md) for TRT/vLLM quantization, metadata, and model packaging
+- [OPERATIONS.md](./OPERATIONS.md) for scripts, hooks, scanners, and operator-facing workflows
 - [SHELL.md](./SHELL.md) for `.githooks/`, `scripts/`, and executable shell
 - [DOCKER.md](./DOCKER.md) for image layout, Dockerfiles, and Trivy or Hadolint expectations
 - [TESTING.md](./TESTING.md) for suite layout, support code, and coverage
