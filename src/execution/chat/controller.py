@@ -34,6 +34,7 @@ Works with both vLLM and TensorRT-LLM engines through the BaseEngine interface.
 
 from __future__ import annotations
 
+import math
 import time
 import asyncio
 import logging
@@ -56,6 +57,8 @@ from src.state import CancelCheck, ChatStreamConfig
 from src.telemetry.phases import record_phase_error, record_phase_latency
 
 logger = logging.getLogger(__name__)
+
+_FLOAT_ZERO_ABS_TOL = 1e-9
 
 
 class ChatStreamController:
@@ -272,7 +275,7 @@ class ChatStreamController:
         return chunk
 
     def _record_ttfb_if_needed(self) -> None:
-        if self._ttfb_ms == 0.0:
+        if self._ttfb_ms is not None and math.isclose(self._ttfb_ms, 0.0, rel_tol=0.0, abs_tol=_FLOAT_ZERO_ABS_TOL):
             if self._start_time is None:
                 return
             self._ttfb_ms = (time.perf_counter() - self._start_time) * 1000.0

@@ -100,7 +100,7 @@ class WebSocketLifecycle:
         if self._task is None:
             return
         self._task.cancel()
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(asyncio.CancelledError, Exception):
             await self._task
         self._task = None
 
@@ -125,7 +125,7 @@ class WebSocketLifecycle:
                     await self._close_ws()
                     break
         except asyncio.CancelledError:
-            pass  # Normal shutdown path
+            raise  # Normal shutdown path; propagate task cancellation cleanly
         except Exception:
             logger.debug("Idle watchdog exiting due to unexpected error", exc_info=True)
 

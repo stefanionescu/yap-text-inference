@@ -22,8 +22,11 @@ Do not bury operational behavior inside random Python modules under `src/` when 
 
 - `scripts/security.sh` is the canonical full local security gate.
 - `scripts/coverage.sh` is the canonical Sonar-compatible coverage and test-report generator.
+- `linting/security/sonarqube/run.sh` must leave behind `.cache/security/sonarqube/sonar-report.md` and `.cache/security/sonarqube/sonar-todos.md`.
 - Hook stages must stay intentionally split: fast checks in `pre-commit`, heavier scans in `pre-push`.
 - Repo-local fallback installers or Dockerized scanners must stay version-pinned through config.
+- Gitleaks baseline updates must go through `bash linting/security/gitleaks/run.sh baseline`, not ad hoc JSON edits.
+- Trivy version bumps must update config pins first, then rerun the full security gate.
 
 ## Verification
 

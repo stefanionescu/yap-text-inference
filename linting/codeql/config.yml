@@ -1,10 +1,14 @@
 name: "yap-text-inference local codeql"
-queries:
-  - uses: security-and-quality
 paths:
   - src
-paths-ignore:
-  - tests
+  - scripts
   - linting
+  - tests
+paths-ignore:
+  - .cache
+  - .git
   - .venv
+  - "**/__pycache__/**"
+  - "**/*.pyc"
+  - htmlcov
   - node_modules

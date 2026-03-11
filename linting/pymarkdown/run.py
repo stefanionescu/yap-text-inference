@@ -17,6 +17,7 @@ PLUGIN_FILES = (
 EXCLUDE_PATTERNS = (
     "node_modules/**",
     ".git/**",
+    ".cache/**",
     ".venv/**",
     ".pytest_cache/**",
     ".mypy_cache/**",

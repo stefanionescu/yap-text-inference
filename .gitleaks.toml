@@ -31,5 +31,9 @@ paths = ['''linting/security/sonarqube/lib/api\.sh$''']
 regexTarget = "line"
 regexes = [
   '''curl -fsS -u "\$\{SONAR_TOKEN\}:"''',
-  '''curl -fsS -u "\$\{SONAR_LOGIN\}:\$\{SONAR_PASSWORD\}"'''
+  '''curl -fsS -u "\$\{token\}:"''',
+  '''curl -fsS -u "\$\{SONAR_LOGIN\}:\$\{SONAR_PASSWORD\}"''',
+  '''curl -sS -u "\$\{SONAR_LOGIN\}:\$\{SONAR_PASSWORD\}"''',
+  '''curl -sS -o /dev/null -w '%\{http_code\}' .* -u "\$\{SONAR_LOGIN\}:\$\{SONAR_PASSWORD\}"''',
+  '''curl -sS -o /dev/null -w '%\{http_code\}' .* -u "\$\{SONAR_DEFAULT_LOGIN\}:\$\{SONAR_DEFAULT_PASSWORD\}"'''
 ]

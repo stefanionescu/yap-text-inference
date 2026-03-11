@@ -121,6 +121,7 @@ testpaths = ["tests"]
 [tool.coverage.run]
 source = ["src"]
 branch = true
+relative_files = true
 omit = [
     "src/scripts/*",
 ]

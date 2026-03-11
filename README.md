@@ -97,7 +97,7 @@ bash scripts/main.sh --vllm SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64
 
 This will:
 - Check GPU availability
-- Install Python deps from `requirements-trt.txt` or `requirements-vllm.txt`
+- Install Python deps from `requirements-tool.txt` for tool-only deployments, or from `requirements-trt.txt` / `requirements-vllm.txt` for chat deployments
 - Export environment defaults
 - For TRT-LLM: Quantize → Build engine → Launch server
 - For vLLM: Quantize (if needed) → Launch server
@@ -280,6 +280,16 @@ pip install -r requirements-local.txt
 ```
 
 This installs client deps (`websockets`, `httpx`, `orjson`) without CUDA wheels. Use `requirements-trt.txt` or `requirements-vllm.txt` only when running the inference server.
+
+If you are working on the repo itself rather than only running client tests, the maintenance toolchain also needs:
+
+```bash
+bash scripts/activate.sh
+pip install -r requirements-dev.txt
+bun install
+```
+
+The Bun step is only for the small root JS maintenance toolchain, primarily `jscpd` and hook helper scripts.
 
 ## Test Clients
 

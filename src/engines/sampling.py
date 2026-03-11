@@ -21,8 +21,15 @@ interface for callers regardless of the backend engine.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 from src.config import INFERENCE_ENGINE
+
+_FLOAT_DEFAULT_ABS_TOL = 1e-9
+
+
+def _differs_from_default(value: float, default: float) -> bool:
+    return not math.isclose(value, default, rel_tol=0.0, abs_tol=_FLOAT_DEFAULT_ABS_TOL)
 
 
 def _create_vllm_params(
@@ -82,11 +89,11 @@ def _create_trt_params(
         kwargs["top_k"] = top_k
 
     # These may not be supported by all TRT versions
-    if repetition_penalty != 1.0:
+    if _differs_from_default(repetition_penalty, 1.0):
         kwargs["repetition_penalty"] = repetition_penalty
-    if presence_penalty != 0.0:
+    if _differs_from_default(presence_penalty, 0.0):
         kwargs["presence_penalty"] = presence_penalty
-    if frequency_penalty != 0.0:
+    if _differs_from_default(frequency_penalty, 0.0):
         kwargs["frequency_penalty"] = frequency_penalty
     if stop:
         kwargs["stop"] = stop

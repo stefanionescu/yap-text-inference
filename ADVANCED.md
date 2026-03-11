@@ -98,6 +98,8 @@ Set `SENTRY_ENVIRONMENT` and `AXIOM_ENVIRONMENT` to `staging` for non-production
 | `text_inference.generations_per_session` | {request} | Requests per session |
 | `text_inference.startup_duration` | s | Server startup time |
 | `text_inference.tool_classification_latency` | s | Tool model inference time |
+| `text_inference.phase_latency` | s | Latency grouped by execution phase |
+| `text_inference.ws_send_latency` | s | WebSocket frame send latency |
 
 **Counters:**
 
@@ -114,6 +116,11 @@ Set `SENTRY_ENVIRONMENT` and `AXIOM_ENVIRONMENT` to `staging` for non-production
 | `text_inference.rate_limit_violations_total` | {violation} | Rate limit hits |
 | `text_inference.tool_classifications_total` | {classification} | Tool model calls |
 | `text_inference.cache_resets_total` | {reset} | vLLM cache resets |
+| `text_inference.phase_errors_total` | {error} | Errors grouped by execution phase |
+| `text_inference.disconnect_mid_stream_total` | {disconnect} | Client disconnects during server send |
+| `text_inference.cancel_pre_first_token_total` | {cancel} | Cancelled generations before first token |
+| `text_inference.empty_model_output_total` | {output} | Generations that produced no output |
+| `text_inference.engine_abort_retryable_total` | {abort} | Retryable engine abort calls issued by the server |
 
 **Gauges:**
 
@@ -246,19 +253,14 @@ After building, metadata is recorded to `{engine_dir}/build_metadata.json`.
 
 ## Log Rotation
 
-Example logrotate config (optional):
+The deployment system does not rotate `server.log` into numbered archives. Before each detached launch it trims the existing log in place to the latest ~100 MB, then appends new output to the same file.
 
-```
-/path/to/repo/server.log {
-  size 100M
-  rotate 3
-  copytruncate
-  compress
-  missingok
-}
-```
+Current behavior:
+- `server.log` is the main combined deployment + runtime log
+- oversized logs are trimmed to the most recent `100 MB`
+- warmup capture logs are written under `logs/`
 
-The deployment system has built-in rotation for `server.log` which rotates at ~100MB automatically.
+If you want archival rotation, add your own external `logrotate` or container-log policy on top of the built-in trimming behavior.
 
 ## Viewing Logs
 
@@ -279,14 +281,37 @@ Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tai
 
 ## Linting
 
-Use the repo virtualenv. If it doesn't exist, run `bash scripts/steps/03_install_deps.sh` first:
+Use the repo virtualenv for Python tooling and Bun for the small root JS toolchain. If the venv does not exist yet, run `bash scripts/steps/03_install_deps.sh` first:
 
 ```bash
-# ensure you're inside the repo venv
+# enter the repo venv
 bash scripts/activate.sh
+
+# sync Python dev tools
 pip install -r requirements-dev.txt
+
+# sync the root JS maintenance tools
+bun install
+
+# full lint
 bash scripts/lint.sh
-# exit the subshell when finished
+
+# fast lint loop
+bash scripts/lint.sh --fast
+
+# focused stages
+bash scripts/lint.sh --only code
+bash scripts/lint.sh --only shell
+bash scripts/lint.sh --only docs
+bash scripts/lint.sh --only docker
+bash scripts/lint.sh --only quality
+
+# security / coverage
+bash scripts/security.sh
+bash scripts/coverage.sh
+
+# optional Python-native task hub
+nox -s lint test coverage security
 ```
 
 `scripts/lint.sh` runs:
@@ -308,6 +333,32 @@ bash scripts/lint.sh
   - no module-name prefix collisions (`src/**/*.py`)
   - no inline Python in shell scripts (`scripts/**/*.sh`, `docker/**/*.sh`)
 - ShellCheck (and shfmt checks when available)
+- docs lint via `scripts/docs.sh`:
+  - banned-term checks
+  - `codespell`
+  - `pymarkdownlnt` with repo-local prose plugins
+- quality lint via `scripts/quality.sh`:
+  - `lizard`
+  - `deptry`
+  - `vulture`
+  - `jscpd` for Python and Bash
+- hook self-checks for `.githooks/`
+
+`scripts/security.sh` runs the heavier security gate:
+- Semgrep
+- Bandit
+- `pip-audit`
+- repo license audit
+- `osv-scanner`
+- Gitleaks
+- Bearer
+- Trivy
+- CodeQL
+- optional SonarQube when `RUN_SONAR=1`
+
+Root Bun tooling is intentionally tiny. Today it is used for:
+- `jscpd`
+- `bash .githooks/lib/setup.sh`
 
 ## API — WebSocket `/ws`
 

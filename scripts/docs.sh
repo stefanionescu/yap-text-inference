@@ -25,6 +25,6 @@ cd "${ROOT_DIR}"
 run_cmd "banned-terms" python linting/banned/terms.py
 run_cmd "codespell" codespell \
   --ignore-words .codespellignore \
-  --skip "./node_modules,./.git,./.venv,./.cache,./.mypy_cache,./.pytest_cache,./.ruff_cache,./htmlcov,./codeql-db,./tests/support/messages,./tests/support/prompts,./coverage.xml,./pytest.xml,./codeql-results.sarif,./bearer-report.json" \
+  --skip "./node_modules,./.git,./.venv,./.cache,./.mypy_cache,./.pytest_cache,./.ruff_cache,./htmlcov,./codeql-db,./tests/support/messages,./tests/support/prompts,./coverage.xml,./pytest.xml,./codeql-results.sarif" \
   .
 run_cmd "pymarkdown" python linting/pymarkdown/run.py scan

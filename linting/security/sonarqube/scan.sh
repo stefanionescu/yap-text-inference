@@ -30,17 +30,20 @@ run_sonar_local() {
 run_sonar_docker() {
   local scanner_url="${SONAR_URL}"
   local docker_args=(run --rm -v "${REPO_ROOT}:/usr/src" -w /usr/src)
+  local docker_scanner_args=("${SCANNER_ARGS[@]}")
 
   if [[ ${scanner_url} == "${SONAR_LOCALHOST_URLS[0]}" || ${scanner_url} == "${SONAR_LOCALHOST_URLS[1]}" ]]; then
-    scanner_url="http://host.docker.internal:9000"
+    scanner_url="$(printf '%s' "${scanner_url}" | sed 's#://127\.0\.0\.1:#://host.docker.internal:#; s#://localhost:#://host.docker.internal:#')"
     docker_args+=(--add-host "host.docker.internal:host-gateway")
   fi
+
+  docker_scanner_args[0]="-Dproject.settings=/usr/src/${SONAR_SETTINGS_FILE}"
 
   docker "${docker_args[@]}" \
     "${SONAR_SCANNER_IMAGE}" \
     sonar-scanner \
     "-Dsonar.host.url=${scanner_url}" \
-    "${SCANNER_ARGS[@]}"
+    "${docker_scanner_args[@]}"
 }
 
 if command -v sonar-scanner >/dev/null 2>&1; then

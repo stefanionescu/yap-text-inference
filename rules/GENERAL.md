@@ -60,7 +60,7 @@ Hooks live under `.githooks/`. Install them with:
 
 ```bash
 bun install
-bun run setup:hooks
+bash .githooks/lib/setup.sh
 ```
 
 Current hook model:
@@ -97,6 +97,50 @@ This repo now treats the following as standard quality and security signals:
 `deptry` and `vulture` are the repo's Python equivalents to Knip-style dependency and dead-code hygiene. Keep them clean instead of treating them as advisory noise.
 
 If a tool needs a baseline or allowlist, document the reason in the baseline file. Do not hide real findings behind broad ignores.
+
+### Trivy Pin Management
+
+Trivy must stay version-pinned. Do not switch the repo to a floating Trivy tag.
+
+When updating Trivy:
+
+1. Change the version in `linting/config/security/tool-versions.env` or `linting/config/security/trivy.env`.
+2. Run `bash linting/security/trivy/run.sh all`.
+3. Run `bash scripts/security.sh`.
+4. Mention the pin change in the commit message.
+
+### SonarQube Local Auth and Reports
+
+Local SonarQube credentials and analysis tokens live under `.cache/security/sonarqube/`. Do not commit them.
+
+Use one of these paths when working on Sonar-sensitive changes:
+
+- `bash linting/security/sonarqube/run.sh`
+- `RUN_SONAR=1 bash scripts/security.sh`
+
+Generated markdown reports live here:
+
+- `.cache/security/sonarqube/sonar-report.md`
+- `.cache/security/sonarqube/sonar-todos.md`
+
+Review those files before assuming the dashboard is the only source of truth.
+
+### Gitleaks Baseline
+
+Gitleaks uses `linting/config/security/gitleaks-baseline.json` to suppress known intentional non-secrets and still fail on new findings.
+
+Regenerate the baseline only when:
+
+- a new intentional, non-secret finding is added
+- Gitleaks changes fingerprint behavior and existing baseline entries stop matching
+
+Use:
+
+```bash
+bash linting/security/gitleaks/run.sh baseline
+```
+
+Never baseline a real secret. Remove it, rotate it, and keep it out of the baseline.
 
 ## Fix What You Find
 

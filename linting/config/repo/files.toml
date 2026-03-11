@@ -21,11 +21,15 @@ required_files = [
     "linting/config/security/tool-versions.env",
     "linting/config/security/trivy.env",
     "linting/config/security/gitleaks.env",
+    "linting/config/security/gitleaks-baseline.json",
     "linting/config/security/bearer.env",
     "linting/config/security/osv.env",
     "linting/config/security/codeql.env",
     "linting/config/security/sonarqube.env",
     "linting/config/security/licenses.toml",
+    "linting/config/security/sonarqube/report-header.md",
+    "linting/config/security/sonarqube/todos-header.md",
+    "linting/config/security/sonarqube/config-footer.md",
     "linting/config/semgrep.sh",
     "linting/config/rules/runtime.toml",
     "linting/config/rules/testing.toml",
@@ -44,6 +48,11 @@ required_files = [
     "linting/security/sonarqube/lib/api.sh",
     "linting/security/sonarqube/lib/gate.sh",
     "linting/security/sonarqube/lib/provision.sh",
+    "linting/security/sonarqube/lib/report/common.sh",
+    "linting/security/sonarqube/lib/report/summary.sh",
+    "linting/security/sonarqube/lib/report/issues.sh",
+    "linting/security/sonarqube/lib/report/hotspots.sh",
+    "linting/security/sonarqube/lib/report/configuration.sh",
 ]
 
 requirement_files = [

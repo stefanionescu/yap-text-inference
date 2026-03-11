@@ -18,7 +18,7 @@ case "${COMMAND}" in
       docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
       docker run -d \
         --name "${CONTAINER_NAME}" \
-        -p 9000:9000 \
+        -p "${SONAR_SERVER_PORT}:9000" \
         "${IMAGE_NAME}" >/dev/null
     fi
     ensure_sonarqube_bootstrap
