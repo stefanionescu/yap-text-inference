@@ -16,6 +16,7 @@ Docker scripting is self-contained under `docker/`:
 - Stack directories (`docker/vllm`, `docker/trt`, `docker/tool`) keep only stack-specific behavior.
 - Runtime scripts do not source host orchestration scripts under repo root `scripts/`.
 - Avoid pass-through wrappers; source common scripts directly when behavior is shared.
+- Repo-local security scans reuse the same minimal Docker inputs, but run through `linting/security/trivy/run.sh` with scan-only build args rather than the publish-oriented `docker/*/build.sh` wrappers.
 
 ## Scripts
 
@@ -81,6 +82,8 @@ Host-side helpers used by each stack's `build.sh`.
 - `context.sh` / `prepare_build_context_common` — creates a temp directory with only the runtime assets needed by the Dockerfile
 - `validate.sh` / `validate_models_for_deploy_common` — runs `docker/common/download/validate.py` to enforce model allowlists and engine label format
 
+Repo-local Trivy image scans do not call `run_stack_build` because they must not push. Instead, `linting/security/trivy/run.sh` builds equivalent temporary contexts locally and sets `TRIVY_SCAN=1` so model-download layers are skipped.
+
 ## Download Utilities
 
 ### Shared Utils (`download/utils.py`)
@@ -116,6 +119,13 @@ Usage: `python validate.py` (reads env vars)
 4. `validate_models_for_deploy_common` calls `docker/common/download/validate.py` to check model allowlists.
 5. `prepare_build_context_common` assembles a temp directory with `src/`, stack scripts, common scripts, and download scripts.
 6. Docker builds the image, running download scripts inside the Dockerfile to bake models/engines in.
+
+### Security Scan Build Path
+
+1. `linting/security/trivy/run.sh image` creates temp build contexts for `tool`, `trt`, and `vllm`.
+2. Each build sets `TRIVY_SCAN=1`.
+3. The Dockerfiles skip model and engine downloads in that mode.
+4. Trivy scans the resulting local images for base-image and dependency vulnerabilities.
 
 ### Runtime
 

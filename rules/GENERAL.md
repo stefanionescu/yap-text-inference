@@ -33,24 +33,24 @@ Plan before editing. Share the plan when the work is broad, risky, or crosses mu
 
 Prefer the repo command hub over ad hoc one-off commands:
 
-- Fast lint loop: `bash scripts/lint.sh --fast`
-- Full lint: `bash scripts/lint.sh`
-- Tests: `python -m pytest -q`
-- Coverage: `bash scripts/coverage.sh`
-- Security: `bash scripts/security.sh`
-- Nox sessions: `nox -s lint`, `nox -s test`, `nox -s coverage`, `nox -s security`
+- Fast lint loop: `nox -s lint_fast`
+- Full lint: `nox -s lint`
+- Tests: `nox -s test`
+- Coverage: `nox -s coverage`
+- Security: `nox -s security`
+- Focused sessions: `nox -s lint_code`, `nox -s lint_shell`, `nox -s lint_docs`, `nox -s lint_docker`, `nox -s quality`, `nox -s hooks`
 
 ## Verification
 
 Verification is required, not optional. Pick the commands that match the scope:
 
-- Python or runtime logic: `bash scripts/lint.sh --only code` and `python -m pytest -q`
-- Shell, hooks, or host scripts: `bash scripts/lint.sh --only shell`
-- Docs or rules changes: `bash scripts/lint.sh --only docs`
-- Docker changes: `bash scripts/lint.sh --only docker`
-- Structural or dependency hygiene work: `bash scripts/lint.sh --only quality`
-- Coverage and Sonar inputs: `bash scripts/coverage.sh`
-- Security-sensitive, dependency, Docker, or hook work: `bash scripts/security.sh`
+- Python or runtime logic: `nox -s lint_code` and `nox -s test`
+- Shell, hooks, or host scripts: `nox -s lint_shell`
+- Docs or rules changes: `nox -s lint_docs`
+- Docker changes: `nox -s lint_docker`
+- Structural or dependency hygiene work: `nox -s quality`
+- Coverage and Sonar inputs: `nox -s coverage`
+- Security-sensitive, dependency, Docker, or hook work: `nox -s security`
 
 If you changed more than one area, run the full suites instead of a partial one.
 
@@ -65,9 +65,9 @@ bash .githooks/lib/setup.sh
 
 Current hook model:
 
-- `pre-commit`: fast repo guards, docs checks, code lint, shell lint, Docker lint, and hook self-checks
+- `pre-commit`: fast repo guards, docs checks, code lint, shell lint, Docker lint, quality checks, and hook self-checks
 - `commit-msg`: conventional commit validation through `gitlint`
-- `pre-push`: heavier quality, coverage, and security checks
+- `pre-push`: security checks and opt-in coverage
 
 Use skip flags only when there is a real reason. They are escape hatches, not the normal workflow.
 
@@ -91,7 +91,7 @@ This repo now treats the following as standard quality and security signals:
 - `shellcheck`, `shfmt`, custom shell rules
 - `pymarkdownlnt`, custom markdown prose rules, `codespell`, banned-term checks
 - `lizard`, `deptry`, `vulture`, `jscpd`
-- `bandit`, `pip-audit`, `osv-scanner`, `semgrep`
+- `bandit`, `pip-audit`, `semgrep`
 - `gitleaks`, `trivy`, `bearer`, license audit, `CodeQL`, `SonarQube`
 
 `deptry` and `vulture` are the repo's Python equivalents to Knip-style dependency and dead-code hygiene. Keep them clean instead of treating them as advisory noise.
@@ -106,7 +106,7 @@ When updating Trivy:
 
 1. Change the version in `linting/config/security/tool-versions.env` or `linting/config/security/trivy.env`.
 2. Run `bash linting/security/trivy/run.sh all`.
-3. Run `bash scripts/security.sh`.
+3. Run `nox -s security`.
 4. Mention the pin change in the commit message.
 
 ### SonarQube Local Auth and Reports
@@ -116,7 +116,7 @@ Local SonarQube credentials and analysis tokens live under `.cache/security/sona
 Use one of these paths when working on Sonar-sensitive changes:
 
 - `bash linting/security/sonarqube/run.sh`
-- `RUN_SONAR=1 bash scripts/security.sh`
+- `RUN_SONAR=1 nox -s security`
 
 Generated markdown reports live here:
 
@@ -127,7 +127,7 @@ Review those files before assuming the dashboard is the only source of truth.
 
 ### Gitleaks Baseline
 
-Gitleaks uses `linting/config/security/gitleaks-baseline.json` to suppress known intentional non-secrets and still fail on new findings.
+Gitleaks uses `linting/config/security/gitleaks/baseline.json` to suppress known intentional non-secrets and still fail on new findings.
 
 Regenerate the baseline only when:
 

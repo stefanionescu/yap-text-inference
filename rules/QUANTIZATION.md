@@ -28,12 +28,12 @@ Use these rules for `src/quantization/`, Hugging Face packaging helpers, quantiz
 Minimum verification for quantization or model-packaging changes:
 
 ```bash
-bash scripts/lint.sh --only code
-python -m pytest -q
+nox -s lint_code
+nox -s test
 ```
 
 If the change touches Docker packaging, dependency resolution, or generated metadata consumed by scanners, also run:
 
 ```bash
-bash scripts/security.sh
+nox -s security
 ```

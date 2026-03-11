@@ -7,13 +7,13 @@ hook_entrypoints = [".githooks/pre-commit", ".githooks/pre-push", ".githooks/com
 
 [run]
 rule_modules = [
-    "linting/shell/rules/strict_mode.py",
-    "linting/shell/rules/disable_justification.py",
-    "linting/shell/rules/docs.py",
-    "linting/shell/rules/function_length.py",
-    "linting/shell/rules/unused_functions.py",
-    "linting/shell/rules/naming.py",
-    "linting/shell/rules/config_defaults.py",
+    "linting.shell.rules.strict_mode",
+    "linting.shell.rules.disable_justification",
+    "linting.shell.rules.docs",
+    "linting.shell.rules.function_length",
+    "linting.shell.rules.unused_functions",
+    "linting.shell.rules.naming",
+    "linting.shell.rules.config_defaults",
 ]
 
 [strict_mode]

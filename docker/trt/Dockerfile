@@ -15,6 +15,7 @@ ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
 ARG CHAT_QUANTIZATION=""
+ARG TRIVY_SCAN="0"
 
 # TRT engine configuration - HuggingFace repo with pre-built engines
 # TRT_ENGINE_REPO: HuggingFace repo containing the pre-built engine
@@ -143,20 +144,32 @@ RUN chmod +x /app/download/*.py /app/common/download/*.py 2>/dev/null || true
 # This layer is cached unless: download scripts change OR model config changes
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/engine.py
+    if [ "${TRIVY_SCAN}" = "1" ]; then \
+      echo "[build] Skipping TRT engine download for Trivy scan"; \
+    else \
+      python /app/download/engine.py; \
+    fi
 
 # ----------------------------------------------------------------------------
 # Download model files (tokenizer, config, etc.) from engine repo
 # These are needed for tokenization during inference
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/model.py
+    if [ "${TRIVY_SCAN}" = "1" ]; then \
+      echo "[build] Skipping TRT model download for Trivy scan"; \
+    else \
+      python /app/download/model.py; \
+    fi
 
 # ----------------------------------------------------------------------------
 # Download tool model if specified
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/common/download/tool.py
+    if [ "${TRIVY_SCAN}" = "1" ]; then \
+      echo "[build] Skipping tool model download for Trivy scan"; \
+    else \
+      python /app/common/download/tool.py; \
+    fi
 
 # ----------------------------------------------------------------------------
 # Override model env vars to point to local paths (not HF repo names)

@@ -34,6 +34,6 @@ Use these rules for everything under `docker/` and for Docker-related lint or se
 Minimum verification for Docker changes:
 
 ```bash
-bash scripts/lint.sh --only docker
-bash scripts/security.sh
+nox -s lint_docker
+nox -s security
 ```

@@ -153,44 +153,6 @@ install_codeql() {
   echo "${binary_path}"
 }
 
-# install_osv - Download and install the configured OSV-Scanner CLI version.
-install_osv() {
-  source_security_config "osv"
-
-  local os_name
-  local arch_name
-  local asset_name
-  local release_url
-  local tmp_dir
-  local tool_root
-  local version_dir
-  local binary_path
-
-  os_name="$(resolve_os "${OSV_SCANNER_OS_DARWIN}" "${OSV_SCANNER_OS_LINUX}" "${OSV_SCANNER_TOOL_NAME}")"
-  arch_name="$(resolve_arch "${OSV_SCANNER_ARCH_AMD64}" "${OSV_SCANNER_ARCH_ARM64}" "${OSV_SCANNER_TOOL_NAME}")"
-  asset_name="${OSV_SCANNER_ASSET_PREFIX}_${os_name}_${arch_name}"
-  release_url="${OSV_SCANNER_RELEASE_BASE_URL}/v${OSV_SCANNER_VERSION}"
-  tool_root="$(repo_tool_dir "${OSV_SCANNER_TOOL_NAME}")"
-  version_dir="${tool_root}/${OSV_SCANNER_VERSION}"
-  binary_path="${version_dir}/${OSV_SCANNER_TOOL_NAME}"
-
-  if [[ -x ${binary_path} ]]; then
-    link_tool "${binary_path}" "${OSV_SCANNER_TOOL_NAME}"
-    echo "${binary_path}"
-    return 0
-  fi
-
-  tmp_dir="$(download_and_verify "${release_url}" "${asset_name}" "${OSV_SCANNER_CHECKSUMS_ASSET}")"
-  rm -rf "${version_dir}"
-  mkdir -p "${version_dir}"
-  mv "${tmp_dir}/${asset_name}" "${binary_path}"
-  chmod +x "${binary_path}"
-  rm -rf "${tmp_dir}"
-
-  link_tool "${binary_path}" "${OSV_SCANNER_TOOL_NAME}"
-  echo "${binary_path}"
-}
-
 case "${1:-all}" in
   gitleaks)
     install_gitleaks
@@ -201,17 +163,13 @@ case "${1:-all}" in
   codeql)
     install_codeql
     ;;
-  osv-scanner)
-    install_osv
-    ;;
   all)
     install_gitleaks >/dev/null
     install_bearer >/dev/null
     install_codeql >/dev/null
-    install_osv >/dev/null
     ;;
   *)
-    echo "usage: $0 [gitleaks|bearer|codeql|osv-scanner|all]" >&2
+    echo "usage: $0 [gitleaks|bearer|codeql|all]" >&2
     exit 1
     ;;
 esac

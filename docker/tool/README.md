@@ -51,6 +51,8 @@ curl http://localhost:8000/healthz
 | `TAG` | Yes | Image tag (must start with `tool-`) |
 | `HF_TOKEN` | If private | HuggingFace token |
 
+`TRIVY_SCAN=1` is reserved for repo-local security scans and skips the baked-in tool-model download. Do not set it for normal release builds.
+
 ## Runtime Variables
 
 | Variable | Required | Default | Description |

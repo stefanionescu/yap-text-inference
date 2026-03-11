@@ -5,24 +5,15 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from shell.shared import rel  # noqa: E402
-from shared import report, policy_section  # noqa: E402
-from shell.parser import violation, iter_analysis_files  # noqa: E402
+from linting.shell.shared import rel
+from linting.repo import report, string_list, policy_section
+from linting.shell.parser import violation, iter_analysis_files
 
 _NAMING = policy_section("naming")
-FORBIDDEN_EXACT = {str(value) for value in _NAMING.get("forbidden_exact", []) if isinstance(value, str)}
-FORBIDDEN_PREFIXES = tuple(
-    str(value) for value in _NAMING.get("forbidden_prefixes", []) if isinstance(value, str)
-)
-FORBIDDEN_SUFFIXES = tuple(
-    str(value) for value in _NAMING.get("forbidden_suffixes", []) if isinstance(value, str)
-)
-ALLOWED_PATH_PREFIXES = tuple(
-    str(value) for value in _NAMING.get("allowed_path_prefixes", []) if isinstance(value, str)
-)
+FORBIDDEN_EXACT = set(string_list(_NAMING.get("forbidden_exact")))
+FORBIDDEN_PREFIXES = tuple(string_list(_NAMING.get("forbidden_prefixes")))
+FORBIDDEN_SUFFIXES = tuple(string_list(_NAMING.get("forbidden_suffixes")))
+ALLOWED_PATH_PREFIXES = tuple(string_list(_NAMING.get("allowed_path_prefixes")))
 
 
 def _allowed(path: Path) -> bool:

@@ -75,6 +75,7 @@ ARG DEPLOY_MODE="both"
 ARG CHAT_MODEL=""
 ARG TOOL_MODEL=""
 ARG CHAT_QUANTIZATION=""
+ARG TRIVY_SCAN="0"
 
 # Set environment variables for production
 ENV DEBIAN_FRONTEND=noninteractive
@@ -135,13 +136,21 @@ RUN chmod +x /app/download/*.py /app/common/download/*.py 2>/dev/null || true
 # This layer is cached unless: download scripts change OR model config changes
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/download/chat.py
+    if [ "${TRIVY_SCAN}" = "1" ]; then \
+      echo "[build] Skipping chat model download for Trivy scan"; \
+    else \
+      python /app/download/chat.py; \
+    fi
 
 # ----------------------------------------------------------------------------
 # Download tool model at build time if specified
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/common/download/tool.py
+    if [ "${TRIVY_SCAN}" = "1" ]; then \
+      echo "[build] Skipping tool model download for Trivy scan"; \
+    else \
+      python /app/common/download/tool.py; \
+    fi
 
 # ----------------------------------------------------------------------------
 # Override model env vars to point to local paths (not HF repo names)

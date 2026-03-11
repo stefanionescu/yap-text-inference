@@ -6,12 +6,9 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from shared import report, load_config_doc  # noqa: E402
-from shell.shared import rel, is_entrypoint  # noqa: E402
-from shell.parser import violation, iter_analysis_files  # noqa: E402
+from linting.repo import report, load_config_doc
+from linting.shell.shared import rel, is_entrypoint
+from linting.shell.parser import violation, iter_analysis_files
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
 _DEFAULT_RULE = _SHELL_RULES.get("config_defaults")
@@ -22,9 +19,10 @@ ALLOWED_PREFIXES = tuple(
     str(value) for value in _DEFAULT_RULE.get("allowed_path_prefixes", []) if isinstance(value, str)
 )
 ALLOWED_FILES = {str(value) for value in _DEFAULT_RULE.get("allowed_files", []) if isinstance(value, str)}
-SCOPED_PREFIXES = tuple(
-    str(value) for value in _DEFAULT_RULE.get("scoped_prefixes", []) if isinstance(value, str)
-) or ("scripts/", "docker/")
+SCOPED_PREFIXES = tuple(str(value) for value in _DEFAULT_RULE.get("scoped_prefixes", []) if isinstance(value, str)) or (
+    "scripts/",
+    "docker/",
+)
 SCAN_WINDOW = int(_DEFAULT_RULE.get("scan_window", 80))
 
 DEFAULT_ASSIGN_RE = re.compile(
@@ -66,7 +64,8 @@ def main() -> int:
                 violation(
                     shell_file,
                     lineno,
-                    f"self-defaulting env assignment for `{match.group('lhs')}` belongs in an approved config/default file",
+                    "self-defaulting env assignment for "
+                    f"`{match.group('lhs')}` belongs in an approved config/default file",
                 )
             )
 

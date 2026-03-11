@@ -67,12 +67,12 @@ Prefer extending an existing module over creating another shallow wrapper layer.
 
 Use these minimum checks:
 
-- runtime Python change: `bash scripts/lint.sh --only code` and `python -m pytest -q`
-- shell or hook change: `bash scripts/lint.sh --only shell`
-- Docker change: `bash scripts/lint.sh --only docker` and `bash scripts/security.sh`
-- linting or hook framework change: `bash scripts/lint.sh` and `bash scripts/security.sh`
-- docs or rules change: `bash scripts/lint.sh --only docs`
-- coverage or Sonar change: `bash scripts/coverage.sh`
+- runtime Python change: `nox -s lint_code` and `nox -s test`
+- shell or hook change: `nox -s lint_shell`
+- Docker change: `nox -s lint_docker` and `nox -s security`
+- linting or hook framework change: `nox -s lint` and `nox -s security`
+- docs or rules change: `nox -s lint_docs`
+- coverage or Sonar change: `nox -s coverage`
 
 When the change spans multiple areas, run the full lint, test, coverage, and security commands.
 

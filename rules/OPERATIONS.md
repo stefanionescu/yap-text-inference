@@ -20,8 +20,8 @@ Do not bury operational behavior inside random Python modules under `src/` when 
 
 ## Security and Quality Gates
 
-- `scripts/security.sh` is the canonical full local security gate.
-- `scripts/coverage.sh` is the canonical Sonar-compatible coverage and test-report generator.
+- `nox -s security` is the canonical full local security gate.
+- `nox -s coverage` is the canonical Sonar-compatible coverage and test-report generator.
 - `linting/security/sonarqube/run.sh` must leave behind `.cache/security/sonarqube/sonar-report.md` and `.cache/security/sonarqube/sonar-todos.md`.
 - Hook stages must stay intentionally split: fast checks in `pre-commit`, heavier scans in `pre-push`.
 - Repo-local fallback installers or Dockerized scanners must stay version-pinned through config.
@@ -33,12 +33,12 @@ Do not bury operational behavior inside random Python modules under `src/` when 
 Minimum verification for ops, hook, or scanner changes:
 
 ```bash
-bash scripts/lint.sh
-bash scripts/security.sh
+nox -s lint
+nox -s security
 ```
 
 If the change affects coverage artifacts or Sonar inputs, also run:
 
 ```bash
-bash scripts/coverage.sh
+nox -s coverage
 ```

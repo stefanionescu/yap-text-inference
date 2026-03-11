@@ -65,7 +65,7 @@ run_project_stage() {
       bash linting/lint.sh --only quality
       ;;
     security:push)
-      bash linting/security/run.sh
+      ENABLE_TRIVY="${ENABLE_TRIVY:-0}" bash linting/security/run.sh
       ;;
     coverage:push)
       if [[ ${RUN_COVERAGE:-0} != "1" ]]; then
@@ -93,14 +93,14 @@ run_self_stage() {
   case "${stage}" in
     lint)
       shellcheck -x -e SC1091 "${FILES[@]}"
-      python linting/shell/run.py "${FILES[@]}"
+      python -m linting.shell.run "${FILES[@]}"
       ;;
     format)
       shfmt -d -i 2 -ci -s "${FILES[@]}"
       ;;
     quality)
-      python linting/structure/prefix_collisions.py .githooks
-      python linting/structure/single_file_folders.py .githooks
+      python -m linting.python.structure.prefix_collisions .githooks
+      python -m linting.python.structure.single_file_folders .githooks
       bunx jscpd --config "${HOOK_SELF_JSCPD_CONFIG}"
       ;;
     security)

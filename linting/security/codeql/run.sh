@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_codeql - Run CodeQL scan plus report generation for this repository.
+# run_codeql - Run a CodeQL scan for this repository.
 
 set -euo pipefail
 
@@ -20,12 +20,6 @@ resolve_repo_path() {
 }
 
 RESULT_FILE="$(resolve_repo_path "${CODEQL_OUTPUT_FILE:-${CODEQL_RESULT_FILE}}")"
-REPORT_FILE="$(resolve_repo_path "${CODEQL_REPORT_FILE}")"
 
 bash "${SCRIPT_DIR}/scan.sh"
-python "${SCRIPT_DIR}/report.py" \
-  --sarif "${RESULT_FILE}" \
-  --output "${REPORT_FILE}" \
-  --label "${CODEQL_TARGET_NAME}"
-
-echo "codeql report: ${REPORT_FILE}"
+echo "codeql sarif: ${RESULT_FILE}"

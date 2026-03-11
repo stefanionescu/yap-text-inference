@@ -11,7 +11,6 @@ build_init_router_defaults() {
 build_init_common_defaults() {
   DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
   IMAGE_NAME="${IMAGE_NAME:-yap-text-api}"
-  PLATFORM="${PLATFORM:-linux/amd64}"
   HF_TOKEN="${HF_TOKEN:-}"
 }
 

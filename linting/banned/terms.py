@@ -7,10 +7,7 @@ import re
 import sys
 import json
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from shared import ROOT, rel, report  # noqa: E402
+from linting.repo import ROOT, rel, report
 
 CONFIG_PATH = ROOT / "linting" / "config" / "language" / "banned-terms.json"
 
@@ -44,7 +41,12 @@ def _should_skip(path: Path, config: dict[str, object]) -> bool:
 
 
 def _tracked_dirs(config: dict[str, object]) -> list[Path]:
-    return [ROOT / str(value) for value in config.get("trackedDirs", []) if isinstance(value, str)] or [
+    raw_dirs = config.get("trackedDirs", [])
+    if isinstance(raw_dirs, list):
+        tracked = [ROOT / str(value) for value in raw_dirs if isinstance(value, str)]
+        if tracked:
+            return tracked
+    return [
         ROOT / "src",
         ROOT / "tests",
         ROOT / "scripts",

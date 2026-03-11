@@ -4,6 +4,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
+# shellcheck source=common.sh
+source "${ROOT_DIR}/linting/common.sh"
+ensure_repo_python_env
 RUN_FIX=0
 RUN_FAST=0
 ONLY=""
@@ -85,30 +88,30 @@ run_code_full() {
   fi
 
   run_cmd "import-linter" lint-imports
-  run_cmd "mypy" python -m mypy --follow-imports=skip src tests
-  run_cmd "import-cycles" python linting/imports/import_cycles.py
-  run_cmd "single-line-imports-first" python linting/imports/single_line_imports_first.py
-  run_cmd "all-at-bottom" python linting/structure/all_at_bottom.py
-  run_cmd "file-length" python linting/structure/file_length.py
-  run_cmd "function-length" python linting/structure/function_length.py
-  run_cmd "one-class-per-file" python linting/structure/one_class_per_file.py
-  run_cmd "single-file-folders" python linting/structure/single_file_folders.py
-  run_cmd "prefix-collisions" python linting/structure/prefix_collisions.py
-  run_cmd "function-order" python linting/structure/function_order.py
-  run_cmd "no-runtime-singletons" python linting/runtime/no_runtime_singletons.py
-  run_cmd "no-lazy-module-loading" python linting/imports/no_lazy_module_loading.py
-  run_cmd "no-legacy-markers" python linting/runtime/no_legacy_markers.py
-  run_cmd "no-config-functions" python linting/modules/no_config_functions.py
-  run_cmd "no-config-cross-imports" python linting/modules/no_config_cross_imports.py
-  run_cmd "test-file-prefix" python linting/testing/file_prefix.py
-  run_cmd "test-function-placement" python linting/testing/function_placement.py
-  run_cmd "unit-test-domain-folders" python linting/testing/unit_test_domain_folders.py
-  run_cmd "no-conftest-in-subfolders" python linting/testing/no_conftest_in_subfolders.py
-  run_cmd "generic-names" python linting/naming/no_generic_names.py
-  run_cmd "no-print-statements" python linting/runtime/no_print_statements.py
-  run_cmd "no-shell-true-subprocess" python linting/runtime/no_shell_true_subprocess.py
-  run_cmd "version-pins" python linting/infra/version_pins.py
-  run_cmd "config-integrity" python linting/infra/config_integrity.py
+  run_cmd "mypy" python -m mypy --follow-imports=skip src tests linting
+  run_cmd "import-cycles" python -m linting.python.imports.import_cycles
+  run_cmd "single-line-imports-first" python -m linting.python.imports.single_line_imports_first
+  run_cmd "all-at-bottom" python -m linting.python.structure.all_at_bottom
+  run_cmd "file-length" python -m linting.python.structure.file_length
+  run_cmd "function-length" python -m linting.python.structure.function_length
+  run_cmd "one-class-per-file" python -m linting.python.structure.one_class_per_file
+  run_cmd "single-file-folders" python -m linting.python.structure.single_file_folders
+  run_cmd "prefix-collisions" python -m linting.python.structure.prefix_collisions
+  run_cmd "function-order" python -m linting.python.structure.function_order
+  run_cmd "no-runtime-singletons" python -m linting.python.runtime.no_runtime_singletons
+  run_cmd "no-lazy-module-loading" python -m linting.python.imports.no_lazy_module_loading
+  run_cmd "no-legacy-markers" python -m linting.python.runtime.no_legacy_markers
+  run_cmd "no-config-functions" python -m linting.python.modules.no_config_functions
+  run_cmd "no-config-cross-imports" python -m linting.python.modules.no_config_cross_imports
+  run_cmd "test-file-prefix" python -m linting.python.testing.file_prefix
+  run_cmd "test-function-placement" python -m linting.python.testing.function_placement
+  run_cmd "unit-test-domain-folders" python -m linting.python.testing.unit_test_domain_folders
+  run_cmd "no-conftest-in-subfolders" python -m linting.python.testing.no_conftest_in_subfolders
+  run_cmd "generic-names" python -m linting.python.naming.no_generic_names
+  run_cmd "no-print-statements" python -m linting.python.runtime.no_print_statements
+  run_cmd "no-shell-true-subprocess" python -m linting.python.runtime.no_shell_true_subprocess
+  run_cmd "version-pins" python -m linting.python.infra.version_pins
+  run_cmd "config-integrity" python -m linting.python.infra.config_integrity
 }
 
 # run_code - Run Python code linting and custom structural rules.
@@ -139,8 +142,8 @@ run_shell_full() {
   else
     run_cmd "shfmt" shfmt -d -i 2 -ci -s "${SHELL_FILES[@]}"
   fi
-  run_cmd "no-inline-python" python linting/runtime/no_inline_python.py
-  run_cmd "shell-custom-rules" python linting/shell/run.py
+  run_cmd "no-inline-python" python -m linting.python.runtime.no_inline_python
+  run_cmd "shell-custom-rules" python -m linting.shell.run
 }
 
 # run_shell - Run shell linting and custom shell rules.
@@ -159,7 +162,7 @@ run_docker_full() {
   while IFS= read -r dockerfile; do
     run_cmd "hadolint ${dockerfile}" hadolint --failure-threshold error "${dockerfile}"
   done < <(find docker -name Dockerfile | sort)
-  run_cmd "dockerignore-policy" python linting/infra/dockerignore_policy.py
+  run_cmd "dockerignore-policy" python -m linting.python.infra.dockerignore_policy
 }
 
 # run_docker - Run Docker-specific lint checks.

@@ -5,6 +5,7 @@ FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu24.04
 # Model configuration - set at build time
 ARG DEPLOY_MODE="tool"
 ARG TOOL_MODEL=""
+ARG TRIVY_SCAN="0"
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -68,7 +69,11 @@ RUN chmod +x /app/common/download/*.py 2>/dev/null || true
 # Download tool model at build time (baked into image)
 # ----------------------------------------------------------------------------
 RUN --mount=type=secret,id=hf_token,required=false \
-    python /app/common/download/tool.py
+    if [ "${TRIVY_SCAN}" = "1" ]; then \
+      echo "[build] Skipping tool model download for Trivy scan"; \
+    else \
+      python /app/common/download/tool.py; \
+    fi
 
 # Override model env var to point to local path
 ENV TOOL_MODEL=/opt/models/tool

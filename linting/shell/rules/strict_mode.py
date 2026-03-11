@@ -4,12 +4,8 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from shared import report, load_config_doc  # noqa: E402
-from shell.shared import rel, is_entrypoint, iter_target_shell_files  # noqa: E402
+from linting.repo import report, load_config_doc
+from linting.shell.shared import rel, is_entrypoint, iter_target_shell_files
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
 _STRICT_MODE_RULE = _SHELL_RULES.get("strict_mode")

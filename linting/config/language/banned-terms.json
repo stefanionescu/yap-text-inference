@@ -19,7 +19,7 @@
             "/coverage/",
             "/htmlcov/",
             "/tests/config/",
-            "/linting/testing/"
+            "/linting/python/testing/"
         ],
         "basenameEquals": [
             "bun.lock",

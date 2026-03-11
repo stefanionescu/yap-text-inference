@@ -7,6 +7,7 @@ Docker setup for Yap's text inference server with models baked into the image.
 - [Engine Options](#engine-options)
 - [Quick Start](#quick-start)
 - [Tag Naming Convention](#tag-naming-convention)
+- [Security Scanning](#security-scanning)
 - [Running Containers](#running-containers)
 - [Environment Variables](#environment-variables)
 - [Health & Monitoring](#health--monitoring)
@@ -89,6 +90,14 @@ Tags must use a prefix that matches the deploy mode:
 | `tool` | - | `tool-` | `tool-only` |
 
 The build will fail if the tag doesn't match the required prefix.
+
+## Security Scanning
+
+Repo-local security checks use these Dockerfiles in a scan-only mode:
+
+- `nox -s security` and `bash linting/security/trivy/run.sh image` build temporary local images for `tool`, `trt`, and `vllm`.
+- Those scan builds set `TRIVY_SCAN=1`, which skips model and engine download steps while preserving the base image and dependency layers for Trivy.
+- `TRIVY_SCAN` is an internal lint/security build arg, not a normal release-build knob.
 
 ## Running Containers
 

@@ -110,6 +110,8 @@ If you deploy to a GPU that does not match the engine label, the container will 
 | `TAG` | Yes | Image tag (must start with `trt-`) |
 | `HF_TOKEN` | If private | HuggingFace token |
 
+`TRIVY_SCAN=1` is reserved for repo-local security scans and skips the baked-in TRT engine, tokenizer/model assets, and tool-model download steps. Do not set it for normal release builds.
+
 ## Runtime Variables
 
 | Variable | Required | Default | Description |

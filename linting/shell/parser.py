@@ -6,8 +6,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from dataclasses import dataclass
-from shared import SHELL_FUNCTION_LINES
-from shell.shared import rel, iter_all_shell_files, iter_target_shell_files
+from linting.repo import SHELL_FUNCTION_LINES
+from linting.shell.shared import rel, iter_all_shell_files, iter_target_shell_files
 
 FUNCTION_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(\)\s*\{")
 TOKEN_RE = re.compile(r"(?:^|[;|&(){}\s])([A-Za-z_][A-Za-z0-9_]*)\b")

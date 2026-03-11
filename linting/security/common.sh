@@ -4,6 +4,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=../common.sh
+source "${REPO_ROOT}/linting/common.sh"
 SECURITY_CONFIG_DIR="${REPO_ROOT}/linting/config/security"
 
 # source_security_config - Load a repo-local shell config file by name.
@@ -28,6 +30,7 @@ source_security_config() {
 
 source_security_config "common"
 source_security_config "tool-versions"
+ensure_repo_python_env
 
 # require_docker - Abort if Docker or the Docker daemon is unavailable.
 require_docker() {

@@ -4,12 +4,8 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from shared import report, load_config_doc  # noqa: E402
-from shell.parser import (  # noqa: E402
+from linting.repo import report, load_config_doc
+from linting.shell.parser import (
     violation,
     parse_functions,
     iter_usage_files,

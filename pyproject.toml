@@ -10,7 +10,6 @@ exclude = [
     "__pycache__",
     "build",
     "dist",
-    "linting",
     "scripts/build",
 ]
 
@@ -23,6 +22,7 @@ select = ["E", "F", "B", "UP", "C4", "SIM", "N", "S", "W", "PL", "PLC0415"]
 ignore = ["D", "ANN", "COM812", "ISC001"]
 
 [tool.ruff.lint.per-file-ignores]
+"linting/licenses/audit.py" = ["PLR0912"]
 "src/state/hf.py" = ["PLC0415"]
 "src/telemetry/*.py" = ["PLC0415", "S110"]
 "tests/**/*.py" = ["S101", "PLR2004"]
@@ -31,7 +31,7 @@ ignore = ["D", "ANN", "COM812", "ISC001"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
-known-first-party = ["src", "tests"]
+known-first-party = ["src", "tests", "linting"]
 length-sort = true
 length-sort-straight = true
 force-sort-within-sections = true
@@ -62,7 +62,7 @@ no_implicit_optional = false
 [tool.isort]
 profile = "black"
 line_length = 120
-known_first_party = ["src", "tests"]
+known_first_party = ["src", "tests", "linting"]
 combine_as_imports = true
 length_sort = true
 length_sort_straight = true
@@ -163,7 +163,7 @@ requirements_files_dev = ["requirements-dev.txt"]
 known_first_party = ["src", "tests"]
 
 [tool.deptry.per_rule_ignores]
-DEP001 = ["tensorrt_llm", "flashinfer", "async_timeout", "cuda", "mpi4py"]
+DEP001 = ["tensorrt_llm", "flashinfer", "async_timeout", "cuda", "mpi4py", "torchvision"]
 DEP002 = [
     "accelerate",
     "compressed-tensors",

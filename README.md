@@ -270,12 +270,15 @@ This installs client deps (`websockets`, `httpx`, `orjson`) without CUDA wheels.
 If you are working on the repo itself rather than only running client tests, the maintenance toolchain also needs:
 
 ```bash
-bash scripts/activate.sh
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements-dev.txt
 bun install
 ```
 
-The Bun step is only for the small root JS maintenance toolchain that `nox` and hook automation use for `jscpd` and setup helpers.
+If you already use the deployment bootstrap flow, it creates the same repo-local `.venv`.
+
+The Bun step is only for the small root JS maintenance toolchain that `nox` and hook self-checks use for `jscpd`.
 
 ## Developer Commands
 
@@ -298,8 +301,10 @@ nox -s coverage
 nox -s codeql
 ```
 
-The underlying shell entrypoints under `linting/` still exist for direct use and for hook integration, but `nox` is the primary documented surface.
-`nox -s codeql` writes raw SARIF and a Markdown summary to `linting/.tools/codeql/results/`.
+The underlying shell entrypoints under `linting/` still exist for hook plumbing and focused debugging, but `nox` is the primary documented surface.
+The lint/security entrypoints use the repo-local `.venv` directly and fail fast if it is missing.
+`nox -s security` requires Docker because the Trivy stage includes config, filesystem, and scan-only image builds.
+`nox -s codeql` writes raw SARIF to `linting/.tools/codeql/results/`.
 
 ## Test Clients
 

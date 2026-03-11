@@ -30,12 +30,12 @@ If a runtime change forces one layer to know too much about another, the code is
 Minimum verification for runtime changes:
 
 ```bash
-bash scripts/lint.sh --only code
-python -m pytest -q
+nox -s lint_code
+nox -s test
 ```
 
 If the change touches execution flow, connection lifecycle, or telemetry wiring, also run:
 
 ```bash
-bash scripts/coverage.sh
+nox -s coverage
 ```

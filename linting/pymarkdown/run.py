@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import sys
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path, PurePosixPath
 
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
-    import tomli as tomllib  # type: ignore[no-redef]
+    import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_FILE = ROOT / ".pymarkdown.toml"
@@ -110,7 +110,7 @@ def main() -> int:
             command.extend(["--exclude", pattern])
         command.append(str(ROOT))
 
-    result = subprocess.run(command, check=False, cwd=ROOT)  # noqa: S603
+    result = subprocess.run(command, check=False, cwd=ROOT)  # noqa: S603  # nosec B603
     return result.returncode
 
 

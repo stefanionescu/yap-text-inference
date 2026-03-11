@@ -37,11 +37,11 @@ Use these rules for `.githooks/`, `scripts/`, Docker shell entrypoints, and secu
 Minimum verification for shell or hook changes:
 
 ```bash
-bash scripts/lint.sh --only shell
+nox -s lint_shell
 ```
 
 If the change touches security wrappers, hook orchestration, or Docker shell, also run:
 
 ```bash
-bash scripts/security.sh
+nox -s security
 ```

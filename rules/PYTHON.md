@@ -49,8 +49,8 @@ If you are tempted to cross one of these boundaries, the ownership is probably w
 Minimum verification for Python changes:
 
 ```bash
-bash scripts/lint.sh --only code
-python -m pytest -q
+nox -s lint_code
+nox -s test
 ```
 
-Run `bash scripts/coverage.sh` when the change affects behavior or test coverage expectations.
+Run `nox -s coverage` when the change affects behavior or test coverage expectations.

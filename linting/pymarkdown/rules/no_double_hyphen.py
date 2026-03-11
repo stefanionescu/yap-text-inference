@@ -11,7 +11,7 @@ from pymarkdown.plugin_manager.plugin_details import PluginDetails, PluginDetail
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
-    import tomli as tomllib  # type: ignore[no-redef]
+    import tomli as tomllib
 
 _CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "rules" / "pymarkdown.toml"
 
@@ -31,12 +31,8 @@ _NO_DOUBLE_HYPHEN_RULE = _RULES.get("no_double_hyphen")
 if not isinstance(_NO_DOUBLE_HYPHEN_RULE, dict):
     _NO_DOUBLE_HYPHEN_RULE = {}
 _INLINE_CODE_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("inline_code_pattern", r"`[^`\n]*`")))
-_LINK_DESTINATION_RE = re.compile(
-    str(_NO_DOUBLE_HYPHEN_RULE.get("link_destination_pattern", r"\]\([^)\n]*\)"))
-)
-_TABLE_SEPARATOR_RE = re.compile(
-    str(_NO_DOUBLE_HYPHEN_RULE.get("table_separator_pattern", r"^\s*\|?[-:| ]+\|?\s*$"))
-)
+_LINK_DESTINATION_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("link_destination_pattern", r"\]\([^)\n]*\)")))
+_TABLE_SEPARATOR_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("table_separator_pattern", r"^\s*\|?[-:| ]+\|?\s*$")))
 _HTML_COMMENT_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("html_comment_pattern", r"^\s*<!--.*-->\s*$")))
 _FRONT_MATTER_DELIMITER = str(_NO_DOUBLE_HYPHEN_RULE.get("front_matter_delimiter", "---"))
 _FENCE_MARKERS = tuple(

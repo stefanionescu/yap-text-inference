@@ -25,7 +25,7 @@ pytest.xml
 htmlcov/
 .jscpd-report/
 reports/
-linting/.tools/codeql/
+linting/.tools/
 trivy-results.txt
 gitleaks-report.json
 bearer-results.sarif

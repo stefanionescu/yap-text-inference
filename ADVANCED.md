@@ -281,11 +281,12 @@ Note: `scripts/main.sh` auto-tails all logs by default. Ctrl+C detaches from tai
 
 ## Linting
 
-Use the repo virtualenv for Python tooling and Bun for the small root JS toolchain. If the venv does not exist yet, run `bash scripts/steps/03_install_deps.sh` first:
+Use the repo-local `.venv` for Python tooling and Bun for the small root JS toolchain:
 
 ```bash
-# enter the repo venv
-bash scripts/activate.sh
+# create and enter the repo venv
+python3 -m venv .venv
+source .venv/bin/activate
 
 # sync Python dev tools
 pip install -r requirements-dev.txt
@@ -320,7 +321,10 @@ bash linting/security/codeql/run.sh
 bash scripts/coverage.sh
 ```
 
-CodeQL writes raw SARIF plus a generated Markdown report to `linting/.tools/codeql/results/`.
+If you already use the deployment bootstrap flow, it creates the same repo-local `.venv`.
+The lower-level `linting/*.sh` entrypoints use `.venv/bin/python` directly and fail fast if that environment is missing.
+
+CodeQL writes raw SARIF to `linting/.tools/codeql/results/`.
 
 `linting/lint.sh` runs:
 - isort (import ordering)
@@ -352,21 +356,24 @@ CodeQL writes raw SARIF plus a generated Markdown report to `linting/.tools/code
   - `jscpd` for Python and Bash
 - hook self-checks for `.githooks/`
 
+The repo-local structure, naming, and hook checks are intentional policy rather than generic Python style defaults.
+The import and runtime rules protect architectural boundaries, and the stricter shape rules keep runtime and repo-maintenance code explicit enough for operators to reason about.
+
 `linting/security/run.sh` runs the heavier security gate:
 - Semgrep
 - Bandit
 - `pip-audit`
 - repo license audit
-- `osv-scanner`
 - Gitleaks
 - Bearer
-- Trivy
+- Trivy config, filesystem, and image scans
 - CodeQL
 - optional SonarQube when `RUN_SONAR=1`
 
+The Trivy image stage builds scan-only local Docker images with `TRIVY_SCAN=1` so the security gate can inspect the container layers without downloading baked-in models or TRT engines. Docker is required for the full security run.
+
 Root Bun tooling is intentionally tiny. Today it is used by the `nox`/hook maintenance flow for:
 - `jscpd`
-- `bash .githooks/lib/setup.sh`
 
 ## API — WebSocket `/ws`
 

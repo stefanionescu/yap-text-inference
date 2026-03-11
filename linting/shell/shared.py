@@ -2,21 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from shared import (  # noqa: E402
-    ROOT,
-    HOOKS_DIR,
-    DOCKER_DIR,
-    LINTING_DIR,
-    SCRIPTS_DIR,
-    rel,
-    load_config_doc,
-    iter_shell_files,
-)
+from linting.repo import ROOT, HOOKS_DIR, DOCKER_DIR, LINTING_DIR, SCRIPTS_DIR, rel, load_config_doc, iter_shell_files
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
 _SHARED_RULES = _SHELL_RULES.get("shared")

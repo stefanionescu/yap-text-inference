@@ -4,6 +4,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
+# shellcheck source=../common.sh
+source "${ROOT_DIR}/linting/common.sh"
+ensure_repo_python_env
 
 # run_cmd - Run a command and show its buffered output on failure.
 run_cmd() {
@@ -22,7 +25,7 @@ run_cmd() {
 }
 
 cd "${ROOT_DIR}"
-run_cmd "banned-terms" python linting/banned/terms.py
+run_cmd "banned-terms" python -m linting.banned.terms
 run_cmd "codespell" codespell \
   --ignore-words .codespellignore \
   --skip "./node_modules,./.git,./.venv,./.cache,./.mypy_cache,./.pytest_cache,./.ruff_cache,./htmlcov,./linting/.tools/codeql,./tests/support/messages,./tests/support/prompts,./coverage.xml,./pytest.xml" \
