@@ -44,7 +44,7 @@ def _read_gpu_metric(kind: str) -> list[Observation]:
                 util = torch.cuda.utilization(i)
                 observations.append(Observation(float(util), attrs))
             except Exception:  # noqa: BLE001
-                pass
+                logger.debug("failed to read GPU utilization for device %s", i, exc_info=True)
     return observations
 
 

@@ -13,7 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
 
 # Install system dependencies (minimal - no build tools needed)
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \
     python3.12-dev \
     python3.12-venv \
@@ -87,6 +87,11 @@ COPY common/scripts/ /app/common/scripts/
 # Clean up build-time-only download scripts and set proper permissions
 RUN rm -rf /app/common/download \
     && chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
+
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app /opt/models /opt/venv
+
+USER appuser
 
 # Expose port
 EXPOSE 8000

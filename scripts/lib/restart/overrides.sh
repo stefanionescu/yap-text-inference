@@ -13,11 +13,11 @@ capture_user_env() {
   local value_key="RESTART_USER_OVERRIDE_VALUE_${var_name}"
 
   if [ "${!var_name+x}" = "x" ]; then
-    eval "${has_flag}=1"
+    printf -v "${has_flag}" "%s" "1"
     printf -v "${value_key}" "%s" "${!var_name}"
   else
-    eval "${has_flag}=0"
-    eval "${value_key}="
+    printf -v "${has_flag}" "%s" "0"
+    unset -v "${value_key}"
   fi
 }
 
@@ -28,12 +28,12 @@ restore_user_env() {
   local has_override
   local override_value
 
-  eval "has_override=\${${has_flag}:-0}"
+  has_override="${!has_flag:-0}"
   if [ "${has_override}" != "1" ]; then
     return
   fi
 
-  eval "override_value=\${${value_key}:-}"
+  override_value="${!value_key:-}"
   printf -v "${var_name}" "%s" "${override_value}"
   export "${var_name?}"
 }
@@ -61,15 +61,16 @@ mark_override_if_changed() {
   local human_label="${2:-$1}"
   local has_flag="RESTART_USER_OVERRIDE_HAS_${var_name}"
   local value_key="RESTART_USER_OVERRIDE_VALUE_${var_name}"
+  local snapshot_key="RESTART_SNAPSHOT_VALUE_${var_name}"
   local has_override snapshot_value user_value
 
-  eval "has_override=\${${has_flag}:-0}"
+  has_override="${!has_flag:-0}"
   if [ "${has_override}" != "1" ]; then
     return
   fi
 
-  eval "snapshot_value=\${RESTART_SNAPSHOT_VALUE_${var_name}:-}"
-  eval "user_value=\${${value_key}:-}"
+  snapshot_value="${!snapshot_key:-}"
+  user_value="${!value_key:-}"
 
   if [ "${snapshot_value}" != "${user_value}" ]; then
     log_info "[restart] Override detected for ${human_label}: stored='${snapshot_value:-<unset>}' new='${user_value}'"

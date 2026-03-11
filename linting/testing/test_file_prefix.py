@@ -12,9 +12,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import TESTS_DIR, rel, report, iter_python_files  # noqa: E402
+from shared import TESTS_DIR, rel, report, load_config_doc, iter_python_files  # noqa: E402
 
-SCAN_DIRS = [TESTS_DIR / "suites"]
+_TESTING_RULES = load_config_doc("rules", "testing.toml")
+_PREFIX_RULE = _TESTING_RULES.get("test_file_prefix")
+if not isinstance(_PREFIX_RULE, dict):
+    _PREFIX_RULE = {}
+SCAN_DIRS = [
+    TESTS_DIR.parent / str(raw_dir) for raw_dir in _PREFIX_RULE.get("scan_dirs", []) if isinstance(raw_dir, str)
+] or [TESTS_DIR / "suites"]
 
 
 def main() -> int:

@@ -1,0 +1,24 @@
+{
+    "threshold": 4,
+    "reporters": ["console"],
+    "format": ["bash"],
+    "ignore": [
+        "**/.git/**",
+        "**/.venv/**",
+        "**/node_modules/**",
+        "**/.jscpd-report/**",
+        "**/__pycache__/**",
+        "**/.pytest_cache/**",
+        "**/.ruff_cache/**",
+        "**/.mypy_cache/**"
+    ],
+    "path": [
+        "../scripts",
+        "../docker",
+        "../linting"
+    ],
+    "minLines": 8,
+    "minTokens": 40,
+    "mode": "strict",
+    "output": "../.jscpd-report/bash"
+}

@@ -1,0 +1,15 @@
+[general]
+ignore-merge-commits=false
+ignore-revert-commits=false
+ignore-fixup-commits=false
+ignore-fixup-amend-commits=false
+ignore-squash-commits=false
+ignore=T2,T3,T4,T5,T6,T7,T8,B1,B2,B3,B4,B5,B6,B7,B8,M1
+extra-path=linting/gitlint/rules.py
+
+[title-max-length]
+line-length=120
+
+[title-conventional-inference]
+allowed-types=build,chore,ci,docs,feat,fix,perf,refactor,revert,style,test
+allowed-scopes=core,config,handlers,messages,tokens,engines,quantization,docker,scripts,tests,lint,hooks,docs,deps,rules

@@ -1,0 +1,29 @@
+[shared]
+entrypoint_roots = ["scripts", "docker", ".githooks"]
+forced_entrypoint_prefixes = [".githooks/hooks/", "linting/security/"]
+non_entrypoint_prefixes = ["scripts/lib/", "scripts/config/"]
+non_entrypoint_docker_infix = "/scripts/"
+hook_entrypoints = [".githooks/pre-commit", ".githooks/pre-push", ".githooks/commit-msg"]
+
+[run]
+rule_modules = [
+    "linting/shell/strict_mode.py",
+    "linting/shell/disable_justification.py",
+    "linting/shell/docs.py",
+]
+
+[strict_mode]
+shebangs = ["#!/usr/bin/env bash", "#!/bin/bash"]
+required_line = "set -euo pipefail"
+scan_window = 25
+
+[disable_justification]
+disable_regex = "^\\s*#\\s*shellcheck\\s+disable="
+justification_regex = "#\\s*.+"
+scoped_prefixes = [".githooks/", "linting/security/"]
+
+[docs]
+function_regex = "^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\(\\)\\s*\\{"
+doc_regex = "^#\\s+[A-Za-z_][A-Za-z0-9_]*\\s+[-:]\\s+\\S+"
+scoped_prefixes = [".githooks/", "linting/security/"]
+ignored_function_names = ["main"]

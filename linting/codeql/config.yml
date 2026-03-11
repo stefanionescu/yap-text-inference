@@ -1,0 +1,10 @@
+name: "yap-text-inference local codeql"
+queries:
+  - uses: security-and-quality
+paths:
+  - src
+paths-ignore:
+  - tests
+  - linting
+  - .venv
+  - node_modules

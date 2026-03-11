@@ -7,25 +7,21 @@ variant detection and configuration.
 from __future__ import annotations
 
 import sys
+from src.config.personas import PERSONA_VARIANT_KEYS
 
 
 def get_persona_variants() -> list[tuple[str, str]]:
-    """Get persona variants from test configuration.
+    """Get shared persona variants used for warmup selection.
 
     Returns:
         List of (gender, personality) tuples.
     """
-    try:
-        from tests.config.defaults import PERSONA_VARIANTS  # noqa: PLC0415
-
-        result = []
-        for gender, personality, _ in PERSONA_VARIANTS:
-            if not gender:
-                continue
-            result.append((gender, personality or ""))
-        return result
-    except ImportError:
-        return []
+    result = []
+    for gender, personality in PERSONA_VARIANT_KEYS:
+        if not gender:
+            continue
+        result.append((gender, personality or ""))
+    return result
 
 
 def print_persona_variants() -> None:

@@ -1,0 +1,9 @@
+scanner:
+    skip-path:
+        - node_modules
+        - .venv
+        - .git
+        - coverage
+        - htmlcov
+        - '**/tests/**'
+        - '**/linting/**'

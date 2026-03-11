@@ -1,0 +1,21 @@
+{
+    "name": "yap-text-inference-linting",
+    "private": true,
+    "packageManager": "bun@1.2.7",
+    "engines": {
+        "bun": ">=1.2.7 <2.0.0"
+    },
+    "scripts": {
+        "setup:hooks": "./.githooks/lib/setup.sh",
+        "lint:md": "python linting/pymarkdown/run.py scan",
+        "lint:md:fix": "python linting/pymarkdown/run.py fix",
+        "lint:cpd": "bun run lint:cpd:python && bun run lint:cpd:bash && bun run lint:cpd:hooks",
+        "lint:cpd:python": "jscpd --config .jscpd/python.json",
+        "lint:cpd:bash": "jscpd --config .jscpd/bash.json",
+        "lint:cpd:hooks": "jscpd --config .githooks/.jscpd/bash.json",
+        "lint:commits": "gitlint --config .gitlint --commits HEAD~1..HEAD"
+    },
+    "devDependencies": {
+        "jscpd": "4.0.5"
+    }
+}

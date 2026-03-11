@@ -70,7 +70,6 @@ def save_quantization_metadata(
         awq_version=awq_version,
         quant_summary=quant_summary,
         metadata=metadata,
-        out_dir=output_dir,
     )
 
     readme_path = os.path.join(output_dir, "README.md")

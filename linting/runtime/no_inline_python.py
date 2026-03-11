@@ -14,10 +14,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import ROOT, rel, report  # noqa: E402
+from shared import ROOT, rel, report, load_config_doc  # noqa: E402
 
-# Patterns that indicate inline Python in bash (applied to stripped, non-comment lines)
-INLINE_PATTERNS: tuple[re.Pattern[str], ...] = (
+_RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
+_INLINE_RULE = _RUNTIME_RULES.get("no_inline_python")
+if not isinstance(_INLINE_RULE, dict):
+    _INLINE_RULE = {}
+INLINE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(pattern) for pattern in _INLINE_RULE.get("patterns", []) if isinstance(pattern, str)
+) or (
     re.compile(r"\bpython3?\s+-c\b"),
     re.compile(r"\bpython3?\s+<<"),
     re.compile(r"\$\{?PYTHON_EXEC\}?\s+-c\b"),

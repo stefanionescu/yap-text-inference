@@ -15,7 +15,7 @@ For an overview of all stacks, see the [main Docker README](../README.md).
 - [Quantization](#quantization)
 - [Troubleshooting](#troubleshooting)
 
-## How It Works
+## How it Works
 
 1. **Build time**: The chat model (and optionally the tool model) is downloaded from HuggingFace and baked into the image.
 2. **Runtime**: The server starts immediately with the baked-in model -- no downloads at startup.

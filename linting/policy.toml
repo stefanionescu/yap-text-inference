@@ -11,8 +11,30 @@ src_file_lines = 300
 shell_file_lines = 300
 function_lines = 60
 min_prefix_collision = 2
+shell_function_lines = 100
 
 [paths]
 src = "src"
 tests = "tests"
 config = "src/config"
+
+[naming]
+forbidden_exact = ["helpers", "utils", "misc", "temp", "tmp"]
+forbidden_prefixes = ["helpers_", "utils_", "temp_", "tmp_"]
+forbidden_suffixes = ["_helpers", "_utils", "_temp", "_tmp"]
+forbidden_function_names = ["helper", "util", "do_stuff", "process_data", "handle_data"]
+allowed_path_prefixes = [
+    "src/helpers",
+    "src/handlers/websocket/helpers.py",
+    "src/quantization/vllm/utils",
+    "src/tokens/utils.py",
+    "tests/support/helpers",
+    "tests/support/logic",
+    "scripts/lib",
+    "docker/common",
+    "docker/common/download/utils.py",
+]
+
+[shell]
+require_shebang_and_strict_mode = true
+entrypoint_roots = ["scripts", "docker", ".githooks"]

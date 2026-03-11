@@ -1,31 +1,30 @@
 #!/usr/bin/env bash
+# run_lint - Main lint entrypoint for code, shell, docs, docker, quality, and hooks.
+
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 RUN_FIX=0
+RUN_FAST=0
 ONLY=""
 
+# usage - Print CLI usage.
 usage() {
   cat <<'USAGE'
-Usage: scripts/lint.sh [--fix] [--only python|shell]
+Usage: scripts/lint.sh [--fix] [--fast] [--only code|shell|docs|docker|quality|hooks]
 
-Runs linters across the repository:
-  - Python: isort, ruff (lint + format), mypy (type check)
-  - Shell:  shellcheck (lint), shfmt (format if available)
+Runs repository lint stages:
+  - code:    ruff, isort, mypy, import-linter, custom Python lint rules
+  - shell:   shellcheck, shfmt, custom shell lint rules, inline-python guard
+  - docs:    pymarkdown, codespell, banned-term scan
+  - docker:  hadolint and dockerignore policy
+  - quality: lizard, deptry, vulture, jscpd
+  - hooks:   self-lint .githooks
 
 Options:
-  --fix              Apply auto-fixes (ruff format/check --fix, shfmt -w)
-  --only python      Run only Python linters
-  --only shell       Run only shell linters
-  -h, --help         Show this help
-
-Install dev tools:
-  python -m pip install -r requirements-dev.txt
-
-Shell formatting (optional):
-  Install shfmt to enable shell formatting in --fix mode.
-  macOS:  brew install shfmt
-  Linux:  see https://github.com/mvdan/sh#shfmt for install options
+  --fix      Apply formatter fixes where available
+  --fast     Skip docs/docker/quality stages
+  --only     Run a single stage
 USAGE
 }
 
@@ -35,12 +34,12 @@ while [[ $# -gt 0 ]]; do
       RUN_FIX=1
       shift
       ;;
+    --fast)
+      RUN_FAST=1
+      shift
+      ;;
     --only)
-      ONLY=${2:-}
-      if [[ -z $ONLY || ($ONLY != "python" && $ONLY != "shell") ]]; then
-        echo "Error: --only expects 'python' or 'shell'" >&2
-        exit 2
-      fi
+      ONLY="${2:-}"
       shift 2
       ;;
     -h | --help)
@@ -55,135 +54,146 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-have() { command -v "$1" >/dev/null 2>&1; }
-
-run_quiet() {
+# run_cmd - Run a command and show its buffered output on failure.
+run_cmd() {
   local label="$1"
   shift
   local tmp
   tmp="$(mktemp)"
-  if "$@" >"$tmp" 2>&1; then
-    rm -f "$tmp"
+  if "$@" >"${tmp}" 2>&1; then
+    rm -f "${tmp}"
     return 0
   fi
   echo "[lint] ${label} failed" >&2
-  cat "$tmp" >&2
-  rm -f "$tmp"
+  cat "${tmp}" >&2
+  rm -f "${tmp}"
   return 1
 }
 
-run_python() {
-  if ! python -m isort --version >/dev/null 2>&1; then
-    echo "isort not found. Install dev deps: python -m pip install -r requirements-dev.txt" >&2
-    exit 1
-  fi
+# run_code - Run Python code linting and custom structural rules.
+run_code() {
+  cd "${ROOT_DIR}"
 
-  if [[ $RUN_FIX -eq 1 ]]; then
-    run_quiet "isort" python -m isort --settings-path pyproject.toml "$ROOT_DIR"
+  if [[ ${RUN_FIX} -eq 1 ]]; then
+    run_cmd "isort" python -m isort --settings-path pyproject.toml "${ROOT_DIR}"
+    run_cmd "ruff format" python -m ruff format --config pyproject.toml "${ROOT_DIR}"
+    run_cmd "ruff check" python -m ruff check --config pyproject.toml --fix "${ROOT_DIR}"
   else
-    run_quiet "isort" python -m isort --settings-path pyproject.toml --check-only --diff "$ROOT_DIR"
+    run_cmd "isort" python -m isort --settings-path pyproject.toml --check-only --diff "${ROOT_DIR}"
+    run_cmd "ruff format" python -m ruff format --config pyproject.toml --check "${ROOT_DIR}"
+    run_cmd "ruff check" python -m ruff check --config pyproject.toml "${ROOT_DIR}"
   fi
 
-  if ! python -m ruff --version >/dev/null 2>&1; then
-    echo "ruff not found. Install dev deps: python -m pip install -r requirements-dev.txt" >&2
-    exit 1
-  fi
-
-  if [[ $RUN_FIX -eq 1 ]]; then
-    run_quiet "ruff format" python -m ruff format --config "$ROOT_DIR/pyproject.toml" "$ROOT_DIR"
-  else
-    run_quiet "ruff format" python -m ruff format --config "$ROOT_DIR/pyproject.toml" --check "$ROOT_DIR"
-  fi
-
-  if [[ $RUN_FIX -eq 1 ]]; then
-    run_quiet "ruff lint" python -m ruff check --config "$ROOT_DIR/pyproject.toml" --fix "$ROOT_DIR"
-  else
-    run_quiet "ruff lint" python -m ruff check --config "$ROOT_DIR/pyproject.toml" "$ROOT_DIR"
-  fi
-
-  if python -m src.scripts.validation.package importlinter; then
-    run_quiet "import-linter" lint-imports
-  fi
-
-  run_quiet "import-cycles" python "$ROOT_DIR/linting/imports/import_cycles.py"
-  run_quiet "single-line-imports-first" python "$ROOT_DIR/linting/imports/single_line_imports_first.py"
-  run_quiet "all-at-bottom" python "$ROOT_DIR/linting/structure/all_at_bottom.py"
-
-  if python -m src.scripts.validation.package mypy; then
-    PY_DIRS=()
-    [[ -d "$ROOT_DIR/src" ]] && PY_DIRS+=("$ROOT_DIR/src")
-    [[ -d "$ROOT_DIR/tests" ]] && PY_DIRS+=("$ROOT_DIR/tests")
-    if [[ ${#PY_DIRS[@]} -gt 0 ]]; then
-      run_quiet "mypy" python -m mypy --follow-imports=skip "${PY_DIRS[@]}"
-    fi
-  fi
-
-  run_quiet "file-length" python "$ROOT_DIR/linting/structure/file_length.py"
-  run_quiet "function-length" python "$ROOT_DIR/linting/structure/function_length.py"
-  run_quiet "one-class-per-file" python "$ROOT_DIR/linting/structure/one_class_per_file.py"
-  run_quiet "no-runtime-singletons" python "$ROOT_DIR/linting/runtime/no_runtime_singletons.py"
-  run_quiet "no-lazy-module-loading" python "$ROOT_DIR/linting/imports/no_lazy_module_loading.py"
-  run_quiet "no-legacy-markers" python "$ROOT_DIR/linting/runtime/no_legacy_markers.py"
-  run_quiet "dockerignore-policy" python "$ROOT_DIR/linting/infra/dockerignore_policy.py"
-  run_quiet "single-file-folders" python "$ROOT_DIR/linting/structure/single_file_folders.py"
-  run_quiet "prefix-collisions" python "$ROOT_DIR/linting/structure/prefix_collisions.py"
-  run_quiet "no-inline-python" python "$ROOT_DIR/linting/runtime/no_inline_python.py"
-  run_quiet "no-config-functions" python "$ROOT_DIR/linting/modules/no_config_functions.py"
-  run_quiet "function-order" python "$ROOT_DIR/linting/structure/function_order.py"
-  run_quiet "no-config-cross-imports" python "$ROOT_DIR/linting/modules/no_config_cross_imports.py"
-  run_quiet "test-file-prefix" python "$ROOT_DIR/linting/testing/test_file_prefix.py"
-  run_quiet "test-function-placement" python "$ROOT_DIR/linting/testing/test_function_placement.py"
-  run_quiet "unit-test-domain-folders" python "$ROOT_DIR/linting/testing/unit_test_domain_folders.py"
-  run_quiet "no-conftest-in-subfolders" python "$ROOT_DIR/linting/testing/no_conftest_in_subfolders.py"
+  run_cmd "import-linter" lint-imports
+  run_cmd "mypy" python -m mypy --follow-imports=skip src tests
+  run_cmd "import-cycles" python linting/imports/import_cycles.py
+  run_cmd "single-line-imports-first" python linting/imports/single_line_imports_first.py
+  run_cmd "all-at-bottom" python linting/structure/all_at_bottom.py
+  run_cmd "file-length" python linting/structure/file_length.py
+  run_cmd "function-length" python linting/structure/function_length.py
+  run_cmd "one-class-per-file" python linting/structure/one_class_per_file.py
+  run_cmd "single-file-folders" python linting/structure/single_file_folders.py
+  run_cmd "prefix-collisions" python linting/structure/prefix_collisions.py
+  run_cmd "function-order" python linting/structure/function_order.py
+  run_cmd "no-runtime-singletons" python linting/runtime/no_runtime_singletons.py
+  run_cmd "no-lazy-module-loading" python linting/imports/no_lazy_module_loading.py
+  run_cmd "no-legacy-markers" python linting/runtime/no_legacy_markers.py
+  run_cmd "no-config-functions" python linting/modules/no_config_functions.py
+  run_cmd "no-config-cross-imports" python linting/modules/no_config_cross_imports.py
+  run_cmd "test-file-prefix" python linting/testing/test_file_prefix.py
+  run_cmd "test-function-placement" python linting/testing/test_function_placement.py
+  run_cmd "unit-test-domain-folders" python linting/testing/unit_test_domain_folders.py
+  run_cmd "no-conftest-in-subfolders" python linting/testing/no_conftest_in_subfolders.py
+  run_cmd "generic-names" python linting/naming/no_generic_names.py
+  run_cmd "no-print-statements" python linting/runtime/no_print_statements.py
+  run_cmd "no-shell-true-subprocess" python linting/runtime/no_shell_true_subprocess.py
+  run_cmd "version-pins" python linting/infra/version_pins.py
+  run_cmd "config-integrity" python linting/infra/config_integrity.py
 }
 
+# run_shell - Run shell linting and custom shell rules.
 run_shell() {
-  # Prefer git-tracked files; fallback to find. Avoid bash 4+ mapfile for macOS compatibility.
-  TMP_LIST="$(mktemp)"
-  git -C "$ROOT_DIR" ls-files -z "*.sh" >"$TMP_LIST" 2>/dev/null || true
-  if [[ ! -s $TMP_LIST ]]; then
-    find "$ROOT_DIR" -type f -name "*.sh" -print0 >"$TMP_LIST"
-  fi
-
-  SHELL_FILES=()
+  cd "${ROOT_DIR}"
+  local shell_files=()
   while IFS= read -r -d '' file; do
-    if [[ -f $file ]]; then
-      SHELL_FILES+=("$file")
-    elif [[ -f $ROOT_DIR/$file ]]; then
-      SHELL_FILES+=("$ROOT_DIR/$file")
-    fi
-  done <"$TMP_LIST"
+    shell_files+=("${file}")
+  done < <(find scripts docker linting .githooks -type f \( -name "*.sh" -o -name "pre-commit" -o -name "pre-push" -o -name "commit-msg" \) -print0)
 
-  if [[ ${#SHELL_FILES[@]} -gt 0 ]]; then
-    if ! have shellcheck; then
-      echo "shellcheck not found. Install dev deps: python -m pip install -r requirements-dev.txt" >&2
-      rm -f "$TMP_LIST"
-      exit 1
-    fi
-    run_quiet "shellcheck" shellcheck -x -e SC1091 "${SHELL_FILES[@]}"
+  if [[ ${#shell_files[@]} -eq 0 ]]; then
+    return 0
   fi
 
-  if have shfmt; then
-    if [[ $RUN_FIX -eq 1 ]]; then
-      run_quiet "shfmt" shfmt -w -i 2 -ci -s "${SHELL_FILES[@]}"
-    else
-      # -d outputs unified diff if formatting differs
-      run_quiet "shfmt" shfmt -d -i 2 -ci -s "${SHELL_FILES[@]}"
-    fi
+  run_cmd "shellcheck" shellcheck -x -e SC1091 "${shell_files[@]}"
+  if [[ ${RUN_FIX} -eq 1 ]]; then
+    run_cmd "shfmt" shfmt -w -i 2 -ci -s "${shell_files[@]}"
+  else
+    run_cmd "shfmt" shfmt -d -i 2 -ci -s "${shell_files[@]}"
   fi
-
-  rm -f "$TMP_LIST"
+  run_cmd "no-inline-python" python linting/runtime/no_inline_python.py
+  run_cmd "shell-custom-rules" python linting/shell/run.py
 }
 
-case "$ONLY" in
-  python)
-    run_python
+# run_docs - Run documentation-oriented lint checks.
+run_docs() {
+  bash "${ROOT_DIR}/scripts/docs.sh"
+}
+
+# run_docker - Run Docker-specific lint checks.
+run_docker() {
+  cd "${ROOT_DIR}"
+  while IFS= read -r dockerfile; do
+    run_cmd "hadolint ${dockerfile}" hadolint --failure-threshold error "${dockerfile}"
+  done < <(find docker -name Dockerfile | sort)
+  run_cmd "dockerignore-policy" python linting/infra/dockerignore_policy.py
+}
+
+# run_quality - Run structural and maintenance quality checks.
+run_quality() {
+  bash "${ROOT_DIR}/scripts/quality.sh"
+}
+
+# run_hooks - Run self-linting on the hook tree if it exists.
+run_hooks() {
+  local hooks_dir="${ROOT_DIR}/.githooks/hooks/self"
+  if [[ ! -d ${hooks_dir} ]]; then
+    return 0
+  fi
+  bash "${hooks_dir}/lint.sh"
+  bash "${hooks_dir}/format.sh"
+  bash "${hooks_dir}/quality.sh"
+}
+
+case "${ONLY}" in
+  code)
+    run_code
     ;;
   shell)
     run_shell
     ;;
+  docs)
+    run_docs
+    ;;
+  docker)
+    run_docker
+    ;;
+  quality)
+    run_quality
+    ;;
+  hooks)
+    run_hooks
+    ;;
   "")
-    run_python
+    run_code
     run_shell
+    if [[ ${RUN_FAST} -eq 0 ]]; then
+      run_docs
+      run_docker
+      run_quality
+      run_hooks
+    fi
+    ;;
+  *)
+    echo "Unknown --only value: ${ONLY}" >&2
+    exit 2
     ;;
 esac

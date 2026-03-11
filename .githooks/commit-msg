@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Conventional commit validator for git commit messages.
+
+set -euo pipefail
+
+if [[ ${SKIP_HOOKS:-0} == "1" ]] || [[ ${SKIP_GITLINT:-0} == "1" ]] || [[ ${SKIP_COMMITLINT:-0} == "1" ]]; then
+  exit 0
+fi
+
+if ! command -v gitlint >/dev/null 2>&1; then
+  echo "error: gitlint is required for commit-message linting" >&2
+  exit 1
+fi
+
+gitlint --config .gitlint --msg-filename "$1"

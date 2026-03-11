@@ -3,6 +3,17 @@
 ruff==0.6.9
 isort==5.13.2
 mypy==1.11.2
+nox==2024.10.9
+pytest==8.2.2
+pytest-cov==5.0.0
+bandit==1.7.9
+pip-audit==2.7.3
+deptry==0.20.0
+vulture==2.11
+lizard==1.17.31
+codespell==2.3.0
+gitlint==0.19.1
+pymarkdownlnt==0.9.35
 shellcheck-py==0.10.0.1
 numpy==1.26.4
 import-linter==2.1

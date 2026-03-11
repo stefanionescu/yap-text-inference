@@ -1,0 +1,8 @@
+tests/support/messages/
+tests/support/prompts/
+node_modules/
+.venv/
+.git/
+coverage.xml
+pytest.xml
+htmlcov/

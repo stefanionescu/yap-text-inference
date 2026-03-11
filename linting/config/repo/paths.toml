@@ -1,0 +1,7 @@
+src = "src"
+tests = "tests"
+config = "src/config"
+scripts = "scripts"
+docker = "docker"
+hooks = ".githooks"
+linting = "linting"

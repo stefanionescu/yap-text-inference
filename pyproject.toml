@@ -113,3 +113,87 @@ name = "scripts must not import engines directly"
 type = "forbidden"
 source_modules = ["src.scripts"]
 forbidden_modules = ["src.engines"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "src/scripts/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 35
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.deptry]
+exclude = [
+    ".venv",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    "node_modules",
+    "docker",
+]
+ignore_notebooks = true
+requirements_files = [
+    "requirements-local.txt",
+    "requirements-tool.txt",
+    "requirements-trt.txt",
+    "requirements-vllm.txt",
+    "requirements-llmcompressor.txt",
+]
+requirements_files_dev = ["requirements-dev.txt"]
+known_first_party = ["src", "tests"]
+
+[tool.deptry.per_rule_ignores]
+DEP001 = ["tensorrt_llm", "flashinfer", "async_timeout", "cuda", "mpi4py"]
+DEP002 = [
+    "accelerate",
+    "compressed-tensors",
+    "cuda-python",
+    "fla-core",
+    "ftfy",
+    "hf_transfer",
+    "httpx",
+    "loguru",
+    "mistral_common",
+    "ninja",
+    "numpy",
+    "nvidia-ml-py",
+    "orjson",
+    "packaging",
+    "protobuf",
+    "python-dotenv",
+    "pyyaml",
+    "rich",
+    "safetensors",
+    "sentencepiece",
+    "setuptools",
+    "snac",
+    "soundfile",
+    "starlette",
+    "tqdm",
+    "tokenizers",
+    "triton",
+    "uvicorn",
+    "uvloop",
+    "wheel",
+]
+DEP003 = ["anyio", "torchvision"]
+DEP004 = ["tomli", "nox", "pytest"]

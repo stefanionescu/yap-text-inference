@@ -16,7 +16,7 @@ ENV FORCE_CUDA=1
 ENV MAX_JOBS=8
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \
     python3.12-dev \
     python3.12-venv \
@@ -97,7 +97,7 @@ ENV CHAT_MODEL_PATH=/opt/models/chat
 ENV TOOL_MODEL_PATH=/opt/models/tool
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \
     python3.12-venv \
     ca-certificates \
@@ -167,6 +167,11 @@ COPY common/scripts/ /app/common/scripts/
 # Clean up build-time-only download scripts and set proper permissions
 RUN rm -rf /app/download /app/common/download \
     && chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
+
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app /opt/models /opt/venv
+
+USER appuser
 
 # Expose port
 EXPOSE 8000

@@ -1,0 +1,54 @@
+rules:
+  - id: python-no-eval-exec
+    message: Avoid eval/exec in Python code.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: exec(...)
+    paths:
+      include:
+        - /src/**/*.py
+        - /docker/**/*.py
+
+  - id: python-no-subprocess-shell-true
+    message: Avoid subprocess calls with shell=True.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.run(..., shell=True, ...)
+          - pattern: subprocess.Popen(..., shell=True, ...)
+          - pattern: subprocess.call(..., shell=True, ...)
+          - pattern: subprocess.check_call(..., shell=True, ...)
+          - pattern: subprocess.check_output(..., shell=True, ...)
+    paths:
+      include:
+        - /src/**/*.py
+
+  - id: python-no-tests-imports
+    message: Production Python modules must not import from tests.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: import tests.$X
+          - pattern: from tests.$X import $Y
+    paths:
+      include:
+        - /src/**/*.py
+
+  - id: bash-no-eval
+    message: Avoid eval in shell scripts.
+    severity: ERROR
+    languages: [bash]
+    pattern: eval ...
+    paths:
+      include:
+        - /scripts/**/*.sh
+        - /docker/**/*.sh
+        - /.githooks/**/*.sh
+        - /.githooks/pre-commit
+        - /.githooks/pre-push
+        - /.githooks/commit-msg

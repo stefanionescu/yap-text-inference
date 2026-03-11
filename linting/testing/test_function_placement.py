@@ -13,9 +13,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import TESTS_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
+from shared import TESTS_DIR, rel, report, parse_source, load_config_doc, iter_python_files  # noqa: E402
 
-ALLOWED_SUITE_DIRS = {"unit", "integration", "e2e"}
+_TESTING_RULES = load_config_doc("rules", "testing.toml")
+_PLACEMENT_RULE = _TESTING_RULES.get("test_function_placement")
+if not isinstance(_PLACEMENT_RULE, dict):
+    _PLACEMENT_RULE = {}
+ALLOWED_SUITE_DIRS = {
+    str(value) for value in _PLACEMENT_RULE.get("allowed_suite_dirs", []) if isinstance(value, str)
+} or {"unit", "integration", "e2e"}
+_MIN_SUITE_PATH_PARTS = 3
 
 
 def main() -> int:
@@ -29,7 +36,11 @@ def main() -> int:
         rel_to_tests = py_file.relative_to(TESTS_DIR)
         top_dir = rel_to_tests.parts[0] if len(rel_to_tests.parts) > 1 else None
 
-        if top_dir == "suites" and len(rel_to_tests.parts) > 2 and rel_to_tests.parts[1] in ALLOWED_SUITE_DIRS:
+        if (
+            top_dir == "suites"
+            and len(rel_to_tests.parts) >= _MIN_SUITE_PATH_PARTS
+            and rel_to_tests.parts[1] in ALLOWED_SUITE_DIRS
+        ):
             continue
 
         result = parse_source(py_file)

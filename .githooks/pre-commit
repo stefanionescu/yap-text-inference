@@ -1,21 +1,33 @@
 #!/usr/bin/env bash
+# Pre-commit orchestrator for fast staged lint checks.
+
 set -euo pipefail
 
-HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${HOOK_DIR}/.." && pwd)"
-cd "${REPO_ROOT}"
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+HOOKS_DIR="${ROOT_DIR}/.githooks/hooks"
 
-if [[ ! -f "scripts/lint.sh" ]]; then
-  echo "pre-commit: scripts/lint.sh not found" >&2
-  exit 1
-fi
+# shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook runtime helper -- ticket: N/A
+source "${ROOT_DIR}/.githooks/lib/runtime.sh"
 
-tmp="$(mktemp)"
-if bash scripts/lint.sh >"${tmp}" 2>&1; then
-  rm -f "${tmp}"
+if [[ ${SKIP_HOOKS:-0} == "1" ]]; then
   exit 0
 fi
 
-cat "${tmp}" >&2
-rm -f "${tmp}"
-exit 1
+FAILED=0
+# shellcheck disable=SC2034  # lint:justify -- reason: variable name is passed indirectly to run_hook_no_stdin -- ticket: N/A
+SKIP_PYTHON_STAGE="${SKIP_PYTHON:-${SKIP_CODE:-0}}"
+
+run_hook_no_stdin "[pre-commit] env guard" "SKIP_ENV_CHECK" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/global/security.sh" --mode=commit
+run_hook_no_stdin "[pre-commit] docs" "SKIP_DOCS" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/global/lint.sh" --mode=commit
+run_hook_no_stdin "[pre-commit] python" "SKIP_PYTHON_STAGE" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/project/python.sh" --mode=commit
+run_hook_no_stdin "[pre-commit] shell" "SKIP_SHELL" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/project/shell.sh" --mode=commit
+run_hook_no_stdin "[pre-commit] docker" "SKIP_DOCKER" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/project/docker.sh" --mode=commit
+run_hook_no_stdin "[pre-commit] hooks lint" "SKIP_HOOKS_SELF" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/self/lint.sh"
+run_hook_no_stdin "[pre-commit] hooks format" "SKIP_HOOKS_SELF" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/self/format.sh"
+
+if [[ ${FAILED} == "1" ]]; then
+  echo -e "${RED}Commit blocked. Bypass: git commit --no-verify${NC}"
+  exit 1
+fi
+
+exit 0

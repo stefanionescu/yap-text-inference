@@ -23,7 +23,7 @@ def get_hf_token() -> str | None:
     if token:
         return token
 
-    secret_path = "/run/secrets/hf_token"  # noqa: S105
+    secret_path = "/run/secrets/hf_token"  # noqa: S105  # nosec B105
     if os.path.isfile(secret_path):
         with open(secret_path) as f:
             token = f.read().strip() or None

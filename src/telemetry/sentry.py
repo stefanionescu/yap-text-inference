@@ -48,7 +48,7 @@ def init_sentry() -> None:
         if torch.cuda.is_available():
             sentry_sdk.set_tag("gpu.device.name", torch.cuda.get_device_name(0))
     except Exception:  # noqa: BLE001
-        pass
+        logger.debug("failed to attach GPU metadata to Sentry", exc_info=True)
 
     _initialized = True
     logger.info("Sentry initialized: environment=%s", SENTRY_ENVIRONMENT)
@@ -64,7 +64,7 @@ def shutdown_sentry() -> None:
 
         sentry_sdk.flush(timeout=2.0)
     except Exception:  # noqa: BLE001
-        pass
+        logger.debug("failed to flush Sentry during shutdown", exc_info=True)
     _initialized = False
 
 

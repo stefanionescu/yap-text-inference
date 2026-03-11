@@ -16,7 +16,7 @@ For an overview of all stacks, see the [main Docker README](../README.md).
 - [Runtime Variables](#runtime-variables)
 - [Troubleshooting](#troubleshooting)
 
-## How It Works
+## How it Works
 
 1. **Build time**: The pre-built TRT engine is downloaded from HuggingFace and baked into the image along with the tokenizer/checkpoint.
 2. **Runtime**: The server starts immediately with the baked-in engine -- no compilation at startup.

@@ -150,7 +150,6 @@ def generate_readme(
     awq_version: str,
     quant_summary: str,
     metadata: dict[str, Any],
-    out_dir: str,
 ) -> str:
     """Generate a comprehensive README using templates."""
 

@@ -172,6 +172,9 @@ COPY common/scripts/ /app/common/scripts/
 RUN rm -rf /app/download /app/common/download \
     && chmod +x /app/scripts/*.sh /app/scripts/**/*.sh /app/common/scripts/*.sh 2>/dev/null || true
 
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app /opt/models /opt/engines /opt/venv
+
 # Default environment knobs for production
 ENV HF_TRANSFER=1 \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
@@ -197,6 +200,8 @@ ENV HOST=0.0.0.0 \
     PORT=8000
 
 WORKDIR /app
+
+USER appuser
 
 # Health check for production readiness
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \

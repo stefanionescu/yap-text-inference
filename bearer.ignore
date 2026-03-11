@@ -1,0 +1,218 @@
+{
+  "346f4998d4647908154388b04df89b41_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "f49c022ad2b492c2705942f2b92d3428_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "ce26f637fac43a3e9243862b4ebebc64_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "ce26f637fac43a3e9243862b4ebebc64_1": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "ce26f637fac43a3e9243862b4ebebc64_2": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "7e7b6a3cde6e84e69621ef148a933b89_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "e9b9929f9e3157cec38b0ce5f498cf9d_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "e9b9929f9e3157cec38b0ce5f498cf9d_1": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "e9b9929f9e3157cec38b0ce5f498cf9d_2": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "e9b9929f9e3157cec38b0ce5f498cf9d_3": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "e9b9929f9e3157cec38b0ce5f498cf9d_4": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "e9b9929f9e3157cec38b0ce5f498cf9d_5": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "e9b9929f9e3157cec38b0ce5f498cf9d_6": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "6359e9b3f90c8a1951a91637d12f36ae_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "6359e9b3f90c8a1951a91637d12f36ae_1": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "6359e9b3f90c8a1951a91637d12f36ae_2": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "6359e9b3f90c8a1951a91637d12f36ae_3": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "6359e9b3f90c8a1951a91637d12f36ae_4": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "167d4a339a62e8d1162c11f65403b25e_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "167d4a339a62e8d1162c11f65403b25e_1": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "167d4a339a62e8d1162c11f65403b25e_2": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "167d4a339a62e8d1162c11f65403b25e_3": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "167d4a339a62e8d1162c11f65403b25e_4": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "167d4a339a62e8d1162c11f65403b25e_5": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "58a4a562cf0f5df0c8f4e76f3de45a57_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "58a4a562cf0f5df0c8f4e76f3de45a57_1": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "58a4a562cf0f5df0c8f4e76f3de45a57_2": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "cfad1038e1f4b854dc032010914516f1_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "3640e4d6aeb5a88b76cf7916140f815f_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "3640e4d6aeb5a88b76cf7916140f815f_1": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "a6c0b40de50d0d9ab230056cfd1c5663_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "254f2f4ab7106fb35edb87e987211064_0": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "254f2f4ab7106fb35edb87e987211064_1": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "254f2f4ab7106fb35edb87e987211064_2": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "254f2f4ab7106fb35edb87e987211064_3": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  },
+  "254f2f4ab7106fb35edb87e987211064_4": {
+    "author": "Codex",
+    "comment": "Reviewed operator-controlled local filesystem path; false positive for this repo context",
+    "false_positive": true,
+    "ignored_at": "2026-03-11T03:29:02Z"
+  }
+}

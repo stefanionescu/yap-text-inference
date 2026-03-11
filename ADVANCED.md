@@ -78,7 +78,7 @@ Set the relevant environment variables to activate each backend:
 | `OTEL_METRICS_EXPORT_INTERVAL_MS` | `15000` | Metric export interval |
 | `OTEL_TRACES_BATCH_SIZE` | `512` | Max spans per export batch |
 
-### Staging vs Production
+### Staging Vs Production
 
 Set `SENTRY_ENVIRONMENT` and `AXIOM_ENVIRONMENT` to `staging` for non-production deployments. All events and metrics are tagged with the environment value.
 

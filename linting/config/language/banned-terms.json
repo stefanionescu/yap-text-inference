@@ -1,0 +1,50 @@
+{
+    "version": 1,
+    "bannedTerms": ["shim", "shims", "hacky", "magic happens", "belt and suspenders"],
+    "matching": {
+        "caseInsensitive": true
+    },
+    "stringContentExclusions": {
+        "pathContains": ["/tests/support/messages/", "/tests/support/prompts/"]
+    },
+    "exclusions": {
+        "pathContains": [
+            "/node_modules/",
+            "/.venv/",
+            "/.git/",
+            "/rules/",
+            "/build/",
+            "/dist/",
+            "/coverage/",
+            "/htmlcov/",
+            "/tests/config/",
+            "/linting/testing/"
+        ],
+        "basenameEquals": [
+            "bun.lock",
+            ".DS_Store",
+            "banned-terms.json"
+        ],
+        "extensionEquals": [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp",
+            ".svg",
+            ".pdf",
+            ".ico",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".mp3",
+            ".wav",
+            ".mp4",
+            ".mov",
+            ".ttf",
+            ".otf",
+            ".woff",
+            ".woff2"
+        ]
+    }
+}

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
+import subprocess  # nosec B404
 from src.config.gpu import SM_COMPUTE_CAPABILITY, DEFAULT_COMPUTE_CAPABILITY
 
 
@@ -23,7 +23,7 @@ def detect_cuda_version() -> str:
         nvcc_path = shutil.which("nvcc")
         if not nvcc_path:
             return "unknown"
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(  # noqa: S603  # nosec B603
             [nvcc_path, "--version"],
             capture_output=True,
             text=True,
@@ -48,7 +48,7 @@ def detect_gpu_name() -> str:
         smi_path = shutil.which("nvidia-smi")
         if not smi_path:
             return "unknown"
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(  # noqa: S603  # nosec B603
             [smi_path, "--query-gpu=name", "--format=csv,noheader"],
             capture_output=True,
             text=True,

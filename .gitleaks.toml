@@ -1,0 +1,26 @@
+title = "yap-text-inference gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Example environment files and test fixtures"
+paths = [
+  '''\.cache/''',
+  '''\.env\.example$''',
+  '''\.mypy_cache/''',
+  '''\.pytest_cache/''',
+  '''\.ruff_cache/''',
+  '''\.venv/''',
+  '''codeql-db/''',
+  '''node_modules/''',
+  '''tests/support/messages/''',
+  '''tests/support/prompts/'''
+]
+
+[[allowlists]]
+description = "Example Docker image tags in repo docs"
+regexTarget = "line"
+regexes = [
+  '''yap-text-api:(m?trt|trt)-qwen30b-(sm90|mount)'''
+]

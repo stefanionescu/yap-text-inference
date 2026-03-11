@@ -192,7 +192,7 @@ ws://localhost:8000/ws?api_key=your_secret_key
 
 ## Troubleshooting
 
-### CUDA/GPU not available
+### CUDA/GPU Not Available
 
 **Symptom**: Container fails to start or reports no GPU.
 **Cause**: nvidia-docker runtime not installed or `--gpus` flag missing.
@@ -202,43 +202,43 @@ ws://localhost:8000/ws?api_key=your_secret_key
 docker run --gpus all nvidia/cuda:13.0.0-runtime-ubuntu24.04 nvidia-smi
 ```
 
-### Out of memory
+### Out of Memory
 
 **Symptom**: Server crashes or fails to load the model.
 **Cause**: Model exceeds available GPU memory at the configured fraction.
 **Fix**: Reduce GPU fractions (`-e CHAT_GPU_FRAC=0.60`) or use int8 KV cache (`-e KV_DTYPE=int8`).
 
-### Large image size
+### Large Image Size
 
 **Symptom**: Image is 10-50 GB.
 **Cause**: Models are baked into the image at build time. This is expected.
 **Fix**: No action needed. The large size enables instant startup without runtime downloads.
 
-### GPU architecture mismatch (TRT)
+### GPU Architecture Mismatch (TRT)
 
 **Symptom**: `GPU ARCHITECTURE MISMATCH` error at startup.
 **Cause**: The baked-in TRT engine was compiled for a different GPU architecture than the runtime GPU.
 **Fix**: Check your GPU (`nvidia-smi --query-gpu=compute_cap --format=csv,noheader`) and rebuild with the correct `TRT_ENGINE_LABEL`. See [TRT GPU Compatibility](trt/README.md#gpu-compatibility).
 
-### Model not allowlisted
+### Model Not Allowlisted
 
 **Symptom**: `not allowlisted for engine` or `not in the allowed list` at build time.
 **Cause**: The model is not in the allowlist in `src/config`.
 **Fix**: Use an allowlisted model, or provide a local model path.
 
-### Tag prefix mismatch
+### Tag Prefix Mismatch
 
 **Symptom**: `TAG must start with 'vllm-'` / `'trt-'` / `'tool-'` at build time.
 **Cause**: Tag does not match the required prefix for the engine/deploy mode.
 **Fix**: Use the correct prefix. See [Tag Naming Convention](#tag-naming-convention).
 
-### Engine metadata missing (TRT)
+### Engine Metadata Missing (TRT)
 
 **Symptom**: `MISSING ENGINE METADATA` at startup.
 **Cause**: Engine directory missing `build_metadata.json`.
 **Fix**: Rebuild the TRT engine. See [TRT Troubleshooting](trt/README.md#troubleshooting).
 
-### Engine label format invalid (TRT)
+### Engine Label Format Invalid (TRT)
 
 **Symptom**: `TRT_ENGINE_LABEL has invalid format` at build time.
 **Cause**: Label doesn't match expected pattern.

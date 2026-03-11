@@ -1,0 +1,18 @@
+[no_print_statements]
+allowed_prefixes = [
+    "src/scripts/",
+    "src/hf/",
+    "src/quantization/",
+]
+allowed_exact_paths = ["src/state/hf.py"]
+
+[no_shell_true_subprocess]
+forbidden_functions = ["run", "Popen", "call", "check_call", "check_output"]
+
+[no_inline_python]
+patterns = [
+    "\\bpython3?\\s+-c\\b",
+    "\\bpython3?\\s+<<",
+    "\\$\\{?PYTHON_EXEC\\}?\\s+-c\\b",
+    "\\$\\{?PYTHON_EXEC\\}?\\s+<<",
+]

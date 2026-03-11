@@ -1,0 +1,6 @@
+exclude_dirs:
+  - tests
+  - linting
+  - .venv
+skips:
+  - B101

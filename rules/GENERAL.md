@@ -1,146 +1,148 @@
-# General Engineering Guidelines
+# How to Work in This Repo
 
-Shared engineering expectations for all work in this codebase. Use these rules as the default approach for new logic and refactors.
+These rules apply across the inference repository. Start here, then follow the narrower rule file for the area you are touching.
 
-## Planning and implementation
-- Draft a plan before coding, share it, and get approval before changes.
-- Iterate on the plan when constraints or questions arise; proceed only after clear agreement.
-- Run project linters/tests from the CLI after implementation so the tree stays clean.
-- Whenever you rename or move a file/module, audit the codebase for imports and update them immediately so nothing keeps referring to the old path.
-- Before adding a new module, directory, or helper, document which existing files you evaluated and why extending them was rejected.
+## Contents
 
-## Module layout
-- Prefer one class per file; split if a second class is needed.
-- Start each Python file with a module-level docstring describing its purpose and behavior; for shell scripts, add a header comment block after the shebang.
-- Place internal helpers before public exports so plumbing appears first.
-- Keep `__init__.py` files as import/re-export hubs; keep executable logic in dedicated modules.
-- Export each public symbol from a single place and avoid unused exports.
-- When you need explicit exports via `__all__`, define it only at the very bottom of the module after every class, function, and constant.
-- Avoid creating singletons or global instances in the defining module; instantiate them in entry-point scripts, factory functions, or dependency-injection setups instead.
-- Do not add module-level free functions that merely wrap a module-level singleton instance (e.g., `get_engine()` calling `_singleton.get()`). If a class manages state, the public API is the class itself—do not hide it behind free functions in the same file. This pattern creates hidden global state, complicates testing, and makes debugging harder because callers don't realize they're touching shared mutable state.
-- Do not trigger work at import time; expose callable entry points instead.
-- Keep files at or under 350 lines; split when approaching the limit. Data-heavy test data may exceed this when splitting would hurt clarity.
-- Use section dividers in this exact format when needed:
-  ```
-  # ============================================================================
-  # CLI
-  # ============================================================================
-  ```
-- Follow section dividers with exactly one blank line before the next code block.
+- [Thinking Before Coding](#thinking-before-coding)
+- [Development Workflow](#development-workflow)
+- [Verification](#verification)
+- [Git Hooks](#git-hooks)
+- [Linting and Security](#linting-and-security)
+- [Fix What You Find](#fix-what-you-find)
+- [Documentation](#documentation)
+- [Secrets and Sensitive Data](#secrets-and-sensitive-data)
+- [Package Management](#package-management)
+- [Rule Map](#rule-map)
 
-## Imports, data structures, and constants
-- Define local dataclasses, typed dictionaries, and custom errors directly under imports.
-- Keep module-level constants and lookup tables near the top so they precede executable code.
-- Avoid magic values inline; surface configuration knobs explicitly instead of hiding them in logic.
+## Thinking Before Coding
 
-## Configuration modules
-- Config modules should only export variables and constants—no functions, conditional logic, or side effects.
-- Keep resolution logic (e.g., deriving values from deployment mode or environment) in helper modules; config modules call these helpers to get final values.
-- Never modify `os.environ` or trigger I/O at config import time; move such side effects to explicit initialization functions called by entry points.
-- Dataclasses in config may define fields and defaults but should not contain methods with logic; keep matching or validation logic in corresponding helper modules.
+Read the relevant code before editing it. Trace the real runtime path, identify the failure modes, and choose the smallest correct change.
 
-## Documentation
-- Documentation tiers:
-  - README: core concepts, required env vars, primary workflows (deploy, run, stop), and minimum examples that are validated.
-  - ADVANCED (or similarly named deep-dives): engine/quantization details, operational playbooks (restart, health, logs), tuning flags, and troubleshooting.
-  - Feature/area-specific docs: only when scope is too deep for README; link from README or ADVANCED to avoid orphaned content.
-- Required structure for Markdown docs: short purpose statement, concise contents list near the top, prerequisites/env vars, step-by-step flows (setup, run, stop/restart), testing/validation notes, and links to canonical knobs/flags instead of duplicating tables.
-- Script and flag coverage: every host script must list all supported flags/env vars with descriptions and required/optional status. Avoid embedding default values in docs—they drift when code changes. Exception: server host/port defaults (e.g., `127.0.0.1:8000`) are stable enough to document.
-- Deduplication and layout: pick one canonical location for each table or process; other docs link back. Keep section ordering consistent with current README/ADVANCED patterns (features → quickstart → deployment → quantization → operations/restart/health/logs → tests/tools) unless there is a strong reason to diverge.
-- Style: professional tone, no emojis. Prefer prose descriptions of architecture over ASCII directory trees—use trees sparingly and only for small, specific subsets. Keep commands copy/pasteable, validated, and tied to current scripts/flags; note expected outputs or health checks when relevant.
-- Currency and ownership: update docs with every behavior change; when altering flags or defaults, the same PR must update the canonical doc. Avoid silent drift—flag gaps as follow-ups if unknown.
-- Validation: runnable examples must reflect current scripts and flags; if an example is unverified, mark it and add a follow-up task with owner. State any assumptions or prerequisites explicitly.
-- No hardcoded paths: do not reference specific file paths in documentation (e.g., "see `src/config/limits.py`"). Describe by module or concept name so docs remain valid when files move.
+Before adding a new file or directory, check whether an existing module already owns the behavior. Extending an existing file is usually better than creating a new catch-all helper.
 
-## Readability and style
-- Use clear, descriptive names for functions, variables, classes, files, and modules. Avoid vague identifiers like `data`, `info`, `temp`, `result`, `handle`, or `process`—prefer names that convey purpose, such as `user_session`, `parse_token_stream`, or `ConnectionState`.
-- Follow naming conventions consistently: `snake_case` for variables/functions, `PascalCase` for classes, `UPPER_SNAKE_CASE` for constants, and positive boolean predicates such as `is_ready` or `should_retry`.
-- Do not embed file or directory names in function or variable names; if a function lives in `model_detect.sh`, name it `classify_prequant`, not `model_detect_classify_prequant`. The file path already provides context—repeating it creates noise and clutters call sites.
-- Keep functions shallow—avoid more than two or three levels of nesting. When conditionals or loops push deeper, extract the inner logic into helper functions.
-- Give each function a single, well-defined responsibility; extract unrelated work into helpers or new modules.
-- Limit side effects and keep inputs/outputs narrowly scoped; document any unavoidable shared state or exceptions.
-- Avoid 'maybe' in function or variable names—it conflates existence with optionality. Use `is_*`, `has_*`, or `can_*` predicates for booleans, and return `Optional[T]` with a clear noun for nullable values.
-- Remove deprecated or unused logic rather than leaving shims.
-- Delete unused parameters promptly so signatures match active behavior.
-- Avoid lazy-loading or lazy-instantiation in all files.
-- Mark code smells or risky patterns with a `# TODO(cleanup):` or `# WARNING:` comment explaining the concern so they can be tracked and addressed.
-- Keep control flow straightforward: prefer early returns over deep nesting, avoid multiple exit points from loops, simplify compound boolean expressions, and limit each function to one main path with clear exception handling.
+Plan before editing. Share the plan when the work is broad, risky, or crosses multiple subsystems. For small, local changes, think through the plan and execute it directly.
 
-## Comments
-- Keep comments concise and focused on current behavior, NOT on past actions we took or refactors.
-- Prefer intent ("why") over line-by-line narration, especially for non-obvious control flow.
-- Do not remove useful comments just to reduce length; reorganize instead when needed.
-- Never embed default values in comments or docstrings—values change and comments drift. Instead, reference the variable name or env var without stating its value.
-- Never reference specific file paths in comments (e.g., "see src/config/limits.py"). Code moves; comments stay. Describe the concept or module name instead (e.g., "see the limits config" or "defined in the quantization helpers").
+## Development Workflow
 
-## Function contracts and typing
-- Annotate every function and method with explicit type hints (no implicit `Any`); introduce Protocols or TypedDicts when structural typing is needed.
-- Give each public function, class, and module a docstring that states its purpose, key parameters, return value, and noteworthy side effects.
-- Validate inputs at the top of the function and fail fast with domain-specific errors or `ValueError`—never mutate caller data to “make it fit.”
-- Accept required data first, optional overrides second, and injected dependencies last; favor keyword-only parameters for behavioral toggles.
+1. Read the code and understand the boundary you are changing.
+2. Calibrate the solution. Avoid both underengineering and speculative abstraction.
+3. Implement incrementally. Verify after each meaningful step.
+4. Run the narrowest useful checks first, then the full repo gates for the touched area.
+5. Review the changed files before stopping. Make sure every file belongs to the change.
 
-## Error handling and logging
-- Define a module-level `logger = logging.getLogger(__name__)` and route all diagnostic output through it; never use `print` for runtime logging.
-- Raise purpose-built exceptions so callers can branch on intent; centralize exception classes per repo instead of inventing ad-hoc classes inline.
-- Wrap external I/O (network, subprocess, filesystem) in try/except blocks that attach enough context (IDs, payload sizes) before re-raising.
-- Do not swallow exceptions—either convert them to a typed error that propagates, or log and re-raise so upstream handlers can react.
+Prefer the repo command hub over ad hoc one-off commands:
 
-## Testing
-- Ship every behavioral change with a matching automated test (unit, integration, or system) that would fail without the change.
-- Keep tests deterministic by stubbing clocks, network calls, randomness, and filesystem writes; centralize shared test data so they can be reused.
-- Prefer dependency/parameter injection with explicit fakes/stubs in tests, especially unit tests; avoid monkeypatching module globals or environment as a default strategy.
-- Add a regression test for each bug fix that previously failed to prevent repeats; reference the failure scenario in the test's docstring or comments.
-- Name test modules `test_*.py`, sample data modules `sample_*`, and doubles `fake_*`/`stub_*` so intent stays obvious.
-- Limit test modules to the smallest practical scope; extract reusable builders into helper modules or shared data modules instead of duplicating factories inline.
+- Fast lint loop: `bash scripts/lint.sh --fast`
+- Full lint: `bash scripts/lint.sh`
+- Tests: `python -m pytest -q`
+- Coverage: `bash scripts/coverage.sh`
+- Security: `bash scripts/security.sh`
+- Nox sessions: `nox -s lint`, `nox -s test`, `nox -s coverage`, `nox -s security`
 
-## Test CLI output
-- Use `print()` for test script user-facing output; reserve `logging` for diagnostic/debug messages that should be suppressible.
-- Route all console formatting through `tests/helpers/fmt.py`—use `dim()`, `bold()`, `green()`, `red()`, `cyan()`, `yellow()`, `magenta()` for colors and `section_header()`, `exchange_header()`, `exchange_footer()` for visual structure.
-- Format test results with `format_pass()`, `format_fail()`, and `format_info()` for consistent pass/fail presentation.
-- Format user and assistant messages with `format_user()` and `format_assistant()` for conversation displays.
-- Use `format_metrics_inline()` for compact latency/throughput summaries and `format_ttfb_summary()` for detailed TTFB tables.
-- For functions that emit multiple lines, accept a `sink: Callable[[str], None]` parameter (defaulting to `print`) so callers can redirect or capture output.
-- Disable ANSI colors automatically when stdout is not a tty; the `_USE_COLOR` flag in `fmt.py` handles this—do not add manual tty checks elsewhere.
+## Verification
 
-Example test output patterns:
-```python
-from tests.helpers.fmt import (
-    dim, bold, green, red, cyan,
-    section_header, exchange_header, exchange_footer,
-    format_user, format_assistant, format_pass, format_fail,
-    format_metrics_inline,
-)
+Verification is required, not optional. Pick the commands that match the scope:
 
-# Section headers for visual separation
-print(section_header("WARMUP TEST"))
+- Python or runtime logic: `bash scripts/lint.sh --only code` and `python -m pytest -q`
+- Shell, hooks, or host scripts: `bash scripts/lint.sh --only shell`
+- Docs or rules changes: `bash scripts/lint.sh --only docs`
+- Docker changes: `bash scripts/lint.sh --only docker`
+- Structural or dependency hygiene work: `bash scripts/lint.sh --only quality`
+- Coverage and Sonar inputs: `bash scripts/coverage.sh`
+- Security-sensitive, dependency, Docker, or hook work: `bash scripts/security.sh`
 
-# Exchange blocks for conversation display
-print(exchange_header(idx=1, persona="flirty", gender="female"))
-print(format_user("hello there"))
-print(format_assistant("Hey! How's it going?"))
-print(dim(format_metrics_inline({"ttfb_ms": 142, "total_ms": 890, "chunks": 12})))
-print(exchange_footer())
+If you changed more than one area, run the full suites instead of a partial one.
 
-# Test results
-print(format_pass("connection established"))
-print(format_fail("timeout", reason="no response after 30s"))
+## Git Hooks
 
-# Multi-line emitters use sink pattern
-def emit_summary(results: list[dict], sink: Callable[[str], None] = print) -> None:
-    sink(section_header("SUMMARY"))
-    for r in results:
-        sink(f"  {r['name']}: {r['status']}")
+Hooks live under `.githooks/`. Install them with:
+
+```bash
+bun install
+bun run setup:hooks
 ```
 
-## State and concurrency
-- Model shared runtime state with frozen dataclasses or TypedDicts and keep their definitions in an obvious, centralized module so structure stays discoverable.
-- Treat state objects as immutable snapshots; when an update is required, construct a new instance instead of mutating one that other callers might hold.
-- Pass state explicitly through function parameters instead of stashing it in globals or module-level caches.
-- Keep singleton instances in a dedicated registry or container module (`registry.py`, `container.py`) rather than scattering them across factory modules. Entry-point code (servers, CLI scripts) should be the only code that instantiates or retrieves singletons; everything else receives dependencies as parameters.
-- When multiple async tasks or threads might touch the same resource, guard access with `asyncio.Lock`, `contextlib.AsyncExitStack`, or threading locks rather than relying on timing.
+Current hook model:
 
-## Shell and CLI scripts
-- Start every shell script with `#!/usr/bin/env bash` and `set -euo pipefail`; enable `IFS=$'\n\t'` when splitting on lines.
-- Declare read-only configuration with `readonly VAR=value` and prefer functions over inline command sequences for reuse.
-- Keep script function names in `snake_case` and log via a shared helper (`log_info`, `log_error`) rather than ad-hoc `echo` prefixes.
-- Before writing a new script, confirm whether the behavior belongs in an existing script under `scripts/` or `src/scripts/` and explain the decision in the change description.
+- `pre-commit`: fast repo guards, docs checks, code lint, shell lint, Docker lint, and hook self-checks
+- `commit-msg`: conventional commit validation through `commitlint`
+- `pre-push`: heavier quality, coverage, and security checks
+
+Use skip flags only when there is a real reason. They are escape hatches, not the normal workflow.
+
+Commit messages follow conventional commits:
+
+```text
+type(scope): lowercase subject
+```
+
+Allowed scopes are:
+
+`core`, `config`, `handlers`, `messages`, `tokens`, `engines`, `quantization`, `docker`, `scripts`, `tests`, `lint`, `hooks`, `docs`, `deps`, `rules`
+
+## Linting and Security
+
+Lint is a gate. Do not suppress findings just to get a green run.
+
+This repo now treats the following as standard quality and security signals:
+
+- `ruff`, `mypy`, `import-linter`, custom AST rules
+- `shellcheck`, `shfmt`, custom shell rules
+- `markdownlint`, `codespell`, banned-term checks
+- `lizard`, `deptry`, `vulture`, `jscpd`
+- `bandit`, `pip-audit`, `osv-scanner`, `semgrep`
+- `gitleaks`, `trivy`, `bearer`, `CodeQL`, `SonarQube`
+
+If a tool needs a baseline or allowlist, document the reason in the baseline file. Do not hide real findings behind broad ignores.
+
+## Fix What You Find
+
+If you are already in a file and you see a nearby lint violation, dead code path, stale comment, bad type, or obvious code smell, fix it.
+
+Do not widen the change into an unrelated refactor. Small adjacent cleanup is expected. Broad redesign is not.
+
+## Documentation
+
+Docs must match the code and scripts that exist today.
+
+Whenever behavior changes, update the corresponding docs in the same change:
+
+- README-level docs for core workflows
+- ADVANCED docs for deeper operational details
+- Docker README files for image-specific build and run flows
+- rules docs for agent-facing engineering guidance
+
+Do not hardcode stale defaults in prose when the script or config is the real source of truth. Prefer naming the flag, config variable, or command over copying its current literal value unless the value is intentionally stable.
+
+## Secrets and Sensitive Data
+
+Never commit secrets, tokens, private keys, or internal credentials.
+
+Do not log sensitive payloads, raw auth headers, full environment dumps, or user data that is not needed for debugging. Log identifiers and context instead.
+
+Treat prompt fixtures, websocket payloads, and model runtime config as potentially sensitive. Keep test fixtures sanitized.
+
+## Package Management
+
+Python dependencies stay in the pinned `requirements-*.txt` files and are executed through Python or `nox`.
+
+JS-based lint tooling at the repo root is Bun-managed:
+
+- use `bun install` to sync dependencies
+- use `bun run <script>` for package scripts
+- use `bunx <tool>` for direct binary execution
+- commit `bun.lock`
+- do not introduce `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`
+
+`nox` remains the canonical Python-native command hub. Bun exists here to manage the markdown, commit, and duplication tooling cleanly.
+
+## Rule Map
+
+Use the narrower rule file when the task is concentrated in one area:
+
+- [SPECIFIC.md](./SPECIFIC.md): repo layout, boundaries, and inference-specific priorities
+- [PYTHON.md](./PYTHON.md): Python module, config, state, and runtime rules
+- [SHELL.md](./SHELL.md): shell, hooks, and host-orchestration rules
+- [DOCKER.md](./DOCKER.md): Docker image, Dockerfile, and container-security rules
+- [TESTING.md](./TESTING.md): test layout, deterministic testing, and coverage rules

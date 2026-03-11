@@ -1,0 +1,5 @@
+[test_function_placement]
+allowed_suite_dirs = ["unit", "integration", "e2e"]
+
+[test_file_prefix]
+scan_dirs = ["tests/suites"]

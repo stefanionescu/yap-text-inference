@@ -55,7 +55,6 @@ def regenerate_readme(folder: Path, metadata: dict[str, Any]) -> None:
         awq_version=awq_version,
         quant_summary=quant_summary,
         metadata=metadata,
-        out_dir=str(folder),
     )
 
     readme_path = folder / "README.md"

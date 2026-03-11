@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Pre-push orchestrator for full lint, security, and coverage gates.
+
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+HOOKS_DIR="${ROOT_DIR}/.githooks/hooks"
+
+# shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook runtime helper -- ticket: N/A
+source "${ROOT_DIR}/.githooks/lib/runtime.sh"
+
+if [[ ${SKIP_HOOKS:-0} == "1" ]]; then
+  exit 0
+fi
+
+FAILED=0
+# shellcheck disable=SC2034  # lint:justify -- reason: variable name is passed indirectly to run_hook_no_stdin -- ticket: N/A
+SKIP_PYTHON_STAGE="${SKIP_PYTHON:-${SKIP_CODE:-0}}"
+
+run_hook_no_stdin "[pre-push] python" "SKIP_PYTHON_STAGE" "${TIMEOUT_FULL_HOOKS}" "${HOOKS_DIR}/project/python.sh" --mode=push
+run_hook_no_stdin "[pre-push] shell" "SKIP_SHELL" "${TIMEOUT_FULL_HOOKS}" "${HOOKS_DIR}/project/shell.sh" --mode=push
+run_hook_no_stdin "[pre-push] docs" "SKIP_DOCS" "${TIMEOUT_FULL_HOOKS}" "${HOOKS_DIR}/project/docs.sh" --mode=push
+run_hook_no_stdin "[pre-push] docker" "SKIP_DOCKER" "${TIMEOUT_FULL_HOOKS}" "${HOOKS_DIR}/project/docker.sh" --mode=push
+run_hook_no_stdin "[pre-push] quality" "SKIP_QUALITY" "${TIMEOUT_FULL_HOOKS}" "${HOOKS_DIR}/project/quality.sh" --mode=push
+run_hook_no_stdin "[pre-push] security" "SKIP_SECURITY_SCANS" "${TIMEOUT_SECURITY_HOOKS}" "${HOOKS_DIR}/project/security.sh" --mode=push
+run_hook_no_stdin "[pre-push] tests" "SKIP_TESTS" "${TIMEOUT_FULL_HOOKS}" "${HOOKS_DIR}/project/tests.sh" --mode=push
+run_hook_no_stdin "[pre-push] hooks lint" "SKIP_HOOKS_SELF" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/self/lint.sh"
+run_hook_no_stdin "[pre-push] hooks format" "SKIP_HOOKS_SELF" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/self/format.sh"
+run_hook_no_stdin "[pre-push] hooks quality" "SKIP_HOOKS_SELF" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/self/quality.sh"
+run_hook_no_stdin "[pre-push] hooks security" "SKIP_HOOKS_SELF" "${TIMEOUT_FAST_HOOKS}" "${HOOKS_DIR}/self/security.sh"
+
+if [[ ${FAILED} == "1" ]]; then
+  echo -e "${RED}Push blocked. Bypass: git push --no-verify${NC}"
+  exit 1
+fi
+
+exit 0

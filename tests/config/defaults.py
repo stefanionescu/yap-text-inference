@@ -8,6 +8,7 @@ for all test scripts.
 
 from __future__ import annotations
 
+from src.config.personas import PERSONA_VARIANT_KEYS
 from tests.support.prompts.detailed import ANNA_FLIRTY, MARK_FLIRTY
 
 WARMUP_FALLBACK_MESSAGE = "hey there! how are you today?"
@@ -27,9 +28,13 @@ HISTORY_BENCH_DEFAULT_REQUESTS = 8
 HISTORY_BENCH_DEFAULT_CONCURRENCY = 4
 HISTORY_BENCH_DEFAULT_TIMEOUT_SEC = 180.0
 
+_PERSONA_PROMPTS: dict[tuple[str, str], str] = {
+    ("female", "flirty"): ANNA_FLIRTY,
+    ("male", "flirty"): MARK_FLIRTY,
+}
+
 PERSONA_VARIANTS = [
-    ("female", "flirty", ANNA_FLIRTY),
-    ("male", "flirty", MARK_FLIRTY),
+    (gender, personality, _PERSONA_PROMPTS[(gender, personality)]) for gender, personality in PERSONA_VARIANT_KEYS
 ]
 
 # Sampling defaults mirrored from src.config.sampling for CLI usage

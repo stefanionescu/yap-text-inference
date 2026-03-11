@@ -48,7 +48,7 @@ def _build_resource() -> Resource:
             attrs["gpu.device.name"] = torch.cuda.get_device_name(0)
             attrs["gpu.device.count"] = str(torch.cuda.device_count())
     except Exception:  # noqa: BLE001
-        pass
+        logger.debug("failed to enrich OpenTelemetry resource with GPU metadata", exc_info=True)
     return Resource.create(attrs)
 
 
