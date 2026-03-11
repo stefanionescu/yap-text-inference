@@ -1,0 +1,23 @@
+[run]
+exclude_patterns = [
+    "node_modules/**",
+    ".git/**",
+    ".cache/**",
+    ".venv/**",
+    ".pytest_cache/**",
+    ".mypy_cache/**",
+    ".ruff_cache/**",
+    "linting/.tools/**",
+    "coverage/**",
+    "htmlcov/**",
+    "rules/**",
+    "src/quantization/**/readme/*.md",
+]
+
+[no_double_hyphen]
+inline_code_pattern = '`[^`\n]*`'
+link_destination_pattern = '\]\([^)\n]*\)'
+table_separator_pattern = '^\s*\|?[-:| ]+\|?\s*$'
+html_comment_pattern = '^\s*<!--.*-->\s*$'
+front_matter_delimiter = "---"
+fence_markers = ["```", "~~~"]

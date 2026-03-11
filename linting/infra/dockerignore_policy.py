@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Enforce repository Docker ignore policy declared in linting/policy.toml."""
+"""Enforce repository Docker ignore policy declared in linting/config/repo/policy.toml."""
 
 from __future__ import annotations
 
@@ -16,7 +16,8 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
 
 from shared import ROOT, rel  # noqa: E402
 
-POLICY_PATH = ROOT / "linting" / "policy.toml"
+POLICY_PATH = ROOT / "linting" / "config" / "repo" / "policy.toml"
+POLICY_LABEL = "linting/config/repo/policy.toml"
 
 
 def _first_effective_line(path: Path) -> str | None:
@@ -30,20 +31,20 @@ def _first_effective_line(path: Path) -> str | None:
 
 def _repo_path(value: Any, *, field: str, violations: list[str]) -> Path | None:
     if not isinstance(value, str) or not value.strip():
-        violations.append(f"  linting/policy.toml: `{field}` entries must be non-empty strings")
+        violations.append(f"  {POLICY_LABEL}: `{field}` entries must be non-empty strings")
         return None
     candidate = Path(value.strip())
     if candidate.is_absolute():
-        violations.append(f"  linting/policy.toml: `{field}` entry `{value}` must be repository-relative")
+        violations.append(f"  {POLICY_LABEL}: `{field}` entry `{value}` must be repository-relative")
         return None
     if ".." in candidate.parts:
-        violations.append(f"  linting/policy.toml: `{field}` entry `{value}` must not contain `..`")
+        violations.append(f"  {POLICY_LABEL}: `{field}` entry `{value}` must not contain `..`")
         return None
     resolved = (ROOT / candidate).resolve()
     try:
         resolved.relative_to(ROOT)
     except ValueError:
-        violations.append(f"  linting/policy.toml: `{field}` entry `{value}` resolves outside repository root")
+        violations.append(f"  {POLICY_LABEL}: `{field}` entry `{value}` resolves outside repository root")
         return None
     return resolved
 
@@ -52,7 +53,7 @@ def _path_set(values: Any, *, field: str, violations: list[str]) -> set[Path]:
     if values is None:
         return set()
     if not isinstance(values, list):
-        violations.append(f"  linting/policy.toml: `{field}` must be an array")
+        violations.append(f"  {POLICY_LABEL}: `{field}` must be an array")
         return set()
 
     paths: set[Path] = set()
@@ -66,18 +67,18 @@ def _path_set(values: Any, *, field: str, violations: list[str]) -> set[Path]:
 def _load_policy() -> tuple[dict[str, Any], list[str]]:
     violations: list[str] = []
     if not POLICY_PATH.exists():
-        violations.append("  linting/policy.toml: missing required policy file")
+        violations.append(f"  {POLICY_LABEL}: missing required policy file")
         return {}, violations
 
     try:
         policy_doc = tomllib.loads(POLICY_PATH.read_text(encoding="utf-8"))
     except Exception as exc:
-        violations.append(f"  linting/policy.toml: failed to parse TOML ({exc})")
+        violations.append(f"  {POLICY_LABEL}: failed to parse TOML ({exc})")
         return {}, violations
 
     dockerignore = policy_doc.get("dockerignore")
     if not isinstance(dockerignore, dict):
-        violations.append("  linting/policy.toml: missing required `[dockerignore]` table")
+        violations.append(f"  {POLICY_LABEL}: missing required `[dockerignore]` table")
         return {}, violations
     return dockerignore, violations
 
@@ -87,17 +88,17 @@ def main() -> int:
 
     mode = policy.get("mode") if policy else None
     if mode is not None and not isinstance(mode, str):
-        violations.append("  linting/policy.toml: `dockerignore.mode` must be a string")
+        violations.append(f"  {POLICY_LABEL}: `dockerignore.mode` must be a string")
         mode = None
 
     first_effective_rule = policy.get("first_effective_rule", "**") if policy else "**"
     if not isinstance(first_effective_rule, str):
-        violations.append("  linting/policy.toml: `dockerignore.first_effective_rule` must be a string")
+        violations.append(f"  {POLICY_LABEL}: `dockerignore.first_effective_rule` must be a string")
         first_effective_rule = "**"
 
     allow_only_listed = policy.get("allow_only_listed", True) if policy else True
     if not isinstance(allow_only_listed, bool):
-        violations.append("  linting/policy.toml: `dockerignore.allow_only_listed` must be a boolean")
+        violations.append(f"  {POLICY_LABEL}: `dockerignore.allow_only_listed` must be a boolean")
         allow_only_listed = True
 
     required = _path_set(

@@ -92,28 +92,3 @@ check_flashinfer_installed() {
 
   return 1
 }
-
-# Uninstall a pip package if installed with wrong version
-# Usage: uninstall_pip_pkg_if_wrong_version "package" "required_version" [python_exe]
-uninstall_pip_pkg_if_wrong_version() {
-  local pkg="$1"
-  local required_version="$2"
-  local py_exe="${3:-python}"
-
-  local installed_ver
-  installed_ver=$(get_pip_pkg_version "$pkg" "$py_exe")
-
-  if [[ -z $installed_ver ]]; then
-    return 0 # Not installed, nothing to uninstall
-  fi
-
-  local installed_base="${installed_ver%%+*}"
-  local required_base="${required_version%%+*}"
-
-  if [[ $installed_base != "$required_base" ]]; then
-    $py_exe -m pip uninstall -y "$pkg" 2>/dev/null || true
-    return 0
-  fi
-
-  return 1 # Correct version, no uninstall needed
-}

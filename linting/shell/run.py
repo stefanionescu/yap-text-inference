@@ -17,9 +17,9 @@ _RUN_RULES = _SHELL_RULES.get("run")
 if not isinstance(_RUN_RULES, dict):
     _RUN_RULES = {}
 RULES = [ROOT / str(rule_path) for rule_path in _RUN_RULES.get("rule_modules", []) if isinstance(rule_path, str)] or [
-    ROOT / "linting" / "shell" / "strict_mode.py",
-    ROOT / "linting" / "shell" / "disable_justification.py",
-    ROOT / "linting" / "shell" / "docs.py",
+    ROOT / "linting" / "shell" / "rules" / "strict_mode.py",
+    ROOT / "linting" / "shell" / "rules" / "disable_justification.py",
+    ROOT / "linting" / "shell" / "rules" / "docs.py",
 ]
 
 

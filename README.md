@@ -20,6 +20,7 @@ A text inference server supporting **both vLLM and TensorRT-LLM** engines, optim
   - [Pre-Quantized Models](#pre-quantized-models)
 - [Inference Engines](#inference-engines)
 - [Local Test Dependencies](#local-test-dependencies)
+- [Developer Commands](#developer-commands)
 - [Test Clients](#test-clients)
 - [Stopping and Restarting](#stopping-and-restarting)
   - [Stop Script Behavior](#stop-script-behavior)
@@ -106,10 +107,12 @@ This will:
 
 ## Docker Deployment
 
-Deploy the server in Docker using the AWQ stack in `docker/`:
+Canonical Docker docs live under `docker/`. Use [`docker/README.md`](docker/README.md) for the full matrix of build arguments, runtime knobs, and stack-specific behavior.
+
+The stable top-level build entrypoint is:
 
 ```bash
-# Build chat + tool image (vLLM)
+# vLLM chat / both
 ENGINE=vllm \
   DOCKER_USERNAME=youruser \
   DEPLOY_MODE=both \
@@ -118,15 +121,7 @@ ENGINE=vllm \
   TAG=vllm-qwen3-full \
   ./docker/build.sh
 
-# Run (chat + tool)
-docker run -d --gpus all --name yap-awq \
-  -e DEPLOY_MODE=both \
-  -e TEXT_API_KEY=your_secret_key \
-  -e HF_TOKEN=hf_your_api_token \
-  -e MAX_CONCURRENT_CONNECTIONS=32 \
-  -p 8000:8000 youruser/yap-text-api:vllm-qwen3-full
-
-# Chat-only (TRT example)
+# TRT chat / both
 ENGINE=trt \
   DOCKER_USERNAME=youruser \
   DEPLOY_MODE=chat \
@@ -134,32 +129,23 @@ ENGINE=trt \
   TRT_ENGINE_LABEL=sm90_trt-llm-0.17.0_cuda12.8 \
   TAG=trt-qwen30b-sm90 \
   ./docker/build.sh
-docker run -d --gpus all --name yap-chat \
-  -e DEPLOY_MODE=chat \
-  -e TEXT_API_KEY=your_secret_key \
-  -p 8000:8000 youruser/yap-text-api:trt-qwen30b-sm90
 
-# Tool-only (canonical path, no ENGINE)
+# Tool-only (no ENGINE required)
 DOCKER_USERNAME=youruser \
   DEPLOY_MODE=tool \
   TOOL_MODEL=yapwithai/yap-longformer-screenshot-intent \
   TAG=tool-only \
   ./docker/build.sh
-docker run -d --gpus all --name yap-tool \
-  -e DEPLOY_MODE=tool \
+
+# Generic runtime shape
+docker run -d --gpus all --name yap-server \
   -e TEXT_API_KEY=your_secret_key \
-  -p 8000:8000 youruser/yap-text-api:tool-only
+  -p 8000:8000 youruser/yap-text-api:<tag>
 ```
 
 > Tool models are PyTorch weights loaded via `AutoModelForSequenceClassification`. They're cached locally so restarts reuse them.
 
-Build scripts construct minimal temporary Docker contexts and use strict
-policy-driven allowlist ignore files (`linting/policy.toml` with
-`docker/vllm/.dockerignore`, `docker/trt/.dockerignore`, and `docker/tool/.dockerignore`).
-Docker contexts include only runtime build assets
-(no repo docs and no test clients).
-
-See `docker/README.md` for build arguments, image behavior, and run options.
+Build scripts construct minimal temporary Docker contexts and use strict policy-driven allowlists (`linting/config/repo/policy.toml` plus the stack-local `.dockerignore` files). See `docker/README.md` for the stack details.
 
 ## Quantization
 
@@ -289,7 +275,31 @@ pip install -r requirements-dev.txt
 bun install
 ```
 
-The Bun step is only for the small root JS maintenance toolchain, primarily `jscpd` and hook helper scripts.
+The Bun step is only for the small root JS maintenance toolchain that `nox` and hook automation use for `jscpd` and setup helpers.
+
+## Developer Commands
+
+Use `nox` as the canonical top-level maintenance entrypoint:
+
+```bash
+# full repo checks
+nox -s lint
+nox -s test
+nox -s security
+
+# focused loops
+nox -s lint_fast
+nox -s lint_code
+nox -s lint_shell
+nox -s lint_docker
+nox -s quality
+nox -s hooks
+nox -s coverage
+nox -s codeql
+```
+
+The underlying shell entrypoints under `linting/` still exist for direct use and for hook integration, but `nox` is the primary documented surface.
+`nox -s codeql` writes raw SARIF and a Markdown summary to `linting/.tools/codeql/results/`.
 
 ## Test Clients
 
@@ -383,6 +393,10 @@ NUKE_ALL=1 bash scripts/stop.sh
 ```
 
 ## Health Check
+
+`/healthz` is internal-only. By default it only responds to loopback clients;
+set `HEALTH_ALLOWED_CIDRS` if your platform probes from a different internal
+range.
 
 ```bash
 curl -s http://127.0.0.1:8000/healthz

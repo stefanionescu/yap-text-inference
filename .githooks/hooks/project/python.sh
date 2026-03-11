@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project Python hook for staged Python linting on commit and full code linting on push.
+# Project Python hook for full-repo Python linting on commit.
 set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 # shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook dispatch helper -- ticket: N/A

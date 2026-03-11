@@ -1,0 +1,8 @@
+[import_cycles]
+internal_root = "src"
+
+[single_line_imports_first]
+scan_dirs = ["src", "tests", "linting"]
+
+[no_lazy_module_loading]
+forbidden_export_hooks = ["__getattr__", "__dir__", "__getattribute__"]

@@ -1,0 +1,25 @@
+[one_class_per_file]
+allowlist_relative_paths = ["handlers/websocket/parser.py"]
+
+[prefix_collisions]
+scan_roots = ["src", "scripts", "docker", ".githooks", "linting/config", "linting/security", "linting/testing"]
+ignored_paths = ["linting/testing/__pycache__"]
+ignored_names = ["__pycache__", ".DS_Store"]
+reserved_root_filenames = [".githooks/pre-commit", ".githooks/pre-push", ".githooks/commit-msg"]
+
+[single_file_folders]
+scan_roots = ["src", "scripts", "docker", ".githooks", "linting/config", "linting/security"]
+allowlist_relative_paths = [
+    "docker/tool/scripts/env",
+    "docker/vllm/download",
+    ".githooks/.jscpd",
+    "linting/security/bearer",
+    "linting/security/gitleaks",
+    "linting/security/licenses",
+    "linting/security/osv",
+    "linting/security/pip_audit",
+    "linting/security/trivy",
+    "src/quantization/trt/readme",
+    "src/quantization/vllm/readme",
+]
+ignored_names = ["__pycache__", ".DS_Store"]

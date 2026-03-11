@@ -74,24 +74,6 @@ detect_trtllm_version() {
   return 1
 }
 
-# Generate current system's engine label
-# Format: sm{arch}_trt-llm-{version}_cuda{version}
-# Example: sm90_trt-llm-1.2.0rc5_cuda13.0
-get_current_engine_label() {
-  local sm_arch="${GPU_SM_ARCH:-$(detect_sm_arch)}"
-  local trtllm_ver
-  trtllm_ver=$(detect_trtllm_version)
-  local cuda_ver
-  cuda_ver=$(detect_cuda_version)
-
-  if [ -z "${sm_arch}" ] || [ "${trtllm_ver}" = "unknown" ] || [ -z "${cuda_ver}" ]; then
-    echo ""
-    return 1
-  fi
-
-  echo "${sm_arch}_trt-llm-${trtllm_ver}_cuda${cuda_ver}"
-}
-
 # =============================================================================
 # QUANTIZATION FORMAT DETECTION
 # =============================================================================

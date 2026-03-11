@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from shared import ROOT, rel, report  # noqa: E402
 
 CONFIG_PATH = ROOT / "linting" / "config" / "language" / "banned-terms.json"
-TRACKED_DIRS = [ROOT / "src", ROOT / "tests", ROOT / "scripts", ROOT / "docker", ROOT / "linting", ROOT / ".githooks"]
 
 
 def _load_config() -> tuple[re.Pattern[str], dict[str, object]]:
@@ -44,10 +43,21 @@ def _should_skip(path: Path, config: dict[str, object]) -> bool:
     return path.suffix.lower() in extension_equals
 
 
-def _iter_target_files(args: list[str]) -> list[Path]:
+def _tracked_dirs(config: dict[str, object]) -> list[Path]:
+    return [ROOT / str(value) for value in config.get("trackedDirs", []) if isinstance(value, str)] or [
+        ROOT / "src",
+        ROOT / "tests",
+        ROOT / "scripts",
+        ROOT / "docker",
+        ROOT / "linting",
+        ROOT / ".githooks",
+    ]
+
+
+def _iter_target_files(args: list[str], config: dict[str, object]) -> list[Path]:
     if not args:
         files: list[Path] = []
-        for root_dir in TRACKED_DIRS:
+        for root_dir in _tracked_dirs(config):
             if not root_dir.exists():
                 continue
             for path in sorted(root_dir.rglob("*")):
@@ -68,7 +78,7 @@ def main() -> int:
     pattern, config = _load_config()
     violations: list[str] = []
 
-    for path in _iter_target_files(sys.argv[1:]):
+    for path in _iter_target_files(sys.argv[1:], config):
         if _should_skip(path, config):
             continue
         try:

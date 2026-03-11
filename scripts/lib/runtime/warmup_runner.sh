@@ -240,37 +240,6 @@ warmup_choose_python() {
 }
 
 # =============================================================================
-# DEPLOY MODE DETECTION
-# =============================================================================
-
-# Infer which prompt template to use so warmup exercises the deployed subset.
-warmup_detect_prompt_mode() {
-  local deploy_mode="${DEPLOY_MODE:-}"
-  case "${deploy_mode}" in
-    chat)
-      echo "chat"
-      return 0
-      ;;
-    tool)
-      echo "tool"
-      return 0
-      ;;
-  esac
-
-  local chat_flag="${DEPLOY_CHAT:-}"
-  local tool_flag="${DEPLOY_TOOL:-}"
-  if [[ ${chat_flag} == "1" && ${tool_flag} == "1" ]]; then
-    echo "both"
-  elif [[ ${chat_flag} == "1" ]]; then
-    echo "chat"
-  elif [[ ${tool_flag} == "1" ]]; then
-    echo "tool"
-  else
-    echo "both"
-  fi
-}
-
-# =============================================================================
 # MAX CONNECTIONS DETECTION
 # =============================================================================
 

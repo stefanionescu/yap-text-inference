@@ -5,6 +5,11 @@
 # including Docker availability checks and login handling.
 
 require_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    log_err "[build] ✗ Docker CLI not found. Please install Docker and try again."
+    exit 1
+  fi
+
   if ! docker info >/dev/null 2>&1; then
     log_err "[build] ✗ Docker is not running. Please start Docker and try again."
     exit 1

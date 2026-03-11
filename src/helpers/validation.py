@@ -6,6 +6,8 @@ import logging
 from .models import is_tool_model
 from src.config.trt import TRT_ENGINE_DIR
 from src.config.secrets import TEXT_API_KEY
+from .health import parse_health_allowed_cidrs
+from src.config.http import HEALTH_ALLOWED_CIDRS
 from src.config.websocket import WS_IDLE_TIMEOUT_S
 from src.config.tool import TOOL_DECISION_THRESHOLD
 from .quantization import classify_prequantized_model
@@ -176,6 +178,11 @@ def validate_env() -> None:
         errors.append(tool_tok_error)
 
     errors.extend(_validate_numeric_bounds())
+
+    try:
+        parse_health_allowed_cidrs(HEALTH_ALLOWED_CIDRS)
+    except ValueError as exc:
+        errors.append(str(exc))
 
     if errors:
         raise ValueError("; ".join(errors))

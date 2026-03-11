@@ -9,7 +9,14 @@ SECURITY_CONFIG_DIR="${REPO_ROOT}/linting/config/security"
 # source_security_config - Load a repo-local shell config file by name.
 source_security_config() {
   local config_name="$1"
-  local config_path="${SECURITY_CONFIG_DIR}/${config_name}.env"
+  local config_path="${SECURITY_CONFIG_DIR}/${config_name}"
+  if [[ -f ${config_path} ]]; then
+    :
+  elif [[ -f ${config_path}.env ]]; then
+    config_path="${config_path}.env"
+  elif [[ -f ${config_path}/env.sh ]]; then
+    config_path="${config_path}/env.sh"
+  fi
   if [[ ! -f ${config_path} ]]; then
     echo "error: missing security config: ${config_path}" >&2
     exit 1
@@ -31,15 +38,6 @@ require_docker() {
 
   if ! docker info >/dev/null 2>&1; then
     echo "error: docker daemon unavailable" >&2
-    exit 1
-  fi
-}
-
-# require_tool - Abort if a local CLI tool is unavailable.
-require_tool() {
-  local tool="$1"
-  if ! command -v "${tool}" >/dev/null 2>&1; then
-    echo "error: ${tool} is required" >&2
     exit 1
   fi
 }
@@ -74,6 +72,42 @@ repo_tool_dir() {
   tool_dir="$(repo_cache_dir)/${tool_name}"
   mkdir -p "${tool_dir}"
   echo "${tool_dir}"
+}
+
+# resolve_tool_command - Resolve a system, cached, or auto-installed tool binary.
+resolve_tool_command() {
+  local tool_name="$1"
+  local install_target="${2:-$1}"
+  local cached_binary="${REPO_ROOT}/${SECURITY_CACHE_RELATIVE_DIR}/bin/${tool_name}"
+
+  if command -v "${tool_name}" >/dev/null 2>&1; then
+    command -v "${tool_name}"
+    return 0
+  fi
+  if [[ -x ${cached_binary} ]]; then
+    echo "${cached_binary}"
+    return 0
+  fi
+  if bash "${REPO_ROOT}/linting/security/install.sh" "${install_target}" >/dev/null 2>&1 && [[ -x ${cached_binary} ]]; then
+    echo "${cached_binary}"
+    return 0
+  fi
+  return 1
+}
+
+# resolve_required_tool_command - Resolve a tool binary or abort with a clear error.
+resolve_required_tool_command() {
+  local tool_name="$1"
+  local install_target="${2:-$1}"
+  local resolved
+
+  if resolved="$(resolve_tool_command "${tool_name}" "${install_target}")"; then
+    echo "${resolved}"
+    return 0
+  fi
+
+  echo "error: unable to resolve ${tool_name}" >&2
+  exit 1
 }
 
 # sha256_file - Compute the SHA-256 hash for a file.

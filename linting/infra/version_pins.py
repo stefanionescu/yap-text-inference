@@ -11,14 +11,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from shared import ROOT, rel, report, load_config_doc  # noqa: E402
 
-RANGE_PREFIXES = ("^", "~", ">", "<", "*")
 PACKAGE_JSON = ROOT / "package.json"
-PIP_OPTION_PREFIXES = (
+_INFRA_RULES = load_config_doc("rules", "infra.toml")
+_VERSION_PIN_RULE = _INFRA_RULES.get("version_pins")
+if not isinstance(_VERSION_PIN_RULE, dict):
+    _VERSION_PIN_RULE = {}
+RANGE_PREFIXES = tuple(
+    str(value) for value in _VERSION_PIN_RULE.get("range_prefixes", []) if isinstance(value, str)
+) or ("^", "~", ">", "<", "*")
+PIP_OPTION_PREFIXES = tuple(
+    str(value) for value in _VERSION_PIN_RULE.get("pip_option_prefixes", []) if isinstance(value, str)
+) or (
     "--extra-index-url",
     "--index-url",
     "--find-links",
     "--trusted-host",
 )
+SKIP_REQUIREMENT_PREFIXES = tuple(
+    str(value) for value in _VERSION_PIN_RULE.get("skip_requirement_prefixes", []) if isinstance(value, str)
+) or ("-r", "--requirement", "-c", "--constraint")
+EDITABLE_PREFIXES = tuple(
+    str(value) for value in _VERSION_PIN_RULE.get("editable_prefixes", []) if isinstance(value, str)
+) or ("-e", "--editable")
+DIRECT_REFERENCE_SEPARATOR = str(_VERSION_PIN_RULE.get("direct_reference_separator", " @ "))
+PACKAGE_JSON_SECTIONS = tuple(
+    str(value) for value in _VERSION_PIN_RULE.get("package_json_sections", []) if isinstance(value, str)
+) or ("dependencies", "devDependencies")
 
 
 def _requirement_files(violations: list[str]) -> list[Path]:
@@ -40,11 +58,11 @@ def _requirement_files(violations: list[str]) -> list[Path]:
 def _check_requirements(path: Path, violations: list[str]) -> None:
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         line = raw.strip()
-        if not line or line.startswith("#") or line.startswith(("-r", "--requirement", "-c", "--constraint")):
+        if not line or line.startswith("#") or line.startswith(SKIP_REQUIREMENT_PREFIXES):
             continue
         if line.startswith(PIP_OPTION_PREFIXES):
             continue
-        if " @" in line or line.startswith(("-e", "--editable")):
+        if DIRECT_REFERENCE_SEPARATOR in line or line.startswith(EDITABLE_PREFIXES):
             continue
         if "==" not in line:
             violations.append(f"  {rel(path)}:{lineno} requirement must use exact == pin: {line}")
@@ -55,7 +73,7 @@ def _check_package_json(path: Path, violations: list[str]) -> None:
         return
 
     package_doc = json.loads(path.read_text(encoding="utf-8"))
-    for section in ("dependencies", "devDependencies"):
+    for section in PACKAGE_JSON_SECTIONS:
         values = package_doc.get(section, {})
         if not isinstance(values, dict):
             continue

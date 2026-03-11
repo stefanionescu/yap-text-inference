@@ -9,11 +9,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
+from shared import SRC_DIR, rel, report, parse_source, load_config_doc, iter_python_files  # noqa: E402
 
-SINGLETON_CLASS_SUFFIX = "Singleton"
-SINGLETON_FN_NAMES = {"get_instance", "reset_instance"}
-SINGLETON_STATE_NAMES = {"_STATE", "STATE", "_INSTANCE", "INSTANCE"}
+_RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
+_SINGLETON_RULE = _RUNTIME_RULES.get("no_runtime_singletons")
+if not isinstance(_SINGLETON_RULE, dict):
+    _SINGLETON_RULE = {}
+SINGLETON_CLASS_SUFFIX = str(_SINGLETON_RULE.get("class_suffix", "Singleton"))
+SINGLETON_FN_NAMES = {
+    str(value) for value in _SINGLETON_RULE.get("function_names", []) if isinstance(value, str)
+} or {"get_instance", "reset_instance"}
+SINGLETON_STATE_NAMES = {
+    str(value) for value in _SINGLETON_RULE.get("state_names", []) if isinstance(value, str)
+} or {"_STATE", "STATE", "_INSTANCE", "INSTANCE"}
 
 
 def _top_level_targets(node: ast.Assign | ast.AnnAssign) -> list[str]:

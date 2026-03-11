@@ -21,22 +21,6 @@ str_to_lower() {
   fi
 }
 
-# Convert a string to uppercase.
-# Works on both Bash 4+ (using ${var^^}) and older Bash (using tr).
-# Usage: str_to_upper "hello" -> "HELLO"
-str_to_upper() {
-  local value="${1:-}"
-  if [ -z "${value}" ]; then
-    echo ""
-    return
-  fi
-  if [[ -n ${BASH_VERSION:-} && ${BASH_VERSION%%.*} -ge 4 ]]; then
-    echo "${value^^}"
-  else
-    echo "${value}" | tr '[:lower:]' '[:upper:]'
-  fi
-}
-
 # Trim leading and trailing whitespace from a string.
 # Usage: str_trim "  hello world  " -> "hello world"
 str_trim() {

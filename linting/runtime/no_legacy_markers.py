@@ -9,9 +9,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import ROOT, rel, report  # noqa: E402
+from shared import ROOT, rel, report, load_config_doc  # noqa: E402
 
-TARGETS = [
+_RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
+_LEGACY_RULE = _RUNTIME_RULES.get("no_legacy_markers")
+if not isinstance(_LEGACY_RULE, dict):
+    _LEGACY_RULE = {}
+TARGETS = [ROOT / str(value) for value in _LEGACY_RULE.get("targets", []) if isinstance(value, str)] or [
     ROOT / "src" / "runtime",
     ROOT / "src" / "messages",
     ROOT / "src" / "handlers",
@@ -19,11 +23,13 @@ TARGETS = [
     ROOT / "src" / "server.py",
 ]
 
-ALLOWLIST = {
+ALLOWLIST = {ROOT / str(value) for value in _LEGACY_RULE.get("allowlist", []) if isinstance(value, str)} or {
     ROOT / "src" / "execution" / "compat.py",
 }
 
 PATTERNS = [
+    re.compile(str(value), re.IGNORECASE) for value in _LEGACY_RULE.get("patterns", []) if isinstance(value, str)
+] or [
     re.compile(r"\blegacy\b", re.IGNORECASE),
     re.compile(r"\bdeprecated\b", re.IGNORECASE),
     re.compile(r"\bworkaround\b", re.IGNORECASE),

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_coverage - Generate src-only unit-test coverage and junit XML.
+# run_coverage - Generate pytest coverage and JUnit XML artifacts for the repository test suite.
 
 set -euo pipefail
 

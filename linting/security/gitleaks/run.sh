@@ -12,25 +12,6 @@ cd "${REPO_ROOT}"
 
 GITLEAKS_MODE="${1:-scan}"
 
-# resolve_gitleaks_command - Resolve the local, cached, or auto-installed Gitleaks binary.
-resolve_gitleaks_command() {
-  local cached_binary="${REPO_ROOT}/${SECURITY_CACHE_RELATIVE_DIR}/bin/${GITLEAKS_TOOL_NAME}"
-
-  if command -v "${GITLEAKS_TOOL_NAME}" >/dev/null 2>&1; then
-    command -v "${GITLEAKS_TOOL_NAME}"
-    return 0
-  fi
-  if [[ -x ${cached_binary} ]]; then
-    echo "${cached_binary}"
-    return 0
-  fi
-  if bash "${REPO_ROOT}/linting/security/install.sh" "${GITLEAKS_TOOL_NAME}" >/dev/null 2>&1 && [[ -x ${cached_binary} ]]; then
-    echo "${cached_binary}"
-    return 0
-  fi
-  return 1
-}
-
 # run_gitleaks_scan - Run the standard baseline-backed gitleaks detection flow.
 run_gitleaks_scan() {
   local runner="$1"
@@ -63,7 +44,7 @@ generate_gitleaks_baseline() {
   fi
 }
 
-if GITLEAKS_COMMAND="$(resolve_gitleaks_command)"; then
+if GITLEAKS_COMMAND="$(resolve_tool_command "${GITLEAKS_TOOL_NAME}")"; then
   case "${GITLEAKS_MODE}" in
     scan)
       run_gitleaks_scan "${GITLEAKS_COMMAND}"

@@ -157,6 +157,9 @@ Override with `CHAT_GPU_FRAC` / `TRT_KV_FREE_GPU_FRAC` (chat) and `TOOL_GPU_FRAC
 
 ### Health Check
 
+`/healthz` is internal-only. Probe it from inside the container/host, or widen
+`HEALTH_ALLOWED_CIDRS` for platform-private ranges.
+
 ```bash
 curl http://localhost:8000/healthz
 ```
@@ -175,7 +178,7 @@ docker stats yap-server
 
 ## API Usage
 
-- **Health**: `GET /healthz` (no auth required)
+- **Health**: `GET /healthz` (internal-only by source IP allowlist)
 - **WebSocket**: `ws://localhost:8000/ws?api_key=your_key`
 
 Health check example:

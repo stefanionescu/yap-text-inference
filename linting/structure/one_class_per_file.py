@@ -9,9 +9,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
+from shared import SRC_DIR, rel, report, parse_source, load_config_doc, iter_python_files  # noqa: E402
 
+_STRUCTURE_RULES = load_config_doc("rules", "structure.toml")
+_ONE_CLASS_RULE = _STRUCTURE_RULES.get("one_class_per_file")
+if not isinstance(_ONE_CLASS_RULE, dict):
+    _ONE_CLASS_RULE = {}
 ALLOWLIST_RELATIVE_PATHS = {
+    str(value) for value in _ONE_CLASS_RULE.get("allowlist_relative_paths", []) if isinstance(value, str)
+} or {
     "handlers/websocket/parser.py",
 }
 

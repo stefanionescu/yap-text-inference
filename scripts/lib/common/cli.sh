@@ -38,20 +38,6 @@ cli_validate_deploy_mode() {
   esac
 }
 
-cli_set_engine_value() {
-  local value="$1"
-  local context="$2"
-  # shellcheck disable=SC2034  # nameref variable assigned for caller
-  local -n engine_ref="$3"
-  if [ -z "${value}" ]; then
-    log_err "${context} ✗ --engine requires a value (trt|vllm)"
-    return 1
-  fi
-  # shellcheck disable=SC2034  # nameref variable assigned for caller
-  engine_ref="${value}"
-  return 0
-}
-
 cli_set_deploy_mode_value() {
   local value="$1"
   local context="$2"

@@ -19,9 +19,15 @@ from dataclasses import dataclass
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import ROOT, rel, report, parse_source, iter_python_files  # noqa: E402
+from shared import ROOT, rel, report, parse_source, load_config_doc, iter_python_files  # noqa: E402
 
-TARGET_DIRS = ("src", "tests", "linting")
+_IMPORT_RULES = load_config_doc("rules", "imports.toml")
+_IMPORT_ORDER_RULE = _IMPORT_RULES.get("single_line_imports_first")
+if not isinstance(_IMPORT_ORDER_RULE, dict):
+    _IMPORT_ORDER_RULE = {}
+TARGET_DIRS = tuple(
+    str(value) for value in _IMPORT_ORDER_RULE.get("scan_dirs", []) if isinstance(value, str)
+) or ("src", "tests", "linting")
 
 
 @dataclass(frozen=True)

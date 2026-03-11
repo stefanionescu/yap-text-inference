@@ -55,27 +55,6 @@ detect_cuda_version() {
 # COMPATIBILITY CHECKS
 # =============================================================================
 
-# Check if CUDA version is compatible with TRT-LLM 1.2.0rc5 (requires CUDA 13.0)
-check_cuda_compatibility() {
-  local cuda_ver
-  cuda_ver=$(detect_cuda_version)
-
-  if [ -z "${cuda_ver}" ]; then
-    log_warn "[cuda] ⚠ Could not detect CUDA version"
-    return 1
-  fi
-
-  local major
-  major=$(echo "${cuda_ver}" | cut -d. -f1)
-
-  if [ "${major}" -lt 13 ]; then
-    log_warn "[cuda] ⚠ TRT-LLM 1.2.0rc5 requires CUDA 13.0+, found ${cuda_ver}"
-    return 1
-  fi
-
-  return 0
-}
-
 # Comprehensive CUDA 13.x check: validates BOTH toolkit AND driver
 # Checks: 1) toolkit version via nvcc/env, 2) driver capability via cudaDriverGetVersion or nvidia-smi
 # Usage: trt_assert_cuda13_driver [prefix]

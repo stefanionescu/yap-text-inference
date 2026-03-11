@@ -4,7 +4,8 @@ Package layout
 --------------
 shared.py           Shared helpers (path constants, file iteration, parsing,
                     violation reporting) used by every linter.
-policy.toml         Centralised thresholds and path configuration.
+config/repo/policy.toml
+                    Centralised thresholds and path configuration.
 
 structure/          Code-shape and file-organization rules
     file_length.py              Source files must not exceed the configured line limit.
@@ -31,11 +32,11 @@ modules/            Config-module purity rules
     no_config_cross_imports.py  Config modules must not import siblings.
 
 testing/            Test file placement and naming rules
-    test_function_placement.py  Test functions only in unit/ and integration/.
+    function_placement.py       Test functions only in unit/ and integration/.
     unit_test_domain_folders.py Unit tests must live in domain subfolders.
-    test_file_prefix.py         Test filenames must use the test_ prefix.
+    file_prefix.py              Test filenames must use the test_ prefix.
     no_conftest_in_subfolders.py Only one conftest.py allowed (tests root).
 
 infra/              Build and deploy policy rules
-    dockerignore_policy.py      Docker ignore files must match linting/policy.toml.
+    dockerignore_policy.py      Docker ignore files must match linting/config/repo/policy.toml.
 """

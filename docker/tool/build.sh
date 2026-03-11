@@ -6,22 +6,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC2034  # sourced helper scripts rely on ROOT_DIR
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-
-# Docker configuration
-DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
-IMAGE_NAME="${IMAGE_NAME:-yap-text-api}"
+COMMON_DIR="${SCRIPT_DIR}/../common"
+source "${COMMON_DIR}/scripts/build/defaults.sh"
+build_init_tool_defaults
 
 # Force tool-only deploy mode
 DEPLOY_MODE_VAL="tool"
-
-# Model configuration
-TOOL_MODEL="${TOOL_MODEL:-}"
-
-# HuggingFace token for private repos
-HF_TOKEN="${HF_TOKEN:-}"
-
-# Custom tag
-TAG="${TAG:-tool-only}"
 
 # Validate tag naming convention for tool-only images
 if [[ ! ${TAG} =~ ^tool- ]]; then
@@ -31,22 +21,12 @@ if [[ ! ${TAG} =~ ^tool- ]]; then
   exit 1
 fi
 
-FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
-
-# Build configuration
-PLATFORM="${PLATFORM:-linux/amd64}"
-# Use stack directory as primary build context so its local .dockerignore applies
-BUILD_CONTEXT="${SCRIPT_DIR}"
 # shellcheck disable=SC2034  # Used by sourced scripts
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile"
 
-# Modules - shared utilities from common, tool-specific from local
-COMMON_DIR="${SCRIPT_DIR}/../common"
+# Modules - shared utilities from common
 source "${COMMON_DIR}/scripts/logs.sh"
-source "${COMMON_DIR}/scripts/build/docker.sh"
-source "${COMMON_DIR}/scripts/build/args.sh"
-source "${COMMON_DIR}/scripts/build/context.sh"
-source "${COMMON_DIR}/scripts/build/validate.sh"
+source "${COMMON_DIR}/scripts/build/driver.sh"
 
 # Usage function
 usage() {
@@ -84,57 +64,32 @@ EOF
 }
 
 # No command-line flags supported except --help
-if [[ ${1:-} == "--help" ]]; then
+if [[ ${1-} == "--help" ]]; then
   usage
 fi
 
-# Validate configuration
-if [[ ${DOCKER_USERNAME} == "your-username" ]]; then
-  log_err "[build] ✗ Please set DOCKER_USERNAME environment variable"
-  log_info "[build] Example: DOCKER_USERNAME=myuser $0"
-  exit 1
-fi
+validate_tag_prefix "${TAG}" "tool-" "tool-only" "tool-modernbert"
 
-# Validate tool model
-log_info "[build] Validating models for DEPLOY_MODE=tool..."
-if ! validate_models_for_deploy_common "" "tool" "" "${TOOL_MODEL}"; then
-  log_err "[build] ✗ Model validation failed. Build aborted."
-  exit 1
-fi
-echo # blank line after validation
-
-require_docker
-
-ensure_docker_login
-
-log_info "[build] Building Docker image: ${FULL_IMAGE_NAME}..."
-log_info "[build] Tool-only image (no chat engine)"
-log_info "[build]   Tool model: ${TOOL_MODEL}"
-
-# Build the image
-prepare_build_context_common "${SCRIPT_DIR}" "requirements-tool.txt" "0" "yap-tool"
-
-init_build_args
-
-# Add model build args - only DEPLOY_MODE and TOOL_MODEL needed
-BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
-[[ -n ${TOOL_MODEL} ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
-# Pass HF_TOKEN as a secret (not a build arg) so it's not baked into the image
-[[ -n ${HF_TOKEN} ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")
-
-docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
-
-log_success "[build] ✓ Docker build complete"
-log_info "[build] Pushing to Docker Hub..."
-
-# Try push; if unauthorized, attempt non-interactive login and retry once
-if ! docker push "${FULL_IMAGE_NAME}"; then
-  log_warn "[build] ⚠ Initial docker push failed. Attempting non-interactive login and retry..."
-  ensure_docker_login || true
-  if ! docker push "${FULL_IMAGE_NAME}"; then
-    log_err "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+# validate_stack_build - Run shared model validation for the tool-only stack.
+validate_stack_build() {
+  log_info "[build] Validating models for DEPLOY_MODE=tool..."
+  if ! validate_models_for_deploy_common "" "tool" "" "${TOOL_MODEL}"; then
+    log_err "[build] ✗ Model validation failed. Build aborted."
     exit 1
   fi
-fi
+}
 
-log_success "[build] ✓ Pushed ${FULL_IMAGE_NAME}"
+# log_stack_build - Print the tool-only build summary before docker build.
+log_stack_build() {
+  log_info "[build] Tool-only image (no chat engine)"
+  log_info "[build]   Tool model: ${TOOL_MODEL}"
+}
+
+# append_stack_build_args - Add tool-only build arguments to BUILD_ARGS.
+append_stack_build_args() {
+  BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
+  [[ -n ${TOOL_MODEL} ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
+  [[ -n ${HF_TOKEN} ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")
+}
+
+run_stack_build "${SCRIPT_DIR}" "requirements-tool.txt" "0" "yap-tool"

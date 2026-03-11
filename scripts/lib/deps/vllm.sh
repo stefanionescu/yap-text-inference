@@ -8,7 +8,6 @@
 _VLLM_DEPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source vLLM-specific modules
-source "${_VLLM_DEPS_DIR}/../../engines/vllm/install.sh"
 source "${_VLLM_DEPS_DIR}/flashinfer.sh"
 source "${_VLLM_DEPS_DIR}/reqs.sh"
 

@@ -4,7 +4,7 @@ set -euo pipefail
 # Unified Docker build script for Yap Text Inference
 # Supports both vLLM and TensorRT-LLM engines
 #
-# IMPORTANT: All images are pre-baked with models/engines at build time.
+# NOTE: All images are pre-baked with models/engines at build time.
 # - TRT images: Require TRT_ENGINE_REPO and TRT_ENGINE_LABEL to specify the exact engine
 # - vLLM images: Require pre-quantized CHAT_MODEL (AWQ/GPTQ/W4A16)
 #
@@ -14,20 +14,14 @@ set -euo pipefail
 # - tool-only: tool-*
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_DIR="${SCRIPT_DIR}/common"
+source "${COMMON_DIR}/scripts/build/defaults.sh"
 
 # Engine selection: vllm (default) or trt
-ENGINE="${ENGINE:-vllm}"
-DEPLOY_MODE="${DEPLOY_MODE:-both}"
+build_init_router_defaults
 
 # Auto-route tool-only builds to lightweight tool build path
 if [[ ${DEPLOY_MODE} == "tool" ]]; then
-  TAG="${TAG:-}"
-  if [[ -n ${TAG} && ! ${TAG} =~ ^tool- ]]; then
-    echo "[build] ✗ TAG must start with 'tool-' for tool-only images" >&2
-    echo "[build]   Got: ${TAG}" >&2
-    echo "[build]   Example: tool-modernbert" >&2
-    exit 1
-  fi
   exec "${SCRIPT_DIR}/tool/build.sh" "$@"
 fi
 
@@ -39,30 +33,6 @@ case "${ENGINE}" in
     exit 1
     ;;
 esac
-
-# Validate tag naming convention (only for chat/both deploys that use an engine)
-TAG="${TAG:-}"
-DEPLOY_MODE="${DEPLOY_MODE:-both}"
-if [[ -n ${TAG} && ${DEPLOY_MODE} != "tool" ]]; then
-  case "${ENGINE}" in
-    trt)
-      if [[ ! ${TAG} =~ ^trt- ]]; then
-        echo "[build] ✗ TAG must start with 'trt-' for TensorRT images" >&2
-        echo "[build]   Got: ${TAG}" >&2
-        echo "[build]   Example: trt-qwen30b-sm90" >&2
-        exit 1
-      fi
-      ;;
-    vllm)
-      if [[ ! ${TAG} =~ ^vllm- ]]; then
-        echo "[build] ✗ TAG must start with 'vllm-' for vLLM images" >&2
-        echo "[build]   Got: ${TAG}" >&2
-        echo "[build]   Example: vllm-qwen30b-awq" >&2
-        exit 1
-      fi
-      ;;
-  esac
-fi
 
 # Usage function
 usage() {
@@ -126,7 +96,7 @@ EOF
 }
 
 # Check for help flag
-if [[ ${1:-} == "--help" ]] || [[ ${1:-} == "-h" ]]; then
+if [[ ${1-} == "--help" ]] || [[ ${1-} == "-h" ]]; then
   usage
 fi
 

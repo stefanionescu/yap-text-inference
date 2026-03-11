@@ -6,13 +6,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC2034  # sourced helper scripts rely on ROOT_DIR
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-
-# Docker configuration
-DOCKER_USERNAME="${DOCKER_USERNAME:-your-username}"
-IMAGE_NAME="${IMAGE_NAME:-yap-text-api}"
+COMMON_DIR="${SCRIPT_DIR}/../common"
+source "${COMMON_DIR}/scripts/build/defaults.sh"
+build_init_vllm_defaults
 
 # Deploy mode: chat|both (tool-only is handled by docker/tool/build.sh)
-DEPLOY_MODE_VAL="${DEPLOY_MODE:-both}"
 case "${DEPLOY_MODE_VAL}" in
   chat | both) ;;
   tool)
@@ -28,17 +26,6 @@ case "${DEPLOY_MODE_VAL}" in
     ;;
 esac
 
-# Model configuration (required based on DEPLOY_MODE)
-CHAT_MODEL="${CHAT_MODEL:-}"
-TOOL_MODEL="${TOOL_MODEL:-}"
-CHAT_QUANTIZATION="${CHAT_QUANTIZATION:-}"
-
-# HuggingFace token for private repos
-HF_TOKEN="${HF_TOKEN:-}"
-
-# Custom tag (MUST start with vllm-)
-TAG="${TAG:-vllm-${DEPLOY_MODE_VAL}}"
-
 # Validate tag naming convention
 if [[ ! ${TAG} =~ ^vllm- ]]; then
   echo "[build] ✗ TAG must start with 'vllm-' for vLLM images" >&2
@@ -47,22 +34,12 @@ if [[ ! ${TAG} =~ ^vllm- ]]; then
   exit 1
 fi
 
-FULL_IMAGE_NAME="${DOCKER_USERNAME}/${IMAGE_NAME}:${TAG}"
-
-# Build configuration
-PLATFORM="${PLATFORM:-linux/amd64}"
-# Use stack directory as primary build context so its local .dockerignore applies
-BUILD_CONTEXT="${SCRIPT_DIR}"
 # shellcheck disable=SC2034  # Used by sourced scripts
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile"
 
-# Modules - shared utilities from common, engine-specific from local
-COMMON_DIR="${SCRIPT_DIR}/../common"
+# Modules - shared utilities from common
 source "${COMMON_DIR}/scripts/logs.sh"
-source "${COMMON_DIR}/scripts/build/docker.sh"
-source "${COMMON_DIR}/scripts/build/args.sh"
-source "${COMMON_DIR}/scripts/build/context.sh"
-source "${COMMON_DIR}/scripts/build/validate.sh"
+source "${COMMON_DIR}/scripts/build/driver.sh"
 
 # Usage function
 usage() {
@@ -114,64 +91,39 @@ EOF
 }
 
 # No command-line flags supported except --help
-if [[ ${1:-} == "--help" ]]; then
+if [[ ${1-} == "--help" ]]; then
   usage
 fi
 
-# Validate configuration
-if [[ ${DOCKER_USERNAME} == "your-username" ]]; then
-  log_err "[build] ✗ Please set DOCKER_USERNAME environment variable"
-  log_info "[build] Example: DOCKER_USERNAME=myuser $0"
-  exit 1
-fi
+validate_tag_prefix "${TAG}" "vllm-" "vLLM" "vllm-qwen30b-awq"
 
-# Validate models based on deploy mode
-log_info "[build] Validating models for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
-if ! validate_models_for_deploy_common "vllm" "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
-  log_err "[build] ✗ Model validation failed. Build aborted."
-  exit 1
-fi
-echo # blank line after validation
-
-require_docker
-
-ensure_docker_login
-
-log_info "[build] Building Docker image: ${FULL_IMAGE_NAME}..."
-log_info "[build] Pre-quantized model will be baked into the image"
-if [[ -n ${CHAT_MODEL} ]]; then
-  log_info "[build]   Chat model: ${CHAT_MODEL}"
-fi
-if [[ -n ${TOOL_MODEL} ]]; then
-  log_info "[build]   Tool model: ${TOOL_MODEL}"
-fi
-
-# Build the image
-prepare_build_context_common "${SCRIPT_DIR}" "requirements-vllm.txt" "1" "yap-vllm"
-
-init_build_args
-
-# Add model build args - these become ENV vars in the image
-BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
-[[ -n ${CHAT_MODEL} ]] && BUILD_ARGS+=(--build-arg "CHAT_MODEL=${CHAT_MODEL}")
-[[ -n ${TOOL_MODEL} ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
-[[ -n ${CHAT_QUANTIZATION} ]] && BUILD_ARGS+=(--build-arg "CHAT_QUANTIZATION=${CHAT_QUANTIZATION}")
-# Pass HF_TOKEN as a secret (not a build arg) so it's not baked into the image
-[[ -n ${HF_TOKEN} ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")
-
-docker build "${BUILD_ARGS[@]}" "${BUILD_CONTEXT}"
-
-log_success "[build] ✓ Docker build complete"
-log_info "[build] Pushing to Docker Hub..."
-
-# Try push; if unauthorized, attempt non-interactive login and retry once
-if ! docker push "${FULL_IMAGE_NAME}"; then
-  log_warn "[build] ⚠ Initial docker push failed. Attempting non-interactive login and retry..."
-  ensure_docker_login || true
-  if ! docker push "${FULL_IMAGE_NAME}"; then
-    log_err "[build] ✗ Docker push failed. Please run 'docker login' and ensure DOCKER_USERNAME has access to push ${FULL_IMAGE_NAME}."
+# validate_stack_build - Run shared model validation for the vLLM stack.
+validate_stack_build() {
+  log_info "[build] Validating models for DEPLOY_MODE=${DEPLOY_MODE_VAL}..."
+  if ! validate_models_for_deploy_common "vllm" "${DEPLOY_MODE_VAL}" "${CHAT_MODEL}" "${TOOL_MODEL}"; then
+    log_err "[build] ✗ Model validation failed. Build aborted."
     exit 1
   fi
-fi
+}
 
-log_success "[build] ✓ Pushed ${FULL_IMAGE_NAME}"
+# log_stack_build - Print the vLLM-specific build summary before docker build.
+log_stack_build() {
+  log_info "[build] Pre-quantized model will be baked into the image"
+  if [[ -n ${CHAT_MODEL} ]]; then
+    log_info "[build]   Chat model: ${CHAT_MODEL}"
+  fi
+  if [[ -n ${TOOL_MODEL} ]]; then
+    log_info "[build]   Tool model: ${TOOL_MODEL}"
+  fi
+}
+
+# append_stack_build_args - Add vLLM-specific build arguments to BUILD_ARGS.
+append_stack_build_args() {
+  BUILD_ARGS+=(--build-arg "DEPLOY_MODE=${DEPLOY_MODE_VAL}")
+  [[ -n ${CHAT_MODEL} ]] && BUILD_ARGS+=(--build-arg "CHAT_MODEL=${CHAT_MODEL}")
+  [[ -n ${TOOL_MODEL} ]] && BUILD_ARGS+=(--build-arg "TOOL_MODEL=${TOOL_MODEL}")
+  [[ -n ${CHAT_QUANTIZATION} ]] && BUILD_ARGS+=(--build-arg "CHAT_QUANTIZATION=${CHAT_QUANTIZATION}")
+  [[ -n ${HF_TOKEN} ]] && BUILD_ARGS+=(--secret "id=hf_token,env=HF_TOKEN")
+}
+
+run_stack_build "${SCRIPT_DIR}" "requirements-vllm.txt" "1" "yap-vllm"

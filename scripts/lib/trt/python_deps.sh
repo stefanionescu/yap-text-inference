@@ -11,40 +11,6 @@ source "${_TRT_PYDEPS_DIR}/../deps/pip.sh"
 # shellcheck source=../env/trt.sh
 source "${_TRT_PYDEPS_DIR}/../env/trt.sh"
 
-# Ensure CUDA_HOME is set and valid
-trt_ensure_cuda_home() {
-  if [ -z "${CUDA_HOME:-}" ]; then
-    if [ -d "/usr/local/cuda" ]; then
-      export CUDA_HOME="/usr/local/cuda"
-    elif [ -d "/usr/local/cuda-13.0" ]; then
-      export CUDA_HOME="/usr/local/cuda-13.0"
-    else
-      log_err "[trt] ✗ CUDA_HOME is not set. Install CUDA Toolkit 13.x and export CUDA_HOME."
-      return 1
-    fi
-  fi
-
-  if [ ! -d "${CUDA_HOME}/lib64" ]; then
-    log_err "[trt] ✗ CUDA_HOME/lib64 not found: ${CUDA_HOME}/lib64"
-    return 1
-  fi
-
-  # Check for CUDA 13 libraries (required by TRT-LLM 1.2.0rc5)
-  if ! find "${CUDA_HOME}/lib64" -maxdepth 1 -name "libcublasLt.so.13*" 2>/dev/null | grep -q '.'; then
-    if ! ldconfig -p 2>/dev/null | grep -q "libcublasLt.so.13"; then
-      log_warn "[trt] ⚠ libcublasLt.so.13 not found - TensorRT-LLM 1.2.0rc5 requires CUDA 13.x runtime libraries"
-    fi
-  fi
-
-  # Ensure CUDA libs are in LD_LIBRARY_PATH
-  case ":${LD_LIBRARY_PATH:-}:" in
-    *":${CUDA_HOME}/lib64:"*) ;;
-    *) export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}" ;;
-  esac
-
-  return 0
-}
-
 # Install PyTorch and TorchVision with matching CUDA versions
 # MUST be done BEFORE TensorRT-LLM to prevent version conflicts
 trt_install_pytorch() {

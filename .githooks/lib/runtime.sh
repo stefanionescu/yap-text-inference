@@ -20,16 +20,6 @@ die_hook_error() {
   exit 2
 }
 
-# require_tool - Abort when a CLI dependency is missing.
-require_tool() {
-  local tool="$1"
-  local hint="$2"
-  if ! command -v "${tool}" >/dev/null 2>&1; then
-    echo "error: ${tool} is required (${hint})" >&2
-    exit 1
-  fi
-}
-
 # parse_hook_mode - Normalize hook mode arguments to commit or push.
 parse_hook_mode() {
   case "${1:-commit}" in
@@ -44,11 +34,6 @@ staged_files() {
   git diff --cached --name-only --diff-filter=ACMR
 }
 
-# repo_files - Emit tracked repo-relative files for full-repo hook stages.
-repo_files() {
-  git ls-files
-}
-
 # append_matching_file - Add a repo-relative file to FILES when it matches a regex.
 append_matching_file() {
   local regex="$1"
@@ -57,27 +42,6 @@ append_matching_file() {
   [[ ${path} =~ ${regex} ]] || return 0
   [[ -f "${ROOT_DIR}/${path}" ]] || return 0
   FILES+=("${path}")
-}
-
-# emit_mode_files - Emit repo-relative files for a hook mode.
-emit_mode_files() {
-  case "$1" in
-    commit) staged_files ;;
-    push) repo_files ;;
-    *) die_hook_error "unsupported collect mode: $1" ;;
-  esac
-}
-
-# collect_mode_files - Populate FILES with mode-specific files matching a regex.
-collect_mode_files() {
-  local mode="$1"
-  local regex="$2"
-  local path
-  FILES=()
-
-  while IFS= read -r path; do
-    append_matching_file "${regex}" "${path}"
-  done < <(emit_mode_files "${mode}")
 }
 
 # collect_hook_files_array - Populate FILES with tracked hook entrypoints and scripts.

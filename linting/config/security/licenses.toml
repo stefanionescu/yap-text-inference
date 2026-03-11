@@ -37,4 +37,31 @@ ignored_packages = [
     "wheel",
 ]
 
+[parsing]
+normalize_pattern = "[-_.]+"
+name_pattern = "^\\s*([A-Za-z0-9_.-]+)"
+skip_prefixes = [
+    "-r",
+    "--requirement",
+    "-c",
+    "--constraint",
+    "--extra-index-url",
+    "--index-url",
+    "--find-links",
+    "--trusted-host",
+]
+editable_prefixes = ["-e", "--editable"]
+direct_reference_separator = " @ "
+egg_fragment = "#egg="
+unknown_licenses = [
+    "",
+    "dual license",
+    "n/a",
+    "none",
+    "osi approved",
+    "unknown",
+    "unknown license",
+]
+license_file_names = ["license", "copying", "notice"]
+
 [package_overrides]

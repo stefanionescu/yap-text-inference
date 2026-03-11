@@ -98,8 +98,8 @@ TRT_CALIB_SIZE="${TRT_CALIB_SIZE:-${CFG_TRT_DEFAULT_CALIB_SIZE}}"
 
 # Calibration batch size: dynamically set based on model profile.
 # Gemma/heavy models: smaller batch (8), standard models: 16.
-# NOTE: Python default in src/config/trt.py is 16; shell leaves empty and relies
-# on resolve_calib_batch_size() to pick model-appropriate values at runtime.
+# NOTE: Python default in src/config/trt.py is 16; the shell leaves this empty
+# until a caller explicitly chooses a calibration batch size.
 TRT_CALIB_BATCH_SIZE="${TRT_CALIB_BATCH_SIZE:-}"
 
 # Calibration sequence length: derived from CHAT_MAX_LEN + CHAT_MAX_OUT
@@ -131,32 +131,6 @@ TRT_MODELS_DIR="${TRT_MODELS_DIR:-${ROOT_DIR:-.}/models}"
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
-
-# Resolve calibration batch size based on model characteristics
-# Heavy models (Gemma, large MoE) need smaller batch sizes to avoid OOM
-resolve_calib_batch_size() {
-  local model_id="${1:-}"
-  local default_batch="${2:-${CFG_TRT_DEFAULT_CALIB_BATCH_SIZE}}"
-
-  # If explicitly set, use that
-  if [ -n "${TRT_CALIB_BATCH_SIZE:-}" ]; then
-    echo "${TRT_CALIB_BATCH_SIZE}"
-    return
-  fi
-
-  local model_lower
-  model_lower="$(echo "${model_id}" | tr '[:upper:]' '[:lower:]')"
-
-  # Heavy models that need smaller calibration batch
-  case "${model_lower}" in
-    *gemma* | *mixtral* | *qwen3-next* | *moonlight* | *deepseek*)
-      echo "${CFG_TRT_HEAVY_CALIB_BATCH_SIZE}"
-      ;;
-    *)
-      echo "${default_batch}"
-      ;;
-  esac
-}
 
 # Check if GPU SM arch supports native FP8
 gpu_supports_fp8() {
@@ -199,21 +173,6 @@ resolve_qformat() {
       ;;
     *)
       echo "${CFG_TRT_DEFAULT_QFORMAT}"
-      ;;
-  esac
-}
-
-# Get KV cache dtype based on qformat
-resolve_kv_cache_dtype() {
-  local qformat="${1:-${CFG_TRT_DEFAULT_QFORMAT}}"
-
-  case "${qformat}" in
-    "${CFG_TRT_QFORMAT_FP8}")
-      # FP8 KV cache for fp8 quantization
-      echo "${CFG_TRT_DEFAULT_KV_CACHE_FP8}"
-      ;;
-    *)
-      echo "${CFG_TRT_DEFAULT_KV_CACHE_INT8}"
       ;;
   esac
 }

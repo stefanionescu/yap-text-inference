@@ -16,9 +16,13 @@ from collections import defaultdict
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import SRC_DIR, iter_python_files  # noqa: E402
+from shared import SRC_DIR, load_config_doc, iter_python_files  # noqa: E402
 
-INTERNAL_ROOT = "src"
+_IMPORT_RULES = load_config_doc("rules", "imports.toml")
+_IMPORT_CYCLE_RULE = _IMPORT_RULES.get("import_cycles")
+if not isinstance(_IMPORT_CYCLE_RULE, dict):
+    _IMPORT_CYCLE_RULE = {}
+INTERNAL_ROOT = str(_IMPORT_CYCLE_RULE.get("internal_root", "src"))
 
 
 @dataclass(frozen=True)

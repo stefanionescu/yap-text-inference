@@ -95,15 +95,3 @@ check_requirements_installed() {
 
   deps_requirements_check "${requirements_file}" "${py_exe}"
 }
-
-# Uninstall packages that have wrong versions before reinstalling
-uninstall_wrong_requirements_packages() {
-  local py_exe="${1:-python}"
-
-  if [[ ${#REQUIREMENTS_WRONG_VERSION_PKGS[@]} -gt 0 ]]; then
-    log_info "[deps] Uninstalling wrong version packages..."
-    for pkg in "${REQUIREMENTS_WRONG_VERSION_PKGS[@]}"; do
-      $py_exe -m pip uninstall -y "$pkg" 2>/dev/null || true
-    done
-  fi
-}

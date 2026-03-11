@@ -1,0 +1,12 @@
+[version_pins]
+range_prefixes = ["^", "~", ">", "<", "*"]
+pip_option_prefixes = [
+    "--extra-index-url",
+    "--index-url",
+    "--find-links",
+    "--trusted-host",
+]
+skip_requirement_prefixes = ["-r", "--requirement", "-c", "--constraint"]
+editable_prefixes = ["-e", "--editable"]
+direct_reference_separator = " @ "
+package_json_sections = ["dependencies", "devDependencies"]

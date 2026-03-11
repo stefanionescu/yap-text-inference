@@ -172,10 +172,6 @@ get_venv_pip() {
   printf '%s/bin/pip\n' "$(get_venv_dir)"
 }
 
-get_quant_venv_pip() {
-  printf '%s/bin/pip\n' "$(get_quant_venv_dir)"
-}
-
 get_quant_python_binary() {
   if [ -n "${QUANT_PYTHON_BIN:-}" ]; then
     echo "${QUANT_PYTHON_BIN}"

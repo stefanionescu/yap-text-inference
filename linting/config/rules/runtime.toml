@@ -16,3 +16,25 @@ patterns = [
     "\\$\\{?PYTHON_EXEC\\}?\\s+-c\\b",
     "\\$\\{?PYTHON_EXEC\\}?\\s+<<",
 ]
+
+[no_legacy_markers]
+targets = [
+    "src/runtime",
+    "src/messages",
+    "src/handlers",
+    "src/execution",
+    "src/server.py",
+]
+allowlist = ["src/execution/compat.py"]
+patterns = [
+    "\\blegacy\\b",
+    "\\bdeprecated\\b",
+    "\\bworkaround\\b",
+    "\\bbackward(?:\\s|-)?compat(?:ible|ibility)\\b",
+    "\\bcompatibility\\b",
+]
+
+[no_runtime_singletons]
+class_suffix = "Singleton"
+function_names = ["get_instance", "reset_instance"]
+state_names = ["_STATE", "STATE", "_INSTANCE", "INSTANCE"]

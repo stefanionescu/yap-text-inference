@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project shell hook for staged shell linting on commit and full shell linting on push.
+# Project shell hook for full-repo shell linting on commit.
 set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 # shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook dispatch helper -- ticket: N/A

@@ -35,7 +35,6 @@ init_network_defaults() {
   else
     SERVER_HEALTH_URLS=(
       "http://${SERVER_ADDR}/healthz"
-      "http://${SERVER_ADDR}/health"
     )
   fi
   export SERVER_HEALTH_URLS
@@ -45,7 +44,6 @@ init_network_defaults() {
   # SERVER_HOST might be an external hostname that's not routable internally.
   SERVER_LOCAL_HEALTH_URLS=(
     "http://127.0.0.1:${SERVER_PORT}/healthz"
-    "http://127.0.0.1:${SERVER_PORT}/health"
   )
   export SERVER_LOCAL_HEALTH_URLS
 }

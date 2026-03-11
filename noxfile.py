@@ -14,52 +14,47 @@ def _run(session: nox.Session, *args: str) -> None:
 
 @nox.session(name="lint")
 def lint(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh")
+    _run(session, "bash", "linting/lint.sh")
 
 
 @nox.session(name="lint_fast")
 def lint_fast(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh", "--fast")
+    _run(session, "bash", "linting/lint.sh", "--fast")
 
 
 @nox.session(name="lint_code")
 def lint_code(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh", "--only", "code")
+    _run(session, "bash", "linting/lint.sh", "--only", "code")
 
 
 @nox.session(name="lint_shell")
 def lint_shell(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh", "--only", "shell")
+    _run(session, "bash", "linting/lint.sh", "--only", "shell")
 
 
 @nox.session(name="lint_docs")
 def lint_docs(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh", "--only", "docs")
+    _run(session, "bash", "linting/docs/run.sh")
 
 
 @nox.session(name="lint_docker")
 def lint_docker(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh", "--only", "docker")
+    _run(session, "bash", "linting/lint.sh", "--only", "docker")
 
 
 @nox.session(name="quality")
 def quality(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh", "--only", "quality")
-
-
-@nox.session(name="lint_security")
-def lint_security(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/security.sh")
+    _run(session, "bash", "linting/lint.sh", "--only", "quality")
 
 
 @nox.session(name="security")
 def security(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/security.sh")
+    _run(session, "bash", "linting/security/run.sh")
 
 
 @nox.session(name="hooks")
 def hooks(session: nox.Session) -> None:
-    _run(session, "bash", "scripts/lint.sh", "--only", "hooks")
+    _run(session, "bash", "linting/lint.sh", "--only", "hooks")
 
 
 @nox.session(name="test")

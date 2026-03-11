@@ -3,8 +3,8 @@
 This module initializes and runs the inference server, supporting both vLLM and
 TensorRT-LLM backends. It provides:
 
-- REST endpoints for health checks (/health, /healthz, /)
-- WebSocket endpoint for chat interactions (/ws)
+- An internal-only health endpoint (/healthz)
+- A WebSocket endpoint for chat interactions (/ws)
 - Automatic engine warm-up on startup
 - Periodic cache reset for vLLM (prevents KV cache fragmentation)
 - Graceful shutdown with engine cleanup
@@ -36,6 +36,7 @@ import time
 import logging
 import contextlib
 import multiprocessing
+from collections.abc import AsyncIterator
 
 # ============================================================================
 # Set multiprocessing start method to 'spawn' BEFORE any imports
@@ -55,88 +56,103 @@ from src.scripts.filters import configure as configure_log_filters  # noqa: E402
 configure_log_filters()
 
 from fastapi import FastAPI  # noqa: E402
+from fastapi import Request  # noqa: E402
 from fastapi import WebSocket  # noqa: E402
 from .logging import configure_logging  # noqa: E402
-from .runtime import build_runtime_deps  # noqa: E402
-from .telemetry.sentry import capture_error  # noqa: E402
-from .telemetry.setup import init_telemetry  # noqa: E402
-from .helpers.validation import validate_env  # noqa: E402
+from .helpers.health import HealthNetwork  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
-from .telemetry.instruments import get_metrics  # noqa: E402
-from .telemetry.setup import shutdown_telemetry  # noqa: E402
-from .telemetry.instruments import initialize_metrics  # noqa: E402
-from .handlers.websocket.manager import handle_websocket_connection  # noqa: E402
+from .config.http import HEALTH_ALLOWED_CIDRS  # noqa: E402
+from .helpers.health import parse_health_allowed_cidrs  # noqa: E402
+from .helpers.health import ensure_internal_health_request  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(default_response_class=ORJSONResponse)
-
 configure_logging()
 
-validate_env()
+
+def _get_health_allowed_cidrs(app: FastAPI) -> tuple[HealthNetwork, ...]:
+    allowed_cidrs = getattr(app.state, "health_allowed_cidrs", None)
+    if allowed_cidrs is None:
+        allowed_cidrs = parse_health_allowed_cidrs(HEALTH_ALLOWED_CIDRS)
+        app.state.health_allowed_cidrs = allowed_cidrs
+    return allowed_cidrs
 
 
-@app.on_event("startup")
-async def preload_engines() -> None:
-    """Build all runtime dependencies before accepting traffic."""
-    t0 = time.monotonic()
-    init_telemetry()
-    initialize_metrics()
+def _build_lifespan(*, validate_environment: bool):
+    @contextlib.asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        """Build and tear down runtime dependencies around app lifetime."""
+        from .runtime import build_runtime_deps
+        from .telemetry.sentry import capture_error
+        from .helpers.validation import validate_env
+        from .telemetry.setup import init_telemetry, shutdown_telemetry
+        from .telemetry.instruments import get_metrics, initialize_metrics
 
-    try:
-        runtime_deps = await build_runtime_deps()
-    except Exception as exc:
-        capture_error(exc, extra={"phase": "bootstrap"})
-        raise
-    app.state.runtime_deps = runtime_deps
+        t0 = time.monotonic()
+        if validate_environment:
+            validate_env()
+        app.state.health_allowed_cidrs = parse_health_allowed_cidrs(HEALTH_ALLOWED_CIDRS)
+        init_telemetry()
+        initialize_metrics()
 
-    if runtime_deps.supports_cache_reset():
-        runtime_deps.ensure_cache_reset_daemon()
-    else:
-        logger.info("cache reset daemon: disabled (TRT-LLM uses block reuse)")
+        try:
+            runtime_deps = await build_runtime_deps()
+        except Exception as exc:
+            capture_error(exc, extra={"phase": "bootstrap"})
+            raise
+        app.state.runtime_deps = runtime_deps
 
-    get_metrics().startup_duration.record(time.monotonic() - t0)
+        if runtime_deps.supports_cache_reset():
+            runtime_deps.ensure_cache_reset_daemon()
+        else:
+            logger.info("cache reset daemon: disabled (TRT-LLM uses block reuse)")
 
+        get_metrics().startup_duration.record(time.monotonic() - t0)
+        try:
+            yield
+        finally:
+            shutdown_runtime_deps = getattr(app.state, "runtime_deps", None)
+            try:
+                if shutdown_runtime_deps is not None:
+                    await shutdown_runtime_deps.shutdown()
+            finally:
+                shutdown_telemetry()
 
-@app.on_event("shutdown")
-async def stop_engines() -> None:
-    """Ensure runtime dependencies shut down cleanly."""
-    runtime_deps = getattr(app.state, "runtime_deps", None)
-    try:
-        if runtime_deps is not None:
-            await runtime_deps.shutdown()
-    finally:
-        shutdown_telemetry()
-
-
-@app.get("/")
-async def root():
-    """Root endpoint for load balancer health checks."""
-    return {"status": "ok"}
-
-
-@app.get("/health")
-async def health():
-    """Health check endpoint (no authentication required)."""
-    return {"status": "ok"}
+    return lifespan
 
 
-@app.get("/healthz")
-async def healthz():
-    """Health check endpoint (no authentication required)."""
-    return {"status": "ok"}
+def create_app(*, attach_lifecycle: bool = True, validate_environment: bool = True) -> FastAPI:
+    """Create the FastAPI application."""
+    app = FastAPI(
+        default_response_class=ORJSONResponse,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=_build_lifespan(validate_environment=validate_environment) if attach_lifecycle else None,
+    )
+
+    @app.get("/healthz")
+    async def healthz(request: Request):
+        """Internal-only health check endpoint."""
+        ensure_internal_health_request(request, allowed_cidrs=_get_health_allowed_cidrs(request.app))
+        return {"status": "ok"}
+
+    @app.get("/favicon.ico", status_code=204)
+    async def favicon():
+        """Suppress favicon requests from browsers/probes."""
+        return None
+
+    @app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket):
+        """Main WebSocket endpoint for chat interactions."""
+        from .handlers.websocket.manager import handle_websocket_connection
+
+        runtime_deps = getattr(app.state, "runtime_deps", None)
+        if runtime_deps is None:
+            raise RuntimeError("Runtime dependencies are not initialized")
+        await handle_websocket_connection(websocket, runtime_deps)
+
+    return app
 
 
-@app.get("/favicon.ico", status_code=204)
-async def favicon():
-    """Suppress favicon requests from browsers/probes."""
-    return None
-
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """Main WebSocket endpoint for chat interactions."""
-    runtime_deps = getattr(app.state, "runtime_deps", None)
-    if runtime_deps is None:
-        raise RuntimeError("Runtime dependencies are not initialized")
-    await handle_websocket_connection(websocket, runtime_deps)
+app = create_app()

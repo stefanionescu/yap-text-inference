@@ -1,0 +1,2 @@
+[no_config_cross_imports]
+allowlist_filenames = ["engine.py", "gpu.py", "limits.py", "trt.py"]

@@ -9,9 +9,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import SRC_DIR, rel, report, parse_source, iter_python_files  # noqa: E402
+from shared import SRC_DIR, rel, report, parse_source, load_config_doc, iter_python_files  # noqa: E402
 
-FORBIDDEN_EXPORT_HOOKS = {"__getattr__", "__dir__", "__getattribute__"}
+_IMPORT_RULES = load_config_doc("rules", "imports.toml")
+_LAZY_LOADING_RULE = _IMPORT_RULES.get("no_lazy_module_loading")
+if not isinstance(_LAZY_LOADING_RULE, dict):
+    _LAZY_LOADING_RULE = {}
+FORBIDDEN_EXPORT_HOOKS = {
+    str(value) for value in _LAZY_LOADING_RULE.get("forbidden_export_hooks", []) if isinstance(value, str)
+} or {"__getattr__", "__dir__", "__getattribute__"}
 
 
 def _collect_violations(path: Path) -> list[str]:

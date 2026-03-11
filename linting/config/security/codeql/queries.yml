@@ -1,0 +1,15 @@
+name: "yap-text-inference local codeql"
+paths:
+  - src
+  - scripts
+  - linting
+  - tests
+paths-ignore:
+  - .cache
+  - .git
+  - .venv
+  - linting/.tools
+  - "**/__pycache__/**"
+  - "**/*.pyc"
+  - htmlcov
+  - node_modules

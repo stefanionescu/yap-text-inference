@@ -243,10 +243,10 @@ start_background() {
 # Usage: log_started <root_dir>
 log_started() {
   local root_dir="${1:-${ROOT_DIR:-}}"
-  local health_hint="${SERVER_HEALTH_URLS[0]:-http://${SERVER_ADDR}/healthz}"
+  local health_hint="${SERVER_LOCAL_HEALTH_URLS[0]:-http://127.0.0.1:${SERVER_PORT}/healthz}"
 
   log_info "[server] ✓ Server started"
-  log_info "[server] Health: curl -s ${health_hint}"
+  log_info "[server] Internal health: curl -s ${health_hint}"
   log_info "[server] All logs: tail -f ${root_dir}/${CFG_RUNTIME_SERVER_LOG_FILE}"
   log_info "[server] Stop: kill -TERM -$(cat "${root_dir}/${CFG_RUNTIME_SERVER_PID_FILE}")"
   log_blank

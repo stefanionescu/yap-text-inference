@@ -2,8 +2,7 @@
 
 import os
 
-# API Key for authentication (all endpoints except /healthz)
-# Validated at runtime by helpers/validation.py
+# API key used for authenticated public surfaces such as /ws.
 TEXT_API_KEY: str | None = os.getenv("TEXT_API_KEY")
 
 

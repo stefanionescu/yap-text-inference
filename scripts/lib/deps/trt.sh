@@ -221,26 +221,6 @@ _install_mpi_yum() {
   return 0
 }
 
-# Verify MPI runtime is functional
-verify_mpi_runtime() {
-  local need_mpi="${NEED_MPI:-0}"
-
-  if [ "${need_mpi}" != "1" ]; then
-    log_info "[deps] Skipping MPI runtime verification (NEED_MPI=0)"
-    return 0
-  fi
-
-  log_info "[deps] Verifying MPI runtime..."
-
-  # Check library path
-  if ! ldconfig -p 2>/dev/null | grep -q "libmpi.so"; then
-    log_warn "[deps] ⚠ libmpi.so not found in library path"
-    log_warn "[deps] ⚠ Add /usr/lib/x86_64-linux-gnu to LD_LIBRARY_PATH if needed"
-  fi
-
-  return 0
-}
-
 # =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================

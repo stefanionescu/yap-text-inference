@@ -24,21 +24,7 @@ run_global_stage() {
 
   case "${stage}:${mode}" in
     lint:commit)
-      collect_mode_files "${mode}" "${DOCS_FILE_PATTERN}"
-      if skip_when_no_files; then
-        return 0
-      fi
-
-      python linting/banned/terms.py "${FILES[@]}"
-      codespell --ignore-words .codespellignore "${FILES[@]}"
-
-      collect_mode_files "${mode}" "${MARKDOWN_FILE_PATTERN}"
-      if [[ ${#FILES[@]} -gt 0 ]]; then
-        python linting/pymarkdown/run.py scan "${FILES[@]}"
-      fi
-      ;;
-    lint:push)
-      bash scripts/docs.sh
+      bash linting/docs/run.sh
       ;;
     security:commit)
       local staged_envs=""
@@ -49,9 +35,6 @@ run_global_stage() {
         echo "Remove them from the index or bypass with SKIP_ENV_CHECK=1." >&2
         exit 1
       fi
-      ;;
-    security:push)
-      return 0
       ;;
     *)
       die_hook_error "unsupported global hook stage: ${stage}:${mode}"
@@ -70,76 +53,25 @@ run_project_stage() {
 
   case "${stage}:${mode}" in
     python:commit)
-      collect_mode_files "${mode}" "${PYTHON_FILE_PATTERN}"
-      if skip_when_no_files; then
-        return 0
-      fi
-
-      python -m isort --settings-path pyproject.toml --check-only --diff "${FILES[@]}"
-      python -m ruff format --config pyproject.toml --check "${FILES[@]}"
-      python -m ruff check --config pyproject.toml "${FILES[@]}"
-      python linting/naming/no_generic_names.py
-      python linting/runtime/no_print_statements.py
-      python linting/runtime/no_shell_true_subprocess.py
-      python linting/infra/version_pins.py
-      python linting/infra/config_integrity.py
-      ;;
-    python:push)
-      bash scripts/lint.sh --only code
+      bash linting/lint.sh --only code
       ;;
     shell:commit)
-      collect_mode_files "${mode}" "${SHELL_FILE_PATTERN}"
-      if skip_when_no_files; then
-        return 0
-      fi
-
-      shellcheck -x -e SC1091 "${FILES[@]}"
-      shfmt -d -i 2 -ci -s "${FILES[@]}"
-      python linting/runtime/no_inline_python.py
-      python linting/shell/run.py "${FILES[@]}"
-      ;;
-    shell:push)
-      bash scripts/lint.sh --only shell
-      ;;
-    docs:commit)
-      run_global_stage lint --mode=commit
-      ;;
-    docs:push)
-      bash scripts/docs.sh
+      bash linting/lint.sh --only shell
       ;;
     docker:commit)
-      local saw_docker_input=0
-      collect_mode_files "${mode}" "${DOCKERFILE_PATTERN}"
-      if [[ ${#FILES[@]} -gt 0 ]]; then
-        saw_docker_input=1
-        for dockerfile in "${FILES[@]}"; do
-          hadolint --failure-threshold error "${dockerfile}"
-        done
-      fi
-
-      collect_mode_files "${mode}" "${DOCKER_POLICY_PATTERN}"
-      if [[ ${#FILES[@]} -gt 0 ]]; then
-        python linting/infra/dockerignore_policy.py
-        return 0
-      fi
-
-      if [[ ${saw_docker_input} == "0" ]]; then
-        echo "skip"
-      fi
+      bash linting/lint.sh --only docker
       ;;
-    docker:push)
-      bash scripts/lint.sh --only docker
-      ;;
-    quality:commit | security:commit | tests:commit)
-      echo "skip"
-      ;;
-    quality:push)
-      bash scripts/lint.sh --only quality
+    quality:commit)
+      bash linting/lint.sh --only quality
       ;;
     security:push)
-      bash scripts/security.sh
+      bash linting/security/run.sh
       ;;
-    tests:push)
+    coverage:push)
+      if [[ ${RUN_COVERAGE:-0} != "1" ]]; then
+        echo "skip"
+        return 0
+      fi
       bash scripts/coverage.sh
       ;;
     *)
@@ -167,6 +99,8 @@ run_self_stage() {
       shfmt -d -i 2 -ci -s "${FILES[@]}"
       ;;
     quality)
+      python linting/structure/prefix_collisions.py .githooks
+      python linting/structure/single_file_folders.py .githooks
       bunx jscpd --config "${HOOK_SELF_JSCPD_CONFIG}"
       ;;
     security)

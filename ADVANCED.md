@@ -45,7 +45,7 @@ This document covers advanced operations, configuration, and deep-dive details f
 
 ## Authentication Coverage
 
-- `/healthz` – No authentication required
+- `/healthz` – Internal-only by source IP allowlist (`HEALTH_ALLOWED_CIDRS`, loopback-only by default)
 - `/ws` – Requires API key
 
 ## Telemetry
@@ -293,28 +293,36 @@ pip install -r requirements-dev.txt
 # sync the root JS maintenance tools
 bun install
 
-# full lint
-bash scripts/lint.sh
+# canonical task hub
+nox -s lint
+nox -s test
+nox -s security
+nox -s coverage
+nox -s codeql
 
-# fast lint loop
-bash scripts/lint.sh --fast
+# focused loops
+nox -s lint_fast
+nox -s lint_code
+nox -s lint_shell
+nox -s lint_docker
+nox -s quality
+nox -s hooks
 
-# focused stages
-bash scripts/lint.sh --only code
-bash scripts/lint.sh --only shell
-bash scripts/lint.sh --only docs
-bash scripts/lint.sh --only docker
-bash scripts/lint.sh --only quality
-
-# security / coverage
-bash scripts/security.sh
+# lower-level direct entrypoints
+bash linting/lint.sh
+bash linting/lint.sh --only code
+bash linting/lint.sh --only shell
+bash linting/docs/run.sh
+bash linting/lint.sh --only docker
+bash linting/lint.sh --only quality
+bash linting/security/run.sh
+bash linting/security/codeql/run.sh
 bash scripts/coverage.sh
-
-# optional Python-native task hub
-nox -s lint test coverage security
 ```
 
-`scripts/lint.sh` runs:
+CodeQL writes raw SARIF plus a generated Markdown report to `linting/.tools/codeql/results/`.
+
+`linting/lint.sh` runs:
 - isort (import ordering)
 - Ruff format + lint
 - import-linter contracts
@@ -327,24 +335,24 @@ nox -s lint test coverage security
   - no lazy singleton runtime patterns (`src/**/*.py`)
   - no lazy module loading/export patterns (`src/**/*.py`; no `__getattr__` lazy exports or `importlib.import_module` indirection)
   - no legacy/backward-compatibility markers in runtime orchestration modules
-  - Docker ignore policy from `linting/policy.toml` (engine-local mode: only `docker/vllm/.dockerignore` and `docker/trt/.dockerignore` are allowed)
+  - Docker ignore policy from `linting/config/repo/policy.toml` (engine-local mode: only `docker/vllm/.dockerignore` and `docker/trt/.dockerignore` are allowed)
   - `__all__` must appear at module bottom (`src/**/*.py`)
   - no single-file folders in `src/` (promotes flat module layout)
   - no module-name prefix collisions (`src/**/*.py`)
   - no inline Python in shell scripts (`scripts/**/*.sh`, `docker/**/*.sh`)
 - ShellCheck (and shfmt checks when available)
-- docs lint via `scripts/docs.sh`:
+- docs lint via `linting/docs/run.sh`:
   - banned-term checks
   - `codespell`
   - `pymarkdownlnt` with repo-local prose plugins
-- quality lint via `scripts/quality.sh`:
+- quality lint via `linting/lint.sh --only quality`:
   - `lizard`
   - `deptry`
   - `vulture`
   - `jscpd` for Python and Bash
 - hook self-checks for `.githooks/`
 
-`scripts/security.sh` runs the heavier security gate:
+`linting/security/run.sh` runs the heavier security gate:
 - Semgrep
 - Bandit
 - `pip-audit`
@@ -356,7 +364,7 @@ nox -s lint test coverage security
 - CodeQL
 - optional SonarQube when `RUN_SONAR=1`
 
-Root Bun tooling is intentionally tiny. Today it is used for:
+Root Bun tooling is intentionally tiny. Today it is used by the `nox`/hook maintenance flow for:
 - `jscpd`
 - `bash .githooks/lib/setup.sh`
 

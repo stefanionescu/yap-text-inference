@@ -1,9 +1,5 @@
 #!/usr/bin/env python
-"""Detect single-file packages that should be flattened to modules.
-
-Flags any package under src/ that has __init__.py + exactly one other .py
-module and NO subpackages. These should be converted to a single module file.
-"""
+"""Detect repo directories that only contain a single file and no subdirectories."""
 
 from __future__ import annotations
 
@@ -12,43 +8,91 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import SRC_DIR, rel, report  # noqa: E402
+from shared import ROOT, rel, report, load_config_doc  # noqa: E402
+
+_STRUCTURE_RULES = load_config_doc("rules", "structure.toml")
+_SINGLE_RULE = _STRUCTURE_RULES.get("single_file_folders")
+if not isinstance(_SINGLE_RULE, dict):
+    _SINGLE_RULE = {}
+
+SCAN_ROOTS = [ROOT / str(value) for value in _SINGLE_RULE.get("scan_roots", []) if isinstance(value, str)] or [
+    ROOT / "src",
+    ROOT / "scripts",
+    ROOT / "docker",
+    ROOT / ".githooks",
+    ROOT / "linting" / "config",
+    ROOT / "linting" / "security",
+]
+ALLOWLIST = {str(value) for value in _SINGLE_RULE.get("allowlist_relative_paths", []) if isinstance(value, str)} or {
+    "docker/vllm/download",
+    ".githooks/.jscpd",
+    "linting/security/bearer",
+    "linting/security/gitleaks",
+    "linting/security/licenses",
+    "linting/security/osv",
+    "linting/security/pip_audit",
+    "linting/security/trivy",
+}
+IGNORED_NAMES = {str(value) for value in _SINGLE_RULE.get("ignored_names", []) if isinstance(value, str)} or {
+    "__pycache__",
+    ".DS_Store",
+}
 
 
-def _is_single_file_package(pkg_dir: Path) -> str | None:
-    """Return the lone module name if pkg_dir is a single-file package, else None."""
-    init = pkg_dir / "__init__.py"
-    if not init.exists():
-        return None
+def _parse_scope(raw_args: list[str]) -> set[Path]:
+    if not raw_args:
+        return set()
 
-    py_files = [f for f in pkg_dir.iterdir() if f.suffix == ".py" and f.name != "__init__.py"]
-    subdirs = [d for d in pkg_dir.iterdir() if d.is_dir() and (d / "__init__.py").exists()]
+    scoped_dirs: set[Path] = set()
+    for raw_arg in raw_args:
+        candidate = Path(raw_arg)
+        resolved = candidate if candidate.is_absolute() else (ROOT / candidate).resolve()
+        if not resolved.exists():
+            continue
+        scoped_dirs.add(resolved if resolved.is_dir() else resolved.parent)
+    return scoped_dirs
 
-    if len(py_files) == 1 and len(subdirs) == 0:
-        return py_files[0].name
-    return None
+
+def _iter_directories(scope_dirs: set[Path]) -> list[Path]:
+    directories: set[Path] = set()
+    for root_dir in SCAN_ROOTS:
+        if not root_dir.is_dir():
+            continue
+        directories.add(root_dir)
+        directories.update(path for path in root_dir.rglob("*") if path.is_dir())
+
+    if not scope_dirs:
+        return sorted(directories)
+
+    filtered: list[Path] = []
+    for directory in sorted(directories):
+        if any(directory == scope_dir or directory.is_relative_to(scope_dir) for scope_dir in scope_dirs):
+            filtered.append(directory)
+    return filtered
+
+
+def _should_skip_directory(directory: Path, relative: str) -> bool:
+    return relative in ALLOWLIST or directory == ROOT or directory.name in IGNORED_NAMES
+
+
+def _visible_children(directory: Path) -> tuple[list[Path], list[Path]]:
+    files = [child for child in directory.iterdir() if child.is_file() and child.name not in IGNORED_NAMES]
+    subdirs = [child for child in directory.iterdir() if child.is_dir() and child.name not in IGNORED_NAMES]
+    return files, subdirs
 
 
 def main() -> int:
+    scope_dirs = _parse_scope(sys.argv[1:])
     violations: list[str] = []
 
-    if not SRC_DIR.is_dir():
-        return 0
-
-    for pkg_dir in sorted(SRC_DIR.rglob("*")):
-        if not pkg_dir.is_dir():
-            continue
-        if "__pycache__" in pkg_dir.parts:
-            continue
-        if not (pkg_dir / "__init__.py").exists():
-            continue
-        # Skip the src root itself
-        if pkg_dir == SRC_DIR:
+    for directory in _iter_directories(scope_dirs):
+        relative = rel(directory)
+        if _should_skip_directory(directory, relative):
             continue
 
-        lone_module = _is_single_file_package(pkg_dir)
-        if lone_module:
-            violations.append(f"  {rel(pkg_dir)}/ has only {lone_module} — flatten to a single module")
+        files, subdirs = _visible_children(directory)
+        if len(files) == 1 and not subdirs:
+            violations.append(f"  {relative}/ has only {files[0].name} — flatten or regroup related code")
 
     return report("Single-file folder violations", violations)
 

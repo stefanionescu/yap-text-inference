@@ -75,21 +75,6 @@ gpu_detect_name() {
   nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 || echo "Unknown"
 }
 
-# Get GPU VRAM in GB
-gpu_detect_vram_gb() {
-  if ! command -v nvidia-smi >/dev/null 2>&1; then
-    echo "0"
-    return
-  fi
-  local vram_mb
-  vram_mb=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n1 || true)
-  if [ -n "${vram_mb}" ]; then
-    echo $((vram_mb / 1024))
-  else
-    echo "0"
-  fi
-}
-
 # Map SM arch to TORCH_CUDA_ARCH_LIST value (e.g., sm89 -> 8.9)
 gpu_sm_to_torch_arch() {
   local sm="${1:-}"
@@ -100,23 +85,6 @@ gpu_sm_to_torch_arch() {
     sm75) echo "7.5" ;;
     sm70) echo "7.0" ;;
     *) echo "8.0" ;;
-  esac
-}
-
-# Check if GPU supports native FP8 (Hopper, Ada Lovelace)
-gpu_supports_fp8() {
-  local sm_arch="${1:-}"
-  if [ -z "${sm_arch}" ]; then
-    sm_arch=$(gpu_detect_sm_arch)
-  fi
-
-  case "${sm_arch}" in
-    sm89 | sm90)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
   esac
 }
 

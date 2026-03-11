@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project Docker hook for staged Docker linting on commit and full Docker linting on push.
+# Project Docker hook for full-repo Docker linting on commit.
 set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 # shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook dispatch helper -- ticket: N/A

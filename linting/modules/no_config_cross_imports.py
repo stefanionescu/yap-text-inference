@@ -14,9 +14,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from shared import CONFIG_DIR, rel, report, parse_source  # noqa: E402
+from shared import CONFIG_DIR, rel, report, parse_source, load_config_doc  # noqa: E402
 
+_MODULE_RULES = load_config_doc("rules", "modules.toml")
+_CROSS_IMPORT_RULE = _MODULE_RULES.get("no_config_cross_imports")
+if not isinstance(_CROSS_IMPORT_RULE, dict):
+    _CROSS_IMPORT_RULE = {}
 ALLOWLIST_FILENAMES = {
+    str(value) for value in _CROSS_IMPORT_RULE.get("allowlist_filenames", []) if isinstance(value, str)
+} or {
     "engine.py",
     "gpu.py",
     "limits.py",

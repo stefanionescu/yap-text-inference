@@ -7,9 +7,13 @@ hook_entrypoints = [".githooks/pre-commit", ".githooks/pre-push", ".githooks/com
 
 [run]
 rule_modules = [
-    "linting/shell/strict_mode.py",
-    "linting/shell/disable_justification.py",
-    "linting/shell/docs.py",
+    "linting/shell/rules/strict_mode.py",
+    "linting/shell/rules/disable_justification.py",
+    "linting/shell/rules/docs.py",
+    "linting/shell/rules/function_length.py",
+    "linting/shell/rules/unused_functions.py",
+    "linting/shell/rules/naming.py",
+    "linting/shell/rules/config_defaults.py",
 ]
 
 [strict_mode]
@@ -27,3 +31,19 @@ function_regex = "^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\(\\)\\s*\\{"
 doc_regex = "^#\\s+[A-Za-z_][A-Za-z0-9_]*\\s+[-:]\\s+\\S+"
 scoped_prefixes = [".githooks/", "linting/security/"]
 ignored_function_names = ["main"]
+
+[unused_functions]
+ignored_function_names = ["main", "usage"]
+
+[config_defaults]
+scoped_prefixes = ["scripts/", "docker/"]
+scan_window = 90
+allowed_path_prefixes = [
+    "scripts/config",
+    "scripts/lib/env",
+    "docker/common/scripts/build",
+    "docker/tool/scripts/env",
+    "docker/trt/scripts/env",
+    "docker/vllm/scripts/env",
+]
+allowed_files = ["scripts/steps/04_env_defaults.sh"]

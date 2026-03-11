@@ -14,185 +14,196 @@ source "${_MAIN_ARGS_DIR}/../../config/values/core.sh"
 # shellcheck source=../../config/patterns.sh
 source "${_MAIN_ARGS_DIR}/../../config/patterns.sh"
 
-parse_cli() {
-  init_common_state
+_main_args_record_engine_flag() {
+  if [ -z "${MAIN_ARGS_FIRST_ENGINE_FLAG}" ]; then
+    MAIN_ARGS_FIRST_ENGINE_FLAG="${ENGINE_FLAG_NAME}"
+  fi
+  MAIN_ARGS_DEFERRED_ENGINE_FLAGS+=("${ENGINE_FLAG_NAME}")
+  if [ "${ENGINE_FLAG_NAME}" = "--engine" ]; then
+    MAIN_ARGS_DEFERRED_ENGINE_FLAGS+=("${ENGINE_FLAG_VALUE}")
+  fi
+}
 
-  local quant_type="auto"
-  local deploy_mode="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
-  local deploy_explicit=0
-  local first_engine_flag=""
-  local -a positional_args=()
-  local -a deferred_engine_flags=()
+_main_args_handle_token() {
+  case "$1" in
+    -h | --help)
+      show_usage
+      return 1
+      ;;
+    --deploy-mode)
+      cli_set_deploy_mode_value "${2:-}" "[main]" MAIN_ARGS_DEPLOY_MODE || return 1
+      MAIN_ARGS_DEPLOY_EXPLICIT=1
+      ARGS_SHIFT_COUNT=2
+      return 0
+      ;;
+    --deploy-mode=*)
+      cli_set_deploy_mode_value "${1#--deploy-mode=}" "[main]" MAIN_ARGS_DEPLOY_MODE || return 1
+      MAIN_ARGS_DEPLOY_EXPLICIT=1
+      return 0
+      ;;
+    4bit | 4BIT | 4Bit)
+      MAIN_ARGS_QUANT_TYPE="4bit"
+      return 0
+      ;;
+    8bit | 8BIT | 8Bit)
+      MAIN_ARGS_QUANT_TYPE="8bit"
+      return 0
+      ;;
+    awq | AWQ | fp8 | FP8)
+      log_err "[main] ✗ '${1}' flag has been removed. Use '4bit' or '8bit' explicitly."
+      return 1
+      ;;
+    "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}" | "${CFG_DEPLOY_MODE_BOTH}")
+      if [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -eq 0 ] && [ "${MAIN_ARGS_DEPLOY_EXPLICIT}" -eq 0 ]; then
+        MAIN_ARGS_DEPLOY_MODE="$1"
+        MAIN_ARGS_DEPLOY_EXPLICIT=1
+      else
+        MAIN_ARGS_POSITIONAL_ARGS+=("$1")
+      fi
+      return 0
+      ;;
+    --*)
+      log_err "[main] ✗ Unknown flag '$1'. See --help for supported options."
+      return 1
+      ;;
+    *)
+      MAIN_ARGS_POSITIONAL_ARGS+=("$1")
+      return 0
+      ;;
+  esac
+}
 
-  while [ $# -gt 0 ]; do
-    # Parse non-engine common flags first.
-    if parse_common_non_engine_flag "$1" "${2:-}"; then
-      shift "${ARGS_SHIFT_COUNT}"
-      continue
-    fi
-
-    # Defer engine handling until deploy mode is known.
-    local engine_parse_rc=0
-    if parse_engine_flag_token "$1" "${2:-}"; then
-      engine_parse_rc=0
-    else
-      engine_parse_rc=$?
-    fi
-    case "${engine_parse_rc}" in
-      0)
-        if [ -z "${first_engine_flag}" ]; then
-          first_engine_flag="${ENGINE_FLAG_NAME}"
-        fi
-        deferred_engine_flags+=("${ENGINE_FLAG_NAME}")
-        if [ "${ENGINE_FLAG_NAME}" = "--engine" ]; then
-          deferred_engine_flags+=("${ENGINE_FLAG_VALUE}")
-        fi
-        shift "${ARGS_SHIFT_COUNT}"
-        continue
-        ;;
-      2)
-        log_err "[main] ✗ --engine requires a value (trt|vllm)"
-        return 1
-        ;;
-    esac
-
-    case "$1" in
-      -h | --help)
-        show_usage
-        return 1
-        ;;
-      --deploy-mode)
-        if ! cli_set_deploy_mode_value "${2:-}" "[main]" deploy_mode; then
-          return 1
-        fi
-        deploy_explicit=1
-        shift
-        ;;
-      --deploy-mode=*)
-        if ! cli_set_deploy_mode_value "${1#--deploy-mode=}" "[main]" deploy_mode; then
-          return 1
-        fi
-        deploy_explicit=1
-        ;;
-      4bit | 4BIT | 4Bit)
-        quant_type="4bit"
-        ;;
-      8bit | 8BIT | 8Bit)
-        quant_type="8bit"
-        ;;
-      awq | AWQ | fp8 | FP8)
-        log_err "[main] ✗ '${1}' flag has been removed. Use '4bit' or '8bit' explicitly."
-        return 1
-        ;;
-      "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}" | "${CFG_DEPLOY_MODE_BOTH}")
-        if [ ${#positional_args[@]} -eq 0 ] && [ "${deploy_explicit}" -eq 0 ]; then
-          deploy_mode="$1"
-          deploy_explicit=1
-        else
-          positional_args+=("$1")
-        fi
-        ;;
-      --*)
-        log_err "[main] ✗ Unknown flag '$1'. See --help for supported options."
-        return 1
-        ;;
-      *)
-        positional_args+=("$1")
-        ;;
-    esac
-    shift
-  done
-
-  if [ "${deploy_explicit}" -eq 0 ] && [ ${#positional_args[@]} -gt 0 ]; then
-    local last_index=$((${#positional_args[@]} - 1))
-    local maybe_mode="${positional_args[$last_index]}"
-    case "${maybe_mode}" in
-      "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}" | "${CFG_DEPLOY_MODE_BOTH}")
-        deploy_mode="${maybe_mode}"
-        unset "positional_args[$last_index]"
-        ;;
-    esac
+_main_args_resolve_trailing_mode() {
+  if [ "${MAIN_ARGS_DEPLOY_EXPLICIT}" -ne 0 ] || [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -eq 0 ]; then
+    return 0
   fi
 
-  if ! deploy_mode="$(cli_validate_deploy_mode "${deploy_mode}")"; then
-    log_err "[main] ✗ Invalid deploy mode '${deploy_mode}'. Expected both|chat|tool."
+  local last_index=$((${#MAIN_ARGS_POSITIONAL_ARGS[@]} - 1))
+  local maybe_mode="${MAIN_ARGS_POSITIONAL_ARGS[$last_index]}"
+  case "${maybe_mode}" in
+    "${CFG_DEPLOY_MODE_CHAT}" | "${CFG_DEPLOY_MODE_TOOL}" | "${CFG_DEPLOY_MODE_BOTH}")
+      MAIN_ARGS_DEPLOY_MODE="${maybe_mode}"
+      unset "MAIN_ARGS_POSITIONAL_ARGS[$last_index]"
+      ;;
+  esac
+}
+
+_main_args_apply_engine_flags() {
+  if ! DEPLOY_MODE="$(cli_validate_deploy_mode "${MAIN_ARGS_DEPLOY_MODE}")"; then
+    log_err "[main] ✗ Invalid deploy mode '${MAIN_ARGS_DEPLOY_MODE}'. Expected both|chat|tool."
     return 1
   fi
 
-  if [ "${deploy_mode}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
-    if [ ${#deferred_engine_flags[@]} -gt 0 ]; then
-      log_err "[main] ✗ ${first_engine_flag} is not supported when DEPLOY_MODE='tool'."
+  if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
+    if [ ${#MAIN_ARGS_DEFERRED_ENGINE_FLAGS[@]} -gt 0 ]; then
+      log_err "[main] ✗ ${MAIN_ARGS_FIRST_ENGINE_FLAG} is not supported when DEPLOY_MODE='tool'."
       log_err "[main] ✗ Remove engine flags (--trt/--vllm/--engine) for tool-only deployments."
       return 1
     fi
     unset INFERENCE_ENGINE
-  else
-    if ! apply_deferred_engine_flags "[main]" "${deferred_engine_flags[@]}"; then
-      return 1
-    fi
+    return 0
   fi
 
-  case "${quant_type}" in
-    4bit | 8bit | auto) ;;
-    *)
-      quant_type="auto"
-      ;;
-  esac
+  apply_deferred_engine_flags "[main]" "${MAIN_ARGS_DEFERRED_ENGINE_FLAGS[@]}"
+}
 
-  local chat_model=""
-  local tool_model=""
+_main_args_resolve_models() {
+  CHAT_MODEL_NAME=""
+  TOOL_MODEL_NAME=""
 
-  case "${deploy_mode}" in
+  case "${DEPLOY_MODE}" in
     "${CFG_DEPLOY_MODE_BOTH}")
-      if [ ${#positional_args[@]} -lt 2 ]; then
+      if [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -lt 2 ]; then
         log_warn "[main] ⚠ both mode requires <chat_model> <tool_model>"
         return 1
       fi
-      chat_model="${positional_args[0]}"
-      tool_model="${positional_args[1]}"
-      if [ ${#positional_args[@]} -gt 2 ]; then
-        log_err "[main] ✗ Extra arguments provided after <chat_model> <tool_model>: ${positional_args[*]:2}"
+      CHAT_MODEL_NAME="${MAIN_ARGS_POSITIONAL_ARGS[0]}"
+      TOOL_MODEL_NAME="${MAIN_ARGS_POSITIONAL_ARGS[1]}"
+      if [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -gt 2 ]; then
+        log_err "[main] ✗ Extra arguments provided after <chat_model> <tool_model>: ${MAIN_ARGS_POSITIONAL_ARGS[*]:2}"
         return 1
       fi
       ;;
     "${CFG_DEPLOY_MODE_CHAT}")
-      if [ ${#positional_args[@]} -lt 1 ]; then
+      if [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -lt 1 ]; then
         log_warn "[main] ⚠ chat-only mode requires <chat_model>"
         return 1
       fi
-      chat_model="${positional_args[0]}"
-      if [ ${#positional_args[@]} -gt 1 ]; then
-        log_err "[main] ✗ Extra arguments provided after <chat_model>: ${positional_args[*]:1}"
+      CHAT_MODEL_NAME="${MAIN_ARGS_POSITIONAL_ARGS[0]}"
+      if [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -gt 1 ]; then
+        log_err "[main] ✗ Extra arguments provided after <chat_model>: ${MAIN_ARGS_POSITIONAL_ARGS[*]:1}"
         return 1
       fi
       ;;
     "${CFG_DEPLOY_MODE_TOOL}")
-      if [ ${#positional_args[@]} -lt 1 ]; then
+      if [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -lt 1 ]; then
         log_warn "[main] ⚠ tool-only mode requires <tool_model>"
         return 1
       fi
-      tool_model="${positional_args[0]}"
-      if [ ${#positional_args[@]} -gt 1 ]; then
+      TOOL_MODEL_NAME="${MAIN_ARGS_POSITIONAL_ARGS[0]}"
+      if [ ${#MAIN_ARGS_POSITIONAL_ARGS[@]} -gt 1 ]; then
         log_warn "[main] ⚠ Extra arguments ignored after <tool_model>"
       fi
       ;;
   esac
 
-  if [ "${deploy_mode}" != "${CFG_DEPLOY_MODE_TOOL}" ] && [ -z "${chat_model}" ]; then
-    log_warn "[main] ⚠ CHAT_MODEL is required for deploy mode '${deploy_mode}'"
+  if [ "${DEPLOY_MODE}" != "${CFG_DEPLOY_MODE_TOOL}" ] && [ -z "${CHAT_MODEL_NAME}" ]; then
+    log_warn "[main] ⚠ CHAT_MODEL is required for deploy mode '${DEPLOY_MODE}'"
     return 1
   fi
-  if [ "${deploy_mode}" != "${CFG_DEPLOY_MODE_CHAT}" ] && [ -z "${tool_model}" ]; then
-    log_warn "[main] ⚠ TOOL_MODEL is required for deploy mode '${deploy_mode}'"
+  if [ "${DEPLOY_MODE}" != "${CFG_DEPLOY_MODE_CHAT}" ] && [ -z "${TOOL_MODEL_NAME}" ]; then
+    log_warn "[main] ⚠ TOOL_MODEL is required for deploy mode '${DEPLOY_MODE}'"
     return 1
   fi
 
-  QUANT_TYPE="${quant_type}"
-  DEPLOY_MODE="${deploy_mode}"
-  CHAT_MODEL_NAME="${chat_model}"
-  TOOL_MODEL_NAME="${tool_model}"
+  return 0
+}
 
-  # Validate mutually exclusive flags
+parse_cli() {
+  init_common_state
+
+  MAIN_ARGS_QUANT_TYPE="auto"
+  MAIN_ARGS_DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
+  MAIN_ARGS_DEPLOY_EXPLICIT=0
+  MAIN_ARGS_FIRST_ENGINE_FLAG=""
+  MAIN_ARGS_POSITIONAL_ARGS=()
+  MAIN_ARGS_DEFERRED_ENGINE_FLAGS=()
+
+  while [ $# -gt 0 ]; do
+    if parse_common_non_engine_flag "$1" "${2:-}"; then
+      shift "${ARGS_SHIFT_COUNT}"
+      continue
+    fi
+
+    local engine_parse_rc=0
+    if parse_engine_flag_token "$1" "${2:-}"; then
+      _main_args_record_engine_flag
+      shift "${ARGS_SHIFT_COUNT}"
+      continue
+    else
+      engine_parse_rc=$?
+    fi
+    if [ "${engine_parse_rc}" -eq 2 ]; then
+      log_err "[main] ✗ --engine requires a value (trt|vllm)"
+      return 1
+    fi
+
+    ARGS_SHIFT_COUNT=1
+    _main_args_handle_token "$1" "${2:-}" || return 1
+    shift "${ARGS_SHIFT_COUNT}"
+  done
+
+  _main_args_resolve_trailing_mode
+  _main_args_apply_engine_flags || return 1
+
+  case "${MAIN_ARGS_QUANT_TYPE}" in
+    4bit | 8bit | auto) ;;
+    *) MAIN_ARGS_QUANT_TYPE="auto" ;;
+  esac
+
+  _main_args_resolve_models || return 1
+  QUANT_TYPE="${MAIN_ARGS_QUANT_TYPE}"
+
   if ! validate_common_state; then
     return 1
   fi
@@ -200,7 +211,6 @@ parse_cli() {
   export_common_state
   export QUANT_TYPE DEPLOY_MODE
   export CHAT_MODEL_NAME TOOL_MODEL_NAME
-
   return 0
 }
 

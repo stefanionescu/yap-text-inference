@@ -36,7 +36,8 @@ DEPLOY_MODE="${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}"
 
 if [ "${DEPLOY_MODE}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
   unset INFERENCE_ENGINE 2>/dev/null || true
-  export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
+  VENV_DIR="$(get_venv_dir)"
+  export VENV_DIR
   local_tool_python_bin="$(command -v python3 || command -v python || true)"
 
   deps_export_pip
@@ -105,7 +106,8 @@ fi
 # COMMON SETUP
 # =============================================================================
 
-export VENV_DIR="${VENV_DIR:-$(get_venv_dir)}"
+VENV_DIR="$(get_venv_dir)"
+export VENV_DIR
 
 deps_export_pip
 ensure_ca_certificates

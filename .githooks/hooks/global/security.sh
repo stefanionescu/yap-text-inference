@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Global hook security checks for commit-time repository hygiene.
+# Global hook security checks for commit-time repository hygiene only.
 set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 # shellcheck disable=SC1091  # lint:justify -- reason: sourced relative hook dispatch helper -- ticket: N/A

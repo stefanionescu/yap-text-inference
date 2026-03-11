@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=../security/common.sh
 source "${REPO_ROOT}/linting/security/common.sh"
-source "${REPO_ROOT}/linting/config/semgrep.sh"
+source "${REPO_ROOT}/linting/config/semgrep/env.sh"
 
 # semgrep_args - Build the configured Semgrep flags, excludes, and configs.
 semgrep_args() {

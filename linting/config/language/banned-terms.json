@@ -1,5 +1,6 @@
 {
     "version": 1,
+    "trackedDirs": ["src", "tests", "scripts", "docker", "linting", ".githooks"],
     "bannedTerms": ["shim", "shims", "hacky", "magic happens", "belt and suspenders"],
     "matching": {
         "caseInsensitive": true

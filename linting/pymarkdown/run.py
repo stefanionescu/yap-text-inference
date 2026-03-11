@@ -6,15 +6,37 @@ import sys
 import subprocess
 from pathlib import Path, PurePosixPath
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+    import tomli as tomllib  # type: ignore[no-redef]
+
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_FILE = ROOT / ".pymarkdown.toml"
+RULE_CONFIG_FILE = ROOT / "linting" / "config" / "rules" / "pymarkdown.toml"
 _MIN_CLI_ARGUMENTS = 2
 PLUGIN_FILES = (
-    ROOT / "linting" / "pymarkdown" / "no_banned_terms.py",
-    ROOT / "linting" / "pymarkdown" / "heading_title_case.py",
-    ROOT / "linting" / "pymarkdown" / "no_double_hyphen.py",
+    ROOT / "linting" / "pymarkdown" / "rules" / "no_banned_terms.py",
+    ROOT / "linting" / "pymarkdown" / "rules" / "heading_title_case.py",
+    ROOT / "linting" / "pymarkdown" / "rules" / "no_double_hyphen.py",
 )
-EXCLUDE_PATTERNS = (
+
+
+def _load_rule_config() -> dict[str, object]:
+    if not RULE_CONFIG_FILE.exists():
+        return {}
+    try:
+        loaded = tomllib.loads(RULE_CONFIG_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+_RULES = _load_rule_config()
+_RUN_RULES = _RULES.get("run")
+if not isinstance(_RUN_RULES, dict):
+    _RUN_RULES = {}
+EXCLUDE_PATTERNS = tuple(str(value) for value in _RUN_RULES.get("exclude_patterns", []) if isinstance(value, str)) or (
     "node_modules/**",
     ".git/**",
     ".cache/**",
@@ -22,6 +44,7 @@ EXCLUDE_PATTERNS = (
     ".pytest_cache/**",
     ".mypy_cache/**",
     ".ruff_cache/**",
+    "linting/.tools/**",
     "coverage/**",
     "htmlcov/**",
     "rules/**",

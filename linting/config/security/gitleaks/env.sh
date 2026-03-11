@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# lint:justify -- reason: configuration file sourced by security wrappers -- ticket: N/A
+# shellcheck disable=SC2034
+
+GITLEAKS_IMAGE="zricethezav/gitleaks:v${GITLEAKS_VERSION}"
+GITLEAKS_CONFIG_FILE=".gitleaks.toml"
+GITLEAKS_BASELINE_FILE="linting/config/security/gitleaks/baseline.json"
+GITLEAKS_TOOL_NAME="gitleaks"
+GITLEAKS_RELEASE_BASE_URL="https://github.com/gitleaks/gitleaks/releases/download"
+GITLEAKS_ARCHIVE_PREFIX="gitleaks"
+GITLEAKS_CHECKSUMS_SUFFIX="checksums.txt"
+GITLEAKS_OS_DARWIN="darwin"
+GITLEAKS_OS_LINUX="linux"
+GITLEAKS_ARCH_AMD64="x64"
+GITLEAKS_ARCH_ARM64="arm64"

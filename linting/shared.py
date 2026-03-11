@@ -20,7 +20,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
 ROOT = Path(__file__).resolve().parents[1]
 LINTING_CONFIG_DIR = ROOT / "linting" / "config"
 
-_POLICY_PATH = ROOT / "linting" / "policy.toml"
+_POLICY_PATH = ROOT / "linting" / "config" / "repo" / "policy.toml"
 _CONFIG_CACHE: dict[Path, dict[str, object]] = {}
 
 # ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ LINTING_DIR: Path = _repo_path("linting", "linting")
 
 
 def policy_section(name: str) -> dict[str, object]:
-    """Return a dict section from ``linting/policy.toml`` or an empty mapping."""
+    """Return a dict section from ``linting/config/repo/policy.toml`` or an empty mapping."""
     value = _POLICY.get(name)
     return value if isinstance(value, dict) else {}
 

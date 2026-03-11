@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from shared import ROOT, rel, report, policy_section, load_config_doc  # noqa: E402
 
+POLICY_LABEL = "linting/config/repo/policy.toml"
+
 
 def _configured_paths(field: str, violations: list[str]) -> list[Path]:
     config_doc = load_config_doc("repo", "files.toml")
@@ -41,11 +43,11 @@ def main() -> int:
     naming_policy = policy_section("naming")
     for raw_prefix in naming_policy.get("allowed_path_prefixes", []):
         if not isinstance(raw_prefix, str):
-            violations.append("  linting/policy.toml: naming.allowed_path_prefixes entries must be strings")
+            violations.append(f"  {POLICY_LABEL}: naming.allowed_path_prefixes entries must be strings")
             continue
         target = ROOT / raw_prefix
         if not target.exists():
-            violations.append(f"  linting/policy.toml: allowlisted path does not exist: {raw_prefix}")
+            violations.append(f"  {POLICY_LABEL}: allowlisted path does not exist: {raw_prefix}")
 
     return report("Lint config integrity violations", violations)
 

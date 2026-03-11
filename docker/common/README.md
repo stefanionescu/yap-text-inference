@@ -27,7 +27,6 @@ Consistent log output formatting across all build and runtime scripts.
 - `log_warn` — non-fatal warnings
 - `log_err` — fatal error output
 - `log_success` — success confirmation
-- `log_section` — blank line followed by info log (visual separator)
 
 ### Warmup (`scripts/warmup.sh`)
 
@@ -43,8 +42,6 @@ Auto-detects GPU architecture and applies engine-specific defaults at container 
 
 - `gpu_detect_sm_arch` — returns `sm80`, `sm89`, `sm90`, etc. (prefers `nvidia-smi` compute_cap, falls back to name mapping)
 - `gpu_detect_name` — returns human-readable GPU name (e.g., `NVIDIA H100`)
-- `gpu_detect_vram_gb` — returns total VRAM in GB
-- `gpu_supports_fp8` — returns 0 (true) for sm89/sm90 (Ada Lovelace, Hopper)
 - `gpu_init_detection` — detects and exports `GPU_SM_ARCH` and `DETECTED_GPU_NAME`
 - `gpu_apply_env_defaults` — sets `TORCH_CUDA_ARCH_LIST`, `PYTORCH_ALLOC_CONF`, and GPU-family optimizations
 
@@ -77,10 +74,10 @@ One canonical server launch path shared by all stacks.
 
 ### Build Utilities (`scripts/build/`)
 
-Host-side helpers sourced by each stack's `build.sh`.
+Host-side helpers used by each stack's `build.sh`.
 
-- `args.sh` / `init_build_args` — initializes the `BUILD_ARGS` array with `--file`, `--tag`, `--platform`
-- `docker.sh` / `require_docker` — checks Docker daemon is running; `ensure_docker_login` — logs in via `DOCKER_PASSWORD` or `DOCKER_TOKEN`
+- `driver.sh` / `run_stack_build` — shared validate/build/push flow for stack entrypoints
+- `docker.sh` / `require_docker` and `ensure_docker_login` — Docker availability and login helpers
 - `context.sh` / `prepare_build_context_common` — creates a temp directory with only the runtime assets needed by the Dockerfile
 - `validate.sh` / `validate_models_for_deploy_common` — runs `docker/common/download/validate.py` to enforce model allowlists and engine label format
 
@@ -114,8 +111,8 @@ Usage: `python validate.py` (reads env vars)
 ### Build Time
 
 1. User runs `docker/build.sh` with `ENGINE` and `DEPLOY_MODE`.
-2. Top-level script validates the tag prefix and routes to the engine-specific `docker/{engine}/build.sh` (tool-only routes to `docker/tool/build.sh`).
-3. Engine build script sources common build utilities (`args.sh`, `docker.sh`, `context.sh`, `validate.sh`).
+2. Top-level script routes to the engine-specific `docker/{engine}/build.sh` (tool-only routes to `docker/tool/build.sh`).
+3. Engine build script performs stack-specific validation, then hands off to `scripts/build/driver.sh`.
 4. `validate_models_for_deploy_common` calls `docker/common/download/validate.py` to check model allowlists.
 5. `prepare_build_context_common` assembles a temp directory with `src/`, stack scripts, common scripts, and download scripts.
 6. Docker builds the image, running download scripts inside the Dockerfile to bake models/engines in.

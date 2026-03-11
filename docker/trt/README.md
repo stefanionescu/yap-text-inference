@@ -66,6 +66,9 @@ docker run -d --gpus all --name yap-server \
 
 ### Verify
 
+Health probes are internal-only by default; this localhost check still works
+inside the container/host.
+
 ```bash
 curl http://localhost:8000/healthz
 ```

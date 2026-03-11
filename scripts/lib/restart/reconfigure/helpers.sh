@@ -29,35 +29,6 @@ _restart_resolve_deploy_mode() {
   esac
 }
 
-_restart_is_gptq_model() {
-  is_gptq_name "$1"
-}
-
-_restart_is_awq_model() {
-  is_awq_name "$1"
-}
-
-_restart_autodetect_quantization() {
-  local chat_model="$1"
-  local chat_enabled="$2"
-
-  if [ "${chat_enabled}" = "1" ]; then
-    local chat_hint
-    chat_hint="$(get_quantization_hint "${chat_model}")"
-    if [ "${chat_hint}" = "${CFG_QUANT_MODE_4BIT_BACKEND}" ]; then
-      echo "${CFG_QUANT_MODE_4BIT_BACKEND}"
-      return
-    fi
-    if [ "${chat_hint}" = "${CFG_QUANT_MODE_GPTQ_BACKEND}" ]; then
-      echo "${CFG_QUANT_MODE_GPTQ_BACKEND}"
-      return
-    fi
-  fi
-
-  # Return "8bit" placeholder; resolved to fp8 or int8 based on GPU in quantization.sh
-  echo "${CFG_QUANT_MODE_8BIT_PLACEHOLDER}"
-}
-
 _restart_normalize_quantization_flag() {
   local value="${1:-}"
   if [ -z "${value}" ]; then
