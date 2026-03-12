@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install_linting_tools - Install repo-local fallback copies of shfmt and hadolint.
+# install_linting_tools - Install repo-local fallback copies of linting CLIs.
 
 set -euo pipefail
 
@@ -89,6 +89,94 @@ install_hadolint() {
   echo "${binary_path}"
 }
 
+# install_gitlint - Install gitlint into an isolated repo-local virtualenv.
+install_gitlint() {
+  local tool_root
+  local version_dir
+  local venv_dir
+  local binary_path
+  local version_marker
+  local version_spec
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "error: python3 is required to install gitlint" >&2
+    exit 1
+  fi
+
+  tool_root="$(tool_dir "gitlint")"
+  version_dir="${tool_root}/${GITLINT_VERSION}"
+  venv_dir="${version_dir}/venv"
+  binary_path="${venv_dir}/bin/gitlint"
+  version_marker="${version_dir}/.package-version"
+  version_spec="gitlint==${GITLINT_VERSION}"
+
+  if [[ -x ${binary_path} && -f ${version_marker} && "$(<"${version_marker}")" == "${version_spec}" ]]; then
+    link_tool "${binary_path}" "gitlint"
+    echo "${binary_path}"
+    return 0
+  fi
+
+  rm -rf "${version_dir}"
+  mkdir -p "${version_dir}"
+  python3 -m venv "${venv_dir}"
+  "${venv_dir}/bin/python" -m pip install --disable-pip-version-check "${version_spec}"
+  printf '%s\n' "${version_spec}" >"${version_marker}"
+
+  if [[ ! -x ${binary_path} ]]; then
+    echo "error: gitlint binary missing after install" >&2
+    exit 1
+  fi
+
+  link_tool "${binary_path}" "gitlint"
+  echo "${binary_path}"
+}
+
+# install_semgrep - Install Semgrep into an isolated repo-local virtualenv.
+install_semgrep() {
+  local tool_root
+  local version_dir
+  local venv_dir
+  local binary_path
+  local version_marker
+  local version_spec
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "error: python3 is required to install semgrep" >&2
+    exit 1
+  fi
+
+  tool_root="$(tool_dir "semgrep")"
+  version_dir="${tool_root}/${SEMGREP_VERSION}"
+  venv_dir="${version_dir}/venv"
+  binary_path="${venv_dir}/bin/semgrep"
+  version_marker="${version_dir}/.package-version"
+  version_spec="semgrep==${SEMGREP_VERSION}"
+
+  if [[ -x ${binary_path} && -f ${version_marker} && "$(<"${version_marker}")" == "${version_spec}" ]]; then
+    # Semgrep used to live under the security cache; drop the old link so tooling owns resolution.
+    rm -f "${REPO_ROOT}/.cache/security/bin/semgrep"
+    link_tool "${binary_path}" "semgrep"
+    echo "${binary_path}"
+    return 0
+  fi
+
+  rm -rf "${version_dir}"
+  mkdir -p "${version_dir}"
+  python3 -m venv "${venv_dir}"
+  "${venv_dir}/bin/python" -m pip install --disable-pip-version-check "${version_spec}"
+  printf '%s\n' "${version_spec}" >"${version_marker}"
+
+  if [[ ! -x ${binary_path} ]]; then
+    echo "error: semgrep binary missing after install" >&2
+    exit 1
+  fi
+
+  # Semgrep used to live under the security cache; drop the old link so tooling owns resolution.
+  rm -f "${REPO_ROOT}/.cache/security/bin/semgrep"
+  link_tool "${binary_path}" "semgrep"
+  echo "${binary_path}"
+}
+
 case "${1:-all}" in
   shfmt)
     install_shfmt
@@ -96,12 +184,20 @@ case "${1:-all}" in
   hadolint)
     install_hadolint
     ;;
+  gitlint)
+    install_gitlint
+    ;;
+  semgrep)
+    install_semgrep
+    ;;
   all)
     install_shfmt >/dev/null
     install_hadolint >/dev/null
+    install_gitlint >/dev/null
+    install_semgrep >/dev/null
     ;;
   *)
-    echo "usage: $0 [shfmt|hadolint|all]" >&2
+    echo "usage: $0 [shfmt|hadolint|gitlint|semgrep|all]" >&2
     exit 1
     ;;
 esac

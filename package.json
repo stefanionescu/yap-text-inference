@@ -2,6 +2,10 @@
     "name": "yap-text-inference-linting",
     "private": true,
     "packageManager": "bun@1.2.7",
+    "scripts": {
+        "setup:tooling": "bash linting/setup.sh",
+        "setup:hooks": "bash .githooks/lib/setup.sh"
+    },
     "engines": {
         "bun": ">=1.2.7 <2.0.0"
     },

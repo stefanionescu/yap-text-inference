@@ -270,11 +270,12 @@ This installs client deps (`websockets`, `httpx`, `orjson`) without CUDA wheels.
 If you are working on the repo itself rather than only running client tests, the maintenance toolchain also needs:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-bun install
+bash linting/setup.sh
+bash .githooks/lib/setup.sh
 ```
+
+The bootstrap script creates or reuses the repo-local `.venv`, installs `requirements-dev.txt`, runs `bun install`, and installs the pinned repo-local fallback CLIs used by shell, Docker, and security checks.
+If Bun is already installed, the same bootstrap flow is exposed as `bun run setup:tooling`, and hook installation is exposed as `bun run setup:hooks`.
 
 If you already use the deployment bootstrap flow, it creates the same repo-local `.venv`.
 

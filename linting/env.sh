@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared repo bootstrap for linting and hook shell entrypoints.
+# Shared repo environment for linting and hook shell entrypoints.
 
 set -euo pipefail
 
@@ -9,6 +9,8 @@ REPO_PYTHON_BIN="${REPO_VENV_DIR}/bin/python"
 REPO_JS_BIN_DIR="${REPO_ROOT}/node_modules/.bin"
 REPO_TOOL_CACHE_DIR="${REPO_ROOT}/.cache/tooling"
 REPO_TOOL_BIN_DIR="${REPO_TOOL_CACHE_DIR}/bin"
+REPO_SECURITY_CACHE_DIR="${REPO_ROOT}/.cache/security"
+REPO_SECURITY_BIN_DIR="${REPO_SECURITY_CACHE_DIR}/bin"
 REPO_BUN_BIN_DIR="${HOME:-}/.bun/bin"
 
 # prepend_repo_path - Add a directory to PATH once, preserving existing precedence.
@@ -25,6 +27,7 @@ prepend_repo_path() {
 activate_repo_tool_paths() {
   prepend_repo_path "${REPO_BUN_BIN_DIR}"
   prepend_repo_path "${REPO_TOOL_BIN_DIR}"
+  prepend_repo_path "${REPO_SECURITY_BIN_DIR}"
   prepend_repo_path "${REPO_JS_BIN_DIR}"
   if [[ -d ${REPO_VENV_DIR}/bin ]]; then
     prepend_repo_path "${REPO_VENV_DIR}/bin"

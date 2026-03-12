@@ -4,8 +4,8 @@
 set -euo pipefail
 
 TOOL_RESOLVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../bootstrap.sh
-source "${TOOL_RESOLVER_DIR}/../bootstrap.sh"
+# shellcheck source=../env.sh
+source "${TOOL_RESOLVER_DIR}/../env.sh"
 activate_repo_tool_paths
 
 # require_tool_resolver_context - Abort when an adapter has not defined the expected config variables.

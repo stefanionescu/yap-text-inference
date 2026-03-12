@@ -8,8 +8,8 @@ if [[ ${SKIP_HOOKS:-0} == "1" ]] || [[ ${SKIP_GITLINT:-0} == "1" ]] || [[ ${SKIP
 fi
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
-# shellcheck disable=SC1091  # lint:justify -- reason: commit-msg must source the repo hook bootstrap to resolve repo-managed gitlint -- ticket: N/A
-source "${ROOT_DIR}/.githooks/lib/bootstrap.sh"
+# shellcheck disable=SC1091  # lint:justify -- reason: commit-msg must source the repo hook environment to resolve repo-managed gitlint -- ticket: N/A
+source "${ROOT_DIR}/.githooks/lib/env.sh"
 
 if ! command -v gitlint >/dev/null 2>&1; then
   echo "error: gitlint is required for commit-message linting" >&2

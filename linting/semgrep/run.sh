@@ -4,8 +4,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# shellcheck source=../security/common.sh
-source "${REPO_ROOT}/linting/security/common.sh"
+# shellcheck source=../tooling/common.sh
+source "${REPO_ROOT}/linting/tooling/common.sh"
 source "${REPO_ROOT}/linting/config/semgrep/env.sh"
 CONFIG_OVERRIDES=()
 TARGET_OVERRIDES=()
@@ -93,6 +93,7 @@ semgrep_targets() {
 
 # run_semgrep_local - Run Semgrep locally when the CLI is installed.
 run_semgrep_local() {
+  local runner="$1"
   local args=()
   local targets=()
   while IFS= read -r arg; do
@@ -102,7 +103,7 @@ run_semgrep_local() {
     targets+=("${target}")
   done < <(semgrep_targets)
 
-  semgrep "${args[@]}" "${targets[@]}"
+  "${runner}" "${args[@]}" "${targets[@]}"
 }
 
 # run_semgrep_docker - Run Semgrep inside Docker when the CLI is unavailable.
@@ -127,8 +128,15 @@ run_semgrep_docker() {
 
 cd "${REPO_ROOT}"
 
-if command -v semgrep >/dev/null 2>&1; then
-  run_semgrep_local
+SEMGREP_COMMAND=""
+if [[ -x ${REPO_ROOT}/.cache/tooling/bin/semgrep ]]; then
+  SEMGREP_COMMAND="${REPO_ROOT}/.cache/tooling/bin/semgrep"
+elif SEMGREP_COMMAND="$(resolve_tool_command "semgrep")"; then
+  :
+fi
+
+if [[ -n ${SEMGREP_COMMAND} ]]; then
+  run_semgrep_local "${SEMGREP_COMMAND}"
   exit 0
 fi
 

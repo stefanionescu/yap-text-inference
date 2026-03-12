@@ -4,8 +4,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
-# shellcheck source=../bootstrap.sh
-source "${ROOT_DIR}/linting/bootstrap.sh"
+# shellcheck source=../env.sh
+source "${ROOT_DIR}/linting/env.sh"
 activate_repo_tool_paths
 
 if [[ ! -d ${ROOT_DIR}/node_modules ]]; then

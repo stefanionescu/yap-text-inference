@@ -10,9 +10,10 @@ git config core.hooksPath .githooks
 
 echo "Git hooks installed."
 echo ""
-echo "Install/update repo Python tooling with: python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt"
-echo "Install/update Bun tooling with: bun install"
+echo "Bootstrap repo tooling with: bash linting/setup.sh"
+echo "Equivalent Bun entrypoint: bun run setup:tooling"
 echo "Reinstall hooks anytime with: bash .githooks/lib/setup.sh"
+echo "Equivalent Bun entrypoint: bun run setup:hooks"
 echo "Run full repo maintenance from the top level with: nox -s lint|test|security"
 echo ""
 echo "Available hook flags:"
