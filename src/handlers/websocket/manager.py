@@ -22,6 +22,7 @@ from src.runtime.dependencies import RuntimeDeps
 from .errors import send_error, reject_connection
 from .disconnects import is_expected_ws_disconnect
 from fastapi import WebSocket, WebSocketDisconnect
+from ...config import CACHE_RESET_MIN_SESSION_SECONDS
 from ...logging import set_log_context, reset_log_context
 from ...telemetry.sentry import capture_error, add_breadcrumb
 from ...telemetry.phases import record_phase_error, record_phase_latency
@@ -30,14 +31,10 @@ from ...config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_ERROR_AUTH_FAILED,
     WS_ERROR_SERVER_BUSY,
-    WS_CLOSE_UNAUTHORIZED_CODE,
-)
-from ...config import (
-    WS_CANCEL_WINDOW_SECONDS,
+    WS_RATE_LIMIT_WINDOW,
     WS_MAX_CANCELS_PER_WINDOW,
-    WS_MESSAGE_WINDOW_SECONDS,
+    WS_CLOSE_UNAUTHORIZED_CODE,
     WS_MAX_MESSAGES_PER_WINDOW,
-    CACHE_RESET_MIN_SESSION_SECONDS,
 )
 
 logger = logging.getLogger(__name__)
@@ -96,11 +93,11 @@ def _create_rate_limiters() -> tuple[SlidingWindowRateLimiter, SlidingWindowRate
     """Initialize per-connection rate limiters."""
     message_limiter = SlidingWindowRateLimiter(
         limit=WS_MAX_MESSAGES_PER_WINDOW,
-        window_seconds=WS_MESSAGE_WINDOW_SECONDS,
+        window_seconds=WS_RATE_LIMIT_WINDOW,
     )
     cancel_limiter = SlidingWindowRateLimiter(
         limit=WS_MAX_CANCELS_PER_WINDOW,
-        window_seconds=WS_CANCEL_WINDOW_SECONDS,
+        window_seconds=WS_RATE_LIMIT_WINDOW,
     )
     return message_limiter, cancel_limiter
 

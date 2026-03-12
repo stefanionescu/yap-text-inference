@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import pytest
-from src.config.websocket import WS_PROTOCOL_VERSION
 from src.handlers.websocket.parser import parse_client_message
+from src.config.websocket import WS_PROTOCOL_VERSION, WS_MAX_MESSAGE_BYTES
 
 
 def _valid_start(**overrides: object) -> str:
@@ -71,6 +71,29 @@ def test_valid_start_returns_all_fields() -> None:
     assert result["v"] == WS_PROTOCOL_VERSION
     assert result["gender"] == "female"
     assert "user_utterance" not in result
+
+
+def test_start_accepts_large_history_item_count() -> None:
+    payload = _valid_start(
+        history=[{"role": "user", "content": f"turn {index}"} for index in range(500)],
+    )
+
+    result = parse_client_message(payload)
+
+    assert len(result["history"]) == 500
+    assert result["history"][0]["content"] == "turn 0"
+    assert result["history"][-1]["content"] == "turn 499"
+
+
+def test_start_accepts_large_history_content_when_message_fits_byte_limit() -> None:
+    history = [{"role": "user", "content": "x" * 60000}]
+    payload = _valid_start(history=history)
+
+    assert len(payload.encode("utf-8")) < WS_MAX_MESSAGE_BYTES
+
+    result = parse_client_message(payload)
+
+    assert result["history"] == history
 
 
 def test_start_rejects_user_utterance_field() -> None:

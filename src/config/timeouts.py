@@ -7,7 +7,7 @@ Values are sourced from environment variables with sensible defaults.
 import os
 
 # Chat/text generation hard timeout in seconds
-GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "60"))
+CHAT_TIMEOUT_S = float(os.getenv("CHAT_TIMEOUT_S", "60"))
 
 # Tool router timeout in seconds
 TOOL_TIMEOUT_S = float(os.getenv("TOOL_TIMEOUT_S", "3"))
@@ -20,7 +20,7 @@ except ValueError:
 
 
 __all__ = [
-    "GEN_TIMEOUT_S",
+    "CHAT_TIMEOUT_S",
     "TOOL_TIMEOUT_S",
     "HF_LICENSE_FETCH_TIMEOUT_S",
 ]

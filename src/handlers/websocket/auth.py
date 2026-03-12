@@ -11,7 +11,7 @@ from ...config import TEXT_API_KEY
 from collections.abc import Callable
 from fastapi.security.api_key import APIKeyHeader
 from fastapi import Request, Security, WebSocket, HTTPException
-from ...config.websocket import WS_ALLOWED_ORIGINS, WS_AUTH_WINDOW_SECONDS, WS_MAX_AUTH_FAILURES_PER_WINDOW
+from ...config.websocket import WS_ALLOWED_ORIGINS, WS_RATE_LIMIT_WINDOW, WS_MAX_AUTH_FAILURES_PER_WINDOW
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class AuthRuntimeConfig:
 
     text_api_key: str | None = TEXT_API_KEY
     allowed_origins: tuple[str, ...] = WS_ALLOWED_ORIGINS
-    auth_window_seconds: float = WS_AUTH_WINDOW_SECONDS
+    rate_limit_window_seconds: float = WS_RATE_LIMIT_WINDOW
     max_auth_failures_per_window: int = WS_MAX_AUTH_FAILURES_PER_WINDOW
 
 
@@ -81,7 +81,7 @@ def _prune_failures(
     auth_failures: dict[str, deque[float]],
 ) -> deque[float]:
     entries = auth_failures.setdefault(client_key, deque())
-    cutoff = now - auth_config.auth_window_seconds
+    cutoff = now - auth_config.rate_limit_window_seconds
     while entries and entries[0] <= cutoff:
         entries.popleft()
     return entries

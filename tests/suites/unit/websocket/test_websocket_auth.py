@@ -8,6 +8,7 @@ from collections import deque
 from types import SimpleNamespace
 from collections.abc import Callable
 import src.handlers.websocket.auth as auth_mod
+from src.config.websocket import WS_RATE_LIMIT_WINDOW
 
 
 class _FakeWebSocket:
@@ -45,7 +46,7 @@ def _auth_config(
         text_api_key=key,
         allowed_origins=allowed_origins,
         max_auth_failures_per_window=max_failures,
-        auth_window_seconds=window_seconds,
+        rate_limit_window_seconds=window_seconds,
     )
 
 
@@ -59,6 +60,10 @@ def test_auth_accepts_bearer_header() -> None:
 
 def test_auth_rejects_query_only_key() -> None:
     assert _run_auth({}, auth_config=_auth_config(), auth_failures={}) is False
+
+
+def test_default_auth_config_uses_shared_rate_limit_window() -> None:
+    assert auth_mod.DEFAULT_AUTH_RUNTIME_CONFIG.rate_limit_window_seconds == WS_RATE_LIMIT_WINDOW
 
 
 def test_auth_rejects_disallowed_origin() -> None:

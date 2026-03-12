@@ -13,7 +13,7 @@ from src.config.tool import TOOL_DECISION_THRESHOLD
 from .quantization import classify_prequantized_model
 from src.config.gpu import CHAT_GPU_FRAC, TOOL_GPU_FRAC
 from src.tokens.validation import validate_model_tokenizer
-from src.config.timeouts import GEN_TIMEOUT_S, TOOL_TIMEOUT_S
+from src.config.timeouts import CHAT_TIMEOUT_S, TOOL_TIMEOUT_S
 from src.config.engine import INFERENCE_ENGINE, CHAT_QUANTIZATION
 from src.config.quantization import SUPPORTED_ENGINES, VALID_QUANT_FORMATS
 from src.config.deploy import CHAT_MODEL, TOOL_MODEL, DEPLOY_CHAT, DEPLOY_TOOL
@@ -91,7 +91,7 @@ def _validate_numeric_bounds() -> list[str]:
         ("CHAT_FREQUENCY_PENALTY", CHAT_FREQUENCY_PENALTY, CHAT_FREQUENCY_PENALTY_MIN, CHAT_FREQUENCY_PENALTY_MAX),
         ("TOOL_DECISION_THRESHOLD", TOOL_DECISION_THRESHOLD, 0.0, 1.0),
         ("WS_IDLE_TIMEOUT_S", WS_IDLE_TIMEOUT_S, 1.0, 86400.0),
-        ("GEN_TIMEOUT_S", GEN_TIMEOUT_S, 1.0, 600.0),
+        ("CHAT_TIMEOUT_S", CHAT_TIMEOUT_S, 1.0, 600.0),
         ("TOOL_TIMEOUT_S", TOOL_TIMEOUT_S, 0.1, 120.0),
         ("CHAT_GPU_FRAC", CHAT_GPU_FRAC, 0.01, 1.0),
         ("TOOL_GPU_FRAC", TOOL_GPU_FRAC, 0.01, 1.0),

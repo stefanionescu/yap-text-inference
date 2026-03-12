@@ -25,10 +25,6 @@ class LimitValues(TypedDict):
     TRIMMED_HISTORY_LENGTH: int
     STREAM_FLUSH_MS: float
     CHAT_MAX_OUT: int
-    WS_MESSAGE_WINDOW_SECONDS: float
-    WS_MAX_MESSAGES_PER_WINDOW: int
-    WS_CANCEL_WINDOW_SECONDS: float
-    WS_MAX_CANCELS_PER_WINDOW: int
     MAX_CONCURRENT_CONNECTIONS: int | None
 
 
@@ -136,15 +132,6 @@ def resolve_limit_values(*, env: Mapping[str, str] | None = None) -> LimitValues
     stream_flush_ms = float(_resolve_env_value("STREAM_FLUSH_MS", "0", env=env))
     chat_max_out = int(_resolve_env_value("CHAT_MAX_OUT", "150", env=env))
 
-    ws_message_window_seconds = float(_resolve_env_value("WS_MESSAGE_WINDOW_SECONDS", "60", env=env))
-    ws_max_messages_per_window = int(_resolve_env_value("WS_MAX_MESSAGES_PER_WINDOW", "25", env=env))
-    ws_cancel_window_seconds = float(
-        _resolve_env_value("WS_CANCEL_WINDOW_SECONDS", str(ws_message_window_seconds), env=env)
-    )
-    ws_max_cancels_per_window = int(
-        _resolve_env_value("WS_MAX_CANCELS_PER_WINDOW", str(ws_max_messages_per_window), env=env)
-    )
-
     max_concurrent_raw = _resolve_env_value("MAX_CONCURRENT_CONNECTIONS", "", env=env)
     max_concurrent_connections: int | None = int(max_concurrent_raw) if max_concurrent_raw else None
 
@@ -158,10 +145,6 @@ def resolve_limit_values(*, env: Mapping[str, str] | None = None) -> LimitValues
         "TRIMMED_HISTORY_LENGTH": trimmed_history_length,
         "STREAM_FLUSH_MS": stream_flush_ms,
         "CHAT_MAX_OUT": chat_max_out,
-        "WS_MESSAGE_WINDOW_SECONDS": ws_message_window_seconds,
-        "WS_MAX_MESSAGES_PER_WINDOW": ws_max_messages_per_window,
-        "WS_CANCEL_WINDOW_SECONDS": ws_cancel_window_seconds,
-        "WS_MAX_CANCELS_PER_WINDOW": ws_max_cancels_per_window,
         "MAX_CONCURRENT_CONNECTIONS": max_concurrent_connections,
     }
 

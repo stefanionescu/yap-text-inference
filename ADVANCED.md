@@ -402,8 +402,8 @@ All client messages must include `type` and protocol version `v` (default `1`, c
 - **Client end**: `{"type":"end","v":1}` requests a clean shutdown. The server responds with `{"type":"done","status":200}` then closes with code `1000`.
 - **Heartbeat**: `{"type":"ping","v":1}` keeps the socket active. The server answers with `{"type":"pong"}`. Every message resets the idle timer.
 - **Idle timeout**: Connections with no activity for 150 s (configurable via `WS_IDLE_TIMEOUT_S`) are closed with code `4000`. Send periodic pings to stay connected.
-- **Rate limits**: Rolling-window quotas for messages and cancels per connection. Tune via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS` (see `src/config/limits.py`).
-- **Auth throttling**: Failed auth attempts are throttled per client host (`WS_AUTH_WINDOW_SECONDS`, `WS_MAX_AUTH_FAILURES_PER_WINDOW`).
+- **Rate limits**: Rolling-window quotas for messages and cancels per connection. Tune via `WS_RATE_LIMIT_WINDOW`, `WS_MAX_MESSAGES_PER_WINDOW`, and `WS_MAX_CANCELS_PER_WINDOW` (see `src/config/websocket.py`).
+- **Auth throttling**: Failed auth attempts are throttled per client host using the same shared window (`WS_RATE_LIMIT_WINDOW`, `WS_MAX_AUTH_FAILURES_PER_WINDOW`).
 - **Connection limit**: Capped by `MAX_CONCURRENT_CONNECTIONS`. Excess connections get `server_at_capacity` and are closed.
 - **Done frame**: Every successful turn ends with `{"type":"done","status":200}`. Cancelled turns return `{"type":"cancelled"}`.
 - **Error format**: `{"type":"error","status":429,"code":"rate_limited","message":"..."}` — status codes follow HTTP conventions (400, 401, 429, 500, 503).
@@ -540,11 +540,11 @@ Implicit barge-in (recommended):
 
 ### Rate Limits
 
-- **Per connection:** Messages and cancels have rate limits. Configure via `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` and `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS`.
+- **Per connection:** Messages and cancels have rate limits. Configure via `WS_RATE_LIMIT_WINDOW`, `WS_MAX_MESSAGES_PER_WINDOW`, and `WS_MAX_CANCELS_PER_WINDOW`.
 - **Per session:** Persona updates are not supported mid-session; the system prompt defined in the initial `start` message remains fixed.
 - Rate limit errors: `{"type":"error","status":429,"code":"rate_limited","message":"Rate limit exceeded. Try again shortly."}`
 
-Defaults are in `src/config/limits.py`. Set limit or window to `0` to disable.
+Defaults are in `src/config/websocket.py`. Set limit or window to `0` to disable.
 
 ## Quantization Notes
 

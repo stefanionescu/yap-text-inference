@@ -39,7 +39,7 @@ from tests.support.helpers.fmt import (
 
 logger = logging.getLogger(__name__)
 
-MESSAGE_WINDOW_SECONDS = get_float_env("WS_MESSAGE_WINDOW_SECONDS", 60.0)
+RATE_LIMIT_WINDOW_SECONDS = get_float_env("WS_RATE_LIMIT_WINDOW", 60.0)
 MESSAGE_MAX_PER_WINDOW = get_int_env("WS_MAX_MESSAGES_PER_WINDOW", 20)
 
 
@@ -76,7 +76,7 @@ async def run_conversation(
     print(dim(f"  session: {session.session_id}"))
     print(dim(f"  persona: {personality}/{gender}\n"))
 
-    message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, MESSAGE_WINDOW_SECONDS)
+    message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, RATE_LIMIT_WINDOW_SECONDS)
     ttfb_samples = create_ttfb_aggregator()
 
     async with websockets.connect(

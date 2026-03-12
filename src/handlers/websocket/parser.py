@@ -6,7 +6,7 @@ All client messages must be flat JSON objects with:
 Validation is strict:
 - Unknown fields are rejected
 - Message schemas are type-specific
-- History payload limits are enforced
+- History items are schema-validated
 - Protocol version must match server configuration
 """
 
@@ -14,14 +14,8 @@ from __future__ import annotations
 
 import json
 from typing import Any, Literal, Annotated
-from pydantic import Field, BaseModel, ConfigDict, TypeAdapter, ValidationError, field_validator, model_validator
-from ...config.websocket import (
-    WS_PROTOCOL_VERSION,
-    WS_HISTORY_MAX_ITEMS,
-    WS_MAX_MESSAGE_BYTES,
-    WS_HISTORY_ITEM_MAX_CHARS,
-    WS_HISTORY_TOTAL_MAX_CHARS,
-)
+from ...config.websocket import WS_PROTOCOL_VERSION, WS_MAX_MESSAGE_BYTES
+from pydantic import Field, BaseModel, ConfigDict, TypeAdapter, ValidationError, field_validator
 
 
 class _VersionedMessage(BaseModel):
@@ -58,13 +52,6 @@ class _HistoryItem(BaseModel):
             raise ValueError("history role must be 'user' or 'assistant'")
         return value
 
-    @field_validator("content")
-    @classmethod
-    def _validate_content_len(cls, value: str) -> str:
-        if len(value) > WS_HISTORY_ITEM_MAX_CHARS:
-            raise ValueError(f"history item exceeds max chars ({WS_HISTORY_ITEM_MAX_CHARS})")
-        return value
-
 
 class _StartMessage(_VersionedMessage):
     """Strict schema for start messages."""
@@ -86,15 +73,6 @@ class _StartMessage(_VersionedMessage):
     sanitize_output: Any | None = None
     check_screen_prefix: str | None = None
     screen_checked_prefix: str | None = None
-
-    @model_validator(mode="after")
-    def _validate_history_budget(self) -> _StartMessage:
-        if len(self.history) > WS_HISTORY_MAX_ITEMS:
-            raise ValueError(f"history exceeds max item count ({WS_HISTORY_MAX_ITEMS})")
-        total_chars = sum(len(item.content) for item in self.history)
-        if total_chars > WS_HISTORY_TOTAL_MAX_CHARS:
-            raise ValueError(f"history exceeds total char limit ({WS_HISTORY_TOTAL_MAX_CHARS})")
-        return self
 
 
 class _MessageMessage(_VersionedMessage):

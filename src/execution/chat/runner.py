@@ -17,7 +17,7 @@ from opentelemetry import trace
 from src.engines.base import BaseEngine
 from collections.abc import AsyncGenerator
 from src.state.session import SessionState
-from ...config.timeouts import GEN_TIMEOUT_S
+from ...config.timeouts import CHAT_TIMEOUT_S
 from ...engines import create_sampling_params
 from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.instruments import get_metrics
@@ -147,7 +147,7 @@ async def run_chat_generation(
             prompt=prompt,
             sampling_params=params,
             engine=engine,
-            timeout_s=float(GEN_TIMEOUT_S),
+            timeout_s=float(CHAT_TIMEOUT_S),
             flush_ms=float(STREAM_FLUSH_MS),
             cancel_check=lambda: is_request_cancelled(state, req_id),
             count_completion_tokens=chat_tokenizer.count,

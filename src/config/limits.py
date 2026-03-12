@@ -11,10 +11,6 @@ Context Limits:
     - USER_UTT_MAX_TOKENS: Maximum user utterance (tokens)
     - CHAT_PROMPT_MAX_TOKENS: Maximum persona prompt (tokens)
 
-Rate Limits:
-    - WS_MAX_MESSAGES_PER_WINDOW: Message rate limit
-    - WS_MAX_CANCELS_PER_WINDOW: Cancel rate limit
-
 Most values can be overridden via environment variables.
 """
 
@@ -50,12 +46,6 @@ TRIMMED_HISTORY_LENGTH = int(_LIMIT_VALUES["TRIMMED_HISTORY_LENGTH"])
 
 # Optional tiny coalescer: 0 = off; if you ever want to reduce packet spam set 5-15ms
 STREAM_FLUSH_MS = float(_LIMIT_VALUES["STREAM_FLUSH_MS"])
-
-# WebSocket message/cancel rate limits (rolling window)
-WS_MESSAGE_WINDOW_SECONDS = float(_LIMIT_VALUES["WS_MESSAGE_WINDOW_SECONDS"])
-WS_MAX_MESSAGES_PER_WINDOW = int(_LIMIT_VALUES["WS_MAX_MESSAGES_PER_WINDOW"])
-WS_CANCEL_WINDOW_SECONDS = float(_LIMIT_VALUES["WS_CANCEL_WINDOW_SECONDS"])
-WS_MAX_CANCELS_PER_WINDOW = int(_LIMIT_VALUES["WS_MAX_CANCELS_PER_WINDOW"])
 
 # Maximum concurrent WebSocket connections
 # Validated at runtime by helpers/validation.py
@@ -137,10 +127,6 @@ __all__ = [
     "USER_UTT_MAX_TOKENS",
     "HISTORY_RETENTION_PCT",
     "CONTEXT_BUFFER",
-    "WS_MESSAGE_WINDOW_SECONDS",
-    "WS_MAX_MESSAGES_PER_WINDOW",
-    "WS_CANCEL_WINDOW_SECONDS",
-    "WS_MAX_CANCELS_PER_WINDOW",
     "MAX_CONCURRENT_CONNECTIONS",
     "BATCH_SCALE_GPU_FRAC_CAP",
     # Sampling clamps
