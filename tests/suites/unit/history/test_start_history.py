@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from src.state.session import ChatMessage, SessionState
-import src.messages.start.history as start_history
+from src.config import DEFAULT_CHECK_SCREEN_PREFIX
 from src.handlers.session.manager import SessionHandler
+from src.state.session import ChatMessage, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.handlers.session.history.settings import HistoryRuntimeConfig
-from src.config import DEFAULT_CHECK_SCREEN_PREFIX
+from src.messages.start.history import resolve_history, resolve_user_utterances
 
 
 def _history_config(
@@ -73,7 +73,7 @@ def test_resolve_history_renders_messages() -> None:
             ]
         }
 
-        messages = start_history.resolve_history(handler, state, msg)
+        messages = resolve_history(handler, state, msg)
 
         assert [(message.role, message.content) for message in messages] == [
             ("user", "hello"),
@@ -98,7 +98,7 @@ def test_resolve_history_trims_when_over_budget() -> None:
             ]
         }
 
-        messages = start_history.resolve_history(handler, state, msg)
+        messages = resolve_history(handler, state, msg)
 
         assert state.chat_history_messages is not None
         assert len(state.chat_history_messages) < 6
@@ -111,7 +111,7 @@ def test_resolve_user_utterances_normalizes_without_chat_trimming() -> None:
         state = _make_state(handler)
         state.check_screen_prefix_tokens = 495
 
-        chat_user, tool_user = start_history.resolve_user_utterances(
+        chat_user, tool_user = resolve_user_utterances(
             handler,
             state,
             f"{DEFAULT_CHECK_SCREEN_PREFIX} alpha bravo charlie",
@@ -134,7 +134,7 @@ def test_resolve_history_allows_seed_on_fresh_session() -> None:
             ]
         }
 
-        messages = start_history.resolve_history(handler, state, msg)
+        messages = resolve_history(handler, state, msg)
 
         assert any(message.content == "hello" for message in messages)
         assert _history_turn_count(state) == 2
@@ -151,7 +151,7 @@ def test_resolve_history_ignores_history_after_first_request() -> None:
                 {"role": "assistant", "content": "first hi"},
             ]
         }
-        messages_1 = start_history.resolve_history(handler, state, seed_msg)
+        messages_1 = resolve_history(handler, state, seed_msg)
         assert any(message.content == "first hello" for message in messages_1)
 
         handler.append_chat_turn(state, "follow-up", "")
@@ -163,7 +163,7 @@ def test_resolve_history_ignores_history_after_first_request() -> None:
                 {"role": "assistant", "content": "OVERWRITE ATTEMPT"},
             ]
         }
-        messages_2 = start_history.resolve_history(handler, state, second_msg)
+        messages_2 = resolve_history(handler, state, second_msg)
 
         assert not any("OVERWRITE ATTEMPT" in message.content for message in messages_2)
         assert any(message.content == "first hello" for message in messages_2)
@@ -180,7 +180,7 @@ def test_resolve_history_tool_only_trims_at_import() -> None:
             messages.append({"role": "user", "content": f"word{i} extra{i} more{i}"})
 
         msg = {"history": messages}
-        start_history.resolve_history(handler, state, msg)
+        resolve_history(handler, state, msg)
 
         assert state.chat_history_messages is None
         assert state.tool_history_turns is not None
@@ -199,7 +199,7 @@ def test_resolve_history_tool_only_keeps_single_oversized_seed_turn() -> None:
                 {"role": "user", "content": "alpha bravo charlie delta echo foxtrot"},
             ]
         }
-        start_history.resolve_history(handler, state, msg)
+        resolve_history(handler, state, msg)
 
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
@@ -220,7 +220,7 @@ def test_resolve_history_both_modes_stores_chat_and_tool_separately() -> None:
                 {"role": "user", "content": "show this please"},
             ]
         }
-        start_history.resolve_history(handler, state, msg)
+        resolve_history(handler, state, msg)
 
         assert state.chat_history_messages is not None
         assert state.tool_history_turns is not None
@@ -246,7 +246,7 @@ def test_resolve_history_merges_consecutive_users_on_import() -> None:
             ]
         }
 
-        messages = start_history.resolve_history(handler, state, msg)
+        messages = resolve_history(handler, state, msg)
 
         assert messages == [
             ChatMessage(role="user", content="one\n\ntwo"),

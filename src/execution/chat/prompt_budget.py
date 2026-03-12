@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from src.state.session import ChatMessage
-from src.messages.chat import build_chat_prompt_with_prefix
 from src.tokens.tokenizer import FastTokenizer
+from src.messages.chat import build_chat_prompt_with_prefix
 
 
 @dataclass(frozen=True, slots=True)

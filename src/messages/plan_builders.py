@@ -5,8 +5,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 from src.state import TurnPlan
-from src.handlers.session.manager import SessionHandler
 from .start.history import resolve_user_utterances
+from src.handlers.session.manager import SessionHandler
 
 
 def _build_message_turn_plan(

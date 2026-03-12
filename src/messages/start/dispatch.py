@@ -13,15 +13,15 @@ import logging
 from src.state import TurnPlan
 from typing import TYPE_CHECKING
 from ...config.timeouts import TOOL_TIMEOUT_S
-from ...config import CHAT_MAX_LEN, DEPLOY_CHAT, DEPLOY_TOOL, USER_UTT_MAX_TOKENS
-from ...config.websocket import WS_ERROR_TEXT_TOO_LONG
 from ...execution.executor import run_execution
 from src.runtime.dependencies import RuntimeDeps
 from ...execution.tool.runner import run_toolcall
+from src.handlers.websocket.errors import send_error
+from ...config.websocket import WS_ERROR_TEXT_TOO_LONG
 from ...execution.tool.parser import parse_tool_result
 from ...execution.chat.runner import run_chat_generation
 from ...execution.chat.prompt_budget import fit_chat_prompt_to_budget
-from src.handlers.websocket.errors import send_error
+from ...config import DEPLOY_CHAT, DEPLOY_TOOL, CHAT_MAX_LEN, USER_UTT_MAX_TOKENS
 from ...handlers.websocket.helpers import send_toolcall, safe_send_flat, stream_chat_response
 
 if TYPE_CHECKING:

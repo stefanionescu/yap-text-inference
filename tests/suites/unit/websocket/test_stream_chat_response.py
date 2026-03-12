@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 from fastapi import WebSocketDisconnect
 from src.state.session import SessionState
+from src.config import DEFAULT_CHECK_SCREEN_PREFIX
 from src.handlers.session.manager import SessionHandler
 from src.handlers.websocket.helpers import stream_chat_response
 from src.handlers.session.history.settings import HistoryRuntimeConfig
-from src.config import DEFAULT_CHECK_SCREEN_PREFIX
 
 
 class _NoopWS:

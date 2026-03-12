@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from src.state.session import SessionState
 import src.messages.start.history as start_history
+from src.config import DEFAULT_SCREEN_CHECKED_PREFIX
 from src.handlers.session.manager import SessionHandler
 from src.handlers.session.history.settings import HistoryRuntimeConfig
-from src.config import DEFAULT_SCREEN_CHECKED_PREFIX
 
 
 def test_resolve_user_utterances_strips_followup_prefix_without_trimming() -> None:

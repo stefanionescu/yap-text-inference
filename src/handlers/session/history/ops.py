@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeVar
 from collections.abc import Callable
+from typing import TYPE_CHECKING, TypeVar
 from .settings import HistoryRuntimeConfig
 from src.state.session import ChatMessage, HistoryTurn, SessionState
 from .token_counting import count_chat_tokens, count_tool_tokens, build_tool_history

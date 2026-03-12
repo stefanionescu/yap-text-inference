@@ -79,9 +79,7 @@ def test_start_rejects_user_utterance_field() -> None:
 
 
 def test_message_payload_allows_user_utterance() -> None:
-    result = parse_client_message(
-        json.dumps({"type": "message", "v": WS_PROTOCOL_VERSION, "user_utterance": "hello"})
-    )
+    result = parse_client_message(json.dumps({"type": "message", "v": WS_PROTOCOL_VERSION, "user_utterance": "hello"}))
     assert result["type"] == "message"
     assert result["user_utterance"] == "hello"
 

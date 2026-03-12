@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 from collections.abc import Sequence
 from src.state.session import ChatMessage, HistoryTurn
 
@@ -22,14 +23,23 @@ def _validate_message_item(item: object) -> tuple[str, str] | None:
     return normalized_role, normalized_content
 
 
+def _normalize_chat_role(role: str) -> Literal["user", "assistant"] | None:
+    if role == "user":
+        return "user"
+    if role == "assistant":
+        return "assistant"
+    return None
+
+
 def _append_chat_message(messages: list[ChatMessage], role: str, content: str) -> None:
     normalized_content = content.strip()
-    if role not in {"user", "assistant"} or not normalized_content:
+    normalized_role = _normalize_chat_role(role)
+    if normalized_role is None or not normalized_content:
         return
-    if role == "user" and messages and messages[-1].role == "user":
+    if normalized_role == "user" and messages and messages[-1].role == "user":
         messages[-1].content = f"{messages[-1].content}\n\n{normalized_content}"
         return
-    messages.append(ChatMessage(role=role, content=normalized_content))
+    messages.append(ChatMessage(role=normalized_role, content=normalized_content))
 
 
 def parse_history_text(history_text: str) -> list[ChatMessage]:
@@ -110,7 +120,7 @@ def parse_history_for_chat(messages: Sequence[object]) -> list[ChatMessage]:
 
 
 def parse_history_as_tuples(history_text: str) -> list[tuple[str, str]]:
-    """Convert a transcript string into legacy ``(user, assistant)`` pairs."""
+    """Convert a transcript string into ``(user, assistant)`` pairs."""
     messages = parse_history_text(history_text)
     pairs: list[tuple[str, str]] = []
     pending_user = ""

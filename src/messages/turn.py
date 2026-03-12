@@ -10,21 +10,25 @@ from src.state import TurnPlan
 from typing import Any, Literal
 from collections.abc import Callable
 from .tasks import spawn_session_task
+from .start.history import resolve_history
 from src.config import CHAT_PROMPT_MAX_TOKENS
-from src.config.websocket import WS_STATUS_OK
 from .start.dispatch import dispatch_execution
 from src.telemetry.sentry import capture_error
 from src.runtime.dependencies import RuntimeDeps
+from .plan_builders import _build_message_turn_plan
 from src.handlers.websocket.errors import send_error
-from src.handlers.websocket.helpers import safe_send_flat
 from .start.sampling import extract_sampling_overrides
 from src.handlers.session.manager import SessionHandler
+from src.handlers.websocket.helpers import safe_send_flat
 from .input import normalize_gender, normalize_personality
 from src.handlers.session.config import update_session_config
 from src.telemetry.phases import record_phase_error, record_phase_latency
-from .plan_builders import _build_message_turn_plan
-from .start.history import resolve_history
-from src.config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
+from src.config.websocket import (
+    WS_STATUS_OK,
+    WS_ERROR_INVALID_MESSAGE,
+    WS_ERROR_INVALID_PAYLOAD,
+    WS_ERROR_INVALID_SETTINGS,
+)
 from .validators import (
     ValidationError,
     require_prompt,

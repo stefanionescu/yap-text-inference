@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from dataclasses import dataclass
 from src.tokens.history import count_tool_tokens
 
 if TYPE_CHECKING:

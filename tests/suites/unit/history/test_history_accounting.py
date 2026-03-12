@@ -6,10 +6,10 @@ from typing import Any, cast
 from src.tokens import count_tokens_tool
 import src.handlers.session.history.ops as history_ops
 from src.handlers.session.manager import SessionHandler
-from src.state.session import ChatMessage, HistoryTurn, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
-import src.handlers.session.history.token_counting as history_tokens
+from src.state.session import ChatMessage, HistoryTurn, SessionState
 from src.handlers.session.history.settings import HistoryRuntimeConfig
+from src.handlers.session.history import token_counting as history_tokens
 
 
 def _history_config(

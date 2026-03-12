@@ -71,4 +71,5 @@ class SessionState:
     screen_checked_prefix_tokens: int = 0
     screen_followup_pending: bool = False
 
+
 __all__ = ["ChatMessage", "HistoryTurn", "SessionState"]

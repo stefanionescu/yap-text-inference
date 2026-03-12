@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from .settings import HistoryRuntimeConfig
 from .token_counting import build_tool_history
 from src.state.session import ChatMessage, HistoryTurn, SessionState
@@ -11,6 +11,14 @@ from .ops import get_user_texts, render_history, trim_chat_history, trim_tool_hi
 
 if TYPE_CHECKING:
     from src.tokens.tokenizer import FastTokenizer
+
+
+def _normalize_chat_role(role: str) -> Literal["user", "assistant"] | None:
+    if role == "user":
+        return "user"
+    if role == "assistant":
+        return "assistant"
+    return None
 
 
 class HistoryController:
@@ -77,15 +85,55 @@ class HistoryController:
 
     def _append_chat_message_to_list(self, messages: list[ChatMessage], role: str, content: str) -> None:
         normalized_content = (content or "").strip()
-        if role not in {"user", "assistant"} or not normalized_content or not self._config.deploy_chat:
+        normalized_role = _normalize_chat_role(role)
+        if normalized_role is None or not normalized_content or not self._config.deploy_chat:
             return
-        if role == "user" and messages and messages[-1].role == "user":
+        if normalized_role == "user" and messages and messages[-1].role == "user":
             messages[-1].content = f"{messages[-1].content}\n\n{normalized_content}"
             return
-        messages.append(ChatMessage(role=role, content=normalized_content))
+        messages.append(ChatMessage(role=normalized_role, content=normalized_content))
 
     def _append_chat_message(self, state: SessionState, role: str, content: str) -> None:
         self._append_chat_message_to_list(self._chat_messages(state), role, content)
+
+    def _build_imported_chat_messages(self, chat_messages: list[ChatMessage] | None) -> list[ChatMessage]:
+        normalized_chat_messages: list[ChatMessage] = []
+        for msg in chat_messages or []:
+            self._append_chat_message_to_list(normalized_chat_messages, msg.role, msg.content)
+        return normalized_chat_messages
+
+    def _set_chat_history_store(self, state: SessionState, chat_messages: list[ChatMessage]) -> None:
+        state.chat_history_messages = chat_messages if self._config.deploy_chat else None
+        self._trim_chat_store_eager(state, import_mode=True)
+
+    def _build_imported_tool_turns(
+        self,
+        normalized_chat_messages: list[ChatMessage],
+        tool_turns: list[HistoryTurn] | None,
+    ) -> list[HistoryTurn]:
+        source_turns = tool_turns
+        if source_turns is None:
+            source_turns = [
+                HistoryTurn(turn_id=uuid.uuid4().hex, user=msg.content, assistant="")
+                for msg in normalized_chat_messages
+                if msg.role == "user"
+            ]
+        return [
+            HistoryTurn(turn_id=turn.turn_id, user=turn.user, assistant="")
+            for turn in source_turns
+            if (turn.user or "").strip()
+        ]
+
+    def _set_tool_history_store(
+        self,
+        state: SessionState,
+        normalized_chat_messages: list[ChatMessage],
+        tool_turns: list[HistoryTurn] | None,
+    ) -> None:
+        if not self._config.deploy_tool:
+            return
+        state.tool_history_turns = self._build_imported_tool_turns(normalized_chat_messages, tool_turns)
+        self._trim_tool_store_eager(state)
 
     def get_text(self, state: SessionState) -> str:
         """Get the transcript view of committed chat history."""
@@ -134,31 +182,9 @@ class HistoryController:
     ) -> str:
         """Set imported chat/tool stores and apply import-time trimming."""
         self._sync_mode_storage(state)
-        normalized_chat_messages: list[ChatMessage] = []
-        for msg in chat_messages or []:
-            self._append_chat_message_to_list(normalized_chat_messages, msg.role, msg.content)
-
-        if self._config.deploy_chat:
-            state.chat_history_messages = normalized_chat_messages
-        else:
-            state.chat_history_messages = None
-
-        self._trim_chat_store_eager(state, import_mode=True)
-
-        if self._config.deploy_tool:
-            source_turns = tool_turns
-            if source_turns is None:
-                source_turns = [
-                    HistoryTurn(turn_id=uuid.uuid4().hex, user=msg.content, assistant="")
-                    for msg in normalized_chat_messages
-                    if msg.role == "user"
-                ]
-            state.tool_history_turns = [
-                HistoryTurn(turn_id=t.turn_id, user=t.user, assistant="")
-                for t in source_turns
-                if (t.user or "").strip()
-            ]
-            self._trim_tool_store_eager(state)
+        normalized_chat_messages = self._build_imported_chat_messages(chat_messages)
+        self._set_chat_history_store(state, normalized_chat_messages)
+        self._set_tool_history_store(state, normalized_chat_messages, tool_turns)
         return render_history(self._chat_messages(state))
 
     def reserve_turn_id(

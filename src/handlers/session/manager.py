@@ -11,12 +11,7 @@ from src.state.session import SessionState
 from ...tokens.prefix import strip_screen_prefix
 from src.execution.tool.prompt_budget import fit_tool_input_to_budget
 from .history import HistoryController, HistoryRuntimeConfig, build_history_runtime_config
-from src.config import (
-    CHAT_MODEL,
-    TOOL_MODEL,
-    DEFAULT_CHECK_SCREEN_PREFIX,
-    DEFAULT_SCREEN_CHECKED_PREFIX,
-)
+from src.config import CHAT_MODEL, TOOL_MODEL, DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 from .requests import (
     attach_request_task,
     begin_session_request,

@@ -6,11 +6,11 @@ import sys
 import asyncio
 import subprocess
 import src.messages.turn as turn_mod
-from src.state.session import ChatMessage, SessionState
 from src.config import DEFAULT_CHECK_SCREEN_PREFIX
 from src.handlers.session.manager import SessionHandler
-from src.handlers.session.history.settings import HistoryRuntimeConfig
+from src.state.session import ChatMessage, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
+from src.handlers.session.history.settings import HistoryRuntimeConfig
 
 
 class _NoopWS:
