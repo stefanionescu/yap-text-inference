@@ -6,24 +6,16 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from linting.repo import SRC_DIR, rel, report, load_config_doc
+from linting.repo import SRC_DIR, rel, report, load_config_doc, require_section, require_string, require_string_list
 from linting.python.common import parse_source, iter_python_files
 
 _RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
-_SINGLETON_RULE = _RUNTIME_RULES.get("no_runtime_singletons")
-if not isinstance(_SINGLETON_RULE, dict):
-    _SINGLETON_RULE = {}
-SINGLETON_CLASS_SUFFIX = str(_SINGLETON_RULE.get("class_suffix", "Singleton"))
-SINGLETON_FN_NAMES = {str(value) for value in _SINGLETON_RULE.get("function_names", []) if isinstance(value, str)} or {
-    "get_instance",
-    "reset_instance",
-}
-SINGLETON_STATE_NAMES = {str(value) for value in _SINGLETON_RULE.get("state_names", []) if isinstance(value, str)} or {
-    "_STATE",
-    "STATE",
-    "_INSTANCE",
-    "INSTANCE",
-}
+_RUNTIME_CONFIG_LABEL = "linting/config/rules/runtime.toml"
+_SINGLETON_RULE = require_section(_RUNTIME_RULES, "no_runtime_singletons", _RUNTIME_CONFIG_LABEL)
+_SINGLETON_RULE_LABEL = f"{_RUNTIME_CONFIG_LABEL} [no_runtime_singletons]"
+SINGLETON_CLASS_SUFFIX = require_string(_SINGLETON_RULE, "class_suffix", _SINGLETON_RULE_LABEL)
+SINGLETON_FN_NAMES = set(require_string_list(_SINGLETON_RULE, "function_names", _SINGLETON_RULE_LABEL))
+SINGLETON_STATE_NAMES = set(require_string_list(_SINGLETON_RULE, "state_names", _SINGLETON_RULE_LABEL))
 
 
 def _top_level_targets(node: ast.Assign | ast.AnnAssign) -> list[str]:

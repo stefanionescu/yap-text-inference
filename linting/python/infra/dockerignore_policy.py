@@ -48,8 +48,6 @@ def _repo_path(value: Any, *, field: str, violations: list[str]) -> Path | None:
 
 
 def _path_set(values: Any, *, field: str, violations: list[str]) -> set[Path]:
-    if values is None:
-        return set()
     if not isinstance(values, list):
         violations.append(f"  {POLICY_LABEL}: `{field}` must be an array")
         return set()
@@ -85,19 +83,19 @@ def main() -> int:
     policy, violations = _load_policy()
 
     mode = policy.get("mode") if policy else None
-    if mode is not None and not isinstance(mode, str):
+    if not isinstance(mode, str):
         violations.append(f"  {POLICY_LABEL}: `dockerignore.mode` must be a string")
-        mode = None
+        mode = ""
 
-    first_effective_rule = policy.get("first_effective_rule", "**") if policy else "**"
+    first_effective_rule = policy.get("first_effective_rule") if policy else None
     if not isinstance(first_effective_rule, str):
         violations.append(f"  {POLICY_LABEL}: `dockerignore.first_effective_rule` must be a string")
-        first_effective_rule = "**"
+        first_effective_rule = ""
 
-    allow_only_listed = policy.get("allow_only_listed", True) if policy else True
+    allow_only_listed = policy.get("allow_only_listed") if policy else None
     if not isinstance(allow_only_listed, bool):
         violations.append(f"  {POLICY_LABEL}: `dockerignore.allow_only_listed` must be a boolean")
-        allow_only_listed = True
+        allow_only_listed = False
 
     required = _path_set(
         policy.get("required_files") if policy else None, field="dockerignore.required_files", violations=violations
@@ -136,7 +134,7 @@ def main() -> int:
 
     if violations:
         header = "Docker ignore policy violations"
-        if isinstance(mode, str) and mode:
+        if mode:
             header += f" (mode={mode})"
         print(f"{header}:", file=sys.stderr)
         for violation in violations:

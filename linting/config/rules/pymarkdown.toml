@@ -1,4 +1,10 @@
 [run]
+plugin_files = [
+    "linting/pymarkdown/rules/no_banned_terms.py",
+    "linting/pymarkdown/rules/heading_title_case.py",
+    "linting/pymarkdown/rules/no_double_hyphen.py",
+]
+enabled_rules = ["YTI100", "YTI101", "YTI102"]
 exclude_patterns = [
     "node_modules/**",
     ".git/**",

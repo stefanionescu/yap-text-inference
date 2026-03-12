@@ -9,7 +9,3 @@ extra-path=linting/gitlint/rules.py
 
 [title-max-length]
 line-length=120
-
-[title-conventional-inference]
-allowed-types=build,chore,ci,docs,feat,fix,perf,refactor,revert,style,test
-allowed-scopes=core,config,handlers,messages,tokens,engines,quantization,docker,scripts,tests,lint,hooks,docs,deps,rules

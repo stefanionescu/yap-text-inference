@@ -6,16 +6,19 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from linting.repo import SRC_DIR, rel, report, load_config_doc
+from linting.repo import SRC_DIR, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
 
 _IMPORT_RULES = load_config_doc("rules", "imports.toml")
-_LAZY_LOADING_RULE = _IMPORT_RULES.get("no_lazy_module_loading")
-if not isinstance(_LAZY_LOADING_RULE, dict):
-    _LAZY_LOADING_RULE = {}
-FORBIDDEN_EXPORT_HOOKS = {
-    str(value) for value in _LAZY_LOADING_RULE.get("forbidden_export_hooks", []) if isinstance(value, str)
-} or {"__getattr__", "__dir__", "__getattribute__"}
+_IMPORT_CONFIG_LABEL = "linting/config/rules/imports.toml"
+_LAZY_LOADING_RULE = require_section(_IMPORT_RULES, "no_lazy_module_loading", _IMPORT_CONFIG_LABEL)
+FORBIDDEN_EXPORT_HOOKS = set(
+    require_string_list(
+        _LAZY_LOADING_RULE,
+        "forbidden_export_hooks",
+        f"{_IMPORT_CONFIG_LABEL} [no_lazy_module_loading]",
+    )
+)
 
 
 def _collect_violations(path: Path) -> list[str]:

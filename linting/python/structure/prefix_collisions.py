@@ -7,32 +7,17 @@ import re
 import sys
 from pathlib import Path
 from collections import defaultdict
-from linting.repo import ROOT, MIN_PREFIX_COLLISION, rel, report, load_config_doc
+from linting.repo import ROOT, MIN_PREFIX_COLLISION, rel, report, load_config_doc, require_section, require_string_list
 
 _STRUCTURE_RULES = load_config_doc("rules", "structure.toml")
-_PREFIX_RULE = _STRUCTURE_RULES.get("prefix_collisions")
-if not isinstance(_PREFIX_RULE, dict):
-    _PREFIX_RULE = {}
+_STRUCTURE_CONFIG_LABEL = "linting/config/rules/structure.toml"
+_PREFIX_RULE = require_section(_STRUCTURE_RULES, "prefix_collisions", _STRUCTURE_CONFIG_LABEL)
+_PREFIX_RULE_LABEL = f"{_STRUCTURE_CONFIG_LABEL} [prefix_collisions]"
 
-SCAN_ROOTS = [ROOT / str(value) for value in _PREFIX_RULE.get("scan_roots", []) if isinstance(value, str)] or [
-    ROOT / "src",
-    ROOT / "scripts",
-    ROOT / "docker",
-    ROOT / ".githooks",
-    ROOT / "linting" / "config",
-    ROOT / "linting" / "security",
-    ROOT / "linting" / "rules" / "python" / "testing",
-]
-IGNORED_PATHS = {str(value) for value in _PREFIX_RULE.get("ignored_paths", []) if isinstance(value, str)} or {
-    "linting/python/testing/__pycache__"
-}
-IGNORED_NAMES = {str(value) for value in _PREFIX_RULE.get("ignored_names", []) if isinstance(value, str)} or {
-    "__pycache__",
-    ".DS_Store",
-}
-RESERVED_FILESET = {
-    str(value) for value in _PREFIX_RULE.get("reserved_root_filenames", []) if isinstance(value, str)
-} or {".githooks/pre-commit", ".githooks/pre-push", ".githooks/commit-msg"}
+SCAN_ROOTS = [ROOT / value for value in require_string_list(_PREFIX_RULE, "scan_roots", _PREFIX_RULE_LABEL)]
+IGNORED_PATHS = set(require_string_list(_PREFIX_RULE, "ignored_paths", _PREFIX_RULE_LABEL))
+IGNORED_NAMES = set(require_string_list(_PREFIX_RULE, "ignored_names", _PREFIX_RULE_LABEL))
+RESERVED_FILESET = set(require_string_list(_PREFIX_RULE, "reserved_root_filenames", _PREFIX_RULE_LABEL))
 
 
 def _parse_scope(raw_args: list[str]) -> set[Path]:

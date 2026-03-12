@@ -16,17 +16,14 @@ import ast
 import sys
 from pathlib import Path
 from dataclasses import dataclass
-from linting.repo import ROOT, rel, report, load_config_doc
+from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
 
 _IMPORT_RULES = load_config_doc("rules", "imports.toml")
-_IMPORT_ORDER_RULE = _IMPORT_RULES.get("single_line_imports_first")
-if not isinstance(_IMPORT_ORDER_RULE, dict):
-    _IMPORT_ORDER_RULE = {}
-TARGET_DIRS = tuple(str(value) for value in _IMPORT_ORDER_RULE.get("scan_dirs", []) if isinstance(value, str)) or (
-    "src",
-    "tests",
-    "linting",
+_IMPORT_CONFIG_LABEL = "linting/config/rules/imports.toml"
+_IMPORT_ORDER_RULE = require_section(_IMPORT_RULES, "single_line_imports_first", _IMPORT_CONFIG_LABEL)
+TARGET_DIRS = tuple(
+    require_string_list(_IMPORT_ORDER_RULE, "scan_dirs", f"{_IMPORT_CONFIG_LABEL} [single_line_imports_first]")
 )
 
 

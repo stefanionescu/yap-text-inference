@@ -6,22 +6,17 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from linting.repo import report, load_config_doc
+from linting.repo import load_config_doc, report, require_section, require_string, require_string_list
 from linting.shell.shared import rel, iter_target_shell_files
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
-_DOC_RULE = _SHELL_RULES.get("docs")
-if not isinstance(_DOC_RULE, dict):
-    _DOC_RULE = {}
-FUNCTION_RE = re.compile(str(_DOC_RULE.get("function_regex", r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(\)\s*\{")))
-DOC_RE = re.compile(str(_DOC_RULE.get("doc_regex", r"^#\s+[A-Za-z_][A-Za-z0-9_]*\s+[-:]\s+\S+")))
-SCOPED_PREFIXES = tuple(str(value) for value in _DOC_RULE.get("scoped_prefixes", []) if isinstance(value, str)) or (
-    ".githooks/",
-    "linting/security/",
-)
-IGNORED_FUNCTION_NAMES = {
-    str(value) for value in _DOC_RULE.get("ignored_function_names", []) if isinstance(value, str)
-} or {"main"}
+_SHELL_CONFIG_LABEL = "linting/config/rules/shell.toml"
+_DOC_RULE = require_section(_SHELL_RULES, "docs", _SHELL_CONFIG_LABEL)
+_DOC_RULE_LABEL = f"{_SHELL_CONFIG_LABEL} [docs]"
+FUNCTION_RE = re.compile(require_string(_DOC_RULE, "function_regex", _DOC_RULE_LABEL))
+DOC_RE = re.compile(require_string(_DOC_RULE, "doc_regex", _DOC_RULE_LABEL))
+SCOPED_PREFIXES = tuple(require_string_list(_DOC_RULE, "scoped_prefixes", _DOC_RULE_LABEL))
+IGNORED_FUNCTION_NAMES = set(require_string_list(_DOC_RULE, "ignored_function_names", _DOC_RULE_LABEL))
 
 
 def _in_scope(path: Path) -> bool:

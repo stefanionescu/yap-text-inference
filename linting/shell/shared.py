@@ -3,26 +3,34 @@
 from __future__ import annotations
 
 from pathlib import Path
-from linting.repo import ROOT, HOOKS_DIR, DOCKER_DIR, LINTING_DIR, SCRIPTS_DIR, rel, load_config_doc, iter_shell_files
+from linting.repo import (
+    ROOT,
+    HOOKS_DIR,
+    DOCKER_DIR,
+    LINTING_DIR,
+    SCRIPTS_DIR,
+    rel,
+    load_config_doc,
+    iter_shell_files,
+    require_section,
+    require_string,
+    require_string_list,
+)
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
-_SHARED_RULES = _SHELL_RULES.get("shared")
-if not isinstance(_SHARED_RULES, dict):
-    _SHARED_RULES = {}
+_SHELL_CONFIG_LABEL = "linting/config/rules/shell.toml"
+_SHARED_RULES = require_section(_SHELL_RULES, "shared", _SHELL_CONFIG_LABEL)
+_SHARED_RULE_LABEL = f"{_SHELL_CONFIG_LABEL} [shared]"
 
-HOOK_ENTRYPOINTS = {
-    ROOT / raw_path for raw_path in _SHARED_RULES.get("hook_entrypoints", []) if isinstance(raw_path, str)
-} or {HOOKS_DIR / "pre-commit", HOOKS_DIR / "pre-push", HOOKS_DIR / "commit-msg"}
+HOOK_ENTRYPOINTS = tuple(
+    ROOT / raw_path for raw_path in require_string_list(_SHARED_RULES, "hook_entrypoints", _SHARED_RULE_LABEL)
+)
 FORCED_ENTRYPOINT_PREFIXES = tuple(
-    str(value) for value in _SHARED_RULES.get("forced_entrypoint_prefixes", []) if isinstance(value, str)
-) or (".githooks/hooks/", "linting/security/")
-NON_ENTRYPOINT_PREFIXES = tuple(
-    str(value) for value in _SHARED_RULES.get("non_entrypoint_prefixes", []) if isinstance(value, str)
-) or ("scripts/lib/", "scripts/config/")
-NON_ENTRYPOINT_DOCKER_INFIX = str(_SHARED_RULES.get("non_entrypoint_docker_infix", "/scripts/"))
-ENTRYPOINT_ROOTS = tuple(
-    str(value) for value in _SHARED_RULES.get("entrypoint_roots", []) if isinstance(value, str)
-) or ("scripts", "docker", ".githooks")
+    require_string_list(_SHARED_RULES, "forced_entrypoint_prefixes", _SHARED_RULE_LABEL)
+)
+NON_ENTRYPOINT_PREFIXES = tuple(require_string_list(_SHARED_RULES, "non_entrypoint_prefixes", _SHARED_RULE_LABEL))
+NON_ENTRYPOINT_DOCKER_INFIX = require_string(_SHARED_RULES, "non_entrypoint_docker_infix", _SHARED_RULE_LABEL)
+ENTRYPOINT_ROOTS = tuple(require_string_list(_SHARED_RULES, "entrypoint_roots", _SHARED_RULE_LABEL))
 _HOOK_ENTRYPOINTS_RESOLVED = {entrypoint.resolve() for entrypoint in HOOK_ENTRYPOINTS if entrypoint.exists()}
 
 
@@ -32,7 +40,7 @@ def _is_executable_file(path: Path) -> bool:
 
 def iter_all_shell_files() -> list[Path]:
     """Return all tracked shell-like files that custom rules should scan."""
-    return iter_shell_files(SCRIPTS_DIR, DOCKER_DIR, HOOKS_DIR, LINTING_DIR, include_hook_entrypoints=True)
+    return iter_shell_files(SCRIPTS_DIR, DOCKER_DIR, HOOKS_DIR, LINTING_DIR, extra_files=list(HOOK_ENTRYPOINTS))
 
 
 def iter_target_shell_files(raw_paths: list[str] | None = None) -> list[Path]:

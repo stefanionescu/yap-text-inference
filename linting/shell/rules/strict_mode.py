@@ -4,19 +4,16 @@
 from __future__ import annotations
 
 import sys
-from linting.repo import report, load_config_doc
+from linting.repo import load_config_doc, report, require_int, require_section, require_string, require_string_list
 from linting.shell.shared import rel, is_entrypoint, iter_target_shell_files
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
-_STRICT_MODE_RULE = _SHELL_RULES.get("strict_mode")
-if not isinstance(_STRICT_MODE_RULE, dict):
-    _STRICT_MODE_RULE = {}
-SHEBANGS = {str(value) for value in _STRICT_MODE_RULE.get("shebangs", []) if isinstance(value, str)} or {
-    "#!/usr/bin/env bash",
-    "#!/bin/bash",
-}
-STRICT_MODE_LINE = str(_STRICT_MODE_RULE.get("required_line", "set -euo pipefail"))
-STRICT_MODE_WINDOW = int(_STRICT_MODE_RULE.get("scan_window", 25))
+_SHELL_CONFIG_LABEL = "linting/config/rules/shell.toml"
+_STRICT_MODE_RULE = require_section(_SHELL_RULES, "strict_mode", _SHELL_CONFIG_LABEL)
+_STRICT_MODE_LABEL = f"{_SHELL_CONFIG_LABEL} [strict_mode]"
+SHEBANGS = set(require_string_list(_STRICT_MODE_RULE, "shebangs", _STRICT_MODE_LABEL))
+STRICT_MODE_LINE = require_string(_STRICT_MODE_RULE, "required_line", _STRICT_MODE_LABEL)
+STRICT_MODE_WINDOW = require_int(_STRICT_MODE_RULE, "scan_window", _STRICT_MODE_LABEL)
 
 
 def main() -> int:

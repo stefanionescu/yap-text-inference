@@ -6,34 +6,21 @@ from __future__ import annotations
 import sys
 import json
 from pathlib import Path
-from linting.repo import ROOT, rel, report, load_config_doc
+from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string, require_string_list
 
 PACKAGE_JSON = ROOT / "package.json"
 _INFRA_RULES = load_config_doc("rules", "infra.toml")
-_VERSION_PIN_RULE = _INFRA_RULES.get("version_pins")
-if not isinstance(_VERSION_PIN_RULE, dict):
-    _VERSION_PIN_RULE = {}
-RANGE_PREFIXES = tuple(
-    str(value) for value in _VERSION_PIN_RULE.get("range_prefixes", []) if isinstance(value, str)
-) or ("^", "~", ">", "<", "*")
-PIP_OPTION_PREFIXES = tuple(
-    str(value) for value in _VERSION_PIN_RULE.get("pip_option_prefixes", []) if isinstance(value, str)
-) or (
-    "--extra-index-url",
-    "--index-url",
-    "--find-links",
-    "--trusted-host",
-)
+_INFRA_CONFIG_LABEL = "linting/config/rules/infra.toml"
+_VERSION_PIN_RULE = require_section(_INFRA_RULES, "version_pins", _INFRA_CONFIG_LABEL)
+_VERSION_PIN_LABEL = f"{_INFRA_CONFIG_LABEL} [version_pins]"
+RANGE_PREFIXES = tuple(require_string_list(_VERSION_PIN_RULE, "range_prefixes", _VERSION_PIN_LABEL))
+PIP_OPTION_PREFIXES = tuple(require_string_list(_VERSION_PIN_RULE, "pip_option_prefixes", _VERSION_PIN_LABEL))
 SKIP_REQUIREMENT_PREFIXES = tuple(
-    str(value) for value in _VERSION_PIN_RULE.get("skip_requirement_prefixes", []) if isinstance(value, str)
-) or ("-r", "--requirement", "-c", "--constraint")
-EDITABLE_PREFIXES = tuple(
-    str(value) for value in _VERSION_PIN_RULE.get("editable_prefixes", []) if isinstance(value, str)
-) or ("-e", "--editable")
-DIRECT_REFERENCE_SEPARATOR = str(_VERSION_PIN_RULE.get("direct_reference_separator", " @ "))
-PACKAGE_JSON_SECTIONS = tuple(
-    str(value) for value in _VERSION_PIN_RULE.get("package_json_sections", []) if isinstance(value, str)
-) or ("dependencies", "devDependencies")
+    require_string_list(_VERSION_PIN_RULE, "skip_requirement_prefixes", _VERSION_PIN_LABEL)
+)
+EDITABLE_PREFIXES = tuple(require_string_list(_VERSION_PIN_RULE, "editable_prefixes", _VERSION_PIN_LABEL))
+DIRECT_REFERENCE_SEPARATOR = require_string(_VERSION_PIN_RULE, "direct_reference_separator", _VERSION_PIN_LABEL)
+PACKAGE_JSON_SECTIONS = tuple(require_string_list(_VERSION_PIN_RULE, "package_json_sections", _VERSION_PIN_LABEL))
 
 
 def _requirement_files(violations: list[str]) -> list[Path]:

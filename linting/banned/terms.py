@@ -7,9 +7,10 @@ import re
 import sys
 import json
 from pathlib import Path
-from linting.repo import ROOT, rel, report
+from linting.repo import ROOT, rel, report, require_string_list
 
 CONFIG_PATH = ROOT / "linting" / "config" / "language" / "banned-terms.json"
+CONFIG_LABEL = "linting/config/language/banned-terms.json"
 
 
 def _load_config() -> tuple[re.Pattern[str], dict[str, object]]:
@@ -41,19 +42,7 @@ def _should_skip(path: Path, config: dict[str, object]) -> bool:
 
 
 def _tracked_dirs(config: dict[str, object]) -> list[Path]:
-    raw_dirs = config.get("trackedDirs", [])
-    if isinstance(raw_dirs, list):
-        tracked = [ROOT / str(value) for value in raw_dirs if isinstance(value, str)]
-        if tracked:
-            return tracked
-    return [
-        ROOT / "src",
-        ROOT / "tests",
-        ROOT / "scripts",
-        ROOT / "docker",
-        ROOT / "linting",
-        ROOT / ".githooks",
-    ]
+    return [ROOT / value for value in require_string_list(config, "trackedDirs", CONFIG_LABEL)]
 
 
 def _iter_target_files(args: list[str], config: dict[str, object]) -> list[Path]:

@@ -1,3 +1,6 @@
+[all_at_bottom]
+scan_dirs = ["src", "tests"]
+
 [one_class_per_file]
 allowlist_relative_paths = ["handlers/websocket/parser.py"]
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 try:
     import tomllib
@@ -14,100 +15,121 @@ ROOT = Path(__file__).resolve().parents[1]
 LINTING_CONFIG_DIR = ROOT / "linting" / "config"
 
 _POLICY_PATH = LINTING_CONFIG_DIR / "repo" / "policy.toml"
+_REPO_PATHS_PATH = LINTING_CONFIG_DIR / "repo" / "paths.toml"
 _CONFIG_CACHE: dict[Path, dict[str, object]] = {}
-
-# ---------------------------------------------------------------------------
-# Policy config
-# ---------------------------------------------------------------------------
+_POLICY_LABEL = "linting/config/repo/policy.toml"
+_PATHS_LABEL = "linting/config/repo/paths.toml"
 
 
-def _load_policy() -> dict[str, object]:
-    if not _POLICY_PATH.exists():
-        return {}
-    try:
-        return tomllib.loads(_POLICY_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-_POLICY: dict[str, object] = _load_policy()
-
-
-def load_config_doc(*relative_parts: str) -> dict[str, object]:
-    """Load a TOML config document under ``linting/config`` or return an empty dict."""
-    config_path = LINTING_CONFIG_DIR.joinpath(*relative_parts)
-    cached = _CONFIG_CACHE.get(config_path)
+def _load_toml_doc(path: Path) -> dict[str, object]:
+    cached = _CONFIG_CACHE.get(path)
     if cached is not None:
         return cached
-    if not config_path.exists():
-        _CONFIG_CACHE[config_path] = {}
+    if not path.exists():
+        _CONFIG_CACHE[path] = {}
         return {}
     try:
-        loaded = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        loaded = tomllib.loads(path.read_text(encoding="utf-8"))
     except Exception:
         loaded = {}
     if not isinstance(loaded, dict):
         loaded = {}
-    _CONFIG_CACHE[config_path] = loaded
+    _CONFIG_CACHE[path] = loaded
     return loaded
 
 
-def _limits() -> dict[str, object]:
-    val = _POLICY.get("limits")
-    return val if isinstance(val, dict) else {}
+def _dict_section(doc: dict[str, object], name: str) -> dict[str, object]:
+    section = doc.get(name)
+    return section if isinstance(section, dict) else {}
 
 
-def _paths() -> dict[str, object]:
-    val = _POLICY.get("paths")
-    return val if isinstance(val, dict) else {}
+def config_error(config_label: str, message: str) -> NoReturn:
+    raise RuntimeError(f"{config_label}: {message}")
 
 
-_REPO_PATHS = load_config_doc("repo", "paths.toml")
+def require_section(doc: dict[str, object], name: str, config_label: str) -> dict[str, object]:
+    section = doc.get(name)
+    if not isinstance(section, dict):
+        config_error(config_label, f"`{name}` must be a table")
+    return section
 
 
-def _int_config_value(value: object, default: int) -> int:
+def _int_config_value(value: object) -> int | None:
     if isinstance(value, bool):
-        return default
+        return None
     if isinstance(value, int):
         return value
     if isinstance(value, str):
         try:
             return int(value)
         except ValueError:
-            return default
-    return default
+            return None
+    return None
+
+
+def require_int(doc: dict[str, object], name: str, config_label: str) -> int:
+    parsed = _int_config_value(doc.get(name))
+    if parsed is None:
+        config_error(config_label, f"`{name}` must be an integer")
+    return parsed
+
+
+def require_string(doc: dict[str, object], name: str, config_label: str) -> str:
+    value = doc.get(name)
+    if not isinstance(value, str):
+        config_error(config_label, f"`{name}` must be a string")
+    return value
+
+
+def require_string_list(doc: dict[str, object], name: str, config_label: str) -> list[str]:
+    value = doc.get(name)
+    if not isinstance(value, list) or any(not isinstance(entry, str) for entry in value):
+        config_error(config_label, f"`{name}` must be a list of strings")
+    return [entry for entry in value if isinstance(entry, str)]
+
+
+_POLICY: dict[str, object] = _load_toml_doc(_POLICY_PATH)
+_POLICY_LIMITS = _dict_section(_POLICY, "limits")
+_REPO_PATH_OVERRIDES = _load_toml_doc(_REPO_PATHS_PATH)
+
+
+def _limit(name: str) -> int:
+    return require_int(_POLICY_LIMITS, name, f"{_POLICY_LABEL} [limits]")
+
+
+def _repo_path(name: str) -> Path:
+    value = _REPO_PATH_OVERRIDES.get(name)
+    if isinstance(value, str):
+        return ROOT / value
+    config_error(_PATHS_LABEL, f"`{name}` must be configured as a string path")
 
 
 # Threshold constants (read from policy.toml, with defaults)
-SRC_FILE_LINES = _int_config_value(_limits().get("src_file_lines", 300), 300)
-SHELL_FILE_LINES = _int_config_value(_limits().get("shell_file_lines", 300), 300)
-FUNCTION_LINES = _int_config_value(_limits().get("function_lines", 60), 60)
-MIN_PREFIX_COLLISION = _int_config_value(_limits().get("min_prefix_collision", 2), 2)
-SHELL_FUNCTION_LINES = _int_config_value(_limits().get("shell_function_lines", 100), 100)
+SRC_FILE_LINES = _limit("src_file_lines")
+SHELL_FILE_LINES = _limit("shell_file_lines")
+FUNCTION_LINES = _limit("function_lines")
+MIN_PREFIX_COLLISION = _limit("min_prefix_collision")
+SHELL_FUNCTION_LINES = _limit("shell_function_lines")
 
 
-def _repo_path(name: str, default: str) -> Path:
-    value = _REPO_PATHS.get(name)
-    if isinstance(value, str):
-        return ROOT / value
-    fallback = _paths().get(name, default)
-    return ROOT / str(fallback)
+# Directory constants (read from linting/config/repo/paths.toml)
+SRC_DIR: Path = _repo_path("src")
+TESTS_DIR: Path = _repo_path("tests")
+CONFIG_DIR: Path = _repo_path("config")
+SCRIPTS_DIR: Path = _repo_path("scripts")
+DOCKER_DIR: Path = _repo_path("docker")
+HOOKS_DIR: Path = _repo_path("hooks")
+LINTING_DIR: Path = _repo_path("linting")
 
 
-# Directory constants (read from linting/config/repo/paths.toml with policy.toml fallback)
-SRC_DIR: Path = _repo_path("src", "src")
-TESTS_DIR: Path = _repo_path("tests", "tests")
-CONFIG_DIR: Path = _repo_path("config", "src/config")
-SCRIPTS_DIR: Path = _repo_path("scripts", "scripts")
-DOCKER_DIR: Path = _repo_path("docker", "docker")
-HOOKS_DIR: Path = _repo_path("hooks", ".githooks")
-LINTING_DIR: Path = _repo_path("linting", "linting")
+def load_config_doc(*relative_parts: str) -> dict[str, object]:
+    """Load a TOML config document under ``linting/config`` or return an empty dict."""
+    return _load_toml_doc(LINTING_CONFIG_DIR.joinpath(*relative_parts))
 
 
 def policy_section(name: str) -> dict[str, object]:
     """Return a dict section from ``linting/config/repo/policy.toml`` or an empty mapping."""
-    value = _POLICY.get(name)
-    return value if isinstance(value, dict) else {}
+    return _dict_section(_POLICY, name)
 
 
 def string_list(value: object) -> list[str]:
@@ -125,8 +147,8 @@ def rel(path: Path) -> str:
         return str(path)
 
 
-def iter_shell_files(*dirs: Path, include_hook_entrypoints: bool = False) -> list[Path]:
-    """Return sorted shell files under *dirs* plus optional hook entrypoints."""
+def iter_shell_files(*dirs: Path, extra_files: list[Path] | tuple[Path, ...] | None = None) -> list[Path]:
+    """Return sorted shell files under *dirs* plus optional extra shell-like files."""
     files: list[Path] = []
     for d in dirs:
         if not d.is_dir():
@@ -136,11 +158,9 @@ def iter_shell_files(*dirs: Path, include_hook_entrypoints: bool = False) -> lis
                 continue
             files.append(sh_file)
 
-    if include_hook_entrypoints:
-        for relative in ("pre-commit", "pre-push", "commit-msg"):
-            candidate = HOOKS_DIR / relative
-            if candidate.is_file():
-                files.append(candidate)
+    for candidate in extra_files or ():
+        if candidate.is_file():
+            files.append(candidate)
 
     unique_files = {path.resolve(): path for path in files}
     return [unique_files[key] for key in sorted(unique_files)]

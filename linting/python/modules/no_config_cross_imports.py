@@ -11,20 +11,14 @@ from __future__ import annotations
 import ast
 import sys
 from linting.python.common import parse_source
-from linting.repo import CONFIG_DIR, rel, report, load_config_doc
+from linting.repo import CONFIG_DIR, rel, report, load_config_doc, require_section, require_string_list
 
 _MODULE_RULES = load_config_doc("rules", "modules.toml")
-_CROSS_IMPORT_RULE = _MODULE_RULES.get("no_config_cross_imports")
-if not isinstance(_CROSS_IMPORT_RULE, dict):
-    _CROSS_IMPORT_RULE = {}
-ALLOWLIST_FILENAMES = {
-    str(value) for value in _CROSS_IMPORT_RULE.get("allowlist_filenames", []) if isinstance(value, str)
-} or {
-    "engine.py",
-    "gpu.py",
-    "limits.py",
-    "trt.py",
-}
+_MODULE_CONFIG_LABEL = "linting/config/rules/modules.toml"
+_CROSS_IMPORT_RULE = require_section(_MODULE_RULES, "no_config_cross_imports", _MODULE_CONFIG_LABEL)
+ALLOWLIST_FILENAMES = set(
+    require_string_list(_CROSS_IMPORT_RULE, "allowlist_filenames", f"{_MODULE_CONFIG_LABEL} [no_config_cross_imports]")
+)
 
 
 def _config_module_names() -> set[str]:

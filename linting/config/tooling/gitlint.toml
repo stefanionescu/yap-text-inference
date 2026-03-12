@@ -1,0 +1,31 @@
+[title_conventional_inference]
+allowed_types = [
+    "build",
+    "chore",
+    "ci",
+    "docs",
+    "feat",
+    "fix",
+    "perf",
+    "refactor",
+    "revert",
+    "style",
+    "test",
+]
+allowed_scopes = [
+    "core",
+    "config",
+    "handlers",
+    "messages",
+    "tokens",
+    "engines",
+    "quantization",
+    "docker",
+    "scripts",
+    "tests",
+    "lint",
+    "hooks",
+    "docs",
+    "deps",
+    "rules",
+]

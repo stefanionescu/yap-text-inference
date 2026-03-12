@@ -13,14 +13,13 @@ import sys
 from pathlib import Path
 from dataclasses import dataclass
 from collections import defaultdict
-from linting.repo import SRC_DIR, load_config_doc
+from linting.repo import SRC_DIR, load_config_doc, require_section, require_string
 from linting.python.common import iter_python_files
 
 _IMPORT_RULES = load_config_doc("rules", "imports.toml")
-_IMPORT_CYCLE_RULE = _IMPORT_RULES.get("import_cycles")
-if not isinstance(_IMPORT_CYCLE_RULE, dict):
-    _IMPORT_CYCLE_RULE = {}
-INTERNAL_ROOT = str(_IMPORT_CYCLE_RULE.get("internal_root", "src"))
+_IMPORT_CONFIG_LABEL = "linting/config/rules/imports.toml"
+_IMPORT_CYCLE_RULE = require_section(_IMPORT_RULES, "import_cycles", _IMPORT_CONFIG_LABEL)
+INTERNAL_ROOT = require_string(_IMPORT_CYCLE_RULE, "internal_root", f"{_IMPORT_CONFIG_LABEL} [import_cycles]")
 
 
 @dataclass(frozen=True)

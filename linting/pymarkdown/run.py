@@ -6,50 +6,20 @@ import sys
 import subprocess  # nosec B404
 from pathlib import Path, PurePosixPath
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
-    import tomli as tomllib
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-ROOT = Path(__file__).resolve().parents[2]
+from linting.repo import ROOT, load_config_doc, require_section, require_string_list
+
 CONFIG_FILE = ROOT / ".pymarkdown.toml"
-RULE_CONFIG_FILE = ROOT / "linting" / "config" / "rules" / "pymarkdown.toml"
 _MIN_CLI_ARGUMENTS = 2
-PLUGIN_FILES = (
-    ROOT / "linting" / "pymarkdown" / "rules" / "no_banned_terms.py",
-    ROOT / "linting" / "pymarkdown" / "rules" / "heading_title_case.py",
-    ROOT / "linting" / "pymarkdown" / "rules" / "no_double_hyphen.py",
-)
 
-
-def _load_rule_config() -> dict[str, object]:
-    if not RULE_CONFIG_FILE.exists():
-        return {}
-    try:
-        loaded = tomllib.loads(RULE_CONFIG_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-    return loaded if isinstance(loaded, dict) else {}
-
-
-_RULES = _load_rule_config()
-_RUN_RULES = _RULES.get("run")
-if not isinstance(_RUN_RULES, dict):
-    _RUN_RULES = {}
-EXCLUDE_PATTERNS = tuple(str(value) for value in _RUN_RULES.get("exclude_patterns", []) if isinstance(value, str)) or (
-    "node_modules/**",
-    ".git/**",
-    ".cache/**",
-    ".venv/**",
-    ".pytest_cache/**",
-    ".mypy_cache/**",
-    ".ruff_cache/**",
-    "linting/.tools/**",
-    "coverage/**",
-    "htmlcov/**",
-    "rules/**",
-    "src/quantization/**/readme/*.md",
-)
+_PYMARKDOWN_CONFIG_LABEL = "linting/config/rules/pymarkdown.toml"
+_RUN_RULES = require_section(load_config_doc("rules", "pymarkdown.toml"), "run", _PYMARKDOWN_CONFIG_LABEL)
+_RUN_RULE_LABEL = f"{_PYMARKDOWN_CONFIG_LABEL} [run]"
+PLUGIN_FILES = tuple(ROOT / raw_path for raw_path in require_string_list(_RUN_RULES, "plugin_files", _RUN_RULE_LABEL))
+ENABLED_RULES = require_string_list(_RUN_RULES, "enabled_rules", _RUN_RULE_LABEL)
+EXCLUDE_PATTERNS = tuple(require_string_list(_RUN_RULES, "exclude_patterns", _RUN_RULE_LABEL))
 
 
 def _relative_posix(path: Path) -> str:
@@ -96,7 +66,7 @@ def main() -> int:
         "--disable-rules",
         "*",
         "--enable-rules",
-        "YTI100,YTI101,YTI102",
+        ",".join(ENABLED_RULES),
     ]
     for plugin_file in PLUGIN_FILES:
         command.extend(["--add-plugin", str(plugin_file)])

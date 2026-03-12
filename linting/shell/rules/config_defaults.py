@@ -6,24 +6,19 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from linting.repo import report, load_config_doc
+from linting.repo import load_config_doc, report, require_int, require_section, require_string_list
 from linting.shell.shared import rel, is_entrypoint
 from linting.shell.parser import violation, iter_analysis_files
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
-_DEFAULT_RULE = _SHELL_RULES.get("config_defaults")
-if not isinstance(_DEFAULT_RULE, dict):
-    _DEFAULT_RULE = {}
+_SHELL_CONFIG_LABEL = "linting/config/rules/shell.toml"
+_DEFAULT_RULE = require_section(_SHELL_RULES, "config_defaults", _SHELL_CONFIG_LABEL)
+_DEFAULT_RULE_LABEL = f"{_SHELL_CONFIG_LABEL} [config_defaults]"
 
-ALLOWED_PREFIXES = tuple(
-    str(value) for value in _DEFAULT_RULE.get("allowed_path_prefixes", []) if isinstance(value, str)
-)
-ALLOWED_FILES = {str(value) for value in _DEFAULT_RULE.get("allowed_files", []) if isinstance(value, str)}
-SCOPED_PREFIXES = tuple(str(value) for value in _DEFAULT_RULE.get("scoped_prefixes", []) if isinstance(value, str)) or (
-    "scripts/",
-    "docker/",
-)
-SCAN_WINDOW = int(_DEFAULT_RULE.get("scan_window", 80))
+ALLOWED_PREFIXES = tuple(require_string_list(_DEFAULT_RULE, "allowed_path_prefixes", _DEFAULT_RULE_LABEL))
+ALLOWED_FILES = set(require_string_list(_DEFAULT_RULE, "allowed_files", _DEFAULT_RULE_LABEL))
+SCOPED_PREFIXES = tuple(require_string_list(_DEFAULT_RULE, "scoped_prefixes", _DEFAULT_RULE_LABEL))
+SCAN_WINDOW = require_int(_DEFAULT_RULE, "scan_window", _DEFAULT_RULE_LABEL)
 
 DEFAULT_ASSIGN_RE = re.compile(
     r'^\s*(?:export\s+|local\s+)?(?P<lhs>[A-Z_][A-Z0-9_]*)="?\$\{(?P<rhs>[A-Z_][A-Z0-9_]*)[:-][^}]*\}"?\s*$'

@@ -6,3 +6,14 @@ requirement_files = [
     "requirements-vllm.txt",
     "requirements-llmcompressor.txt",
 ]
+
+reference_docs = [
+    "README.md",
+    "ADVANCED.md",
+]
+
+reference_doc_globs = ["rules/*.md"]
+
+[shell_reference_targets]
+"scripts/lint.sh" = "scripts/lint.sh"
+"scripts/security.sh" = "scripts/security.sh"

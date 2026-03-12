@@ -14,6 +14,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
     import tomli as tomllib
 
 _CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "rules" / "pymarkdown.toml"
+_CONFIG_LABEL = "linting/config/rules/pymarkdown.toml"
 
 
 def _load_rule_config() -> dict[str, object]:
@@ -26,18 +27,36 @@ def _load_rule_config() -> dict[str, object]:
     return loaded if isinstance(loaded, dict) else {}
 
 
+def _require_section(doc: dict[str, object], name: str) -> dict[str, object]:
+    value = doc.get(name)
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{_CONFIG_LABEL}: `{name}` must be a table")
+    return value
+
+
+def _require_string(doc: dict[str, object], name: str, label: str) -> str:
+    value = doc.get(name)
+    if not isinstance(value, str):
+        raise RuntimeError(f"{label}: `{name}` must be a string")
+    return value
+
+
+def _require_string_list(doc: dict[str, object], name: str, label: str) -> list[str]:
+    value = doc.get(name)
+    if not isinstance(value, list) or any(not isinstance(entry, str) for entry in value):
+        raise RuntimeError(f"{label}: `{name}` must be a list of strings")
+    return [entry for entry in value if isinstance(entry, str)]
+
+
 _RULES = _load_rule_config()
-_NO_DOUBLE_HYPHEN_RULE = _RULES.get("no_double_hyphen")
-if not isinstance(_NO_DOUBLE_HYPHEN_RULE, dict):
-    _NO_DOUBLE_HYPHEN_RULE = {}
-_INLINE_CODE_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("inline_code_pattern", r"`[^`\n]*`")))
-_LINK_DESTINATION_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("link_destination_pattern", r"\]\([^)\n]*\)")))
-_TABLE_SEPARATOR_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("table_separator_pattern", r"^\s*\|?[-:| ]+\|?\s*$")))
-_HTML_COMMENT_RE = re.compile(str(_NO_DOUBLE_HYPHEN_RULE.get("html_comment_pattern", r"^\s*<!--.*-->\s*$")))
-_FRONT_MATTER_DELIMITER = str(_NO_DOUBLE_HYPHEN_RULE.get("front_matter_delimiter", "---"))
-_FENCE_MARKERS = tuple(
-    str(value) for value in _NO_DOUBLE_HYPHEN_RULE.get("fence_markers", []) if isinstance(value, str)
-) or ("```", "~~~")
+_NO_DOUBLE_HYPHEN_RULE = _require_section(_RULES, "no_double_hyphen")
+_RULE_LABEL = f"{_CONFIG_LABEL} [no_double_hyphen]"
+_INLINE_CODE_RE = re.compile(_require_string(_NO_DOUBLE_HYPHEN_RULE, "inline_code_pattern", _RULE_LABEL))
+_LINK_DESTINATION_RE = re.compile(_require_string(_NO_DOUBLE_HYPHEN_RULE, "link_destination_pattern", _RULE_LABEL))
+_TABLE_SEPARATOR_RE = re.compile(_require_string(_NO_DOUBLE_HYPHEN_RULE, "table_separator_pattern", _RULE_LABEL))
+_HTML_COMMENT_RE = re.compile(_require_string(_NO_DOUBLE_HYPHEN_RULE, "html_comment_pattern", _RULE_LABEL))
+_FRONT_MATTER_DELIMITER = _require_string(_NO_DOUBLE_HYPHEN_RULE, "front_matter_delimiter", _RULE_LABEL)
+_FENCE_MARKERS = tuple(_require_string_list(_NO_DOUBLE_HYPHEN_RULE, "fence_markers", _RULE_LABEL))
 
 
 def _strip_inline_code(line: str) -> str:

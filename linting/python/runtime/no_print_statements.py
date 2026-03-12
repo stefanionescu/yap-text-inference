@@ -6,21 +6,15 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from linting.repo import SRC_DIR, rel, report, load_config_doc
+from linting.repo import SRC_DIR, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
 
 _RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
-_PRINT_RULE = _RUNTIME_RULES.get("no_print_statements")
-if not isinstance(_PRINT_RULE, dict):
-    _PRINT_RULE = {}
-ALLOWED_PREFIXES = tuple(str(value) for value in _PRINT_RULE.get("allowed_prefixes", []) if isinstance(value, str)) or (
-    "src/scripts/",
-    "src/hf/",
-    "src/quantization/",
-)
-ALLOWED_EXACT_PATHS = {
-    str(value) for value in _PRINT_RULE.get("allowed_exact_paths", []) if isinstance(value, str)
-} or {"src/state/hf.py"}
+_RUNTIME_CONFIG_LABEL = "linting/config/rules/runtime.toml"
+_PRINT_RULE = require_section(_RUNTIME_RULES, "no_print_statements", _RUNTIME_CONFIG_LABEL)
+_PRINT_RULE_LABEL = f"{_RUNTIME_CONFIG_LABEL} [no_print_statements]"
+ALLOWED_PREFIXES = tuple(require_string_list(_PRINT_RULE, "allowed_prefixes", _PRINT_RULE_LABEL))
+ALLOWED_EXACT_PATHS = set(require_string_list(_PRINT_RULE, "allowed_exact_paths", _PRINT_RULE_LABEL))
 
 
 def _is_allowed(path: Path) -> bool:

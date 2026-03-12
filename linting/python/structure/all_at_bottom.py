@@ -15,7 +15,12 @@ import ast
 import sys
 import argparse
 from pathlib import Path
-from linting.repo import report
+from linting.repo import load_config_doc, report, require_section, require_string_list
+
+_STRUCTURE_RULES = load_config_doc("rules", "structure.toml")
+_STRUCTURE_CONFIG_LABEL = "linting/config/rules/structure.toml"
+_ALL_RULE = require_section(_STRUCTURE_RULES, "all_at_bottom", _STRUCTURE_CONFIG_LABEL)
+DEFAULT_SCAN_DIRS = require_string_list(_ALL_RULE, "scan_dirs", f"{_STRUCTURE_CONFIG_LABEL} [all_at_bottom]")
 
 
 def _is_name(node: ast.AST, name: str) -> bool:
@@ -144,7 +149,7 @@ def main() -> int:
     parser.add_argument(
         "--dirs",
         nargs="+",
-        default=["src", "tests"],
+        default=DEFAULT_SCAN_DIRS,
         help="Directories to scan (default: src tests)",
     )
     parser.add_argument(

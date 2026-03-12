@@ -6,18 +6,15 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from linting.repo import SRC_DIR, rel, report, load_config_doc
+from linting.repo import SRC_DIR, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
 
 _STRUCTURE_RULES = load_config_doc("rules", "structure.toml")
-_ONE_CLASS_RULE = _STRUCTURE_RULES.get("one_class_per_file")
-if not isinstance(_ONE_CLASS_RULE, dict):
-    _ONE_CLASS_RULE = {}
-ALLOWLIST_RELATIVE_PATHS = {
-    str(value) for value in _ONE_CLASS_RULE.get("allowlist_relative_paths", []) if isinstance(value, str)
-} or {
-    "handlers/websocket/parser.py",
-}
+_STRUCTURE_CONFIG_LABEL = "linting/config/rules/structure.toml"
+_ONE_CLASS_RULE = require_section(_STRUCTURE_RULES, "one_class_per_file", _STRUCTURE_CONFIG_LABEL)
+ALLOWLIST_RELATIVE_PATHS = set(
+    require_string_list(_ONE_CLASS_RULE, "allowlist_relative_paths", f"{_STRUCTURE_CONFIG_LABEL} [one_class_per_file]")
+)
 
 
 def _is_dataclass_decorator(decorator: ast.expr) -> bool:

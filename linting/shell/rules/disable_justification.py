@@ -6,20 +6,17 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from linting.repo import report, load_config_doc
+from linting.repo import load_config_doc, report, require_section, require_string, require_string_list
 from linting.shell.shared import rel, iter_target_shell_files
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
-_DISABLE_RULE = _SHELL_RULES.get("disable_justification")
-if not isinstance(_DISABLE_RULE, dict):
-    _DISABLE_RULE = {}
-DISABLE_RE = re.compile(str(_DISABLE_RULE.get("disable_regex", r"^\s*#\s*shellcheck\s+disable=")))
-JUSTIFICATION_RE = re.compile(str(_DISABLE_RULE.get("justification_regex", r"#\s*.+")))
+_SHELL_CONFIG_LABEL = "linting/config/rules/shell.toml"
+_DISABLE_RULE = require_section(_SHELL_RULES, "disable_justification", _SHELL_CONFIG_LABEL)
+_DISABLE_RULE_LABEL = f"{_SHELL_CONFIG_LABEL} [disable_justification]"
+DISABLE_RE = re.compile(require_string(_DISABLE_RULE, "disable_regex", _DISABLE_RULE_LABEL))
+JUSTIFICATION_RE = re.compile(require_string(_DISABLE_RULE, "justification_regex", _DISABLE_RULE_LABEL))
 _REQUIRED_COMMENT_PARTS = 3
-SCOPED_PREFIXES = tuple(str(value) for value in _DISABLE_RULE.get("scoped_prefixes", []) if isinstance(value, str)) or (
-    ".githooks/",
-    "linting/security/",
-)
+SCOPED_PREFIXES = tuple(require_string_list(_DISABLE_RULE, "scoped_prefixes", _DISABLE_RULE_LABEL))
 
 
 def _in_scope(path: Path) -> bool:

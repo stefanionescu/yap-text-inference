@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import sys
 from linting.python.common import iter_python_files
-from linting.repo import TESTS_DIR, rel, report, load_config_doc
+from linting.repo import TESTS_DIR, rel, report, load_config_doc, require_section, require_string_list
 
 _TESTING_RULES = load_config_doc("rules", "testing.toml")
-_PREFIX_RULE = _TESTING_RULES.get("test_file_prefix")
-if not isinstance(_PREFIX_RULE, dict):
-    _PREFIX_RULE = {}
+_TESTING_CONFIG_LABEL = "linting/config/rules/testing.toml"
+_PREFIX_RULE = require_section(_TESTING_RULES, "test_file_prefix", _TESTING_CONFIG_LABEL)
 SCAN_DIRS = [
-    TESTS_DIR.parent / str(raw_dir) for raw_dir in _PREFIX_RULE.get("scan_dirs", []) if isinstance(raw_dir, str)
-] or [TESTS_DIR / "suites"]
+    TESTS_DIR.parent / raw_dir
+    for raw_dir in require_string_list(_PREFIX_RULE, "scan_dirs", f"{_TESTING_CONFIG_LABEL} [test_file_prefix]")
+]
 
 
 def main() -> int:

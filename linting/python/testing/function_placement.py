@@ -10,16 +10,15 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from linting.repo import TESTS_DIR, rel, report, load_config_doc
+from linting.repo import TESTS_DIR, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
 
 _TESTING_RULES = load_config_doc("rules", "testing.toml")
-_PLACEMENT_RULE = _TESTING_RULES.get("test_function_placement")
-if not isinstance(_PLACEMENT_RULE, dict):
-    _PLACEMENT_RULE = {}
-ALLOWED_SUITE_DIRS = {
-    str(value) for value in _PLACEMENT_RULE.get("allowed_suite_dirs", []) if isinstance(value, str)
-} or {"unit", "integration", "e2e"}
+_TESTING_CONFIG_LABEL = "linting/config/rules/testing.toml"
+_PLACEMENT_RULE = require_section(_TESTING_RULES, "test_function_placement", _TESTING_CONFIG_LABEL)
+ALLOWED_SUITE_DIRS = set(
+    require_string_list(_PLACEMENT_RULE, "allowed_suite_dirs", f"{_TESTING_CONFIG_LABEL} [test_function_placement]")
+)
 _MIN_SUITE_PATH_PARTS = 3
 
 

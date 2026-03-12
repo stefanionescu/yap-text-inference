@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import sys
-from linting.repo import report, load_config_doc
+from linting.repo import load_config_doc, report, require_section, require_string_list
 from linting.shell.parser import (
     violation,
     parse_functions,
@@ -15,12 +15,11 @@ from linting.shell.parser import (
 )
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
-_UNUSED_RULE = _SHELL_RULES.get("unused_functions")
-if not isinstance(_UNUSED_RULE, dict):
-    _UNUSED_RULE = {}
-IGNORED_FUNCTIONS = {
-    str(value) for value in _UNUSED_RULE.get("ignored_function_names", []) if isinstance(value, str)
-} or {"main"}
+_SHELL_CONFIG_LABEL = "linting/config/rules/shell.toml"
+_UNUSED_RULE = require_section(_SHELL_RULES, "unused_functions", _SHELL_CONFIG_LABEL)
+IGNORED_FUNCTIONS = set(
+    require_string_list(_UNUSED_RULE, "ignored_function_names", f"{_SHELL_CONFIG_LABEL} [unused_functions]")
+)
 
 
 def main() -> int:

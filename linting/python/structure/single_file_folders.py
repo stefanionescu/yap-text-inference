@@ -5,37 +5,16 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from linting.repo import ROOT, rel, report, load_config_doc
+from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string_list
 
 _STRUCTURE_RULES = load_config_doc("rules", "structure.toml")
-_SINGLE_RULE = _STRUCTURE_RULES.get("single_file_folders")
-if not isinstance(_SINGLE_RULE, dict):
-    _SINGLE_RULE = {}
+_STRUCTURE_CONFIG_LABEL = "linting/config/rules/structure.toml"
+_SINGLE_RULE = require_section(_STRUCTURE_RULES, "single_file_folders", _STRUCTURE_CONFIG_LABEL)
+_SINGLE_RULE_LABEL = f"{_STRUCTURE_CONFIG_LABEL} [single_file_folders]"
 
-SCAN_ROOTS = [ROOT / str(value) for value in _SINGLE_RULE.get("scan_roots", []) if isinstance(value, str)] or [
-    ROOT / "src",
-    ROOT / "scripts",
-    ROOT / "docker",
-    ROOT / ".githooks",
-    ROOT / "linting" / "config",
-    ROOT / "linting" / "licenses",
-    ROOT / "linting" / "rules" / "python",
-    ROOT / "linting" / "security",
-]
-ALLOWLIST = {str(value) for value in _SINGLE_RULE.get("allowlist_relative_paths", []) if isinstance(value, str)} or {
-    "docker/vllm/download",
-    ".githooks/.jscpd",
-    "linting/licenses",
-    "linting/python/naming",
-    "linting/security/bearer",
-    "linting/security/gitleaks",
-    "linting/security/pip_audit",
-    "linting/security/trivy",
-}
-IGNORED_NAMES = {str(value) for value in _SINGLE_RULE.get("ignored_names", []) if isinstance(value, str)} or {
-    "__pycache__",
-    ".DS_Store",
-}
+SCAN_ROOTS = [ROOT / value for value in require_string_list(_SINGLE_RULE, "scan_roots", _SINGLE_RULE_LABEL)]
+ALLOWLIST = set(require_string_list(_SINGLE_RULE, "allowlist_relative_paths", _SINGLE_RULE_LABEL))
+IGNORED_NAMES = set(require_string_list(_SINGLE_RULE, "ignored_names", _SINGLE_RULE_LABEL))
 
 
 def _parse_scope(raw_args: list[str]) -> set[Path]:

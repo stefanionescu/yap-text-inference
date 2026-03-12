@@ -10,19 +10,14 @@ from __future__ import annotations
 
 import re
 import sys
-from linting.repo import ROOT, rel, report, load_config_doc
+from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string_list
 
 _RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
-_INLINE_RULE = _RUNTIME_RULES.get("no_inline_python")
-if not isinstance(_INLINE_RULE, dict):
-    _INLINE_RULE = {}
+_RUNTIME_CONFIG_LABEL = "linting/config/rules/runtime.toml"
+_INLINE_RULE = require_section(_RUNTIME_RULES, "no_inline_python", _RUNTIME_CONFIG_LABEL)
 INLINE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(pattern) for pattern in _INLINE_RULE.get("patterns", []) if isinstance(pattern, str)
-) or (
-    re.compile(r"\bpython3?\s+-c\b"),
-    re.compile(r"\bpython3?\s+<<"),
-    re.compile(r"\$\{?PYTHON_EXEC\}?\s+-c\b"),
-    re.compile(r"\$\{?PYTHON_EXEC\}?\s+<<"),
+    re.compile(pattern)
+    for pattern in require_string_list(_INLINE_RULE, "patterns", f"{_RUNTIME_CONFIG_LABEL} [no_inline_python]")
 )
 
 

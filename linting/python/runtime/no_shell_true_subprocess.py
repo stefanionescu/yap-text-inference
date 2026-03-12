@@ -5,16 +5,15 @@ from __future__ import annotations
 
 import ast
 import sys
-from linting.repo import SRC_DIR, rel, report, load_config_doc
+from linting.repo import SRC_DIR, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
 
 _RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
-_SUBPROCESS_RULE = _RUNTIME_RULES.get("no_shell_true_subprocess")
-if not isinstance(_SUBPROCESS_RULE, dict):
-    _SUBPROCESS_RULE = {}
-SUBPROCESS_FUNCS = {
-    str(value) for value in _SUBPROCESS_RULE.get("forbidden_functions", []) if isinstance(value, str)
-} or {"run", "Popen", "call", "check_call", "check_output"}
+_RUNTIME_CONFIG_LABEL = "linting/config/rules/runtime.toml"
+_SUBPROCESS_RULE = require_section(_RUNTIME_RULES, "no_shell_true_subprocess", _RUNTIME_CONFIG_LABEL)
+SUBPROCESS_FUNCS = set(
+    require_string_list(_SUBPROCESS_RULE, "forbidden_functions", f"{_RUNTIME_CONFIG_LABEL} [no_shell_true_subprocess]")
+)
 
 
 def main() -> int:

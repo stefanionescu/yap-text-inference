@@ -8,43 +8,26 @@ import sys
 from pathlib import Path
 from collections import deque
 from importlib import metadata
-from linting.repo import ROOT, rel, report, load_config_doc
+from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string, require_string_list
 
 _LICENSES_CONFIG = load_config_doc("licenses.toml")
-_PARSING_RULES = _LICENSES_CONFIG.get("parsing")
-if not isinstance(_PARSING_RULES, dict):
-    _PARSING_RULES = {}
-_NORMALIZE_RE = re.compile(str(_PARSING_RULES.get("normalize_pattern", r"[-_.]+")))
-_NAME_RE = re.compile(str(_PARSING_RULES.get("name_pattern", r"^\s*([A-Za-z0-9_.-]+)")))
-_SKIP_PREFIXES = tuple(str(value) for value in _PARSING_RULES.get("skip_prefixes", []) if isinstance(value, str)) or (
-    "-r",
-    "--requirement",
-    "-c",
-    "--constraint",
-    "--extra-index-url",
-    "--index-url",
-    "--find-links",
-    "--trusted-host",
-)
-_EDITABLE_PREFIXES = tuple(
-    str(value) for value in _PARSING_RULES.get("editable_prefixes", []) if isinstance(value, str)
-) or ("-e", "--editable")
-_DIRECT_REFERENCE_SEPARATOR = str(_PARSING_RULES.get("direct_reference_separator", " @ "))
-_EGG_FRAGMENT = str(_PARSING_RULES.get("egg_fragment", "#egg="))
+_LICENSES_LABEL = "linting/config/licenses.toml"
+_PARSING_RULES = require_section(_LICENSES_CONFIG, "parsing", _LICENSES_LABEL)
+_PARSING_LABEL = f"{_LICENSES_LABEL} [parsing]"
+_NORMALIZE_RE = re.compile(require_string(_PARSING_RULES, "normalize_pattern", _PARSING_LABEL))
+_NAME_RE = re.compile(require_string(_PARSING_RULES, "name_pattern", _PARSING_LABEL))
+_SKIP_PREFIXES = tuple(require_string_list(_PARSING_RULES, "skip_prefixes", _PARSING_LABEL))
+_EDITABLE_PREFIXES = tuple(require_string_list(_PARSING_RULES, "editable_prefixes", _PARSING_LABEL))
+_DIRECT_REFERENCE_SEPARATOR = require_string(_PARSING_RULES, "direct_reference_separator", _PARSING_LABEL)
+_EGG_FRAGMENT = require_string(_PARSING_RULES, "egg_fragment", _PARSING_LABEL)
 _UNKNOWN_LICENSES = {
-    str(value).strip().lower() for value in _PARSING_RULES.get("unknown_licenses", []) if isinstance(value, str)
-} or {
-    "",
-    "dual license",
-    "n/a",
-    "none",
-    "osi approved",
-    "unknown",
-    "unknown license",
+    value.strip().lower()
+    for value in require_string_list(_PARSING_RULES, "unknown_licenses", _PARSING_LABEL)
 }
 _LICENSE_FILE_NAMES = tuple(
-    str(value).strip().lower() for value in _PARSING_RULES.get("license_file_names", []) if isinstance(value, str)
-) or ("license", "copying", "notice")
+    value.strip().lower()
+    for value in require_string_list(_PARSING_RULES, "license_file_names", _PARSING_LABEL)
+)
 
 
 def _normalize_name(value: str) -> str:
@@ -69,10 +52,10 @@ def _parse_requirement_name(raw_value: str) -> str | None:
 
 def _requirement_files() -> list[Path]:
     config_doc = load_config_doc("repo", "files.toml")
-    raw_values = config_doc.get("requirement_files", [])
-    if not isinstance(raw_values, list):
-        return []
-    return [ROOT / raw_value for raw_value in raw_values if isinstance(raw_value, str)]
+    return [
+        ROOT / raw_value
+        for raw_value in require_string_list(config_doc, "requirement_files", "linting/config/repo/files.toml")
+    ]
 
 
 def _root_packages() -> set[str]:
@@ -221,10 +204,7 @@ def _license_from_files(dist: metadata.Distribution) -> str | None:
 
 
 def _config_strings(config_doc: dict[str, object], key: str) -> list[str]:
-    raw_values = config_doc.get(key, [])
-    if not isinstance(raw_values, list):
-        return []
-    return [str(value).strip() for value in raw_values if isinstance(value, str) and str(value).strip()]
+    return [value.strip() for value in require_string_list(config_doc, key, _LICENSES_LABEL) if value.strip()]
 
 
 def _metadata_value(dist: metadata.Distribution, key: str) -> str:
@@ -240,9 +220,9 @@ def _normalized_config_strings(config_doc: dict[str, object], key: str) -> set[s
 
 
 def _string_mapping(config_doc: dict[str, object], key: str) -> dict[str, str]:
-    raw_mapping = config_doc.get(key, {})
+    raw_mapping = config_doc.get(key)
     if not isinstance(raw_mapping, dict):
-        return {}
+        raise RuntimeError(f"{_LICENSES_LABEL}: `{key}` must be a table")
     return {
         _normalize_name(package_name): str(license_value).strip()
         for package_name, license_value in raw_mapping.items()

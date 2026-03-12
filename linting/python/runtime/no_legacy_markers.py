@@ -6,32 +6,17 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from linting.repo import ROOT, rel, report, load_config_doc
+from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string_list
 
 _RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
-_LEGACY_RULE = _RUNTIME_RULES.get("no_legacy_markers")
-if not isinstance(_LEGACY_RULE, dict):
-    _LEGACY_RULE = {}
-TARGETS = [ROOT / str(value) for value in _LEGACY_RULE.get("targets", []) if isinstance(value, str)] or [
-    ROOT / "src" / "runtime",
-    ROOT / "src" / "messages",
-    ROOT / "src" / "handlers",
-    ROOT / "src" / "execution",
-    ROOT / "src" / "server.py",
-]
-
-ALLOWLIST = {ROOT / str(value) for value in _LEGACY_RULE.get("allowlist", []) if isinstance(value, str)} or {
-    ROOT / "src" / "execution" / "compat.py",
-}
-
+_RUNTIME_CONFIG_LABEL = "linting/config/rules/runtime.toml"
+_LEGACY_RULE = require_section(_RUNTIME_RULES, "no_legacy_markers", _RUNTIME_CONFIG_LABEL)
+_LEGACY_RULE_LABEL = f"{_RUNTIME_CONFIG_LABEL} [no_legacy_markers]"
+TARGETS = [ROOT / value for value in require_string_list(_LEGACY_RULE, "targets", _LEGACY_RULE_LABEL)]
+ALLOWLIST = {ROOT / value for value in require_string_list(_LEGACY_RULE, "allowlist", _LEGACY_RULE_LABEL)}
 PATTERNS = [
-    re.compile(str(value), re.IGNORECASE) for value in _LEGACY_RULE.get("patterns", []) if isinstance(value, str)
-] or [
-    re.compile(r"\blegacy\b", re.IGNORECASE),
-    re.compile(r"\bdeprecated\b", re.IGNORECASE),
-    re.compile(r"\bworkaround\b", re.IGNORECASE),
-    re.compile(r"\bbackward(?:\s|-)?compat(?:ible|ibility)\b", re.IGNORECASE),
-    re.compile(r"\bcompatibility\b", re.IGNORECASE),
+    re.compile(value, re.IGNORECASE)
+    for value in require_string_list(_LEGACY_RULE, "patterns", _LEGACY_RULE_LABEL)
 ]
 
 
