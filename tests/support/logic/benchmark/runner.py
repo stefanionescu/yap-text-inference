@@ -8,13 +8,16 @@ TTFB, chat TTFB, time to first sentence, and time to first 3 words.
 
 from __future__ import annotations
 
+from typing import cast
 from .reporting import print_report
 from tests.state import BenchmarkConfig
+from tests.state.metrics import StartPayloadMode
 from tests.config import BENCHMARK_FALLBACK_MESSAGE
 from tests.support.helpers.selection import choose_message
 from tests.support.helpers.prompt import select_chat_prompt
 from .workers import run_instant_benchmark, run_windowed_benchmark
 from tests.support.helpers.concurrency import sanitize_concurrency
+from tests.support.helpers.websocket import includes_chat_start_fields
 
 
 def _build_config(args) -> BenchmarkConfig:
@@ -23,8 +26,8 @@ def _build_config(args) -> BenchmarkConfig:
     sampling = getattr(args, "sampling", None) or None
     double_ttfb = bool(getattr(args, "double_ttfb", False))
 
-    # chat_prompt is required - always select one based on gender
-    chat_prompt = select_chat_prompt(args.gender)
+    start_payload_mode = cast(StartPayloadMode, getattr(args, "start_payload_mode", "all"))
+    chat_prompt = select_chat_prompt(args.gender) if includes_chat_start_fields(start_payload_mode) else None
 
     return BenchmarkConfig(
         url=args.server,
@@ -36,6 +39,7 @@ def _build_config(args) -> BenchmarkConfig:
         timeout_s=float(args.timeout),
         sampling=sampling,
         double_ttfb=double_ttfb,
+        start_payload_mode=start_payload_mode,
     )
 
 

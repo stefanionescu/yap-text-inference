@@ -37,7 +37,12 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
-from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
+from tests.support.helpers.cli import (  # noqa: E402
+    add_sampling_args,
+    add_connection_args,
+    build_sampling_payload,
+    add_start_payload_mode_arg,
+)
 from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -60,6 +65,7 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(p)
+    add_start_payload_mode_arg(p)
     p.add_argument("message", nargs="*", help="optional user message for all requests")
     p.add_argument(
         "--requests",

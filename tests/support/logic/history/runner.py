@@ -12,10 +12,10 @@ import uuid
 import websockets
 from typing import Any
 from tests.support.helpers.prompt import select_chat_prompt
-from tests.state import StreamState, TTFBSamples, SessionContext
 from tests.support.helpers.errors import ServerError, StreamError
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
+from tests.state import StreamState, TTFBSamples, SessionContext, StartPayloadMode
 from tests.support.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
 from tests.support.helpers.fmt import (
     dim,
@@ -35,6 +35,7 @@ from tests.support.helpers.websocket import (
     build_start_payload,
     build_api_key_headers,
     build_message_payload,
+    includes_chat_start_fields,
 )
 
 # ============================================================================
@@ -100,9 +101,10 @@ async def _run_history_sequence(
     session_id: str,
     gender: str,
     personality: str,
-    chat_prompt: str,
+    chat_prompt: str | None,
     sampling: dict[str, float | int] | None,
     ttfb_samples: TTFBSamples,
+    start_payload_mode: StartPayloadMode,
 ) -> None:
     """Run through all history recall messages."""
     history: list[dict[str, str]] = list(WARM_HISTORY)
@@ -112,6 +114,7 @@ async def _run_history_sequence(
         personality=personality,
         chat_prompt=chat_prompt,
         sampling=sampling,
+        start_payload_mode=start_payload_mode,
     )
 
     first_user_text = HISTORY_RECALL_MESSAGES[0]
@@ -148,13 +151,14 @@ async def run_test(
     gender: str,
     personality: str,
     sampling: dict[str, float | int] | None,
+    start_payload_mode: StartPayloadMode = "all",
 ) -> None:
     """Run the history recall test."""
     url = with_api_key(ws_url, api_key=api_key)
     ws_headers = build_api_key_headers(api_key=api_key)
     ttfb_samples = create_ttfb_aggregator()
     session_id = f"history-{uuid.uuid4()}"
-    chat_prompt = select_chat_prompt(gender)
+    chat_prompt = select_chat_prompt(gender) if includes_chat_start_fields(start_payload_mode) else None
 
     async with websockets.connect(
         url,
@@ -171,6 +175,7 @@ async def run_test(
                 chat_prompt,
                 sampling,
                 ttfb_samples,
+                start_payload_mode,
             )
         finally:
             await send_client_end(ws)

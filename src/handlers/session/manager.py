@@ -7,11 +7,12 @@ import contextlib
 from typing import TYPE_CHECKING, Any
 from .config import resolve_screen_prefix
 from .time import format_session_timestamp
-from src.state.session import SessionState
 from ...tokens.prefix import strip_screen_prefix
+from src.state.session import ChatMessage, SessionState
 from src.execution.tool.prompt_budget import fit_tool_input_to_budget
+from src.execution.chat.prompt_budget import fit_chat_prompt_to_budget
 from .history import HistoryController, HistoryRuntimeConfig, build_history_runtime_config
-from src.config import CHAT_MODEL, TOOL_MODEL, DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
+from src.config import CHAT_MODEL, TOOL_MODEL, CHAT_MAX_LEN, DEFAULT_CHECK_SCREEN_PREFIX, DEFAULT_SCREEN_CHECKED_PREFIX
 from .requests import (
     attach_request_task,
     begin_session_request,
@@ -171,6 +172,37 @@ class SessionHandler:
         normalized_user, _ = self.normalize_user_utterances(state, chat_user_utt)
         _ = turn_id
         return self._history.append_chat_response(state, normalized_user, assistant_text)
+
+    def fit_start_chat_history(
+        self,
+        state: SessionState,
+        *,
+        static_prefix: str,
+        runtime_text: str = "",
+    ) -> list[ChatMessage]:
+        """Exact-fit seeded chat history at start time and reject impossible latest turns."""
+        if not self._history_config.deploy_chat:
+            return []
+        if self._chat_tokenizer is None:
+            raise RuntimeError("Chat tokenizer is not configured")
+
+        original_history = self._history.get_chat_messages(state)
+        if not original_history:
+            return []
+
+        prompt_fit = fit_chat_prompt_to_budget(
+            static_prefix,
+            runtime_text,
+            original_history,
+            "",
+            self._chat_tokenizer,
+            max_prompt_tokens=CHAT_MAX_LEN,
+        )
+        if prompt_fit.history_messages:
+            self._history.set_exact_chat_messages(state, prompt_fit.history_messages)
+            return prompt_fit.history_messages
+
+        raise ValueError("seed history exceeds exact context budget at session start")
 
     # ============================================================================
     # Request/task tracking

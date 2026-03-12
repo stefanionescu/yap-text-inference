@@ -2,21 +2,14 @@
 
 from __future__ import annotations
 
-from src.state.session import ChatMessage
 from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.execution.chat.prompt_budget import fit_chat_prompt_to_budget
+from tests.support.messages.unit import CHAT_MESSAGES, ASSISTANT_FIRST_MESSAGES
 
 
 def test_fit_chat_prompt_to_budget_drops_oldest_history_until_prompt_fits() -> None:
     with use_local_tokenizers() as tokenizer:
-        messages = [
-            ChatMessage(role="user", content="u1"),
-            ChatMessage(role="assistant", content="a1"),
-            ChatMessage(role="user", content="u2"),
-            ChatMessage(role="assistant", content="a2"),
-            ChatMessage(role="user", content="u3"),
-            ChatMessage(role="assistant", content="a3"),
-        ]
+        messages = CHAT_MESSAGES
 
         fit = fit_chat_prompt_to_budget(
             "",
@@ -24,12 +17,70 @@ def test_fit_chat_prompt_to_budget_drops_oldest_history_until_prompt_fits() -> N
             messages,
             "hello",
             tokenizer,
-            max_prompt_tokens=11,
+            max_prompt_tokens=70,
         )
 
-        assert [(msg.role, msg.content) for msg in fit.history_messages] == [("user", "u3"), ("assistant", "a3")]
+        assert fit.history_messages == CHAT_MESSAGES[-4:]
         assert fit.chat_user_utt == "hello"
-        assert fit.prompt_tokens <= 11
+        assert fit.prompt_tokens <= 70
+
+
+def test_fit_chat_prompt_to_budget_drops_whole_turns_not_partial_messages() -> None:
+    with use_local_tokenizers() as tokenizer:
+        fit = fit_chat_prompt_to_budget(
+            "",
+            "",
+            CHAT_MESSAGES[:4],
+            "hello",
+            tokenizer,
+            max_prompt_tokens=40,
+        )
+
+        assert [(msg.role, msg.content) for msg in fit.history_messages] == [
+            (
+                "user",
+                "i need a quiet hotel near the river and my budget is moderate",
+            ),
+            (
+                "assistant",
+                "a quiet riverside hotel in lisbon can work and i can suggest neighborhoods",
+            ),
+        ]
+
+
+def test_fit_chat_prompt_to_budget_preserves_assistant_first_history_order_when_it_fits() -> None:
+    with use_local_tokenizers() as tokenizer:
+        fit = fit_chat_prompt_to_budget(
+            "",
+            "",
+            ASSISTANT_FIRST_MESSAGES[:4],
+            "also remind me to pack a rain jacket and travel adapter",
+            tokenizer,
+            max_prompt_tokens=200,
+        )
+
+        assert fit.history_messages == ASSISTANT_FIRST_MESSAGES[:4]
+        assert fit.prompt.startswith(
+            "<|im_start|>assistant\n"
+            "hello can you help me plan a trip to lisbon next week\n\n"
+            "sure tell me your budget and hotel area preference"
+        )
+        assert "<|im_start|>user\ni need a quiet hotel near the river and my budget is moderate" in fit.prompt
+
+
+def test_fit_chat_prompt_to_budget_drops_leading_assistant_group_as_a_unit() -> None:
+    with use_local_tokenizers() as tokenizer:
+        fit = fit_chat_prompt_to_budget(
+            "",
+            "",
+            ASSISTANT_FIRST_MESSAGES,
+            "hello",
+            tokenizer,
+            max_prompt_tokens=60,
+        )
+
+        assert fit.history_messages == ASSISTANT_FIRST_MESSAGES[-2:]
+        assert fit.prompt_tokens <= 60
 
 
 def test_fit_chat_prompt_to_budget_trims_user_after_history_is_exhausted() -> None:
@@ -38,13 +89,13 @@ def test_fit_chat_prompt_to_budget_trims_user_after_history_is_exhausted() -> No
             "",
             "",
             [],
-            "one two three four five six",
+            "hello can you help me plan a trip to lisbon next week",
             tokenizer,
             max_prompt_tokens=5,
         )
 
         assert fit.history_messages == []
-        assert fit.chat_user_utt == "one two"
+        assert fit.chat_user_utt == "hello can"
         assert fit.prompt_tokens <= 5
 
 
@@ -71,13 +122,13 @@ def test_fit_chat_prompt_to_budget_applies_chat_user_cap_before_prompt_fit() -> 
             "",
             "",
             [],
-            "one two three four five six",
+            "hello can you help me plan a trip to lisbon next week",
             tokenizer,
             max_prompt_tokens=20,
             max_user_tokens=4,
         )
 
-        assert fit.chat_user_utt == "one two three four"
+        assert fit.chat_user_utt == "hello can you help"
         assert fit.prompt_tokens <= 20
 
 

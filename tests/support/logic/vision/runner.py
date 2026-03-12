@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import uuid
 import websockets
-from tests.state import StreamState, SessionContext
+from tests.state import StreamState, SessionContext, StartPayloadMode
 from tests.support.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.helpers.fmt import (
@@ -99,7 +99,8 @@ async def run_once(
     server: str,
     api_key: str | None,
     sampling: dict[str, float | int] | None,
-    chat_prompt: str,
+    chat_prompt: str | None,
+    start_payload_mode: StartPayloadMode = "all",
 ) -> None:
     """Execute the vision flow test."""
     ws_url = with_api_key(server, api_key=api_key)
@@ -111,6 +112,7 @@ async def run_once(
         personality=DEFAULT_PERSONALITY,
         chat_prompt=chat_prompt,
         sampling=sampling,
+        start_payload_mode=start_payload_mode,
     )
     start_payload = build_start_payload(ctx, SCREEN_ANALYSIS_USER_REPLY)
 

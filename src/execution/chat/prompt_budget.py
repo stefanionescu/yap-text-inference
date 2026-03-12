@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from src.state.session import ChatMessage
 from src.tokens.tokenizer import FastTokenizer
-from src.messages.chat import build_chat_prompt_with_prefix
+from src.execution.chat.template_builder import build_chat_prompt_with_prefix
+from src.helpers.chat_history import group_chat_turns, copy_chat_messages, flatten_chat_turns
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,21 +19,17 @@ class PromptFitResult:
     prompt_tokens: int
 
 
-def _copy_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
-    return [ChatMessage(role=msg.role, content=msg.content) for msg in messages]
-
-
 def _build_prompt(
     static_prefix: str,
     runtime_text: str,
-    history_messages: list[ChatMessage],
+    history_turns: list[list[ChatMessage]],
     chat_user_utt: str,
     chat_tokenizer: FastTokenizer,
 ) -> tuple[str, int]:
     prompt = build_chat_prompt_with_prefix(
         static_prefix,
         runtime_text,
-        history_messages,
+        flatten_chat_turns(history_turns),
         chat_user_utt,
         chat_tokenizer,
     )
@@ -71,7 +68,7 @@ def _trim_raw_user(
 def _fit_user_from_raw(
     static_prefix: str,
     runtime_text: str,
-    history_messages: list[ChatMessage],
+    history_turns: list[list[ChatMessage]],
     raw_chat_user_utt: str,
     chat_tokenizer: FastTokenizer,
     *,
@@ -83,7 +80,7 @@ def _fit_user_from_raw(
         prompt, prompt_tokens = _build_prompt(
             static_prefix,
             runtime_text,
-            history_messages,
+            history_turns,
             "",
             chat_tokenizer,
         )
@@ -91,18 +88,27 @@ def _fit_user_from_raw(
 
     token_count = _count_user_tokens(candidate, chat_tokenizer)
     capped_token_count = token_count if max_user_tokens is None else min(token_count, max(1, int(max_user_tokens)))
-
-    for remaining in range(capped_token_count, 0, -1):
+    lo = 1
+    hi = capped_token_count
+    best_fit: tuple[str, str, int] | None = None
+    while lo <= hi:
+        remaining = (lo + hi) // 2
         trimmed = _trim_raw_user(candidate, remaining, chat_tokenizer)
         prompt, prompt_tokens = _build_prompt(
             static_prefix,
             runtime_text,
-            history_messages,
+            history_turns,
             trimmed,
             chat_tokenizer,
         )
         if prompt_tokens <= max_prompt_tokens:
-            return trimmed, prompt, prompt_tokens
+            best_fit = (trimmed, prompt, prompt_tokens)
+            lo = remaining + 1
+        else:
+            hi = remaining - 1
+
+    if best_fit is not None:
+        return best_fit
 
     raise ValueError("prompt exceeds exact context budget even after removing all history and trimming the user turn")
 
@@ -118,7 +124,7 @@ def fit_chat_prompt_to_budget(
     max_user_tokens: int | None = None,
 ) -> PromptFitResult:
     """Fit the exact templated prompt to budget with one raw-user fit path."""
-    effective_history = _copy_messages(history_messages)
+    effective_history = group_chat_turns(copy_chat_messages(history_messages))
     max_candidate_user = _max_candidate_user(
         chat_user_utt,
         chat_tokenizer,
@@ -156,7 +162,7 @@ def fit_chat_prompt_to_budget(
         raise ValueError("prompt exceeds exact context budget before engine call")
 
     return PromptFitResult(
-        history_messages=effective_history,
+        history_messages=flatten_chat_turns(effective_history),
         chat_user_utt=effective_user,
         prompt=prompt,
         prompt_tokens=prompt_tokens,

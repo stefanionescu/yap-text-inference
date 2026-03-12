@@ -16,16 +16,20 @@ def test_count_and_trim_text_with_local_tokenizer() -> None:
 
 def test_build_user_history_for_tool_respects_token_budget() -> None:
     with use_local_tokenizers():
-        user_texts = ["one two", "three", "four five six"]
-        history = token_utils.build_user_history_for_tool(user_texts, max_tokens=5)
-        assert history == "three\nfour five six"
+        user_texts = [
+            "check the calendar for next tuesday flight times",
+            "show the booking confirmation and hotel address",
+            "open the packing list and weather notes for lisbon",
+        ]
+        history = token_utils.build_user_history_for_tool(user_texts, max_tokens=8)
+        assert history == "the packing list and weather notes for lisbon"
 
 
 def test_build_user_history_for_tool_trims_single_oversized_latest_message() -> None:
     with use_local_tokenizers():
         history = token_utils.build_user_history_for_tool(
-            ["one two three four five six"],
-            max_tokens=3,
+            ["check the calendar for next tuesday flight times"],
+            max_tokens=4,
         )
-        assert history == "four five six"
-        assert token_utils.count_tokens_tool(history) == 3
+        assert history == "next tuesday flight times"
+        assert token_utils.count_tokens_tool(history) == 4

@@ -6,7 +6,14 @@ from . import ws
 from .message import iter_messages, parse_message, dispatch_message
 from .stream import record_token, consume_stream, create_tracker, record_toolcall, finalize_metrics
 from .ws import recv_raw, with_api_key, send_client_end, connect_with_retries, build_api_key_headers
-from .payloads import build_end_payload, build_start_payload, build_cancel_payload, build_message_payload
+from .payloads import (
+    build_end_payload,
+    build_start_payload,
+    build_cancel_payload,
+    build_message_payload,
+    includes_chat_start_fields,
+    resolve_start_payload_mode,
+)
 
 __all__ = [
     "build_cancel_payload",
@@ -14,6 +21,7 @@ __all__ = [
     "build_api_key_headers",
     "build_message_payload",
     "build_start_payload",
+    "includes_chat_start_fields",
     "connect_with_retries",
     "consume_stream",
     "create_tracker",
@@ -24,6 +32,7 @@ __all__ = [
     "record_token",
     "record_toolcall",
     "recv_raw",
+    "resolve_start_payload_mode",
     "send_client_end",
     "with_api_key",
     "ws",

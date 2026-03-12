@@ -650,7 +650,7 @@ The pipeline writes metadata (`awq_metadata.json` or `build_metadata.json`) and 
 
 All test clients run against the WebSocket endpoint. Run them via `scripts/activate.sh` (e.g., `bash scripts/activate.sh python3 tests/suites/e2e/test_warmup.py`) or source `.venv-local/bin/activate` for unit testing.
 
-> **Note:** Test clients always send a chat prompt. In tool-only deployments, the server ignores it automatically.
+> **Note:** Start-capable test clients support `--start-payload-mode {all,chat-only,tool-only}`. Manual runs default to `all`. Use `tool-only` when exercising a tool-only deployment directly, because the server now rejects chat-only `start` fields instead of ignoring them. `scripts/warmup.sh` and `tests/suites/integration/test_cancel.py` auto-select a safer default from `DEPLOY_MODE`.
 
 ### Unit Tests
 
@@ -674,6 +674,7 @@ python -m pytest -q \
 python3 tests/suites/e2e/test_warmup.py
 python3 tests/suites/e2e/test_warmup.py "who was Columbus?"
 python3 tests/suites/e2e/test_warmup.py --gender male --personality flirty "hello there"
+python3 tests/suites/e2e/test_warmup.py --start-payload-mode tool-only "check the current screen"
 ```
 
 
@@ -692,6 +693,7 @@ python3 tests/suites/e2e/test_warmup.py --gender female --personality savage "he
 ```
 
 Append `--double-ttfb` to send two identical requests back-to-back and compare cold vs warm latency.
+Use `--start-payload-mode tool-only` for manual tool-only deployments; `scripts/warmup.sh` now derives this automatically from `DEPLOY_MODE`.
 
 ### Interactive Live Client
 
@@ -749,6 +751,7 @@ TEXT_API_KEY=your_api_key python3 tests/suites/e2e/test_tool.py \
 python3 tests/suites/e2e/test_bench.py -n 32 -c 8
 python3 tests/suites/e2e/test_bench.py --gender female --personality flirty "who was Columbus?"
 python3 tests/suites/e2e/test_bench.py --server ws://127.0.0.1:8000/ws -n 100 -c 20 --timeout 180
+python3 tests/suites/e2e/test_bench.py --start-payload-mode tool-only -n 32 -c 8
 ```
 
 Reports p50/p95 latencies under concurrent load.
@@ -786,6 +789,7 @@ Each connection starts with the full warm history and cycles through all recall 
 ```bash
 # run inside the scripts/activate.sh environment
 TEXT_API_KEY=your_api_key python3 tests/suites/integration/test_cancel.py
+DEPLOY_MODE=tool TEXT_API_KEY=your_api_key python3 tests/suites/integration/test_cancel.py
 TEXT_API_KEY=your_api_key python3 tests/suites/integration/test_cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
 ```
 
@@ -793,6 +797,8 @@ Validates cancel behavior and recovery:
 - Cancels an in-flight response after receiving initial tokens
 - Verifies no extra post-cancel stream frames are emitted
 - Sends a recovery request and confirms the session continues normally
+
+`test_cancel.py` now defaults its start payload mode from `DEPLOY_MODE`, but you can still override it explicitly with `--start-payload-mode`.
 
 ### Idle Timeout Test
 

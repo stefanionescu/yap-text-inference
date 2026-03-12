@@ -64,8 +64,8 @@ def test_stream_chat_response_skips_history_for_empty_output_without_provisional
             _NoopWS(),
             _empty_stream(),
             state,
-            "hello",
-            history_user_utt="hello",
+            "hello can you help me plan a trip",
+            history_user_utt="hello can you help me plan a trip",
             session_handler=handler,
         )
     )
@@ -85,8 +85,8 @@ def test_stream_chat_response_skips_history_for_error_before_visible_text() -> N
                 _NoopWS(),
                 _error_stream(),
                 state,
-                "hello",
-                history_user_utt="hello",
+                "hello can you help me plan a trip",
+                history_user_utt="hello can you help me plan a trip",
                 session_handler=handler,
             )
         )
@@ -108,8 +108,8 @@ def test_stream_chat_response_commits_partial_history_after_disconnect_with_visi
             _DisconnectAfterSecondSendWS(),
             _two_chunk_stream(),
             state,
-            "hello",
-            history_user_utt="hello",
+            "hello can you help me plan a trip",
+            history_user_utt="hello can you help me plan a trip",
             session_handler=handler,
         )
     )
@@ -117,7 +117,7 @@ def test_stream_chat_response_commits_partial_history_after_disconnect_with_visi
     assert out == "alpha"
     assert state.chat_history_messages is not None
     assert [(message.role, message.content) for message in state.chat_history_messages] == [
-        ("user", "hello"),
+        ("user", "hello can you help me plan a trip"),
         ("assistant", "alpha"),
     ]
 
@@ -153,7 +153,7 @@ def test_stream_chat_response_does_not_persist_internal_screen_prefixes() -> Non
             _two_chunk_stream(),
             state,
             f"{DEFAULT_CHECK_SCREEN_PREFIX} hello",
-            history_user_utt=f"{DEFAULT_CHECK_SCREEN_PREFIX} hello",
+            history_user_utt=f"{DEFAULT_CHECK_SCREEN_PREFIX} hello can you help me plan a trip",
             session_handler=handler,
         )
     )
@@ -161,6 +161,6 @@ def test_stream_chat_response_does_not_persist_internal_screen_prefixes() -> Non
     assert out == "alphabeta"
     assert state.chat_history_messages is not None
     assert [(message.role, message.content) for message in state.chat_history_messages] == [
-        ("user", "hello"),
+        ("user", "hello can you help me plan a trip"),
         ("assistant", "alphabeta"),
     ]

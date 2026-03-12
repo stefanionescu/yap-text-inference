@@ -13,14 +13,20 @@ import logging
 import websockets
 from .stream import stream_exchange
 from collections.abc import Sequence
-from tests.state import ConversationSession
 from tests.support.helpers.rate import SlidingWindowPacer
 from tests.support.helpers.prompt import select_chat_prompt
+from tests.state import StartPayloadMode, ConversationSession
 from .session import build_start_payload, build_message_payload
 from tests.support.helpers.env import get_int_env, get_float_env
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
-from tests.support.helpers.websocket import with_api_key, create_tracker, send_client_end, build_api_key_headers
 from tests.support.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
+from tests.support.helpers.websocket import (
+    with_api_key,
+    create_tracker,
+    send_client_end,
+    build_api_key_headers,
+    includes_chat_start_fields,
+)
 from tests.support.helpers.fmt import (
     dim,
     format_user,
@@ -45,6 +51,7 @@ async def run_conversation(
     personality: str,
     recv_timeout: float,
     sampling: dict[str, float | int] | None,
+    start_payload_mode: StartPayloadMode = "all",
 ) -> None:
     """Execute a multi-turn conversation test."""
     if not prompts:
@@ -55,13 +62,14 @@ async def run_conversation(
 
     ws_url_with_auth = with_api_key(ws_url, api_key=api_key)
     ws_headers = build_api_key_headers(api_key=api_key)
-    chat_prompt = select_chat_prompt(gender)
+    chat_prompt = select_chat_prompt(gender) if includes_chat_start_fields(start_payload_mode) else ""
     session = ConversationSession(
         session_id=f"sess-{uuid.uuid4()}",
         gender=gender,
         personality=personality,
         chat_prompt=chat_prompt,
         sampling=sampling,
+        start_payload_mode=start_payload_mode,
     )
 
     print(f"\n{section_header('CONVERSATION TEST')}")

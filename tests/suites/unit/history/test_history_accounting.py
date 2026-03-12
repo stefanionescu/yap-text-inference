@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Any, cast
 from src.tokens import count_tokens_tool
+import src.tokens.history as history_tokens
 import src.handlers.session.history.ops as history_ops
 from src.handlers.session.manager import SessionHandler
 from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.state.session import ChatMessage, HistoryTurn, SessionState
 from src.handlers.session.history.settings import HistoryRuntimeConfig
-from src.handlers.session.history import token_counting as history_tokens
+from tests.support.messages.unit import TOOL_HISTORY, CHAT_MESSAGES, ASSISTANT_FIRST_MESSAGES
 
 
 def _history_config(
@@ -119,18 +120,14 @@ def test_set_mode_histories_keeps_expected_message_count() -> None:
         session_handler = _build_chat_only_handler()
         state = _make_state(session_handler)
 
-        messages = [
-            ChatMessage(role="user", content="u1"),
-            ChatMessage(role="assistant", content="a1"),
-            ChatMessage(role="assistant", content="a2"),
-        ]
+        messages = CHAT_MESSAGES[:3] + [ChatMessage(role="assistant", content="reply")]
 
         rendered = session_handler._history.set_mode_histories(state, chat_messages=messages)
 
-        assert "User: u1" in rendered
-        assert "Assistant: a2" in rendered
+        assert "User: hello can you help me plan a trip to lisbon next week" in rendered
+        assert "Assistant: reply" in rendered
         assert state.chat_history_messages is not None
-        assert len(state.chat_history_messages) == 3
+        assert len(state.chat_history_messages) == 4
 
 
 def test_append_chat_turn_merges_consecutive_users_in_storage() -> None:
@@ -149,23 +146,33 @@ def test_append_chat_turn_merges_consecutive_users_in_storage() -> None:
 
 
 def test_render_tool_history_text_keeps_latest_line_when_single_line_exceeds_budget() -> None:
-    with use_local_tokenizers():
+    with use_local_tokenizers() as tokenizer:
         config = _history_config(deploy_chat=False, deploy_tool=True)
-        turns = [HistoryTurn(turn_id="t1", user="one two three four five", assistant="")]
-        rendered = history_ops.render_tool_history_text(turns, config=config, max_tokens=3)
-        assert rendered == "one two three four five"
-        assert count_tokens_tool(rendered) > 3
+        turns = [HistoryTurn(turn_id="t1", user=TOOL_HISTORY[-1], assistant="")]
+        rendered = history_ops.render_tool_history_text(
+            turns,
+            config=config,
+            max_tokens=4,
+            tool_tokenizer=tokenizer,
+        )
+        assert rendered == "weather notes for lisbon"
+        assert count_tokens_tool(rendered) == 4
 
 
 def test_render_tool_history_text_uses_raw_user_lines() -> None:
-    with use_local_tokenizers():
+    with use_local_tokenizers() as tokenizer:
         config = _history_config(deploy_chat=False, deploy_tool=True)
         turns = [
-            HistoryTurn(turn_id="t1", user="first line", assistant="assistant one"),
-            HistoryTurn(turn_id="t2", user="second line", assistant="assistant two"),
+            HistoryTurn(turn_id="t1", user=TOOL_HISTORY[0], assistant="assistant one"),
+            HistoryTurn(turn_id="t2", user=TOOL_HISTORY[1], assistant="assistant two"),
         ]
-        rendered = history_ops.render_tool_history_text(turns, config=config, max_tokens=20)
-        assert rendered == "first line\nsecond line"
+        rendered = history_ops.render_tool_history_text(
+            turns,
+            config=config,
+            max_tokens=40,
+            tool_tokenizer=tokenizer,
+        )
+        assert rendered == "\n".join(TOOL_HISTORY[:2])
         assert "User:" not in rendered
         assert "Assistant:" not in rendered
 
@@ -255,33 +262,36 @@ def test_prepare_tool_turn_dual_mode_appends_once_and_chat_commit_does_not_dupli
 
 def test_prepare_tool_turn_fits_exact_combined_input_before_backend_call() -> None:
     with use_local_tokenizers() as tokenizer:
-        handler = _build_tool_only_handler(tool_history_budget=20, tool_input_budget=3, tokenizer=tokenizer)
+        handler = _build_tool_only_handler(tool_history_budget=20, tool_input_budget=4, tokenizer=tokenizer)
         state = _make_state(handler)
 
-        seed_turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="alpha bravo charlie")
-        handler.prepare_tool_turn(state, "alpha bravo charlie", turn_id=seed_turn_id)
+        seed_turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="check the calendar")
+        handler.prepare_tool_turn(state, "check the calendar", turn_id=seed_turn_id)
 
-        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="delta echo foxtrot")
-        tool_user, tool_history = handler.prepare_tool_turn(state, "delta echo foxtrot", turn_id=turn_id)
+        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="show the booking confirmation")
+        tool_user, tool_history = handler.prepare_tool_turn(state, "show the booking confirmation", turn_id=turn_id)
 
         combined = "\n".join([part for part in [tool_history, tool_user] if part])
         assert tool_history == ""
-        assert tool_user == "delta echo foxtrot"
-        assert count_tokens_tool(combined) <= 3
+        assert tool_user == "show the booking confirmation"
+        assert count_tokens_tool(combined) <= 4
 
 
 def test_prepare_tool_turn_trims_current_user_tail_when_history_is_exhausted() -> None:
     with use_local_tokenizers() as tokenizer:
-        handler = _build_tool_only_handler(tool_history_budget=20, tool_input_budget=3, tokenizer=tokenizer)
+        handler = _build_tool_only_handler(tool_history_budget=20, tool_input_budget=4, tokenizer=tokenizer)
         state = _make_state(handler)
 
-        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="one two three four")
-        tool_user, tool_history = handler.prepare_tool_turn(state, "one two three four", turn_id=turn_id)
+        user_text = "check the calendar for next tuesday flight times"
+        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt=user_text)
+        tool_user, tool_history = handler.prepare_tool_turn(state, user_text, turn_id=turn_id)
 
         assert tool_history == ""
-        assert tool_user == "two three four"
+        assert tool_user == "next tuesday flight times"
         assert state.tool_history_turns is not None
-        assert [(turn.turn_id, turn.user) for turn in state.tool_history_turns] == [(turn_id, "two three four")]
+        assert [(turn.turn_id, turn.user) for turn in state.tool_history_turns] == [
+            (turn_id, "next tuesday flight times")
+        ]
 
 
 def test_trim_history_tool_only_drops_old_turns() -> None:
@@ -298,15 +308,15 @@ def test_trim_history_tool_only_drops_old_turns() -> None:
 
 
 def test_trim_history_tool_only_keeps_single_oversized_last_turn() -> None:
-    with use_local_tokenizers():
+    with use_local_tokenizers() as tokenizer:
         state = SessionState(meta={})
-        long_text = "alpha bravo charlie delta echo foxtrot golf hotel india"
+        long_text = "check the calendar for next tuesday flight times"
         state.tool_history_turns = [HistoryTurn(turn_id="t1", user=long_text, assistant="")]
-        history_ops.trim_tool_history(state, 3)
+        history_ops.trim_tool_history(state, 3, tool_tokenizer=tokenizer)
 
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
-        assert state.tool_history_turns[0].user == long_text
+        assert state.tool_history_turns[0].user == "tuesday flight times"
 
 
 def test_trim_history_tool_only_noop_when_under_budget() -> None:
@@ -342,11 +352,53 @@ def test_append_chat_turn_trims_chat_history_eagerly() -> None:
         handler = _build_chat_only_handler(chat_trigger_tokens=10, chat_target_tokens=6, tokenizer=tokenizer)
         state = _make_state(handler)
 
-        for i in range(8):
-            handler.append_chat_turn(state, f"turn{i} extra{i}", f"reply{i}")
+        turns = [
+            ("hello how are you", "great"),
+            ("alpha bravo charlie", "one two"),
+            ("hello world", "three four"),
+            ("u1 u2 u3", "a1 a2"),
+        ]
+        for user_text, assistant_text in turns:
+            handler.append_chat_turn(state, user_text, assistant_text)
 
         assert state.chat_history_messages is not None
-        assert len(state.chat_history_messages) < 16
+        assert len(state.chat_history_messages) < len(turns) * 2
+        assert state.chat_history_messages[0].role == "user"
+        assert len(state.chat_history_messages) % 2 == 0
+
+
+def test_append_chat_turn_trim_preserves_complete_recent_turns() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_chat_only_handler(chat_trigger_tokens=8, chat_target_tokens=4, tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        handler.append_chat_turn(state, "hello how are you", "great")
+        handler.append_chat_turn(state, "alpha bravo charlie", "one two three")
+
+        assert state.chat_history_messages is not None
+        assert [(msg.role, msg.content) for msg in state.chat_history_messages] == [
+            ("user", "alpha bravo charlie"),
+            ("assistant", "one two three"),
+        ]
+
+
+def test_trim_chat_history_preserves_assistant_first_groups_as_whole_units() -> None:
+    with use_local_tokenizers() as tokenizer:
+        state = SessionState(meta={})
+        state.chat_history_messages = list(ASSISTANT_FIRST_MESSAGES)
+
+        history_ops.trim_chat_history(
+            state,
+            config=_history_config(
+                deploy_chat=True,
+                deploy_tool=False,
+                chat_trigger_tokens=60,
+                chat_target_tokens=40,
+            ),
+            chat_tokenizer=tokenizer,
+        )
+
+        assert state.chat_history_messages == ASSISTANT_FIRST_MESSAGES[-2:]
 
 
 def test_get_tool_history_text_returns_full_store_contents() -> None:
@@ -366,15 +418,15 @@ def test_prepare_tool_turn_tool_only_keeps_single_oversized_turn_in_store() -> N
         handler = _build_tool_only_handler(tool_history_budget=3, tool_input_budget=20, tokenizer=tokenizer)
         state = _make_state(handler)
 
-        long_text = "alpha bravo charlie delta echo foxtrot"
+        long_text = "check the calendar for next tuesday flight times"
         turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt=long_text)
         tool_user, _ = handler.prepare_tool_turn(state, long_text, turn_id=turn_id)
 
         assert tool_user == long_text
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
-        assert state.tool_history_turns[0].user == long_text
-        assert handler._history.get_tool_history_text(state) == long_text
+        assert state.tool_history_turns[0].user == "tuesday flight times"
+        assert handler._history.get_tool_history_text(state) == "tuesday flight times"
 
 
 class _SpecialAwareTokenizer:
@@ -410,7 +462,7 @@ def test_build_tool_history_accounts_for_special_tokens() -> None:
     assert kept == "three four"
 
 
-def test_build_tool_history_keeps_single_oversized_line_with_special_tokens() -> None:
+def test_build_tool_history_trims_single_oversized_line_with_special_tokens() -> None:
     tokenizer = cast(Any, _SpecialAwareTokenizer())
 
     kept = history_tokens.build_tool_history(
@@ -418,4 +470,4 @@ def test_build_tool_history_keeps_single_oversized_line_with_special_tokens() ->
         budget=3,
         tool_tokenizer=tokenizer,
     )
-    assert kept == "one two"
+    assert kept == "two"

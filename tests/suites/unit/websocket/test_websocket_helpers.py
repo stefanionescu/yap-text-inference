@@ -6,8 +6,16 @@ import uuid
 import pytest
 import asyncio
 import contextlib
+from typing import TypedDict
 from urllib.parse import urlsplit
-from tests.support.helpers.websocket import ws as ws_helpers
+from tests.state import SessionContext
+from tests.support.helpers.websocket import ws as ws_helpers, build_start_payload, resolve_start_payload_mode
+
+
+class _ResolveStartPayloadModeKwargs(TypedDict, total=False):
+    deploy_mode: str | None
+    deploy_chat: bool | None
+    deploy_tool: bool | None
 
 
 def _build_async_receiver(method_name: str, value: str):
@@ -130,3 +138,87 @@ def test_connect_with_retries_does_not_retry_after_successful_connect() -> None:
 
     asyncio.run(_run())
     assert attempts["count"] == 1
+
+
+def test_build_start_payload_includes_chat_fields_in_all_mode() -> None:
+    ctx = SessionContext(
+        session_id="sess-1",
+        gender="female",
+        personality="playful",
+        chat_prompt="You are concise.",
+        sampling={"temperature": 0.7},
+        start_payload_mode="all",
+    )
+
+    payload = build_start_payload(ctx, "hello")
+
+    assert payload["gender"] == "female"
+    assert payload["personality"] == "playful"
+    assert payload["chat_prompt"] == "You are concise."
+    assert payload["sampling"] == {"temperature": 0.7}
+
+
+def test_build_start_payload_includes_chat_fields_in_chat_only_mode() -> None:
+    ctx = SessionContext(
+        session_id="sess-2",
+        gender="male",
+        personality="calm",
+        chat_prompt="Stay direct.",
+        sampling={"top_p": 0.9},
+        start_payload_mode="chat-only",
+    )
+
+    payload = build_start_payload(ctx, "hello")
+
+    assert payload["gender"] == "male"
+    assert payload["personality"] == "calm"
+    assert payload["chat_prompt"] == "Stay direct."
+    assert payload["sampling"] == {"top_p": 0.9}
+
+
+def test_build_start_payload_omits_chat_fields_in_tool_only_mode() -> None:
+    ctx = SessionContext(
+        session_id="sess-3",
+        gender="female",
+        personality="savage",
+        chat_prompt="Do not send this.",
+        sampling={"temperature": 0.1},
+        start_payload_mode="tool-only",
+    )
+
+    payload = build_start_payload(ctx, "check the screen")
+
+    assert payload["type"] == "start"
+    assert payload["user_utterance"] == "check the screen"
+    assert payload["history"] == []
+    assert "gender" not in payload
+    assert "personality" not in payload
+    assert "chat_prompt" not in payload
+    assert "sampling" not in payload
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({"deploy_mode": "both"}, "all"),
+        ({"deploy_mode": "chat"}, "chat-only"),
+        ({"deploy_mode": "tool"}, "tool-only"),
+        ({"deploy_chat": True, "deploy_tool": True}, "all"),
+        ({"deploy_chat": True, "deploy_tool": False}, "chat-only"),
+        ({"deploy_chat": False, "deploy_tool": True}, "tool-only"),
+        ({}, "all"),
+    ],
+)
+def test_resolve_start_payload_mode_maps_deploy_settings(
+    kwargs: _ResolveStartPayloadModeKwargs,
+    expected: str,
+) -> None:
+    typed_kwargs = _ResolveStartPayloadModeKwargs(**kwargs)
+    assert (
+        resolve_start_payload_mode(
+            deploy_mode=typed_kwargs.get("deploy_mode"),
+            deploy_chat=typed_kwargs.get("deploy_chat"),
+            deploy_tool=typed_kwargs.get("deploy_tool"),
+        )
+        == expected
+    )

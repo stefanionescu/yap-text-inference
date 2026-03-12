@@ -26,6 +26,7 @@ Env:
 
 from __future__ import annotations
 
+import os
 import sys
 import asyncio
 import logging
@@ -37,8 +38,8 @@ if __package__ in {None, ""}:
 
 from tests.support.helpers.setup import setup_repo_path
 from tests.support.logic.cancel import run_cancel_suite
-from tests.support.helpers.websocket import with_api_key
-from tests.support.helpers.cli import add_connection_args
+from tests.support.helpers.websocket import with_api_key, resolve_start_payload_mode
+from tests.support.helpers.cli import add_connection_args, add_start_payload_mode_arg
 from tests.config import (
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -55,6 +56,10 @@ def _parse_args() -> argparse.Namespace:
     add_connection_args(
         parser,
         server_help="Base WebSocket URL (defaults to SERVER_WS_URL env)",
+    )
+    add_start_payload_mode_arg(
+        parser,
+        default=resolve_start_payload_mode(deploy_mode=os.getenv("DEPLOY_MODE")),
     )
     parser.add_argument(
         "--clients",
@@ -130,6 +135,7 @@ def main() -> None:
             drain_timeout_s=args.drain_timeout,
             post_cancel_wait_s=args.post_cancel_wait,
             recv_timeout_s=args.timeout,
+            start_payload_mode=args.start_payload_mode,
         )
     )
     if not ok:

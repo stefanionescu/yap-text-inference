@@ -76,6 +76,7 @@ async def _send_and_stream(
             personality=cfg.personality,
             chat_prompt=cfg.chat_prompt,
             sampling=cfg.sampling,
+            start_payload_mode=cfg.start_payload_mode,
         )
         payload = (
             build_start_payload(ctx, user_text, history=history) if history else build_start_payload(ctx, user_text)

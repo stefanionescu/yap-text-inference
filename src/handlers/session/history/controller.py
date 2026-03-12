@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Literal
 from .settings import HistoryRuntimeConfig
-from .token_counting import build_tool_history
+from src.tokens.history import build_tool_history
 from src.state.session import ChatMessage, HistoryTurn, SessionState
 from .ops import get_user_texts, render_history, trim_chat_history, trim_tool_history, render_tool_history_text
 
@@ -106,6 +106,10 @@ class HistoryController:
         state.chat_history_messages = chat_messages if self._config.deploy_chat else None
         self._trim_chat_store_eager(state, import_mode=True)
 
+    def set_exact_chat_messages(self, state: SessionState, chat_messages: list[ChatMessage]) -> None:
+        """Replace chat history with an already-fitted exact message list."""
+        state.chat_history_messages = chat_messages if self._config.deploy_chat else None
+
     def _build_imported_tool_turns(
         self,
         normalized_chat_messages: list[ChatMessage],
@@ -164,7 +168,12 @@ class HistoryController:
                 return ""
             if max_tokens is None:
                 return "\n".join(user_texts)
-            return build_tool_history(user_texts, max(1, int(max_tokens)), self._tool_tokenizer)
+            return build_tool_history(
+                user_texts,
+                max(1, int(max_tokens)),
+                self._tool_tokenizer,
+                oversize_policy="trim_latest_tail",
+            )
 
         return render_tool_history_text(
             self._tool_turns(state),

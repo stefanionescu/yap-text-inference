@@ -81,13 +81,13 @@ fi
 warmup_log_internal "Using MAX_CONCURRENT_CONNECTIONS=${max_conn} for benchmark tests"
 
 warmup_all_passed=1
-
-if [ "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}" = "${CFG_DEPLOY_MODE_TOOL}" ]; then
-  log_info "[warmup] Tool-only deployment; skipping chat warmup."
-  exit 0
+start_payload_mode="$(warmup_start_payload_mode "${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}")"
+if [ "${start_payload_mode}" = "tool-only" ]; then
+  warmup_log_internal "Tool-only deployment detected; using tool-only start payloads"
+  WARMUP_PERSONA_VARIANTS=("||")
+else
+  warmup_detect_persona_variants "${PY_BIN}"
 fi
-
-warmup_detect_persona_variants "${PY_BIN}"
 for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
   IFS='|' read -r persona_gender persona_personality <<<"${persona}"
   warmup_log_internal "Persona variant configured: gender=${persona_gender:-default} personality=${persona_personality:-}"
@@ -127,7 +127,9 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
     "${PY_BIN}" \
     "${LOG_DIR}" \
     "${WARMUP_RETRIES}" \
-    "tests/e2e/warmup.py" "${persona_args[@]}"; then
+    "tests/suites/e2e/test_warmup.py" \
+    "--start-payload-mode" "${start_payload_mode}" \
+    "${persona_args[@]}"; then
     warmup_all_passed=0
   fi
   sleep "${WARMUP_RUN_DELAY_SECS}"
@@ -140,9 +142,10 @@ for persona in "${WARMUP_PERSONA_VARIANTS[@]}"; do
     "${PY_BIN}" \
     "${LOG_DIR}" \
     "${WARMUP_RETRIES}" \
-    "tests/e2e/bench.py" \
+    "tests/suites/e2e/test_bench.py" \
     "--requests" "${max_conn}" \
     "--concurrency" "${max_conn}" \
+    "--start-payload-mode" "${start_payload_mode}" \
     "${persona_args[@]}"; then
     warmup_all_passed=0
   fi

@@ -27,6 +27,7 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
         personality=session.personality,
         chat_prompt=session.chat_prompt,
         sampling=session.sampling,
+        start_payload_mode=session.start_payload_mode,
     )
     return build_ws_start_payload(ctx, user_text)
 

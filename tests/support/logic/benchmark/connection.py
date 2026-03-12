@@ -56,8 +56,6 @@ async def _send_and_stream(
     session_id: str,
 ) -> dict[str, Any]:
     """Send a start or message payload and stream the response."""
-    if cfg.chat_prompt is None:
-        raise ValueError("chat_prompt is required for benchmark. Use select_chat_prompt(gender) to get a valid prompt.")
     if phase == 1:
         ctx = SessionContext(
             session_id=session_id,
@@ -65,6 +63,7 @@ async def _send_and_stream(
             personality=cfg.style,
             chat_prompt=cfg.chat_prompt,
             sampling=cfg.sampling,
+            start_payload_mode=cfg.start_payload_mode,
         )
         payload = build_start_payload(ctx, cfg.message)
     else:

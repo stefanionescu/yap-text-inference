@@ -16,9 +16,6 @@ cancel.py:
     Handles request cancellation during streaming. Aborts the
     active generation request and cleans up state.
 
-chat.py:
-    Chat prompt construction using tokenizer templates.
-
 validators.py:
     Input validation utilities shared across message handlers.
     Validates sampling parameters, token limits, and field formats.
@@ -31,5 +28,4 @@ sanitize/:
 
 Import from submodules directly to avoid circular imports:
     from src.messages.turn import handle_turn_message
-    from src.messages.chat import build_chat_prompt_with_prefix
 """

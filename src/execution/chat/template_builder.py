@@ -1,13 +1,4 @@
-"""Prompt building helpers for chat prompts using dynamic inputs.
-
-This module provides functions to build chat prompts using the tokenizer's
-native chat template. It handles system prompts, conversation history,
-and proper role alternation required by various model templates.
-
-Key Functions:
-    build_chat_prompt_with_prefix: Build a complete chat prompt with user query
-    build_chat_warm_prompt: Build a prompt for warming persona/history without query
-"""
+"""Chat prompt construction using tokenizer templates."""
 
 from __future__ import annotations
 
@@ -15,7 +6,7 @@ import logging
 from collections.abc import Sequence
 from src.state.session import ChatMessage
 from src.tokens.tokenizer import FastTokenizer
-from ..config.chat import CHAT_TEMPLATE_ENABLE_THINKING
+from src.config.chat import CHAT_TEMPLATE_ENABLE_THINKING
 
 logger = logging.getLogger(__name__)
 
@@ -24,73 +15,40 @@ logger = logging.getLogger(__name__)
 _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKING}
 
 
-# ============================================================================
-# Internal Helpers
-# ============================================================================
-
-
 def _build_messages(
     system_prompt: str,
     history_messages: Sequence[ChatMessage],
     chat_user_utt: str | None,
 ) -> list[dict[str, str]]:
-    """Build a list of message dicts for the chat template.
-
-    Ensures proper role alternation (user/assistant/user/assistant) as required
-    by some tokenizer templates (e.g., Gemma 3). Consecutive messages of the
-    same role are merged together.
-    """
+    """Build message dicts for the tokenizer chat template."""
     messages: list[dict[str, str]] = []
 
     def _append_message(role: str, content: str) -> None:
-        """Append a message, merging with previous if same role."""
         content = content.strip()
         if not content:
             return
         if messages and messages[-1]["role"] == role:
-            # Merge with previous message of same role
             messages[-1]["content"] += "\n\n" + content
-        else:
-            messages.append({"role": role, "content": content})
+            return
+        messages.append({"role": role, "content": content})
 
-    # System message (if present)
     if system_prompt.strip():
         messages.append({"role": "system", "content": system_prompt.strip()})
 
-    # Stored chat history
     for message in history_messages:
         _append_message(message.role, message.content)
 
-    # Current user message
     if chat_user_utt is not None:
         _append_message("user", chat_user_utt)
 
     return messages
 
 
-def _apply_chat_template(
-    chat_tokenizer: FastTokenizer,
-    messages: list[dict[str, str]],
-    add_generation_prompt: bool = True,
-) -> str:
-    """Apply the tokenizer's chat template to format messages."""
-    try:
-        return chat_tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt,
-            **_CHAT_TEMPLATE_DEFAULT_KWARGS,
-        )
-    except (RuntimeError, ValueError) as e:
-        # Fallback to basic ChatML if no chat template available
-        logger.warning("Chat template not available, falling back to ChatML: %s", e)
-        return _build_chatml_prompt_from_messages(messages, add_generation_prompt)
-
-
 def _build_chatml_prompt_from_messages(
     messages: list[dict[str, str]],
     add_generation_prompt: bool,
 ) -> str:
-    """Fallback: Build ChatML format prompt from messages."""
+    """Fallback builder when the tokenizer has no chat template."""
     lines: list[str] = []
     for msg in messages:
         role = msg.get("role", "user")
@@ -101,14 +59,27 @@ def _build_chatml_prompt_from_messages(
     return "\n".join(lines)
 
 
+def _apply_chat_template(
+    chat_tokenizer: FastTokenizer,
+    messages: list[dict[str, str]],
+    *,
+    add_generation_prompt: bool = True,
+) -> str:
+    """Apply the tokenizer chat template with a ChatML fallback."""
+    try:
+        return chat_tokenizer.apply_chat_template(
+            messages,
+            add_generation_prompt,
+            **_CHAT_TEMPLATE_DEFAULT_KWARGS,
+        )
+    except (RuntimeError, ValueError) as exc:
+        logger.warning("Chat template not available, falling back to ChatML: %s", exc)
+        return _build_chatml_prompt_from_messages(messages, add_generation_prompt)
+
+
 def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
     parts = [segment.strip() for segment in (static_prefix, runtime_text) if segment and segment.strip()]
     return "\n\n".join(parts)
-
-
-# ============================================================================
-# Public API
-# ============================================================================
 
 
 def build_chat_prompt_with_prefix(
@@ -118,7 +89,7 @@ def build_chat_prompt_with_prefix(
     chat_user_utt: str,
     chat_tokenizer: FastTokenizer,
 ) -> str:
-    """Build the chat prompt using the tokenizer's native chat template."""
+    """Build a chat prompt including the current user turn."""
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     messages = _build_messages(system_prompt, history_messages, chat_user_utt)
     return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
@@ -130,13 +101,10 @@ def build_chat_warm_prompt(
     history_messages: list[ChatMessage],
     chat_tokenizer: FastTokenizer,
 ) -> str:
-    """Build a prompt that primes persona + history without a fresh user query."""
+    """Build a prompt that warms persona and history without a new user turn."""
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
     messages = _build_messages(system_prompt, history_messages, chat_user_utt=None)
     return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 
-__all__ = [
-    "build_chat_prompt_with_prefix",
-    "build_chat_warm_prompt",
-]
+__all__ = ["build_chat_prompt_with_prefix", "build_chat_warm_prompt"]

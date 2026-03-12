@@ -313,16 +313,17 @@ Set `SKIP_CODEQL=1` when you need to bypass CodeQL locally.
 
 Highlights:
 
-- [`tests/suites/e2e/test_warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality` and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars.
+- [`tests/suites/e2e/test_warmup.py`](ADVANCED.md#warmup-test-client) – one-turn toolcall + chat smoke. Supports `--gender`, `--personality`, `--start-payload-mode`, and honors `SERVER_WS_URL`, `PERSONALITY`, `GENDER`, and `RECV_TIMEOUT_SEC` env vars.
 - [`tests/suites/e2e/test_live.py`](ADVANCED.md#interactive-live-client) – interactive streaming client that hot-reloads personas from `tests/support/prompts/detailed.py`.
 - [`tests/suites/e2e/test_conversation.py`](ADVANCED.md#conversation-history-test) – deterministic 10-turn trace for KV eviction and latency metrics.
 - [`tests/suites/e2e/test_vision.py`](ADVANCED.md#vision--toolcall-test) – validates the toolcall branch used by vision flows.
 - [`tests/suites/e2e/test_tool.py`](ADVANCED.md#tool-regression-test) – regression harness for the screenshot/tool-call model (timeouts, concurrency, limit flags).
-- [`tests/suites/e2e/test_bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions.
-- [`tests/suites/integration/test_cancel.py`](ADVANCED.md#cancel-regression-test) – verifies cancel behavior and recovery across concurrent clients.
+- [`tests/suites/e2e/test_bench.py`](ADVANCED.md#benchmark-client) – load generator that reports p50/p95 latencies for sequential sessions and supports `--start-payload-mode`.
+- [`tests/suites/integration/test_cancel.py`](ADVANCED.md#cancel-regression-test) – verifies cancel behavior and recovery across concurrent clients; its default start payload mode follows `DEPLOY_MODE`.
 - [`tests/suites/integration/test_idle.py`](ADVANCED.md#idle-timeout-test) – validates idle watchdog close behavior and normal connection lifecycle.
 
 All of them run on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
+Start-capable clients expose `--start-payload-mode {all,chat-only,tool-only}` so manual runs can match the server deployment shape. This matters in tool-only mode because chat-only `start` fields are now rejected instead of ignored.
 
 For CPU-only unit validation (no server or GPU required):
 

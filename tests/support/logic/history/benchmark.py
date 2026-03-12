@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from tests.state import HistoryBenchConfig
 from .connection import execute_history_connection
 from tests.support.helpers.prompt import select_chat_prompt
+from tests.state import StartPayloadMode, HistoryBenchConfig
 from tests.support.logic.benchmark.reporting import print_report
 from tests.support.messages.history import HISTORY_RECALL_MESSAGES
+from tests.support.helpers.websocket import includes_chat_start_fields
 from tests.support.helpers.concurrency import distribute_requests, sanitize_concurrency
 
 
@@ -24,9 +25,10 @@ def _build_config(
     personality: str,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
+    start_payload_mode: StartPayloadMode,
 ) -> HistoryBenchConfig:
     """Build history benchmark configuration."""
-    chat_prompt = select_chat_prompt(gender)
+    chat_prompt = select_chat_prompt(gender) if includes_chat_start_fields(start_payload_mode) else None
     return HistoryBenchConfig(
         url=url,
         api_key=api_key,
@@ -35,6 +37,7 @@ def _build_config(
         chat_prompt=chat_prompt,
         timeout_s=timeout_s,
         sampling=sampling,
+        start_payload_mode=start_payload_mode,
     )
 
 
@@ -71,6 +74,7 @@ async def run_history_benchmark(
     concurrency: int,
     timeout_s: float,
     sampling: dict[str, float | int] | None,
+    start_payload_mode: StartPayloadMode = "all",
 ) -> bool:
     """Run history benchmark with warm history and recall messages.
 
@@ -87,7 +91,7 @@ async def run_history_benchmark(
     Returns:
         True if all transactions succeeded, False if any failed.
     """
-    cfg = _build_config(url, api_key, gender, personality, timeout_s, sampling)
+    cfg = _build_config(url, api_key, gender, personality, timeout_s, sampling, start_payload_mode)
     requests, concurrency = sanitize_concurrency(requests, concurrency)
 
     results = await _run_concurrent_benchmark(requests, concurrency, cfg)

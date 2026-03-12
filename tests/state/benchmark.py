@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 from dataclasses import dataclass
+from .metrics import StartPayloadMode
 
 
 @dataclass(frozen=True)
@@ -12,13 +13,14 @@ class BenchmarkConfig:
 
     url: str
     api_key: str | None
-    gender: str
-    style: str
-    chat_prompt: str
+    gender: str | None
+    style: str | None
+    chat_prompt: str | None
     message: str
     timeout_s: float
     sampling: dict[str, float | int] | None
     double_ttfb: bool
+    start_payload_mode: StartPayloadMode = "all"
 
 
 @dataclass

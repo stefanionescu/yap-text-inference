@@ -23,6 +23,7 @@ def build_start_payload(session: LiveSession, user_text: str) -> dict[str, Any]:
         personality=session.persona.personality,
         chat_prompt=session.persona.prompt,
         sampling=session.sampling,
+        start_payload_mode=session.start_payload_mode,
     )
     payload = build_ws_start_payload(ctx, user_text, history=session.history)
     session._started = True

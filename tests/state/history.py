@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from .metrics import StartPayloadMode
 
 
 @dataclass(frozen=True)
@@ -11,11 +12,12 @@ class HistoryBenchConfig:
 
     url: str
     api_key: str | None
-    gender: str
-    personality: str
-    chat_prompt: str
+    gender: str | None
+    personality: str | None
+    chat_prompt: str | None
     timeout_s: float
     sampling: dict[str, float | int] | None
+    start_payload_mode: StartPayloadMode = "all"
 
 
 __all__ = ["HistoryBenchConfig"]

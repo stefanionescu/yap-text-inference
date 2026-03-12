@@ -127,19 +127,14 @@ def _build_step_payload(
     """Build the message payload for a step.
 
     Uses 'start' for the first step and 'message' for subsequent steps.
-    Note: chat_prompt is required by the server when DEPLOY_CHAT is enabled.
     """
-    if not cfg.chat_prompt:
-        raise ValueError(
-            "chat_prompt is required for tool tests. Use select_chat_prompt(gender) to get a valid prompt."
-        )
-
     if step_idx == 1:
         ctx = SessionContext(
             session_id=session_id,
             gender=cfg.gender,
             personality=cfg.personality,
             chat_prompt=cfg.chat_prompt,
+            start_payload_mode=cfg.start_payload_mode,
         )
         return build_start_payload(ctx, user_text)
     return build_message_payload(user_text)

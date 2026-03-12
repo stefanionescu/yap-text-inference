@@ -18,19 +18,22 @@ def _fallback_count_tokens(text: str, *, include_special_tokens: bool = False) -
     return count
 
 
-def _trim_tail_to_budget(
+def _trim_text_by_token_count(
     text: str,
-    budget: int,
+    token_count: int,
     tokenizer: FastTokenizer | None,
+    *,
+    keep: Literal["start", "end"],
 ) -> str:
-    if budget <= 0 or not text:
+    if token_count <= 0 or not text:
         return ""
     if tokenizer is not None:
-        return tokenizer.trim(text, max_tokens=budget, keep="end").strip()
+        return tokenizer.trim(text, max_tokens=token_count, keep=keep).strip()
     tokens = text.split()
-    if len(tokens) <= budget:
+    if len(tokens) <= token_count:
         return text
-    return " ".join(tokens[-budget:])
+    kept = tokens[:token_count] if keep == "start" else tokens[-token_count:]
+    return " ".join(kept)
 
 
 def count_chat_tokens(text: str, chat_tokenizer: FastTokenizer | None) -> int:
@@ -54,12 +57,56 @@ def count_tool_tokens(
     return _fallback_count_tokens(text, include_special_tokens=include_special_tokens)
 
 
+def trim_tool_text_to_budget(
+    text: str,
+    budget: int,
+    tool_tokenizer: FastTokenizer | None,
+    *,
+    keep: Literal["start", "end"] = "end",
+    include_special_tokens: bool = True,
+) -> str:
+    """Trim one tool-history text so its token count fits inside ``budget``."""
+    candidate = (text or "").strip()
+    effective_budget = max(0, int(budget))
+    if effective_budget <= 0 or not candidate:
+        return ""
+
+    token_count = count_tool_tokens(candidate, tool_tokenizer, include_special_tokens=False)
+    if (
+        count_tool_tokens(
+            candidate,
+            tool_tokenizer,
+            include_special_tokens=include_special_tokens,
+        )
+        <= effective_budget
+    ):
+        return candidate
+
+    lo = 1
+    hi = token_count
+    best = ""
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        trimmed = _trim_text_by_token_count(candidate, mid, tool_tokenizer, keep=keep)
+        trimmed_tokens = count_tool_tokens(
+            trimmed,
+            tool_tokenizer,
+            include_special_tokens=include_special_tokens,
+        )
+        if trimmed and trimmed_tokens <= effective_budget:
+            best = trimmed
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best
+
+
 def build_tool_history(
     user_texts: list[str],
     budget: int,
     tool_tokenizer: FastTokenizer | None,
     *,
-    oversize_policy: ToolHistoryOversizePolicy = "keep_latest_whole",
+    oversize_policy: ToolHistoryOversizePolicy = "trim_latest_tail",
 ) -> str:
     selected_lines: list[str] = []
     effective_budget = max(1, int(budget))
@@ -82,7 +129,13 @@ def build_tool_history(
 
         if not selected_lines:
             if oversize_policy == "trim_latest_tail":
-                clipped = _trim_tail_to_budget(stripped, effective_budget, tool_tokenizer)
+                clipped = trim_tool_text_to_budget(
+                    stripped,
+                    effective_budget,
+                    tool_tokenizer,
+                    keep="end",
+                    include_special_tokens=True,
+                )
                 if clipped:
                     selected_lines.insert(0, clipped)
             else:
@@ -96,5 +149,6 @@ __all__ = [
     "ToolHistoryOversizePolicy",
     "count_chat_tokens",
     "count_tool_tokens",
+    "trim_tool_text_to_budget",
     "build_tool_history",
 ]

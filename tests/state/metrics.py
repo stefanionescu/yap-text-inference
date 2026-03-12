@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import time
+from typing import Literal
 from dataclasses import field, dataclass
+
+StartPayloadMode = Literal["all", "chat-only", "tool-only"]
 
 
 @dataclass(frozen=True)
@@ -11,10 +14,11 @@ class SessionContext:
     """Immutable context for building session payloads."""
 
     session_id: str
-    gender: str
-    personality: str
-    chat_prompt: str
+    gender: str | None
+    personality: str | None
+    chat_prompt: str | None
     sampling: dict[str, float | int] | None = None
+    start_payload_mode: StartPayloadMode = "all"
 
 
 @dataclass
@@ -60,6 +64,7 @@ class BenchmarkResultData:
 __all__ = [
     "BenchmarkResultData",
     "SessionContext",
+    "StartPayloadMode",
     "StreamState",
     "TTFBSamples",
 ]

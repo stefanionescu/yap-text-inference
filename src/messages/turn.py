@@ -4,27 +4,28 @@ from __future__ import annotations
 
 import copy
 import time
+import uuid
 import logging
 from fastapi import WebSocket
 from src.state import TurnPlan
 from typing import Any, Literal
 from collections.abc import Callable
 from .tasks import spawn_session_task
-from .start.history import resolve_history
 from src.config import CHAT_PROMPT_MAX_TOKENS
 from .start.dispatch import dispatch_execution
 from src.telemetry.sentry import capture_error
 from src.runtime.dependencies import RuntimeDeps
-from .plan_builders import _build_message_turn_plan
 from src.handlers.websocket.errors import send_error
 from .start.sampling import extract_sampling_overrides
 from src.handlers.session.manager import SessionHandler
 from src.handlers.websocket.helpers import safe_send_flat
 from .input import normalize_gender, normalize_personality
 from src.handlers.session.config import update_session_config
+from .start.history import resolve_history, resolve_user_utterances
 from src.telemetry.phases import record_phase_error, record_phase_latency
 from src.config.websocket import (
     WS_STATUS_OK,
+    WS_ERROR_TEXT_TOO_LONG,
     WS_ERROR_INVALID_MESSAGE,
     WS_ERROR_INVALID_PAYLOAD,
     WS_ERROR_INVALID_SETTINGS,
@@ -40,6 +41,22 @@ from .validators import (
 
 logger = logging.getLogger(__name__)
 
+_TOOL_ONLY_FORBIDDEN_START_FIELDS: tuple[str, ...] = (
+    "gender",
+    "personality",
+    "chat_prompt",
+    "sampling",
+    "sampling_params",
+    "temperature",
+    "top_p",
+    "top_k",
+    "min_p",
+    "repetition_penalty",
+    "presence_penalty",
+    "frequency_penalty",
+    "sanitize_output",
+)
+
 
 async def _close_with_validation_error(
     ws: WebSocket,
@@ -51,6 +68,7 @@ async def _close_with_validation_error(
         "chat_prompt_too_long",
         "invalid_check_screen_prefix",
         "invalid_screen_checked_prefix",
+        "tool_only_forbids_chat_settings",
     }
     error_code = WS_ERROR_INVALID_SETTINGS if err.error_code in settings_errors else WS_ERROR_INVALID_PAYLOAD
     await send_error(ws, code=error_code, message=err.message)
@@ -64,14 +82,21 @@ async def _send_turn_error(ws: WebSocket, *, code: str, message: str, close: boo
         await ws.close(code=1008)
 
 
+def _validate_tool_only_start_fields(msg: dict[str, Any], *, deploy_chat: bool) -> None:
+    if deploy_chat:
+        return
+    offending_fields = [field for field in _TOOL_ONLY_FORBIDDEN_START_FIELDS if field in msg]
+    if offending_fields:
+        raise ValidationError(
+            "tool_only_forbids_chat_settings",
+            "tool-only deployment does not accept chat-only start fields: " + ", ".join(offending_fields),
+        )
+
+
 def _validate_persona(msg: dict[str, Any], *, deploy_chat: bool) -> tuple[str | None, str | None]:
-    if not deploy_chat:
-        gender = normalize_gender(msg.get("gender"))
-        personality = normalize_personality(msg.get("personality"))
-        return gender, personality
-    gender = validate_required_gender(msg.get("gender"))
-    personality = validate_required_personality(msg.get("personality"))
-    return gender, personality
+    if deploy_chat:
+        return validate_required_gender(msg.get("gender")), validate_required_personality(msg.get("personality"))
+    return normalize_gender(msg.get("gender")), normalize_personality(msg.get("personality"))
 
 
 def _extract_chat_prompt(
@@ -125,6 +150,7 @@ def _resolve_start_inputs(
     str | None,
     str | None,
 ]:
+    _validate_tool_only_start_fields(msg, deploy_chat=deploy_chat)
     gender, personality = _validate_persona(msg, deploy_chat=deploy_chat)
     chat_prompt = _extract_chat_prompt(msg, count_tokens_fn=count_tokens_fn, deploy_chat=deploy_chat)
     sampling_overrides = extract_sampling_overrides(msg, deploy_chat=deploy_chat)
@@ -177,10 +203,58 @@ async def _bootstrap_start_turn(
             screen_checked_prefix=screen_checked_prefix,
         )
         resolve_history(session_handler, state, msg)
+        if deploy_chat:
+            try:
+                session_handler.fit_start_chat_history(
+                    state,
+                    static_prefix=chat_prompt or "",
+                    runtime_text="",
+                )
+            except ValueError as exc:
+                record_phase_error("validate", "seed_history_too_long")
+                await _send_turn_error(ws, code=WS_ERROR_TEXT_TOO_LONG, message=str(exc), close=True)
+                return False
         await safe_send_flat(ws, "done", status=WS_STATUS_OK)
         return True
     finally:
         record_phase_latency("validate", time.perf_counter() - t0)
+
+
+def _build_message_turn_plan(
+    state,
+    cfg: dict[str, Any],
+    incoming_user_utt: str,
+    *,
+    deploy_chat: bool,
+    deploy_tool: bool,
+    session_handler: SessionHandler,
+    sampling_overrides: dict[str, Any],
+) -> TurnPlan:
+    apply_screen_checked_prefix = bool(state.screen_followup_pending)
+    chat_user_utt, tool_user_utt = resolve_user_utterances(
+        session_handler,
+        state,
+        incoming_user_utt,
+        for_followup=apply_screen_checked_prefix,
+    )
+    history_turn_id = session_handler.reserve_history_turn_id(
+        state,
+        chat_user_utt,
+        tool_user_utt=tool_user_utt,
+    )
+    history_messages = session_handler._history.get_chat_messages(state)
+    return TurnPlan(
+        state=state,
+        request_id=f"msg-{uuid.uuid4().hex}",
+        static_prefix=cfg.get("chat_prompt") or "",
+        runtime_text="",
+        history_messages=history_messages,
+        chat_user_utt=chat_user_utt if deploy_chat else None,
+        tool_user_utt=tool_user_utt if deploy_tool else None,
+        history_turn_id=history_turn_id,
+        sampling_overrides=(sampling_overrides or None) if deploy_chat else None,
+        apply_screen_checked_prefix=apply_screen_checked_prefix,
+    )
 
 
 async def _plan_message_turn(

@@ -6,7 +6,7 @@ from .history import HistoryBenchConfig
 from .conversation import ConversationSession
 from .benchmark import BenchmarkConfig, TransactionMetrics
 from .live import LiveSession, StreamResult, PersonaDefinition
-from .metrics import StreamState, TTFBSamples, SessionContext, BenchmarkResultData
+from .metrics import StreamState, TTFBSamples, SessionContext, StartPayloadMode, BenchmarkResultData
 from .cancel import DrainPhaseResult, CancelPhaseResult, CancelClientResult, NormalClientResult, RecoveryPhaseResult
 from .tool import (
     CaseStep,
@@ -39,6 +39,7 @@ __all__ = [
     "RecoveryPhaseResult",
     "RunnerConfig",
     "SessionContext",
+    "StartPayloadMode",
     "StepTiming",
     "StreamResult",
     "StreamState",

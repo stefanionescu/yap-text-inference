@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 from collections.abc import Sequence
+from .metrics import StartPayloadMode
 from dataclasses import field, dataclass
 
 
@@ -32,12 +33,13 @@ class RunnerConfig:
 
     ws_url: str
     ws_headers: dict[str, str]
-    gender: str
-    personality: str
-    chat_prompt: str
+    gender: str | None
+    personality: str | None
+    chat_prompt: str | None
     timeout_s: float
     ping_interval: int
     ping_timeout: int
+    start_payload_mode: StartPayloadMode = "all"
 
 
 @dataclass(frozen=True)

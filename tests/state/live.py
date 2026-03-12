@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import field, dataclass
+from tests.state.metrics import StartPayloadMode
 from tests.support.helpers.errors import ServerError, RateLimitError
 
 
@@ -24,6 +25,7 @@ class LiveSession:
     persona: PersonaDefinition
     history: list[dict[str, str]] = field(default_factory=list)
     sampling: dict[str, float | int] | None = None
+    start_payload_mode: StartPayloadMode = "all"
     _started: bool = False
 
     def append_exchange(self, user_text: str, assistant_text: str) -> None:

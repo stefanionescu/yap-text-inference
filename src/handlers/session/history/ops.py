@@ -6,7 +6,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, TypeVar
 from .settings import HistoryRuntimeConfig
 from src.state.session import ChatMessage, HistoryTurn, SessionState
-from .token_counting import count_chat_tokens, count_tool_tokens, build_tool_history
+from src.helpers.chat_history import group_chat_turns, flatten_chat_turns
+from src.tokens.history import count_chat_tokens, count_tool_tokens, build_tool_history, trim_tool_text_to_budget
 
 if TYPE_CHECKING:
     from src.tokens.tokenizer import FastTokenizer
@@ -65,18 +66,27 @@ def trim_chat_history(
     messages = state.chat_history_messages
     if not messages:
         return
+    turns = group_chat_turns(messages)
+    if not turns:
+        state.chat_history_messages = []
+        return
 
     effective_trigger = int(trigger_tokens) if trigger_tokens is not None else config.chat_trigger_tokens
     effective_target = int(target_tokens) if target_tokens is not None else config.chat_target_tokens
     effective_trigger = max(1, effective_trigger)
     effective_target = max(1, min(effective_target, effective_trigger))
 
-    def _count(candidate_messages: list[ChatMessage]) -> int:
-        return count_chat_tokens(render_history(candidate_messages), chat_tokenizer)
+    def _count(candidate_turns: list[list[ChatMessage]]) -> int:
+        return count_chat_tokens(render_history(flatten_chat_turns(candidate_turns)), chat_tokenizer)
 
-    if _count(messages) <= effective_trigger:
+    if _count(turns) <= effective_trigger:
         return
-    state.chat_history_messages = _trim_oldest_items(messages, target_tokens=effective_target, count_tokens=_count)
+    trimmed_turns = _trim_oldest_items(
+        turns,
+        target_tokens=effective_target,
+        count_tokens=_count,
+    )
+    state.chat_history_messages = flatten_chat_turns(trimmed_turns)
 
 
 def trim_tool_history(
@@ -98,7 +108,22 @@ def trim_tool_history(
 
     if _count(turns) <= effective_budget:
         return
-    state.tool_history_turns = _trim_oldest_items(turns, target_tokens=effective_budget, count_tokens=_count)
+    trimmed_turns = _trim_oldest_items(turns, target_tokens=effective_budget, count_tokens=_count)
+    if trimmed_turns:
+        remaining_tokens = _count(trimmed_turns)
+        if remaining_tokens > effective_budget and len(trimmed_turns) == 1:
+            last_turn = trimmed_turns[0]
+            clipped_user = trim_tool_text_to_budget(
+                last_turn.user,
+                effective_budget,
+                tool_tokenizer,
+                keep="end",
+                include_special_tokens=True,
+            )
+            trimmed_turns = (
+                [HistoryTurn(turn_id=last_turn.turn_id, user=clipped_user, assistant="")] if clipped_user else []
+            )
+    state.tool_history_turns = trimmed_turns
 
 
 def render_tool_history_text(
@@ -117,7 +142,12 @@ def render_tool_history_text(
 
     default_budget = config.default_tool_history_tokens or 1536
     budget = max(1, int(max_tokens if max_tokens is not None else default_budget))
-    return build_tool_history(user_texts, budget, tool_tokenizer)
+    return build_tool_history(
+        user_texts,
+        budget,
+        tool_tokenizer,
+        oversize_policy="trim_latest_tail",
+    )
 
 
 __all__ = [

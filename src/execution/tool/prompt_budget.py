@@ -74,11 +74,21 @@ def _fit_current_user_to_budget(
         return "", _count_input_tokens(history_lines, "", tool_tokenizer)
 
     token_count = _count_user_tokens(candidate, tool_tokenizer)
-    for remaining in range(token_count, 0, -1):
+    lo = 1
+    hi = token_count
+    best_fit: tuple[str, int] | None = None
+    while lo <= hi:
+        remaining = (lo + hi) // 2
         trimmed = _trim_tool_user(candidate, remaining, tool_tokenizer)
         input_tokens = _count_input_tokens(history_lines, trimmed, tool_tokenizer)
         if input_tokens <= max_input_tokens:
-            return trimmed, input_tokens
+            best_fit = (trimmed, input_tokens)
+            lo = remaining + 1
+        else:
+            hi = remaining - 1
+
+    if best_fit is not None:
+        return best_fit
 
     raise ValueError("tool input exceeds exact budget even after removing all history and trimming the user turn")
 

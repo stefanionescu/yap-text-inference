@@ -8,6 +8,13 @@ from src.state.session import ChatMessage, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.handlers.session.history.settings import HistoryRuntimeConfig
 from src.messages.start.history import resolve_history, resolve_user_utterances
+from tests.support.messages.unit import (
+    CHAT_MESSAGES,
+    HISTORY_PAYLOAD,
+    ASSISTANT_FIRST_PAYLOAD,
+    ASSISTANT_FIRST_MESSAGES,
+    tool_turn_payloads,
+)
 
 
 def _history_config(
@@ -33,10 +40,13 @@ def _build_session_handler(
     chat_trigger_tokens: int = 1000,
     chat_target_tokens: int = 800,
     tool_history_budget: int | None = None,
+    tokenizer=None,
 ) -> SessionHandler:
     return SessionHandler(
         chat_engine=None,
         tool_history_budget=tool_history_budget,
+        chat_tokenizer=tokenizer,
+        tool_tokenizer=tokenizer,
         history_config=_history_config(
             deploy_chat=deploy_chat,
             deploy_tool=deploy_tool,
@@ -61,31 +71,24 @@ def _history_turn_count(state: SessionState) -> int:
 
 
 def test_resolve_history_renders_messages() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler()
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(tokenizer=tokenizer)
         state = _make_state(handler)
-        msg = {
-            "history": [
-                {"role": "user", "content": "hello"},
-                {"role": "assistant", "content": "hi"},
-                {"role": "user", "content": "how are you"},
-                {"role": "assistant", "content": "great"},
-            ]
-        }
+        msg = {"history": HISTORY_PAYLOAD[:4]}
 
         messages = resolve_history(handler, state, msg)
 
         assert [(message.role, message.content) for message in messages] == [
-            ("user", "hello"),
-            ("assistant", "hi"),
-            ("user", "how are you"),
-            ("assistant", "great"),
+            (CHAT_MESSAGES[0].role, CHAT_MESSAGES[0].content),
+            (CHAT_MESSAGES[1].role, CHAT_MESSAGES[1].content),
+            (CHAT_MESSAGES[2].role, CHAT_MESSAGES[2].content),
+            (CHAT_MESSAGES[3].role, CHAT_MESSAGES[3].content),
         ]
 
 
 def test_resolve_history_trims_when_over_budget() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler(chat_trigger_tokens=6, chat_target_tokens=4)
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(chat_trigger_tokens=6, chat_target_tokens=4, tokenizer=tokenizer)
         state = _make_state(handler)
         msg = {
             "history": [
@@ -106,8 +109,8 @@ def test_resolve_history_trims_when_over_budget() -> None:
 
 
 def test_resolve_user_utterances_normalizes_without_chat_trimming() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler()
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(tokenizer=tokenizer)
         state = _make_state(handler)
         state.check_screen_prefix_tokens = 495
 
@@ -121,8 +124,8 @@ def test_resolve_user_utterances_normalizes_without_chat_trimming() -> None:
 
 
 def test_resolve_history_allows_seed_on_fresh_session() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler()
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(tokenizer=tokenizer)
         state = _make_state(handler)
 
         assert _history_turn_count(state) == 0
@@ -140,9 +143,21 @@ def test_resolve_history_allows_seed_on_fresh_session() -> None:
         assert _history_turn_count(state) == 2
 
 
+def test_resolve_history_preserves_assistant_first_seed_on_fresh_session() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        messages = resolve_history(handler, state, {"history": ASSISTANT_FIRST_PAYLOAD[:4]})
+
+        assert messages == ASSISTANT_FIRST_MESSAGES[:4]
+        assert state.chat_history_messages == ASSISTANT_FIRST_MESSAGES[:4]
+        assert _history_turn_count(state) == 4
+
+
 def test_resolve_history_ignores_history_after_first_request() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler()
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(tokenizer=tokenizer)
         state = _make_state(handler)
 
         seed_msg = {
@@ -170,16 +185,17 @@ def test_resolve_history_ignores_history_after_first_request() -> None:
 
 
 def test_resolve_history_tool_only_trims_at_import() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler(deploy_chat=False, deploy_tool=True, tool_history_budget=10)
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(
+            deploy_chat=False,
+            deploy_tool=True,
+            tool_history_budget=10,
+            tokenizer=tokenizer,
+        )
         state = SessionState(meta={})
         handler.initialize_session(state)
 
-        messages: list[dict[str, str]] = []
-        for i in range(10):
-            messages.append({"role": "user", "content": f"word{i} extra{i} more{i}"})
-
-        msg = {"history": messages}
+        msg = {"history": tool_turn_payloads() * 3}
         resolve_history(handler, state, msg)
 
         assert state.chat_history_messages is None
@@ -188,27 +204,44 @@ def test_resolve_history_tool_only_trims_at_import() -> None:
         assert len(state.tool_history_turns) >= 1
 
 
-def test_resolve_history_tool_only_keeps_single_oversized_seed_turn() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler(deploy_chat=False, deploy_tool=True, tool_history_budget=3)
+def test_resolve_history_tool_only_crops_single_oversized_seed_turn() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(
+            deploy_chat=False,
+            deploy_tool=True,
+            tool_history_budget=3,
+            tokenizer=tokenizer,
+        )
         state = SessionState(meta={})
         handler.initialize_session(state)
 
         msg = {
             "history": [
-                {"role": "user", "content": "alpha bravo charlie delta echo foxtrot"},
+                {"role": "user", "content": "check the calendar for next tuesday flight times"},
             ]
         }
         resolve_history(handler, state, msg)
 
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
-        assert state.tool_history_turns[0].user == "alpha bravo charlie delta echo foxtrot"
+        assert state.tool_history_turns[0].user == "tuesday flight times"
+        assert handler._history.get_tool_history_text(state, max_tokens=3) == "tuesday flight times"
+
+
+def test_resolve_history_trims_assistant_first_seed_by_whole_groups() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(chat_trigger_tokens=60, chat_target_tokens=40, tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        messages = resolve_history(handler, state, {"history": ASSISTANT_FIRST_PAYLOAD})
+
+        assert messages == ASSISTANT_FIRST_MESSAGES[-2:]
+        assert state.chat_history_messages == ASSISTANT_FIRST_MESSAGES[-2:]
 
 
 def test_resolve_history_both_modes_stores_chat_and_tool_separately() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler(deploy_chat=True, deploy_tool=True, tool_history_budget=8)
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(deploy_chat=True, deploy_tool=True, tool_history_budget=8, tokenizer=tokenizer)
         state = SessionState(meta={})
         handler.initialize_session(state)
 
@@ -233,9 +266,26 @@ def test_resolve_history_both_modes_stores_chat_and_tool_separately() -> None:
         assert [turn.user for turn in state.tool_history_turns] == ["hello one", "show this please"]
 
 
+def test_resolve_history_both_modes_preserves_assistant_first_chat_and_user_only_tool_history() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(
+            deploy_chat=True, deploy_tool=True, tool_history_budget=20, tokenizer=tokenizer
+        )
+        state = SessionState(meta={})
+        handler.initialize_session(state)
+
+        resolve_history(handler, state, {"history": ASSISTANT_FIRST_PAYLOAD[:4]})
+
+        assert state.chat_history_messages == ASSISTANT_FIRST_MESSAGES[:4]
+        assert state.tool_history_turns is not None
+        assert [turn.user for turn in state.tool_history_turns] == [
+            ASSISTANT_FIRST_MESSAGES[2].content,
+        ]
+
+
 def test_resolve_history_merges_consecutive_users_on_import() -> None:
-    with use_local_tokenizers():
-        handler = _build_session_handler()
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_session_handler(tokenizer=tokenizer)
         state = _make_state(handler)
 
         msg = {

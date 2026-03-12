@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from .metrics import StartPayloadMode
 
 
 @dataclass
@@ -14,6 +15,7 @@ class ConversationSession:
     personality: str
     chat_prompt: str
     sampling: dict[str, float | int] | None = None
+    start_payload_mode: StartPayloadMode = "all"
 
 
 __all__ = ["ConversationSession"]

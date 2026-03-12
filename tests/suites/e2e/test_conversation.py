@@ -30,8 +30,13 @@ from tests.support.helpers.errors import ServerError
 from tests.support.helpers.setup import setup_repo_path
 from tests.support.logic.conversation import run_conversation
 from tests.support.messages.conversation import CONVERSATION_HISTORY_MESSAGES
-from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_SERVER_WS_URL, DEFAULT_RECV_TIMEOUT_SEC
+from tests.support.helpers.cli import (
+    add_sampling_args,
+    add_connection_args,
+    build_sampling_payload,
+    add_start_payload_mode_arg,
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -41,6 +46,7 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
+    add_start_payload_mode_arg(parser)
     parser.add_argument(
         "--gender",
         dest="gender",
@@ -79,6 +85,7 @@ def main() -> None:
                 personality=personality,
                 recv_timeout=args.recv_timeout,
                 sampling=args.sampling or None,
+                start_payload_mode=args.start_payload_mode,
             )
         )
     except ServerError:

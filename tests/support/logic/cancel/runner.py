@@ -16,10 +16,10 @@ import uuid
 import asyncio
 from tests.support.helpers.prompt import select_chat_prompt
 from .clients import run_normal_client, run_canceling_client
-from tests.support.helpers.websocket import build_api_key_headers
 from tests.support.helpers.fmt import dim, red, bold, green, section_header
-from tests.state import SessionContext, CancelClientResult, NormalClientResult
+from tests.support.helpers.websocket import build_api_key_headers, includes_chat_start_fields
 from .output import CANCEL_TEST_MESSAGE, print_cancel_client_result, print_normal_client_results
+from tests.state import SessionContext, StartPayloadMode, CancelClientResult, NormalClientResult
 from tests.config import (
     CANCEL_POST_WAIT_DEFAULT,
     CANCEL_NUM_CLIENTS_DEFAULT,
@@ -40,6 +40,7 @@ async def run_cancel_suite(
     drain_timeout_s: float = CANCEL_DRAIN_TIMEOUT_DEFAULT,
     post_cancel_wait_s: float = CANCEL_POST_WAIT_DEFAULT,
     recv_timeout_s: float = CANCEL_RECV_TIMEOUT_DEFAULT,
+    start_payload_mode: StartPayloadMode = "all",
 ) -> bool:
     """Run the multi-client cancel test suite.
 
@@ -69,7 +70,8 @@ async def run_cancel_suite(
     print(dim(f"  persona: {personality}/{gender}"))
     print(dim(f"  clients: {num_clients} (1 cancel, {num_clients - 1} normal)\n"))
 
-    chat_prompt = select_chat_prompt(gender)
+    send_chat_fields = includes_chat_start_fields(start_payload_mode)
+    chat_prompt = select_chat_prompt(gender) if send_chat_fields else None
 
     ws_headers = build_api_key_headers(api_key=api_key)
 
@@ -79,9 +81,10 @@ async def run_cancel_suite(
     # Create session context for the canceling client
     cancel_ctx = SessionContext(
         session_id=str(uuid.uuid4()),
-        gender=gender,
-        personality=personality,
+        gender=gender if send_chat_fields else None,
+        personality=personality if send_chat_fields else None,
         chat_prompt=chat_prompt,
+        start_payload_mode=start_payload_mode,
     )
 
     # Create tasks
@@ -105,9 +108,10 @@ async def run_cancel_suite(
     for i in range(num_clients - 1):
         normal_ctx = SessionContext(
             session_id=str(uuid.uuid4()),
-            gender=gender,
-            personality=personality,
+            gender=gender if send_chat_fields else None,
+            personality=personality if send_chat_fields else None,
             chat_prompt=chat_prompt,
+            start_payload_mode=start_payload_mode,
         )
         task = asyncio.create_task(
             run_normal_client(

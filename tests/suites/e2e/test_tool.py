@@ -19,7 +19,7 @@ if __package__ in {None, ""}:
 from tests.support.logic.tool.runner import run_suite  # noqa: E402
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
 from tests.support.helpers.websocket import with_api_key  # noqa: E402
-from tests.support.helpers.cli import add_connection_args  # noqa: E402
+from tests.support.helpers.cli import add_connection_args, add_start_payload_mode_arg  # noqa: E402
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, TOOL_WS_MAX_MESSAGES_PER_WINDOW  # noqa: E402
 
 setup_repo_path()
@@ -28,6 +28,7 @@ setup_repo_path()
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tool-call regression test harness")
     add_connection_args(parser)
+    add_start_payload_mode_arg(parser)
     parser.add_argument(
         "--gender",
         default=DEFAULT_GENDER,
@@ -94,6 +95,7 @@ def main() -> None:
                 limit=args.limit,
                 show_successes=args.show_successes,
                 max_steps_per_case=args.max_steps,
+                start_payload_mode=args.start_payload_mode,
             )
         )
         # Exit with error if any test failed

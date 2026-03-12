@@ -14,9 +14,9 @@ from typing import Any
 from .client import LiveClient
 from .commands import print_help
 from .cli import interactive_loop
-from tests.state import LiveSession
 from .personas import PersonaRegistry
 from tests.config.defaults import WS_IDLE_CLOSE_CODE
+from tests.state import LiveSession, StartPayloadMode
 from tests.support.helpers.fmt import dim, section_header
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
@@ -32,6 +32,7 @@ def _prepare_session(
     warm: bool,
     message: list[str] | None,
     sampling: dict[str, float | int] | None,
+    start_payload_mode: StartPayloadMode,
 ) -> tuple[LiveSession, Any, list[dict[str, str]], str]:
     persona = registry.require(persona_name)
     if warm:
@@ -46,6 +47,7 @@ def _prepare_session(
         persona=persona,
         history=initial_history,
         sampling=sampling,
+        start_payload_mode=start_payload_mode,
     )
 
     return session, persona, initial_history, initial_message
@@ -115,6 +117,7 @@ async def run(
     sampling: dict[str, float | int] | None,
     warm: bool,
     message: list[str] | None,
+    start_payload_mode: StartPayloadMode = "all",
 ) -> None:
     """Run the interactive live session."""
     registry = PersonaRegistry()
@@ -125,6 +128,7 @@ async def run(
             warm,
             message,
             sampling,
+            start_payload_mode,
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc

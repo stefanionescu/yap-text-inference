@@ -28,7 +28,13 @@ if __package__ in {None, ""}:
 from tests.support.helpers.setup import setup_repo_path
 from tests.support.helpers.prompt import select_chat_prompt
 from tests.config import DEFAULT_GENDER, DEFAULT_SERVER_WS_URL
-from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload
+from tests.support.helpers.websocket import includes_chat_start_fields
+from tests.support.helpers.cli import (
+    add_sampling_args,
+    add_connection_args,
+    build_sampling_payload,
+    add_start_payload_mode_arg,
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -38,6 +44,7 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
+    add_start_payload_mode_arg(parser)
     args = parser.parse_args()
     args.sampling = build_sampling_payload(args)
     return args
@@ -49,7 +56,7 @@ def main() -> None:
     from tests.support.logic.vision import run_once  # noqa: PLC0415
 
     args = _parse_args()
-    chat_prompt = select_chat_prompt(DEFAULT_GENDER)
+    chat_prompt = select_chat_prompt(DEFAULT_GENDER) if includes_chat_start_fields(args.start_payload_mode) else None
 
     asyncio.run(
         run_once(
@@ -57,6 +64,7 @@ def main() -> None:
             args.api_key,
             args.sampling or None,
             chat_prompt,
+            args.start_payload_mode,
         )
     )
 

@@ -11,9 +11,9 @@ from .cases import build_cases
 from .executor import run_all_cases
 from collections.abc import Callable
 from tests.support.helpers.prompt import select_chat_prompt
-from tests.state import CaseResult, RunnerConfig, ToolTestCase
-from tests.support.helpers.websocket import build_api_key_headers
 from .reporting import save_logs, print_summary, print_case_results
+from tests.state import CaseResult, RunnerConfig, ToolTestCase, StartPayloadMode
+from tests.support.helpers.websocket import build_api_key_headers, includes_chat_start_fields
 from tests.config import PROGRESS_BAR_WIDTH, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 
 # ============================================================================
@@ -76,6 +76,7 @@ async def run_suite(
     limit: int | None = None,
     show_successes: bool = False,
     max_steps_per_case: int | None = None,
+    start_payload_mode: StartPayloadMode = "all",
 ) -> list[CaseResult]:
     """
     Execute the tool-call regression suite and print per-case + summary output.
@@ -119,18 +120,19 @@ async def run_suite(
         print("No tool cases to run.")
         progress_cb = None
 
-    # chat_prompt is required - always select one based on gender
-    chat_prompt = select_chat_prompt(gender)
+    send_chat_fields = includes_chat_start_fields(start_payload_mode)
+    chat_prompt = select_chat_prompt(gender) if send_chat_fields else None
 
     cfg = RunnerConfig(
         ws_url=ws_url,
         ws_headers=build_api_key_headers(api_key=api_key),
-        gender=gender,
-        personality=personality,
+        gender=gender if send_chat_fields else None,
+        personality=personality if send_chat_fields else None,
         chat_prompt=chat_prompt,
         timeout_s=timeout_s,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
+        start_payload_mode=start_payload_mode,
     )
 
     results = await run_all_cases(

@@ -10,29 +10,32 @@ from src.execution.tool.prompt_budget import fit_tool_input_to_budget
 def test_fit_tool_input_to_budget_drops_oldest_history_before_trimming_current_user() -> None:
     with use_local_tokenizers() as tokenizer:
         fit = fit_tool_input_to_budget(
-            ["alpha bravo charlie", "delta echo foxtrot"],
-            "golf hotel india",
+            [
+                "check the calendar for next tuesday flight times",
+                "show the booking confirmation and hotel address",
+            ],
+            "open the packing list and weather notes for lisbon",
             tokenizer,
-            max_input_tokens=6,
+            max_input_tokens=8,
         )
 
-        assert fit.tool_user_history == "delta echo foxtrot"
-        assert fit.tool_user_utt == "golf hotel india"
-        assert fit.input_tokens <= 6
+        assert fit.tool_user_history == ""
+        assert fit.tool_user_utt == "the packing list and weather notes for lisbon"
+        assert fit.input_tokens <= 8
 
 
 def test_fit_tool_input_to_budget_trims_current_user_when_history_is_exhausted() -> None:
     with use_local_tokenizers() as tokenizer:
         fit = fit_tool_input_to_budget(
             [],
-            "one two three four",
+            "check the calendar for next tuesday flight times",
             tokenizer,
-            max_input_tokens=3,
+            max_input_tokens=4,
         )
 
         assert fit.tool_user_history == ""
-        assert fit.tool_user_utt == "two three four"
-        assert fit.input_tokens <= 3
+        assert fit.tool_user_utt == "next tuesday flight times"
+        assert fit.input_tokens <= 4
 
 
 def test_fit_tool_input_to_budget_raises_when_budget_is_impossible() -> None:

@@ -111,6 +111,18 @@ warmup_safe_log_prefix() {
   echo "${cleaned}"
 }
 
+# Resolve the Python test client's start-payload mode from deploy mode.
+# Usage: warmup_start_payload_mode [deploy_mode]
+warmup_start_payload_mode() {
+  local deploy_mode="${1:-${DEPLOY_MODE:-${CFG_DEFAULT_DEPLOY_MODE}}}"
+  case "${deploy_mode}" in
+    "${CFG_DEPLOY_MODE_BOTH}") echo "all" ;;
+    "${CFG_DEPLOY_MODE_CHAT}") echo "chat-only" ;;
+    "${CFG_DEPLOY_MODE_TOOL}") echo "tool-only" ;;
+    *) echo "all" ;;
+  esac
+}
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

@@ -11,7 +11,8 @@ import os
 import json
 import uuid
 import websockets
-from typing import Any
+from typing import Any, cast
+from tests.state.metrics import StartPayloadMode
 from tests.state import StreamState, SessionContext
 from tests.support.helpers.errors import ServerError
 from tests.support.helpers.selection import choose_message
@@ -46,6 +47,7 @@ from tests.support.helpers.websocket import (
     connect_with_retries,
     build_api_key_headers,
     build_message_payload,
+    includes_chat_start_fields,
 )
 
 
@@ -147,7 +149,8 @@ async def run_once(args) -> None:
         fallback=WARMUP_FALLBACK_MESSAGE,
         defaults=WARMUP_DEFAULT_MESSAGES,
     )
-    chat_prompt = select_chat_prompt(gender)
+    start_payload_mode = cast(StartPayloadMode, getattr(args, "start_payload_mode", "all"))
+    chat_prompt = select_chat_prompt(gender) if includes_chat_start_fields(start_payload_mode) else None
 
     test_name = "WARMUP (double-ttfb)" if double_ttfb else "WARMUP"
     print(f"\n{section_header(test_name)}")
@@ -173,6 +176,7 @@ async def run_once(args) -> None:
             personality=personality,
             chat_prompt=chat_prompt,
             sampling=sampling_overrides,
+            start_payload_mode=start_payload_mode,
         )
         try:
             for idx in range(num_transactions):

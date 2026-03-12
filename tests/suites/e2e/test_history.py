@@ -34,7 +34,12 @@ if __package__ in {None, ""}:
 
 from tests.support.helpers.errors import ServerError  # noqa: E402
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
-from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
+from tests.support.helpers.cli import (  # noqa: E402
+    add_sampling_args,
+    add_connection_args,
+    build_sampling_payload,
+    add_start_payload_mode_arg,
+)
 from tests.config import (  # noqa: E402
     DEFAULT_GENDER,
     DEFAULT_PERSONALITY,
@@ -54,6 +59,7 @@ def _parse_args() -> argparse.Namespace:
         server_help=f"WebSocket URL (default env SERVER_WS_URL or {DEFAULT_SERVER_WS_URL})",
     )
     add_sampling_args(parser)
+    add_start_payload_mode_arg(parser)
     parser.add_argument(
         "--gender",
         dest="gender",
@@ -109,6 +115,7 @@ def _run_interactive(args: argparse.Namespace) -> None:
                 args.gender,
                 args.personality,
                 args.sampling or None,
+                args.start_payload_mode,
             )
         )
     except ServerError:
@@ -131,6 +138,7 @@ def _run_benchmark(args: argparse.Namespace) -> None:
             concurrency=args.concurrency,
             timeout_s=args.timeout,
             sampling=args.sampling or None,
+            start_payload_mode=args.start_payload_mode,
         )
     )
     if not success:

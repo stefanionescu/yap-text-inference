@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 from typing import Any
 from collections.abc import Mapping
+from tests.state import StartPayloadMode
 from argparse import Namespace, ArgumentParser
 from tests.config import (
     CHAT_TOP_K_DEFAULT,
@@ -94,6 +95,20 @@ def add_sampling_args(parser: ArgumentParser) -> None:
     )
 
 
+def add_start_payload_mode_arg(
+    parser: ArgumentParser,
+    *,
+    default: StartPayloadMode = "all",
+) -> None:
+    """Register the start payload field mode shared by test clients."""
+    parser.add_argument(
+        "--start-payload-mode",
+        choices=["all", "chat-only", "tool-only"],
+        default=default,
+        help="Which optional start fields to send (default: all)",
+    )
+
+
 def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, float | int | bool]:
     """Extract CLI sampling overrides into the payload format expected by the server."""
     if not isinstance(args, Mapping):
@@ -112,5 +127,6 @@ def build_sampling_payload(args: Mapping[str, Any] | Namespace) -> dict[str, flo
 __all__ = [
     "add_connection_args",
     "add_sampling_args",
+    "add_start_payload_mode_arg",
     "build_sampling_payload",
 ]

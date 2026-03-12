@@ -40,7 +40,12 @@ if __package__ in {None, ""}:
 from tests.support.helpers.errors import ServerError  # noqa: E402
 from tests.support.logic.warmup.runner import run_once  # noqa: E402
 from tests.support.helpers.setup import setup_repo_path  # noqa: E402
-from tests.support.helpers.cli import add_sampling_args, add_connection_args, build_sampling_payload  # noqa: E402
+from tests.support.helpers.cli import (  # noqa: E402
+    add_sampling_args,
+    add_connection_args,
+    build_sampling_payload,
+    add_start_payload_mode_arg,
+)
 
 setup_repo_path()
 
@@ -51,6 +56,7 @@ def _parse_args() -> argparse.Namespace:
 
     add_connection_args(parser)
     add_sampling_args(parser)
+    add_start_payload_mode_arg(parser)
 
     parser.add_argument(
         "--gender",
