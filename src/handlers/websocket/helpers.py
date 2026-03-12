@@ -91,12 +91,16 @@ def _append_history(
     final_text: str,
     history_turn_id: str | None,
 ) -> None:
-    session_handler.append_history_turn(
+    session_handler.append_chat_turn(
         conn_state,
         history_user,
         final_text,
         turn_id=history_turn_id,
     )
+
+
+def _should_commit_visible_history(state: _ChatStreamState) -> bool:
+    return bool(state.text_visible and state.final_text)
 
 
 async def _handle_empty_output(ws: WebSocket) -> None:
@@ -191,6 +195,14 @@ async def stream_chat_response(
         final_text=initial_text,
         text_visible=bool(initial_text) and initial_text_already_sent,
     )
+    history_committed = False
+
+    def _commit_history_once() -> None:
+        nonlocal history_committed
+        if history_committed or not _should_commit_visible_history(state):
+            return
+        _append_history(session_handler, conn_state, history_user, state.final_text, history_turn_id)
+        history_committed = True
 
     try:
         await _send_initial_text(ws, initial_text, initial_text_already_sent, state)
@@ -202,12 +214,13 @@ async def stream_chat_response(
                 return state.final_text
             await _send_completion_frames(ws, state)
     except asyncio.CancelledError:
-        if state.text_visible:
-            _append_history(session_handler, conn_state, history_user, state.final_text, history_turn_id)
+        _commit_history_once()
+        raise
+    except Exception:
+        _commit_history_once()
         raise
 
-    if not state.interrupted:
-        _append_history(session_handler, conn_state, history_user, state.final_text, history_turn_id)
+    _commit_history_once()
     return state.final_text
 
 

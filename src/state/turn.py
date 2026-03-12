@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from .session import HistoryTurn, SessionState
+    from .session import ChatMessage, SessionState
 
 
 @dataclass(slots=True)
@@ -17,7 +17,7 @@ class TurnPlan:
     request_id: str
     static_prefix: str
     runtime_text: str
-    history_turns: list[HistoryTurn]
+    history_messages: list[ChatMessage]
     chat_user_utt: str | None = None
     tool_user_utt: str | None = None
     history_turn_id: str | None = None

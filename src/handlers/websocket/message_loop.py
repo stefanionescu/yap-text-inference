@@ -93,7 +93,7 @@ async def _handle_turn_command(
             )
             return True
         get_metrics().requests_total.add(1, {"status": "started"})
-        await handle_turn_message(
+        return await handle_turn_message(
             ws,
             msg,
             state,
@@ -101,7 +101,6 @@ async def _handle_turn_command(
             session_handler=session_handler,
             runtime_deps=runtime_deps,
         )
-        return True
 
     if not started:
         await send_error(

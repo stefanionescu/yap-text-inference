@@ -1,4 +1,4 @@
-"""Unit tests for session history update/accounting behavior."""
+"""Unit tests for session history accounting invariants."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any, cast
 from src.tokens import count_tokens_tool
 import src.handlers.session.history.ops as history_ops
 from src.handlers.session.manager import SessionHandler
-from src.state.session import HistoryTurn, SessionState
+from src.state.session import ChatMessage, HistoryTurn, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
 import src.handlers.session.history.token_counting as history_tokens
 from src.handlers.session.history.settings import HistoryRuntimeConfig
@@ -29,64 +29,123 @@ def _history_config(
     )
 
 
-def _build_session_handler() -> SessionHandler:
-    return SessionHandler(
-        chat_engine=None,
-        history_config=_history_config(
-            deploy_chat=True,
-            deploy_tool=False,
-            chat_trigger_tokens=1000,
-            chat_target_tokens=800,
-        ),
-    )
-
-
 def _make_state(handler: SessionHandler) -> SessionState:
     state = SessionState(meta={})
     handler.initialize_session(state)
     return state
 
 
-def _history_turn_count(state: SessionState) -> int:
-    if state.history_turns is not None:
-        return len(state.history_turns)
-    if state.tool_history_turns is not None:
-        return len(state.tool_history_turns)
-    return 0
+def _build_chat_only_handler(
+    *,
+    chat_trigger_tokens: int = 1000,
+    chat_target_tokens: int = 800,
+    tokenizer: Any | None = None,
+) -> SessionHandler:
+    return SessionHandler(
+        chat_engine=None,
+        chat_tokenizer=cast(Any, tokenizer),
+        history_config=_history_config(
+            deploy_chat=True,
+            deploy_tool=False,
+            chat_trigger_tokens=chat_trigger_tokens,
+            chat_target_tokens=chat_target_tokens,
+        ),
+    )
 
 
-def test_append_history_turn_updates_existing_turn_when_turn_id_provided() -> None:
-    with use_local_tokenizers():
-        session_handler = _build_session_handler()
+def _build_tool_only_handler(
+    *,
+    tool_history_budget: int = 10,
+    tool_input_budget: int | None = None,
+    tokenizer: Any | None = None,
+) -> SessionHandler:
+    return SessionHandler(
+        chat_engine=None,
+        tool_history_budget=tool_history_budget,
+        tool_input_budget=tool_input_budget,
+        tool_tokenizer=cast(Any, tokenizer),
+        history_config=_history_config(
+            deploy_chat=False,
+            deploy_tool=True,
+            chat_trigger_tokens=1000,
+            chat_target_tokens=800,
+        ),
+    )
+
+
+def _build_dual_mode_handler(
+    *,
+    tool_history_budget: int = 10,
+    tool_input_budget: int | None = None,
+    tokenizer: Any | None = None,
+) -> SessionHandler:
+    return SessionHandler(
+        chat_engine=None,
+        tool_history_budget=tool_history_budget,
+        tool_input_budget=tool_input_budget,
+        chat_tokenizer=cast(Any, tokenizer),
+        tool_tokenizer=cast(Any, tokenizer),
+        history_config=_history_config(
+            deploy_chat=True,
+            deploy_tool=True,
+            chat_trigger_tokens=1000,
+            chat_target_tokens=800,
+        ),
+    )
+
+
+def test_append_chat_turn_stores_user_and_assistant_as_separate_messages() -> None:
+    with use_local_tokenizers() as tokenizer:
+        session_handler = _build_chat_only_handler(tokenizer=tokenizer)
         state = _make_state(session_handler)
 
-        turn_id = session_handler.append_user_utterance(state, "hello")
-        assert turn_id is not None
-        assert _history_turn_count(state) == 1
+        turn_id = session_handler.reserve_history_turn_id(state, "hello")
+        assert turn_id is None
 
-        session_handler.append_history_turn(state, "ignored", "world", turn_id=turn_id)
+        session_handler.append_chat_turn(state, "hello", "world", turn_id=turn_id)
         rendered = session_handler._history.get_text(state)
 
-        assert _history_turn_count(state) == 1
+        assert state.chat_history_messages is not None
+        assert [(msg.role, msg.content) for msg in state.chat_history_messages] == [
+            ("user", "hello"),
+            ("assistant", "world"),
+        ]
         assert "User: hello" in rendered
         assert "Assistant: world" in rendered
 
 
-def test_set_history_turns_keeps_expected_turn_count() -> None:
+def test_set_mode_histories_keeps_expected_message_count() -> None:
     with use_local_tokenizers():
-        session_handler = _build_session_handler()
+        session_handler = _build_chat_only_handler()
         state = _make_state(session_handler)
 
-        turns = [
-            HistoryTurn(turn_id="t1", user="u1", assistant="a1"),
-            HistoryTurn(turn_id="t2", user="u2", assistant="a2"),
+        messages = [
+            ChatMessage(role="user", content="u1"),
+            ChatMessage(role="assistant", content="a1"),
+            ChatMessage(role="assistant", content="a2"),
         ]
 
-        rendered = session_handler._history.set_mode_turns(state, chat_turns=turns)
+        rendered = session_handler._history.set_mode_histories(state, chat_messages=messages)
 
         assert "User: u1" in rendered
         assert "Assistant: a2" in rendered
-        assert _history_turn_count(state) == 2
+        assert state.chat_history_messages is not None
+        assert len(state.chat_history_messages) == 3
+
+
+def test_append_chat_turn_merges_consecutive_users_in_storage() -> None:
+    with use_local_tokenizers():
+        handler = _build_chat_only_handler()
+        state = _make_state(handler)
+        state.chat_history_messages = [ChatMessage(role="user", content="seed")]
+
+        handler.append_chat_turn(state, "follow up", "reply")
+
+        assert state.chat_history_messages is not None
+        assert [(msg.role, msg.content) for msg in state.chat_history_messages] == [
+            ("user", "seed\n\nfollow up"),
+            ("assistant", "reply"),
+        ]
 
 
 def test_render_tool_history_text_keeps_latest_line_when_single_line_exceeds_budget() -> None:
@@ -111,122 +170,166 @@ def test_render_tool_history_text_uses_raw_user_lines() -> None:
         assert "Assistant:" not in rendered
 
 
-def _build_tool_only_handler(tool_budget: int = 10) -> SessionHandler:
-    return SessionHandler(
-        chat_engine=None,
-        tool_history_budget=tool_budget,
-        history_config=_history_config(
-            deploy_chat=False,
-            deploy_tool=True,
-            chat_trigger_tokens=1000,
-            chat_target_tokens=800,
-        ),
-    )
-
-
-def _build_chat_only_handler(
-    *,
-    chat_trigger_tokens: int = 1000,
-    chat_target_tokens: int = 800,
-) -> SessionHandler:
-    return SessionHandler(
-        chat_engine=None,
-        history_config=_history_config(
-            deploy_chat=True,
-            deploy_tool=False,
-            chat_trigger_tokens=chat_trigger_tokens,
-            chat_target_tokens=chat_target_tokens,
-        ),
-    )
-
-
 def test_tool_only_mode_keeps_chat_history_inactive() -> None:
-    with use_local_tokenizers():
-        handler = _build_tool_only_handler(tool_budget=20)
-        state = SessionState(meta={})
-        handler.initialize_session(state)
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_tool_only_handler(tool_history_budget=20, tokenizer=tokenizer)
+        state = _make_state(handler)
 
-        assert state.history_turns is None
+        assert state.chat_history_messages is None
         assert state.tool_history_turns == []
 
-        turn_id = handler.append_user_utterance(state, "show me this")
-        assert turn_id is not None
-        assert state.history_turns is None
+        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="show me this")
+        tool_user, tool_history = handler.prepare_tool_turn(state, "show me this", turn_id=turn_id)
+
+        assert tool_user == "show me this"
+        assert tool_history == ""
+        assert state.chat_history_messages is None
         assert state.tool_history_turns is not None
-        assert len(state.tool_history_turns) == 1
-        assert _history_turn_count(state) == 1
+        assert [(turn.turn_id, turn.user) for turn in state.tool_history_turns] == [(turn_id, "show me this")]
 
 
 def test_chat_only_mode_keeps_tool_history_inactive() -> None:
-    with use_local_tokenizers():
-        handler = _build_chat_only_handler()
-        state = SessionState(meta={})
-        handler.initialize_session(state)
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_chat_only_handler(tokenizer=tokenizer)
+        state = _make_state(handler)
 
-        assert state.history_turns == []
+        assert state.chat_history_messages == []
         assert state.tool_history_turns is None
 
-        turn_id = handler.append_user_utterance(state, "hello")
+        handler.append_chat_turn(state, "hello", "world")
+
+        assert state.chat_history_messages is not None
+        assert [(msg.role, msg.content) for msg in state.chat_history_messages] == [
+            ("user", "hello"),
+            ("assistant", "world"),
+        ]
+        assert state.tool_history_turns is None
+
+
+def test_reserve_history_turn_id_does_not_mutate_stores() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_dual_mode_handler(tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        turn_id = handler.reserve_history_turn_id(state, "hello", tool_user_utt="hello")
+
         assert turn_id is not None
-        assert state.history_turns is not None
-        assert len(state.history_turns) == 1
-        assert state.tool_history_turns is None
-        assert _history_turn_count(state) == 1
+        assert state.chat_history_messages == []
+        assert state.tool_history_turns == []
+
+
+def test_prepare_tool_turn_dual_mode_appends_once_and_chat_commit_does_not_duplicate_tool_history() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_dual_mode_handler(tool_history_budget=20, tool_input_budget=20, tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        seed_turn_id = handler.reserve_history_turn_id(state, "alpha one", tool_user_utt="alpha one")
+        seed_tool_user, seed_tool_history = handler.prepare_tool_turn(state, "alpha one", turn_id=seed_turn_id)
+        assert seed_tool_user == "alpha one"
+        assert seed_tool_history == ""
+
+        turn_id = handler.reserve_history_turn_id(state, "bravo two", tool_user_utt="bravo two")
+        prepared_user, tool_history = handler.prepare_tool_turn(state, "bravo two", turn_id=turn_id)
+
+        assert prepared_user == "bravo two"
+        assert tool_history == "alpha one"
+        assert state.tool_history_turns is not None
+        assert [(turn.turn_id, turn.user) for turn in state.tool_history_turns] == [
+            (seed_turn_id, "alpha one"),
+            (turn_id, "bravo two"),
+        ]
+
+        handler.append_chat_turn(state, "bravo two", "assistant reply", turn_id=turn_id)
+
+        assert state.tool_history_turns is not None
+        assert [(turn.turn_id, turn.user) for turn in state.tool_history_turns] == [
+            (seed_turn_id, "alpha one"),
+            (turn_id, "bravo two"),
+        ]
+        assert state.chat_history_messages is not None
+        assert [(msg.role, msg.content) for msg in state.chat_history_messages] == [
+            ("user", "bravo two"),
+            ("assistant", "assistant reply"),
+        ]
+
+
+def test_prepare_tool_turn_fits_exact_combined_input_before_backend_call() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_tool_only_handler(tool_history_budget=20, tool_input_budget=3, tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        seed_turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="alpha bravo charlie")
+        handler.prepare_tool_turn(state, "alpha bravo charlie", turn_id=seed_turn_id)
+
+        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="delta echo foxtrot")
+        tool_user, tool_history = handler.prepare_tool_turn(state, "delta echo foxtrot", turn_id=turn_id)
+
+        combined = "\n".join([part for part in [tool_history, tool_user] if part])
+        assert tool_history == ""
+        assert tool_user == "delta echo foxtrot"
+        assert count_tokens_tool(combined) <= 3
+
+
+def test_prepare_tool_turn_trims_current_user_tail_when_history_is_exhausted() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_tool_only_handler(tool_history_budget=20, tool_input_budget=3, tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt="one two three four")
+        tool_user, tool_history = handler.prepare_tool_turn(state, "one two three four", turn_id=turn_id)
+
+        assert tool_history == ""
+        assert tool_user == "two three four"
+        assert state.tool_history_turns is not None
+        assert [(turn.turn_id, turn.user) for turn in state.tool_history_turns] == [(turn_id, "two three four")]
 
 
 def test_trim_history_tool_only_drops_old_turns() -> None:
-    """Tool-only trim_tool_history drops oldest turns to stay within budget."""
     with use_local_tokenizers():
-        _build_tool_only_handler(tool_budget=10)
         state = SessionState(meta={})
-
-        turns = [HistoryTurn(turn_id=f"t{i}", user=f"word{i} extra{i} more{i}", assistant="") for i in range(5)]
-        state.tool_history_turns = turns
+        state.tool_history_turns = [
+            HistoryTurn(turn_id=f"t{i}", user=f"word{i} extra{i} more{i}", assistant="") for i in range(5)
+        ]
         history_ops.trim_tool_history(state, 6)
 
+        assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) < 5
         assert state.tool_history_turns[-1].turn_id == "t4"
 
 
 def test_trim_history_tool_only_keeps_single_oversized_last_turn() -> None:
-    """Tool-only trim_tool_history keeps a single oversized turn as-is."""
     with use_local_tokenizers():
-        _build_tool_only_handler(tool_budget=5)
         state = SessionState(meta={})
-
         long_text = "alpha bravo charlie delta echo foxtrot golf hotel india"
         state.tool_history_turns = [HistoryTurn(turn_id="t1", user=long_text, assistant="")]
         history_ops.trim_tool_history(state, 3)
 
+        assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
         assert state.tool_history_turns[0].user == long_text
 
 
 def test_trim_history_tool_only_noop_when_under_budget() -> None:
-    """Tool-only trim_tool_history is a no-op when under budget."""
     with use_local_tokenizers():
-        _build_tool_only_handler(tool_budget=100)
         state = SessionState(meta={})
-
-        turns = [
+        state.tool_history_turns = [
             HistoryTurn(turn_id="t1", user="hi", assistant=""),
             HistoryTurn(turn_id="t2", user="hello", assistant=""),
         ]
-        state.tool_history_turns = turns
         history_ops.trim_tool_history(state, 100)
 
+        assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 2
 
 
-def test_append_user_utterance_tool_only_trims_eagerly() -> None:
-    """Appending user turns eagerly keeps tool history within budget."""
-    with use_local_tokenizers():
-        handler = _build_tool_only_handler(tool_budget=6)
-        state = SessionState(meta={})
-        handler.initialize_session(state)
+def test_prepare_tool_turn_retention_budget_trims_store_eagerly() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_tool_only_handler(tool_history_budget=6, tool_input_budget=20, tokenizer=tokenizer)
+        state = _make_state(handler)
 
         for i in range(6):
-            handler.append_user_utterance(state, f"word{i} extra{i} more{i}")
+            turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt=f"word{i} extra{i} more{i}")
+            handler.prepare_tool_turn(state, f"word{i} extra{i} more{i}", turn_id=turn_id)
 
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) < 6
@@ -234,53 +337,43 @@ def test_append_user_utterance_tool_only_trims_eagerly() -> None:
         assert count_tokens_tool(rendered) <= 6
 
 
-def test_append_user_utterance_chat_only_trims_eagerly() -> None:
-    """Appending user turns eagerly keeps chat history under chat thresholds."""
-    with use_local_tokenizers():
-        handler = _build_chat_only_handler(chat_trigger_tokens=10, chat_target_tokens=6)
-        state = SessionState(meta={})
-        handler.initialize_session(state)
+def test_append_chat_turn_trims_chat_history_eagerly() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_chat_only_handler(chat_trigger_tokens=10, chat_target_tokens=6, tokenizer=tokenizer)
+        state = _make_state(handler)
 
         for i in range(8):
-            handler.append_user_utterance(state, f"turn{i} extra{i}")
+            handler.append_chat_turn(state, f"turn{i} extra{i}", f"reply{i}")
 
-        assert state.history_turns is not None
-        assert len(state.history_turns) < 8
-
-
-def test_get_tool_history_text_excludes_latest_without_mutating_store() -> None:
-    """include_latest=False returns prior context only and leaves store untouched."""
-    with use_local_tokenizers():
-        handler = _build_tool_only_handler(tool_budget=30)
-        state = SessionState(meta={})
-        handler.initialize_session(state)
-
-        handler.append_user_utterance(state, "alpha one")
-        handler.append_user_utterance(state, "bravo two")
-        handler.append_user_utterance(state, "charlie three")
-
-        with_latest = handler._history.get_tool_history_text(state)
-        without_latest = handler._history.get_tool_history_text(state, include_latest=False)
-
-        assert with_latest.endswith("charlie three")
-        assert without_latest == "alpha one\nbravo two"
-        assert handler._history.get_tool_history_text(state) == with_latest
+        assert state.chat_history_messages is not None
+        assert len(state.chat_history_messages) < 16
 
 
-def test_append_user_utterance_tool_only_keeps_single_oversized_turn() -> None:
-    """A single oversized user turn is retained whole during eager append-time trim."""
-    with use_local_tokenizers():
-        handler = _build_tool_only_handler(tool_budget=3)
-        state = SessionState(meta={})
-        handler.initialize_session(state)
+def test_get_tool_history_text_returns_full_store_contents() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_tool_only_handler(tool_history_budget=30, tool_input_budget=30, tokenizer=tokenizer)
+        state = _make_state(handler)
+
+        for text in ("alpha one", "bravo two", "charlie three"):
+            turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt=text)
+            handler.prepare_tool_turn(state, text, turn_id=turn_id)
+
+        assert handler._history.get_tool_history_text(state) == "alpha one\nbravo two\ncharlie three"
+
+
+def test_prepare_tool_turn_tool_only_keeps_single_oversized_turn_in_store() -> None:
+    with use_local_tokenizers() as tokenizer:
+        handler = _build_tool_only_handler(tool_history_budget=3, tool_input_budget=20, tokenizer=tokenizer)
+        state = _make_state(handler)
 
         long_text = "alpha bravo charlie delta echo foxtrot"
-        handler.append_user_utterance(state, long_text)
+        turn_id = handler.reserve_history_turn_id(state, "", tool_user_utt=long_text)
+        tool_user, _ = handler.prepare_tool_turn(state, long_text, turn_id=turn_id)
 
+        assert tool_user == long_text
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) == 1
-        kept = state.tool_history_turns[0].user
-        assert kept == long_text
+        assert state.tool_history_turns[0].user == long_text
         assert handler._history.get_tool_history_text(state) == long_text
 
 

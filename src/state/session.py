@@ -1,21 +1,4 @@
-"""Session-scoped dataclasses for per-connection state.
-
-This module defines the core data structures for session state:
-
-HistoryTurn:
-    Represents a single exchange in the conversation. Each turn has:
-    - turn_id: UUID for tracking (used for streaming updates)
-    - user: The user's message
-    - assistant: The assistant's response (may be empty during streaming)
-
-SessionState:
-    Container for all per-session mutable data including:
-    - Metadata (timestamps, model info, persona config)
-    - Mode-aware conversation history (chat/tool/both)
-    - Request tracking (active request ID, asyncio.Task)
-    - Token budget caches
-    - Screenshot follow-up prefix state
-"""
+"""Session-scoped dataclasses for per-connection state."""
 
 from __future__ import annotations
 
@@ -27,8 +10,16 @@ from dataclasses import field, dataclass
 
 
 @dataclass
+class ChatMessage:
+    """One stored chat-history message."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
+@dataclass
 class HistoryTurn:
-    """One user/assistant exchange in the running conversation."""
+    """One stored tool-history entry."""
 
     turn_id: str
     user: str
@@ -46,8 +37,8 @@ class SessionState:
     Attributes:
         meta: Extensible metadata dictionary containing session configuration.
         session_id: Stable server-generated ID for this websocket session.
-        history_turns: Chat history store (User+Assistant turns), active only
-            when chat deployment is enabled.
+        chat_history_messages: Chat history store, active only when chat
+            deployment is enabled.
         tool_history_turns: Tool history store (user-only turns), active only
             when tool deployment is enabled.
         active_request_task: Reference to the currently running asyncio.Task
@@ -68,7 +59,7 @@ class SessionState:
 
     meta: dict[str, Any]
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    history_turns: list[HistoryTurn] | None = None
+    chat_history_messages: list[ChatMessage] | None = None
     tool_history_turns: list[HistoryTurn] | None = None
     active_request_task: asyncio.Task | None = None
     active_request_id: str | None = None
@@ -80,5 +71,4 @@ class SessionState:
     screen_checked_prefix_tokens: int = 0
     screen_followup_pending: bool = False
 
-
-__all__ = ["HistoryTurn", "SessionState"]
+__all__ = ["ChatMessage", "HistoryTurn", "SessionState"]

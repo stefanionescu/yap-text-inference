@@ -13,7 +13,7 @@ from .websocket import _ChatStreamState
 from .calibration import TotalLengthPolicy
 from .tool import RequestItem, ToolModelInfo
 from .tokens import TokenizerValidationResult
-from .session import HistoryTurn, SessionState
+from .session import ChatMessage, HistoryTurn, SessionState
 from .execution import CancelCheck, ChatStreamConfig, CompletionCounter
 from .quantization import EnvironmentInfo, CalibrationConfig, _DatasetInfo
 
@@ -24,6 +24,7 @@ __all__ = [
     "ToolModelInfo",
     "EngineOutput",
     "EnvironmentInfo",
+    "ChatMessage",
     "HistoryTurn",
     "ModelProfile",
     "RequestItem",

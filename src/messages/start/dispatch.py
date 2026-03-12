@@ -13,12 +13,15 @@ import logging
 from src.state import TurnPlan
 from typing import TYPE_CHECKING
 from ...config.timeouts import TOOL_TIMEOUT_S
-from ...config import DEPLOY_CHAT, DEPLOY_TOOL
+from ...config import CHAT_MAX_LEN, DEPLOY_CHAT, DEPLOY_TOOL, USER_UTT_MAX_TOKENS
+from ...config.websocket import WS_ERROR_TEXT_TOO_LONG
 from ...execution.executor import run_execution
 from src.runtime.dependencies import RuntimeDeps
 from ...execution.tool.runner import run_toolcall
 from ...execution.tool.parser import parse_tool_result
 from ...execution.chat.runner import run_chat_generation
+from ...execution.chat.prompt_budget import fit_chat_prompt_to_budget
+from src.handlers.websocket.errors import send_error
 from ...handlers.websocket.helpers import send_toolcall, safe_send_flat, stream_chat_response
 
 if TYPE_CHECKING:
@@ -40,7 +43,7 @@ async def _run_sequential(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDe
         plan.request_id,
         plan.static_prefix,
         plan.runtime_text,
-        plan.history_turns,
+        plan.history_messages,
         chat_user_utt,
         tool_user_utt=plan.tool_user_utt,
         history_turn_id=plan.history_turn_id,
@@ -58,24 +61,36 @@ async def _run_chat_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDep
     if runtime_deps.chat_engine is None or runtime_deps.chat_tokenizer is None:
         raise RuntimeError("Chat-only execution requires chat engine and chat tokenizer")
     chat_user_utt = plan.chat_user_utt or ""
+    try:
+        prompt_fit = fit_chat_prompt_to_budget(
+            plan.static_prefix,
+            plan.runtime_text,
+            plan.history_messages,
+            chat_user_utt,
+            runtime_deps.chat_tokenizer,
+            max_prompt_tokens=CHAT_MAX_LEN,
+            max_user_tokens=USER_UTT_MAX_TOKENS,
+        )
+    except ValueError as exc:
+        await send_error(ws, code=WS_ERROR_TEXT_TOO_LONG, message=str(exc))
+        return
     logger.info("handle_start: chat-only streaming")
+    history_user_utt, _ = runtime_deps.session_handler.normalize_user_utterances(plan.state, prompt_fit.chat_user_utt)
     final_text = await stream_chat_response(
         ws,
         run_chat_generation(
             plan.state,
-            plan.static_prefix,
-            plan.runtime_text,
-            plan.history_turns,
-            chat_user_utt,
+            prompt_fit.prompt,
             engine=runtime_deps.chat_engine,
             chat_tokenizer=runtime_deps.chat_tokenizer,
             request_id=plan.request_id,
             sampling_overrides=plan.sampling_overrides,
+            prompt_token_count=prompt_fit.prompt_tokens,
         ),
         plan.state,
-        chat_user_utt,
+        prompt_fit.chat_user_utt,
         history_turn_id=plan.history_turn_id,
-        history_user_utt=chat_user_utt,
+        history_user_utt=history_user_utt,
         session_handler=runtime_deps.session_handler,
     )
     logger.info("handle_start: chat-only done chars=%s", len(final_text))
@@ -87,13 +102,17 @@ async def _run_tool_only(ws: WebSocket, plan: TurnPlan, runtime_deps: RuntimeDep
         raise RuntimeError("Tool-only execution requires tool adapter")
     logger.info("handle_start: tool-only routing")
     try:
-        tool_user_utt = plan.tool_user_utt or plan.chat_user_utt or ""
+        tool_user_utt, tool_user_history = runtime_deps.session_handler.prepare_tool_turn(
+            plan.state,
+            plan.tool_user_utt or plan.chat_user_utt or "",
+            turn_id=plan.history_turn_id,
+        )
         tool_res = await asyncio.wait_for(
             run_toolcall(
                 plan.state,
-                session_handler=runtime_deps.session_handler,
                 tool_adapter=runtime_deps.tool_adapter,
                 tool_user_utt=tool_user_utt,
+                tool_user_history=tool_user_history,
             ),
             timeout=TOOL_TIMEOUT_S,
         )

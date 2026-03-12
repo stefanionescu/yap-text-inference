@@ -72,7 +72,6 @@ class _StartMessage(_VersionedMessage):
     type: Literal["start"]
     gender: str | None = None
     personality: str | None = None
-    user_utterance: str | None = ""
     history: list[_HistoryItem] = Field(default_factory=list)
     chat_prompt: str | None = None
     sampling: dict[str, Any] | None = None

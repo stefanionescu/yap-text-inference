@@ -61,10 +61,12 @@ async def build_runtime_deps() -> RuntimeDeps:
         _build_tool_adapter(),
     )
 
-    tool_budget = tool_adapter.max_history_tokens if tool_adapter else None
+    tool_history_budget = tool_adapter.max_history_tokens if tool_adapter else None
+    tool_input_budget = tool_adapter.max_input_tokens if tool_adapter else None
     session_handler = SessionHandler(
         chat_engine=chat_engine,
-        tool_history_budget=tool_budget,
+        tool_history_budget=tool_history_budget,
+        tool_input_budget=tool_input_budget,
         chat_tokenizer=chat_tokenizer,
         tool_tokenizer=tool_tokenizer,
     )

@@ -33,7 +33,7 @@ Usage:
     from src.tool import get_tool_adapter
 
     adapter = get_tool_adapter()  # configured during runtime bootstrap
-    tool_user_history = session_handler.get_tool_history_text(state)
+    tool_user_utt, tool_user_history = session_handler.prepare_tool_turn(state, raw_user_utt)
     result = adapter.run_tool_inference(tool_user_utt, tool_user_history)
 """
 

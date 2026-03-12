@@ -9,11 +9,11 @@ from .config import resolve_screen_prefix
 from .time import format_session_timestamp
 from src.state.session import SessionState
 from ...tokens.prefix import strip_screen_prefix
+from src.execution.tool.prompt_budget import fit_tool_input_to_budget
 from .history import HistoryController, HistoryRuntimeConfig, build_history_runtime_config
 from src.config import (
     CHAT_MODEL,
     TOOL_MODEL,
-    USER_UTT_MAX_TOKENS,
     DEFAULT_CHECK_SCREEN_PREFIX,
     DEFAULT_SCREEN_CHECKED_PREFIX,
 )
@@ -42,6 +42,7 @@ class SessionHandler:
         *,
         chat_engine: BaseEngine | None = None,
         tool_history_budget: int | None = None,
+        tool_input_budget: int | None = None,
         chat_tokenizer: FastTokenizer | None = None,
         tool_tokenizer: FastTokenizer | None = None,
         history_config: HistoryRuntimeConfig | None = None,
@@ -50,6 +51,7 @@ class SessionHandler:
         self._chat_tokenizer = chat_tokenizer
         self._tool_tokenizer = tool_tokenizer
         self._tool_history_budget = tool_history_budget
+        self._tool_input_budget = tool_input_budget if tool_input_budget is not None else tool_history_budget
         self._history_config = history_config or build_history_runtime_config()
         self._history = HistoryController(
             config=self._history_config,
@@ -100,21 +102,22 @@ class SessionHandler:
             return
         state.screen_followup_pending = bool(pending)
 
-    def append_user_utterance(
+    def normalize_user_utterances(
         self,
         state: SessionState,
         chat_user_utt: str,
         *,
         tool_user_utt: str | None = None,
-    ) -> str | None:
+    ) -> tuple[str, str | None]:
+        """Strip internal screen prefixes from chat/tool user variants."""
         check_screen_prefix = resolve_screen_prefix(state, DEFAULT_CHECK_SCREEN_PREFIX, is_checked=False)
         screen_checked_prefix = resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
-        normalized_user = strip_screen_prefix(
+        normalized_chat = strip_screen_prefix(
             chat_user_utt or "",
             check_screen_prefix,
             screen_checked_prefix,
         )
-        normalized_tool_user = (
+        normalized_tool = (
             strip_screen_prefix(
                 tool_user_utt or "",
                 check_screen_prefix,
@@ -123,19 +126,56 @@ class SessionHandler:
             if tool_user_utt is not None
             else None
         )
-        return self._history.append_user_turn(state, normalized_user, tool_user_utt=normalized_tool_user)
+        return normalized_chat, normalized_tool
 
-    def append_history_turn(
+    def reserve_history_turn_id(
+        self,
+        state: SessionState,
+        chat_user_utt: str,
+        *,
+        tool_user_utt: str | None = None,
+    ) -> str | None:
+        """Reserve a stable tool-history id without mutating either history store."""
+        normalized_chat, normalized_tool = self.normalize_user_utterances(
+            state,
+            chat_user_utt,
+            tool_user_utt=tool_user_utt,
+        )
+        return self._history.reserve_turn_id(
+            chat_user_utt=normalized_chat,
+            tool_user_utt=normalized_tool,
+        )
+
+    def prepare_tool_turn(
+        self,
+        state: SessionState,
+        tool_user_utt: str,
+        *,
+        turn_id: str | None = None,
+    ) -> tuple[str, str]:
+        """Fit/store the tool-side user text exactly once and return prior fitted history."""
+        normalized_chat, normalized_tool = self.normalize_user_utterances(
+            state,
+            tool_user_utt,
+            tool_user_utt=tool_user_utt,
+        )
+        tool_user = normalized_tool if normalized_tool is not None else normalized_chat
+        prompt_fit = fit_tool_input_to_budget(
+            self._history.get_tool_user_texts(state),
+            tool_user,
+            self._tool_tokenizer,
+            max_input_tokens=self._resolve_tool_input_budget(),
+        )
+        if prompt_fit.tool_user_utt:
+            self._history.append_tool_turn(state, prompt_fit.tool_user_utt, turn_id=turn_id)
+        return prompt_fit.tool_user_utt, prompt_fit.tool_user_history
+
+    def append_chat_turn(
         self, state: SessionState, chat_user_utt: str, assistant_text: str, *, turn_id: str | None = None
     ) -> str:
-        check_screen_prefix = resolve_screen_prefix(state, DEFAULT_CHECK_SCREEN_PREFIX, is_checked=False)
-        screen_checked_prefix = resolve_screen_prefix(state, DEFAULT_SCREEN_CHECKED_PREFIX, is_checked=True)
-        normalized_user = strip_screen_prefix(
-            chat_user_utt or "",
-            check_screen_prefix,
-            screen_checked_prefix,
-        )
-        return self._history.append_turn(state, normalized_user, assistant_text, turn_id=turn_id)
+        normalized_user, _ = self.normalize_user_utterances(state, chat_user_utt)
+        _ = turn_id
+        return self._history.append_chat_response(state, normalized_user, assistant_text)
 
     # ============================================================================
     # Request/task tracking
@@ -201,48 +241,21 @@ class SessionHandler:
         return await self.cleanup_session_requests(state, force=True)
 
     # ============================================================================
-    # Token budget helpers
+    # Token helpers
     # ============================================================================
-
-    def get_effective_chat_user_utt_max_tokens(self, state: SessionState | None, *, for_followup: bool = False) -> int:
-        """Get the effective max tokens for chat user utterance after accounting for prefix."""
-        if state is None:
-            prefix = DEFAULT_SCREEN_CHECKED_PREFIX if for_followup else DEFAULT_CHECK_SCREEN_PREFIX
-            return max(1, USER_UTT_MAX_TOKENS - self._count_prefix_tokens(prefix))
-        prefix_tokens = state.screen_checked_prefix_tokens if for_followup else state.check_screen_prefix_tokens
-        return max(1, USER_UTT_MAX_TOKENS - prefix_tokens)
-
-    def trim_chat_user_utterance(self, chat_user_utt: str, max_tokens: int) -> str:
-        """Trim a chat user utterance using chat-side tokenizer semantics."""
-        text = chat_user_utt or ""
-        if max_tokens <= 0 or not text:
-            return ""
-        if self._history_config.deploy_chat and self._chat_tokenizer is not None:
-            return self._chat_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
-        if self._history_config.deploy_tool and self._tool_tokenizer is not None:
-            return self._tool_tokenizer.trim(text, max_tokens=max_tokens, keep="start")
-        return text
-
-    def get_effective_tool_user_utt_max_tokens(self) -> int:
-        """Get max tokens allowed for tool-side user utterance trimming."""
-        if self._tool_history_budget is not None:
-            return max(1, int(self._tool_history_budget))
-        return max(1, USER_UTT_MAX_TOKENS)
-
-    def trim_tool_user_utterance(self, tool_user_utt: str, max_tokens: int) -> str:
-        """Trim a user utterance using the tool tokenizer semantics."""
-        text = tool_user_utt or ""
-        if max_tokens <= 0 or not text:
-            return ""
-        if self._tool_tokenizer is not None:
-            return self._tool_tokenizer.trim(text, max_tokens=max_tokens, keep="end")
-        return text
 
     def count_chat_tokens(self, text: str) -> int:
         """Count chat tokens using the configured runtime chat tokenizer."""
         if self._chat_tokenizer is None:
             raise RuntimeError("Chat tokenizer is not configured")
         return self._chat_tokenizer.count(text)
+
+    def _resolve_tool_input_budget(self) -> int:
+        if self._tool_input_budget is not None:
+            return max(1, int(self._tool_input_budget))
+        if self._tool_history_budget is not None:
+            return max(1, int(self._tool_history_budget))
+        return 1
 
     def _count_prefix_tokens(self, prefix: str | None) -> int:
         if not prefix or not self._history_config.deploy_chat or self._chat_tokenizer is None:

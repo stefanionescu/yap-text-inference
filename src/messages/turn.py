@@ -11,16 +11,19 @@ from typing import Any, Literal
 from collections.abc import Callable
 from .tasks import spawn_session_task
 from src.config import CHAT_PROMPT_MAX_TOKENS
+from src.config.websocket import WS_STATUS_OK
 from .start.dispatch import dispatch_execution
 from src.telemetry.sentry import capture_error
 from src.runtime.dependencies import RuntimeDeps
 from src.handlers.websocket.errors import send_error
+from src.handlers.websocket.helpers import safe_send_flat
 from .start.sampling import extract_sampling_overrides
 from src.handlers.session.manager import SessionHandler
 from .input import normalize_gender, normalize_personality
 from src.handlers.session.config import update_session_config
 from src.telemetry.phases import record_phase_error, record_phase_latency
-from .plan_builders import _build_start_turn_plan, _build_message_turn_plan
+from .plan_builders import _build_message_turn_plan
+from .start.history import resolve_history
 from src.config.websocket import WS_ERROR_INVALID_MESSAGE, WS_ERROR_INVALID_PAYLOAD, WS_ERROR_INVALID_SETTINGS
 from .validators import (
     ValidationError,
@@ -125,22 +128,21 @@ def _resolve_start_inputs(
     return gender, personality, chat_prompt, sampling_overrides, check_screen_prefix, screen_checked_prefix
 
 
-async def _plan_start_turn(
+async def _bootstrap_start_turn(
     ws: WebSocket,
     msg: dict[str, Any],
     state,
     *,
     session_handler: SessionHandler,
-) -> TurnPlan | None:
+) -> bool:
     t0 = time.perf_counter()
     try:
         session_handler.initialize_session(state)
         deploy_chat = session_handler.history_config.deploy_chat
         logger.info(
-            "WS recv: start gender=%s len(history)=%s len(user)=%s",
+            "WS recv: start gender=%s len(history)=%s",
             msg.get("gender"),
             len(msg.get("history", [])),
-            len(msg.get("user_utterance", "")),
         )
 
         try:
@@ -155,7 +157,7 @@ async def _plan_start_turn(
             capture_error(err)
             record_phase_error("validate", "invalid_start")
             await _close_with_validation_error(ws, err)
-            return None
+            return False
 
         sampling_payload = sampling_overrides if deploy_chat else None
         if deploy_chat and sampling_payload is None:
@@ -170,14 +172,9 @@ async def _plan_start_turn(
             check_screen_prefix=check_screen_prefix,
             screen_checked_prefix=screen_checked_prefix,
         )
-        cfg = copy.deepcopy(state.meta)
-        return _build_start_turn_plan(
-            state,
-            msg,
-            cfg,
-            session_handler=session_handler,
-            sampling_overrides=sampling_overrides,
-        )
+        resolve_history(session_handler, state, msg)
+        await safe_send_flat(ws, "done", status=WS_STATUS_OK)
+        return True
     finally:
         record_phase_latency("validate", time.perf_counter() - t0)
 
@@ -240,15 +237,14 @@ async def handle_turn_message(
     msg_type: Literal["start", "message"],
     session_handler: SessionHandler,
     runtime_deps: RuntimeDeps,
-) -> None:
+) -> bool:
     """Handle one session turn message by planning + dispatching execution."""
     if msg_type == "start":
-        plan = await _plan_start_turn(ws, msg, state, session_handler=session_handler)
-    else:
-        plan = await _plan_message_turn(ws, msg, state, session_handler=session_handler)
+        return await _bootstrap_start_turn(ws, msg, state, session_handler=session_handler)
 
+    plan = await _plan_message_turn(ws, msg, state, session_handler=session_handler)
     if plan is None:
-        return
+        return False
 
     await spawn_session_task(
         ws,
@@ -257,6 +253,7 @@ async def handle_turn_message(
         operation=dispatch_execution(ws, plan, runtime_deps),
         session_handler=session_handler,
     )
+    return True
 
 
 __all__ = ["handle_turn_message"]

@@ -13,13 +13,14 @@ from src.handlers.session.parsing import (
 def test_parse_history_text_preserves_multiline_sections() -> None:
     history_text = "User: hello\nAssistant: line one\nline two\nUser: second\nextra line\nAssistant: done"
 
-    turns = parse_history_text(history_text)
+    messages = parse_history_text(history_text)
 
-    assert len(turns) == 2
-    assert turns[0].user == "hello"
-    assert turns[0].assistant == "line one\nline two"
-    assert turns[1].user == "second\nextra line"
-    assert turns[1].assistant == "done"
+    assert [(message.role, message.content) for message in messages] == [
+        ("user", "hello"),
+        ("assistant", "line one\nline two"),
+        ("user", "second\nextra line"),
+        ("assistant", "done"),
+    ]
 
 
 def test_parse_history_as_tuples_returns_ordered_pairs() -> None:
@@ -28,9 +29,6 @@ def test_parse_history_as_tuples_returns_ordered_pairs() -> None:
     parsed = parse_history_as_tuples(history_text)
 
     assert parsed == [("one", "first"), ("two", "second")]
-
-
-# --- parse_history_for_tool ---
 
 
 def test_tool_each_user_msg_is_separate_turn() -> None:
@@ -76,19 +74,17 @@ def test_tool_empty_list() -> None:
     assert parse_history_for_tool([]) == []
 
 
-# --- parse_history_for_chat ---
-
-
 def test_chat_consecutive_users_combined() -> None:
     messages = [
         {"role": "user", "content": "u1"},
         {"role": "user", "content": "u2"},
         {"role": "assistant", "content": "a1"},
     ]
-    turns = parse_history_for_chat(messages)
-    assert len(turns) == 1
-    assert turns[0].user == "u1\n\nu2"
-    assert turns[0].assistant == "a1"
+    parsed = parse_history_for_chat(messages)
+    assert [(message.role, message.content) for message in parsed] == [
+        ("user", "u1\n\nu2"),
+        ("assistant", "a1"),
+    ]
 
 
 def test_chat_consecutive_assistants_not_combined() -> None:
@@ -97,12 +93,12 @@ def test_chat_consecutive_assistants_not_combined() -> None:
         {"role": "assistant", "content": "a1"},
         {"role": "assistant", "content": "a2"},
     ]
-    turns = parse_history_for_chat(messages)
-    assert len(turns) == 2
-    assert turns[0].user == "u1"
-    assert turns[0].assistant == "a1"
-    assert turns[1].user == ""
-    assert turns[1].assistant == "a2"
+    parsed = parse_history_for_chat(messages)
+    assert [(message.role, message.content) for message in parsed] == [
+        ("user", "u1"),
+        ("assistant", "a1"),
+        ("assistant", "a2"),
+    ]
 
 
 def test_chat_drops_non_user_assistant_roles() -> None:
@@ -112,10 +108,11 @@ def test_chat_drops_non_user_assistant_roles() -> None:
         {"role": "function", "content": "fn"},
         {"role": "assistant", "content": "a1"},
     ]
-    turns = parse_history_for_chat(messages)
-    assert len(turns) == 1
-    assert turns[0].user == "u1"
-    assert turns[0].assistant == "a1"
+    parsed = parse_history_for_chat(messages)
+    assert [(message.role, message.content) for message in parsed] == [
+        ("user", "u1"),
+        ("assistant", "a1"),
+    ]
 
 
 def test_chat_validates_items() -> None:
@@ -126,24 +123,25 @@ def test_chat_validates_items() -> None:
         {"role": "user", "content": "valid"},
         {"role": "assistant", "content": "reply"},
     ]
-    turns = parse_history_for_chat(messages)
-    assert len(turns) == 1
-    assert turns[0].user == "valid"
-    assert turns[0].assistant == "reply"
+    parsed = parse_history_for_chat(messages)
+    assert [(message.role, message.content) for message in parsed] == [
+        ("user", "valid"),
+        ("assistant", "reply"),
+    ]
 
 
-def test_chat_trailing_user_flushed() -> None:
+def test_chat_trailing_user_preserved_as_user_message() -> None:
     messages = [
         {"role": "user", "content": "u1"},
         {"role": "assistant", "content": "a1"},
         {"role": "user", "content": "u2"},
     ]
-    turns = parse_history_for_chat(messages)
-    assert len(turns) == 2
-    assert turns[0].user == "u1"
-    assert turns[0].assistant == "a1"
-    assert turns[1].user == "u2"
-    assert turns[1].assistant == ""
+    parsed = parse_history_for_chat(messages)
+    assert [(message.role, message.content) for message in parsed] == [
+        ("user", "u1"),
+        ("assistant", "a1"),
+        ("user", "u2"),
+    ]
 
 
 def test_chat_empty_list() -> None:

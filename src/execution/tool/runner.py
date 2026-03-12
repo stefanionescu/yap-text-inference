@@ -16,29 +16,23 @@ from src.state.session import SessionState
 from src.telemetry.sentry import add_breadcrumb
 from src.telemetry.instruments import get_metrics
 from src.telemetry.phases import record_phase_latency
-from src.handlers.session.manager import SessionHandler
 
 logger = logging.getLogger(__name__)
 
 
 async def _run_tool_call(
-    state: SessionState,
+    _state: SessionState,
     req_id: str,
     *,
     tool_user_utt: str,
+    tool_user_history: str,
     tool_adapter: ToolAdapter,
-    session_handler: SessionHandler,
 ) -> dict[str, Any]:
     """Run tool call using tool model."""
     t0 = time.perf_counter()
 
-    tool_history = session_handler._history.get_tool_history_text(
-        state,
-        include_latest=False,
-    )
-
     def _classify_sync() -> str:
-        return tool_adapter.run_tool_inference(tool_user_utt, tool_history)
+        return tool_adapter.run_tool_inference(tool_user_utt, tool_user_history)
 
     loop = asyncio.get_running_loop()
     text = await loop.run_in_executor(None, _classify_sync)
@@ -56,9 +50,10 @@ async def _run_tool_call(
 
 async def run_toolcall(
     state: SessionState,
-    session_handler: SessionHandler,
     tool_adapter: ToolAdapter,
     tool_user_utt: str,
+    *,
+    tool_user_history: str = "",
     request_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute tool classification pipeline."""
@@ -68,8 +63,8 @@ async def run_toolcall(
         state,
         req_id,
         tool_user_utt=tool_user_utt,
+        tool_user_history=tool_user_history,
         tool_adapter=tool_adapter,
-        session_handler=session_handler,
     )
 
 
@@ -77,7 +72,7 @@ def launch_tool_request(
     state: SessionState,
     *,
     tool_user_utt: str,
-    session_handler: SessionHandler,
+    tool_user_history: str,
     tool_adapter: ToolAdapter,
 ) -> tuple[str, asyncio.Task[dict[str, Any]]]:
     """Create a tool request task."""
@@ -85,9 +80,9 @@ def launch_tool_request(
     tool_task = asyncio.create_task(
         run_toolcall(
             state,
-            session_handler=session_handler,
             tool_adapter=tool_adapter,
             tool_user_utt=tool_user_utt,
+            tool_user_history=tool_user_history,
             request_id=tool_req_id,
         )
     )

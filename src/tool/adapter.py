@@ -100,8 +100,9 @@ class ToolAdapter:
             dtype=self.dtype,
             compile_model=compile_model,
         )
+        self.max_input_tokens = self._backend.max_length
         # Clamp history budget to the backend's effective tokenizer/model max length.
-        self.max_history_tokens = min(resolved_history_tokens, self._backend.max_length)
+        self.max_history_tokens = min(resolved_history_tokens, self.max_input_tokens)
         self._batch = BatchExecutor(
             self._backend.infer,
             max_batch_size=batch_max_size,
@@ -122,7 +123,7 @@ class ToolAdapter:
             "tool: token limits model=%s config_max_length=%s backend_max_length=%s history_tokens=%s",
             model_path,
             self._model_info.max_length,
-            self._backend.max_length,
+            self.max_input_tokens,
             self.max_history_tokens,
         )
 

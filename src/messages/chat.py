@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from src.state.session import HistoryTurn
+from src.state.session import ChatMessage
 from src.tokens.tokenizer import FastTokenizer
 from ..config.chat import CHAT_TEMPLATE_ENABLE_THINKING
 
@@ -31,7 +31,7 @@ _CHAT_TEMPLATE_DEFAULT_KWARGS = {"enable_thinking": CHAT_TEMPLATE_ENABLE_THINKIN
 
 def _build_messages(
     system_prompt: str,
-    history_turns: Sequence[HistoryTurn],
+    history_messages: Sequence[ChatMessage],
     chat_user_utt: str | None,
 ) -> list[dict[str, str]]:
     """Build a list of message dicts for the chat template.
@@ -57,12 +57,9 @@ def _build_messages(
     if system_prompt.strip():
         messages.append({"role": "system", "content": system_prompt.strip()})
 
-    # History turns
-    for turn in history_turns:
-        if turn.user:
-            _append_message("user", turn.user)
-        if turn.assistant:
-            _append_message("assistant", turn.assistant)
+    # Stored chat history
+    for message in history_messages:
+        _append_message(message.role, message.content)
 
     # Current user message
     if chat_user_utt is not None:
@@ -117,25 +114,25 @@ def _compose_system_prompt(static_prefix: str, runtime_text: str) -> str:
 def build_chat_prompt_with_prefix(
     static_prefix: str,
     runtime_text: str,
-    history_turns: list[HistoryTurn],
+    history_messages: list[ChatMessage],
     chat_user_utt: str,
     chat_tokenizer: FastTokenizer,
 ) -> str:
     """Build the chat prompt using the tokenizer's native chat template."""
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
-    messages = _build_messages(system_prompt, history_turns, chat_user_utt)
+    messages = _build_messages(system_prompt, history_messages, chat_user_utt)
     return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 
 def build_chat_warm_prompt(
     static_prefix: str,
     runtime_text: str,
-    history_turns: list[HistoryTurn],
+    history_messages: list[ChatMessage],
     chat_tokenizer: FastTokenizer,
 ) -> str:
     """Build a prompt that primes persona + history without a fresh user query."""
     system_prompt = _compose_system_prompt(static_prefix, runtime_text)
-    messages = _build_messages(system_prompt, history_turns, chat_user_utt=None)
+    messages = _build_messages(system_prompt, history_messages, chat_user_utt=None)
     return _apply_chat_template(chat_tokenizer, messages, add_generation_prompt=True)
 
 

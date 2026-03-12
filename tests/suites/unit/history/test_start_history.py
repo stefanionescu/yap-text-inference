@@ -1,13 +1,13 @@
-"""Unit tests for start-message history/token accounting helpers."""
+"""Unit tests for start-message history and user-normalization helpers."""
 
 from __future__ import annotations
 
-from src.tokens import count_tokens_chat
-from src.state.session import SessionState
+from src.state.session import ChatMessage, SessionState
 import src.messages.start.history as start_history
 from src.handlers.session.manager import SessionHandler
 from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.handlers.session.history.settings import HistoryRuntimeConfig
+from src.config import DEFAULT_CHECK_SCREEN_PREFIX
 
 
 def _history_config(
@@ -53,14 +53,14 @@ def _make_state(handler: SessionHandler) -> SessionState:
 
 
 def _history_turn_count(state: SessionState) -> int:
-    if state.history_turns is not None:
-        return len(state.history_turns)
+    if state.chat_history_messages is not None:
+        return len(state.chat_history_messages)
     if state.tool_history_turns is not None:
         return len(state.tool_history_turns)
     return 0
 
 
-def test_resolve_history_renders_turns() -> None:
+def test_resolve_history_renders_messages() -> None:
     with use_local_tokenizers():
         handler = _build_session_handler()
         state = _make_state(handler)
@@ -73,10 +73,14 @@ def test_resolve_history_renders_turns() -> None:
             ]
         }
 
-        turns = start_history.resolve_history(handler, state, msg)
+        messages = start_history.resolve_history(handler, state, msg)
 
-        assert turns[0].user == "hello"
-        assert turns[-1].assistant == "great"
+        assert [(message.role, message.content) for message in messages] == [
+            ("user", "hello"),
+            ("assistant", "hi"),
+            ("user", "how are you"),
+            ("assistant", "great"),
+        ]
 
 
 def test_resolve_history_trims_when_over_budget() -> None:
@@ -94,25 +98,29 @@ def test_resolve_history_trims_when_over_budget() -> None:
             ]
         }
 
-        turns = start_history.resolve_history(handler, state, msg)
+        messages = start_history.resolve_history(handler, state, msg)
 
-        assert state.history_turns is not None
-        assert len(state.history_turns) < 3
-        assert isinstance(turns, list)
+        assert state.chat_history_messages is not None
+        assert len(state.chat_history_messages) < 6
+        assert isinstance(messages, list)
 
 
-def test_trim_chat_user_utterance_uses_effective_budget() -> None:
+def test_resolve_user_utterances_normalizes_without_chat_trimming() -> None:
     with use_local_tokenizers():
         handler = _build_session_handler()
         state = _make_state(handler)
         state.check_screen_prefix_tokens = 495
 
-        trimmed = start_history.trim_chat_user_utterance(handler, state, "alpha bravo charlie")
-        assert count_tokens_chat(trimmed) <= 5
+        chat_user, tool_user = start_history.resolve_user_utterances(
+            handler,
+            state,
+            f"{DEFAULT_CHECK_SCREEN_PREFIX} alpha bravo charlie",
+        )
+        assert chat_user == "alpha bravo charlie"
+        assert tool_user == "alpha bravo charlie"
 
 
 def test_resolve_history_allows_seed_on_fresh_session() -> None:
-    """Fresh session with 0 turns accepts client-sent history."""
     with use_local_tokenizers():
         handler = _build_session_handler()
         state = _make_state(handler)
@@ -126,14 +134,13 @@ def test_resolve_history_allows_seed_on_fresh_session() -> None:
             ]
         }
 
-        turns = start_history.resolve_history(handler, state, msg)
+        messages = start_history.resolve_history(handler, state, msg)
 
-        assert any(turn.user == "hello" for turn in turns)
-        assert _history_turn_count(state) == 1
+        assert any(message.content == "hello" for message in messages)
+        assert _history_turn_count(state) == 2
 
 
 def test_resolve_history_ignores_history_after_first_request() -> None:
-    """Guard: if a session already has turns, client-sent history is ignored."""
     with use_local_tokenizers():
         handler = _build_session_handler()
         state = _make_state(handler)
@@ -144,10 +151,10 @@ def test_resolve_history_ignores_history_after_first_request() -> None:
                 {"role": "assistant", "content": "first hi"},
             ]
         }
-        turns_1 = start_history.resolve_history(handler, state, seed_msg)
-        assert any(turn.user == "first hello" for turn in turns_1)
+        messages_1 = start_history.resolve_history(handler, state, seed_msg)
+        assert any(message.content == "first hello" for message in messages_1)
 
-        handler.append_user_utterance(state, "follow-up")
+        handler.append_chat_turn(state, "follow-up", "")
         assert _history_turn_count(state) > 0
 
         second_msg = {
@@ -156,14 +163,13 @@ def test_resolve_history_ignores_history_after_first_request() -> None:
                 {"role": "assistant", "content": "OVERWRITE ATTEMPT"},
             ]
         }
-        turns_2 = start_history.resolve_history(handler, state, second_msg)
+        messages_2 = start_history.resolve_history(handler, state, second_msg)
 
-        assert not any("OVERWRITE ATTEMPT" in turn.user for turn in turns_2)
-        assert any(turn.user == "first hello" for turn in turns_2)
+        assert not any("OVERWRITE ATTEMPT" in message.content for message in messages_2)
+        assert any(message.content == "first hello" for message in messages_2)
 
 
 def test_resolve_history_tool_only_trims_at_import() -> None:
-    """Tool-only mode trims tool_history_turns eagerly at import time."""
     with use_local_tokenizers():
         handler = _build_session_handler(deploy_chat=False, deploy_tool=True, tool_history_budget=10)
         state = SessionState(meta={})
@@ -176,14 +182,13 @@ def test_resolve_history_tool_only_trims_at_import() -> None:
         msg = {"history": messages}
         start_history.resolve_history(handler, state, msg)
 
-        assert state.history_turns is None
+        assert state.chat_history_messages is None
         assert state.tool_history_turns is not None
         assert len(state.tool_history_turns) < 10
         assert len(state.tool_history_turns) >= 1
 
 
 def test_resolve_history_tool_only_keeps_single_oversized_seed_turn() -> None:
-    """Tool-only seed history keeps a single oversized user turn as-is."""
     with use_local_tokenizers():
         handler = _build_session_handler(deploy_chat=False, deploy_tool=True, tool_history_budget=3)
         state = SessionState(meta={})
@@ -202,7 +207,6 @@ def test_resolve_history_tool_only_keeps_single_oversized_seed_turn() -> None:
 
 
 def test_resolve_history_both_modes_stores_chat_and_tool_separately() -> None:
-    """Both mode keeps assistant turns in chat store and user-only turns in tool store."""
     with use_local_tokenizers():
         handler = _build_session_handler(deploy_chat=True, deploy_tool=True, tool_history_budget=8)
         state = SessionState(meta={})
@@ -212,13 +216,39 @@ def test_resolve_history_both_modes_stores_chat_and_tool_separately() -> None:
             "history": [
                 {"role": "user", "content": "hello one"},
                 {"role": "assistant", "content": "hi"},
+                {"role": "assistant", "content": "more"},
                 {"role": "user", "content": "show this please"},
-                {"role": "assistant", "content": "ok"},
             ]
         }
         start_history.resolve_history(handler, state, msg)
 
-        assert state.history_turns is not None
+        assert state.chat_history_messages is not None
         assert state.tool_history_turns is not None
-        assert any((turn.assistant or "").strip() for turn in state.history_turns)
-        assert all((turn.assistant or "") == "" for turn in state.tool_history_turns)
+        assert [(message.role, message.content) for message in state.chat_history_messages] == [
+            ("user", "hello one"),
+            ("assistant", "hi"),
+            ("assistant", "more"),
+            ("user", "show this please"),
+        ]
+        assert [turn.user for turn in state.tool_history_turns] == ["hello one", "show this please"]
+
+
+def test_resolve_history_merges_consecutive_users_on_import() -> None:
+    with use_local_tokenizers():
+        handler = _build_session_handler()
+        state = _make_state(handler)
+
+        msg = {
+            "history": [
+                {"role": "user", "content": "one"},
+                {"role": "user", "content": "two"},
+                {"role": "assistant", "content": "reply"},
+            ]
+        }
+
+        messages = start_history.resolve_history(handler, state, msg)
+
+        assert messages == [
+            ChatMessage(role="user", content="one\n\ntwo"),
+            ChatMessage(role="assistant", content="reply"),
+        ]
