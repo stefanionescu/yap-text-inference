@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from collections import deque
 from importlib import metadata
-from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string, require_string_list
+from linting.repo import ROOT, rel, report, require_string, load_config_doc, require_section, require_string_list
 
 _LICENSES_CONFIG = load_config_doc("licenses.toml")
 _LICENSES_LABEL = "linting/config/licenses.toml"
@@ -21,12 +21,10 @@ _EDITABLE_PREFIXES = tuple(require_string_list(_PARSING_RULES, "editable_prefixe
 _DIRECT_REFERENCE_SEPARATOR = require_string(_PARSING_RULES, "direct_reference_separator", _PARSING_LABEL)
 _EGG_FRAGMENT = require_string(_PARSING_RULES, "egg_fragment", _PARSING_LABEL)
 _UNKNOWN_LICENSES = {
-    value.strip().lower()
-    for value in require_string_list(_PARSING_RULES, "unknown_licenses", _PARSING_LABEL)
+    value.strip().lower() for value in require_string_list(_PARSING_RULES, "unknown_licenses", _PARSING_LABEL)
 }
 _LICENSE_FILE_NAMES = tuple(
-    value.strip().lower()
-    for value in require_string_list(_PARSING_RULES, "license_file_names", _PARSING_LABEL)
+    value.strip().lower() for value in require_string_list(_PARSING_RULES, "license_file_names", _PARSING_LABEL)
 )
 
 

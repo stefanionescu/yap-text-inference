@@ -15,7 +15,7 @@ import ast
 import sys
 import argparse
 from pathlib import Path
-from linting.repo import load_config_doc, report, require_section, require_string_list
+from linting.repo import report, load_config_doc, require_section, require_string_list
 
 _STRUCTURE_RULES = load_config_doc("rules", "structure.toml")
 _STRUCTURE_CONFIG_LABEL = "linting/config/rules/structure.toml"

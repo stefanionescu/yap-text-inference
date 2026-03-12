@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 from dataclasses import dataclass
 from collections import defaultdict
-from linting.repo import SRC_DIR, load_config_doc, require_section, require_string
 from linting.python.common import iter_python_files
+from linting.repo import SRC_DIR, require_string, load_config_doc, require_section
 
 _IMPORT_RULES = load_config_doc("rules", "imports.toml")
 _IMPORT_CONFIG_LABEL = "linting/config/rules/imports.toml"

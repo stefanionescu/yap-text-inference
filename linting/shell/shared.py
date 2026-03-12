@@ -10,10 +10,10 @@ from linting.repo import (
     LINTING_DIR,
     SCRIPTS_DIR,
     rel,
-    load_config_doc,
-    iter_shell_files,
-    require_section,
     require_string,
+    load_config_doc,
+    require_section,
+    iter_shell_files,
     require_string_list,
 )
 
@@ -25,9 +25,7 @@ _SHARED_RULE_LABEL = f"{_SHELL_CONFIG_LABEL} [shared]"
 HOOK_ENTRYPOINTS = tuple(
     ROOT / raw_path for raw_path in require_string_list(_SHARED_RULES, "hook_entrypoints", _SHARED_RULE_LABEL)
 )
-FORCED_ENTRYPOINT_PREFIXES = tuple(
-    require_string_list(_SHARED_RULES, "forced_entrypoint_prefixes", _SHARED_RULE_LABEL)
-)
+FORCED_ENTRYPOINT_PREFIXES = tuple(require_string_list(_SHARED_RULES, "forced_entrypoint_prefixes", _SHARED_RULE_LABEL))
 NON_ENTRYPOINT_PREFIXES = tuple(require_string_list(_SHARED_RULES, "non_entrypoint_prefixes", _SHARED_RULE_LABEL))
 NON_ENTRYPOINT_DOCKER_INFIX = require_string(_SHARED_RULES, "non_entrypoint_docker_infix", _SHARED_RULE_LABEL)
 ENTRYPOINT_ROOTS = tuple(require_string_list(_SHARED_RULES, "entrypoint_roots", _SHARED_RULE_LABEL))

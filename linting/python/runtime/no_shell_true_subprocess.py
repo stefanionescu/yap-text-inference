@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import ast
 import sys
-from linting.repo import SRC_DIR, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
+from linting.repo import SRC_DIR, rel, report, load_config_doc, require_section, require_string_list
 
 _RUNTIME_RULES = load_config_doc("rules", "runtime.toml")
 _RUNTIME_CONFIG_LABEL = "linting/config/rules/runtime.toml"

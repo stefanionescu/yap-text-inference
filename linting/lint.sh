@@ -4,8 +4,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
-# shellcheck source=common.sh
-source "${ROOT_DIR}/linting/common.sh"
+# shellcheck source=bootstrap.sh
+source "${ROOT_DIR}/linting/bootstrap.sh"
 ensure_repo_python_env
 RUN_FIX=0
 RUN_FAST=0
@@ -114,11 +114,6 @@ run_code_full() {
   run_cmd "config-integrity" python -m linting.python.infra.config_integrity
 }
 
-# run_code - Run Python code linting and custom structural rules.
-run_code() {
-  run_code_full
-}
-
 # collect_shell_files - Populate the shared SHELL_FILES array for full-repo shell linting.
 collect_shell_files() {
   SHELL_FILES=()
@@ -146,16 +141,6 @@ run_shell_full() {
   run_cmd "shell-custom-rules" python -m linting.shell.run
 }
 
-# run_shell - Run shell linting and custom shell rules.
-run_shell() {
-  run_shell_full
-}
-
-# run_docs - Run documentation-oriented lint checks.
-run_docs() {
-  bash "${ROOT_DIR}/linting/docs/run.sh"
-}
-
 # run_docker_full - Run full-repo Docker-specific lint checks.
 run_docker_full() {
   cd "${ROOT_DIR}"
@@ -163,11 +148,6 @@ run_docker_full() {
     run_cmd "hadolint ${dockerfile}" bash linting/hadolint/run.sh --failure-threshold error "${dockerfile}"
   done < <(find docker -name Dockerfile | sort)
   run_cmd "dockerignore-policy" python -m linting.python.infra.dockerignore_policy
-}
-
-# run_docker - Run Docker-specific lint checks.
-run_docker() {
-  run_docker_full
 }
 
 # run_quality - Run structural and maintenance quality checks.
@@ -194,16 +174,16 @@ run_hooks() {
 
 case "${ONLY}" in
   code)
-    run_code
+    run_code_full
     ;;
   shell)
-    run_shell
+    run_shell_full
     ;;
   docs)
-    run_docs
+    bash "${ROOT_DIR}/linting/docs/run.sh"
     ;;
   docker)
-    run_docker
+    run_docker_full
     ;;
   quality)
     run_quality
@@ -212,11 +192,11 @@ case "${ONLY}" in
     run_hooks
     ;;
   "")
-    run_code
-    run_shell
+    run_code_full
+    run_shell_full
     if [[ ${RUN_FAST} -eq 0 ]]; then
-      run_docs
-      run_docker
+      bash "${ROOT_DIR}/linting/docs/run.sh"
+      run_docker_full
       run_quality
       run_hooks
     fi

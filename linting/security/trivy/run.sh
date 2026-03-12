@@ -139,7 +139,7 @@ run_trivy_docker() {
   local docker_target
   local image_tag
 
-  cache_dir="$(repo_cache_dir)"
+  cache_dir="$(tool_cache_dir)"
 
   case "${mode}" in
     config)

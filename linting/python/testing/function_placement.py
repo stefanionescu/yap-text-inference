@@ -10,8 +10,8 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from linting.repo import TESTS_DIR, rel, report, load_config_doc, require_section, require_string_list
 from linting.python.common import parse_source, iter_python_files
+from linting.repo import TESTS_DIR, rel, report, load_config_doc, require_section, require_string_list
 
 _TESTING_RULES = load_config_doc("rules", "testing.toml")
 _TESTING_CONFIG_LABEL = "linting/config/rules/testing.toml"

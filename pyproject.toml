@@ -29,13 +29,6 @@ ignore = ["D", "ANN", "COM812", "ISC001"]
 "tests/support/messages/*.py" = ["E501", "W", "B", "UP", "C4", "SIM", "N", "S", "PL"]
 "tests/support/messages/tool/*.py" = ["E501", "W", "B", "UP", "C4", "SIM", "N", "S", "PL"]
 
-[tool.ruff.lint.isort]
-combine-as-imports = true
-known-first-party = ["src", "tests", "linting"]
-length-sort = true
-length-sort-straight = true
-force-sort-within-sections = true
-
 [tool.ruff.lint.pylint]
 max-args = 15
 max-branches = 20

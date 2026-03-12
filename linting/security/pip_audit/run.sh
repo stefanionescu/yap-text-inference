@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # shellcheck source=../common.sh
 source "${SCRIPT_DIR}/../common.sh"
+ensure_repo_python_env
 
 cd "${REPO_ROOT}"
 

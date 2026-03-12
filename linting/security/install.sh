@@ -7,13 +7,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
-# link_tool - Symlink a versioned binary into the shared repo-local bin directory.
-link_tool() {
-  local binary_path="$1"
-  local tool_name="$2"
-  ln -sf "${binary_path}" "$(repo_bin_dir)/${tool_name}"
-}
-
 # install_gitleaks - Download and install the configured Gitleaks CLI version.
 install_gitleaks() {
   source_security_config "gitleaks"
@@ -31,7 +24,7 @@ install_gitleaks() {
   arch_name="$(resolve_arch "${GITLEAKS_ARCH_AMD64}" "${GITLEAKS_ARCH_ARM64}" "${GITLEAKS_TOOL_NAME}")"
   asset_name="${GITLEAKS_ARCHIVE_PREFIX}_${GITLEAKS_VERSION}_${os_name}_${arch_name}.tar.gz"
   release_url="${GITLEAKS_RELEASE_BASE_URL}/v${GITLEAKS_VERSION}"
-  tool_root="$(repo_tool_dir "${GITLEAKS_TOOL_NAME}")"
+  tool_root="$(tool_dir "${GITLEAKS_TOOL_NAME}")"
   version_dir="${tool_root}/${GITLEAKS_VERSION}"
   binary_path="${version_dir}/${GITLEAKS_TOOL_NAME}"
 
@@ -78,7 +71,7 @@ install_bearer() {
   arch_name="$(resolve_arch "${BEARER_ARCH_AMD64}" "${BEARER_ARCH_ARM64}" "${BEARER_TOOL_NAME}")"
   asset_name="${BEARER_ARCHIVE_PREFIX}_${BEARER_VERSION}_${os_name}_${arch_name}.tar.gz"
   release_url="${BEARER_RELEASE_BASE_URL}/v${BEARER_VERSION}"
-  tool_root="$(repo_tool_dir "${BEARER_TOOL_NAME}")"
+  tool_root="$(tool_dir "${BEARER_TOOL_NAME}")"
   version_dir="${tool_root}/${BEARER_VERSION}"
   binary_path="${version_dir}/${BEARER_TOOL_NAME}"
 
@@ -122,7 +115,7 @@ install_codeql() {
 
   asset_name="$(resolve_os "${CODEQL_ARCHIVE_DARWIN}" "${CODEQL_ARCHIVE_LINUX}" "${CODEQL_TOOL_NAME}")"
   checksum_name="${asset_name}.checksum.txt"
-  tool_root="$(repo_tool_dir "${CODEQL_INSTALL_SUBDIR}")"
+  tool_root="$(tool_dir "${CODEQL_INSTALL_SUBDIR}")"
   version_dir="${tool_root}/${CODEQL_VERSION}"
   binary_path="${version_dir}/${CODEQL_INSTALL_SUBDIR}/${CODEQL_TOOL_NAME}"
 

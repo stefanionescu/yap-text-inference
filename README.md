@@ -304,7 +304,8 @@ nox -s codeql
 ```
 
 The underlying shell entrypoints under `linting/` still exist for hook plumbing and focused debugging, but `nox` is the primary documented surface.
-The lint/security entrypoints use the repo-local `.venv` plus repo-local tool bins directly and fail fast if that bootstrap is missing.
+The full lint/security entrypoints still use the repo-local `.venv` plus repo-local tool bins directly and fail fast if that bootstrap is missing.
+Standalone binary and Docker wrappers such as `linting/shfmt/run.sh`, `linting/hadolint/run.sh`, `linting/semgrep/run.sh`, and `linting/security/gitleaks/run.sh` can resolve local, cached, or Docker-backed tools without requiring the repo `.venv` up front.
 `nox -s security` skips Trivy by default; set `ENABLE_TRIVY=1` to include config, filesystem, and scan-only image builds.
 Set `SKIP_CODEQL=1` when you need to bypass CodeQL locally.
 `nox -s codeql` writes raw SARIF to `linting/.tools/codeql/results/`.

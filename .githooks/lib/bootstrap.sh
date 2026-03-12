@@ -6,5 +6,5 @@ set -euo pipefail
 ROOT_DIR="${ROOT_DIR:-$(git rev-parse --show-toplevel)}"
 
 # shellcheck disable=SC1091  # lint:justify -- reason: hooks source the shared repo lint bootstrap to resolve repo-managed tooling -- ticket: N/A
-source "${ROOT_DIR}/linting/common.sh"
+source "${ROOT_DIR}/linting/bootstrap.sh"
 ensure_repo_python_env

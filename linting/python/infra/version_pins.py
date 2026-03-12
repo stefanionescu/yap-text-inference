@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 import json
 from pathlib import Path
-from linting.repo import ROOT, rel, report, load_config_doc, require_section, require_string, require_string_list
+from linting.repo import ROOT, rel, report, require_string, load_config_doc, require_section, require_string_list
 
 PACKAGE_JSON = ROOT / "package.json"
 _INFRA_RULES = load_config_doc("rules", "infra.toml")

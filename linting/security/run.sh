@@ -4,8 +4,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
-# shellcheck source=../common.sh
-source "${ROOT_DIR}/linting/common.sh"
+# shellcheck source=../bootstrap.sh
+source "${ROOT_DIR}/linting/bootstrap.sh"
 ensure_repo_python_env
 RUN_SONAR="${RUN_SONAR:-0}"
 ENABLE_TRIVY="${ENABLE_TRIVY:-0}"

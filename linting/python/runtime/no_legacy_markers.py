@@ -15,8 +15,7 @@ _LEGACY_RULE_LABEL = f"{_RUNTIME_CONFIG_LABEL} [no_legacy_markers]"
 TARGETS = [ROOT / value for value in require_string_list(_LEGACY_RULE, "targets", _LEGACY_RULE_LABEL)]
 ALLOWLIST = {ROOT / value for value in require_string_list(_LEGACY_RULE, "allowlist", _LEGACY_RULE_LABEL)}
 PATTERNS = [
-    re.compile(value, re.IGNORECASE)
-    for value in require_string_list(_LEGACY_RULE, "patterns", _LEGACY_RULE_LABEL)
+    re.compile(value, re.IGNORECASE) for value in require_string_list(_LEGACY_RULE, "patterns", _LEGACY_RULE_LABEL)
 ]
 
 

@@ -15,7 +15,7 @@ import sys
 import contextlib
 from pathlib import Path
 from linting.python.common import comment_lines, docstring_lines, iter_python_files
-from linting.repo import DOCKER_DIR, SCRIPTS_DIR, SRC_DIR, SRC_FILE_LINES, SHELL_FILE_LINES, rel, report
+from linting.repo import SRC_DIR, DOCKER_DIR, SCRIPTS_DIR, SRC_FILE_LINES, SHELL_FILE_LINES, rel, report
 
 
 def _is_barrel_init(filepath: Path) -> bool:

@@ -22,7 +22,7 @@ install_shfmt() {
   arch_name="$(resolve_arch "amd64" "arm64" "shfmt")"
   asset_name="shfmt_v${SHFMT_VERSION}_${os_name}_${arch_name}"
   release_url="https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}"
-  tool_root="$(repo_tool_dir "shfmt")"
+  tool_root="$(tool_dir "shfmt")"
   version_dir="${tool_root}/${SHFMT_VERSION}"
   binary_path="${version_dir}/shfmt"
 
@@ -63,7 +63,7 @@ install_hadolint() {
   arch_name="$(resolve_arch "x86_64" "arm64" "hadolint")"
   asset_name="hadolint-${os_name}-${arch_name}"
   release_url="https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}"
-  tool_root="$(repo_tool_dir "hadolint")"
+  tool_root="$(tool_dir "hadolint")"
   version_dir="${tool_root}/${HADOLINT_VERSION}"
   binary_path="${version_dir}/hadolint"
 

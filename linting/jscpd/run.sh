@@ -4,9 +4,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
-# shellcheck source=../common.sh
-source "${ROOT_DIR}/linting/common.sh"
-ensure_repo_python_env
+# shellcheck source=../bootstrap.sh
+source "${ROOT_DIR}/linting/bootstrap.sh"
+activate_repo_tool_paths
 
 if [[ ! -d ${ROOT_DIR}/node_modules ]]; then
   echo "error: repo JS tooling missing under ${ROOT_DIR}/node_modules" >&2

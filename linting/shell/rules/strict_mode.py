@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import sys
-from linting.repo import load_config_doc, report, require_int, require_section, require_string, require_string_list
 from linting.shell.shared import rel, is_entrypoint, iter_target_shell_files
+from linting.repo import report, require_int, require_string, load_config_doc, require_section, require_string_list
 
 _SHELL_RULES = load_config_doc("rules", "shell.toml")
 _SHELL_CONFIG_LABEL = "linting/config/rules/shell.toml"

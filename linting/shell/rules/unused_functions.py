@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import sys
-from linting.repo import load_config_doc, report, require_section, require_string_list
+from linting.repo import report, load_config_doc, require_section, require_string_list
 from linting.shell.parser import (
     violation,
     parse_functions,
