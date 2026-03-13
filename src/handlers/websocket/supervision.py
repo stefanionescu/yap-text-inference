@@ -1,4 +1,4 @@
-"""Session task supervision for background message execution."""
+"""WebSocket-scoped supervision for background turn execution."""
 
 from __future__ import annotations
 

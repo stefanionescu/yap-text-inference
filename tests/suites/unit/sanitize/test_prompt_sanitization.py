@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from src.messages.sanitize.prompt import sanitize_prompt
+from src.text.prompt import sanitize_prompt
 
 
 def test_sanitize_prompt_none_raises() -> None:

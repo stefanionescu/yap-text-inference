@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.state.session import SessionState
-import src.messages.start.history as start_history
+import src.messages.history as message_history
 from src.config import DEFAULT_SCREEN_CHECKED_PREFIX
 from src.handlers.session.manager import SessionHandler
 from src.handlers.session.history.settings import HistoryRuntimeConfig
@@ -23,11 +23,10 @@ def test_resolve_user_utterances_strips_followup_prefix_without_trimming() -> No
     state = SessionState(meta={})
     handler.initialize_session(state)
 
-    chat_user, tool_user = start_history.resolve_user_utterances(
+    chat_user, tool_user = message_history.resolve_user_utterances(
         handler,
         state,
         f"{DEFAULT_SCREEN_CHECKED_PREFIX} hello there",
-        for_followup=True,
     )
     assert chat_user == "hello there"
     assert tool_user == "hello there"

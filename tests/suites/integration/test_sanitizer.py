@@ -19,7 +19,7 @@ def _ensure_test_env() -> None:
 
 _ensure_test_env()
 
-from src.messages.sanitize.stream import StreamingSanitizer  # noqa: E402
+from src.text.stream import StreamingSanitizer  # noqa: E402
 
 
 def _stream_chunks(text: str, splits: Sequence[int]) -> str:

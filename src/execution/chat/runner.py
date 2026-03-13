@@ -15,13 +15,13 @@ import uuid
 from typing import Any
 from opentelemetry import trace
 from src.engines.base import BaseEngine
+from src.text import StreamingSanitizer
 from collections.abc import AsyncGenerator
 from src.state.session import SessionState
 from ...config.timeouts import CHAT_TIMEOUT_S
 from ...engines import create_sampling_params
 from src.tokens.tokenizer import FastTokenizer
 from src.telemetry.instruments import get_metrics
-from ...messages.sanitize import StreamingSanitizer
 from src.telemetry.phases import record_phase_latency
 from .controller import ChatStreamConfig, ChatStreamController
 from src.handlers.session.requests import is_request_cancelled

@@ -18,10 +18,12 @@ class TurnPlan:
     static_prefix: str
     runtime_text: str
     history_messages: list[ChatMessage]
+    deploy_chat: bool = False
+    deploy_tool: bool = False
     chat_user_utt: str | None = None
     tool_user_utt: str | None = None
     history_turn_id: str | None = None
-    sampling_overrides: dict[str, float | int] | None = None
+    sampling_overrides: dict[str, float | int | bool] | None = None
     apply_screen_checked_prefix: bool = False
 
 

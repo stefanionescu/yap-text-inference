@@ -19,8 +19,8 @@ type-checked before being included in the overrides dict.
 from __future__ import annotations
 
 from typing import Any
-from ..validators import ValidationError
-from ...config import (
+from .validators import ValidationError
+from src.config import (
     DEPLOY_CHAT,
     CHAT_MIN_P_MAX,
     CHAT_MIN_P_MIN,

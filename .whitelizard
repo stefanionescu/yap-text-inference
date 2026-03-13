@@ -1,7 +1,7 @@
 src/scripts/validation/cuda.py:validate_cuda_toolchain
 scripts/engines/trt/build.sh:build_engine
-src/messages/sanitize/stream.py:_sanitize_stream_chunk
-src/messages/start/sampling.py:extract_sampling_overrides
+src/text/stream.py:_sanitize_stream_chunk
+src/messages/sampling.py:extract_sampling_overrides
 src/quantization/vllm/core/llmcompressor.py:_persist_metadata
 src/quantization/vllm/core/quantizer.py:quantize_model
 src/quantization/vllm/utils/template.py:_resolve_calibration_fields

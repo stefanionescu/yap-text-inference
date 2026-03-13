@@ -3,14 +3,22 @@
 This package provides handlers for different WebSocket message types:
 
 turn.py:
-    Unified turn planner/handler for both 'start' and 'message' commands.
-    It validates payloads, builds a TurnPlan, and dispatches execution.
+    Unified public entrypoint for both 'start' and 'message' turn commands.
 
-start/:
-    Shared turn sub-components:
-    - dispatch.py: execution path routing
-    - history.py: history bootstrap + utterance trimming
-    - sampling.py: sampling parameter extraction
+start.py:
+    Session bootstrap for the initial start payload.
+
+message.py:
+    Message-turn planning for follow-up user turns.
+
+dispatch.py:
+    Execution path routing for validated turn plans.
+
+history.py:
+    Shared history seeding and user-utterance normalization.
+
+sampling.py:
+    Shared sampling parameter extraction.
 
 cancel.py:
     Handles request cancellation during streaming. Aborts the
@@ -19,12 +27,6 @@ cancel.py:
 validators.py:
     Input validation utilities shared across message handlers.
     Validates sampling parameters, token limits, and field formats.
-
-sanitize/:
-    Text sanitization for prompts and streamed output:
-    - prompt.py: Clean incoming prompts
-    - stream.py: Normalize generated text in real-time
-    - common.py: Shared sanitization patterns
 
 Import from submodules directly to avoid circular imports:
     from src.messages.turn import handle_turn_message

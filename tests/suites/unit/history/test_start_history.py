@@ -7,7 +7,7 @@ from src.handlers.session.manager import SessionHandler
 from src.state.session import ChatMessage, SessionState
 from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.handlers.session.history.settings import HistoryRuntimeConfig
-from src.messages.start.history import resolve_history, resolve_user_utterances
+from src.messages.history import resolve_history, resolve_user_utterances
 from tests.support.messages.unit import (
     CHAT_MESSAGES,
     HISTORY_PAYLOAD,

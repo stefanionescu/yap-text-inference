@@ -1,4 +1,4 @@
-"""Exports for prompt and streaming sanitizers."""
+"""Shared text-processing utilities used across runtime packages."""
 
 from .prompt import sanitize_prompt
 from .stream import StreamingSanitizer

@@ -4,9 +4,45 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from src.errors import ValidationError
-from .sanitize.prompt import sanitize_prompt
+from src.text.prompt import sanitize_prompt
+from src.config.filters import LETTERS_ONLY_PATTERN
 from src.config.limits import PERSONALITY_MAX_LEN, SCREEN_PREFIX_MAX_CHARS
-from .input import normalize_gender, normalize_personality, is_gender_empty_or_null, is_personality_empty_or_null
+
+
+def normalize_gender(val: str | None) -> str | None:
+    """Normalize gender input to standardized values ('female'|'male')."""
+    if val is None:
+        return None
+    v = val.strip().lower()
+    if v == "female":
+        return "female"
+    if v == "male":
+        return "male"
+    return None
+
+
+def is_gender_empty_or_null(val: str | None) -> bool:
+    """Check if gender is empty or null (before normalization)."""
+    return val is None or not val.strip()
+
+
+def normalize_personality(val: str | None) -> str | None:
+    """Normalize personality: letters-only, length-limited, lowercased."""
+    if val is None:
+        return None
+    v = val.strip()
+    if not v:
+        return None
+    if len(v) > PERSONALITY_MAX_LEN:
+        return None
+    if not LETTERS_ONLY_PATTERN.match(v):
+        return None
+    return v.lower()
+
+
+def is_personality_empty_or_null(val: str | None) -> bool:
+    """Check if personality is empty or null (before normalization)."""
+    return val is None or not val.strip()
 
 
 def validate_required_gender(raw_gender: str | None) -> str:
@@ -94,6 +130,10 @@ def validate_optional_prefix(
 
 __all__ = [
     "ValidationError",
+    "normalize_gender",
+    "is_gender_empty_or_null",
+    "normalize_personality",
+    "is_personality_empty_or_null",
     "validate_required_gender",
     "validate_required_personality",
     "require_prompt",

@@ -13,8 +13,8 @@ format numbers (+XX country code required).
 from __future__ import annotations
 
 import re
-from ...config.chat import DIGIT_WORDS
-from ...config.filters import EMAIL_PATTERN
+from ..config.chat import DIGIT_WORDS
+from ..config.filters import EMAIL_PATTERN
 from phonenumbers import PhoneNumberMatcher
 
 

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from .config import resolve_screen_prefix
 from .time import format_session_timestamp
 from ...tokens.prefix import strip_screen_prefix
-from src.state.session import ChatMessage, SessionState
+from src.state.session import ChatMessage, HistoryTurn, SessionState
 from src.execution.tool.prompt_budget import fit_tool_input_to_budget
 from src.execution.chat.prompt_budget import fit_chat_prompt_to_budget
 from .history import HistoryController, HistoryRuntimeConfig, build_history_runtime_config
@@ -87,8 +87,8 @@ class SessionHandler:
             }
         )
         # Cache default prefix token counts
-        state.check_screen_prefix_tokens = self._count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
-        state.screen_checked_prefix_tokens = self._count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
+        state.check_screen_prefix_tokens = self.count_prefix_tokens(DEFAULT_CHECK_SCREEN_PREFIX)
+        state.screen_checked_prefix_tokens = self.count_prefix_tokens(DEFAULT_SCREEN_CHECKED_PREFIX)
         state.screen_followup_pending = False
         return meta
 
@@ -205,6 +205,28 @@ class SessionHandler:
         raise ValueError("seed history exceeds exact context budget at session start")
 
     # ============================================================================
+    # History accessors
+    # ============================================================================
+
+    def get_chat_messages(self, state: SessionState) -> list[ChatMessage]:
+        """Get a copy of committed chat history messages."""
+        return self._history.get_chat_messages(state)
+
+    def set_mode_histories(
+        self,
+        state: SessionState,
+        *,
+        chat_messages: list[ChatMessage] | None = None,
+        tool_turns: list[HistoryTurn] | None = None,
+    ) -> str:
+        """Set imported chat/tool stores and apply import-time trimming."""
+        return self._history.set_mode_histories(
+            state,
+            chat_messages=chat_messages,
+            tool_turns=tool_turns,
+        )
+
+    # ============================================================================
     # Request/task tracking
     # ============================================================================
 
@@ -277,17 +299,18 @@ class SessionHandler:
             raise RuntimeError("Chat tokenizer is not configured")
         return self._chat_tokenizer.count(text)
 
+    def count_prefix_tokens(self, prefix: str | None) -> int:
+        """Count prefix tokens using the configured runtime chat tokenizer."""
+        if not prefix or not self._history_config.deploy_chat or self._chat_tokenizer is None:
+            return 0
+        return self._chat_tokenizer.count(f"{prefix.strip()} ")
+
     def _resolve_tool_input_budget(self) -> int:
         if self._tool_input_budget is not None:
             return max(1, int(self._tool_input_budget))
         if self._tool_history_budget is not None:
             return max(1, int(self._tool_history_budget))
         return 1
-
-    def _count_prefix_tokens(self, prefix: str | None) -> int:
-        if not prefix or not self._history_config.deploy_chat or self._chat_tokenizer is None:
-            return 0
-        return self._chat_tokenizer.count(f"{prefix.strip()} ")
 
 
 __all__ = ["SessionHandler"]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.messages.sanitize.verbalize import (
+from src.text.verbalize import (
     verbalize_email,
     verbalize_emails,
     verbalize_phone_digit,

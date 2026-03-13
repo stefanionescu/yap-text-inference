@@ -17,7 +17,7 @@ import html
 from .common import _strip_escaped_quotes
 from .suffix import compute_stable_and_tail_lengths
 from .verbalize import verbalize_emails, verbalize_phone_numbers
-from ...config.filters import (
+from ..config.filters import (
     EMOJI_PATTERN,
     EMDASH_PATTERN,
     DOT_RUN_PATTERN,

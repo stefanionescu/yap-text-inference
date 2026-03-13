@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.messages.sanitize.suffix import (
+from src.text.suffix import (
     email_suffix_len,
     phone_suffix_len,
     emoticon_suffix_len,

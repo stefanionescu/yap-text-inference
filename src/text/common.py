@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ...config.filters import ESCAPED_QUOTE_PATTERN
+from ..config.filters import ESCAPED_QUOTE_PATTERN
 
 
 def _strip_escaped_quotes(text: str) -> str:

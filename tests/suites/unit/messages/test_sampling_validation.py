@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 from src.errors import ValidationError
-import src.messages.start.sampling as sampling_mod
-from src.messages.start.sampling import _coerce_int, _coerce_float, extract_sampling_overrides
+import src.messages.sampling as sampling_mod
+from src.messages.sampling import _coerce_int, _coerce_float, extract_sampling_overrides
 
 # --- _coerce_float ---
 
