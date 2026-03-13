@@ -1,6 +1,6 @@
 # How to Work in This Repo
 
-These rules apply across the inference repository. Start here, then follow the narrower rule file for the area you are touching.
+These rules apply across the inference repository. Start here, then see [SPECIFIC.md](./SPECIFIC.md) for inference-specific layout, boundaries, and domain rules.
 
 ## Contents
 
@@ -13,7 +13,10 @@ These rules apply across the inference repository. Start here, then follow the n
 - [Documentation](#documentation)
 - [Secrets and Sensitive Data](#secrets-and-sensitive-data)
 - [Package Management](#package-management)
-- [Rule Map](#rule-map)
+- [Python](#python)
+- [Shell](#shell)
+- [Docker](#docker)
+- [Operations](#operations)
 
 ## Thinking Before Coding
 
@@ -183,15 +186,135 @@ JS-based lint tooling at the repo root is Bun-managed:
 
 `nox` remains the canonical Python-native command hub. Bun exists here only for the tiny remaining root JS toolchain, currently `jscpd`.
 
-## Rule Map
+## Python
 
-Use the narrower rule file when the task is concentrated in one area:
+### Module Design
 
-- [SPECIFIC.md](./SPECIFIC.md): repo layout, boundaries, and inference-specific priorities
-- [PYTHON.md](./PYTHON.md): Python module, config, state, and runtime rules
-- [RUNTIME.md](./RUNTIME.md): websocket, execution, telemetry, and runtime orchestration rules
-- [QUANTIZATION.md](./QUANTIZATION.md): quantization, metadata, licensing, and model-packaging rules
-- [OPERATIONS.md](./OPERATIONS.md): scripts, hooks, scanners, deployment-side, and ops rules
-- [SHELL.md](./SHELL.md): shell, hooks, and host-orchestration rules
-- [DOCKER.md](./DOCKER.md): Docker image, Dockerfile, and container-security rules
-- [TESTING.md](./TESTING.md): test layout, deterministic testing, and coverage rules
+- Start each module with a short docstring that says what the module owns.
+- Keep files below the repo policy limits. Split before a file approaches 300 lines or a function approaches 60 lines.
+- Prefer one stateful class per file. If a second class appears, confirm the file still has a single responsibility.
+- Keep constants, dataclasses, TypedDicts, and error imports near the top of the module.
+- Define `__all__` only when it adds value, and keep it at the bottom of the file.
+
+### Imports and Boundaries
+
+- Do not import from `tests` in production code.
+- Keep imports acyclic. If a new import creates a cycle, extract a shared type or helper into the correct lower layer.
+- `src/scripts` must compose through public APIs and must not import `src.engines` directly.
+- `src/engines` must not import `src.handlers`.
+- `src/config` must stay pure and must not reach into runtime orchestration packages.
+- `src/runtime` and `src.handlers.session` have extra isolation rules. Respect them instead of routing around them.
+
+If you are tempted to cross one of these boundaries, the ownership is probably wrong.
+
+### Config, State, and Errors
+
+- `src/config` exports constants, dataclasses, and resolved values only. No I/O, no environment mutation, no hidden runtime work.
+- Put shared runtime shapes in `src/state`. Reuse them instead of redefining dictionaries ad hoc.
+- Put runtime exceptions in `src/errors` and re-export public ones from `src/errors/__init__.py`.
+- Keep state construction explicit. When a snapshot changes, build a new value instead of mutating a widely shared object in place.
+
+### Runtime Safety
+
+- Do not perform work at import time.
+- Do not use lazy singleton patterns, module-level instance caches, or wrapper functions that hide shared global state.
+- Do not use `print` for runtime diagnostics. Use a module logger.
+- Do not use `subprocess` with `shell=True`.
+- Do not silence exceptions with empty `except` blocks. Either add context and re-raise or convert to a typed error.
+- Keep external I/O boundaries explicit and well-logged.
+
+### Naming and Structure
+
+- Use descriptive names. Generic names like `helpers`, `utils`, `misc`, `temp`, `helper`, or `process_data` are rejected outside allowlisted paths.
+- Keep public APIs narrow. Avoid wrapper functions that add no value.
+- Remove dead parameters, dead branches, and old compatibility shims instead of leaving them behind.
+- Prefer explicit dependency injection over reaching into module globals.
+
+## Shell
+
+### Entrypoints
+
+- Every executable shell entrypoint must start with `#!/usr/bin/env bash`.
+- Every executable shell entrypoint must enable `set -euo pipefail` near the top.
+- Keep shared library code in `scripts/lib/` or the local image script directory instead of duplicating blocks inline.
+- Treat hook scripts and security wrappers as production code. They are gates for the repo.
+
+### Structure
+
+- Keep shell files under the repo shell file limit of 300 lines.
+- Keep functions under the repo shell function limit of 100 lines.
+- Add a one-line doc comment above non-trivial functions in hooks and security wrappers.
+- If you disable a ShellCheck rule in hooks or security scripts, justify it on the same line.
+- Prefer arrays, quoted variables, and small helper functions over string-built command lines.
+
+### Safety
+
+- Avoid `eval`.
+- Do not embed inline Python in shell. Move non-trivial parsing or business logic into Python modules and call them from the shell layer.
+- Keep configuration defaults centralized in `scripts/config/` or a local readonly config block, not spread across multiple scripts.
+- Make destructive operations explicit and visible. Do not hide them behind vague function names.
+- When a shell workflow becomes stateful or heavily conditional, move the complex logic into Python and keep shell as orchestration only.
+
+### Hooks
+
+- `pre-commit` should stay fast.
+- `pre-push` is allowed to be heavier, but it still needs clear output and bounded scope.
+- Skip flags exist for emergencies, not for normal development.
+- Hook self-checks are part of the standard lint flow. Do not leave `.githooks/` exempt from the same standards the repo applies elsewhere.
+
+## Docker
+
+### Layout
+
+- Keep shared image logic in `docker/common/`.
+- Keep image-specific logic inside the image directory that owns it, such as `docker/trt/`, `docker/vllm/`, or `docker/tool/`.
+- Each image directory must keep its own README current.
+- Keep Docker-only Python helpers in `docker/`, not in `src/`.
+
+### Dockerfiles
+
+- Keep Dockerfiles focused on package installation, file copies, and entrypoint wiring.
+- Move non-trivial logic into scripts or Python helpers and call them from the Dockerfile.
+- Use non-root runtime users unless there is a documented reason not to.
+- Use `--no-install-recommends` for `apt-get install` unless there is a real reason to pull recommended packages.
+- Keep layers intentional and avoid hidden build-time side effects.
+
+### Policy
+
+- Use per-image `.dockerignore` files only. Do not add a root `.dockerignore`.
+- Do not duplicate the same download or setup flow across multiple image directories. Shared logic belongs in `docker/common/`.
+- Treat Docker changes as runtime behavior changes. If a Dockerfile affects startup, environment, ports, users, or mounted paths, update the corresponding README and verification steps.
+
+### Security
+
+- Docker changes must pass Hadolint and Trivy.
+- Do not bake secrets into images, Dockerfiles, or example commands.
+- Keep package versions pinned through the repo's normal dependency files or explicit Dockerfile arguments when needed.
+
+## Operations
+
+### Command Ownership
+
+- Keep orchestration in `scripts/` and `.githooks/`.
+- Keep scanner wrappers in `linting/security/`.
+- Keep repo policy and scanner configuration in `linting/config/`.
+- Keep Docker build/runtime concerns in `docker/`.
+
+Do not bury operational behavior inside random Python modules under `src/` when the change is really a host or CI-style concern.
+
+### Operational Discipline
+
+- Destructive behavior must be obvious from the script name and output.
+- Environment defaults should come from config files or a single local config block, not scattered literals.
+- Wrapper scripts should explain what they run and why they failed. Buffered error output is preferred over noisy streaming logs.
+- If a security tool supports a baseline or ignore file, keep the scope narrow and document the reason.
+
+### Security and Quality Gates
+
+- `nox -s security` is the canonical full local security gate.
+- `nox -s coverage` is the canonical Sonar-compatible coverage and test-report generator.
+- `linting/security/sonarqube/run.sh` must leave behind `.cache/security/sonarqube/sonar-report.md` and `.cache/security/sonarqube/sonar-todos.md`.
+- Hook stages must stay intentionally split: fast checks in `pre-commit`, heavier scans in `pre-push`.
+- Repo-local fallback installers or Dockerized scanners must stay version-pinned through config.
+- Gitleaks baseline updates must go through `bash linting/security/gitleaks/run.sh baseline`, not ad hoc JSON edits.
+- Trivy version bumps must update config pins first, then rerun the full security gate.

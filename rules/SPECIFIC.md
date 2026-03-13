@@ -1,6 +1,6 @@
 # Inference Repo-Specific Rules
 
-These rules describe how the inference project is organized. Use them together with the general rules.
+These rules describe how the inference project is organized and how its domain-specific subsystems work. Use them together with the [general rules](./GENERAL.md).
 
 ## Contents
 
@@ -8,8 +8,10 @@ These rules describe how the inference project is organized. Use them together w
 - [Architectural Boundaries](#architectural-boundaries)
 - [Inference Priorities](#inference-priorities)
 - [Placement and Naming](#placement-and-naming)
+- [Runtime](#runtime)
+- [Quantization](#quantization)
+- [Testing](#testing)
 - [Verification by Change Type](#verification-by-change-type)
-- [Rule Map](#rule-map)
 
 ## Repo Shape
 
@@ -63,6 +65,85 @@ Naming rules are intentionally strict:
 
 Prefer extending an existing module over creating another shallow wrapper layer.
 
+## Runtime
+
+### Ownership
+
+- Keep request parsing, websocket lifecycle, turn planning, and execution flow explicit. Do not hide runtime sequencing behind thin wrappers.
+- `src/runtime` owns dependency construction and teardown, not message handlers.
+- `src/execution` owns generation flow, not websocket transport concerns.
+- `src/handlers/websocket` owns connection and protocol flow, not engine internals.
+- `src/telemetry` owns instrumentation and exporter setup, not request shaping or business logic.
+
+If a runtime change forces one layer to know too much about another, the code is in the wrong place.
+
+### State and Lifetimes
+
+- Avoid import-time runtime work.
+- Keep cache resets, background daemons, and shutdown behavior explicit.
+- If a runtime object is shared, make the ownership path obvious. Do not hide it behind lazy module-level singletons.
+- When a websocket, stream, or task can be cancelled, trace the cleanup path before adding more work to it.
+
+### Errors and Logging
+
+- Runtime errors must carry operator-useful context: engine, mode, model, endpoint, or phase.
+- Do not log raw prompts, auth tokens, full websocket payloads, or full environment dumps.
+- If a failure changes what the client receives, update both the runtime path and the tests that lock the behavior in.
+
+## Quantization
+
+### Ownership
+
+- Keep TRT-specific behavior in `src/quantization/trt/`.
+- Keep vLLM-specific behavior in `src/quantization/vllm/`.
+- Keep shared quantization helpers genuinely shared. Do not move engine-specific edge cases into a fake common layer.
+- Keep Docker-only quantization helpers under `docker/` and host-side orchestration under `scripts/`.
+
+### Metadata and Packaging
+
+- Metadata must describe what actually happened: backend, quant method, calibration inputs, runtime expectations, and source model identity.
+- README or card generation must stay aligned with the metadata schema. If one changes, update the other in the same change.
+- Preserve upstream license information correctly. Quantized artifacts inherit constraints from their base model; do not guess or hardcode a nicer answer.
+- Treat model-card text as product output. Keep it precise and deterministic.
+
+### Detection and Validation
+
+- Detection code must be explicit about fallbacks and unknown states.
+- If quantization detection cannot prove something, emit the conservative answer.
+- Prefer additive metadata fixes over mutating hidden global state or patching values late in the pipeline.
+- Keep validation and packaging steps reproducible from the checked-in scripts.
+
+## Testing
+
+### Layout
+
+- Executable tests belong under `tests/suites/unit/`, `tests/suites/integration/`, or `tests/suites/e2e/`.
+- Unit tests must live in a domain subfolder under `tests/suites/unit/<domain>/`.
+- Test files use the `test_*.py` naming pattern.
+- `tests/support/` is for helpers, canned messages, prompts, websocket payloads, and runners. It must not contain `test_*` functions.
+- Keep the only `conftest.py` at `tests/conftest.py`.
+- Shared config fixtures belong in `tests/config/`. Shared state builders belong in `tests/state/`.
+
+### Writing Tests
+
+- Ship every behavior change with a test that would fail without the change.
+- For bug fixes, add a regression test that captures the old failure.
+- Keep tests deterministic. Stub time, network, environment, and filesystem effects when practical.
+- Prefer small, explicit helpers over magic fixtures that hide too much setup.
+- Production code must never import test helpers.
+
+### Test Support Code
+
+- Use `tests/support/helpers/fmt.py` for CLI-style test output instead of inventing new formatting helpers.
+- Keep prompts, persona variants, and large canned payloads in `tests/support/` so they can be reused across suites.
+- Keep support modules importable and boring. They should help the tests, not become a second application.
+
+### Coverage
+
+- Coverage is measured against `src/` only.
+- If you add runtime behavior in `src/`, either test it directly or explain why it is intentionally uncovered.
+- Keep coverage artifacts Sonar-compatible by using the repo coverage command rather than ad hoc local commands when possible.
+
 ## Verification by Change Type
 
 Use these minimum checks:
@@ -73,15 +154,7 @@ Use these minimum checks:
 - linting or hook framework change: `nox -s lint` and `nox -s security`
 - docs or rules change: `nox -s lint_docs`
 - coverage or Sonar change: `nox -s coverage`
+- quantization or model-packaging change: `nox -s lint_code` and `nox -s test`
+- test or coverage change: `python -m pytest -q` and `bash scripts/coverage.sh`
 
 When the change spans multiple areas, run the full lint, test, coverage, and security commands.
-
-## Rule Map
-
-- [PYTHON.md](./PYTHON.md) for `src/` and Python under `docker/` or `linting/`
-- [RUNTIME.md](./RUNTIME.md) for websocket/session/runtime/execution/telemetry work
-- [QUANTIZATION.md](./QUANTIZATION.md) for TRT/vLLM quantization, metadata, and model packaging
-- [OPERATIONS.md](./OPERATIONS.md) for scripts, hooks, scanners, and operator-facing workflows
-- [SHELL.md](./SHELL.md) for `.githooks/`, `scripts/`, and executable shell
-- [DOCKER.md](./DOCKER.md) for image layout, Dockerfiles, and Trivy or Hadolint expectations
-- [TESTING.md](./TESTING.md) for suite layout, support code, and coverage
