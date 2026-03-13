@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from . import ws
 from .stream import record_token, consume_stream, create_tracker, record_toolcall, finalize_metrics
-from .ws import recv_raw, with_api_key, send_client_end, connect_with_retries, build_api_key_headers
 from .message import iter_messages, parse_message, dispatch_message, bootstrap_session, send_initial_user_turn
+from .ws import recv_raw, ws_connect, with_api_key, send_client_end, connect_with_retries, build_api_key_headers
 from .payloads import (
     build_end_payload,
     build_start_payload,
@@ -38,4 +38,5 @@ __all__ = [
     "send_client_end",
     "with_api_key",
     "ws",
+    "ws_connect",
 ]

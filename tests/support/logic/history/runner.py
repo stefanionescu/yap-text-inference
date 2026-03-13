@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import uuid
-import websockets
 from typing import Any
 from tests.support.helpers.prompt import select_chat_prompt
 from tests.support.helpers.errors import ServerError, StreamError
@@ -27,6 +26,7 @@ from tests.support.helpers.fmt import (
     format_metrics_inline,
 )
 from tests.support.helpers.websocket import (
+    ws_connect,
     with_api_key,
     consume_stream,
     create_tracker,
@@ -164,9 +164,9 @@ async def run_test(
     session_id = f"history-{uuid.uuid4()}"
     chat_prompt = select_chat_prompt(gender) if includes_chat_start_fields(start_payload_mode) else None
 
-    async with websockets.connect(
+    async with ws_connect(
         url,
-        additional_headers=ws_headers,
+        headers=ws_headers,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
     ) as ws:

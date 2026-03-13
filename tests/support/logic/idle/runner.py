@@ -16,7 +16,7 @@ from collections.abc import Callable, Awaitable
 from src.config.websocket import WS_PROTOCOL_VERSION
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.config.defaults import WS_IDLE_CLOSE_CODE, WS_IDLE_CLOSE_REASON
-from tests.support.helpers.websocket import send_client_end, connect_with_retries, build_api_key_headers
+from tests.support.helpers.websocket import ws_connect, send_client_end, connect_with_retries, build_api_key_headers
 from tests.support.helpers.fmt import (
     dim,
     section_header,
@@ -29,9 +29,9 @@ from tests.support.helpers.fmt import (
 
 def _open_connection(ws_url: str, ws_headers: dict[str, str]):
     return connect_with_retries(
-        lambda: websockets.connect(
+        lambda: ws_connect(
             ws_url,
-            additional_headers=ws_headers,
+            headers=ws_headers,
             max_queue=None,
             ping_interval=DEFAULT_WS_PING_INTERVAL,
             ping_timeout=DEFAULT_WS_PING_TIMEOUT,

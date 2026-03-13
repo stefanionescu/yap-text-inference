@@ -8,10 +8,12 @@ It normalizes URLs to ensure consistent path handling across all test scripts.
 from __future__ import annotations
 
 import os
+import sys
 import json
 import asyncio
 import inspect
 import contextlib
+import websockets
 from tests.config import DEFAULT_WS_PATH
 from urllib.parse import urlsplit, urlunsplit
 from collections.abc import Callable, Awaitable
@@ -146,4 +148,14 @@ async def connect_with_retries(
             attempt += 1
 
 
-__all__ = ["with_api_key", "build_api_key_headers", "send_client_end", "recv_raw", "connect_with_retries"]
+def ws_connect(url: str, *, headers: dict[str, str] | None = None, **kwargs):
+    """Wrapper around websockets.connect that handles header kwarg compatibility.
+
+    Python 3.10 uses the legacy websockets client which expects ``extra_headers``.
+    Python 3.11+ uses the new client which expects ``additional_headers``.
+    """
+    header_kwarg = "extra_headers" if sys.version_info < (3, 11) else "additional_headers"
+    return websockets.connect(url, **{header_kwarg: headers or {}}, **kwargs)
+
+
+__all__ = ["with_api_key", "build_api_key_headers", "send_client_end", "recv_raw", "connect_with_retries", "ws_connect"]

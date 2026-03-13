@@ -10,13 +10,13 @@ from __future__ import annotations
 import json
 import uuid
 import asyncio
-import websockets
 from typing import Any
 from tests.config import WS_MAX_QUEUE
 from tests.support.helpers.metrics import error_result
 from tests.state import StreamState, SessionContext, BenchmarkConfig
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from tests.support.helpers.websocket import (
+    ws_connect,
     record_token,
     with_api_key,
     iter_messages,
@@ -167,9 +167,9 @@ async def execute_connection(cfg: BenchmarkConfig) -> list[dict[str, Any]]:
     session_id = f"bench-{uuid.uuid4()}"
     try:
         async with connect_with_retries(
-            lambda: websockets.connect(
+            lambda: ws_connect(
                 auth_url,
-                additional_headers=ws_headers,
+                headers=ws_headers,
                 max_queue=WS_MAX_QUEUE,
             )
         ) as ws:

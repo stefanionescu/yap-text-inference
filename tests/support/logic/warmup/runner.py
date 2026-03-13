@@ -39,6 +39,7 @@ from tests.config import (
     DEFAULT_WS_PING_INTERVAL,
 )
 from tests.support.helpers.websocket import (
+    ws_connect,
     with_api_key,
     create_tracker,
     send_client_end,
@@ -159,9 +160,9 @@ async def run_once(args) -> None:
     print(dim(f"  persona: {personality}/{gender}\n"))
 
     async with connect_with_retries(
-        lambda: websockets.connect(
+        lambda: ws_connect(
             ws_url_with_auth,
-            additional_headers=ws_headers,
+            headers=ws_headers,
             max_queue=None,
             ping_interval=DEFAULT_WS_PING_INTERVAL,
             ping_timeout=DEFAULT_WS_PING_TIMEOUT,

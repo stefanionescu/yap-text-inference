@@ -21,7 +21,7 @@ from tests.support.helpers.fmt import dim, section_header
 from tests.config import DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.support.helpers.errors import ServerError, IdleTimeoutError, ConnectionClosedError
-from tests.support.helpers.websocket import with_api_key, connect_with_retries, build_api_key_headers
+from tests.support.helpers.websocket import ws_connect, with_api_key, connect_with_retries, build_api_key_headers
 
 logger = logging.getLogger("live")
 
@@ -71,9 +71,9 @@ async def _run_session(
     initial_message: str,
 ) -> None:
     async with connect_with_retries(
-        lambda: websockets.connect(
+        lambda: ws_connect(
             ws_url,
-            additional_headers=ws_headers,
+            headers=ws_headers,
             max_queue=None,
             ping_interval=DEFAULT_WS_PING_INTERVAL,
             ping_timeout=DEFAULT_WS_PING_TIMEOUT,

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import uuid
-import websockets
 from tests.state import StreamState, SessionContext, StartPayloadMode
 from tests.support.messages.vision import SCREEN_ANALYSIS_TEXT, SCREEN_ANALYSIS_USER_REPLY
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
@@ -26,6 +25,7 @@ from tests.support.helpers.fmt import (
     format_metrics_inline,
 )
 from tests.support.helpers.websocket import (
+    ws_connect,
     record_token,
     with_api_key,
     iter_messages,
@@ -121,9 +121,9 @@ async def run_once(
     print(dim(f"  server: {server}"))
     print(dim(f"  persona: {DEFAULT_PERSONALITY}/{DEFAULT_GENDER}\n"))
 
-    async with websockets.connect(
+    async with ws_connect(
         ws_url,
-        additional_headers=ws_headers,
+        headers=ws_headers,
         max_queue=None,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,

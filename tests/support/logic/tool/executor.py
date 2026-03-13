@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import uuid
 import asyncio
-import websockets
 from typing import Any
 from .drain import DrainConfig, drain_response
 from collections.abc import Callable, Sequence
@@ -29,6 +28,7 @@ from tests.state import (
     SessionContext,
 )
 from tests.support.helpers.websocket import (
+    ws_connect,
     send_client_end,
     build_start_payload,
     connect_with_retries,
@@ -250,9 +250,9 @@ async def _run_case(case: ToolTestCase, cfg: RunnerConfig) -> CaseResult:
     session_id = f"tooltest-{uuid.uuid4()}"
     try:
         async with connect_with_retries(
-            lambda: websockets.connect(
+            lambda: ws_connect(
                 cfg.ws_url,
-                additional_headers=cfg.ws_headers,
+                headers=cfg.ws_headers,
                 max_queue=None,
                 ping_interval=cfg.ping_interval,
                 ping_timeout=cfg.ping_timeout,

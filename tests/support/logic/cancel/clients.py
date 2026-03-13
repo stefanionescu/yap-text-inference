@@ -24,6 +24,7 @@ from tests.state import (
     RecoveryPhaseResult,
 )
 from tests.support.helpers.websocket import (
+    ws_connect,
     iter_messages,
     create_tracker,
     send_client_end,
@@ -61,9 +62,9 @@ async def run_normal_client(
 
     try:
         async with connect_with_retries(
-            lambda: websockets.connect(
+            lambda: ws_connect(
                 ws_url,
-                additional_headers=ws_headers,
+                headers=ws_headers,
                 max_queue=None,
                 ping_interval=DEFAULT_WS_PING_INTERVAL,
                 ping_timeout=DEFAULT_WS_PING_TIMEOUT,
@@ -173,9 +174,9 @@ async def run_canceling_client(
 
     try:
         async with connect_with_retries(
-            lambda: websockets.connect(
+            lambda: ws_connect(
                 ws_url,
-                additional_headers=ws_headers,
+                headers=ws_headers,
                 max_queue=None,
                 ping_interval=DEFAULT_WS_PING_INTERVAL,
                 ping_timeout=DEFAULT_WS_PING_TIMEOUT,

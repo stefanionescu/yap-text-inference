@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import uuid
 import asyncio
-import websockets
 from typing import Any
 from tests.config import WS_MAX_QUEUE
 from tests.support.helpers.errors import StreamError
@@ -18,6 +17,7 @@ from tests.state import StreamState, SessionContext, HistoryBenchConfig
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from tests.support.messages.history import WARM_HISTORY, HISTORY_RECALL_MESSAGES
 from tests.support.helpers.websocket import (
+    ws_connect,
     with_api_key,
     consume_stream,
     create_tracker,
@@ -118,9 +118,9 @@ async def execute_history_connection(cfg: HistoryBenchConfig) -> list[dict[str, 
 
     try:
         async with connect_with_retries(
-            lambda: websockets.connect(
+            lambda: ws_connect(
                 auth_url,
-                additional_headers=ws_headers,
+                headers=ws_headers,
                 max_queue=WS_MAX_QUEUE,
             )
         ) as ws:

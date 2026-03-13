@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import uuid
 import logging
-import websockets
 from .stream import stream_exchange
 from collections.abc import Sequence
 from tests.support.helpers.rate import SlidingWindowPacer
@@ -30,6 +29,7 @@ from tests.support.helpers.fmt import (
     format_metrics_inline,
 )
 from tests.support.helpers.websocket import (
+    ws_connect,
     with_api_key,
     create_tracker,
     send_client_end,
@@ -80,9 +80,9 @@ async def run_conversation(
     message_pacer = SlidingWindowPacer(MESSAGE_MAX_PER_WINDOW, RATE_LIMIT_WINDOW_SECONDS)
     ttfb_samples = create_ttfb_aggregator()
 
-    async with websockets.connect(
+    async with ws_connect(
         ws_url_with_auth,
-        additional_headers=ws_headers,
+        headers=ws_headers,
         max_queue=None,
         ping_interval=DEFAULT_WS_PING_INTERVAL,
         ping_timeout=DEFAULT_WS_PING_TIMEOUT,
