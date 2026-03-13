@@ -1,86 +1,75 @@
-#!/usr/bin/env python3
-"""WebSocket idle timeout and connection lifecycle CLI tester."""
+"""Integration tests for websocket idle-timeout behavior."""
 
 from __future__ import annotations
 
-import sys
-import asyncio
-import logging
-import argparse
-from pathlib import Path
-
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-
-from tests.support.logic.idle import run_idle_suite
-from tests.support.helpers.setup import setup_repo_path
-from tests.support.helpers.websocket import with_api_key
-from tests.support.helpers.cli import add_connection_args
-from tests.config import IDLE_GRACE_SECONDS, IDLE_EXPECT_SECONDS, IDLE_NORMAL_WAIT_SECONDS
+import json
+from src.server import create_app
+from collections.abc import Iterator
+from fastapi.testclient import TestClient
+from src.runtime.dependencies import RuntimeDeps
+from src.handlers.connections import ConnectionHandler
+import src.handlers.websocket.lifecycle as lifecycle_mod
+import src.handlers.session.manager as session_manager_mod
+import src.handlers.websocket.manager as websocket_manager
+from contextlib import AbstractContextManager, contextmanager
+from tests.support.helpers.tokenizer import use_local_tokenizers
+from src.config.websocket import WS_CLOSE_IDLE_CODE, WS_PROTOCOL_VERSION, WS_CLOSE_IDLE_REASON
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WebSocket idle timeout and lifecycle tester")
-    add_connection_args(
-        parser,
-        server_help="Base WebSocket URL (defaults to SERVER_WS_URL env)",
+def _build_runtime_deps() -> tuple[RuntimeDeps, AbstractContextManager[object]]:
+    tokenizer_cm = use_local_tokenizers()
+    tokenizer = tokenizer_cm.__enter__()
+    runtime_deps = RuntimeDeps(
+        connections=ConnectionHandler(max_connections=4),
+        session_handler=session_manager_mod.SessionHandler(chat_engine=None, chat_tokenizer=tokenizer),
+        chat_engine=None,
+        cache_reset_manager=None,
+        tool_adapter=None,
+        chat_tokenizer=tokenizer,
+        tool_tokenizer=None,
     )
-    parser.add_argument(
-        "--normal-wait",
-        type=float,
-        default=IDLE_NORMAL_WAIT_SECONDS,
-        help=(
-            "Seconds to keep the normal connection open before sending the end frame "
-            f"(default: {IDLE_NORMAL_WAIT_SECONDS})"
-        ),
-    )
-    parser.add_argument(
-        "--idle-expect-seconds",
-        type=float,
-        default=IDLE_EXPECT_SECONDS,
-        help=(
-            "Seconds to wait for the server's idle watchdog to close a connection. "
-            "Defaults to IDLE_EXPECT_SECONDS or WS_IDLE_TIMEOUT_S."
-        ),
-    )
-    parser.add_argument(
-        "--idle-grace-seconds",
-        type=float,
-        default=IDLE_GRACE_SECONDS,
-        help=(f"Additional buffer added to the idle wait window before failing. Default: {IDLE_GRACE_SECONDS}"),
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        help="Logging verbosity",
-    )
-    return parser.parse_args()
+    return runtime_deps, tokenizer_cm
 
 
-def main() -> None:
-    setup_repo_path()
-    args = _parse_args()
-    logging.basicConfig(level=getattr(logging, args.log_level), format="%(message)s")
+@contextmanager
+def _test_client(monkeypatch) -> Iterator[TestClient]:
+    async def _allow_auth(*_args, **_kwargs) -> bool:
+        return True
+
+    def _fast_lifecycle(ws):
+        return lifecycle_mod.WebSocketLifecycle(
+            ws,
+            idle_timeout_s=0.05,
+            watchdog_tick_s=0.005,
+        )
+
+    monkeypatch.setattr(websocket_manager, "authenticate_websocket", _allow_auth)
+    monkeypatch.setattr(websocket_manager, "WebSocketLifecycle", _fast_lifecycle)
+
+    runtime_deps, tokenizer_cm = _build_runtime_deps()
+    app = create_app(attach_lifecycle=False, validate_environment=False)
+    app.state.runtime_deps = runtime_deps
 
     try:
-        ws_url = with_api_key(args.server, api_key=args.api_key)
-    except ValueError as exc:
-        logging.error("%s", exc)
-        sys.exit(1)
-
-    ok = asyncio.run(
-        run_idle_suite(
-            ws_url,
-            api_key=args.api_key,
-            normal_wait_s=args.normal_wait,
-            idle_expect_s=args.idle_expect_seconds,
-            idle_grace_s=args.idle_grace_seconds,
-        )
-    )
-    if not ok:
-        sys.exit(1)
+        with TestClient(app) as client:
+            yield client
+    finally:
+        tokenizer_cm.__exit__(None, None, None)
 
 
-if __name__ == "__main__":
-    main()
+def test_idle_connection_closes_with_expected_code_and_reason(monkeypatch) -> None:
+    with _test_client(monkeypatch) as client, client.websocket_connect("/ws") as ws:
+        close_frame = ws.receive()
+
+    assert close_frame["type"] == "websocket.close"
+    assert close_frame["code"] == WS_CLOSE_IDLE_CODE
+    assert close_frame["reason"] == WS_CLOSE_IDLE_REASON
+
+
+def test_activity_keeps_connection_alive_until_explicit_end(monkeypatch) -> None:
+    with _test_client(monkeypatch) as client, client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps({"type": "ping", "v": WS_PROTOCOL_VERSION}))
+        assert json.loads(ws.receive_text()) == {"type": "pong"}
+
+        ws.send_text(json.dumps({"type": "end", "v": WS_PROTOCOL_VERSION}))
+        assert json.loads(ws.receive_text()) == {"type": "done", "status": 200}

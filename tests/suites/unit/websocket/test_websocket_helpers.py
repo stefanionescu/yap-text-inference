@@ -9,7 +9,12 @@ import contextlib
 from typing import TypedDict
 from urllib.parse import urlsplit
 from tests.state import SessionContext
-from tests.support.helpers.websocket import ws as ws_helpers, build_start_payload, resolve_start_payload_mode
+from tests.support.helpers.websocket import (
+    ws as ws_helpers,
+    build_start_payload,
+    build_message_payload,
+    resolve_start_payload_mode,
+)
 
 
 class _ResolveStartPayloadModeKwargs(TypedDict, total=False):
@@ -20,6 +25,13 @@ class _ResolveStartPayloadModeKwargs(TypedDict, total=False):
 
 def _build_async_receiver(method_name: str, value: str):
     async def _receiver(_self):
+        return value
+
+    return type("Receiver", (), {method_name: _receiver})()
+
+
+def _build_sync_receiver(method_name: str, value: str):
+    def _receiver(_self):
         return value
 
     return type("Receiver", (), {method_name: _receiver})()
@@ -72,6 +84,14 @@ def test_recv_raw_uses_recv_when_receive_is_unavailable() -> None:
     value = asyncio.run(ws_helpers.recv_raw(receiver))
 
     assert value == "payload-from-recv"
+
+
+def test_recv_raw_supports_sync_receivers_from_test_client() -> None:
+    receiver = _build_sync_receiver("receive", "payload-from-sync-receive")
+
+    value = asyncio.run(ws_helpers.recv_raw(receiver))
+
+    assert value == "payload-from-sync-receive"
 
 
 def test_connect_with_retries_succeeds_after_transient_failures() -> None:
@@ -150,7 +170,7 @@ def test_build_start_payload_includes_chat_fields_in_all_mode() -> None:
         start_payload_mode="all",
     )
 
-    payload = build_start_payload(ctx, "hello")
+    payload = build_start_payload(ctx)
 
     assert payload["gender"] == "female"
     assert payload["personality"] == "playful"
@@ -168,7 +188,7 @@ def test_build_start_payload_includes_chat_fields_in_chat_only_mode() -> None:
         start_payload_mode="chat-only",
     )
 
-    payload = build_start_payload(ctx, "hello")
+    payload = build_start_payload(ctx)
 
     assert payload["gender"] == "male"
     assert payload["personality"] == "calm"
@@ -186,15 +206,29 @@ def test_build_start_payload_omits_chat_fields_in_tool_only_mode() -> None:
         start_payload_mode="tool-only",
     )
 
-    payload = build_start_payload(ctx, "check the screen")
+    payload = build_start_payload(ctx)
 
     assert payload["type"] == "start"
-    assert payload["user_utterance"] == "check the screen"
     assert payload["history"] == []
+    assert "user_utterance" not in payload
     assert "gender" not in payload
     assert "personality" not in payload
     assert "chat_prompt" not in payload
     assert "sampling" not in payload
+
+
+def test_build_message_payload_carries_user_utterance_and_sampling() -> None:
+    payload = build_message_payload(
+        "check the screen",
+        sampling={"temperature": 0.2},
+    )
+
+    assert payload == {
+        "type": "message",
+        "v": payload["v"],
+        "user_utterance": "check the screen",
+        "sampling": {"temperature": 0.2},
+    }
 
 
 @pytest.mark.parametrize(

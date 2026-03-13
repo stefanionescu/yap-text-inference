@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.execution.chat.prompt_budget import fit_chat_prompt_to_budget
 from tests.support.messages.unit import CHAT_MESSAGES, ASSISTANT_FIRST_MESSAGES
+from tests.support.helpers.tokenizer import use_local_tokenizers, use_punctuation_aware_tokenizers
 
 
 def test_fit_chat_prompt_to_budget_drops_oldest_history_until_prompt_fits() -> None:
@@ -147,3 +147,20 @@ def test_fit_chat_prompt_to_budget_rejects_non_empty_user_that_cannot_fit() -> N
             assert "prompt exceeds exact context budget" in str(exc)
         else:
             raise AssertionError("expected ValueError")
+
+
+def test_fit_chat_prompt_to_budget_caps_punctuation_heavy_user_with_richer_tokenizer() -> None:
+    with use_punctuation_aware_tokenizers() as tokenizer:
+        fit = fit_chat_prompt_to_budget(
+            "",
+            "",
+            [],
+            "remind me: passport, charger, adapters!",
+            tokenizer,
+            max_prompt_tokens=100,
+            max_user_tokens=4,
+        )
+
+        assert fit.history_messages == []
+        assert fit.chat_user_utt == "remind me: passport"
+        assert fit.prompt_tokens <= 100

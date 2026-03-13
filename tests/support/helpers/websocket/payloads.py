@@ -74,15 +74,13 @@ def includes_chat_start_fields(mode: StartPayloadMode) -> bool:
 
 def build_start_payload(
     ctx: SessionContext,
-    user_text: str,
     *,
     history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Build the start message payload for a conversation turn.
+    """Build the bootstrap-only start message payload.
 
     Args:
         ctx: Session context with optional chat-only start fields.
-        user_text: The user's message text.
         history: Conversation history as [{role, content}, ...] (default empty).
 
     Returns:
@@ -92,7 +90,6 @@ def build_start_payload(
         "type": "start",
         "v": WS_PROTOCOL_VERSION,
         "history": history if history is not None else [],
-        "user_utterance": user_text,
     }
     if includes_chat_start_fields(ctx.start_payload_mode):
         if ctx.gender is not None:

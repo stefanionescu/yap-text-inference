@@ -1,8 +1,8 @@
 """Conversation session state management.
 
 This module provides the ConversationSession dataclass that tracks session
-state (ID, gender, personality, history) and builds the start payload for
-each exchange. It maintains conversation history across multiple turns.
+state (ID, gender, personality, history) and builds the bootstrap payload for
+the first exchange. It maintains conversation history across multiple turns.
 """
 
 from __future__ import annotations
@@ -15,12 +15,8 @@ from tests.support.helpers.websocket import (
 )
 
 
-def build_start_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:
-    """Build the start message payload for a conversation turn.
-
-    Raises:
-        ValueError: If chat_prompt is empty.
-    """
+def build_start_payload(session: ConversationSession) -> dict[str, Any]:
+    """Build the bootstrap-only start payload for a conversation turn."""
     ctx = SessionContext(
         session_id=session.session_id,
         gender=session.gender,
@@ -29,7 +25,7 @@ def build_start_payload(session: ConversationSession, user_text: str) -> dict[st
         sampling=session.sampling,
         start_payload_mode=session.start_payload_mode,
     )
-    return build_ws_start_payload(ctx, user_text)
+    return build_ws_start_payload(ctx)
 
 
 def build_message_payload(session: ConversationSession, user_text: str) -> dict[str, Any]:

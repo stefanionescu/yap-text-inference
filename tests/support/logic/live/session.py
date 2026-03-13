@@ -15,8 +15,8 @@ from tests.support.helpers.websocket.payloads import (
 )
 
 
-def build_start_payload(session: LiveSession, user_text: str) -> dict[str, Any]:
-    """Build the start payload for a live session turn."""
+def build_start_payload(session: LiveSession) -> dict[str, Any]:
+    """Build the bootstrap-only start payload for a live session turn."""
     ctx = SessionContext(
         session_id=session.session_id,
         gender=session.persona.gender,
@@ -25,9 +25,7 @@ def build_start_payload(session: LiveSession, user_text: str) -> dict[str, Any]:
         sampling=session.sampling,
         start_payload_mode=session.start_payload_mode,
     )
-    payload = build_ws_start_payload(ctx, user_text, history=session.history)
-    session._started = True
-    return payload
+    return build_ws_start_payload(ctx, history=session.history)
 
 
 def build_message_payload(session: LiveSession, user_text: str) -> dict[str, Any]:

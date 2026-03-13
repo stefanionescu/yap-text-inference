@@ -25,6 +25,7 @@ from tests.support.helpers.websocket import (
     build_start_payload,
     build_cancel_payload,
     build_message_payload,
+    send_initial_user_turn,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,9 +53,15 @@ async def run_cancel_phase(
     state = create_tracker()
     handlers = build_cancel_handlers(state)
 
-    start_payload = build_start_payload(ctx, user_msg)
-    await ws.send(json.dumps(start_payload))
-    print(dim("  [cancel] sent start message..."))
+    start_payload = build_start_payload(ctx)
+    await send_initial_user_turn(
+        ws,
+        start_payload,
+        user_msg,
+        sampling=ctx.sampling,
+        timeout=recv_timeout,
+    )
+    print(dim("  [cancel] bootstrapped session and sent first message..."))
 
     cancel_sent = False
     cancelled = False

@@ -27,6 +27,7 @@ from tests.support.helpers.websocket import (
     connect_with_retries,
     build_api_key_headers,
     build_message_payload,
+    send_initial_user_turn,
 )
 
 
@@ -68,7 +69,7 @@ async def _send_and_stream(
     *,
     history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Send a start or message payload and stream the response."""
+    """Bootstrap the first phase or send a message turn, then stream the response."""
     if phase == 1:
         ctx = SessionContext(
             session_id=session_id,
@@ -78,14 +79,22 @@ async def _send_and_stream(
             sampling=cfg.sampling,
             start_payload_mode=cfg.start_payload_mode,
         )
-        payload = (
-            build_start_payload(ctx, user_text, history=history) if history else build_start_payload(ctx, user_text)
-        )
+        start_payload = build_start_payload(ctx, history=history) if history else build_start_payload(ctx)
     else:
+        start_payload = None
         payload = build_message_payload(user_text, sampling=cfg.sampling)
     state = create_tracker()
 
-    await ws.send(json.dumps(payload))
+    if phase == 1 and start_payload is not None:
+        await send_initial_user_turn(
+            ws,
+            start_payload,
+            user_text,
+            sampling=cfg.sampling,
+            timeout=cfg.timeout_s,
+        )
+    else:
+        await ws.send(json.dumps(payload))
     reply = await _consume_stream_wrapper(ws, state)
 
     metrics = finalize_metrics(state)

@@ -20,13 +20,6 @@ from .session import build_start_payload, build_message_payload
 from tests.support.helpers.env import get_int_env, get_float_env
 from tests.config import DEFAULT_GENDER, DEFAULT_PERSONALITY, DEFAULT_WS_PING_TIMEOUT, DEFAULT_WS_PING_INTERVAL
 from tests.support.helpers.metrics import record_ttfb, has_ttfb_samples, emit_ttfb_summary, create_ttfb_aggregator
-from tests.support.helpers.websocket import (
-    with_api_key,
-    create_tracker,
-    send_client_end,
-    build_api_key_headers,
-    includes_chat_start_fields,
-)
 from tests.support.helpers.fmt import (
     dim,
     format_user,
@@ -35,6 +28,14 @@ from tests.support.helpers.fmt import (
     exchange_header,
     format_assistant,
     format_metrics_inline,
+)
+from tests.support.helpers.websocket import (
+    with_api_key,
+    create_tracker,
+    send_client_end,
+    build_api_key_headers,
+    send_initial_user_turn,
+    includes_chat_start_fields,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,15 +90,20 @@ async def run_conversation(
         try:
             for idx, user_text in enumerate(prompts, start=1):
                 state = create_tracker()
-                payload = (
-                    build_start_payload(session, user_text) if idx == 1 else build_message_payload(session, user_text)
-                )
-
                 print(exchange_header(idx=idx))
                 print(f"  {format_user(user_text)}")
 
                 await message_pacer.wait_turn()
-                await ws.send(json.dumps(payload))
+                if idx == 1:
+                    await send_initial_user_turn(
+                        ws,
+                        build_start_payload(session),
+                        user_text,
+                        sampling=session.sampling,
+                        timeout=recv_timeout,
+                    )
+                else:
+                    await ws.send(json.dumps(build_message_payload(session, user_text)))
                 assistant_text, metrics = await stream_exchange(ws, state, recv_timeout, idx)
                 record_ttfb(ttfb_samples, metrics)
 

@@ -47,6 +47,7 @@ from tests.support.helpers.websocket import (
     connect_with_retries,
     build_api_key_headers,
     build_message_payload,
+    send_initial_user_turn,
     includes_chat_start_fields,
 )
 
@@ -183,11 +184,15 @@ async def run_once(args) -> None:
                 phase_label = ("first" if idx == 0 else "second") if double_ttfb else None
                 state = create_tracker()
                 if idx == 0:
-                    payload = build_start_payload(ctx, user_msg)
+                    await send_initial_user_turn(
+                        ws,
+                        build_start_payload(ctx),
+                        user_msg,
+                        sampling=sampling_overrides,
+                        timeout=recv_timeout,
+                    )
                 else:
-                    payload = build_message_payload(user_msg, sampling=sampling_overrides)
-
-                await ws.send(json.dumps(payload))
+                    await ws.send(json.dumps(build_message_payload(user_msg, sampling=sampling_overrides)))
                 assistant_text, metrics = await _stream_exchange(
                     ws,
                     state,

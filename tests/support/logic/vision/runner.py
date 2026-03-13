@@ -36,6 +36,7 @@ from tests.support.helpers.websocket import (
     build_start_payload,
     build_api_key_headers,
     build_message_payload,
+    send_initial_user_turn,
 )
 
 # ============================================================================
@@ -114,7 +115,7 @@ async def run_once(
         sampling=sampling,
         start_payload_mode=start_payload_mode,
     )
-    start_payload = build_start_payload(ctx, SCREEN_ANALYSIS_USER_REPLY)
+    start_payload = build_start_payload(ctx)
 
     print(f"\n{section_header('VISION TEST')}")
     print(dim(f"  server: {server}"))
@@ -133,7 +134,12 @@ async def run_once(
             print(f"  {format_user(SCREEN_ANALYSIS_USER_REPLY)}")
 
             state1 = create_tracker()
-            await ws.send(json.dumps(start_payload))
+            await send_initial_user_turn(
+                ws,
+                start_payload,
+                SCREEN_ANALYSIS_USER_REPLY,
+                sampling=sampling,
+            )
             saw_tool_yes, short_text = await _consume_initial_response(ws, state1)
             metrics1 = finalize_metrics(state1)
 

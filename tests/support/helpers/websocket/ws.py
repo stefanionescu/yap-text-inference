@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import json
 import asyncio
+import inspect
 import contextlib
 from tests.config import DEFAULT_WS_PATH
 from urllib.parse import urlsplit, urlunsplit
@@ -62,8 +63,8 @@ def with_api_key(
 ) -> str:
     """Normalize a WebSocket URL after validating API key presence.
 
-    Authentication is now header-only (`X-API-Key`), so this function keeps
-    backward-compatible naming but no longer mutates query parameters.
+    Authentication uses the `X-API-Key` header; this helper only validates auth
+    availability and normalizes the URL shape.
     """
     _resolve_api_key(api_key_env, default_key, api_key=api_key)
 
@@ -102,9 +103,12 @@ def _resolve_recv(ws) -> Callable[[], Awaitable[str]]:
 async def recv_raw(ws, *, timeout: float | None = None) -> str:
     """Receive a single raw frame from a websocket-like object."""
     receiver = _resolve_recv(ws)
-    if timeout is None:
-        return await receiver()
-    return await asyncio.wait_for(receiver(), timeout)
+    receive_result = receiver()
+    if inspect.isawaitable(receive_result):
+        if timeout is None:
+            return await receive_result
+        return await asyncio.wait_for(receive_result, timeout)
+    return receive_result
 
 
 @contextlib.asynccontextmanager

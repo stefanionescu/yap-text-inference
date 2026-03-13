@@ -26,6 +26,7 @@ from tests.support.helpers.websocket import (
     record_toolcall,
     send_client_end,
     finalize_metrics,
+    send_initial_user_turn,
 )
 
 logger = logging.getLogger("live")
@@ -103,11 +104,21 @@ class LiveClient:
     async def send_user_message(self, text: str) -> StreamResult:
         """Send a user message and return the result with assistant's response."""
         if not self.session._started:
-            payload = build_start_payload(self.session, text)
+            start_payload = build_start_payload(self.session)
         else:
             payload = build_message_payload(self.session, text)
         state = create_tracker()
-        await self._send_json(payload)
+        if not self.session._started:
+            await send_initial_user_turn(
+                self.ws,
+                start_payload,
+                text,
+                sampling=self.session.sampling,
+                timeout=self.recv_timeout,
+            )
+            self.session._started = True
+        else:
+            await self._send_json(payload)
         result = await self._stream_response(state, print_user_prompt=False)
         if result.ok:
             self.session.append_exchange(text, result.text)

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from typing import Any, cast
-from tests.support.helpers.tokenizer import use_local_tokenizers
 from src.execution.tool.prompt_budget import fit_tool_input_to_budget
+from tests.support.helpers.tokenizer import use_local_tokenizers, use_punctuation_aware_tokenizers
 
 
 def test_fit_tool_input_to_budget_drops_oldest_history_before_trimming_current_user() -> None:
@@ -85,3 +85,17 @@ def test_fit_tool_input_to_budget_rejects_non_empty_user_that_cannot_fit() -> No
         assert "tool input exceeds exact budget" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_fit_tool_input_to_budget_counts_special_tokens_with_richer_tokenizer() -> None:
+    with use_punctuation_aware_tokenizers() as tokenizer:
+        fit = fit_tool_input_to_budget(
+            ["calendar: flights, hotel"],
+            "notes: passport, charger",
+            tokenizer,
+            max_input_tokens=8,
+        )
+
+        assert fit.tool_user_history == ""
+        assert fit.tool_user_utt == "notes: passport, charger"
+        assert fit.input_tokens == 7

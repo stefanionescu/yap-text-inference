@@ -35,6 +35,7 @@ from tests.support.helpers.websocket import (
     build_start_payload,
     build_api_key_headers,
     build_message_payload,
+    send_initial_user_turn,
     includes_chat_start_fields,
 )
 
@@ -118,10 +119,13 @@ async def _run_history_sequence(
     )
 
     first_user_text = HISTORY_RECALL_MESSAGES[0]
-    payload = build_start_payload(ctx, first_user_text, history=history)
-
     state = create_tracker()
-    await ws.send(json.dumps(payload))
+    await send_initial_user_turn(
+        ws,
+        build_start_payload(ctx, history=history),
+        first_user_text,
+        sampling=sampling,
+    )
 
     _print_header(personality, gender)
 

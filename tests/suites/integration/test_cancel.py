@@ -1,146 +1,136 @@
-#!/usr/bin/env python3
-"""Cancel request test: verifies cancel aborts in-flight requests and
-subsequent requests complete successfully.
-
-This test validates the cancel message handling using multiple concurrent clients:
-1. Multiple clients (default 3) connect simultaneously
-2. One client sends a start message, waits ~1s collecting tokens, then cancels
-3. That client verifies a cancelled acknowledgement, then verifies no spurious messages
-4. That client sends a recovery request and completes it
-5. The other clients complete their inference normally
-6. All clients wait for the canceling client's recovery before finishing
-
-The test works with all deployment modes (tool only, chat only, or both).
-
-Usage:
-  python3 tests/suites/integration/test_cancel.py
-  python3 tests/suites/integration/test_cancel.py --server ws://localhost:8000/ws
-  python3 tests/suites/integration/test_cancel.py --clients 3 --cancel-delay 1.0 --drain-timeout 2.0
-
-Env:
-  SERVER_WS_URL=ws://127.0.0.1:8000/ws
-  TEXT_API_KEY=your_api_key (required, no default)
-  GENDER=female|male
-  PERSONALITY=flirty
-"""
+"""Integration tests for websocket cancel and recovery behavior."""
 
 from __future__ import annotations
 
-import os
-import sys
+import json
 import asyncio
-import logging
-import argparse
-from pathlib import Path
-
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-
-from tests.support.helpers.setup import setup_repo_path
-from tests.support.logic.cancel import run_cancel_suite
-from tests.support.helpers.websocket import with_api_key, resolve_start_payload_mode
-from tests.support.helpers.cli import add_connection_args, add_start_payload_mode_arg
-from tests.config import (
-    DEFAULT_GENDER,
-    DEFAULT_PERSONALITY,
-    CANCEL_POST_WAIT_DEFAULT,
-    CANCEL_NUM_CLIENTS_DEFAULT,
-    CANCEL_RECV_TIMEOUT_DEFAULT,
-    CANCEL_DRAIN_TIMEOUT_DEFAULT,
-    CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
-)
+import typing as t
+from src.server import create_app
+import src.messages.turn as turn_mod
+from tests.state import SessionContext
+from fastapi.testclient import TestClient
+from src.runtime.dependencies import RuntimeDeps
+from src.handlers.connections import ConnectionHandler
+from src.handlers.session.manager import SessionHandler
+import src.handlers.websocket.manager as websocket_manager
+from contextlib import AbstractContextManager, contextmanager
+from src.handlers.websocket.helpers import stream_chat_response
+from tests.support.helpers.tokenizer import use_local_tokenizers
+from src.handlers.session.history.settings import HistoryRuntimeConfig
+from tests.support.helpers.websocket import build_start_payload, build_cancel_payload, build_message_payload
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Cancel request test: verifies cancel and recovery behavior")
-    add_connection_args(
-        parser,
-        server_help="Base WebSocket URL (defaults to SERVER_WS_URL env)",
+def _history_config() -> HistoryRuntimeConfig:
+    return HistoryRuntimeConfig(
+        deploy_chat=True,
+        deploy_tool=False,
+        chat_trigger_tokens=1000,
+        chat_target_tokens=800,
+        default_tool_history_tokens=None,
     )
-    add_start_payload_mode_arg(
-        parser,
-        default=resolve_start_payload_mode(deploy_mode=os.getenv("DEPLOY_MODE")),
-    )
-    parser.add_argument(
-        "--clients",
-        type=int,
-        default=CANCEL_NUM_CLIENTS_DEFAULT,
-        help=(
-            f"Number of concurrent clients (1 cancels, rest complete normally) (default: {CANCEL_NUM_CLIENTS_DEFAULT})"
-        ),
-    )
-    parser.add_argument(
-        "--cancel-delay",
-        type=float,
-        default=CANCEL_DELAY_BEFORE_CANCEL_DEFAULT,
-        help=(f"Seconds to wait after start before sending cancel (default: {CANCEL_DELAY_BEFORE_CANCEL_DEFAULT})"),
-    )
-    parser.add_argument(
-        "--drain-timeout",
-        type=float,
-        default=CANCEL_DRAIN_TIMEOUT_DEFAULT,
-        help=(f"Seconds to verify no spurious messages after cancel (default: {CANCEL_DRAIN_TIMEOUT_DEFAULT})"),
-    )
-    parser.add_argument(
-        "--post-cancel-wait",
-        type=float,
-        default=CANCEL_POST_WAIT_DEFAULT,
-        help=(f"Seconds to wait after drain before sending recovery request (default: {CANCEL_POST_WAIT_DEFAULT})"),
-    )
-    parser.add_argument(
-        "--timeout",
-        type=float,
-        default=CANCEL_RECV_TIMEOUT_DEFAULT,
-        help=(f"Receive timeout for each phase in seconds (default: {CANCEL_RECV_TIMEOUT_DEFAULT})"),
-    )
-    parser.add_argument(
-        "--gender",
-        choices=["female", "male"],
-        default=DEFAULT_GENDER,
-        help=f"Persona gender (default: {DEFAULT_GENDER})",
-    )
-    parser.add_argument(
-        "--personality",
-        default=DEFAULT_PERSONALITY,
-        help=f"Persona personality style (default: {DEFAULT_PERSONALITY})",
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        help="Logging verbosity",
-    )
-    return parser.parse_args()
 
 
-def main() -> None:
-    setup_repo_path()
-    args = _parse_args()
-    logging.basicConfig(level=getattr(logging, args.log_level), format="%(message)s")
+def _build_runtime_deps() -> tuple[RuntimeDeps, AbstractContextManager[object]]:
+    tokenizer_cm = use_local_tokenizers()
+    tokenizer = tokenizer_cm.__enter__()
+    session_handler = SessionHandler(
+        chat_engine=None,
+        chat_tokenizer=tokenizer,
+        history_config=_history_config(),
+    )
+    runtime_deps = RuntimeDeps(
+        connections=ConnectionHandler(max_connections=4),
+        session_handler=session_handler,
+        chat_engine=None,
+        cache_reset_manager=None,
+        tool_adapter=None,
+        chat_tokenizer=tokenizer,
+        tool_tokenizer=None,
+    )
+    return runtime_deps, tokenizer_cm
+
+
+@contextmanager
+def _test_client(monkeypatch) -> t.Iterator[TestClient]:
+    async def _allow_auth(*_args, **_kwargs) -> bool:
+        return True
+
+    async def _fake_dispatch_execution(ws, plan, runtime_deps: RuntimeDeps) -> None:
+        chunks_by_prompt = {
+            "cancel me": ("cancel-alpha", "cancel-beta"),
+            "recover now": ("recover-alpha", "recover-beta"),
+        }
+        first, second = chunks_by_prompt.get(plan.chat_user_utt or "", ("generic-alpha", "generic-beta"))
+
+        async def _stream():
+            yield first
+            await asyncio.sleep(0.05)
+            yield second
+
+        await stream_chat_response(
+            ws,
+            _stream(),
+            plan.state,
+            plan.chat_user_utt or "",
+            history_user_utt=plan.chat_user_utt or "",
+            history_turn_id=plan.history_turn_id,
+            session_handler=runtime_deps.session_handler,
+        )
+
+    monkeypatch.setattr(websocket_manager, "authenticate_websocket", _allow_auth)
+    monkeypatch.setattr(turn_mod, "dispatch_execution", _fake_dispatch_execution)
+
+    runtime_deps, tokenizer_cm = _build_runtime_deps()
+    app = create_app(attach_lifecycle=False, validate_environment=False)
+    app.state.runtime_deps = runtime_deps
 
     try:
-        ws_url = with_api_key(args.server, api_key=args.api_key)
-    except ValueError as exc:
-        logging.error("%s", exc)
-        sys.exit(1)
+        with TestClient(app) as client:
+            yield client
+    finally:
+        tokenizer_cm.__exit__(None, None, None)
 
-    ok = asyncio.run(
-        run_cancel_suite(
-            ws_url,
-            api_key=args.api_key,
-            gender=args.gender,
-            personality=args.personality,
-            num_clients=args.clients,
-            cancel_delay_s=args.cancel_delay,
-            drain_timeout_s=args.drain_timeout,
-            post_cancel_wait_s=args.post_cancel_wait,
-            recv_timeout_s=args.timeout,
-            start_payload_mode=args.start_payload_mode,
-        )
+
+def _receive_json(ws) -> dict[str, object]:
+    return json.loads(ws.receive_text())
+
+
+def _build_ctx() -> SessionContext:
+    return SessionContext(
+        session_id="integration-cancel",
+        gender="female",
+        personality="calm",
+        chat_prompt="Stay concise.",
+        start_payload_mode="all",
     )
-    if not ok:
-        sys.exit(1)
 
 
-if __name__ == "__main__":
-    main()
+def test_start_bootstraps_then_cancelled_turn_recovers_cleanly(monkeypatch) -> None:
+    with _test_client(monkeypatch) as client, client.websocket_connect("/ws") as ws:
+        ctx = _build_ctx()
+
+        ws.send_text(json.dumps(build_start_payload(ctx)))
+        bootstrap_done = _receive_json(ws)
+        assert bootstrap_done == {"type": "done", "status": 200}
+
+        ws.send_text(json.dumps(build_message_payload("cancel me")))
+        first_token = _receive_json(ws)
+        assert first_token == {"type": "token", "text": "cancel-alpha"}
+
+        ws.send_text(json.dumps(build_cancel_payload()))
+        cancelled = _receive_json(ws)
+        assert cancelled == {"type": "cancelled"}
+
+        ws.send_text(json.dumps(build_message_payload("recover now")))
+        recovery_token = _receive_json(ws)
+        assert recovery_token == {"type": "token", "text": "recover-alpha"}
+
+        second_recovery_token = _receive_json(ws)
+        assert second_recovery_token == {"type": "token", "text": "recover-beta"}
+
+        recovery_final = _receive_json(ws)
+        assert recovery_final["type"] == "final"
+        assert recovery_final["text"] == "recover-alpharecover-beta"
+
+        recovery_done = _receive_json(ws)
+        assert recovery_done == {"type": "done", "status": 200}

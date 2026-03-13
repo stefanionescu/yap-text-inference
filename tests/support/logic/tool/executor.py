@@ -18,12 +18,6 @@ from tests.support.helpers.metrics import secs_to_ms
 from tests.support.helpers.rate import SlidingWindowPacer
 from .validation import format_bool, is_valid_response_shape, derive_tool_called_from_raw
 from tests.config import POST_TOOL_IDLE_MIN_S, TOOL_WS_MESSAGE_WINDOW_SECONDS, TOOL_WS_MAX_MESSAGES_PER_WINDOW
-from tests.support.helpers.websocket import (
-    send_client_end,
-    build_start_payload,
-    connect_with_retries,
-    build_message_payload,
-)
 from tests.state import (
     CaseStep,
     CaseResult,
@@ -34,6 +28,13 @@ from tests.state import (
     FailureRecord,
     SessionContext,
 )
+from tests.support.helpers.websocket import (
+    send_client_end,
+    build_start_payload,
+    connect_with_retries,
+    build_message_payload,
+    send_initial_user_turn,
+)
 
 STEP_WINDOW_SECONDS = max(0.0, float(TOOL_WS_MESSAGE_WINDOW_SECONDS))
 STEP_MAX_PER_WINDOW = max(0, int(TOOL_WS_MAX_MESSAGES_PER_WINDOW))
@@ -43,9 +44,21 @@ async def _run_user_turn(
     ws,
     payload: dict[str, Any],
     timeout_s: float,
+    *,
+    start_payload: dict[str, Any] | None = None,
+    sampling: dict[str, float | int] | None = None,
 ) -> TurnResult:
     """Send a user message and drain the response."""
-    await ws.send(json.dumps(payload))
+    if start_payload is not None:
+        await send_initial_user_turn(
+            ws,
+            start_payload,
+            payload["user_utterance"],
+            sampling=sampling,
+            timeout=timeout_s,
+        )
+    else:
+        await ws.send(json.dumps(payload))
     cfg = DrainConfig(
         timeout_s=timeout_s,
         chat_idle_timeout_s=max(timeout_s, POST_TOOL_IDLE_MIN_S),
@@ -112,22 +125,26 @@ async def _execute_step(
     step_pacer: SlidingWindowPacer,
 ) -> TurnResult:
     """Execute a single step within a test case."""
+    start_payload = _build_step_start_payload(cfg, session_id, step.text, step_idx)
     payload = _build_step_payload(cfg, session_id, step.text, step_idx)
     await step_pacer.wait_turn()
-    turn = await _run_user_turn(ws, payload, timeout_s=cfg.timeout_s)
+    turn = await _run_user_turn(
+        ws,
+        payload,
+        timeout_s=cfg.timeout_s,
+        start_payload=start_payload,
+        sampling=None,
+    )
     return _coerce_missing_tool_result(turn, step.expect_tool)
 
 
-def _build_step_payload(
+def _build_step_start_payload(
     cfg: RunnerConfig,
     session_id: str,
     user_text: str,
     step_idx: int,
-) -> dict[str, Any]:
-    """Build the message payload for a step.
-
-    Uses 'start' for the first step and 'message' for subsequent steps.
-    """
+) -> dict[str, Any] | None:
+    """Build the bootstrap payload for the first step."""
     if step_idx == 1:
         ctx = SessionContext(
             session_id=session_id,
@@ -136,7 +153,20 @@ def _build_step_payload(
             chat_prompt=cfg.chat_prompt,
             start_payload_mode=cfg.start_payload_mode,
         )
-        return build_start_payload(ctx, user_text)
+        return build_start_payload(ctx)
+    return None
+
+
+def _build_step_payload(
+    cfg: RunnerConfig,
+    session_id: str,
+    user_text: str,
+    step_idx: int,
+) -> dict[str, Any]:
+    """Build the actual user message payload for a step."""
+    _ = cfg
+    _ = session_id
+    _ = step_idx
     return build_message_payload(user_text)
 
 

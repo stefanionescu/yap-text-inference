@@ -1,8 +1,4 @@
-"""Streaming sanitizer test.
-
-Tests that the StreamingSanitizer produces the same output whether text is
-streamed in chunks or processed in a single pass.
-"""
+"""Integration coverage for streaming sanitizer correctness and chunk stability."""
 
 from __future__ import annotations
 
@@ -23,7 +19,7 @@ def _ensure_test_env() -> None:
 
 _ensure_test_env()
 
-from src.messages.sanitize.stream import StreamingSanitizer, _sanitize_stream_chunk  # noqa: E402
+from src.messages.sanitize.stream import StreamingSanitizer  # noqa: E402
 
 
 def _stream_chunks(text: str, splits: Sequence[int]) -> str:
@@ -40,14 +36,47 @@ def _stream_chunks(text: str, splits: Sequence[int]) -> str:
     return "".join(out)
 
 
-def _sanitize_once(text: str) -> str:
-    sanitized, _, _ = _sanitize_stream_chunk(text, prefix_pending=True, capital_pending=True, strip_leading_ws=True)
-    return sanitized.rstrip()
+@pytest.mark.parametrize(
+    ("text", "splits", "expected"),
+    [
+        ("HTML <b>bold</b> text", [], "HTML bold text"),
+        ("Contact me at foo.bar@example.com now.", [], "Contact me at foo dot bar at example dot com now."),
+        (
+            "Call +1 415-555-1234 tomorrow.",
+            [],
+            "Call plus one four one five five five five one two three four tomorrow.",
+        ),
+        ("Freestyle mode. hello there", [15], "Hello there"),
+        ("Hi 😊 there", [], "Hi there"),
+        ("Dots . . . spaced out", [], "Dots . spaced out"),
+        ("dash-separated-words", [], "Dash separated words"),
+        (
+            "Replay risk: Mark Mark Mark but no duplicates please.",
+            [10, 20, 30, 40],
+            "Replay risk: Mark Mark Mark but no duplicates please.",
+        ),
+        (
+            "Mixed newline tokens /n and \\n and real newlines\nshould normalize.",
+            [12, 30],
+            "Mixed newline tokens and and real newlines should normalize.",
+        ),
+        (
+            'Quotes and escaped \\"marks\\" stay safe.',
+            [10, 20],
+            "Quotes and escaped marks stay safe.",
+        ),
+    ],
+)
+def test_streaming_sanitizer_matches_literal_expected_output(
+    text: str,
+    splits: list[int],
+    expected: str,
+) -> None:
+    assert _stream_chunks(text, splits) == expected
 
 
 @pytest.mark.parametrize("text,splits", STREAMING_SANITIZER_CASES)
-def test_streaming_matches_single_pass(text: str, splits: list[int]):
+def test_streaming_sanitizer_is_chunk_boundary_stable(text: str, splits: list[int]) -> None:
     streamed = _stream_chunks(text, splits)
-    expected = _sanitize_once(text)
-    if streamed != expected:
-        raise AssertionError(f"sanitizer mismatch: {streamed!r} != {expected!r}")
+    single_chunk = _stream_chunks(text, [])
+    assert streamed == single_chunk

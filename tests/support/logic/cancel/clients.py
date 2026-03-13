@@ -8,7 +8,6 @@ of each client type:
 
 from __future__ import annotations
 
-import json
 import asyncio
 import websockets
 from typing import Any
@@ -32,6 +31,7 @@ from tests.support.helpers.websocket import (
     finalize_metrics,
     build_start_payload,
     connect_with_retries,
+    send_initial_user_turn,
 )
 
 
@@ -72,9 +72,15 @@ async def run_normal_client(
             state = create_tracker()
             handlers = build_recovery_handlers(state)
 
-            start_payload = build_start_payload(ctx, user_msg)
-            await ws.send(json.dumps(start_payload))
-            print(dim(f"  [{label}] sent start message..."))
+            start_payload = build_start_payload(ctx)
+            await send_initial_user_turn(
+                ws,
+                start_payload,
+                user_msg,
+                sampling=ctx.sampling,
+                timeout=recv_timeout,
+            )
+            print(dim(f"  [{label}] bootstrapped session and sent first message..."))
 
             cancelled = False
             error: str | None = None
