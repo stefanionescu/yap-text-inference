@@ -10,7 +10,7 @@ SEMGREP_FLAGS=(
   --metrics=off
   --disable-version-check
 )
-SEMGREP_TARGETS=("src" "scripts" "docker" "linting")
-SEMGREP_EXCLUDES=("node_modules" ".venv" ".git" "tests/support/messages" "tests/support/prompts")
+SEMGREP_TARGETS=("src" "tests" "scripts" "docker" "linting")
+SEMGREP_EXCLUDES=("node_modules" ".venv" ".git")
 SEMGREP_REGISTRY_RULESETS=("p/default" "p/python")
 SEMGREP_LOCAL_RULE_FILES=("linting/config/semgrep/rules.yml")

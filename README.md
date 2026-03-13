@@ -275,6 +275,7 @@ bash .githooks/lib/setup.sh
 ```
 
 The bootstrap script creates or reuses the repo-local `.venv`, installs `requirements-dev.txt`, runs `bun install`, and installs the pinned repo-local fallback CLIs used by shell, Docker, and security checks.
+
 If Bun is already installed, the same bootstrap flow is exposed as `bun run setup:tooling`, and hook installation is exposed as `bun run setup:hooks`.
 
 If you already use the deployment bootstrap flow, it creates the same repo-local `.venv`.
@@ -305,11 +306,20 @@ nox -s codeql
 ```
 
 The underlying shell entrypoints under `linting/` still exist for hook plumbing and focused debugging, but `nox` is the primary documented surface.
+
 The full lint/security entrypoints still use the repo-local `.venv` plus repo-local tool bins directly and fail fast if that bootstrap is missing.
+
+`pyproject.toml` is the single source of truth for Ruff, isort, and Deptry; the repo-maintenance flow does not use separate sidecar configs for those tools.
+
 Standalone binary and Docker wrappers such as `linting/shfmt/run.sh`, `linting/hadolint/run.sh`, `linting/semgrep/run.sh`, and `linting/security/gitleaks/run.sh` can resolve local, cached, or Docker-backed tools without requiring the repo `.venv` up front.
+
 `nox -s security` skips Trivy by default; set `ENABLE_TRIVY=1` to include config, filesystem, and scan-only image builds.
+
 Set `SKIP_CODEQL=1` when you need to bypass CodeQL locally.
+
 `nox -s codeql` writes raw SARIF to `linting/.tools/codeql/results/`.
+
+The default Semgrep, Bandit, and Bearer coverage now includes `tests/` and `linting/` alongside the runtime trees.
 
 ## Test Clients
 
@@ -325,6 +335,7 @@ Highlights:
 - [`tests/suites/integration/test_idle.py`](ADVANCED.md#idle-timeout-test) – validates idle watchdog close behavior and normal connection lifecycle.
 
 All of them run on the lightweight `requirements-local.txt` environment described above; check the advanced guide for full command examples.
+
 Start-capable clients expose `--start-payload-mode {all,chat-only,tool-only}` so manual runs can match the server deployment shape. This matters in tool-only mode because chat-only `start` fields are now rejected instead of ignored.
 
 For CPU-only unit validation (no server or GPU required):

@@ -16,6 +16,7 @@ from typing import Any
 from tests.state import PersonaDefinition
 from tests.support.helpers.prompt import normalize_gender
 from tests.config import PERSONA_MODULE, DEFAULT_PERSONA_NAME
+from tests.support.prompts import detailed as detailed_personas
 
 # ============================================================================
 # Data Structures
@@ -35,7 +36,10 @@ class PersonaRegistry:
 
     def _reload(self):
         """Import or reload the persona module."""
-        module = importlib.import_module(self._module_name) if self._module is None else importlib.reload(self._module)
+        if self._module_name != PERSONA_MODULE:
+            raise RuntimeError(f"unsupported persona module: {self._module_name}")
+
+        module = detailed_personas if self._module is None else importlib.reload(self._module)
         self._module = module
         return module
 

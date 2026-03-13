@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import pytest
 import asyncio
-import subprocess
+import subprocess  # nosec B404
 import src.messages.turn as turn_mod
 from src.config import DEFAULT_CHECK_SCREEN_PREFIX
 from src.handlers.session.manager import SessionHandler
@@ -18,6 +18,8 @@ from tests.support.messages.unit import (
     ASSISTANT_FIRST_PAYLOAD,
     ASSISTANT_FIRST_MESSAGES,
 )
+
+# This test intentionally spawns the local interpreter to validate a clean-process import path.
 
 
 class _NoopWS:
@@ -344,7 +346,7 @@ def test_bootstrap_start_rejects_seed_history_that_cannot_fit_latest_turn() -> N
 
 
 def test_messages_turn_imports_without_circular_dependency() -> None:
-    proc = subprocess.run(  # noqa: S603
+    proc = subprocess.run(  # noqa: S603  # nosec B603
         [sys.executable, "-c", "import src.messages.turn"],
         check=False,
         capture_output=True,

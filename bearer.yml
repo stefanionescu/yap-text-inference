@@ -5,5 +5,3 @@ scanner:
         - .git
         - coverage
         - htmlcov
-        - '**/tests/**'
-        - '**/linting/**'

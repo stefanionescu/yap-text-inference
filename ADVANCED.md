@@ -322,8 +322,12 @@ bash scripts/coverage.sh
 ```
 
 If you already use the deployment bootstrap flow, it creates the same repo-local `.venv`.
+
 The lower-level `linting/*.sh` entrypoints use the repo-local `.venv`, repo-cached lint binaries, and repo-local JS tooling directly and fail fast if that bootstrap is missing.
+
 Shared repo code is linted and type-checked against Python 3.10 even though some images run Python 3.12.
+
+`pyproject.toml` is the authoritative config for Ruff, isort, and Deptry.
 
 CodeQL writes raw SARIF to `linting/.tools/codeql/results/`.
 
@@ -358,6 +362,7 @@ CodeQL writes raw SARIF to `linting/.tools/codeql/results/`.
 - hook self-checks for `.githooks/`
 
 The repo-local structure, naming, and hook checks are intentional policy rather than generic Python style defaults.
+
 The import and runtime rules protect architectural boundaries, and the stricter shape rules keep runtime and repo-maintenance code explicit enough for operators to reason about.
 
 `linting/security/run.sh` runs the heavier security gate:
@@ -370,6 +375,8 @@ The import and runtime rules protect architectural boundaries, and the stricter 
 - optional Trivy config, filesystem, and image scans when `ENABLE_TRIVY=1`
 - CodeQL
 - optional SonarQube when `RUN_SONAR=1`
+
+The default Semgrep, Bandit, and Bearer coverage includes `tests/` and `linting/`; findings in those trees are treated as real security signal unless there is a narrow, documented exception.
 
 Useful local flags:
 - `ENABLE_TRIVY=1` to include Trivy
@@ -677,7 +684,6 @@ python3 tests/suites/e2e/test_warmup.py --gender male --personality flirty "hell
 python3 tests/suites/e2e/test_warmup.py --start-payload-mode tool-only "check the current screen"
 ```
 
-
 Environment overrides honored by the client:
 - `SERVER_WS_URL` (default `ws://127.0.0.1:8000/ws`)
 - `GENDER` (default `female`; use `female` or `male`)
@@ -693,6 +699,7 @@ python3 tests/suites/e2e/test_warmup.py --gender female --personality savage "he
 ```
 
 Append `--double-ttfb` to send two identical requests back-to-back and compare cold vs warm latency.
+
 Use `--start-payload-mode tool-only` for manual tool-only deployments; `scripts/warmup.sh` now derives this automatically from `DEPLOY_MODE`.
 
 ### Interactive Live Client
