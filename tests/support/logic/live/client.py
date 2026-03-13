@@ -206,7 +206,7 @@ class LiveClient:
 
     def _handle_toolcall_frame(self, msg: dict[str, Any], state: StreamState) -> None:
         ttfb = record_toolcall(state)
-        logger.info("TOOLCALL status=%s ttfb_ms=%s", msg.get("status"), round_ms(ttfb))
+        logger.debug("TOOLCALL status=%s ttfb_ms=%s", msg.get("status"), round_ms(ttfb))
 
     def _handle_done_frame(self, msg: dict[str, Any], ctx: _StreamContext, *, print_user_prompt: bool) -> StreamResult:
         ctx.printer.finish()

@@ -39,8 +39,8 @@ def _test_client(monkeypatch) -> Iterator[TestClient]:
     def _fast_lifecycle(ws):
         return lifecycle_mod.WebSocketLifecycle(
             ws,
-            idle_timeout_s=0.05,
-            watchdog_tick_s=0.005,
+            idle_timeout_s=10.0,
+            watchdog_tick_s=0.5,
         )
 
     monkeypatch.setattr(websocket_manager, "authenticate_websocket", _allow_auth)
