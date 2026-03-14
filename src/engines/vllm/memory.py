@@ -60,8 +60,11 @@ def scale_batching_limits(
     max_seqs: int | None,
     gpu_frac: float,
     engine_role: str,
+    min_tokens: int | None = None,
 ) -> tuple[int, int | None]:
     """Shrink batching knobs when available memory is below the target budget."""
+    token_floor = max(BATCH_SCALE_MIN_TOKENS, min_tokens or 0)
+
     snapshot = read_cuda_memory_snapshot()
     if not snapshot or gpu_frac <= 0:
         return max_tokens, max_seqs
@@ -72,7 +75,7 @@ def scale_batching_limits(
         return max_tokens, max_seqs
 
     ratio = max(free_bytes / target_bytes, BATCH_SCALE_MIN_RATIO)
-    scaled_tokens = max(BATCH_SCALE_MIN_TOKENS, int(max_tokens * ratio))
+    scaled_tokens = max(token_floor, int(max_tokens * ratio))
     scaled_seqs = None
     if max_seqs is not None:
         scaled_seqs = max(BATCH_SCALE_MIN_SEQS, int(max_seqs * ratio))

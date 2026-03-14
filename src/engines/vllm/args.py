@@ -236,11 +236,13 @@ def make_engine_args(model: str, gpu_frac: float, max_len: int) -> AsyncEngineAr
     configure_kv_cache(kwargs, kv_dtype_value, use_v1)
 
     # Scale batching limits based on available memory
+    profile_batched = get_max_batched_tokens(requirements.model_origin)
     scaled_tokens, scaled_max_seqs = scale_batching_limits(
         max_tokens=kwargs["max_num_batched_tokens"],
         max_seqs=kwargs.get("max_num_seqs"),
         gpu_frac=kwargs["gpu_memory_utilization"],
         engine_role="chat",
+        min_tokens=profile_batched,
     )
     kwargs["max_num_batched_tokens"] = scaled_tokens
     if scaled_max_seqs is not None:
