@@ -63,6 +63,13 @@ MODEL_PROFILES: tuple[ModelProfile, ...] = (
         uses_mla=True,
     ),
     ModelProfile(
+        name="qwen3.5",
+        markers=("qwen3.5",),
+        requires_bfloat16=True,
+        max_num_batched_tokens=1280,
+        tokenizer_kwargs={"fix_mistral_regex": True},
+    ),
+    ModelProfile(
         name="qwen3-next",
         markers=("qwen3-next", "qwen3_next"),
         requires_bfloat16=True,
