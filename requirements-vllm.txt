@@ -2,9 +2,9 @@
 
 --extra-index-url https://download.pytorch.org/whl/cu130
 
-# VLLM 0.13.0 with CUDA 13.0 support (PyPI wheel is CUDA 12, need cu130 wheel from GitHub; manylinux_2_35)
-vllm @ https://github.com/vllm-project/vllm/releases/download/v0.13.0/vllm-0.13.0+cu130-cp38-abi3-manylinux_2_35_x86_64.whl
-torch==2.9.0+cu130 ; sys_platform == 'linux'
+# VLLM 0.17.1 with CUDA 13.0 support (cu130 wheels hosted on wheels.vllm.ai)
+vllm @ https://wheels.vllm.ai/95c0f928cdeeaa21c4906e73cee6a156e1b3b995/vllm-0.17.1%2Bcu130-cp38-abi3-manylinux_2_35_x86_64.whl
+torch==2.10.0+cu130 ; sys_platform == 'linux'
 fla-core==0.4.0
 accelerate==1.12.0
 datasets==4.4.1
@@ -25,7 +25,7 @@ httpx==0.27.2
 uvloop==0.19.0
 transformers==4.56.0
 tokenizers==0.22.0
-mistral_common==1.8.5
+mistral_common==1.9.1
 hf_transfer==0.1.8
 huggingface_hub==0.34.0
 ftfy==6.2.3
