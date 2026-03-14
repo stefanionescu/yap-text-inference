@@ -78,6 +78,8 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
 ]
 
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
+    "trohrbaugh/Qwen3.5-35B-A3B-heretic",
+    "Qwen/Qwen3.5-35B-A3B",
     "Qwen/Qwen3-30B-A3B-Instruct-2507",
     "ArliAI/Qwen3-30B-A3B-ArliAI-RpR-v4-Fast",
     "DavidAU/Qwen3-33B-A3B-Stranger-Thoughts-IPONDER",
@@ -97,6 +99,7 @@ ALLOWED_VLLM_QUANT_CHAT_MODELS: list[str] = [
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-32",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-64",
     "SicariusSicariiStuff/Impish_Nemo_12B_GPTQ_4-bit-128",
+    "Qwen/Qwen3.5-35B-A3B-GPTQ-Int4",
     # Pre-quantized AWQ/W4A16/NVFP4 models
     "RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w4a16",
     "leon-se/gemma-3-27b-it-qat-W4A16-G128",
