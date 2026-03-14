@@ -85,12 +85,19 @@ def _resolve_quantization(model: str, raw_quant: str | None) -> tuple[str | None
 
 
 def _resolve_max_batched_tokens(model_origin: str) -> int:
-    """Resolve max batched tokens from env, profile, or default."""
+    """Resolve max batched tokens from env, profile, or default.
+
+    The profile value acts as a hard floor because it encodes architectural
+    constraints (e.g. hybrid SSM/attention block_size minimums) that cannot
+    be violated without crashing the engine.
+    """
+    profile_batched = get_max_batched_tokens(model_origin)
+    profile_floor = profile_batched or 0
+
     env_batched = os.getenv("MAX_NUM_BATCHED_TOKENS_CHAT")
     if env_batched:
-        return int(env_batched)
+        return max(int(env_batched), profile_floor)
 
-    profile_batched = get_max_batched_tokens(model_origin)
     if profile_batched is not None:
         return profile_batched
 
