@@ -155,7 +155,7 @@ def _build_base_kwargs(
         "tensor_parallel_size": 1,
         "max_model_len": max_len,
         "gpu_memory_utilization": gpu_frac,
-        "enforce_eager": False,
+        "enforce_eager": env_flag("ENFORCE_EAGER", False),
         "enable_chunked_prefill": True,
         "max_num_batched_tokens": requirements.max_batched_tokens,
         "enable_prefix_caching": True,
