@@ -80,8 +80,6 @@ ALLOWED_BASE_CHAT_MODELS: list[str] = [
 ALLOWED_BASE_MOE_CHAT_MODELS: list[str] = [
     "trohrbaugh/Qwen3.5-35B-A3B-heretic",
     "Qwen/Qwen3.5-35B-A3B",
-    "Timersofc/Qwen3.5-Creative-26B-A3B-REAP",
-    "Timersofc/Qwen3.5-Creative-19B-A3B-REAP",
     "Qwen/Qwen3-30B-A3B-Instruct-2507",
     "ArliAI/Qwen3-30B-A3B-ArliAI-RpR-v4-Fast",
     "DavidAU/Qwen3-33B-A3B-Stranger-Thoughts-IPONDER",
